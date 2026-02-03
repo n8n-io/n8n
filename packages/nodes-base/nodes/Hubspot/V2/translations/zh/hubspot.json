@@ -1,0 +1,4169 @@
+{
+	"header": {
+		"displayName": "HubSpot",
+		"description": "使用HubSpot API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiKey": {
+					"displayName": "API密钥"
+				},
+				"appToken": {
+					"displayName": "应用令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"company": {
+					"displayName": "公司"
+				},
+				"contact": {
+					"displayName": "联系人"
+				},
+				"contactList": {
+					"displayName": "联系人列表"
+				},
+				"deal": {
+					"displayName": "交易"
+				},
+				"engagement": {
+					"displayName": "互动"
+				},
+				"ticket": {
+					"displayName": "工单"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新联系人，如果已存在则更新当前联系人（upsert）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除工单"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取工单"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个工单"
+				},
+				"getRecentlyCreatedUpdated": {
+					"displayName": "获取最近创建/更新的",
+					"description": "获取最近创建/更新的交易"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "Search deals"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "将联系人添加到列表"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从列表中移除联系人"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建工单"
+				},
+				"searchByDomain": {
+					"displayName": "搜索",
+					"description": "按网站域名搜索公司"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新工单"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"annualRevenue": {
+					"displayName": "年度营收",
+					"description": "公司的实际或预估年收入"
+				},
+				"associatedCompanyId": {
+					"displayName": "关联公司名称或ID",
+					"description": "与工单关联的公司。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"buyingRole": {
+					"displayName": "购买角色",
+					"description": "联系人在销售过程中扮演的角色。一个联系人可以有多个角色，也可以与他人共享角色。"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "公司所在城市"
+				},
+				"clickedFacebookAd": {
+					"displayName": "点击了Facebook广告"
+				},
+				"closeDate": {
+					"displayName": "关闭日期",
+					"description": "工单关闭日期。使用表达式时，时间应指定为YYYY-MM-DD hh-mm-ss格式。"
+				},
+				"companyName": {
+					"displayName": "公司名称"
+				},
+				"companySize": {
+					"displayName": "公司规模"
+				},
+				"contactOwner": {
+					"displayName": "联系人所有者姓名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"properties": {
+					"displayName": "工单属性包含项",
+					"description": "是否在返回结果中包含特定工单属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"country": {
+					"displayName": "国家/地区"
+				},
+				"countryRegionCode": {
+					"displayName": "国家/地区代码",
+					"description": "联系人的两位字母国家代码"
+				},
+				"customPropertiesUi": {
+					"displayName": "自定义属性",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"customPropertiesValues": {
+							"displayName": "自定义属性",
+							"options": {
+								"property": {
+									"displayName": "属性名称或ID",
+									"description": "属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customPropertiesValues": {
+							"displayName": "自定义属性",
+							"options": {
+								"property": {
+									"displayName": "属性名称或ID",
+									"description": "属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						},
+						"customPropertiesUi": {
+							"displayName": "自定义属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				},
+				"dateOfBirth": {
+					"displayName": "出生日期",
+					"description": "使用表达式时，时间应指定为YYYY-MM-DD hh-mm-ss格式"
+				},
+				"degree": {
+					"displayName": "度"
+				},
+				"emailCustomerQuarantinedReason": {
+					"displayName": "邮箱地址隔离原因",
+					"description": "该邮箱地址被隔离的原因",
+					"options": {
+						"SUSPENSION_REMEDIATION": {
+							"displayName": "工作流暂停修复"
+						},
+						"BLOCKLIST_REMEDIATION": {
+							"displayName": "阻止名单修复"
+						},
+						"TRUST_SAFETY_REMEDIATION": {
+							"displayName": "信任与安全修复"
+						}
+					}
+				},
+				"employmentRole": {
+					"displayName": "雇佣职位",
+					"description": "工作角色",
+					"options": {
+						"accounting": {
+							"displayName": "会计"
+						},
+						"administrative": {
+							"displayName": "管理"
+						},
+						"business_development": {
+							"displayName": "业务开发"
+						},
+						"communications": {
+							"displayName": "通讯"
+						},
+						"consulting": {
+							"displayName": "咨询"
+						},
+						"customer_service": {
+							"displayName": "客户服务"
+						},
+						"design": {
+							"displayName": "设计"
+						},
+						"education": {
+							"displayName": "教育"
+						},
+						"engineering": {
+							"displayName": "工程"
+						},
+						"entrepreneurship": {
+							"displayName": "创业"
+						},
+						"finance": {
+							"displayName": "财务"
+						},
+						"health_professional": {
+							"displayName": "医疗专业人员"
+						},
+						"human_resources": {
+							"displayName": "人力资源"
+						},
+						"information_technology": {
+							"displayName": "信息技术"
+						},
+						"legal": {
+							"displayName": "法律"
+						},
+						"marketing": {
+							"displayName": "营销"
+						},
+						"operations": {
+							"displayName": "操作"
+						},
+						"product": {
+							"displayName": "产品"
+						},
+						"project_management": {
+							"displayName": "项目管理"
+						},
+						"public_relations": {
+							"displayName": "公共关系"
+						},
+						"quality_assurance": {
+							"displayName": "质量保证"
+						},
+						"real_estate": {
+							"displayName": "房地产"
+						},
+						"recruiting": {
+							"displayName": "招聘"
+						},
+						"research": {
+							"displayName": "研究"
+						},
+						"retired": {
+							"displayName": "已停用"
+						},
+						"sales": {
+							"displayName": "销售"
+						},
+						"support": {
+							"displayName": "支持"
+						}
+					}
+				},
+				"employmentSeniority": {
+					"displayName": "工作总年限",
+					"description": "当前岗位年限",
+					"options": {
+						"director": {
+							"displayName": "总监"
+						},
+						"employee": {
+							"displayName": "员工"
+						},
+						"entry": {
+							"displayName": "入口"
+						},
+						"executive": {
+							"displayName": "执行"
+						},
+						"manager": {
+							"displayName": "管理员"
+						},
+						"owner": {
+							"displayName": "所有者"
+						},
+						"partner": {
+							"displayName": "合作伙伴"
+						},
+						"senior": {
+							"displayName": "高级"
+						},
+						"vp": {
+							"displayName": "副总裁"
+						}
+					}
+				},
+				"employmentSubRole": {
+					"displayName": "就业子角色",
+					"description": "职位子角色",
+					"options": {
+						"account_executive": {
+							"displayName": "客户经理"
+						},
+						"account_manager": {
+							"displayName": "客户经理"
+						},
+						"accountant": {
+							"displayName": "会计"
+						},
+						"accounting_manager": {
+							"displayName": "财务经理"
+						},
+						"administrative_assistant": {
+							"displayName": "行政助理"
+						},
+						"appraisal": {
+							"displayName": "评估"
+						},
+						"architect_it": {
+							"displayName": "架构IT"
+						},
+						"assistant": {
+							"displayName": "助手"
+						},
+						"attorney": {
+							"displayName": "律师"
+						},
+						"auditor": {
+							"displayName": "审计员"
+						},
+						"brand_marketing": {
+							"displayName": "品牌营销"
+						},
+						"business_analyst": {
+							"displayName": "业务分析师"
+						},
+						"business_consultant": {
+							"displayName": "业务顾问"
+						},
+						"business_manager": {
+							"displayName": "业务管理员"
+						},
+						"chief_compliance_officer": {
+							"displayName": "首席合规官"
+						},
+						"chief_data_officer": {
+							"displayName": "首席数据官"
+						},
+						"chief_executive_officer": {
+							"displayName": "首席执行官"
+						},
+						"chief_experience_officer": {
+							"displayName": "首席体验官"
+						},
+						"chief_financial_officer": {
+							"displayName": "首席财务官"
+						},
+						"chief_human_resources_officer": {
+							"displayName": "首席人力资源官"
+						},
+						"chief_information_officer": {
+							"displayName": "首席信息官"
+						},
+						"chief_innovation_officer": {
+							"displayName": "首席创新官"
+						},
+						"chief_legal_officer": {
+							"displayName": "首席法务官"
+						},
+						"chief_marketing_officer": {
+							"displayName": "首席营销官"
+						},
+						"chief_operating_officer": {
+							"displayName": "首席运营官"
+						},
+						"chief_product_officer": {
+							"displayName": "首席产品官"
+						},
+						"chief_revenue_officer": {
+							"displayName": "首席营收官"
+						},
+						"chief_risk_officer": {
+							"displayName": "首席风险官"
+						},
+						"chief_security_officer": {
+							"displayName": "首席安全官"
+						},
+						"chief_sustainability_officer": {
+							"displayName": "首席可持续发展官"
+						},
+						"chief_technology_officer": {
+							"displayName": "首席技术官"
+						},
+						"communications_manager": {
+							"displayName": "通讯管理器"
+						},
+						"community": {
+							"displayName": "社区"
+						},
+						"content_marketing": {
+							"displayName": "内容营销"
+						},
+						"contracts": {
+							"displayName": "合同"
+						},
+						"creative": {
+							"displayName": "创意"
+						},
+						"customer_service_specialist": {
+							"displayName": "客户服务专员"
+						},
+						"customer_success": {
+							"displayName": "客户成功"
+						},
+						"data_it": {
+							"displayName": "数据IT"
+						},
+						"data_science_engineer": {
+							"displayName": "数据科学工程师"
+						},
+						"database_administrator": {
+							"displayName": "数据库管理员"
+						},
+						"design_engineer": {
+							"displayName": "设计工程师"
+						},
+						"development_specialist": {
+							"displayName": "开发专家"
+						},
+						"devops_engineer": {
+							"displayName": "DevOps工程师"
+						},
+						"digital_marketing": {
+							"displayName": "数字营销"
+						},
+						"director_of_development": {
+							"displayName": "开发总监"
+						},
+						"editorial": {
+							"displayName": "编辑"
+						},
+						"electrical_engineer": {
+							"displayName": "电气工程师"
+						},
+						"engineering_manager": {
+							"displayName": "工程经理"
+						},
+						"events": {
+							"displayName": "事件"
+						},
+						"executive_assistant": {
+							"displayName": "行政助理"
+						},
+						"facilities": {
+							"displayName": "设施"
+						},
+						"fashion_design": {
+							"displayName": "时尚设计"
+						},
+						"field_marketing": {
+							"displayName": "现场营销"
+						},
+						"financial_analyst": {
+							"displayName": "财务分析师"
+						},
+						"financial_controller": {
+							"displayName": "财务总监"
+						},
+						"fitness": {
+							"displayName": "健身"
+						},
+						"founder": {
+							"displayName": "创始人"
+						},
+						"general_counsel": {
+							"displayName": "总法律顾问"
+						},
+						"general_manager": {
+							"displayName": "总经理"
+						},
+						"general_partner": {
+							"displayName": "普通合伙人"
+						},
+						"graphic_design": {
+							"displayName": "平面设计"
+						},
+						"human_resources_specialist": {
+							"displayName": "人力资源专员"
+						},
+						"information_technology_specialist": {
+							"displayName": "信息技术专家"
+						},
+						"investment": {
+							"displayName": "投资"
+						},
+						"investment_banker": {
+							"displayName": "投资银行家"
+						},
+						"journalist": {
+							"displayName": "记者"
+						},
+						"key_account_manager": {
+							"displayName": "大客户经理"
+						},
+						"law_enforcement": {
+							"displayName": "执法"
+						},
+						"lawyer": {
+							"displayName": "律师"
+						},
+						"logistics_manager": {
+							"displayName": "物流经理"
+						},
+						"management": {
+							"displayName": "管理"
+						},
+						"marketing_specialist": {
+							"displayName": "市场营销专员"
+						},
+						"mechanical_engineer": {
+							"displayName": "机械工程师"
+						},
+						"medical_doctor": {
+							"displayName": "医生"
+						},
+						"network_engineer": {
+							"displayName": "网络工程师"
+						},
+						"nurse": {
+							"displayName": "护士"
+						},
+						"office_management": {
+							"displayName": "办公管理"
+						},
+						"office_manager": {
+							"displayName": "办公室经理"
+						},
+						"operational_specialist": {
+							"displayName": "运营专员"
+						},
+						"owner": {
+							"displayName": "所有者"
+						},
+						"paralegal": {
+							"displayName": "律师助理"
+						},
+						"principal": {
+							"displayName": "主体"
+						},
+						"product_design": {
+							"displayName": "产品设计"
+						},
+						"product_manager": {
+							"displayName": "产品经理"
+						},
+						"product_marketing": {
+							"displayName": "产品营销"
+						},
+						"production_manager": {
+							"displayName": "生产经理"
+						},
+						"professor": {
+							"displayName": "教授"
+						},
+						"program_coordinator": {
+							"displayName": "项目协调员"
+						},
+						"program_manager": {
+							"displayName": "项目经理"
+						},
+						"project_engineer": {
+							"displayName": "项目工程师"
+						},
+						"project_manager": {
+							"displayName": "项目经理"
+						},
+						"property_manager": {
+							"displayName": "属性管理器"
+						},
+						"qa_engineer": {
+							"displayName": "QA工程师"
+						},
+						"qa_it": {
+							"displayName": "质量保证 IT"
+						},
+						"quality_assurance_manager": {
+							"displayName": "质量保证经理"
+						},
+						"quality_assurance_specialist": {
+							"displayName": "质量保证专员"
+						},
+						"realtor": {
+							"displayName": "房地产经纪人"
+						},
+						"recruiter": {
+							"displayName": "招聘专员"
+						},
+						"relationship_manager": {
+							"displayName": "关系管理器"
+						},
+						"research_analyst": {
+							"displayName": "研究分析师"
+						},
+						"retail": {
+							"displayName": "零售"
+						},
+						"retired": {
+							"displayName": "已停用"
+						},
+						"risk_compliance": {
+							"displayName": "风险合规"
+						},
+						"sales_executive": {
+							"displayName": "销售主管"
+						},
+						"sales_operations": {
+							"displayName": "销售运营"
+						},
+						"sales_specialist": {
+							"displayName": "销售专员"
+						},
+						"salesperson": {
+							"displayName": "销售人员"
+						},
+						"secretary": {
+							"displayName": "秘书"
+						},
+						"social_marketing": {
+							"displayName": "社交营销"
+						},
+						"software_engineer": {
+							"displayName": "软件工程师"
+						},
+						"strategy": {
+							"displayName": "策略"
+						},
+						"student": {
+							"displayName": "学生"
+						},
+						"support": {
+							"displayName": "支持"
+						},
+						"support_specialist": {
+							"displayName": "支持专员"
+						},
+						"system_administrator": {
+							"displayName": "系统管理员"
+						},
+						"system_analyst": {
+							"displayName": "系统分析师"
+						},
+						"systems_engineer": {
+							"displayName": "系统工程师"
+						},
+						"talent": {
+							"displayName": "人才"
+						},
+						"tax_audit": {
+							"displayName": "税务审计"
+						},
+						"teacher": {
+							"displayName": "教师"
+						},
+						"technical_manager": {
+							"displayName": "技术经理"
+						},
+						"technical_support_specialist": {
+							"displayName": "技术支持专员"
+						},
+						"therapist": {
+							"displayName": "治疗师"
+						},
+						"training": {
+							"displayName": "培训"
+						},
+						"video": {
+							"displayName": "视频"
+						},
+						"web_developer": {
+							"displayName": "Web开发人员"
+						},
+						"writer": {
+							"displayName": "编写器"
+						}
+					}
+				},
+				"enrichedEmailBounceDetected": {
+					"displayName": "检测到增强型邮件退回"
+				},
+				"facebookClickId": {
+					"displayName": "Facebook 点击 ID"
+				},
+				"faxNumber": {
+					"displayName": "传真号码"
+				},
+				"fieldOfStudy": {
+					"displayName": "研究领域",
+					"description": "联系人的研究领域。此属性是Facebook广告集成所必需的。该属性将通过线索广告工具自动同步。"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "联系人的名字"
+				},
+				"gender": {
+					"displayName": "性别"
+				},
+				"googleAdClickId": {
+					"displayName": "Google广告点击ID"
+				},
+				"graduationDate": {
+					"displayName": "毕业日期",
+					"description": "联系人的毕业日期。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。使用表达式时，时间应以YYYY-MM-DD hh-mm-ss格式指定。"
+				},
+				"industry": {
+					"displayName": "行业名称或ID",
+					"description": "公司从事的业务类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"inferredLanguageCodes": {
+					"displayName": "推断出的语言代码",
+					"description": "基于位置推断出的语言。ISO 639-1标准。",
+					"options": {
+						"ab": {
+							"displayName": "阿布哈兹语"
+						},
+						"aa": {
+							"displayName": "阿法尔语"
+						},
+						"af": {
+							"displayName": "南非荷兰语"
+						},
+						"ak": {
+							"displayName": "阿坎语"
+						},
+						"sq": {
+							"displayName": "Albanian"
+						},
+						"am": {
+							"displayName": "阿姆哈拉语"
+						},
+						"ar": {
+							"displayName": "阿拉伯语"
+						},
+						"an": {
+							"displayName": "阿拉贡语"
+						},
+						"hy": {
+							"displayName": "亚美尼亚语"
+						},
+						"as": {
+							"displayName": "阿萨姆语"
+						},
+						"av": {
+							"displayName": "阿瓦里克"
+						},
+						"ae": {
+							"displayName": "阿维斯陀语"
+						},
+						"ay": {
+							"displayName": "艾马拉语"
+						},
+						"az": {
+							"displayName": "阿塞拜疆语"
+						},
+						"bm": {
+							"displayName": "班巴拉语"
+						},
+						"ba": {
+							"displayName": "巴什基尔语"
+						},
+						"eu": {
+							"displayName": "巴斯克语"
+						},
+						"be": {
+							"displayName": "白俄罗斯语"
+						},
+						"bn": {
+							"displayName": "孟加拉语"
+						},
+						"bi": {
+							"displayName": "比斯拉马语"
+						},
+						"nb": {
+							"displayName": "书面挪威语（挪威语）"
+						},
+						"bs": {
+							"displayName": "Bosnian"
+						},
+						"br": {
+							"displayName": "布列塔尼语"
+						},
+						"bg": {
+							"displayName": "保加利亚语"
+						},
+						"my": {
+							"displayName": "缅甸"
+						},
+						"ca": {
+							"displayName": "加泰罗尼亚语；瓦伦西亚语"
+						},
+						"km": {
+							"displayName": "高棉语（中部）"
+						},
+						"ch": {
+							"displayName": "查莫罗语"
+						},
+						"ce": {
+							"displayName": "车臣"
+						},
+						"ny": {
+							"displayName": "奇契瓦语; 切瓦语; 尼扬贾语"
+						},
+						"zh": {
+							"displayName": "中文"
+						},
+						"cu": {
+							"displayName": "教会斯拉夫语；古斯拉夫语；教会斯拉夫语；古保加利亚语；古教会斯拉夫语"
+						},
+						"cv": {
+							"displayName": "楚瓦什语"
+						},
+						"kw": {
+							"displayName": "康沃尔语"
+						},
+						"co": {
+							"displayName": "科西嘉语"
+						},
+						"cr": {
+							"displayName": "创建"
+						},
+						"hr": {
+							"displayName": "克罗地亚语"
+						},
+						"cs": {
+							"displayName": "捷克语"
+						},
+						"da": {
+							"displayName": "丹麦语"
+						},
+						"dv": {
+							"displayName": "迪维希语；马尔代夫语"
+						},
+						"nl": {
+							"displayName": "荷兰语（弗拉芒语）"
+						},
+						"dz": {
+							"displayName": "宗卡语"
+						},
+						"en": {
+							"displayName": "英文"
+						},
+						"eo": {
+							"displayName": "世界语"
+						},
+						"et": {
+							"displayName": "爱沙尼亚语"
+						},
+						"ee": {
+							"displayName": "母羊"
+						},
+						"fo": {
+							"displayName": "法罗语"
+						},
+						"fj": {
+							"displayName": "斐济语"
+						},
+						"fi": {
+							"displayName": "芬兰语"
+						},
+						"fr": {
+							"displayName": "法语"
+						},
+						"ff": {
+							"displayName": "富拉语"
+						},
+						"gd": {
+							"displayName": "盖尔语；苏格兰盖尔语"
+						},
+						"gl": {
+							"displayName": "加利西亚语"
+						},
+						"lg": {
+							"displayName": "甘达"
+						},
+						"ka": {
+							"displayName": "格鲁吉亚语"
+						},
+						"de": {
+							"displayName": "德语"
+						},
+						"el": {
+							"displayName": "希腊语（现代）"
+						},
+						"gn": {
+							"displayName": "瓜拉尼语"
+						},
+						"gu": {
+							"displayName": "古吉拉特语"
+						},
+						"ht": {
+							"displayName": "海地克里奥尔语"
+						},
+						"ha": {
+							"displayName": "豪萨语"
+						},
+						"he": {
+							"displayName": "希伯来语"
+						},
+						"hz": {
+							"displayName": "赫雷罗人"
+						},
+						"hi": {
+							"displayName": "印地语"
+						},
+						"ho": {
+							"displayName": "希里莫图语"
+						},
+						"hu": {
+							"displayName": "匈牙利语"
+						},
+						"is": {
+							"displayName": "冰岛语"
+						},
+						"io": {
+							"displayName": "Ido"
+						},
+						"ig": {
+							"displayName": "伊博语"
+						},
+						"id": {
+							"displayName": "印尼语"
+						},
+						"ia": {
+							"displayName": "国际辅助语协会语（国际辅助语言协会）"
+						},
+						"ie": {
+							"displayName": "因特语；西方语"
+						},
+						"iu": {
+							"displayName": "因纽特语"
+						},
+						"ik": {
+							"displayName": "因纽皮雅特语"
+						},
+						"ga": {
+							"displayName": "爱尔兰"
+						},
+						"it": {
+							"displayName": "意大利语"
+						},
+						"ja": {
+							"displayName": "日语"
+						},
+						"jv": {
+							"displayName": "爪哇语"
+						},
+						"kl": {
+							"displayName": "格陵兰语"
+						},
+						"kn": {
+							"displayName": "卡纳达语"
+						},
+						"kr": {
+							"displayName": "卡努里语"
+						},
+						"ks": {
+							"displayName": "克什米尔语"
+						},
+						"kk": {
+							"displayName": "哈萨克斯坦"
+						},
+						"ki": {
+							"displayName": "基库尤语"
+						},
+						"rw": {
+							"displayName": "卢旺达语"
+						},
+						"ky": {
+							"displayName": "吉尔吉斯语"
+						},
+						"kv": {
+							"displayName": "Komi"
+						},
+						"kg": {
+							"displayName": "刚果"
+						},
+						"ko": {
+							"displayName": "韩语"
+						},
+						"kj": {
+							"displayName": "宽亚玛语; 宽亚玛语"
+						},
+						"ku": {
+							"displayName": "库尔德语"
+						},
+						"lo": {
+							"displayName": "老挝"
+						},
+						"la": {
+							"displayName": "拉丁语"
+						},
+						"lv": {
+							"displayName": "拉脱维亚语"
+						},
+						"li": {
+							"displayName": "林堡语"
+						},
+						"ln": {
+							"displayName": "林加拉语"
+						},
+						"lt": {
+							"displayName": "立陶宛语"
+						},
+						"lu": {
+							"displayName": "卢巴-加丹加语"
+						},
+						"lb": {
+							"displayName": "卢森堡语"
+						},
+						"mk": {
+							"displayName": "马其顿语"
+						},
+						"mg": {
+							"displayName": "马达加斯加语"
+						},
+						"ms": {
+							"displayName": "马来语（宏观语言）"
+						},
+						"ml": {
+							"displayName": "马拉雅拉姆语"
+						},
+						"mt": {
+							"displayName": "马耳他语"
+						},
+						"gv": {
+							"displayName": "马恩岛"
+						},
+						"mi": {
+							"displayName": "毛利语"
+						},
+						"mr": {
+							"displayName": "马拉地语"
+						},
+						"mh": {
+							"displayName": "马绍尔语"
+						},
+						"mn": {
+							"displayName": "蒙古语"
+						},
+						"na": {
+							"displayName": "瑙鲁"
+						},
+						"nv": {
+							"displayName": "纳瓦霍语"
+						},
+						"nd": {
+							"displayName": "北恩德贝莱语"
+						},
+						"nr": {
+							"displayName": "南恩德贝莱语"
+						},
+						"ng": {
+							"displayName": "恩敦加语"
+						},
+						"ne": {
+							"displayName": "Nepali (Macrolanguage)"
+						},
+						"se": {
+							"displayName": "北萨米语"
+						},
+						"no": {
+							"displayName": "挪威语"
+						},
+						"nn": {
+							"displayName": "挪威尼诺斯克语；尼诺斯克语，挪威语"
+						},
+						"oc": {
+							"displayName": "奥克西唐语（1500年后）"
+						},
+						"oj": {
+							"displayName": "奥吉布瓦"
+						},
+						"or": {
+							"displayName": "奥里亚语（宏观语言）"
+						},
+						"om": {
+							"displayName": "奥罗莫语"
+						},
+						"os": {
+							"displayName": "奥塞梯语"
+						},
+						"pi": {
+							"displayName": "Pali"
+						},
+						"pa": {
+							"displayName": "旁遮普语"
+						},
+						"fa": {
+							"displayName": "波斯语"
+						},
+						"pl": {
+							"displayName": "波兰语"
+						},
+						"pt": {
+							"displayName": "葡萄牙语"
+						},
+						"ps": {
+							"displayName": "普什图语"
+						},
+						"qu": {
+							"displayName": "克丘亚语"
+						},
+						"ro": {
+							"displayName": "罗马尼亚语; 摩尔多瓦语"
+						},
+						"rm": {
+							"displayName": "罗曼什语"
+						},
+						"rn": {
+							"displayName": "隆迪语"
+						},
+						"ru": {
+							"displayName": "俄语"
+						},
+						"sm": {
+							"displayName": "萨摩亚语"
+						},
+						"sg": {
+							"displayName": "桑戈"
+						},
+						"sa": {
+							"displayName": "Sanskrit"
+						},
+						"sc": {
+							"displayName": "撒丁语"
+						},
+						"sr": {
+							"displayName": "塞尔维亚语"
+						},
+						"sn": {
+							"displayName": "绍纳语"
+						},
+						"ii": {
+							"displayName": "四川彝语；诺苏语"
+						},
+						"sd": {
+							"displayName": "信德语"
+						},
+						"si": {
+							"displayName": "僧伽罗语"
+						},
+						"sk": {
+							"displayName": "斯洛伐克语"
+						},
+						"sl": {
+							"displayName": "斯洛文尼亚语"
+						},
+						"so": {
+							"displayName": "索马里"
+						},
+						"st": {
+							"displayName": "南索托语"
+						},
+						"es": {
+							"displayName": "西班牙语"
+						},
+						"su": {
+							"displayName": "巽他语"
+						},
+						"sw": {
+							"displayName": "斯瓦希里语（宏观语言）"
+						},
+						"ss": {
+							"displayName": "斯瓦蒂语"
+						},
+						"sv": {
+							"displayName": "瑞典语"
+						},
+						"tl": {
+							"displayName": "他加禄语"
+						},
+						"ty": {
+							"displayName": "大溪地语"
+						},
+						"tg": {
+							"displayName": "塔吉克"
+						},
+						"ta": {
+							"displayName": "泰米尔语"
+						},
+						"tt": {
+							"displayName": "鞑靼语"
+						},
+						"te": {
+							"displayName": "泰卢固语"
+						},
+						"th": {
+							"displayName": "泰语"
+						},
+						"bo": {
+							"displayName": "Tibetan"
+						},
+						"ti": {
+							"displayName": "提格里尼亚语"
+						},
+						"to": {
+							"displayName": "汤加（汤加群岛）"
+						},
+						"ts": {
+							"displayName": "聪加语"
+						},
+						"tn": {
+							"displayName": "茨瓦纳语"
+						},
+						"tr": {
+							"displayName": "土耳其语"
+						},
+						"tk": {
+							"displayName": "土库曼语"
+						},
+						"tw": {
+							"displayName": "Twi"
+						},
+						"ug": {
+							"displayName": "维吾尔族"
+						},
+						"uk": {
+							"displayName": "乌克兰语"
+						},
+						"ur": {
+							"displayName": "乌尔都语"
+						},
+						"uz": {
+							"displayName": "乌兹别克语"
+						},
+						"ve": {
+							"displayName": "销售"
+						},
+						"vi": {
+							"displayName": "越南语"
+						},
+						"vo": {
+							"displayName": "沃拉普克语"
+						},
+						"wa": {
+							"displayName": "瓦隆语"
+						},
+						"cy": {
+							"displayName": "威尔士语"
+						},
+						"fy": {
+							"displayName": "西弗里斯兰语"
+						},
+						"wo": {
+							"displayName": "沃洛夫语"
+						},
+						"xh": {
+							"displayName": "科萨语"
+						},
+						"yi": {
+							"displayName": "意第绪语"
+						},
+						"yo": {
+							"displayName": "约鲁巴语"
+						},
+						"za": {
+							"displayName": "庄；创"
+						},
+						"zu": {
+							"displayName": "祖鲁语"
+						}
+					}
+				},
+				"jobFunction": {
+					"displayName": "职位职能",
+					"description": "联系人的职位职能。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。"
+				},
+				"jobTitle": {
+					"displayName": "职位名称",
+					"description": "联系人的职位"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "联系人的姓氏"
+				},
+				"latestTrafficSource": {
+					"displayName": "最新流量来源",
+					"description": "联系人的最新会话来源",
+					"options": {
+						"DIRECT_TRAFFIC": {
+							"displayName": "直接流量"
+						},
+						"EMAIL_MARKETING": {
+							"displayName": "邮件营销"
+						},
+						"OFFLINE": {
+							"displayName": "离线来源"
+						},
+						"ORGANIC_SEARCH": {
+							"displayName": "自然搜索"
+						},
+						"SOCIAL_MEDIA": {
+							"displayName": "有机社交"
+						},
+						"OTHER_CAMPAIGNS": {
+							"displayName": "其他活动"
+						},
+						"PAID_SEARCH": {
+							"displayName": "付费搜索"
+						},
+						"PAID_SOCIAL": {
+							"displayName": "付费社交"
+						},
+						"REFERRALS": {
+							"displayName": "推荐"
+						}
+					}
+				},
+				"latestTrafficSourceDate": {
+					"displayName": "最新流量来源日期",
+					"description": "联系人的最近会话时间"
+				},
+				"leadStatus": {
+					"displayName": "潜在客户状态名称或ID",
+					"description": "公司的销售、潜在客户开发或外联状态。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"processingContactData": {
+					"displayName": "处理联系人数据的法律依据名称或ID",
+					"description": "处理联系人数据的法律依据；选择'不适用'将使联系人免受GDPR保护。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"lifeCycleStage": {
+					"displayName": "生命周期阶段名称或ID",
+					"description": "联系人销售就绪状态的资格认定。可通过导入、表单、工作流以及针对每个联系人手动设置。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"linkedinUrl": {
+					"displayName": "LinkedIn URL",
+					"description": "联系人的LinkedIn页面URL"
+				},
+				"maritalStatus": {
+					"displayName": "婚姻状况",
+					"description": "联系人的婚姻状况。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。"
+				},
+				"memberEmail": {
+					"displayName": "成员邮箱",
+					"description": "用于向成员发送私密内容信息的邮箱"
+				},
+				"membershipNote": {
+					"displayName": "会员备注",
+					"description": "联系人内容会员相关的备注"
+				},
+				"message": {
+					"displayName": "消息",
+					"description": "用于联系人在表单上可能希望留下的任何消息或评论的默认属性"
+				},
+				"militaryStatus": {
+					"displayName": "军事状态",
+					"description": "联系人的军事状态。Facebook广告集成所需。从线索广告工具自动同步。"
+				},
+				"mobilePhoneNumber": {
+					"displayName": "手机号码",
+					"description": "联系人的手机号码"
+				},
+				"numberOfEmployees": {
+					"displayName": "员工数量",
+					"description": "为公司或组织工作的员工总数"
+				},
+				"originalSource": {
+					"displayName": "Original Source Name or ID",
+					"description": "The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"persona": {
+					"displayName": "角色",
+					"description": "联系人的角色画像"
+				},
+				"phoneNumber": {
+					"displayName": "电话号码",
+					"description": "公司主要电话号码。由HubSpot Insights提供支持。"
+				},
+				"postalCode": {
+					"displayName": "邮政编码",
+					"description": "公司或组织的邮政编码。由HubSpot Insights提供支持。"
+				},
+				"prefferedLanguage": {
+					"displayName": "首选语言名称或ID",
+					"description": "设置联系人偏好的通信语言。此属性可通过导入、表单或集成进行更改。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"prospectingAgentLastEnrolled": {
+					"displayName": "潜在客户代理最后登记时间",
+					"description": "潜在客户代理上次登记此联系人的时间"
+				},
+				"prospectingAgentTotalEnrolledCount": {
+					"displayName": "潜在客户代理总注册数"
+				},
+				"relationshipStatus": {
+					"displayName": "关系状态",
+					"description": "联系人的关系状态。此属性为Facebook广告集成所必需。此属性将通过线索广告工具自动同步。"
+				},
+				"salutation": {
+					"displayName": "问候语",
+					"description": "用于称呼联系人的头衔"
+				},
+				"school": {
+					"displayName": "学校",
+					"description": "联系人的学校。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。"
+				},
+				"seniority": {
+					"displayName": "资历",
+					"description": "联系人的资历级别。此属性为Facebook广告集成所必需。此属性将通过线索广告工具自动同步。"
+				},
+				"startDate": {
+					"displayName": "开始日期",
+					"description": "联系人的开始日期。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。使用表达式时，时间应指定为YYYY-MM-DD hh-mm-ss格式"
+				},
+				"stateRegion": {
+					"displayName": "州/省",
+					"description": "公司或组织所在的州或省份。由HubSpot Insights提供支持。"
+				},
+				"stateRegionCode": {
+					"displayName": "州/地区代码",
+					"description": "联系人的州或地区代码"
+				},
+				"status": {
+					"displayName": "状态名称或ID",
+					"description": "联系人内容会员资格的状态。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"streetAddress": {
+					"displayName": "街道地址",
+					"description": "公司或组织的街道地址，包含单元号。由HubSpot Insights提供支持。"
+				},
+				"timeZone": {
+					"displayName": "时区",
+					"description": "联系人的时区。这可以由HubSpot根据其他联系人属性自动设置，也可以为每个联系人手动设置。",
+					"options": {
+						"atlantic_slash_cape_verde": {
+							"displayName": "UTC -01:00 大西洋 佛得角"
+						},
+						"america_slash_godthab": {
+							"displayName": "UTC -02:00 美洲戈特霍布"
+						},
+						"america_slash_miquelon": {
+							"displayName": "UTC -02:00 美洲 密克隆"
+						},
+						"america_slash_noronha": {
+							"displayName": "UTC -02:00 美洲诺罗尼亚"
+						},
+						"atlantic_slash_south_georgia": {
+							"displayName": "UTC -02:00 南乔治亚岛大西洋时区"
+						},
+						"brazil_slash_denoronha": {
+							"displayName": "UTC -02:00 巴西费尔南多-迪诺罗尼亚"
+						},
+						"america_slash_st_johns": {
+							"displayName": "UTC -02:30 美洲 圣约翰斯"
+						},
+						"canada_slash_newfoundland": {
+							"displayName": "UTC -02:30 加拿大纽芬兰"
+						},
+						"america_slash_araguaina": {
+							"displayName": "UTC -03:00 美洲 阿拉瓜伊纳"
+						},
+						"america_slash_argentina_slash_buenos_aires": {
+							"displayName": "UTC -03:00 阿根廷（布宜诺斯艾利斯）"
+						},
+						"america_slash_argentina_slash_catamarca": {
+							"displayName": "UTC -03:00 阿根廷（卡塔马卡）"
+						},
+						"america_slash_argentina_slash_comodrivadavia": {
+							"displayName": "UTC -03:00 阿根廷（科莫多罗里瓦达维亚）"
+						},
+						"america_slash_argentina_slash_cordoba": {
+							"displayName": "UTC -03:00 阿根廷科尔多瓦"
+						},
+						"america_slash_argentina_slash_jujuy": {
+							"displayName": "UTC -03:00 美洲 阿根廷（胡胡伊）"
+						},
+						"america_slash_argentina_slash_la_rioja": {
+							"displayName": "UTC -03:00 阿根廷（拉里奥哈）"
+						},
+						"america_slash_argentina_slash_mendoza": {
+							"displayName": "UTC -03:00 阿根廷（门多萨）"
+						},
+						"america_slash_argentina_slash_rio_gallegos": {
+							"displayName": "UTC -03:00 阿根廷（里奥加耶戈斯）"
+						},
+						"america_slash_argentina_slash_salta": {
+							"displayName": "UTC -03:00 阿根廷萨尔塔"
+						},
+						"america_slash_argentina_slash_san_juan": {
+							"displayName": "UTC -03:00 阿根廷（圣胡安）"
+						},
+						"america_slash_argentina_slash_san_luis": {
+							"displayName": "UTC -03:00 阿根廷（圣路易斯）"
+						},
+						"america_slash_argentina_slash_tucuman": {
+							"displayName": "UTC -03:00 美洲 阿根廷 (图库曼)"
+						},
+						"america_slash_argentina_slash_ushuaia": {
+							"displayName": "UTC -03:00 阿根廷（乌斯怀亚）"
+						},
+						"america_slash_bahia": {
+							"displayName": "UTC -03:00 巴西巴伊亚州"
+						},
+						"america_slash_belem": {
+							"displayName": "UTC -03:00 巴西贝伦"
+						},
+						"america_slash_buenos_aires": {
+							"displayName": "UTC -03:00 美洲 布宜诺斯艾利斯"
+						},
+						"america_slash_catamarca": {
+							"displayName": "UTC -03:00 阿根廷 卡塔马卡"
+						},
+						"america_slash_cayenne": {
+							"displayName": "UTC -03:00 美洲 卡宴"
+						},
+						"america_slash_cordoba": {
+							"displayName": "UTC -03:00 阿根廷科尔多瓦"
+						},
+						"america_slash_fortaleza": {
+							"displayName": "UTC -03:00 美洲 福塔莱萨"
+						},
+						"america_slash_glace_bay": {
+							"displayName": "UTC -03:00 美洲格莱斯贝"
+						},
+						"america_slash_goose_bay": {
+							"displayName": "UTC -03:00 美洲 古斯贝"
+						},
+						"america_slash_halifax": {
+							"displayName": "UTC -03:00 美洲 哈利法克斯"
+						},
+						"america_slash_jujuy": {
+							"displayName": "UTC -03:00 阿根廷胡胡伊省"
+						},
+						"america_slash_maceio": {
+							"displayName": "UTC -03:00 美洲 马塞约"
+						},
+						"america_slash_mendoza": {
+							"displayName": "UTC -03:00 阿根廷门多萨"
+						},
+						"america_slash_moncton": {
+							"displayName": "UTC -03:00 美洲 蒙克顿"
+						},
+						"america_slash_montevideo": {
+							"displayName": "UTC -03:00 美洲/蒙得维的亚"
+						},
+						"america_slash_paramaribo": {
+							"displayName": "UTC -03:00 美洲 帕拉马里博"
+						},
+						"america_slash_punta_arenas": {
+							"displayName": "UTC -03:00 智利 蓬塔阿雷纳斯"
+						},
+						"america_slash_recife": {
+							"displayName": "UTC -03:00 美洲 累西腓"
+						},
+						"america_slash_rosario": {
+							"displayName": "UTC -03:00 阿根廷罗萨里奥"
+						},
+						"america_slash_santarem": {
+							"displayName": "UTC -03:00 巴西圣塔伦"
+						},
+						"america_slash_sao_paulo": {
+							"displayName": "UTC -03:00 美洲 圣保罗"
+						},
+						"america_slash_thule": {
+							"displayName": "UTC -03:00 美国图勒"
+						},
+						"antarctica_slash_palmer": {
+							"displayName": "UTC -03:00 南极洲帕尔默"
+						},
+						"antarctica_slash_rothera": {
+							"displayName": "UTC -03:00 南极洲 罗瑟拉站"
+						},
+						"atlantic_slash_bermuda": {
+							"displayName": "UTC -03:00 大西洋 百慕大"
+						},
+						"atlantic_slash_stanley": {
+							"displayName": "UTC -03:00 大西洋斯坦利"
+						},
+						"brazil_slash_east": {
+							"displayName": "UTC -03:00 巴西东部"
+						},
+						"canada_slash_atlantic": {
+							"displayName": "UTC -03:00 加拿大（大西洋）"
+						},
+						"america_slash_anguilla": {
+							"displayName": "UTC -04:00 美洲 安圭拉"
+						},
+						"america_slash_antigua": {
+							"displayName": "UTC -04:00 美洲 安提瓜"
+						},
+						"america_slash_aruba": {
+							"displayName": "UTC -04:00 美洲 阿鲁巴"
+						},
+						"america_slash_asuncion": {
+							"displayName": "UTC -04:00 亚松森（美洲）"
+						},
+						"america_slash_barbados": {
+							"displayName": "UTC -04:00 巴巴多斯（美洲）"
+						},
+						"america_slash_blanc_hyphen_sablon": {
+							"displayName": "UTC -04:00 美洲 布朗萨布隆"
+						},
+						"america_slash_boa_vista": {
+							"displayName": "UTC -04:00 美洲 博阿维斯塔"
+						},
+						"america_slash_campo_grande": {
+							"displayName": "UTC -04:00 美洲 大坎普"
+						},
+						"america_slash_caracas": {
+							"displayName": "UTC -04:00 美洲 加拉加斯"
+						},
+						"cuba": {
+							"displayName": "UTC -04:00 美洲 古巴"
+						},
+						"america_slash_cuiaba": {
+							"displayName": "UTC -04:00 美洲 库亚巴"
+						},
+						"america_slash_curacao": {
+							"displayName": "UTC -04:00 库拉索（美洲）"
+						},
+						"america_slash_detroit": {
+							"displayName": "UTC -04:00 美国底特律"
+						},
+						"america_slash_dominica": {
+							"displayName": "UTC -04:00 多米尼克"
+						},
+						"america_slash_fort_wayne": {
+							"displayName": "UTC -04:00 美国韦恩堡"
+						},
+						"america_slash_grand_turk": {
+							"displayName": "UTC -04:00 美洲 大特克岛"
+						},
+						"america_slash_grenada": {
+							"displayName": "UTC -04:00 美洲 格林纳达"
+						},
+						"america_slash_guadeloupe": {
+							"displayName": "UTC -04:00 美洲 瓜德罗普"
+						},
+						"america_slash_guyana": {
+							"displayName": "UTC -04:00 美洲 圭亚那"
+						},
+						"america_slash_havana": {
+							"displayName": "UTC -04:00 美洲 哈瓦那"
+						},
+						"america_slash_indiana_slash_indianapolis": {
+							"displayName": "UTC -04:00 美国印第安纳州（印第安纳波利斯）"
+						},
+						"america_slash_indiana_slash_marengo": {
+							"displayName": "UTC -04:00 美国印第安纳州（马伦戈）"
+						},
+						"america_slash_indiana_slash_petersburg": {
+							"displayName": "UTC -04:00 美国印第安纳州（彼得斯堡）"
+						},
+						"america_slash_indiana_slash_vevay": {
+							"displayName": "UTC -04:00 美国印第安纳州（维维）"
+						},
+						"america_slash_indiana_slash_vincennes": {
+							"displayName": "UTC -04:00 美国印第安纳州（文森斯）"
+						},
+						"america_slash_indiana_slash_winamac": {
+							"displayName": "UTC -04:00 美国印第安纳州（威纳马克）"
+						},
+						"america_slash_indianapolis": {
+							"displayName": "UTC -04:00 美国 印第安纳波利斯"
+						},
+						"america_slash_iqaluit": {
+							"displayName": "UTC -04:00 加拿大伊魁特"
+						},
+						"america_slash_kentucky_slash_louisville": {
+							"displayName": "UTC -04:00 美国 肯塔基州（路易斯维尔）"
+						},
+						"america_slash_kentucky_slash_monticello": {
+							"displayName": "UTC -04:00 美国肯塔基州（蒙蒂塞洛）"
+						},
+						"america_slash_kralendijk": {
+							"displayName": "UTC -04:00 美洲 克拉伦代克"
+						},
+						"america_slash_la_paz": {
+							"displayName": "UTC -04:00 美洲 拉巴斯"
+						},
+						"america_slash_louisville": {
+							"displayName": "UTC -04:00 美国 路易斯维尔"
+						},
+						"america_slash_lower_princes": {
+							"displayName": "UTC -04:00 美洲下太子区"
+						},
+						"america_slash_manaus": {
+							"displayName": "UTC -04:00 美洲 马瑙斯"
+						},
+						"america_slash_marigot": {
+							"displayName": "UTC -04:00 美洲 马里戈特"
+						},
+						"america_slash_martinique": {
+							"displayName": "UTC -04:00 美洲 马提尼克"
+						},
+						"america_slash_montreal": {
+							"displayName": "UTC -04:00 美国 蒙特利尔"
+						},
+						"america_slash_montserrat": {
+							"displayName": "UTC -04:00 美洲蒙特塞拉特"
+						},
+						"america_slash_nassau": {
+							"displayName": "UTC -04:00 美洲 拿骚"
+						},
+						"america_slash_new_york": {
+							"displayName": "UTC -04:00 美国 纽约"
+						},
+						"america_slash_nipigon": {
+							"displayName": "UTC -04:00 美国尼皮贡"
+						},
+						"america_slash_pangnirtung": {
+							"displayName": "UTC -04:00 美国庞纳唐"
+						},
+						"america_slash_port_of_spain": {
+							"displayName": "UTC -04:00 美洲 西班牙港"
+						},
+						"america_slash_port_hyphen_au_hyphen_prince": {
+							"displayName": "UTC -04:00 美洲 太子港"
+						},
+						"america_slash_porto_velho": {
+							"displayName": "UTC -04:00 巴西 波多韦柳"
+						},
+						"america_slash_puerto_rico": {
+							"displayName": "UTC -04:00 美洲 波多黎各"
+						},
+						"america_slash_santiago": {
+							"displayName": "UTC -04:00 智利圣地亚哥"
+						},
+						"america_slash_santo_domingo": {
+							"displayName": "UTC -04:00 美洲 圣多明各"
+						},
+						"america_slash_st_barthelemy": {
+							"displayName": "UTC -04:00 美洲 圣巴泰勒米"
+						},
+						"america_slash_st_kitts": {
+							"displayName": "UTC -04:00 圣基茨和尼维斯"
+						},
+						"america_slash_st_lucia": {
+							"displayName": "UTC -04:00 美洲 圣卢西亚"
+						},
+						"america_slash_st_thomas": {
+							"displayName": "UTC -04:00 美属维尔京群岛圣托马斯"
+						},
+						"america_slash_st_vincent": {
+							"displayName": "UTC -04:00 圣文森特（美洲）"
+						},
+						"america_slash_thunder_bay": {
+							"displayName": "UTC -04:00 美国桑德贝"
+						},
+						"america_slash_toronto": {
+							"displayName": "UTC -04:00 美国 多伦多"
+						},
+						"america_slash_tortola": {
+							"displayName": "UTC -04:00 美国托尔托拉"
+						},
+						"america_slash_virgin": {
+							"displayName": "UTC -04:00 美属维尔京群岛"
+						},
+						"brazil_slash_west": {
+							"displayName": "UTC -04:00 巴西西部"
+						},
+						"canada_slash_eastern": {
+							"displayName": "UTC -04:00 加拿大东部"
+						},
+						"chile_slash_continental": {
+							"displayName": "UTC -04:00 智利大陆"
+						},
+						"us_slash_east_hyphen_indiana": {
+							"displayName": "UTC -04:00 美国东部-印第安纳州"
+						},
+						"us_slash_eastern": {
+							"displayName": "UTC -04:00 美国东部"
+						},
+						"us_slash_michigan": {
+							"displayName": "UTC -04:00 美国密歇根州"
+						},
+						"america_slash_atikokan": {
+							"displayName": "UTC -05:00 美国阿蒂科坎"
+						},
+						"america_slash_bahia_banderas": {
+							"displayName": "UTC -05:00 美国巴伊亚班德拉斯"
+						},
+						"america_slash_bogota": {
+							"displayName": "UTC -05:00 美洲 波哥大"
+						},
+						"america_slash_cancun": {
+							"displayName": "UTC -05:00 墨西哥 坎昆"
+						},
+						"america_slash_cayman": {
+							"displayName": "UTC -05:00 美洲 开曼"
+						},
+						"america_slash_chicago": {
+							"displayName": "UTC -05:00 美国 芝加哥"
+						},
+						"america_slash_coral_harbour": {
+							"displayName": "UTC -05:00 美国珊瑚港"
+						},
+						"america_slash_eirunepe": {
+							"displayName": "UTC -05:00 美国埃鲁内佩"
+						},
+						"america_slash_guayaquil": {
+							"displayName": "UTC -05:00 美洲 瓜亚基尔"
+						},
+						"america_slash_indiana_slash_knox": {
+							"displayName": "UTC -05:00 美国印第安纳州（诺克斯）"
+						},
+						"america_slash_indiana_slash_tell_city": {
+							"displayName": "UTC -05:00 美国印第安纳州（特尔城）"
+						},
+						"america_slash_jamaica": {
+							"displayName": "UTC -05:00 美洲 牙买加"
+						},
+						"america_slash_knox_in": {
+							"displayName": "UTC -05:00 美国印第安纳州诺克斯"
+						},
+						"america_slash_lima": {
+							"displayName": "UTC -05:00 美洲 利马"
+						},
+						"america_slash_matamoros": {
+							"displayName": "UTC -05:00 墨西哥马塔莫罗斯"
+						},
+						"america_slash_menominee": {
+							"displayName": "UTC -05:00 美国梅诺米尼"
+						},
+						"america_slash_merida": {
+							"displayName": "UTC -05:00 墨西哥梅里达"
+						},
+						"america_slash_mexico_city": {
+							"displayName": "UTC -05:00 美洲 墨西哥城"
+						},
+						"america_slash_monterrey": {
+							"displayName": "UTC -05:00 美国 蒙特雷"
+						},
+						"america_slash_north_dakota_slash_beulah": {
+							"displayName": "UTC -05:00 美国 北达科他州（比尤拉）"
+						},
+						"america_slash_north_dakota_slash_center": {
+							"displayName": "UTC -05:00 美国 北达科他州 (中部)"
+						},
+						"america_slash_north_dakota_slash_new_salem": {
+							"displayName": "UTC -05:00 美国 北达科他州 (纽塞勒姆)"
+						},
+						"america_slash_panama": {
+							"displayName": "UTC -05:00 美洲 巴拿马"
+						},
+						"america_slash_porto_acre": {
+							"displayName": "UTC -05:00 美国阿克里港"
+						},
+						"america_slash_rainy_river": {
+							"displayName": "UTC -05:00 美国雷尼里弗"
+						},
+						"america_slash_rankin_inlet": {
+							"displayName": "UTC -05:00 美国兰金因莱特"
+						},
+						"america_slash_resolute": {
+							"displayName": "UTC -05:00 美国雷索卢特"
+						},
+						"america_slash_rio_branco": {
+							"displayName": "UTC -05:00 美洲 里奥布兰科"
+						},
+						"america_slash_winnipeg": {
+							"displayName": "UTC -05:00 美国 温尼伯"
+						},
+						"brazil_slash_acre": {
+							"displayName": "UTC -05:00 巴西 阿克里州"
+						},
+						"canada_slash_central": {
+							"displayName": "UTC -05:00 加拿大中部"
+						},
+						"mexico_slash_general": {
+							"displayName": "UTC -05:00 墨西哥通用时间"
+						},
+						"us_slash_central": {
+							"displayName": "UTC -05:00 美国中部时间"
+						},
+						"us_slash_indiana_hyphen_starke": {
+							"displayName": "UTC -05:00 美国印第安纳州-斯塔克"
+						},
+						"america_slash_belize": {
+							"displayName": "UTC -06:00 美洲 伯利兹"
+						},
+						"america_slash_boise": {
+							"displayName": "UTC -06:00 美国博伊西"
+						},
+						"america_slash_cambridge_bay": {
+							"displayName": "UTC -06:00 美国 剑桥湾"
+						},
+						"america_slash_chihuahua": {
+							"displayName": "UTC -06:00 墨西哥奇瓦瓦"
+						},
+						"america_slash_costa_rica": {
+							"displayName": "UTC -06:00 美洲 哥斯达黎加"
+						},
+						"america_slash_denver": {
+							"displayName": "UTC -06:00 美国 丹佛"
+						},
+						"america_slash_edmonton": {
+							"displayName": "UTC -06:00 美洲 埃德蒙顿"
+						},
+						"america_slash_el_salvador": {
+							"displayName": "UTC -06:00 萨尔瓦多（美洲）"
+						},
+						"america_slash_guatemala": {
+							"displayName": "UTC -06:00 危地马拉（美洲）"
+						},
+						"america_slash_inuvik": {
+							"displayName": "UTC -06:00 美洲 伊努维克"
+						},
+						"america_slash_managua": {
+							"displayName": "UTC -06:00 美洲 马那瓜"
+						},
+						"america_slash_mazatlan": {
+							"displayName": "UTC -06:00 墨西哥 马萨特兰"
+						},
+						"navajo": {
+							"displayName": "UTC -06:00 美国纳瓦霍"
+						},
+						"america_slash_ojinaga": {
+							"displayName": "UTC -06:00 美国奥希纳加"
+						},
+						"america_slash_regina": {
+							"displayName": "UTC -06:00 美国里贾纳"
+						},
+						"america_slash_shiprock": {
+							"displayName": "UTC -06:00 美国希普罗克"
+						},
+						"america_slash_swift_current": {
+							"displayName": "UTC -06:00 美国 斯威夫特卡伦特"
+						},
+						"america_slash_tegucigalpa": {
+							"displayName": "UTC -06:00 美洲 特古西加尔巴"
+						},
+						"america_slash_yellowknife": {
+							"displayName": "UTC -06:00 美洲 耶洛奈夫"
+						},
+						"canada_slash_mountain": {
+							"displayName": "UTC -06:00 加拿大山区时间"
+						},
+						"canada_slash_saskatchewan": {
+							"displayName": "UTC -06:00 加拿大萨斯喀彻温省"
+						},
+						"chile_slash_easterisland": {
+							"displayName": "UTC -06:00 智利 复活节岛"
+						},
+						"mexico_slash_bajasur": {
+							"displayName": "UTC -06:00 墨西哥南下加利福尼亚州"
+						},
+						"pacific_slash_easter": {
+							"displayName": "UTC -06:00 太平洋东部时间"
+						},
+						"pacific_slash_galapagos": {
+							"displayName": "UTC -06:00 太平洋加拉帕戈斯"
+						},
+						"us_slash_mountain": {
+							"displayName": "UTC -06:00 美国山区时间"
+						},
+						"america_slash_creston": {
+							"displayName": "UTC -07:00 美国克雷斯顿"
+						},
+						"america_slash_dawson": {
+							"displayName": "UTC -07:00 美国 道森"
+						},
+						"america_slash_dawson_creek": {
+							"displayName": "UTC -07:00 美国 道森克里克"
+						},
+						"america_slash_ensenada": {
+							"displayName": "UTC -07:00 墨西哥恩塞纳达"
+						},
+						"america_slash_fort_nelson": {
+							"displayName": "UTC -07:00 美国纳尔逊堡"
+						},
+						"america_slash_hermosillo": {
+							"displayName": "UTC -07:00 墨西哥 埃莫西约"
+						},
+						"america_slash_los_angeles": {
+							"displayName": "UTC -07:00 美国 洛杉矶"
+						},
+						"america_slash_phoenix": {
+							"displayName": "UTC -07:00 美国 凤凰城"
+						},
+						"america_slash_santa_isabel": {
+							"displayName": "UTC -07:00 美国 圣伊莎贝尔"
+						},
+						"america_slash_tijuana": {
+							"displayName": "UTC -07:00 美国 蒂华纳"
+						},
+						"america_slash_vancouver": {
+							"displayName": "UTC -07:00 美洲 温哥华"
+						},
+						"america_slash_whitehorse": {
+							"displayName": "UTC -07:00 美国 怀特霍斯"
+						},
+						"canada_slash_pacific": {
+							"displayName": "UTC -07:00 加拿大太平洋时区"
+						},
+						"canada_slash_yukon": {
+							"displayName": "UTC -07:00 加拿大育空地区"
+						},
+						"mexico_slash_bajanorte": {
+							"displayName": "UTC -07:00 墨西哥下加利福尼亚州北部"
+						},
+						"us_slash_arizona": {
+							"displayName": "UTC -07:00 美国亚利桑那州"
+						},
+						"us_slash_pacific": {
+							"displayName": "UTC -07:00 美国太平洋时间"
+						},
+						"us_slash_pacific_hyphen_new": {
+							"displayName": "UTC -07:00 美国太平洋时区-新"
+						},
+						"america_slash_anchorage": {
+							"displayName": "UTC -08:00 美国 安克雷奇"
+						},
+						"america_slash_juneau": {
+							"displayName": "UTC -08:00 美国 朱诺"
+						},
+						"america_slash_metlakatla": {
+							"displayName": "UTC -08:00 美国梅特拉卡特拉"
+						},
+						"america_slash_nome": {
+							"displayName": "UTC -08:00 美国诺姆"
+						},
+						"america_slash_sitka": {
+							"displayName": "UTC -08:00 美国 锡特卡"
+						},
+						"america_slash_yakutat": {
+							"displayName": "UTC -08:00 美国亚库塔特"
+						},
+						"pacific_slash_pitcairn": {
+							"displayName": "UTC -08:00 太平洋皮特凯恩"
+						},
+						"us_slash_alaska": {
+							"displayName": "UTC -08:00 美国阿拉斯加"
+						},
+						"america_slash_adak": {
+							"displayName": "UTC -09:00 美国阿达克"
+						},
+						"america_slash_atka": {
+							"displayName": "UTC -09:00 美国阿特卡"
+						},
+						"pacific_slash_gambier": {
+							"displayName": "UTC -09:00 太平洋甘比尔"
+						},
+						"us_slash_aleutian": {
+							"displayName": "UTC -09:00 美国阿留申"
+						},
+						"pacific_slash_marquesas": {
+							"displayName": "UTC -09:30 太平洋马克萨斯"
+						},
+						"pacific_slash_honolulu": {
+							"displayName": "UTC -10:00 太平洋 檀香山"
+						},
+						"pacific_slash_johnston": {
+							"displayName": "UTC -10:00 太平洋约翰斯顿"
+						},
+						"pacific_slash_rarotonga": {
+							"displayName": "UTC -10:00 太平洋拉罗汤加"
+						},
+						"pacific_slash_tahiti": {
+							"displayName": "UTC -10:00 太平洋 塔希提"
+						},
+						"us_slash_hawaii": {
+							"displayName": "UTC -10:00 美国夏威夷"
+						},
+						"pacific_slash_midway": {
+							"displayName": "UTC -11:00 太平洋中途岛"
+						},
+						"pacific_slash_niue": {
+							"displayName": "UTC -11:00 太平洋 纽埃"
+						},
+						"pacific_slash_pago_pago": {
+							"displayName": "UTC -11:00 太平洋 帕果帕果"
+						},
+						"pacific_slash_samoa": {
+							"displayName": "UTC -11:00 太平洋萨摩亚"
+						},
+						"us_slash_samoa": {
+							"displayName": "UTC -11:00 美属萨摩亚"
+						},
+						"africa_slash_abidjan": {
+							"displayName": "UTC +00:00 非洲 阿比让"
+						},
+						"africa_slash_accra": {
+							"displayName": "UTC +00:00 非洲 阿克拉"
+						},
+						"africa_slash_bamako": {
+							"displayName": "UTC +00:00 非洲 巴马科"
+						},
+						"africa_slash_banjul": {
+							"displayName": "UTC +00:00 非洲 班珠尔"
+						},
+						"africa_slash_bissau": {
+							"displayName": "UTC +00:00 非洲 比绍"
+						},
+						"africa_slash_conakry": {
+							"displayName": "UTC +00:00 非洲 科纳克里"
+						},
+						"africa_slash_dakar": {
+							"displayName": "UTC +00:00 非洲 达喀尔"
+						},
+						"africa_slash_freetown": {
+							"displayName": "UTC +00:00 非洲 弗里敦"
+						},
+						"africa_slash_lome": {
+							"displayName": "UTC +00:00 非洲 洛美"
+						},
+						"africa_slash_monrovia": {
+							"displayName": "UTC +00:00 非洲 蒙罗维亚"
+						},
+						"africa_slash_nouakchott": {
+							"displayName": "UTC +00:00 非洲 努瓦克肖特"
+						},
+						"africa_slash_ouagadougou": {
+							"displayName": "UTC +00:00 非洲 瓦加杜古"
+						},
+						"africa_slash_timbuktu": {
+							"displayName": "UTC +00:00 非洲 廷巴克图"
+						},
+						"america_slash_danmarkshavn": {
+							"displayName": "UTC +00:00 美洲 丹麦港"
+						},
+						"america_slash_scoresbysund": {
+							"displayName": "UTC +00:00 美国斯科斯比松"
+						},
+						"atlantic_slash_azores": {
+							"displayName": "UTC +00:00 大西洋亚速尔群岛"
+						},
+						"atlantic_slash_reykjavik": {
+							"displayName": "UTC +00:00 大西洋 雷克雅未克"
+						},
+						"atlantic_slash_st_helena": {
+							"displayName": "UTC +00:00 大西洋圣赫勒拿"
+						},
+						"iceland": {
+							"displayName": "UTC +00:00 欧洲 冰岛"
+						},
+						"africa_slash_algiers": {
+							"displayName": "UTC +01:00 非洲 阿尔及尔"
+						},
+						"africa_slash_bangui": {
+							"displayName": "UTC +01:00 非洲 班吉"
+						},
+						"africa_slash_brazzaville": {
+							"displayName": "UTC +01:00 非洲 布拉柴维尔"
+						},
+						"africa_slash_casablanca": {
+							"displayName": "UTC +01:00 非洲 卡萨布兰卡"
+						},
+						"africa_slash_douala": {
+							"displayName": "UTC +01:00 非洲 杜阿拉"
+						},
+						"africa_slash_el_aaiun": {
+							"displayName": "UTC +01:00 非洲 阿尤恩"
+						},
+						"africa_slash_kinshasa": {
+							"displayName": "UTC +01:00 非洲 金沙萨"
+						},
+						"africa_slash_lagos": {
+							"displayName": "UTC +01:00 非洲 拉各斯"
+						},
+						"africa_slash_libreville": {
+							"displayName": "UTC +01:00 非洲 利伯维尔"
+						},
+						"africa_slash_luanda": {
+							"displayName": "UTC +01:00 非洲 罗安达"
+						},
+						"africa_slash_malabo": {
+							"displayName": "UTC +01:00 非洲 马拉博"
+						},
+						"africa_slash_ndjamena": {
+							"displayName": "UTC +01:00 非洲 恩贾梅纳"
+						},
+						"africa_slash_niamey": {
+							"displayName": "UTC +01:00 非洲 尼亚美"
+						},
+						"africa_slash_porto_hyphen_novo": {
+							"displayName": "UTC +01:00 非洲 波多诺伏"
+						},
+						"africa_slash_sao_tome": {
+							"displayName": "UTC +01:00 非洲 圣多美"
+						},
+						"africa_slash_tunis": {
+							"displayName": "UTC +01:00 非洲 突尼斯"
+						},
+						"atlantic_slash_canary": {
+							"displayName": "UTC +01:00 大西洋加那利"
+						},
+						"atlantic_slash_faeroe": {
+							"displayName": "UTC +01:00 大西洋法罗群岛"
+						},
+						"atlantic_slash_faroe": {
+							"displayName": "UTC +01:00 大西洋法罗"
+						},
+						"atlantic_slash_madeira": {
+							"displayName": "UTC +01:00 大西洋马德拉"
+						},
+						"europe_slash_belfast": {
+							"displayName": "UTC +01:00 欧洲 贝尔法斯特"
+						},
+						"europe_slash_dublin": {
+							"displayName": "UTC +01:00 欧洲 都柏林"
+						},
+						"eire": {
+							"displayName": "UTC +01:00 欧洲 爱尔兰"
+						},
+						"europe_slash_guernsey": {
+							"displayName": "UTC +01:00 欧洲 根西岛"
+						},
+						"europe_slash_isle_of_man": {
+							"displayName": "UTC +01:00 欧洲 马恩岛"
+						},
+						"europe_slash_jersey": {
+							"displayName": "UTC +01:00 欧洲 泽西岛"
+						},
+						"europe_slash_lisbon": {
+							"displayName": "UTC +01:00 欧洲 里斯本"
+						},
+						"europe_slash_london": {
+							"displayName": "UTC +01:00 欧洲 伦敦"
+						},
+						"portugal": {
+							"displayName": "UTC +01:00 欧洲 葡萄牙"
+						},
+						"africa_slash_blantyre": {
+							"displayName": "UTC +02:00 非洲 布兰太尔"
+						},
+						"africa_slash_bujumbura": {
+							"displayName": "UTC +02:00 非洲 布琼布拉"
+						},
+						"africa_slash_cairo": {
+							"displayName": "UTC +02:00 非洲 开罗"
+						},
+						"africa_slash_ceuta": {
+							"displayName": "UTC +02:00 非洲 休达"
+						},
+						"egypt": {
+							"displayName": "UTC +02:00 非洲 埃及"
+						},
+						"africa_slash_gaborone": {
+							"displayName": "UTC +02:00 非洲 哈博罗内"
+						},
+						"africa_slash_harare": {
+							"displayName": "UTC +02:00 非洲 哈拉雷"
+						},
+						"africa_slash_johannesburg": {
+							"displayName": "UTC +02:00 非洲 约翰内斯堡"
+						},
+						"africa_slash_khartoum": {
+							"displayName": "UTC +02:00 非洲 喀土穆"
+						},
+						"africa_slash_kigali": {
+							"displayName": "UTC +02:00 非洲 基加利"
+						},
+						"libya": {
+							"displayName": "UTC +02:00 非洲 利比亚"
+						},
+						"africa_slash_lubumbashi": {
+							"displayName": "UTC +02:00 非洲 卢本巴希"
+						},
+						"africa_slash_lusaka": {
+							"displayName": "UTC +02:00 非洲 卢萨卡"
+						},
+						"africa_slash_maputo": {
+							"displayName": "UTC +02:00 非洲 马普托"
+						},
+						"africa_slash_maseru": {
+							"displayName": "UTC +02:00 非洲 马塞卢"
+						},
+						"africa_slash_mbabane": {
+							"displayName": "UTC +02:00 非洲 姆巴巴内"
+						},
+						"africa_slash_tripoli": {
+							"displayName": "UTC +02:00 非洲 的黎波里"
+						},
+						"africa_slash_windhoek": {
+							"displayName": "UTC +02:00 非洲 温得和克"
+						},
+						"antarctica_slash_troll": {
+							"displayName": "UTC +02:00 南极洲 特罗尔站"
+						},
+						"arctic_slash_longyearbyen": {
+							"displayName": "UTC +02:00 北极朗伊尔城"
+						},
+						"atlantic_slash_jan_mayen": {
+							"displayName": "UTC +02:00 大西洋 扬马延"
+						},
+						"europe_slash_amsterdam": {
+							"displayName": "UTC +02:00 欧洲 阿姆斯特丹"
+						},
+						"europe_slash_andorra": {
+							"displayName": "UTC +02:00 欧洲 安道尔"
+						},
+						"europe_slash_belgrade": {
+							"displayName": "UTC +02:00 欧洲 贝尔格莱德"
+						},
+						"europe_slash_berlin": {
+							"displayName": "UTC +02:00 欧洲 柏林"
+						},
+						"europe_slash_bratislava": {
+							"displayName": "UTC +02:00 欧洲 布拉迪斯拉发"
+						},
+						"europe_slash_brussels": {
+							"displayName": "UTC +02:00 欧洲 布鲁塞尔"
+						},
+						"europe_slash_budapest": {
+							"displayName": "UTC +02:00 欧洲 布达佩斯"
+						},
+						"europe_slash_busingen": {
+							"displayName": "UTC +02:00 欧洲 比辛根"
+						},
+						"europe_slash_copenhagen": {
+							"displayName": "UTC +02:00 欧洲 哥本哈根"
+						},
+						"europe_slash_gibraltar": {
+							"displayName": "UTC +02:00 欧洲 直布罗陀"
+						},
+						"europe_slash_kaliningrad": {
+							"displayName": "UTC +02:00 欧洲 加里宁格勒"
+						},
+						"europe_slash_ljubljana": {
+							"displayName": "UTC +02:00 欧洲 卢布尔雅那"
+						},
+						"europe_slash_luxembourg": {
+							"displayName": "UTC +02:00 欧洲 卢森堡"
+						},
+						"europe_slash_madrid": {
+							"displayName": "UTC +02:00 欧洲 马德里"
+						},
+						"europe_slash_malta": {
+							"displayName": "UTC +02:00 欧洲 马耳他"
+						},
+						"europe_slash_monaco": {
+							"displayName": "UTC +02:00 欧洲 摩纳哥"
+						},
+						"europe_slash_oslo": {
+							"displayName": "UTC +02:00 欧洲 奥斯陆"
+						},
+						"europe_slash_paris": {
+							"displayName": "UTC +02:00 欧洲 巴黎"
+						},
+						"europe_slash_podgorica": {
+							"displayName": "UTC +02:00 欧洲 波德戈里察"
+						},
+						"poland": {
+							"displayName": "UTC +02:00 欧洲 波兰"
+						},
+						"europe_slash_prague": {
+							"displayName": "UTC +02:00 欧洲 布拉格"
+						},
+						"europe_slash_rome": {
+							"displayName": "UTC +02:00 欧洲 罗马"
+						},
+						"europe_slash_san_marino": {
+							"displayName": "UTC +02:00 欧洲 圣马力诺"
+						},
+						"europe_slash_sarajevo": {
+							"displayName": "UTC +02:00 欧洲 萨拉热窝"
+						},
+						"europe_slash_skopje": {
+							"displayName": "UTC +02:00 欧洲 斯科普里"
+						},
+						"europe_slash_stockholm": {
+							"displayName": "UTC +02:00 欧洲 斯德哥尔摩"
+						},
+						"europe_slash_tirane": {
+							"displayName": "UTC +02:00 欧洲 地拉那"
+						},
+						"europe_slash_vaduz": {
+							"displayName": "UTC +02:00 欧洲 瓦杜兹"
+						},
+						"europe_slash_vatican": {
+							"displayName": "UTC +02:00 欧洲 梵蒂冈"
+						},
+						"europe_slash_vienna": {
+							"displayName": "UTC +02:00 欧洲 维也纳"
+						},
+						"europe_slash_warsaw": {
+							"displayName": "UTC +02:00 欧洲 华沙"
+						},
+						"europe_slash_zagreb": {
+							"displayName": "UTC +02:00 欧洲 萨格勒布"
+						},
+						"europe_slash_zurich": {
+							"displayName": "UTC +02:00 欧洲 苏黎世"
+						},
+						"africa_slash_addis_ababa": {
+							"displayName": "UTC +03:00 非洲 亚的斯亚贝巴"
+						},
+						"africa_slash_asmara": {
+							"displayName": "UTC +03:00 非洲 阿斯马拉"
+						},
+						"africa_slash_asmera": {
+							"displayName": "UTC +03:00 非洲 阿斯马拉"
+						},
+						"africa_slash_dar_es_salaam": {
+							"displayName": "UTC +03:00 非洲 达累斯萨拉姆"
+						},
+						"africa_slash_djibouti": {
+							"displayName": "UTC +03:00 非洲 吉布提"
+						},
+						"africa_slash_juba": {
+							"displayName": "UTC +03:00 非洲 朱巴"
+						},
+						"africa_slash_kampala": {
+							"displayName": "UTC +03:00 非洲 坎帕拉"
+						},
+						"africa_slash_mogadishu": {
+							"displayName": "UTC +03:00 非洲 摩加迪沙"
+						},
+						"africa_slash_nairobi": {
+							"displayName": "UTC +03:00 非洲 内罗毕"
+						},
+						"antarctica_slash_syowa": {
+							"displayName": "UTC +03:00 南极洲昭和站"
+						},
+						"asia_slash_aden": {
+							"displayName": "UTC +03:00 亚洲 亚丁"
+						},
+						"asia_slash_amman": {
+							"displayName": "UTC +03:00 亚洲 安曼"
+						},
+						"asia_slash_baghdad": {
+							"displayName": "UTC +03:00 亚洲 巴格达"
+						},
+						"asia_slash_bahrain": {
+							"displayName": "UTC +03:00 亚洲 巴林"
+						},
+						"asia_slash_beirut": {
+							"displayName": "UTC +03:00 亚洲 贝鲁特"
+						},
+						"asia_slash_damascus": {
+							"displayName": "UTC +03:00 亚洲 大马士革"
+						},
+						"asia_slash_famagusta": {
+							"displayName": "UTC +03:00 亚洲 法马古斯塔"
+						},
+						"asia_slash_gaza": {
+							"displayName": "UTC +03:00 亚洲 加沙"
+						},
+						"asia_slash_hebron": {
+							"displayName": "UTC +03:00 亚洲 希伯伦"
+						},
+						"israel": {
+							"displayName": "UTC +03:00 亚洲 以色列"
+						},
+						"asia_slash_istanbul": {
+							"displayName": "UTC +03:00 亚洲 伊斯坦布尔"
+						},
+						"asia_slash_jerusalem": {
+							"displayName": "UTC +03:00 亚洲 耶路撒冷"
+						},
+						"asia_slash_kuwait": {
+							"displayName": "UTC +03:00 亚洲 科威特"
+						},
+						"asia_slash_nicosia": {
+							"displayName": "UTC +03:00 亚洲 尼科西亚"
+						},
+						"asia_slash_qatar": {
+							"displayName": "UTC +03:00 亚洲 卡塔尔"
+						},
+						"asia_slash_riyadh": {
+							"displayName": "UTC +03:00 亚洲 利雅得"
+						},
+						"asia_slash_tel_aviv": {
+							"displayName": "UTC +03:00 亚洲 特拉维夫"
+						},
+						"turkey": {
+							"displayName": "UTC +03:00 亚洲 土耳其"
+						},
+						"europe_slash_athens": {
+							"displayName": "UTC +03:00 欧洲 雅典"
+						},
+						"europe_slash_bucharest": {
+							"displayName": "UTC +03:00 欧洲 布加勒斯特"
+						},
+						"europe_slash_chisinau": {
+							"displayName": "UTC +03:00 欧洲 基希讷乌"
+						},
+						"europe_slash_helsinki": {
+							"displayName": "UTC +03:00 欧洲 赫尔辛基"
+						},
+						"europe_slash_istanbul": {
+							"displayName": "UTC +03:00 欧洲 伊斯坦布尔"
+						},
+						"europe_slash_kirov": {
+							"displayName": "UTC +03:00 欧洲 基洛夫"
+						},
+						"europe_slash_kiev": {
+							"displayName": "UTC +03:00 欧洲 基辅"
+						},
+						"europe_slash_mariehamn": {
+							"displayName": "UTC +03:00 欧洲 玛丽港"
+						},
+						"europe_slash_minsk": {
+							"displayName": "UTC +03:00 欧洲 明斯克"
+						},
+						"europe_slash_moscow": {
+							"displayName": "UTC +03:00 欧洲 莫斯科"
+						},
+						"europe_slash_nicosia": {
+							"displayName": "UTC +03:00 欧洲 尼科西亚"
+						},
+						"europe_slash_riga": {
+							"displayName": "UTC +03:00 欧洲 里加"
+						},
+						"europe_slash_simferopol": {
+							"displayName": "UTC +03:00 欧洲 辛菲罗波尔"
+						},
+						"europe_slash_sofia": {
+							"displayName": "UTC +03:00 欧洲 索非亚"
+						},
+						"europe_slash_tallinn": {
+							"displayName": "UTC +03:00 欧洲 塔林"
+						},
+						"europe_slash_tiraspol": {
+							"displayName": "UTC +03:00 欧洲 蒂拉斯波尔"
+						},
+						"europe_slash_uzhgorod": {
+							"displayName": "UTC +03:00 欧洲 乌日霍罗德"
+						},
+						"europe_slash_vilnius": {
+							"displayName": "UTC +03:00 欧洲 维尔纽斯"
+						},
+						"europe_slash_zaporozhye": {
+							"displayName": "UTC +03:00 欧洲 扎波罗热"
+						},
+						"indian_slash_antananarivo": {
+							"displayName": "UTC +03:00 印度洋 安塔那那利佛"
+						},
+						"indian_slash_comoro": {
+							"displayName": "UTC +03:00 科摩罗（印度洋）"
+						},
+						"indian_slash_mayotte": {
+							"displayName": "UTC +03:00 印度洋 马约特"
+						},
+						"asia_slash_baku": {
+							"displayName": "UTC +04:00 亚洲 巴库"
+						},
+						"asia_slash_dubai": {
+							"displayName": "UTC +04:00 亚洲 迪拜"
+						},
+						"asia_slash_muscat": {
+							"displayName": "UTC +04:00 亚洲 马斯喀特"
+						},
+						"asia_slash_tbilisi": {
+							"displayName": "UTC +04:00 亚洲 第比利斯"
+						},
+						"asia_slash_yerevan": {
+							"displayName": "UTC +04:00 亚洲 埃里温"
+						},
+						"europe_slash_astrakhan": {
+							"displayName": "UTC +04:00 欧洲 阿斯特拉罕"
+						},
+						"europe_slash_samara": {
+							"displayName": "UTC +04:00 欧洲 萨马拉"
+						},
+						"europe_slash_saratov": {
+							"displayName": "UTC +04:00 欧洲 萨拉托夫"
+						},
+						"europe_slash_ulyanovsk": {
+							"displayName": "UTC +04:00 欧洲 乌里扬诺夫斯克"
+						},
+						"europe_slash_volgograd": {
+							"displayName": "UTC +04:00 欧洲 伏尔加格勒"
+						},
+						"indian_slash_mahe": {
+							"displayName": "UTC +04:00 印度马埃"
+						},
+						"indian_slash_mauritius": {
+							"displayName": "UTC +04:00 印度洋毛里求斯"
+						},
+						"indian_slash_reunion": {
+							"displayName": "UTC +04:00 留尼汪岛"
+						},
+						"iran": {
+							"displayName": "UTC +04:30 亚洲 伊朗"
+						},
+						"asia_slash_kabul": {
+							"displayName": "UTC +04:30 亚洲 喀布尔"
+						},
+						"asia_slash_tehran": {
+							"displayName": "UTC +04:30 亚洲 德黑兰"
+						},
+						"antarctica_slash_mawson": {
+							"displayName": "UTC +05:00 南极洲 莫森站"
+						},
+						"asia_slash_aqtau": {
+							"displayName": "UTC +05:00 亚洲 阿克套"
+						},
+						"asia_slash_aqtobe": {
+							"displayName": "UTC +05:00 亚洲 阿克托别"
+						},
+						"asia_slash_ashgabat": {
+							"displayName": "UTC +05:00 亚洲 阿什哈巴德"
+						},
+						"asia_slash_ashkhabad": {
+							"displayName": "UTC +05:00 亚洲 阿什哈巴德"
+						},
+						"asia_slash_atyrau": {
+							"displayName": "UTC +05:00 亚洲 阿特劳"
+						},
+						"asia_slash_dushanbe": {
+							"displayName": "UTC +05:00 亚洲 杜尚别"
+						},
+						"asia_slash_karachi": {
+							"displayName": "UTC +05:00 亚洲 卡拉奇"
+						},
+						"asia_slash_oral": {
+							"displayName": "UTC +05:00 亚洲 乌拉尔"
+						},
+						"asia_slash_samarkand": {
+							"displayName": "UTC +05:00 亚洲 撒马尔罕"
+						},
+						"asia_slash_tashkent": {
+							"displayName": "UTC +05:00 亚洲 塔什干"
+						},
+						"asia_slash_yekaterinburg": {
+							"displayName": "UTC +05:00 亚洲 叶卡捷琳堡"
+						},
+						"indian_slash_kerguelen": {
+							"displayName": "UTC +05:00 印度洋凯尔盖朗群岛"
+						},
+						"indian_slash_maldives": {
+							"displayName": "UTC +05:00 印度马尔代夫"
+						},
+						"asia_slash_calcutta": {
+							"displayName": "UTC +05:30 亚洲 加尔各答"
+						},
+						"asia_slash_colombo": {
+							"displayName": "UTC +05:30 亚洲 科伦坡"
+						},
+						"asia_slash_kolkata": {
+							"displayName": "UTC +05:30 亚洲 加尔各答"
+						},
+						"asia_slash_kathmandu": {
+							"displayName": "UTC +05:45 亚洲 加德满都"
+						},
+						"asia_slash_katmandu": {
+							"displayName": "UTC +05:45 亚洲 加德满都"
+						},
+						"antarctica_slash_vostok": {
+							"displayName": "UTC +06:00 南极洲 沃斯托克站"
+						},
+						"asia_slash_almaty": {
+							"displayName": "UTC +06:00 亚洲 阿拉木图"
+						},
+						"asia_slash_bishkek": {
+							"displayName": "UTC +06:00 亚洲 比什凯克"
+						},
+						"asia_slash_dacca": {
+							"displayName": "UTC +06:00 亚洲 达卡"
+						},
+						"asia_slash_dhaka": {
+							"displayName": "UTC +06:00 亚洲 达卡"
+						},
+						"asia_slash_kashgar": {
+							"displayName": "UTC +06:00 亚洲 喀什"
+						},
+						"asia_slash_omsk": {
+							"displayName": "UTC +06:00 亚洲 鄂木斯克"
+						},
+						"asia_slash_qyzylorda": {
+							"displayName": "UTC +06:00 亚洲 克孜勒奥尔达"
+						},
+						"asia_slash_thimbu": {
+							"displayName": "UTC +06:00 亚洲 廷布"
+						},
+						"asia_slash_thimphu": {
+							"displayName": "UTC +06:00 亚洲 廷布"
+						},
+						"asia_slash_urumqi": {
+							"displayName": "UTC +06:00 亚洲 乌鲁木齐"
+						},
+						"indian_slash_chagos": {
+							"displayName": "UTC +06:00 英属印度洋领地查戈斯"
+						},
+						"asia_slash_rangoon": {
+							"displayName": "UTC +06:30 亚洲 仰光"
+						},
+						"asia_slash_yangon": {
+							"displayName": "UTC +06:30 亚洲 仰光"
+						},
+						"indian_slash_cocos": {
+							"displayName": "UTC +06:30 印度科科斯"
+						},
+						"antarctica_slash_davis": {
+							"displayName": "UTC +07:00 南极洲 戴维斯站"
+						},
+						"asia_slash_bangkok": {
+							"displayName": "UTC +07:00 亚洲 曼谷"
+						},
+						"asia_slash_barnaul": {
+							"displayName": "UTC +07:00 亚洲 巴尔瑙尔"
+						},
+						"asia_slash_ho_chi_minh": {
+							"displayName": "UTC +07:00 亚洲 胡志明市"
+						},
+						"asia_slash_hovd": {
+							"displayName": "UTC +07:00 亚洲 科布多"
+						},
+						"asia_slash_jakarta": {
+							"displayName": "UTC +07:00 亚洲 雅加达"
+						},
+						"asia_slash_krasnoyarsk": {
+							"displayName": "UTC +07:00 亚洲 克拉斯诺亚尔斯克"
+						},
+						"asia_slash_novokuznetsk": {
+							"displayName": "UTC +07:00 亚洲 新库兹涅茨克"
+						},
+						"asia_slash_novosibirsk": {
+							"displayName": "UTC +07:00 亚洲 新西伯利亚"
+						},
+						"asia_slash_phnom_penh": {
+							"displayName": "UTC +07:00 亚洲 金边"
+						},
+						"asia_slash_pontianak": {
+							"displayName": "UTC +07:00 亚洲 坤甸"
+						},
+						"asia_slash_saigon": {
+							"displayName": "UTC +07:00 亚洲 西贡"
+						},
+						"asia_slash_tomsk": {
+							"displayName": "UTC +07:00 亚洲 托木斯克"
+						},
+						"asia_slash_vientiane": {
+							"displayName": "UTC +07:00 亚洲 万象"
+						},
+						"indian_slash_christmas": {
+							"displayName": "UTC +07:00 印度圣诞岛"
+						},
+						"antarctica_slash_casey": {
+							"displayName": "UTC +08:00 南极洲凯西站"
+						},
+						"asia_slash_brunei": {
+							"displayName": "UTC +08:00 亚洲 文莱"
+						},
+						"asia_slash_choibalsan": {
+							"displayName": "UTC +08:00 亚洲乔巴山"
+						},
+						"asia_slash_chongqing": {
+							"displayName": "UTC +08:00 亚洲 重庆"
+						},
+						"asia_slash_chungking": {
+							"displayName": "UTC +08:00 亚洲 重庆"
+						},
+						"asia_slash_harbin": {
+							"displayName": "UTC +08:00 亚洲 哈尔滨"
+						},
+						"asia_slash_hong_kong": {
+							"displayName": "UTC +08:00 亚洲 香港"
+						},
+						"asia_slash_irkutsk": {
+							"displayName": "UTC +08:00 亚洲 伊尔库茨克"
+						},
+						"asia_slash_kuala_lumpur": {
+							"displayName": "UTC +08:00 亚洲 吉隆坡"
+						},
+						"asia_slash_kuching": {
+							"displayName": "UTC +08:00 亚洲古晋"
+						},
+						"asia_slash_macao": {
+							"displayName": "UTC +08:00 亚洲 澳门"
+						},
+						"asia_slash_macau": {
+							"displayName": "UTC +08:00 中国澳门"
+						},
+						"asia_slash_makassar": {
+							"displayName": "UTC +08:00 亚洲 望加锡"
+						},
+						"asia_slash_manila": {
+							"displayName": "UTC +08:00 亚洲 马尼拉"
+						},
+						"asia_slash_shanghai": {
+							"displayName": "UTC +08:00 亚洲 上海"
+						},
+						"asia_slash_singapore": {
+							"displayName": "UTC +08:00 亚洲 新加坡"
+						},
+						"asia_slash_taipei": {
+							"displayName": "UTC +08:00 亚洲 台北"
+						},
+						"asia_slash_ujung_pandang": {
+							"displayName": "UTC +08:00 亚洲望加锡"
+						},
+						"asia_slash_ulaanbaatar": {
+							"displayName": "UTC +08:00 亚洲 乌兰巴托"
+						},
+						"asia_slash_ulan_bator": {
+							"displayName": "UTC +08:00 亚洲 乌兰巴托"
+						},
+						"australia_slash_perth": {
+							"displayName": "UTC +08:00 澳大利亚 珀斯"
+						},
+						"australia_slash_west": {
+							"displayName": "UTC +08:00 澳大利亚西部"
+						},
+						"australia_slash_eucla": {
+							"displayName": "UTC +08:45 澳大利亚 尤克拉"
+						},
+						"asia_slash_chita": {
+							"displayName": "UTC +09:00 亚洲 赤塔"
+						},
+						"asia_slash_dili": {
+							"displayName": "UTC +09:00 亚洲帝力"
+						},
+						"japan": {
+							"displayName": "UTC +09:00 亚洲 日本"
+						},
+						"asia_slash_jayapura": {
+							"displayName": "UTC +09:00 亚洲查亚普拉"
+						},
+						"asia_slash_khandyga": {
+							"displayName": "UTC +09:00 亚洲 汉德加"
+						},
+						"asia_slash_pyongyang": {
+							"displayName": "UTC +09:00 亚洲 平壤"
+						},
+						"asia_slash_seoul": {
+							"displayName": "UTC +09:00 亚洲 首尔"
+						},
+						"asia_slash_tokyo": {
+							"displayName": "UTC +09:00 亚洲 东京"
+						},
+						"asia_slash_yakutsk": {
+							"displayName": "UTC +09:00 亚洲 雅库茨克"
+						},
+						"pacific_slash_palau": {
+							"displayName": "UTC +09:00 太平洋帕劳"
+						},
+						"australia_slash_adelaide": {
+							"displayName": "UTC +09:30 澳大利亚 阿德莱德"
+						},
+						"australia_slash_broken_hill": {
+							"displayName": "UTC +09:30 澳大利亚 布罗肯希尔"
+						},
+						"australia_slash_darwin": {
+							"displayName": "UTC +09:30 澳大利亚 达尔文"
+						},
+						"australia_slash_north": {
+							"displayName": "UTC +09:30 澳大利亚北部"
+						},
+						"australia_slash_south": {
+							"displayName": "UTC +09:30 澳大利亚南部"
+						},
+						"australia_slash_yancowinna": {
+							"displayName": "UTC +09:30 澳大利亚 延科维纳"
+						},
+						"antarctica_slash_dumontdurville": {
+							"displayName": "UTC +10:00 南极洲 迪蒙·迪维尔站"
+						},
+						"asia_slash_ust_hyphen_nera": {
+							"displayName": "UTC +10:00 亚洲 乌斯季涅拉"
+						},
+						"asia_slash_vladivostok": {
+							"displayName": "UTC +10:00 亚洲 符拉迪沃斯托克"
+						},
+						"australia_slash_act": {
+							"displayName": "UTC +10:00 澳大利亚首都领地"
+						},
+						"australia_slash_brisbane": {
+							"displayName": "UTC +10:00 澳大利亚 布里斯班"
+						},
+						"australia_slash_canberra": {
+							"displayName": "UTC +10:00 澳大利亚 堪培拉"
+						},
+						"australia_slash_currie": {
+							"displayName": "UTC +10:00 澳大利亚柯里"
+						},
+						"australia_slash_hobart": {
+							"displayName": "UTC +10:00 澳大利亚 霍巴特"
+						},
+						"australia_slash_lindeman": {
+							"displayName": "UTC +10:00 澳大利亚 林德曼"
+						},
+						"australia_slash_melbourne": {
+							"displayName": "UTC +10:00 澳大利亚 墨尔本"
+						},
+						"australia_slash_nsw": {
+							"displayName": "UTC +10:00 澳大利亚新南威尔士州"
+						},
+						"australia_slash_queensland": {
+							"displayName": "UTC +10:00 澳大利亚 昆士兰州"
+						},
+						"australia_slash_sydney": {
+							"displayName": "UTC +10:00 澳大利亚 悉尼"
+						},
+						"australia_slash_tasmania": {
+							"displayName": "UTC +10:00 澳大利亚 塔斯马尼亚"
+						},
+						"australia_slash_victoria": {
+							"displayName": "UTC +10:00 澳大利亚 维多利亚州"
+						},
+						"pacific_slash_chuuk": {
+							"displayName": "UTC +10:00 太平洋楚克"
+						},
+						"pacific_slash_guam": {
+							"displayName": "UTC +10:00 太平洋关岛"
+						},
+						"pacific_slash_port_moresby": {
+							"displayName": "UTC +10:00 太平洋 莫尔兹比港"
+						},
+						"pacific_slash_saipan": {
+							"displayName": "UTC +10:00 太平洋 塞班岛"
+						},
+						"pacific_slash_truk": {
+							"displayName": "UTC +10:00 楚克太平洋时间"
+						},
+						"pacific_slash_yap": {
+							"displayName": "UTC +10:00 太平洋雅浦时间"
+						},
+						"australia_slash_lhi": {
+							"displayName": "UTC +10:30 澳大利亚 LHI"
+						},
+						"australia_slash_lord_howe": {
+							"displayName": "UTC +10:30 澳大利亚豪勋爵岛"
+						},
+						"antarctica_slash_macquarie": {
+							"displayName": "UTC +11:00 南极洲 麦夸里岛"
+						},
+						"asia_slash_magadan": {
+							"displayName": "UTC +11:00 亚洲 马加丹"
+						},
+						"asia_slash_sakhalin": {
+							"displayName": "UTC +11:00 亚洲 萨哈林"
+						},
+						"asia_slash_srednekolymsk": {
+							"displayName": "UTC +11:00 亚洲 中科雷姆斯克"
+						},
+						"pacific_slash_bougainville": {
+							"displayName": "UTC +11:00 布干维尔太平洋时间"
+						},
+						"pacific_slash_efate": {
+							"displayName": "UTC +11:00 太平洋埃法特"
+						},
+						"pacific_slash_guadalcanal": {
+							"displayName": "UTC +11:00 太平洋 瓜达尔卡纳尔"
+						},
+						"pacific_slash_kosrae": {
+							"displayName": "UTC +11:00 太平洋科斯雷"
+						},
+						"pacific_slash_norfolk": {
+							"displayName": "UTC +11:00 太平洋 诺福克"
+						},
+						"pacific_slash_noumea": {
+							"displayName": "UTC +11:00 太平洋 努美阿"
+						},
+						"pacific_slash_pohnpei": {
+							"displayName": "UTC +11:00 太平洋波纳佩"
+						},
+						"pacific_slash_ponape": {
+							"displayName": "UTC +11:00 太平洋波纳佩"
+						},
+						"antarctica_slash_mcmurdo": {
+							"displayName": "UTC +12:00 南极洲 麦克默多站"
+						},
+						"antarctica_slash_south_pole": {
+							"displayName": "UTC +12:00 南极洲南极点"
+						},
+						"asia_slash_anadyr": {
+							"displayName": "UTC +12:00 亚洲 阿纳德尔"
+						},
+						"asia_slash_kamchatka": {
+							"displayName": "UTC +12:00 亚洲堪察加"
+						},
+						"pacific_slash_auckland": {
+							"displayName": "UTC +12:00 太平洋 奥克兰"
+						},
+						"pacific_slash_fiji": {
+							"displayName": "UTC +12:00 斐济太平洋时间"
+						},
+						"pacific_slash_funafuti": {
+							"displayName": "UTC +12:00 太平洋富纳富提"
+						},
+						"kwajalein": {
+							"displayName": "UTC +12:00 太平洋夸贾林"
+						},
+						"pacific_slash_majuro": {
+							"displayName": "UTC +12:00 太平洋马朱罗"
+						},
+						"pacific_slash_nauru": {
+							"displayName": "UTC +12:00 太平洋瑙鲁"
+						},
+						"pacific_slash_tarawa": {
+							"displayName": "UTC +12:00 太平洋塔拉瓦"
+						},
+						"pacific_slash_wake": {
+							"displayName": "UTC +12:00 太平洋威克岛"
+						},
+						"pacific_slash_wallis": {
+							"displayName": "UTC +12:00 太平洋瓦利斯"
+						},
+						"pacific_slash_chatham": {
+							"displayName": "UTC +12:45 太平洋查塔姆"
+						},
+						"pacific_slash_apia": {
+							"displayName": "UTC +13:00 太平洋 阿皮亚"
+						},
+						"pacific_slash_enderbury": {
+							"displayName": "UTC +13:00 太平洋恩德伯里"
+						},
+						"pacific_slash_fakaofo": {
+							"displayName": "UTC +13:00 太平洋法考福"
+						},
+						"pacific_slash_tongatapu": {
+							"displayName": "UTC +13:00 太平洋 汤加塔普"
+						},
+						"pacific_slash_kiritimati": {
+							"displayName": "UTC +14:00 太平洋基里蒂马蒂"
+						}
+					}
+				},
+				"twitterUsername": {
+					"displayName": "Twitter用户名",
+					"description": "联系人的Twitter账号。由HubSpot根据联系人的电子邮件地址自动设置。"
+				},
+				"websiteUrl": {
+					"displayName": "网站URL",
+					"description": "公司或组织的主要网站。此属性用于识别唯一公司。由HubSpot Insights提供支持。"
+				},
+				"whatsappPhoneNumber": {
+					"displayName": "WhatsApp 电话号码",
+					"description": "与该联系人 WhatsApp 账户关联的电话号码"
+				},
+				"workEmail": {
+					"displayName": "工作邮箱",
+					"description": "联系人的工作邮箱。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。"
+				},
+				"formSubmissionMode": {
+					"displayName": "表单提交模式",
+					"description": "指定应获取哪些表单提交",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						},
+						"none": {
+							"displayName": "无"
+						},
+						"newest": {
+							"displayName": "最新"
+						},
+						"oldest": {
+							"displayName": "最旧"
+						}
+					}
+				},
+				"listMemberships": {
+					"displayName": "包含列表成员资格",
+					"description": "是否应为联系人获取当前列表成员资格"
+				},
+				"propertiesCollection": {
+					"displayName": "要包含的公司属性",
+					"description": "是否在返回结果中包含特定的公司属性。可从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+					"options": {
+						"propertiesValues": {
+							"displayName": "要包含的公司属性",
+							"options": {
+								"properties": {
+									"displayName": "要包含的公司属性",
+									"description": "是否在返回结果中包含特定的公司属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"propertyMode": {
+									"displayName": "包含",
+									"description": "指定应获取属性的当前值，还是该属性的当前值及所有历史值",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "价值与历史"
+										},
+										"valueOnly": {
+											"displayName": "仅限值"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"propertiesValues": {
+							"displayName": "要包含的公司属性",
+							"options": {
+								"properties": {
+									"displayName": "要包含的公司属性",
+									"description": "是否在返回结果中包含特定的公司属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"propertyMode": {
+									"displayName": "包含",
+									"description": "指定应获取属性的当前值，还是该属性的当前值及所有历史值",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "价值与历史"
+										},
+										"valueOnly": {
+											"displayName": "仅限值"
+										}
+									}
+								}
+							}
+						},
+						"propertiesCollection": {
+							"displayName": "要包含的公司属性"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "方向",
+					"description": "Defines the direction in which search results are ordered. Default value is Descending.",
+					"options": {
+						"ASCENDING": {
+							"displayName": "升序"
+						},
+						"DESCENDING": {
+							"displayName": "降序"
+						}
+					}
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "对对象类型的所有属性值执行文本搜索"
+				},
+				"sortBy": {
+					"displayName": "排序方式",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"aboutUs": {
+					"displayName": "关于我们"
+				},
+				"companyDomainName": {
+					"displayName": "公司域名",
+					"description": "公司或组织的域名"
+				},
+				"companyOwner": {
+					"displayName": "公司所有者姓名或ID",
+					"description": "公司的所有者。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"countryRegion": {
+					"displayName": "国家/地区",
+					"description": "公司或组织所在的国家/地区"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "工单描述"
+				},
+				"facebookFans": {
+					"displayName": "Facebook粉丝数",
+					"description": "Facebook粉丝数量"
+				},
+				"googlePlusPage": {
+					"displayName": "Google+页面",
+					"description": "公司或组织的Google+页面URL"
+				},
+				"isPublic": {
+					"displayName": "是否公开",
+					"description": "Whether that the company is publicly traded"
+				},
+				"lifecycleStatus": {
+					"displayName": "生命周期阶段名称或ID",
+					"description": "与此公司或组织关联的所有联系人中最高的生命周期阶段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"linkedinBio": {
+					"displayName": "LinkedIn简介",
+					"description": "公司或组织的LinkedIn简介"
+				},
+				"linkedInCompanyPage": {
+					"displayName": "LinkedIn公司页面",
+					"description": "公司或组织的LinkedIn公司页面URL"
+				},
+				"originalSourceType": {
+					"displayName": "Original Source Type Name or ID",
+					"description": "Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"streetAddress2": {
+					"displayName": "街道地址 2",
+					"description": "公司或组织的附加地址。由 HubSpot Insights 提供支持。"
+				},
+				"targetAccount": {
+					"displayName": "目标账户名称或ID",
+					"description": "目标账户属性用于标记高优先级公司，如果您正在执行基于账户的策略。请从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"timezone": {
+					"displayName": "时区",
+					"description": "公司或组织所在的时区。由HubSpot Insights提供支持。"
+				},
+				"totalMoneyRaised": {
+					"displayName": "募集资金总额",
+					"description": "公司募集资金总额。由 HubSpot Insights 提供支持。"
+				},
+				"twitterBio": {
+					"displayName": "Twitter简介",
+					"description": "公司或组织的Twitter简介"
+				},
+				"twitterFollowers": {
+					"displayName": "Twitter关注者",
+					"description": "公司或组织的Twitter关注者数量"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter 用户名",
+					"description": "公司或组织的主要推特账号"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "此公司记录的可选分类 - 潜在客户、合作伙伴等。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"webTechnologies": {
+					"displayName": "Web技术名称或ID",
+					"description": "公司或组织使用的Web技术。由HubSpot Insights提供支持。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"yearFounded": {
+					"displayName": "成立年份",
+					"description": "公司创建的年份。由 HubSpot Insights 提供支持。"
+				},
+				"includeMergeAudits": {
+					"displayName": "包含合并审计",
+					"description": "如果公司之前曾与其他公司记录合并，是否返回合并历史。默认为 false。"
+				},
+				"since": {
+					"displayName": "自",
+					"description": "仅返回在时间戳x之后创建的公司。使用表达式时，时间应以YYYY-MM-DD hh-mm-ss格式指定。"
+				},
+				"amount": {
+					"displayName": "金额"
+				},
+				"associatedCompany": {
+					"displayName": "关联公司名称或ID",
+					"description": "是否在返回结果中包含特定的关联公司属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"associatedVids": {
+					"displayName": "关联视频名称或ID",
+					"description": "是否在返回结果中包含特定的关联视频ID。可从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。可从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"dealName": {
+					"displayName": "交易名称"
+				},
+				"dealOwner": {
+					"displayName": "交易负责人",
+					"description": "将被分配给该交易的HubSpot用户"
+				},
+				"dealType": {
+					"displayName": "交易类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"pipeline": {
+					"displayName": "工作流名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"associations": {
+					"displayName": "关联关系",
+					"placeholder": "添加字段",
+					"options": {
+						"companyIds": {
+							"displayName": "公司ID"
+						},
+						"contactIds": {
+							"displayName": "联系人ID"
+						},
+						"dealIds": {
+							"displayName": "交易ID"
+						},
+						"ownerIds": {
+							"displayName": "所有者ID"
+						},
+						"ownerId": {
+							"displayName": "所有者ID"
+						},
+						"ticketIds": {
+							"displayName": "工单ID"
+						}
+					}
+				},
+				"associatedCompanyIds": {
+					"displayName": "公司名称或ID",
+					"description": "是否在返回结果中包含特定的公司属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"associatedContactIds": {
+					"displayName": "联系人姓名或ID",
+					"description": "是否在返回结果中包含特定联系人属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"category": {
+					"displayName": "分类名称或ID",
+					"description": "Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"createDate": {
+					"displayName": "创建日期",
+					"description": "工单创建日期。使用表达式时，时间应指定为YYYY-MM-DD hh-mm-ss格式。"
+				},
+				"priority": {
+					"displayName": "优先级名称或ID",
+					"description": "工单所需的关注级别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"resolution": {
+					"displayName": "解决名称或ID",
+					"description": "为解决工单所采取的操作。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"source": {
+					"displayName": "源名称或ID",
+					"description": "工单最初提交的频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"ticketOwnerId": {
+					"displayName": "工单负责人姓名或ID",
+					"description": "您团队中负责处理该工单的用户。您可以通过创建自定义HubSpot用户属性来为工单记录分配更多用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"includeDeleted": {
+					"displayName": "包含已删除项"
+				},
+				"propertiesWithHistory": {
+					"displayName": "带历史的属性",
+					"description": "功能类似properties=参数，但此参数将包含指定属性的完整历史记录，而不仅仅是当前值。当您需要获取属性值的完整变更历史时，请使用此参数。"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"resolveData": {
+					"displayName": "简化输出",
+					"description": "默认情况下，响应仅包含ID。如果激活此选项，它将自动解析数据。"
+				},
+				"includeMergeAudits": {
+					"displayName": "包含合并审计",
+					"description": "是否返回公司先前与其他公司记录合并的合并历史。默认为 false。"
+				},
+				"propertiesCollection": {
+					"displayName": "要包含的公司属性",
+					"description": "是否在返回结果中包含特定的公司属性。可从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+					"options": {
+						"propertiesValues": {
+							"displayName": "要包含的公司属性",
+							"options": {
+								"properties": {
+									"displayName": "要包含的公司属性",
+									"description": "是否在返回结果中包含特定的公司属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"propertyMode": {
+									"displayName": "包含",
+									"description": "指定应获取属性的当前值，还是该属性的当前值及所有历史值",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "价值与历史"
+										},
+										"valueOnly": {
+											"displayName": "仅限值"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"propertiesValues": {
+							"displayName": "要包含的公司属性",
+							"options": {
+								"properties": {
+									"displayName": "要包含的公司属性",
+									"description": "是否在返回结果中包含特定的公司属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"propertyMode": {
+									"displayName": "包含",
+									"description": "指定应获取属性的当前值，还是该属性的当前值及所有历史值",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "价值与历史"
+										},
+										"valueOnly": {
+											"displayName": "仅限值"
+										}
+									}
+								}
+							}
+						},
+						"propertiesCollection": {
+							"displayName": "要包含的公司属性"
+						}
+					}
+				},
+				"properties": {
+					"displayName": "要包含的公司属性",
+					"description": "是否在返回结果中包含特定的公司属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "要删除的联系人",
+			"description": "这不是联系人的邮箱，而是类似1485的编号"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filterGroupsUi": {
+			"displayName": "筛选条件组",
+			"description": "当在筛选器组内提供多个筛选条件时，它们将通过逻辑AND运算符组合。当提供多个筛选器组时，它们将通过逻辑OR运算符组合。系统最多支持三个筛选器组，每个组最多包含三个筛选条件。更多信息请参见<a href=\"https://developers.hubspot.com/docs/api/crm/search\">此处</a>",
+			"placeholder": "添加筛选条件组",
+			"multipleValueButtonText": "添加筛选组",
+			"options": {
+				"filterGroupsValues": {
+					"displayName": "筛选组",
+					"options": {
+						"filtersUi": {
+							"displayName": "筛选器",
+							"description": "使用过滤器将结果限制为仅包含匹配属性值的CRM对象。更多信息<a href=\"https://developers.hubspot.com/docs/api/crm/search\">请参阅此处</a>。",
+							"placeholder": "添加筛选器",
+							"multipleValueButtonText": "添加筛选器",
+							"options": {
+								"filterValues": {
+									"displayName": "筛选器",
+									"options": {
+										"propertyName": {
+											"displayName": "属性名称或ID",
+											"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+										},
+										"type": {
+											"displayName": "类型"
+										},
+										"operator": {
+											"displayName": "操作员",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "完全包含"
+												},
+												"EQ": {
+													"displayName": "等于"
+												},
+												"GT": {
+													"displayName": "大于"
+												},
+												"GTE": {
+													"displayName": "大于或等于"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "已知"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "未知"
+												},
+												"LT": {
+													"displayName": "小于"
+												},
+												"LTE": {
+													"displayName": "小于或等于"
+												},
+												"NEQ": {
+													"displayName": "不等于"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								}
+							},
+							"values": {
+								"filterValues": {
+									"displayName": "筛选器",
+									"options": {
+										"propertyName": {
+											"displayName": "属性名称或ID",
+											"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+										},
+										"type": {
+											"displayName": "类型"
+										},
+										"operator": {
+											"displayName": "操作员",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "完全包含"
+												},
+												"EQ": {
+													"displayName": "等于"
+												},
+												"GT": {
+													"displayName": "大于"
+												},
+												"GTE": {
+													"displayName": "大于或等于"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "已知"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "未知"
+												},
+												"LT": {
+													"displayName": "小于"
+												},
+												"LTE": {
+													"displayName": "小于或等于"
+												},
+												"NEQ": {
+													"displayName": "不等于"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								},
+								"filtersUi": {
+									"displayName": "筛选器",
+									"placeholder": "添加筛选器"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"filterGroupsValues": {
+					"displayName": "筛选组",
+					"options": {
+						"filtersUi": {
+							"displayName": "筛选器",
+							"description": "使用过滤器将结果限制为仅包含匹配属性值的CRM对象。更多信息<a href=\"https://developers.hubspot.com/docs/api/crm/search\">请参阅此处</a>。",
+							"placeholder": "添加筛选器",
+							"multipleValueButtonText": "添加筛选器",
+							"options": {
+								"filterValues": {
+									"displayName": "筛选器",
+									"options": {
+										"propertyName": {
+											"displayName": "属性名称或ID",
+											"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+										},
+										"type": {
+											"displayName": "类型"
+										},
+										"operator": {
+											"displayName": "操作员",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "完全包含"
+												},
+												"EQ": {
+													"displayName": "等于"
+												},
+												"GT": {
+													"displayName": "大于"
+												},
+												"GTE": {
+													"displayName": "大于或等于"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "已知"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "未知"
+												},
+												"LT": {
+													"displayName": "小于"
+												},
+												"LTE": {
+													"displayName": "小于或等于"
+												},
+												"NEQ": {
+													"displayName": "不等于"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								}
+							},
+							"values": {
+								"filterValues": {
+									"displayName": "筛选器",
+									"options": {
+										"propertyName": {
+											"displayName": "属性名称或ID",
+											"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+										},
+										"type": {
+											"displayName": "类型"
+										},
+										"operator": {
+											"displayName": "操作员",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "完全包含"
+												},
+												"EQ": {
+													"displayName": "等于"
+												},
+												"GT": {
+													"displayName": "大于"
+												},
+												"GTE": {
+													"displayName": "大于或等于"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "已知"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "未知"
+												},
+												"LT": {
+													"displayName": "小于"
+												},
+												"LTE": {
+													"displayName": "小于或等于"
+												},
+												"NEQ": {
+													"displayName": "不等于"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								},
+								"filtersUi": {
+									"displayName": "筛选器",
+									"placeholder": "添加筛选器"
+								}
+							}
+						}
+					}
+				},
+				"filterGroupsUi": {
+					"displayName": "筛选组",
+					"placeholder": "添加筛选组"
+				}
+			}
+		},
+		"by": {
+			"displayName": "按",
+			"options": {
+				"id": {
+					"displayName": "联系人ID"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				}
+			}
+		},
+		"id": {
+			"displayName": "要移除的联系人"
+		},
+		"listId": {
+			"displayName": "待移除列表"
+		},
+		"name": {
+			"displayName": "名称"
+		},
+		"companyId": {
+			"displayName": "要删除的公司"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"aboutUs": {
+					"displayName": "关于我们"
+				},
+				"annualRevenue": {
+					"displayName": "年度营收",
+					"description": "公司的实际或预估年收入"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "公司所在城市"
+				},
+				"closeDate": {
+					"displayName": "关闭日期",
+					"description": "工单关闭日期。使用表达式时，时间应指定为YYYY-MM-DD hh-mm-ss格式。"
+				},
+				"companyDomainName": {
+					"displayName": "公司域名",
+					"description": "公司或组织的域名"
+				},
+				"companyOwner": {
+					"displayName": "公司所有者姓名或ID",
+					"description": "公司的所有者。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"countryRegion": {
+					"displayName": "国家/地区",
+					"description": "公司或组织所在的国家/地区"
+				},
+				"customPropertiesUi": {
+					"displayName": "自定义属性",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"customPropertiesValues": {
+							"displayName": "自定义属性",
+							"options": {
+								"property": {
+									"displayName": "属性名称或ID",
+									"description": "属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customPropertiesValues": {
+							"displayName": "自定义属性",
+							"options": {
+								"property": {
+									"displayName": "属性名称或ID",
+									"description": "属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						},
+						"customPropertiesUi": {
+							"displayName": "自定义属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "工单描述"
+				},
+				"facebookFans": {
+					"displayName": "Facebook粉丝数",
+					"description": "Facebook粉丝数量"
+				},
+				"googlePlusPage": {
+					"displayName": "Google+页面",
+					"description": "公司或组织的Google+页面URL"
+				},
+				"industry": {
+					"displayName": "行业名称或ID",
+					"description": "公司从事的业务类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"isPublic": {
+					"displayName": "是否公开",
+					"description": "Whether that the company is publicly traded"
+				},
+				"leadStatus": {
+					"displayName": "潜在客户状态名称或ID",
+					"description": "公司的销售、潜在客户开发或外联状态。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"lifecycleStatus": {
+					"displayName": "生命周期阶段名称或ID",
+					"description": "与此公司或组织关联的所有联系人中最高的生命周期阶段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"linkedinBio": {
+					"displayName": "Linkedin 个人简介",
+					"description": "公司或组织的LinkedIn简介"
+				},
+				"linkedInCompanyPage": {
+					"displayName": "LinkedIn公司页面",
+					"description": "公司或组织的LinkedIn公司页面URL"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"numberOfEmployees": {
+					"displayName": "员工数量",
+					"description": "为公司或组织工作的员工总数"
+				},
+				"originalSourceType": {
+					"displayName": "Original Source Type Name or ID",
+					"description": "Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"phoneNumber": {
+					"displayName": "电话号码",
+					"description": "公司主要电话号码。由HubSpot Insights提供支持。"
+				},
+				"postalCode": {
+					"displayName": "邮政编码",
+					"description": "公司或组织的邮政编码。由HubSpot Insights提供支持。"
+				},
+				"stateRegion": {
+					"displayName": "州/省",
+					"description": "公司或组织所在的州或省份。由HubSpot Insights提供支持。"
+				},
+				"streetAddress": {
+					"displayName": "街道地址",
+					"description": "公司或组织的街道地址，包含单元号。由HubSpot Insights提供支持。"
+				},
+				"streetAddress2": {
+					"displayName": "街道地址 2",
+					"description": "公司或组织的附加地址。由 HubSpot Insights 提供支持。"
+				},
+				"targetAccount": {
+					"displayName": "目标账户名称或ID",
+					"description": "目标账户属性用于标记高优先级公司，如果您正在执行基于账户的策略。请从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"timezone": {
+					"displayName": "时区",
+					"description": "公司或组织所在的时区。由HubSpot Insights提供支持。"
+				},
+				"totalMoneyRaised": {
+					"displayName": "募集资金总额",
+					"description": "公司募集资金总额。由 HubSpot Insights 提供支持。"
+				},
+				"twitterBio": {
+					"displayName": "Twitter简介",
+					"description": "公司或组织的Twitter简介"
+				},
+				"twitterFollowers": {
+					"displayName": "Twitter关注者",
+					"description": "公司或组织的Twitter关注者数量"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter 用户名",
+					"description": "公司或组织的主要推特账号"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "此公司记录的可选分类 - 潜在客户、合作伙伴等。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"webTechnologies": {
+					"displayName": "Web技术名称或ID",
+					"description": "公司或组织使用的Web技术。由HubSpot Insights提供支持。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"websiteUrl": {
+					"displayName": "网站URL",
+					"description": "公司或组织的主要网站。此属性用于识别唯一公司。由HubSpot Insights提供支持。"
+				},
+				"yearFounded": {
+					"displayName": "成立年份",
+					"description": "公司创建的年份。由 HubSpot Insights 提供支持。"
+				},
+				"amount": {
+					"displayName": "金额"
+				},
+				"dealName": {
+					"displayName": "交易名称"
+				},
+				"dealOwner": {
+					"displayName": "交易负责人",
+					"description": "将被分配给该交易的HubSpot用户"
+				},
+				"stage": {
+					"displayName": "交易阶段名称或ID",
+					"description": "创建交易时必须选择交易阶段。有关管理管道和阶段的详细信息，请参阅CRM管道API。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"dealType": {
+					"displayName": "交易类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"pipeline": {
+					"displayName": "工作流"
+				},
+				"associatedCompanyIds": {
+					"displayName": "公司名称或ID",
+					"description": "是否在返回结果中包含特定的公司属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"associatedContactIds": {
+					"displayName": "联系人姓名或ID",
+					"description": "是否在返回结果中包含特定联系人属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"category": {
+					"displayName": "分类名称或ID",
+					"description": "Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"createDate": {
+					"displayName": "创建日期",
+					"description": "工单创建日期。使用表达式时，时间应指定为YYYY-MM-DD hh-mm-ss格式。"
+				},
+				"pipelineId": {
+					"displayName": "工作流名称或ID",
+					"description": "工单所在流水线的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"priority": {
+					"displayName": "优先级名称或ID",
+					"description": "工单所需的关注级别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"resolution": {
+					"displayName": "解决名称或ID",
+					"description": "为解决工单所采取的操作。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"source": {
+					"displayName": "源名称或ID",
+					"description": "工单最初提交的频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"stageId": {
+					"displayName": "阶段名称或ID",
+					"description": "工单所在流水线的阶段ID；取决于流水线ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"ticketName": {
+					"displayName": "工单名称"
+				},
+				"ticketOwnerId": {
+					"displayName": "工单负责人姓名或ID",
+					"description": "您团队中负责处理该工单的用户。您可以通过创建自定义HubSpot用户属性来为工单记录分配更多用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "域名",
+			"description": "要搜索的公司网站域名，例如 n8n.io"
+		},
+		"stage": {
+			"displayName": "交易阶段名称或ID",
+			"description": "创建交易时必须选择交易阶段。有关管理管道和阶段的详细信息，请参阅CRM管道API。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"dealId": {
+			"displayName": "删除交易"
+		},
+		"filters": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"includePropertyVersions": {
+					"displayName": "包含属性版本",
+					"description": "默认情况下，您将只获取“版本”数据中属性的最新版本数据。如果包含此参数，您将获取所有历史版本的数据。"
+				},
+				"propertiesCollection": {
+					"displayName": "要包含的交易属性",
+					"description": "<p>用于在结果中包含特定的交易属性。默认情况下，结果仅包含交易ID，不会包含您交易中任何属性的值。</p><p>包含此参数将在结果中包含指定属性的数据。您可以多次使用此参数，通过逗号<code>,</code>分隔来请求多个属性。</p>从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+					"options": {
+						"propertiesValues": {
+							"displayName": "要包含的交易属性",
+							"options": {
+								"properties": {
+									"displayName": "要包含的交易属性",
+									"description": "是否在返回结果中包含特定的交易属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"propertyMode": {
+									"displayName": "包含",
+									"description": "指定应获取属性的当前值，还是该属性的当前值及所有历史值",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "价值与历史"
+										},
+										"valueOnly": {
+											"displayName": "仅限值"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"propertiesValues": {
+							"displayName": "要包含的交易属性",
+							"options": {
+								"properties": {
+									"displayName": "要包含的交易属性",
+									"description": "是否在返回结果中包含特定的交易属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"propertyMode": {
+									"displayName": "包含",
+									"description": "指定应获取属性的当前值，还是该属性的当前值及所有历史值",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "价值与历史"
+										},
+										"valueOnly": {
+											"displayName": "仅限值"
+										}
+									}
+								}
+							}
+						},
+						"propertiesCollection": {
+							"displayName": "要包含的交易属性"
+						}
+					}
+				},
+				"includeAssociations": {
+					"displayName": "包含关联关系",
+					"description": "是否在结果中包含关联联系人和公司的ID。这将自动包含 num_associated_contacts 属性。"
+				},
+				"properties": {
+					"displayName": "要包含的交易属性",
+					"description": "在结果中包含特定交易属性。默认情况下，结果仅包含交易ID，不会包含您交易的任何属性值。"
+				},
+				"propertiesWithHistory": {
+					"displayName": "要包含历史记录的交易属性",
+					"description": "与属性参数类似，但此参数将包含指定属性的历史记录"
+				},
+				"since": {
+					"displayName": "自",
+					"description": "仅返回在时间戳x之后创建的交易。使用表达式时，时间应以YYYY-MM-DD hh-mm-ss格式指定。"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"options": {
+				"call": {
+					"displayName": "调用"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"meeting": {
+					"displayName": "会议"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"dueDate": {
+			"displayName": "截止日期",
+			"description": "任务截止日期"
+		},
+		"metadata": {
+			"displayName": "元数据",
+			"placeholder": "添加字段",
+			"options": {
+				"body": {
+					"displayName": "正文"
+				},
+				"forObjectType": {
+					"displayName": "对象类型",
+					"options": {
+						"COMPANY": {
+							"displayName": "公司"
+						},
+						"CONTACT": {
+							"displayName": "联系人"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"COMPLETED": {
+							"displayName": "已完成"
+						},
+						"DEFERRED": {
+							"displayName": "延迟"
+						},
+						"IN_PROGRESS": {
+							"displayName": "执行中"
+						},
+						"NOT_STARTED": {
+							"displayName": "未开始"
+						},
+						"WAITING": {
+							"displayName": "等待中"
+						},
+						"BUSY": {
+							"displayName": "忙碌中"
+						},
+						"CALLING_CRM_USER": {
+							"displayName": "调用CRM用户"
+						},
+						"CANCELED": {
+							"displayName": "已取消"
+						},
+						"CONNECTING": {
+							"displayName": "连接中"
+						},
+						"FAILED": {
+							"displayName": "失败"
+						},
+						"NO_ANSWER": {
+							"displayName": "无答案"
+						},
+						"QUEUED": {
+							"displayName": "已排队"
+						},
+						"RINGING": {
+							"displayName": "振铃中"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "主题"
+				},
+				"bcc": {
+					"displayName": "密件抄送"
+				},
+				"cc": {
+					"displayName": "抄送"
+				},
+				"fromEmail": {
+					"displayName": "发件邮箱"
+				},
+				"firstName": {
+					"displayName": "来自名字"
+				},
+				"lastName": {
+					"displayName": "从姓氏"
+				},
+				"html": {
+					"displayName": "HTML"
+				},
+				"toEmail": {
+					"displayName": "收件邮箱"
+				},
+				"endTime": {
+					"displayName": "结束时间",
+					"description": "使用表达式时，时间应指定为YYYY-MM-DD hh-mm-ss格式"
+				},
+				"internalMeetingNotes": {
+					"displayName": "内部会议纪要"
+				},
+				"startTime": {
+					"displayName": "开始时间",
+					"description": "使用表达式时，时间应指定为YYYY-MM-DD hh-mm-ss格式"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"durationMilliseconds": {
+					"displayName": "持续时间（毫秒）"
+				},
+				"fromNumber": {
+					"displayName": "发件号码"
+				},
+				"recordingUrl": {
+					"displayName": "录制URL"
+				},
+				"toNumber": {
+					"displayName": "转换为数字"
+				}
+			}
+		},
+		"engagementId": {
+			"displayName": "要删除的参与记录"
+		},
+		"pipelineId": {
+			"displayName": "工作流名称或ID",
+			"description": "工单所在流水线的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"stageId": {
+			"displayName": "阶段名称或ID",
+			"description": "工单所在流水线的阶段ID；取决于流水线ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"ticketName": {
+			"displayName": "工单名称"
+		},
+		"ticketId": {
+			"displayName": "待删除工单"
+		}
+	}
+}

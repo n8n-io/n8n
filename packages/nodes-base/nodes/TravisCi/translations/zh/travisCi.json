@@ -1,0 +1,130 @@
+{
+	"header": {
+		"displayName": "TravisCI",
+		"description": "使用TravisCI API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"build": {
+					"displayName": "构建"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"cancel": {
+					"displayName": "取消",
+					"description": "取消构建"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取构建"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个构建"
+				},
+				"restart": {
+					"displayName": "重新启动",
+					"description": "重新启动构建"
+				},
+				"trigger": {
+					"displayName": "触发器",
+					"description": "触发构建"
+				}
+			}
+		},
+		"buildId": {
+			"displayName": "构建ID",
+			"description": "唯一标识构建的值"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"include": {
+					"displayName": "包含",
+					"description": "预加载属性列表",
+					"placeholder": "构建提交"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "您可以指定排序方式以整理响应",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"sortBy": {
+					"displayName": "排序方式",
+					"options": {
+						"created_at": {
+							"displayName": "创建时间"
+						},
+						"finished_at": {
+							"displayName": "完成于"
+						},
+						"id": {
+							"displayName": "ID"
+						},
+						"number": {
+							"displayName": "数字"
+						},
+						"started_at": {
+							"displayName": "开始时间"
+						}
+					}
+				},
+				"message": {
+					"displayName": "消息",
+					"description": "附加到请求的Travis-ci状态消息"
+				},
+				"mergeMode": {
+					"displayName": "合并模式",
+					"options": {
+						"deep_merge": {
+							"displayName": "深度合并"
+						},
+						"deep_merge_append": {
+							"displayName": "深度合并追加"
+						},
+						"deep_merge_prepend": {
+							"displayName": "深度合并前置"
+						},
+						"merge": {
+							"displayName": "合并"
+						},
+						"replace": {
+							"displayName": "替换"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"slug": {
+			"displayName": "Slug",
+			"description": "同 {ownerName}/{repositoryName}",
+			"placeholder": "n8n-io/n8n"
+		},
+		"branch": {
+			"displayName": "分支",
+			"description": "请求构建分支",
+			"placeholder": "主分支"
+		}
+	}
+}

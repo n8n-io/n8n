@@ -1,0 +1,892 @@
+{
+	"header": {
+		"displayName": "Mattermost",
+		"description": "发送数据到Mattermost"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"channel": {
+					"displayName": "频道"
+				},
+				"message": {
+					"displayName": "消息"
+				},
+				"reaction": {
+					"displayName": "反应"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"addUser": {
+					"displayName": "添加用户",
+					"description": "将用户添加到频道"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新用户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从帖子中移除一个反应"
+				},
+				"members": {
+					"displayName": "成员",
+					"description": "获取频道的成员列表页面"
+				},
+				"restore": {
+					"displayName": "恢复",
+					"description": "恢复软删除的频道"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索频道"
+				},
+				"statistics": {
+					"displayName": "统计",
+					"description": "获取频道统计信息"
+				},
+				"post": {
+					"displayName": "发布",
+					"description": "Post a message into a channel"
+				},
+				"postEphemeral": {
+					"displayName": "发送临时消息",
+					"description": "向频道发送一条临时消息"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个用户"
+				},
+				"deactive": {
+					"displayName": "停用",
+					"description": "通过归档用户对象来停用用户并撤销其所有会话"
+				},
+				"getByEmail": {
+					"displayName": "按邮箱获取",
+					"description": "通过邮箱获取用户"
+				},
+				"getById": {
+					"displayName": "按ID获取",
+					"description": "按ID获取用户"
+				},
+				"invite": {
+					"displayName": "邀请",
+					"description": "邀请用户加入团队"
+				}
+			}
+		},
+		"teamId": {
+			"displayName": "团队名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+			"options": {}
+		},
+		"displayName": {
+			"displayName": "显示名称",
+			"description": "频道的非唯一UI名称",
+			"placeholder": "公告"
+		},
+		"channel": {
+			"displayName": "名称",
+			"description": "频道的唯一标识符，将出现在频道URL中",
+			"placeholder": "公告"
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "要创建的通道类型",
+			"options": {
+				"private": {
+					"displayName": "私有"
+				},
+				"public": {
+					"displayName": "公开"
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "频道名称或ID",
+			"description": "发送临时消息的频道ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，响应仅包含用户的ID。如果激活此选项，系统将自动解析用户信息。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "用户GUID",
+			"options": {}
+		},
+		"term": {
+			"displayName": "搜索词",
+			"description": "团队中频道的搜索词",
+			"placeholder": "常规"
+		},
+		"postId": {
+			"displayName": "帖子ID",
+			"description": "一个或多个（逗号分隔）要从中获取反应的帖子",
+			"placeholder": "3moacfqxmbdw38r38fjprh6zsr"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要在临时消息中发送的文本"
+		},
+		"attachments": {
+			"displayName": "附件",
+			"description": "要添加的附件",
+			"placeholder": "添加附件项",
+			"multipleValueButtonText": "添加附件",
+			"options": {
+				"actions": {
+					"displayName": "操作",
+					"description": "要添加到消息的操作。更多信息请参见<a href=\"https://docs.mattermost.com/developer/interactive-messages.html\" target=\"_blank\">此处</a>。",
+					"placeholder": "添加操作",
+					"multipleValueButtonText": "添加操作",
+					"options": {
+						"item": {
+							"displayName": "项目",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "操作类型",
+									"options": {
+										"button": {
+											"displayName": "按钮"
+										},
+										"select": {
+											"displayName": "选择"
+										}
+									}
+								},
+								"data_source": {
+									"displayName": "数据源",
+									"description": "操作类型",
+									"options": {
+										"channels": {
+											"displayName": "频道"
+										},
+										"custom": {
+											"displayName": "自定义"
+										},
+										"users": {
+											"displayName": "用户"
+										}
+									}
+								},
+								"options": {
+									"displayName": "选项",
+									"description": "向选择字段添加新选项",
+									"placeholder": "添加选项",
+									"multipleValueButtonText": "添加选项",
+									"options": {
+										"option": {
+											"displayName": "选项",
+											"options": {
+												"text": {
+													"displayName": "选项文本",
+													"description": "选项的文本"
+												},
+												"value": {
+													"displayName": "选项值",
+													"description": "选项的值"
+												}
+											}
+										}
+									},
+									"values": {
+										"option": {
+											"displayName": "选项",
+											"options": {
+												"text": {
+													"displayName": "选项文本",
+													"description": "选项的文本"
+												},
+												"value": {
+													"displayName": "选项值",
+													"description": "选项的值"
+												}
+											}
+										},
+										"options": {
+											"displayName": "选项",
+											"placeholder": "添加选项"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "操作名称"
+								},
+								"integration": {
+									"displayName": "集成",
+									"description": "要添加到消息的集成",
+									"placeholder": "添加集成",
+									"options": {
+										"item": {
+											"displayName": "项目",
+											"options": {
+												"url": {
+													"displayName": "URL",
+													"description": "集成URL"
+												},
+												"context": {
+													"displayName": "上下文",
+													"description": "添加上下文值集合",
+													"placeholder": "添加上下文到集成",
+													"multipleValueButtonText": "添加上下文到集成",
+													"options": {
+														"property": {
+															"displayName": "属性",
+															"options": {
+																"name": {
+																	"displayName": "属性名称",
+																	"description": "要设置的属性名称"
+																},
+																"value": {
+																	"displayName": "属性值",
+																	"description": "要设置的属性值"
+																}
+															}
+														}
+													},
+													"values": {
+														"property": {
+															"displayName": "属性",
+															"options": {
+																"name": {
+																	"displayName": "属性名称",
+																	"description": "要设置的属性名称"
+																},
+																"value": {
+																	"displayName": "属性值",
+																	"description": "要设置的属性值"
+																}
+															}
+														},
+														"context": {
+															"displayName": "上下文",
+															"placeholder": "为集成添加上下文"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"item": {
+											"displayName": "项目",
+											"options": {
+												"url": {
+													"displayName": "URL",
+													"description": "集成URL"
+												},
+												"context": {
+													"displayName": "上下文",
+													"description": "添加上下文值集合",
+													"placeholder": "添加上下文到集成",
+													"multipleValueButtonText": "添加上下文到集成",
+													"options": {
+														"property": {
+															"displayName": "属性",
+															"options": {
+																"name": {
+																	"displayName": "属性名称",
+																	"description": "要设置的属性名称"
+																},
+																"value": {
+																	"displayName": "属性值",
+																	"description": "要设置的属性值"
+																}
+															}
+														}
+													},
+													"values": {
+														"property": {
+															"displayName": "属性",
+															"options": {
+																"name": {
+																	"displayName": "属性名称",
+																	"description": "要设置的属性名称"
+																},
+																"value": {
+																	"displayName": "属性值",
+																	"description": "要设置的属性值"
+																}
+															}
+														},
+														"context": {
+															"displayName": "上下文",
+															"placeholder": "添加上下文到集成"
+														}
+													}
+												}
+											}
+										},
+										"integration": {
+											"displayName": "集成",
+											"placeholder": "添加集成"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"item": {
+							"displayName": "项目",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "操作类型",
+									"options": {
+										"button": {
+											"displayName": "按钮"
+										},
+										"select": {
+											"displayName": "选择"
+										}
+									}
+								},
+								"data_source": {
+									"displayName": "数据源",
+									"description": "操作类型",
+									"options": {
+										"channels": {
+											"displayName": "频道"
+										},
+										"custom": {
+											"displayName": "自定义"
+										},
+										"users": {
+											"displayName": "用户"
+										}
+									}
+								},
+								"options": {
+									"displayName": "选项",
+									"description": "向选择字段添加新选项",
+									"placeholder": "添加选项",
+									"multipleValueButtonText": "添加选项",
+									"options": {
+										"option": {
+											"displayName": "选项",
+											"options": {
+												"text": {
+													"displayName": "选项文本",
+													"description": "选项的文本"
+												},
+												"value": {
+													"displayName": "选项值",
+													"description": "选项的值"
+												}
+											}
+										}
+									},
+									"values": {
+										"option": {
+											"displayName": "选项",
+											"options": {
+												"text": {
+													"displayName": "选项文本",
+													"description": "选项的文本"
+												},
+												"value": {
+													"displayName": "选项值",
+													"description": "选项的值"
+												}
+											}
+										},
+										"options": {
+											"displayName": "选项",
+											"placeholder": "添加选项"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "操作名称"
+								},
+								"integration": {
+									"displayName": "集成",
+									"description": "要添加到消息的集成",
+									"placeholder": "添加集成",
+									"options": {
+										"item": {
+											"displayName": "项目",
+											"options": {
+												"url": {
+													"displayName": "URL",
+													"description": "集成URL"
+												},
+												"context": {
+													"displayName": "上下文",
+													"description": "添加上下文值集合",
+													"placeholder": "添加上下文到集成",
+													"multipleValueButtonText": "添加上下文到集成",
+													"options": {
+														"property": {
+															"displayName": "属性",
+															"options": {
+																"name": {
+																	"displayName": "属性名称",
+																	"description": "要设置的属性名称"
+																},
+																"value": {
+																	"displayName": "属性值",
+																	"description": "要设置的属性值"
+																}
+															}
+														}
+													},
+													"values": {
+														"property": {
+															"displayName": "属性",
+															"options": {
+																"name": {
+																	"displayName": "属性名称",
+																	"description": "要设置的属性名称"
+																},
+																"value": {
+																	"displayName": "属性值",
+																	"description": "要设置的属性值"
+																}
+															}
+														},
+														"context": {
+															"displayName": "上下文",
+															"placeholder": "添加上下文到集成"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"item": {
+											"displayName": "项目",
+											"options": {
+												"url": {
+													"displayName": "URL",
+													"description": "集成URL"
+												},
+												"context": {
+													"displayName": "上下文",
+													"description": "添加上下文值集合",
+													"placeholder": "添加上下文到集成",
+													"multipleValueButtonText": "添加上下文到集成",
+													"options": {
+														"property": {
+															"displayName": "属性",
+															"options": {
+																"name": {
+																	"displayName": "属性名称",
+																	"description": "要设置的属性名称"
+																},
+																"value": {
+																	"displayName": "属性值",
+																	"description": "要设置的属性值"
+																}
+															}
+														}
+													},
+													"values": {
+														"property": {
+															"displayName": "属性",
+															"options": {
+																"name": {
+																	"displayName": "属性名称",
+																	"description": "要设置的属性名称"
+																},
+																"value": {
+																	"displayName": "属性值",
+																	"description": "要设置的属性值"
+																}
+															}
+														},
+														"context": {
+															"displayName": "上下文",
+															"placeholder": "添加上下文到集成"
+														}
+													}
+												}
+											}
+										},
+										"integration": {
+											"displayName": "集成",
+											"placeholder": "添加集成"
+										}
+									}
+								}
+							}
+						},
+						"actions": {
+							"displayName": "操作",
+							"placeholder": "添加操作"
+						}
+					}
+				},
+				"author_icon": {
+					"displayName": "作者图标",
+					"description": "应为用户显示的图标"
+				},
+				"author_link": {
+					"displayName": "作者链接",
+					"description": "作者链接"
+				},
+				"author_name": {
+					"displayName": "作者姓名",
+					"description": "应显示的名称"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "文本左侧线条颜色"
+				},
+				"fallback": {
+					"displayName": "备用文本",
+					"description": "附件的必需纯文本摘要"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要添加到消息的字段",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"item": {
+							"displayName": "项目",
+							"options": {
+								"title": {
+									"displayName": "标题",
+									"description": "项目标题"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "项目值"
+								},
+								"short": {
+									"displayName": "简短",
+									"description": "项目是否可以并排显示"
+								}
+							}
+						}
+					},
+					"values": {
+						"item": {
+							"displayName": "项目",
+							"options": {
+								"title": {
+									"displayName": "标题",
+									"description": "项目标题"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "项目值"
+								},
+								"short": {
+									"displayName": "简短",
+									"description": "项目是否可以并排显示"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "字段",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"footer": {
+					"displayName": "页脚",
+					"description": "要添加的页脚文本"
+				},
+				"footer_icon": {
+					"displayName": "页脚图标",
+					"description": "应显示在页脚旁的图标"
+				},
+				"image_url": {
+					"displayName": "图片URL",
+					"description": "图片URL"
+				},
+				"pretext": {
+					"displayName": "前置文本",
+					"description": "消息块前显示的文本"
+				},
+				"text": {
+					"displayName": "文本",
+					"description": "要发送的文本"
+				},
+				"thumb_url": {
+					"displayName": "缩略图URL",
+					"description": "缩略图URL"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "消息标题"
+				},
+				"title_link": {
+					"displayName": "标题链接",
+					"description": "标题链接"
+				}
+			}
+		},
+		"otherOptions": {
+			"displayName": "其他选项",
+			"description": "其他要设置的选项",
+			"placeholder": "添加选项",
+			"options": {
+				"root_id": {
+					"displayName": "父帖子ID",
+					"description": "若设置此项，创建的消息将作为对指定父帖子ID的线程式回复"
+				}
+			}
+		},
+		"emojiName": {
+			"displayName": "表情符号名称",
+			"description": "要删除的表情符号名称"
+		},
+		"username": {
+			"displayName": "用户名"
+		},
+		"authService": {
+			"displayName": "认证服务",
+			"options": {
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"gitlab": {
+					"displayName": "Gitlab"
+				},
+				"google": {
+					"displayName": "Google"
+				},
+				"ldap": {
+					"displayName": "LDAP"
+				},
+				"office365": {
+					"displayName": "Office365"
+				},
+				"saml": {
+					"displayName": "SAML"
+				}
+			}
+		},
+		"authData": {
+			"displayName": "认证数据"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com",
+			"description": "用户邮箱"
+		},
+		"password": {
+			"displayName": "密码",
+			"description": "用于电子邮件认证的密码"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"first_name": {
+					"displayName": "名字"
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"locale": {
+					"displayName": "语言区域"
+				},
+				"nickname": {
+					"displayName": "昵称"
+				},
+				"notificationUi": {
+					"displayName": "通知设置",
+					"placeholder": "添加通知设置",
+					"options": {
+						"notificationValues": {
+							"displayName": "通知",
+							"options": {
+								"channel": {
+									"displayName": "频道",
+									"description": "Whether to enable channel-wide notifications (@channel, @all, etc.), \"false\" to disable. Defaults to \"true\"."
+								},
+								"desktop": {
+									"displayName": "桌面版",
+									"options": {
+										"all": {
+											"displayName": "全部",
+											"description": "所有活动通知"
+										},
+										"mention": {
+											"displayName": "提及",
+											"description": "仅提及和私信"
+										},
+										"none": {
+											"displayName": "无",
+											"description": "仅提及和私信"
+										}
+									}
+								},
+								"desktop_sound": {
+									"displayName": "桌面声音",
+									"description": "是否在桌面通知中启用声音，“false”表示禁用。默认为“true”。"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"description": "是否启用邮件通知，\"false\"表示禁用。默认为\"false\"。"
+								},
+								"first_name": {
+									"displayName": "名字",
+									"description": "是否启用名字提及。若已设置名字则默认为“true”，否则为“false”。"
+								},
+								"mention_keys": {
+									"displayName": "提及关键词",
+									"description": "要计为提及的单词逗号分隔列表。默认为用户名和@用户名。"
+								},
+								"push": {
+									"displayName": "推送",
+									"options": {
+										"all": {
+											"displayName": "全部",
+											"description": "所有活动通知"
+										},
+										"mention": {
+											"displayName": "提及",
+											"description": "仅提及和私信"
+										},
+										"none": {
+											"displayName": "无",
+											"description": "仅提及和私信"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"notificationValues": {
+							"displayName": "通知",
+							"options": {
+								"channel": {
+									"displayName": "频道",
+									"description": "是否启用频道范围的通知（@channel、@all 等），\"false\" 表示禁用。默认为 \"true\"。"
+								},
+								"desktop": {
+									"displayName": "桌面版",
+									"options": {
+										"all": {
+											"displayName": "全部",
+											"description": "所有活动通知"
+										},
+										"mention": {
+											"displayName": "提及",
+											"description": "仅提及和私信"
+										},
+										"none": {
+											"displayName": "无",
+											"description": "仅提及和私信"
+										}
+									}
+								},
+								"desktop_sound": {
+									"displayName": "桌面声音",
+									"description": "是否在桌面通知中启用声音，“false”表示禁用。默认为“true”。"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"description": "是否启用邮件通知，\"false\"表示禁用。默认为\"false\"。"
+								},
+								"first_name": {
+									"displayName": "名字",
+									"description": "是否启用名字提及。若已设置名字则默认为“true”，否则为“false”。"
+								},
+								"mention_keys": {
+									"displayName": "提及关键词",
+									"description": "要计为提及的单词逗号分隔列表。默认为用户名和@用户名。"
+								},
+								"push": {
+									"displayName": "推送",
+									"options": {
+										"all": {
+											"displayName": "全部",
+											"description": "所有活动通知"
+										},
+										"mention": {
+											"displayName": "提及",
+											"description": "仅提及和私信"
+										},
+										"none": {
+											"displayName": "无",
+											"description": "仅提及和私信"
+										}
+									}
+								}
+							}
+						},
+						"notificationUi": {
+							"displayName": "通知设置",
+							"placeholder": "添加通知设置"
+						}
+					}
+				},
+				"inChannel": {
+					"displayName": "在频道中",
+					"description": "要获取用户的频道ID"
+				},
+				"inTeam": {
+					"displayName": "在团队中",
+					"description": "要获取用户的团队ID"
+				},
+				"notInTeam": {
+					"displayName": "不在团队中",
+					"description": "要排除用户的团队ID"
+				},
+				"notInChannel": {
+					"displayName": "不在频道中",
+					"description": "要排除用户的频道ID"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "要排除用户的频道ID",
+					"options": {
+						"createdAt": {
+							"displayName": "创建时间"
+						},
+						"lastActivityAt": {
+							"displayName": "最后活动时间"
+						},
+						"status": {
+							"displayName": "状态"
+						},
+						"username": {
+							"displayName": "用户名"
+						}
+					}
+				},
+				"since": {
+					"displayName": "自",
+					"description": "仅返回自给定Unix时间戳（毫秒）以来被修改过的用户"
+				}
+			}
+		},
+		"userIds": {
+			"displayName": "用户ID",
+			"description": "用户ID"
+		},
+		"emails": {
+			"displayName": "电子邮件",
+			"description": "用户邮箱。多个邮箱可用逗号分隔设置。"
+		}
+	}
+}

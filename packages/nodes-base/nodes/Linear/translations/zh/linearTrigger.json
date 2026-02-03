@@ -1,0 +1,29 @@
+{
+	"header": {
+		"displayName": "Linear触发器",
+		"description": "当Linear事件发生时启动工作流"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiToken": {
+					"displayName": "API令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "请确保您的凭据具有“Admin”权限范围以创建Webhook。"
+		},
+		"teamId": {
+			"displayName": "团队名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"resources": {
+			"displayName": "监听资源"
+		}
+	}
+}

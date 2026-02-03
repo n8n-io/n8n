@@ -1,0 +1,317 @@
+{
+	"header": {
+		"displayName": "Markdown",
+		"description": "Convert data between Markdown and HTML"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "Mode",
+			"options": {
+				"markdownToHtml": {
+					"displayName": "Markdown to HTML",
+					"description": "Convert data from Markdown to HTML"
+				},
+				"htmlToMarkdown": {
+					"displayName": "HTML to Markdown",
+					"description": "Convert data from HTML to Markdown"
+				}
+			}
+		},
+		"html": {
+			"displayName": "HTML",
+			"description": "The HTML to be converted to markdown"
+		},
+		"markdown": {
+			"displayName": "Markdown",
+			"description": "The Markdown to be converted to html"
+		},
+		"destinationKey": {
+			"displayName": "Destination Key",
+			"description": "The field to put the output in. Specify nested fields using dots, e.g.\"level1.level2.newKey\"."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"bulletMarker": {
+					"displayName": "Bullet Marker",
+					"description": "Specify bullet marker, default *"
+				},
+				"codeFence": {
+					"displayName": "Code Block Fence",
+					"description": "Specify code block fence, default ```"
+				},
+				"emDelimiter": {
+					"displayName": "Emphasis Delimiter",
+					"description": "Specify emphasis delimiter, default _"
+				},
+				"globalEscape": {
+					"displayName": "Global Escape Pattern",
+					"description": "Setting this will override the default escape settings, you might want to use textReplace option instead",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"pattern": {
+									"displayName": "Pattern",
+									"description": "RegEx for pattern"
+								},
+								"replacement": {
+									"displayName": "Replacement",
+									"description": "String replacement"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"pattern": {
+									"displayName": "Pattern",
+									"description": "RegEx for pattern"
+								},
+								"replacement": {
+									"displayName": "Replacement",
+									"description": "String replacement"
+								}
+							}
+						},
+						"globalEscape": {
+							"displayName": "Global Escape Pattern"
+						}
+					}
+				},
+				"ignore": {
+					"displayName": "Ignored Elements",
+					"description": "Supplied elements will be ignored (ignores inner text does not parse children)",
+					"placeholder": "e.g. h1, p ..."
+				},
+				"keepDataImages": {
+					"displayName": "Keep Images With Data",
+					"description": "Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. &lt;img src=\"data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/\"&gt;"
+				},
+				"lineStartEscape": {
+					"displayName": "Line Start Escape Pattern",
+					"description": "Setting this will override the default escape settings, you might want to use textReplace option instead",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"pattern": {
+									"displayName": "Pattern",
+									"description": "RegEx for pattern"
+								},
+								"replacement": {
+									"displayName": "Replacement",
+									"description": "String replacement"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"pattern": {
+									"displayName": "Pattern",
+									"description": "RegEx for pattern"
+								},
+								"replacement": {
+									"displayName": "Replacement",
+									"description": "String replacement"
+								}
+							}
+						},
+						"lineStartEscape": {
+							"displayName": "Line Start Escape Pattern"
+						}
+					}
+				},
+				"maxConsecutiveNewlines": {
+					"displayName": "Max Consecutive New Lines",
+					"description": "Specify max consecutive new lines allowed"
+				},
+				"useLinkReferenceDefinitions": {
+					"displayName": "Place URLs At The Bottom",
+					"description": "Whether to Place URLS at the bottom and format links using link reference definitions"
+				},
+				"strongDelimiter": {
+					"displayName": "Strong Delimiter",
+					"description": "Specify strong delimiter, default **"
+				},
+				"codeBlockStyle": {
+					"displayName": "Style For Code Block",
+					"description": "Specify style for code block, default \"fence\"",
+					"options": {
+						"fence": {
+							"displayName": "Fence"
+						},
+						"indented": {
+							"displayName": "Indented"
+						}
+					}
+				},
+				"textReplace": {
+					"displayName": "Text Replacement Pattern",
+					"description": "User-defined text replacement pattern (Replaces matching text retrieved from nodes)",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"pattern": {
+									"displayName": "Pattern",
+									"description": "RegEx for pattern"
+								},
+								"replacement": {
+									"displayName": "Replacement",
+									"description": "String replacement"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"pattern": {
+									"displayName": "Pattern",
+									"description": "RegEx for pattern"
+								},
+								"replacement": {
+									"displayName": "Replacement",
+									"description": "String replacement"
+								}
+							}
+						},
+						"textReplace": {
+							"displayName": "Text Replacement Pattern"
+						}
+					}
+				},
+				"blockElements": {
+					"displayName": "Treat As Blocks",
+					"description": "Supplied elements will be treated as blocks (surrounded with blank lines)",
+					"placeholder": "e.g. p, div, ..."
+				},
+				"openLinksInNewWindow": {
+					"displayName": "Add Blank To Links",
+					"description": "Whether to open all links in new windows (by adding the attribute target=\"_blank\" to <a> tags)"
+				},
+				"simplifiedAutoLink": {
+					"displayName": "Automatic Linking to URLs",
+					"description": "Whether to enable automatic linking to URLs"
+				},
+				"backslashEscapesHTMLTags": {
+					"displayName": "Backslash Escapes HTML Tags",
+					"description": "Whether to support for HTML Tag escaping ex: &lt;div&gt;foo&lt;/div&gt;"
+				},
+				"completeHTMLDocument": {
+					"displayName": "Complete HTML Document",
+					"description": "Whether to output a complete html document, including &lt;html&gt;, &lt;head&gt; and &lt;body&gt; tags instead of an HTML fragment"
+				},
+				"customizedHeaderId": {
+					"displayName": "Customized Header ID",
+					"description": "Whether to use text in curly braces as header ID"
+				},
+				"emoji": {
+					"displayName": "Emoji Support",
+					"description": "Whether to enable emoji support. Ex: this is a :smile: emoji For more info on available emojis, see https://github.com/showdownjs/showdown/wiki/Emojis."
+				},
+				"encodeEmails": {
+					"displayName": "Encode Emails",
+					"description": "Whether to enable e-mail addresses encoding through the use of Character Entities, transforming ASCII e-mail addresses into its equivalent decimal entities"
+				},
+				"excludeTrailingPunctuationFromURLs": {
+					"displayName": "Exclude Trailing Punctuation From URLs",
+					"description": "Whether to exclude trailing punctuation from autolinking URLs. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true."
+				},
+				"ghCodeBlocks": {
+					"displayName": "GitHub Code Blocks",
+					"description": "Whether to enable support for GFM code block style"
+				},
+				"ghCompatibleHeaderId": {
+					"displayName": "GitHub Compatible Header IDs",
+					"description": "Whether to generate header IDs compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)"
+				},
+				"ghMentionsLink": {
+					"displayName": "GitHub Mention Link",
+					"description": "Whether to change the link generated by @mentions. Showdown will replace {u} with the username. Only applies if ghMentions option is enabled."
+				},
+				"ghMentions": {
+					"displayName": "GitHub Mentions",
+					"description": "Whether to enable github @mentions, which link to the username mentioned"
+				},
+				"tasklists": {
+					"displayName": "GitHub Task Lists",
+					"description": "Whether to enable support for GFM tasklists"
+				},
+				"headerLevelStart": {
+					"displayName": "Header Level Start",
+					"description": "Whether to set the header starting level"
+				},
+				"requireSpaceBeforeHeadingText": {
+					"displayName": "Mandatory Space Before Header",
+					"description": "Whether to make adding a space between # and the header text mandatory"
+				},
+				"literalMidWordAsterisks": {
+					"displayName": "Middle Word Asterisks",
+					"description": "Whether to stop showdown from interpreting asterisks in the middle of words as <em> and <strong> and instead treat them as literal asterisks"
+				},
+				"literalMidWordUnderscores": {
+					"displayName": "Middle Word Underscores",
+					"description": "Whether to stop showdown from interpreting underscores in the middle of words as <em> and <strong> and instead treat them as literal underscores"
+				},
+				"noHeaderId": {
+					"displayName": "No Header ID",
+					"description": "Whether to disable the automatic generation of header IDs"
+				},
+				"parseImgDimensions": {
+					"displayName": "Parse Image Dimensions",
+					"description": "Whether to enable support for setting image dimensions from within markdown syntax"
+				},
+				"prefixHeaderId": {
+					"displayName": "Prefix Header ID",
+					"description": "Add a prefix to the generated header IDs"
+				},
+				"rawHeaderId": {
+					"displayName": "Raw Header ID",
+					"description": "Whether to remove only spaces, ' and \" from generated header IDs (including prefixes), replacing them with dashes (-)"
+				},
+				"rawPrefixHeaderId": {
+					"displayName": "Raw Prefix Header ID",
+					"description": "Whether to prevent showdown from modifying the prefix"
+				},
+				"simpleLineBreaks": {
+					"displayName": "Simple Line Breaks",
+					"description": "Whether to parse line breaks as &lt;br&gt;, like GitHub does, without needing 2 spaces at the end of the line"
+				},
+				"smartIndentationFix": {
+					"displayName": "Smart Indentation Fix",
+					"description": "Whether to try to smartly fix indentation problems related to es6 template strings in the midst of indented code"
+				},
+				"disableForced4SpacesIndentedSublists": {
+					"displayName": "Spaces Indented Sublists",
+					"description": "Whether to disable the requirement of indenting sublists by 4 spaces for them to be nested, effectively reverting to the old behavior where 2 or 3 spaces were enough"
+				},
+				"splitAdjacentBlockquotes": {
+					"displayName": "Split Adjacent Blockquotes",
+					"description": "Whether to split adjacent blockquote blocks"
+				},
+				"strikethrough": {
+					"displayName": "Strikethrough",
+					"description": "Whether to enable support for strikethrough syntax"
+				},
+				"tablesHeaderId": {
+					"displayName": "Tables Header ID",
+					"description": "Whether to add an ID property to table headers tags"
+				},
+				"tables": {
+					"displayName": "Tables Support",
+					"description": "Whether to enable support for tables syntax"
+				}
+			}
+		}
+	}
+}

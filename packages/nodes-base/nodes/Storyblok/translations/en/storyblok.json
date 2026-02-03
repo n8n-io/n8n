@@ -1,0 +1,97 @@
+{
+	"header": {
+		"displayName": "Storyblok",
+		"description": "Consume Storyblok API"
+	},
+	"nodeView": {
+		"source": {
+			"displayName": "Source",
+			"description": "Pick where your data comes from, Content or Management API",
+			"options": {
+				"contentApi": {
+					"displayName": "Content API"
+				},
+				"managementApi": {
+					"displayName": "Management API"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"story": {
+					"displayName": "Story"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a story"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many stories"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a story"
+				},
+				"publish": {
+					"displayName": "Publish",
+					"description": "Publish a story"
+				},
+				"unpublish": {
+					"displayName": "Unpublish",
+					"description": "Unpublish a story"
+				}
+			}
+		},
+		"identifier": {
+			"displayName": "Identifier",
+			"description": "The ID or slug of the story to get"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"starts_with": {
+					"displayName": "Starts With",
+					"description": "Filter by slug"
+				}
+			}
+		},
+		"space": {
+			"displayName": "Space Name or ID",
+			"description": "The name of the space. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"storyId": {
+			"displayName": "Story ID",
+			"description": "Numeric ID of the story"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"releaseId": {
+					"displayName": "Release ID",
+					"description": "Numeric ID of release"
+				},
+				"language": {
+					"displayName": "Language",
+					"description": "Language code to publish the story individually (must be enabled in the space settings)"
+				}
+			}
+		}
+	}
+}

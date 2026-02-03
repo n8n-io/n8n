@@ -1,0 +1,365 @@
+{
+	"header": {
+		"displayName": "SecurityScorecard",
+		"description": "使用SecurityScorecard API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"company": {
+					"displayName": "公司"
+				},
+				"industry": {
+					"displayName": "行业"
+				},
+				"invite": {
+					"displayName": "邀请"
+				},
+				"portfolio": {
+					"displayName": "作品集"
+				},
+				"portfolioCompany": {
+					"displayName": "投资组合公司"
+				},
+				"report": {
+					"displayName": "报告"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getFactor": {
+					"displayName": "获取因子分数",
+					"description": "获取公司因子分数与问题数量"
+				},
+				"getFactorHistorical": {
+					"displayName": "获取历史因子分数",
+					"description": "获取公司历史因子分数"
+				},
+				"getHistoricalScore": {
+					"displayName": "获取历史分数",
+					"description": "获取公司历史分数"
+				},
+				"getScorecard": {
+					"displayName": "获取信息与计分卡",
+					"description": "获取公司信息及其计分卡摘要"
+				},
+				"getScorePlan": {
+					"displayName": "获取评分计划",
+					"description": "获取公司评分改进计划"
+				},
+				"getScore": {
+					"displayName": "获取分数"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建作品集"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一个作品集"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取最近生成的报告列表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新作品集"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "将公司添加到投资组合"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从投资组合中移除公司"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载生成的报告"
+				},
+				"generate": {
+					"displayName": "生成",
+					"description": "生成报告"
+				}
+			}
+		},
+		"scorecardIdentifier": {
+			"displayName": "记分卡标识符",
+			"description": "公司或记分卡的主要标识符，例如域名。"
+		},
+		"score": {
+			"displayName": "评分",
+			"description": "评分目标"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"severity": {
+					"displayName": "严重程度"
+				},
+				"severity_in": {
+					"displayName": "严重性输入",
+					"description": "按逗号分隔的严重性列表筛选问题"
+				},
+				"grade": {
+					"displayName": "等级",
+					"description": "公司评分等级筛选器"
+				},
+				"industry": {
+					"displayName": "行业",
+					"description": "行业筛选器"
+				},
+				"issueType": {
+					"displayName": "问题类型",
+					"description": "问题类型筛选器"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"active": {
+							"displayName": "激活状态"
+						},
+						"inactive": {
+							"displayName": "未激活"
+						}
+					}
+				},
+				"vulnerability": {
+					"displayName": "漏洞",
+					"description": "CVE漏洞过滤器"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"date_from": {
+					"displayName": "起始日期",
+					"description": "历史开始日期"
+				},
+				"date_to": {
+					"displayName": "截止日期",
+					"description": "历史结束日期"
+				},
+				"timing": {
+					"displayName": "定时",
+					"description": "日期粒度",
+					"options": {
+						"daily": {
+							"displayName": "每日"
+						},
+						"weekly": {
+							"displayName": "每周"
+						},
+						"monthly": {
+							"displayName": "每月"
+						}
+					}
+				},
+				"from": {
+					"displayName": "起始日期",
+					"description": "历史开始日期"
+				},
+				"to": {
+					"displayName": "截止日期",
+					"description": "历史结束日期"
+				},
+				"format": {
+					"displayName": "格式",
+					"options": {
+						"csv": {
+							"displayName": "CSV"
+						},
+						"pdf": {
+							"displayName": "PDF"
+						}
+					}
+				},
+				"countries": {
+					"displayName": "国家"
+				},
+				"ips": {
+					"displayName": "IP地址"
+				},
+				"subdomains": {
+					"displayName": "子域名"
+				}
+			}
+		},
+		"industry": {
+			"displayName": "行业",
+			"options": {
+				"food": {
+					"displayName": "食物"
+				},
+				"healthcare": {
+					"displayName": "医疗保健"
+				},
+				"manofacturing": {
+					"displayName": "制造"
+				},
+				"retail": {
+					"displayName": "零售"
+				},
+				"technology": {
+					"displayName": "技术"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"firstName": {
+			"displayName": "名字"
+		},
+		"lastName": {
+			"displayName": "姓氏"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "给受邀者的消息"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"days_to_resolve_issue": {
+					"displayName": "问题解决天数",
+					"description": "解决记分卡问题的最少天数"
+				},
+				"domain": {
+					"displayName": "域名",
+					"description": "受邀者公司域名"
+				},
+				"grade_to_maintain": {
+					"displayName": "需维持的等级",
+					"description": "要求受邀方组织维持最低等级"
+				},
+				"is_organization_point_of_contact": {
+					"displayName": "是否为组织联系人",
+					"description": "是否为受邀组织的联系人"
+				},
+				"issue_desc": {
+					"displayName": "问题描述"
+				},
+				"issue_title": {
+					"displayName": "问题标题"
+				},
+				"issue_type": {
+					"displayName": "问题类型"
+				},
+				"sendme_copy": {
+					"displayName": "发送副本给我",
+					"description": "是否将邀请副本发送给请求用户"
+				},
+				"target_url": {
+					"displayName": "目标URL",
+					"description": "可选URL，当受邀者到达平台时将其引导至此"
+				}
+			}
+		},
+		"portfolioId": {
+			"displayName": "作品集ID"
+		},
+		"name": {
+			"displayName": "作品集名称",
+			"description": "作品集名称"
+		},
+		"description": {
+			"displayName": "描述"
+		},
+		"privacy": {
+			"displayName": "隐私",
+			"options": {
+				"private": {
+					"displayName": "私有",
+					"description": "仅您可见"
+				},
+				"shared": {
+					"displayName": "共享",
+					"description": "对您公司内的所有人可见"
+				},
+				"team": {
+					"displayName": "团队",
+					"description": "对您团队中的人员可见"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "域名",
+			"description": "公司域名"
+		},
+		"report": {
+			"displayName": "报告",
+			"options": {
+				"detailed": {
+					"displayName": "公司详情"
+				},
+				"events-json": {
+					"displayName": "公司事件"
+				},
+				"issues": {
+					"displayName": "公司问题"
+				},
+				"partnership": {
+					"displayName": "公司合作"
+				},
+				"summary": {
+					"displayName": "公司概况"
+				},
+				"full-scorecard-json": {
+					"displayName": "完整记分卡"
+				},
+				"portfolio": {
+					"displayName": "作品集"
+				},
+				"scorecard-footprint": {
+					"displayName": "计分卡足迹"
+				}
+			}
+		},
+		"branding": {
+			"displayName": "品牌标识",
+			"options": {
+				"securityscorecard": {
+					"displayName": "SecurityScorecard"
+				},
+				"company_and_securityscorecard": {
+					"displayName": "公司与安全评分卡"
+				},
+				"company": {
+					"displayName": "公司"
+				}
+			}
+		},
+		"date": {
+			"displayName": "日期"
+		},
+		"url": {
+			"displayName": "报告URL",
+			"description": "生成的报告URL"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		}
+	}
+}

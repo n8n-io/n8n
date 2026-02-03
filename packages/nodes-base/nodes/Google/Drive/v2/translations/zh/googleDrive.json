@@ -1,0 +1,917 @@
+{
+	"header": {
+		"displayName": "Google Drive",
+		"description": "访问 Google Drive 上的数据"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"serviceAccount": {
+					"displayName": "服务账号"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"drive": {
+					"displayName": "驱动器"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"copy": {
+					"displayName": "复制",
+					"description": "复制文件"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一个驱动器"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "列出所有驱动器"
+				},
+				"share": {
+					"displayName": "分享",
+					"description": "分享文件夹"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新驱动器"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传文件"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建驱动器"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取驱动器"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "文件夹",
+			"description": "文件夹的ID"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"googleFileConversion": {
+					"displayName": "Google 文件转换",
+					"placeholder": "添加转换",
+					"options": {
+						"conversion": {
+							"displayName": "转换",
+							"options": {
+								"docsToFormat": {
+									"displayName": "Google 文档",
+									"description": "下载 Google 文档文件时使用的导出格式",
+									"options": {
+										"text/html": {
+											"displayName": "转换为HTML"
+										},
+										"application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+											"displayName": "到 MS Word"
+										},
+										"application/vnd.oasis.opendocument.text": {
+											"displayName": "导出为OpenOffice文档"
+										},
+										"application/pdf": {
+											"displayName": "转换为PDF"
+										},
+										"application/rtf": {
+											"displayName": "转换为富文本"
+										}
+									}
+								},
+								"drawingsToFormat": {
+									"displayName": "Google 绘图",
+									"description": "下载 Google 绘图文件时使用的导出格式",
+									"options": {
+										"image/jpeg": {
+											"displayName": "转换为JPEG"
+										},
+										"image/png": {
+											"displayName": "转换为PNG"
+										},
+										"image/svg+xml": {
+											"displayName": "转为SVG"
+										},
+										"application/pdf": {
+											"displayName": "转换为PDF"
+										}
+									}
+								},
+								"slidesToFormat": {
+									"displayName": "Google 幻灯片",
+									"description": "下载 Google 幻灯片文件时使用的导出格式",
+									"options": {
+										"application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+											"displayName": "到 MS PowerPoint"
+										},
+										"application/pdf": {
+											"displayName": "转换为PDF"
+										},
+										"application/vnd.oasis.opendocument.presentation": {
+											"displayName": "打开 OpenOffice 演示文稿"
+										},
+										"text/plain": {
+											"displayName": "转换为纯文本"
+										}
+									}
+								},
+								"sheetsToFormat": {
+									"displayName": "Google Sheets",
+									"description": "下载Google电子表格文件时使用的导出格式",
+									"options": {
+										"application/x-vnd.oasis.opendocument.spreadsheet": {
+											"displayName": "保存至MS Excel"
+										},
+										"application/pdf": {
+											"displayName": "转换为PDF"
+										},
+										"text/csv": {
+											"displayName": "转换为CSV"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"conversion": {
+							"displayName": "转换",
+							"options": {
+								"docsToFormat": {
+									"displayName": "Google 文档",
+									"description": "下载 Google 文档文件时使用的导出格式",
+									"options": {
+										"text/html": {
+											"displayName": "转换为HTML"
+										},
+										"application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+											"displayName": "到 MS Word"
+										},
+										"application/vnd.oasis.opendocument.text": {
+											"displayName": "导出为OpenOffice文档"
+										},
+										"application/pdf": {
+											"displayName": "转换为PDF"
+										},
+										"application/rtf": {
+											"displayName": "转换为富文本"
+										}
+									}
+								},
+								"drawingsToFormat": {
+									"displayName": "Google 绘图",
+									"description": "下载 Google 绘图文件时使用的导出格式",
+									"options": {
+										"image/jpeg": {
+											"displayName": "转换为JPEG"
+										},
+										"image/png": {
+											"displayName": "转换为PNG"
+										},
+										"image/svg+xml": {
+											"displayName": "转为SVG"
+										},
+										"application/pdf": {
+											"displayName": "转换为PDF"
+										}
+									}
+								},
+								"slidesToFormat": {
+									"displayName": "Google 幻灯片",
+									"description": "下载 Google 幻灯片文件时使用的导出格式",
+									"options": {
+										"application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+											"displayName": "到 MS PowerPoint"
+										},
+										"application/pdf": {
+											"displayName": "转换为PDF"
+										},
+										"application/vnd.oasis.opendocument.presentation": {
+											"displayName": "打开 OpenOffice 演示文稿"
+										},
+										"text/plain": {
+											"displayName": "转换为纯文本"
+										}
+									}
+								},
+								"sheetsToFormat": {
+									"displayName": "Google Sheets",
+									"description": "下载Google电子表格文件时使用的导出格式",
+									"options": {
+										"application/x-vnd.oasis.opendocument.spreadsheet": {
+											"displayName": "保存至MS Excel"
+										},
+										"application/pdf": {
+											"displayName": "转换为PDF"
+										},
+										"text/csv": {
+											"displayName": "转换为CSV"
+										}
+									}
+								}
+							}
+						},
+						"googleFileConversion": {
+							"displayName": "Google 文件转换",
+							"placeholder": "添加转换"
+						}
+					}
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "文件名。例如：data.pdf。"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要返回的字段"
+				},
+				"emailMessage": {
+					"displayName": "电子邮件消息",
+					"description": "包含在通知邮件中的纯文本自定义消息"
+				},
+				"enforceSingleParent": {
+					"displayName": "强制执行单一父级",
+					"description": "是否选择加入旨在使所有项目仅有一个父级的API行为。此参数仅在项目不在共享云端硬盘中时生效。"
+				},
+				"moveToNewOwnersRoot": {
+					"displayName": "移至新所有者的根目录",
+					"description": "<p>仅当项目不在共享云端硬盘中且请求尝试转移项目所有权时，此参数才会生效。</p><p>设置为 true 时，项目将移至新所有者的“我的云端硬盘”根文件夹，并移除所有先前的父文件夹。</p>"
+				},
+				"sendNotificationEmail": {
+					"displayName": "发送通知邮件",
+					"description": "分享给用户或群组时是否发送通知邮件"
+				},
+				"supportsAllDrives": {
+					"displayName": "支持所有驱动器",
+					"description": "请求应用程序是否同时支持我的驱动器和共享驱动器"
+				},
+				"transferOwnership": {
+					"displayName": "转移所有权",
+					"description": "是否将所有权转移给指定用户，并将当前所有者降级为写入者"
+				},
+				"useDomainAdminAccess": {
+					"displayName": "使用域管理员访问权限",
+					"description": "是否以域管理员身份发出请求；如果设置为true，则当请求者是共享驱动器所属域的管理员时，将被授予访问权限。（默认值：false）"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "此共享云盘名称",
+					"placeholder": "invoice_1.pdf"
+				},
+				"parents": {
+					"displayName": "父文件夹",
+					"description": "文件/文件夹应保存到的父文件夹ID"
+				},
+				"spaces": {
+					"displayName": "空间",
+					"description": "要操作的空间"
+				},
+				"corpora": {
+					"displayName": "语料库",
+					"description": "要操作的语料库",
+					"options": {
+						"user": {
+							"displayName": "用户",
+							"description": "“我的云端硬盘”和“与我共享”中的所有文件"
+						},
+						"domain": {
+							"displayName": "域名",
+							"description": "用户域内所有可搜索的共享文件"
+						},
+						"drive": {
+							"displayName": "驱动器",
+							"description": "单个共享云端硬盘中包含的所有文件"
+						},
+						"allDrives": {
+							"displayName": "所有驱动器",
+							"description": "全部驱动器"
+						}
+					}
+				},
+				"driveId": {
+					"displayName": "驱动器ID",
+					"description": "ID of the shared drive to search. The driveId parameter must be specified if and only if corpora is set to drive."
+				},
+				"capabilities": {
+					"displayName": "功能特性",
+					"placeholder": "添加字段",
+					"options": {
+						"canAddChildren": {
+							"displayName": "可添加子项",
+							"description": "当前用户是否可在此共享云端硬盘的文件夹中添加子项"
+						},
+						"canChangeCopyRequiresWriterPermissionRestriction": {
+							"displayName": "能否更改需要写入者权限的副本限制",
+							"description": "当前用户是否可以更改此共享云端硬盘的copyRequiresWriterPermission限制"
+						},
+						"canChangeDomainUsersOnlyRestriction": {
+							"displayName": "仅可更改域用户限制",
+							"description": "当前用户是否可以更改此共享网盘的domainUsersOnly限制"
+						},
+						"canChangeDriveBackground": {
+							"displayName": "可更改云端硬盘背景",
+							"description": "当前用户是否可以更改此共享云端硬盘的背景"
+						},
+						"canChangeDriveMembersOnlyRestriction": {
+							"displayName": "可更改仅限网盘成员访问限制",
+							"description": "当前用户是否可以更改此共享网盘的仅限网盘成员访问限制"
+						},
+						"canComment": {
+							"displayName": "可评论",
+							"description": "当前用户是否可以在此共享云端硬盘中的文件上评论"
+						},
+						"canCopy": {
+							"displayName": "可复制",
+							"description": "当前用户是否可以在此共享云端硬盘中复制文件"
+						},
+						"canDeleteChildren": {
+							"displayName": "可删除子项",
+							"description": "当前用户是否可从此共享云端硬盘的文件夹中删除子项"
+						},
+						"canDeleteDrive": {
+							"displayName": "能否删除云端硬盘",
+							"description": "当前用户能否删除此共享云端硬盘。如果共享云端硬盘内存在未清空回收站的项，尝试删除仍可能失败。"
+						},
+						"canDownload": {
+							"displayName": "可下载",
+							"description": "当前用户能否在此共享云端硬盘中下载文件"
+						},
+						"canEdit": {
+							"displayName": "可编辑",
+							"description": "当前用户是否可以在此共享云端硬盘中编辑文件"
+						},
+						"canListChildren": {
+							"displayName": "可列出子项",
+							"description": "当前用户能否列出此共享云端硬盘中文件夹的子项"
+						},
+						"canManageMembers": {
+							"displayName": "可以管理成员",
+							"description": "当前用户是否可向此共享云端硬盘添加成员、移除成员或更改其角色"
+						},
+						"canReadRevisions": {
+							"displayName": "可读取修订版本",
+							"description": "当前用户能否读取此共享云端硬盘中文件的修订版本资源"
+						},
+						"canRename": {
+							"displayName": "可重命名",
+							"description": "当前用户是否可以在此共享云端硬盘中重命名文件或文件夹"
+						},
+						"canRenameDrive": {
+							"displayName": "可重命名云端硬盘",
+							"description": "当前用户是否可以重命名此共享云端硬盘"
+						},
+						"canShare": {
+							"displayName": "可共享",
+							"description": "当前用户是否可以重命名此共享云端硬盘"
+						},
+						"canTrashChildren": {
+							"displayName": "能否删除子项",
+							"description": "当前用户能否从此共享云端硬盘的文件夹中删除子项"
+						}
+					}
+				},
+				"colorRgb": {
+					"displayName": "颜色 RGB",
+					"description": "此共享网盘的颜色，以RGB十六进制字符串表示"
+				},
+				"createdTime": {
+					"displayName": "创建时间",
+					"description": "共享驱动器创建的时间（RFC 3339 日期时间格式）"
+				},
+				"hidden": {
+					"displayName": "隐藏",
+					"description": "共享驱动器是否在默认视图中隐藏"
+				},
+				"restrictions": {
+					"displayName": "限制",
+					"placeholder": "添加字段",
+					"options": {
+						"adminManagedRestrictions": {
+							"displayName": "管理员管理的限制",
+							"description": "是否应为读者和评论者禁用在此共享网盘中复制、打印或下载文件的选项。当此限制设置为 true 时，它将覆盖此共享网盘中任何文件的同名字段为 true。"
+						},
+						"copyRequiresWriterPermission": {
+							"displayName": "复制需要写入权限",
+							"description": "是否应为读者和评论者禁用在此共享网盘中复制、打印或下载文件的选项。当此限制设置为 true 时，它将覆盖此共享网盘中任何文件的同名字段为 true。"
+						},
+						"domainUsersOnly": {
+							"displayName": "仅限网域用户",
+							"description": "是否将此共享云端硬盘及其内部项目的访问权限限制为属于该共享云端硬盘所属网域的用户。此限制可能被此共享云端硬盘外部控制的其他共享策略覆盖。"
+						},
+						"driveMembersOnly": {
+							"displayName": "仅限网盘成员访问",
+							"description": "是否限制对此共享网盘内项目的访问权限，仅限其成员"
+						}
+					}
+				},
+				"q": {
+					"displayName": "查询",
+					"description": "用于搜索共享网盘的查询字符串。请参阅<a href=\"https://developers.google.com/drive/api/v3/search-shareddrives\">“搜索共享网盘”</a>指南了解支持的语法。"
+				},
+				"appPropertiesUi": {
+					"displayName": "应用属性",
+					"description": "一组任意键值对集合，仅对请求应用私有",
+					"placeholder": "添加属性",
+					"multipleValueButtonText": "添加属性",
+					"options": {
+						"appPropertyValues": {
+							"displayName": "应用属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要添加的键名"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为此键设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"appPropertyValues": {
+							"displayName": "应用属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要添加的键名"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为此键设置的值"
+								}
+							}
+						},
+						"appPropertiesUi": {
+							"displayName": "应用属性",
+							"placeholder": "添加属性"
+						}
+					}
+				},
+				"propertiesUi": {
+					"displayName": "属性",
+					"description": "一个可供所有应用查看的任意键值对集合",
+					"placeholder": "添加属性",
+					"multipleValueButtonText": "添加属性",
+					"options": {
+						"propertyValues": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要添加的键名"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为此键设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"propertyValues": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要添加的键名"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为此键设置的值"
+								}
+							}
+						},
+						"propertiesUi": {
+							"displayName": "属性",
+							"placeholder": "添加属性"
+						}
+					}
+				}
+			}
+		},
+		"useQueryString": {
+			"displayName": "使用查询字符串",
+			"description": "是否应使用查询字符串筛选结果"
+		},
+		"queryString": {
+			"displayName": "查询字符串",
+			"description": "用于仅返回特定文件的查询",
+			"placeholder": "名称包含'发票'"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"queryFilters": {
+			"displayName": "筛选器",
+			"description": "用于仅返回特定文件的筛选器",
+			"placeholder": "添加筛选器",
+			"multipleValueButtonText": "添加筛选器",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"options": {
+						"operation": {
+							"displayName": "操作",
+							"options": {
+								"contains": {
+									"displayName": "包含"
+								},
+								"is": {
+									"displayName": "是"
+								},
+								"isNot": {
+									"displayName": "不是"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "操作的值"
+						}
+					}
+				},
+				"mimeType": {
+					"displayName": "MIME类型",
+					"options": {
+						"mimeType": {
+							"displayName": "MIME类型",
+							"description": "要返回文件的MIME类型",
+							"options": {
+								"application/vnd.google-apps.drive-sdk": {
+									"displayName": "第三方快捷方式"
+								},
+								"application/vnd.google-apps.audio": {
+									"displayName": "音频"
+								},
+								"custom": {
+									"displayName": "自定义MIME类型"
+								},
+								"application/vnd.google-apps.script": {
+									"displayName": "Google Apps Script"
+								},
+								"application/vnd.google-apps.document": {
+									"displayName": "Google 文档"
+								},
+								"application/vnd.google-apps.drawing": {
+									"displayName": "Google绘图"
+								},
+								"application/vnd.google-apps.file": {
+									"displayName": "Google Drive 文件"
+								},
+								"application/vnd.google-apps.folder": {
+									"displayName": "Google Drive 文件夹"
+								},
+								"application/vnd.google-apps.form": {
+									"displayName": "Google表单"
+								},
+								"application/vnd.google-apps.fusiontable": {
+									"displayName": "Google Fusion Tables"
+								},
+								"application/vnd.google-apps.map": {
+									"displayName": "Google 我的地图"
+								},
+								"application/vnd.google-apps.spreadsheet": {
+									"displayName": "Google Sheets"
+								},
+								"application/vnd.google-apps.site": {
+									"displayName": "Google协作平台"
+								},
+								"application/vnd.google-apps.presentation": {
+									"displayName": "Google 幻灯片"
+								},
+								"application/vnd.google-apps.photo": {
+									"displayName": "照片"
+								},
+								"application/vnd.google-apps.unknown": {
+									"displayName": "未知"
+								},
+								"application/vnd.google-apps.video": {
+									"displayName": "视频"
+								}
+							}
+						},
+						"customMimeType": {
+							"displayName": "自定义MIME类型"
+						}
+					}
+				}
+			},
+			"values": {
+				"name": {
+					"displayName": "名称",
+					"options": {
+						"operation": {
+							"displayName": "操作",
+							"options": {
+								"contains": {
+									"displayName": "包含"
+								},
+								"is": {
+									"displayName": "是"
+								},
+								"isNot": {
+									"displayName": "不是"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "操作的值"
+						}
+					}
+				},
+				"mimeType": {
+					"displayName": "MIME类型",
+					"options": {
+						"mimeType": {
+							"displayName": "MIME类型",
+							"description": "要返回文件的MIME类型",
+							"options": {
+								"application/vnd.google-apps.drive-sdk": {
+									"displayName": "第三方快捷方式"
+								},
+								"application/vnd.google-apps.audio": {
+									"displayName": "音频"
+								},
+								"custom": {
+									"displayName": "自定义MIME类型"
+								},
+								"application/vnd.google-apps.script": {
+									"displayName": "Google Apps Script"
+								},
+								"application/vnd.google-apps.document": {
+									"displayName": "Google 文档"
+								},
+								"application/vnd.google-apps.drawing": {
+									"displayName": "Google绘图"
+								},
+								"application/vnd.google-apps.file": {
+									"displayName": "Google Drive 文件"
+								},
+								"application/vnd.google-apps.folder": {
+									"displayName": "Google Drive 文件夹"
+								},
+								"application/vnd.google-apps.form": {
+									"displayName": "Google表单"
+								},
+								"application/vnd.google-apps.fusiontable": {
+									"displayName": "Google Fusion Tables"
+								},
+								"application/vnd.google-apps.map": {
+									"displayName": "Google 我的地图"
+								},
+								"application/vnd.google-apps.spreadsheet": {
+									"displayName": "Google Sheets"
+								},
+								"application/vnd.google-apps.site": {
+									"displayName": "Google协作平台"
+								},
+								"application/vnd.google-apps.presentation": {
+									"displayName": "Google 幻灯片"
+								},
+								"application/vnd.google-apps.photo": {
+									"displayName": "照片"
+								},
+								"application/vnd.google-apps.unknown": {
+									"displayName": "未知"
+								},
+								"application/vnd.google-apps.video": {
+									"displayName": "视频"
+								}
+							}
+						},
+						"customMimeType": {
+							"displayName": "自定义MIME类型"
+						}
+					}
+				},
+				"queryFilters": {
+					"displayName": "筛选器",
+					"placeholder": "添加筛选器"
+				}
+			}
+		},
+		"permissionsUi": {
+			"displayName": "权限",
+			"placeholder": "添加权限",
+			"options": {
+				"permissionsValues": {
+					"displayName": "权限",
+					"options": {
+						"role": {
+							"displayName": "角色",
+							"options": {
+								"commenter": {
+									"displayName": "评论者"
+								},
+								"fileOrganizer": {
+									"displayName": "文件整理器"
+								},
+								"organizer": {
+									"displayName": "组织者"
+								},
+								"owner": {
+									"displayName": "所有者"
+								},
+								"reader": {
+									"displayName": "读取器"
+								},
+								"writer": {
+									"displayName": "编写器"
+								}
+							}
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "有关不同类型的详细信息，请参阅<a href=\"https://developers.google.com/drive/api/v3/ref-roles\">此处</a>",
+							"options": {
+								"user": {
+									"displayName": "用户"
+								},
+								"group": {
+									"displayName": "分组"
+								},
+								"domain": {
+									"displayName": "域名"
+								},
+								"anyone": {
+									"displayName": "任何人"
+								}
+							}
+						},
+						"emailAddress": {
+							"displayName": "邮箱地址",
+							"description": "此权限所指用户或群组的电子邮件地址"
+						},
+						"domain": {
+							"displayName": "域名",
+							"description": "此权限所指的域名"
+						},
+						"allowFileDiscovery": {
+							"displayName": "允许文件发现",
+							"description": "此权限是否允许通过搜索发现文件"
+						}
+					}
+				}
+			},
+			"values": {
+				"permissionsValues": {
+					"displayName": "权限",
+					"options": {
+						"role": {
+							"displayName": "角色",
+							"options": {
+								"commenter": {
+									"displayName": "评论者"
+								},
+								"fileOrganizer": {
+									"displayName": "文件整理器"
+								},
+								"organizer": {
+									"displayName": "组织者"
+								},
+								"owner": {
+									"displayName": "所有者"
+								},
+								"reader": {
+									"displayName": "读取器"
+								},
+								"writer": {
+									"displayName": "编写器"
+								}
+							}
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "有关不同类型的详细信息，请参阅<a href=\"https://developers.google.com/drive/api/v3/ref-roles\">此处</a>",
+							"options": {
+								"user": {
+									"displayName": "用户"
+								},
+								"group": {
+									"displayName": "分组"
+								},
+								"domain": {
+									"displayName": "域名"
+								},
+								"anyone": {
+									"displayName": "任何人"
+								}
+							}
+						},
+						"emailAddress": {
+							"displayName": "邮箱地址",
+							"description": "此权限所指用户或群组的电子邮件地址"
+						},
+						"domain": {
+							"displayName": "域名",
+							"description": "此权限所指的域名"
+						},
+						"allowFileDiscovery": {
+							"displayName": "允许文件发现",
+							"description": "此权限是否允许通过搜索发现文件"
+						}
+					}
+				},
+				"permissionsUi": {
+					"displayName": "权限",
+					"placeholder": "添加权限"
+				}
+			}
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "要上传文件的文本内容"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加选项",
+			"options": {
+				"fileName": {
+					"displayName": "文件名",
+					"description": "文件的名称"
+				},
+				"keepRevisionForever": {
+					"displayName": "永久保留修订版本",
+					"description": "是否在新头部修订版本中设置'keepForever'字段。此设置仅适用于Google Drive中包含二进制内容的文件。每个文件最多只能永久保留200个修订版本。若达到限制，请尝试删除已固定的修订版本。"
+				},
+				"trashed": {
+					"displayName": "移至回收站",
+					"description": "是否将文件移至回收站。仅文件所有者可执行此操作。"
+				},
+				"ocrLanguage": {
+					"displayName": "OCR语言",
+					"description": "图像导入期间用于OCR处理的语言提示（ISO 639-1代码）"
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "要设置的父级ID"
+				},
+				"useContentAsIndexableText": {
+					"displayName": "使用内容作为可索引文本",
+					"description": "是否将上传的内容用作可索引文本"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "此共享云端硬盘的名称",
+			"placeholder": "发票"
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，响应仅包含文件的ID。如果激活此选项，它将自动解析数据。"
+		},
+		"parents": {
+			"displayName": "父文件夹",
+			"description": "包含此文件的父文件夹ID"
+		},
+		"driveId": {
+			"displayName": "驱动器",
+			"description": "驱动器的ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		}
+	}
+}

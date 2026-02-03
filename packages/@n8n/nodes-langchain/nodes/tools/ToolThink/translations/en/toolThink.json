@@ -1,0 +1,16 @@
+{
+	"header": {
+		"displayName": "Think Tool",
+		"description": "Invite the AI agent to do some thinking"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"description": {
+			"displayName": "Think Tool Description",
+			"description": "The thinking tool's description",
+			"placeholder": "[Describe your thinking tool here, explaining how it will help the AI think]"
+		}
+	}
+}

@@ -1,0 +1,26 @@
+{
+	"header": {
+		"displayName": "Brevo Trigger",
+		"description": "Starts the workflow when Brevo events occur"
+	},
+	"nodeView": {
+		"type": {
+			"displayName": "Resource",
+			"options": {
+				"inbound": {
+					"displayName": "Inbound"
+				},
+				"marketing": {
+					"displayName": "Marketing"
+				},
+				"transactional": {
+					"displayName": "Transactional"
+				}
+			}
+		},
+		"events": {
+			"displayName": "Trigger On",
+			"placeholder": "Add Event"
+		}
+	}
+}

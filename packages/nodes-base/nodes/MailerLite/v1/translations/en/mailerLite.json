@@ -1,0 +1,220 @@
+{
+	"header": {
+		"displayName": "MailerLite",
+		"description": "Consume Mailer Lite API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"subscriber": {
+					"displayName": "Subscriber"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new subscriber"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get an subscriber"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many subscribers"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update an subscriber"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email of new subscriber",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"confirmation_timestamp": {
+					"displayName": "Confirmation Timestamp"
+				},
+				"confirmation_ip": {
+					"displayName": "Confirmation IP"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Filter by custom fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"resubscribe": {
+					"displayName": "Resubscribe",
+					"description": "Whether to reactivate subscriber"
+				},
+				"signup_ip": {
+					"displayName": "Signup IP"
+				},
+				"signup_timestamp": {
+					"displayName": "Signup Timestamp"
+				},
+				"type": {
+					"displayName": "Type",
+					"options": {
+						"active": {
+							"displayName": "Active"
+						},
+						"unsubscribed": {
+							"displayName": "Unsubscribed"
+						},
+						"unconfirmed": {
+							"displayName": "Unconfirmed"
+						}
+					}
+				}
+			}
+		},
+		"subscriberId": {
+			"displayName": "Subscriber Email",
+			"description": "Email of subscriber to get"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Filter by custom fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"resend_autoresponders": {
+					"displayName": "Resend Autoresponders",
+					"description": "Whether it is needed to resend autoresponders"
+				},
+				"type": {
+					"displayName": "Type",
+					"options": {
+						"active": {
+							"displayName": "Active"
+						},
+						"unsubscribed": {
+							"displayName": "Unsubscribed"
+						},
+						"unconfirmed": {
+							"displayName": "Unconfirmed"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"type": {
+					"displayName": "Type",
+					"options": {
+						"active": {
+							"displayName": "Active"
+						},
+						"unsubscribed": {
+							"displayName": "Unsubscribed"
+						},
+						"unconfirmed": {
+							"displayName": "Unconfirmed"
+						}
+					}
+				}
+			}
+		}
+	}
+}

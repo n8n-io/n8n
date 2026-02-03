@@ -1,0 +1,39 @@
+{
+	"header": {
+		"displayName": "Invoice Ninja 触发器",
+		"description": "当 Invoice Ninja 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"apiVersion": {
+			"displayName": "API 版本",
+			"options": {
+				"v4": {
+					"displayName": "版本 4"
+				},
+				"v5": {
+					"displayName": "版本 5"
+				}
+			}
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"create_client": {
+					"displayName": "客户端已创建"
+				},
+				"create_invoice": {
+					"displayName": "发票已创建"
+				},
+				"create_payment": {
+					"displayName": "付款已创建"
+				},
+				"create_quote": {
+					"displayName": "报价已创建"
+				},
+				"create_vendor": {
+					"displayName": "供应商已创建"
+				}
+			}
+		}
+	}
+}

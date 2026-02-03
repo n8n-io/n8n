@@ -1,0 +1,1797 @@
+{
+	"header": {
+		"displayName": "QuickBooks Online",
+		"description": "使用 QuickBooks Online API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"bill": {
+					"displayName": "账单"
+				},
+				"customer": {
+					"displayName": "客户"
+				},
+				"employee": {
+					"displayName": "员工"
+				},
+				"estimate": {
+					"displayName": "估算"
+				},
+				"invoice": {
+					"displayName": "发票"
+				},
+				"item": {
+					"displayName": "项目"
+				},
+				"payment": {
+					"displayName": "付款"
+				},
+				"purchase": {
+					"displayName": "购买"
+				},
+				"transaction": {
+					"displayName": "交易"
+				},
+				"vendor": {
+					"displayName": "供应商"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				},
+				"send": {
+					"displayName": "发送"
+				},
+				"void": {
+					"displayName": "空"
+				},
+				"getReport": {
+					"displayName": "获取报告"
+				}
+			}
+		},
+		"VendorRef": {
+			"displayName": "供应商名称或ID",
+			"description": "账单对应的供应商ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"Line": {
+			"displayName": "行",
+			"description": "交易的单个行项目",
+			"placeholder": "添加行项目属性",
+			"multipleValueButtonText": "添加行项目属性",
+			"options": {
+				"accountId": {
+					"displayName": "账户ID"
+				},
+				"Amount": {
+					"displayName": "金额",
+					"description": "行项目的金额"
+				},
+				"Description": {
+					"displayName": "描述",
+					"description": "行项目的文本描述"
+				},
+				"DetailType": {
+					"displayName": "详情类型",
+					"options": {
+						"AccountBasedExpenseLineDetail": {
+							"displayName": "基于账户的费用行明细"
+						},
+						"ItemBasedExpenseLineDetail": {
+							"displayName": "基于项目的费用行明细"
+						},
+						"SalesItemLineDetail": {
+							"displayName": "销售项目行明细"
+						}
+					}
+				},
+				"itemId": {
+					"displayName": "项目名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"LineNum": {
+					"displayName": "位置",
+					"description": "行项目相对于其他项目的位置"
+				},
+				"TaxCodeRef": {
+					"displayName": "税码参考名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"Qty": {
+					"displayName": "数量",
+					"description": "行项目的单位数量"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"APAccountRef": {
+					"displayName": "应付账款账户",
+					"description": "账单将记入的应付账款账户",
+					"placeholder": "添加APA字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"APAccountRef": {
+							"displayName": "应付账款账户",
+							"placeholder": "添加APA字段"
+						}
+					}
+				},
+				"Balance": {
+					"displayName": "余额",
+					"description": "反映针对该交易已支付款项的余额"
+				},
+				"DueDate": {
+					"displayName": "截止日期",
+					"description": "交易付款到期日"
+				},
+				"SalesTermRef": {
+					"displayName": "销售条款",
+					"description": "与交易关联的销售条款",
+					"placeholder": "添加销售条款字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"SalesTermRef": {
+							"displayName": "销售条款",
+							"placeholder": "添加销售条款字段"
+						}
+					}
+				},
+				"TotalAmt": {
+					"displayName": "总金额",
+					"description": "交易总金额"
+				},
+				"TxnDate": {
+					"displayName": "交易日期",
+					"description": "交易发生日期"
+				},
+				"Active": {
+					"displayName": "激活状态",
+					"description": "该员工当前是否已在QuickBooks中启用"
+				},
+				"BalanceWithJobs": {
+					"displayName": "作业余额",
+					"description": "客户（或作业）及其所有子作业的累计未结余额金额"
+				},
+				"BillAddr": {
+					"displayName": "账单地址",
+					"placeholder": "添加账单地址字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"City": {
+									"displayName": "城市"
+								},
+								"Line1": {
+									"displayName": "第1行"
+								},
+								"PostalCode": {
+									"displayName": "邮政编码"
+								},
+								"Lat": {
+									"displayName": "纬度"
+								},
+								"Long": {
+									"displayName": "经度"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "国家行政区划代码"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"City": {
+									"displayName": "城市"
+								},
+								"Line1": {
+									"displayName": "第1行"
+								},
+								"PostalCode": {
+									"displayName": "邮政编码"
+								},
+								"Lat": {
+									"displayName": "纬度"
+								},
+								"Long": {
+									"displayName": "经度"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "国家行政区划代码"
+								}
+							}
+						},
+						"BillAddr": {
+							"displayName": "账单地址",
+							"placeholder": "添加账单地址字段"
+						}
+					}
+				},
+				"BillWithParent": {
+					"displayName": "与父级合并计费",
+					"description": "是否将此客户与其父级合并计费"
+				},
+				"CompanyName": {
+					"displayName": "公司名称"
+				},
+				"FamilyName": {
+					"displayName": "姓氏"
+				},
+				"FullyQualifiedName": {
+					"displayName": "完全限定名称"
+				},
+				"GivenName": {
+					"displayName": "名字"
+				},
+				"PreferredDeliveryMethod": {
+					"displayName": "首选交付方式",
+					"options": {
+						"Print": {
+							"displayName": "打印"
+						},
+						"Email": {
+							"displayName": "电子邮件"
+						},
+						"None": {
+							"displayName": "无"
+						}
+					}
+				},
+				"PrimaryEmailAddr": {
+					"displayName": "主邮箱地址"
+				},
+				"PrimaryPhone": {
+					"displayName": "主要电话"
+				},
+				"PrintOnCheckName": {
+					"displayName": "支票打印名称",
+					"description": "支票上打印的供应商名称"
+				},
+				"Taxable": {
+					"displayName": "应税",
+					"description": "此客户的交易是否应税"
+				},
+				"BillableTime": {
+					"displayName": "计费时间"
+				},
+				"DisplayName": {
+					"displayName": "显示名称"
+				},
+				"SSN": {
+					"displayName": "社会保障号码"
+				},
+				"ApplyTaxAfterDiscount": {
+					"displayName": "折扣后应用税费"
+				},
+				"BillEmail": {
+					"displayName": "账单邮箱",
+					"description": "发票将发送至的电子邮件地址"
+				},
+				"CustomFields": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"Field": {
+							"displayName": "字段",
+							"options": {
+								"DefinitionId": {
+									"displayName": "字段定义名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"StringValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"Field": {
+							"displayName": "字段",
+							"options": {
+								"DefinitionId": {
+									"displayName": "字段定义名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"StringValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"CustomFields": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"CustomerMemo": {
+					"displayName": "客户备忘录",
+					"description": "用户输入给客户的消息。此消息在最终用户的交易记录中可见。"
+				},
+				"DocNumber": {
+					"displayName": "单据编号",
+					"description": "交易参考编号"
+				},
+				"EmailStatus": {
+					"displayName": "邮件状态",
+					"options": {
+						"NotSet": {
+							"displayName": "未设置"
+						},
+						"NeedToSend": {
+							"displayName": "需要发送"
+						},
+						"EmailSent": {
+							"displayName": "邮件已发送"
+						}
+					}
+				},
+				"PrintStatus": {
+					"displayName": "打印状态",
+					"options": {
+						"NotSet": {
+							"displayName": "未设置"
+						},
+						"NeedToPrint": {
+							"displayName": "需要打印"
+						},
+						"PrintComplete": {
+							"displayName": "打印完成"
+						}
+					}
+				},
+				"ShipAddr": {
+					"displayName": "收货地址",
+					"placeholder": "添加收货地址字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"City": {
+									"displayName": "城市"
+								},
+								"Line1": {
+									"displayName": "第1行"
+								},
+								"PostalCode": {
+									"displayName": "邮政编码"
+								},
+								"Lat": {
+									"displayName": "纬度"
+								},
+								"Long": {
+									"displayName": "经度"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "国家行政区划代码"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"City": {
+									"displayName": "城市"
+								},
+								"Line1": {
+									"displayName": "第1行"
+								},
+								"PostalCode": {
+									"displayName": "邮政编码"
+								},
+								"Lat": {
+									"displayName": "纬度"
+								},
+								"Long": {
+									"displayName": "经度"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "国家行政区划代码"
+								}
+							}
+						},
+						"ShipAddr": {
+							"displayName": "收货地址",
+							"placeholder": "添加收货地址字段"
+						}
+					}
+				},
+				"TotalTax": {
+					"displayName": "总税额",
+					"description": "产生的总税额"
+				},
+				"AcctNum": {
+					"displayName": "账户编号"
+				},
+				"Vendor1099": {
+					"displayName": "供应商 1099",
+					"description": "供应商是否为独立承包商，在年底收到 1099-MISC 表格"
+				}
+			}
+		},
+		"billId": {
+			"displayName": "账单ID",
+			"description": "要更新的账单ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"query": {
+					"displayName": "查询",
+					"description": "供应商筛选条件。查看<a href=\"https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries\">指南</a>了解支持的语法。",
+					"placeholder": "WHERE Metadata.LastUpdatedTime > '2021-01-01'"
+				},
+				"appaid": {
+					"displayName": "应付账款已付",
+					"options": {
+						"All": {
+							"displayName": "全部"
+						},
+						"Paid": {
+							"displayName": "已付费"
+						},
+						"Unpaid": {
+							"displayName": "未支付"
+						}
+					}
+				},
+				"arpaid": {
+					"displayName": "应收账款已付",
+					"options": {
+						"All": {
+							"displayName": "全部"
+						},
+						"Paid": {
+							"displayName": "已付费"
+						},
+						"Unpaid": {
+							"displayName": "未支付"
+						}
+					}
+				},
+				"cleared": {
+					"displayName": "已清除状态",
+					"options": {
+						"Cleared": {
+							"displayName": "已清除"
+						},
+						"Uncleared": {
+							"displayName": "未结算"
+						},
+						"Reconciled": {
+							"displayName": "已对账"
+						},
+						"Deposited": {
+							"displayName": "已存入"
+						}
+					}
+				},
+				"columns": {
+					"displayName": "列",
+					"description": "要返回的列"
+				},
+				"customer": {
+					"displayName": "客户名称或ID",
+					"description": "用于筛选结果的客户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"dateRangeCustom": {
+					"displayName": "日期范围（自定义）",
+					"placeholder": "添加日期范围",
+					"options": {
+						"dateRangeCustomProperties": {
+							"displayName": "日期范围属性",
+							"options": {
+								"start_date": {
+									"displayName": "开始日期",
+									"description": "用于筛选结果的日期范围的开始日期"
+								},
+								"end_date": {
+									"displayName": "结束日期",
+									"description": "用于筛选结果的日期范围结束日期"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRangeCustomProperties": {
+							"displayName": "日期范围属性",
+							"options": {
+								"start_date": {
+									"displayName": "开始日期",
+									"description": "用于筛选结果的日期范围的开始日期"
+								},
+								"end_date": {
+									"displayName": "结束日期",
+									"description": "用于筛选结果的日期范围结束日期"
+								}
+							}
+						},
+						"dateRangeCustom": {
+							"displayName": "日期范围（自定义）",
+							"placeholder": "添加日期范围"
+						}
+					}
+				},
+				"date_macro": {
+					"displayName": "日期范围（预定义）",
+					"description": "用于筛选结果的预定义日期范围",
+					"options": {
+						"Today": {
+							"displayName": "今天"
+						},
+						"Yesterday": {
+							"displayName": "昨天"
+						},
+						"This Week": {
+							"displayName": "本周"
+						},
+						"Last Week": {
+							"displayName": "上周"
+						},
+						"This Week-to-Date": {
+							"displayName": "本周至今"
+						},
+						"Last Week-to-Date": {
+							"displayName": "上周至今"
+						},
+						"Next Week": {
+							"displayName": "下周"
+						},
+						"Next 4 Weeks": {
+							"displayName": "未来4周"
+						},
+						"This Month": {
+							"displayName": "本月"
+						},
+						"Last Month": {
+							"displayName": "上个月"
+						},
+						"This Month-to-Date": {
+							"displayName": "本月至今"
+						},
+						"Last Month-to-Date": {
+							"displayName": "上月至今"
+						},
+						"Next Month": {
+							"displayName": "下个月"
+						},
+						"This Fiscal Quarter": {
+							"displayName": "本财季"
+						},
+						"Last Fiscal Quarter": {
+							"displayName": "上财季"
+						},
+						"This Fiscal Quarter-to-Date": {
+							"displayName": "本财季至今"
+						},
+						"Last Fiscal Quarter-to-Date": {
+							"displayName": "上财季至今"
+						},
+						"Next Fiscal Quarter": {
+							"displayName": "下一财季"
+						},
+						"This Fiscal Year": {
+							"displayName": "本财年"
+						},
+						"Last Fiscal Year": {
+							"displayName": "上一财年"
+						},
+						"This Fiscal Year-to-Date": {
+							"displayName": "本财年至今"
+						},
+						"Last Fiscal Year-to-Date": {
+							"displayName": "上一财年至今"
+						},
+						"Next Fiscal Year": {
+							"displayName": "下一财年"
+						}
+					}
+				},
+				"dateRangeCreationCustom": {
+					"displayName": "创建日期范围（自定义）",
+					"placeholder": "添加创建日期范围",
+					"options": {
+						"dateRangeCreationCustomProperties": {
+							"displayName": "创建日期范围属性",
+							"options": {
+								"start_createdate": {
+									"displayName": "开始创建日期",
+									"description": "用于筛选结果的账户创建日期范围的开始日期"
+								},
+								"end_createdate": {
+									"displayName": "创建结束日期",
+									"description": "用于筛选结果的账户创建日期范围结束日期"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRangeCreationCustomProperties": {
+							"displayName": "创建日期范围属性",
+							"options": {
+								"start_createdate": {
+									"displayName": "开始创建日期",
+									"description": "用于筛选结果的账户创建日期范围的开始日期"
+								},
+								"end_createdate": {
+									"displayName": "创建结束日期",
+									"description": "用于筛选结果的账户创建日期范围结束日期"
+								}
+							}
+						},
+						"dateRangeCreationCustom": {
+							"displayName": "创建日期范围（自定义）",
+							"placeholder": "添加创建日期范围"
+						}
+					}
+				},
+				"createdate_macro": {
+					"displayName": "创建日期范围（预定义）",
+					"description": "预定义报告账户创建日期范围",
+					"options": {
+						"Today": {
+							"displayName": "今天"
+						},
+						"Yesterday": {
+							"displayName": "昨天"
+						},
+						"This Week": {
+							"displayName": "本周"
+						},
+						"Last Week": {
+							"displayName": "上周"
+						},
+						"This Week-to-Date": {
+							"displayName": "本周至今"
+						},
+						"Last Week-to-Date": {
+							"displayName": "上周至今"
+						},
+						"Next Week": {
+							"displayName": "下周"
+						},
+						"Next 4 Weeks": {
+							"displayName": "未来4周"
+						},
+						"This Month": {
+							"displayName": "本月"
+						},
+						"Last Month": {
+							"displayName": "上个月"
+						},
+						"This Month-to-Date": {
+							"displayName": "本月至今"
+						},
+						"Last Month-to-Date": {
+							"displayName": "上月至今"
+						},
+						"Next Month": {
+							"displayName": "下个月"
+						},
+						"This Fiscal Quarter": {
+							"displayName": "本财季"
+						},
+						"Last Fiscal Quarter": {
+							"displayName": "上财季"
+						},
+						"This Fiscal Quarter-to-Date": {
+							"displayName": "本财季至今"
+						},
+						"Last Fiscal Quarter-to-Date": {
+							"displayName": "上财季至今"
+						},
+						"Next Fiscal Quarter": {
+							"displayName": "下一财季"
+						},
+						"This Fiscal Year": {
+							"displayName": "本财年"
+						},
+						"Last Fiscal Year": {
+							"displayName": "上一财年"
+						},
+						"This Fiscal Year-to-Date": {
+							"displayName": "本财年至今"
+						},
+						"Last Fiscal Year-to-Date": {
+							"displayName": "上一财年至今"
+						},
+						"Next Fiscal Year": {
+							"displayName": "下一财年"
+						}
+					}
+				},
+				"dateRangeDueCustom": {
+					"displayName": "截止日期范围（自定义）",
+					"placeholder": "添加截止日期范围",
+					"options": {
+						"dateRangeDueCustomProperties": {
+							"displayName": "截止日期范围属性",
+							"options": {
+								"start_duedate": {
+									"displayName": "开始截止日期",
+									"description": "用于筛选结果的截止日期范围的开始日期"
+								},
+								"end_duedate": {
+									"displayName": "结束截止日期",
+									"description": "用于筛选结果的截止日期范围的结束日期"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRangeDueCustomProperties": {
+							"displayName": "截止日期范围属性",
+							"options": {
+								"start_duedate": {
+									"displayName": "开始截止日期",
+									"description": "用于筛选结果的截止日期范围的开始日期"
+								},
+								"end_duedate": {
+									"displayName": "结束截止日期",
+									"description": "用于筛选结果的截止日期范围的结束日期"
+								}
+							}
+						},
+						"dateRangeDueCustom": {
+							"displayName": "截止日期范围（自定义）",
+							"placeholder": "添加截止日期范围"
+						}
+					}
+				},
+				"duedate_macro": {
+					"displayName": "截止日期范围（预定义）",
+					"description": "用于筛选结果的预定义截止日期范围",
+					"options": {
+						"Today": {
+							"displayName": "今天"
+						},
+						"Yesterday": {
+							"displayName": "昨天"
+						},
+						"This Week": {
+							"displayName": "本周"
+						},
+						"Last Week": {
+							"displayName": "上周"
+						},
+						"This Week-to-Date": {
+							"displayName": "本周至今"
+						},
+						"Last Week-to-Date": {
+							"displayName": "上周至今"
+						},
+						"Next Week": {
+							"displayName": "下周"
+						},
+						"Next 4 Weeks": {
+							"displayName": "未来4周"
+						},
+						"This Month": {
+							"displayName": "本月"
+						},
+						"Last Month": {
+							"displayName": "上个月"
+						},
+						"This Month-to-Date": {
+							"displayName": "本月至今"
+						},
+						"Last Month-to-Date": {
+							"displayName": "上月至今"
+						},
+						"Next Month": {
+							"displayName": "下个月"
+						},
+						"This Fiscal Quarter": {
+							"displayName": "本财季"
+						},
+						"Last Fiscal Quarter": {
+							"displayName": "上财季"
+						},
+						"This Fiscal Quarter-to-Date": {
+							"displayName": "本财季至今"
+						},
+						"Last Fiscal Quarter-to-Date": {
+							"displayName": "上财季至今"
+						},
+						"Next Fiscal Quarter": {
+							"displayName": "下一财季"
+						},
+						"This Fiscal Year": {
+							"displayName": "本财年"
+						},
+						"Last Fiscal Year": {
+							"displayName": "上一财年"
+						},
+						"This Fiscal Year-to-Date": {
+							"displayName": "本财年至今"
+						},
+						"Last Fiscal Year-to-Date": {
+							"displayName": "上一财年至今"
+						},
+						"Next Fiscal Year": {
+							"displayName": "下一财年"
+						}
+					}
+				},
+				"dateRangeModificationCustom": {
+					"displayName": "修改日期的日期范围（自定义）",
+					"placeholder": "添加修改日期范围",
+					"options": {
+						"dateRangeModificationCustomProperties": {
+							"displayName": "修改日期范围属性",
+							"options": {
+								"start_moddate": {
+									"displayName": "开始修改日期",
+									"description": "用于筛选结果的账户修改日期范围的开始日期"
+								},
+								"end_moddate": {
+									"displayName": "结束修改日期",
+									"description": "用于筛选结果的账户修改日期范围的结束日期"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRangeModificationCustomProperties": {
+							"displayName": "修改日期范围属性",
+							"options": {
+								"start_moddate": {
+									"displayName": "开始修改日期",
+									"description": "用于筛选结果的账户修改日期范围的开始日期"
+								},
+								"end_moddate": {
+									"displayName": "结束修改日期",
+									"description": "用于筛选结果的账户修改日期范围的结束日期"
+								}
+							}
+						},
+						"dateRangeModificationCustom": {
+							"displayName": "修改日期的日期范围（自定义）",
+							"placeholder": "添加修改日期范围"
+						}
+					}
+				},
+				"moddate_macro": {
+					"displayName": "修改日期的日期范围（预定义）",
+					"description": "用于筛选结果的预定义账户修改日期范围",
+					"options": {
+						"Today": {
+							"displayName": "今天"
+						},
+						"Yesterday": {
+							"displayName": "昨天"
+						},
+						"This Week": {
+							"displayName": "本周"
+						},
+						"Last Week": {
+							"displayName": "上周"
+						},
+						"This Week-to-Date": {
+							"displayName": "本周至今"
+						},
+						"Last Week-to-Date": {
+							"displayName": "上周至今"
+						},
+						"Next Week": {
+							"displayName": "下周"
+						},
+						"Next 4 Weeks": {
+							"displayName": "未来4周"
+						},
+						"This Month": {
+							"displayName": "本月"
+						},
+						"Last Month": {
+							"displayName": "上个月"
+						},
+						"This Month-to-Date": {
+							"displayName": "本月至今"
+						},
+						"Last Month-to-Date": {
+							"displayName": "上月至今"
+						},
+						"Next Month": {
+							"displayName": "下个月"
+						},
+						"This Fiscal Quarter": {
+							"displayName": "本财季"
+						},
+						"Last Fiscal Quarter": {
+							"displayName": "上财季"
+						},
+						"This Fiscal Quarter-to-Date": {
+							"displayName": "本财季至今"
+						},
+						"Last Fiscal Quarter-to-Date": {
+							"displayName": "上财季至今"
+						},
+						"Next Fiscal Quarter": {
+							"displayName": "下一财季"
+						},
+						"This Fiscal Year": {
+							"displayName": "本财年"
+						},
+						"Last Fiscal Year": {
+							"displayName": "上一财年"
+						},
+						"This Fiscal Year-to-Date": {
+							"displayName": "本财年至今"
+						},
+						"Last Fiscal Year-to-Date": {
+							"displayName": "上一财年至今"
+						},
+						"Next Fiscal Year": {
+							"displayName": "下一财年"
+						}
+					}
+				},
+				"department": {
+					"displayName": "部门名称或ID",
+					"description": "用于筛选结果的部门。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"docnum": {
+					"displayName": "单据编号",
+					"description": "用于筛选结果的交易单据编号"
+				},
+				"group_by": {
+					"displayName": "分组依据",
+					"description": "用于分组结果的交易字段",
+					"options": {
+						"Account": {
+							"displayName": "账户"
+						},
+						"Customer": {
+							"displayName": "客户"
+						},
+						"Day": {
+							"displayName": "天"
+						},
+						"Employee": {
+							"displayName": "员工"
+						},
+						"Location": {
+							"displayName": "位置"
+						},
+						"Month": {
+							"displayName": "月份"
+						},
+						"Name": {
+							"displayName": "名称"
+						},
+						"None": {
+							"displayName": "无"
+						},
+						"Payment Method": {
+							"displayName": "支付方式"
+						},
+						"Quarter": {
+							"displayName": "季度"
+						},
+						"Transaction Type": {
+							"displayName": "交易类型"
+						},
+						"Vendor": {
+							"displayName": "供应商"
+						},
+						"Week": {
+							"displayName": "周"
+						},
+						"Year": {
+							"displayName": "年"
+						}
+					}
+				},
+				"memo": {
+					"displayName": "备忘录名称或ID",
+					"description": "用于筛选结果的备忘录。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"payment_Method": {
+					"displayName": "支付方式",
+					"description": "用于筛选结果的支付方式",
+					"options": {
+						"American Express": {
+							"displayName": "美国运通"
+						},
+						"Cash": {
+							"displayName": "现金"
+						},
+						"Check": {
+							"displayName": "检查"
+						},
+						"Dinners Club": {
+							"displayName": "Dinners Club"
+						},
+						"Discover": {
+							"displayName": "探索"
+						},
+						"Master Card": {
+							"displayName": "万事达卡"
+						},
+						"Visa": {
+							"displayName": "Visa"
+						}
+					}
+				},
+				"printed": {
+					"displayName": "打印状态",
+					"description": "用于筛选结果的打印状态",
+					"options": {
+						"Printed": {
+							"displayName": "已打印"
+						},
+						"To_be_printed": {
+							"displayName": "待打印"
+						}
+					}
+				},
+				"qzurl": {
+					"displayName": "快速缩放URL",
+					"description": "是否应生成快速缩放URL信息"
+				},
+				"sort_by": {
+					"displayName": "排序方式",
+					"description": "用于排序结果的列",
+					"options": {
+						"account_name": {
+							"displayName": "账户名称"
+						},
+						"create_by": {
+							"displayName": "创建者"
+						},
+						"create_date": {
+							"displayName": "创建日期"
+						},
+						"cust_msg": {
+							"displayName": "客户消息"
+						},
+						"dept_name": {
+							"displayName": "部门名称"
+						},
+						"due_date": {
+							"displayName": "截止日期"
+						},
+						"doc_num": {
+							"displayName": "单据编号"
+						},
+						"inv_date": {
+							"displayName": "发票日期"
+						},
+						"is_ap_paid": {
+							"displayName": "应付账款是否已付"
+						},
+						"is_cleared": {
+							"displayName": "已清除"
+						},
+						"last_mod_by": {
+							"displayName": "最后修改者"
+						},
+						"memo": {
+							"displayName": "备忘录"
+						},
+						"name": {
+							"displayName": "名称"
+						},
+						"other_account": {
+							"displayName": "其他账户"
+						},
+						"pmt_mthod": {
+							"displayName": "支付方式"
+						},
+						"is_no_post": {
+							"displayName": "发布中"
+						},
+						"printed": {
+							"displayName": "打印状态"
+						},
+						"sales_cust1": {
+							"displayName": "销售客户1"
+						},
+						"sales_cust2": {
+							"displayName": "销售客户2"
+						},
+						"sales_cust3": {
+							"displayName": "销售客户 3"
+						},
+						"term_name": {
+							"displayName": "术语名称"
+						},
+						"tracking_num": {
+							"displayName": "追踪号码"
+						},
+						"tx_date": {
+							"displayName": "交易日期"
+						},
+						"txn_type": {
+							"displayName": "交易类型"
+						}
+					}
+				},
+				"sort_order": {
+					"displayName": "排序顺序",
+					"options": {
+						"Ascend": {
+							"displayName": "提升"
+						},
+						"Descend": {
+							"displayName": "降序"
+						}
+					}
+				},
+				"source_account_type": {
+					"displayName": "源账户类型",
+					"description": "用于筛选结果的账户类型",
+					"options": {
+						"AccountsPayable": {
+							"displayName": "应付账款"
+						},
+						"AccountsReceivable": {
+							"displayName": "应收账款"
+						},
+						"Bank": {
+							"displayName": "银行"
+						},
+						"CostOfGoodsSold": {
+							"displayName": "销售成本"
+						},
+						"CreditCard": {
+							"displayName": "信用卡"
+						},
+						"Equity": {
+							"displayName": "股权"
+						},
+						"Expense": {
+							"displayName": "费用"
+						},
+						"FixedAsset": {
+							"displayName": "固定资产"
+						},
+						"Income": {
+							"displayName": "收入"
+						},
+						"LongTermLiability": {
+							"displayName": "长期负债"
+						},
+						"NonPosting": {
+							"displayName": "非发布"
+						},
+						"OtherAsset": {
+							"displayName": "其他资产"
+						},
+						"OtherCurrentAsset": {
+							"displayName": "其他流动资产"
+						},
+						"OtherCurrentLiability": {
+							"displayName": "其他流动负债"
+						},
+						"OtherExpense": {
+							"displayName": "其他费用"
+						},
+						"OtherIncome": {
+							"displayName": "其他收入"
+						}
+					}
+				},
+				"term": {
+					"displayName": "术语名称或ID",
+					"description": "用于筛选结果的术语。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"bothamount": {
+					"displayName": "交易金额",
+					"description": "用于筛选结果的货币金额"
+				},
+				"transaction_type": {
+					"displayName": "交易类型",
+					"description": "用于筛选结果的交易类型",
+					"options": {
+						"Bill": {
+							"displayName": "账单"
+						},
+						"BillPaymentCheck": {
+							"displayName": "账单支付检查"
+						},
+						"BillPaymentCreditCard": {
+							"displayName": "信用卡账单支付"
+						},
+						"BillableCharge": {
+							"displayName": "计费费用"
+						},
+						"CashPurchase": {
+							"displayName": "现金采购"
+						},
+						"Charge": {
+							"displayName": "收费"
+						},
+						"Check": {
+							"displayName": "检查"
+						},
+						"Credit": {
+							"displayName": "积分"
+						},
+						"CreditCardCharge": {
+							"displayName": "信用卡扣款"
+						},
+						"CreditCardCredit": {
+							"displayName": "信用卡额度"
+						},
+						"CreditMemo": {
+							"displayName": "贷项通知单"
+						},
+						"CreditRefund": {
+							"displayName": "信用退款"
+						},
+						"Deposit": {
+							"displayName": "存款"
+						},
+						"Estimate": {
+							"displayName": "估算"
+						},
+						"GlobalTaxAdjustment": {
+							"displayName": "全局税务调整"
+						},
+						"GlobalTaxPayment": {
+							"displayName": "全球税务支付"
+						},
+						"InventoryQuantityAdjustment": {
+							"displayName": "库存数量调整"
+						},
+						"Invoice": {
+							"displayName": "发票"
+						},
+						"JournalEntry": {
+							"displayName": "日记条目"
+						},
+						"PurchaseOrder": {
+							"displayName": "采购订单"
+						},
+						"ReceivePayment": {
+							"displayName": "接收付款"
+						},
+						"SalesReceipt": {
+							"displayName": "销售收据"
+						},
+						"Service Tax Defer": {
+							"displayName": "服务税延期"
+						},
+						"Service Tax Gross Adjustment": {
+							"displayName": "服务税总额调整"
+						},
+						"Service Tax Partial Utilisation": {
+							"displayName": "服务税部分使用"
+						},
+						"Service Tax Refund": {
+							"displayName": "服务税退税"
+						},
+						"Service Tax Reversal": {
+							"displayName": "服务税冲销"
+						},
+						"Statement": {
+							"displayName": "声明"
+						},
+						"TimeActivity": {
+							"displayName": "时间活动"
+						},
+						"Transfer": {
+							"displayName": "传输"
+						},
+						"VendorCredit": {
+							"displayName": "供应商信用"
+						}
+					}
+				},
+				"vendor": {
+					"displayName": "供应商名称或ID",
+					"description": "用于筛选结果的供应商。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"APAccountRef": {
+					"displayName": "应付账款账户",
+					"description": "账单将记入的应付账款账户",
+					"placeholder": "添加APA字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"APAccountRef": {
+							"displayName": "应付账款账户",
+							"placeholder": "添加APA字段"
+						}
+					}
+				},
+				"DueDate": {
+					"displayName": "截止日期",
+					"description": "交易付款到期日"
+				},
+				"SalesTermRef": {
+					"displayName": "销售条款",
+					"description": "与交易关联的销售条款",
+					"placeholder": "添加销售条款字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"SalesTermRef": {
+							"displayName": "销售条款",
+							"placeholder": "添加销售条款字段"
+						}
+					}
+				},
+				"TxnDate": {
+					"displayName": "交易日期",
+					"description": "交易发生日期"
+				},
+				"Active": {
+					"displayName": "激活状态",
+					"description": "该员工当前是否已在QuickBooks中启用"
+				},
+				"Balance": {
+					"displayName": "余额",
+					"description": "反映针对该交易已支付款项的余额"
+				},
+				"BalanceWithJobs": {
+					"displayName": "作业余额",
+					"description": "客户（或作业）及其所有子作业的累计未结余额金额"
+				},
+				"BillAddr": {
+					"displayName": "账单地址",
+					"placeholder": "添加账单地址字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"City": {
+									"displayName": "城市"
+								},
+								"Line1": {
+									"displayName": "第1行"
+								},
+								"PostalCode": {
+									"displayName": "邮政编码"
+								},
+								"Lat": {
+									"displayName": "纬度"
+								},
+								"Long": {
+									"displayName": "经度"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "国家行政区划代码"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"City": {
+									"displayName": "城市"
+								},
+								"Line1": {
+									"displayName": "第1行"
+								},
+								"PostalCode": {
+									"displayName": "邮政编码"
+								},
+								"Lat": {
+									"displayName": "纬度"
+								},
+								"Long": {
+									"displayName": "经度"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "国家行政区划代码"
+								}
+							}
+						},
+						"BillAddr": {
+							"displayName": "账单地址",
+							"placeholder": "添加账单地址字段"
+						}
+					}
+				},
+				"BillWithParent": {
+					"displayName": "与父级合并计费",
+					"description": "是否将此客户与其父级合并计费"
+				},
+				"CompanyName": {
+					"displayName": "公司名称"
+				},
+				"FamilyName": {
+					"displayName": "姓氏"
+				},
+				"FullyQualifiedName": {
+					"displayName": "完全限定名称"
+				},
+				"GivenName": {
+					"displayName": "名字"
+				},
+				"PreferredDeliveryMethod": {
+					"displayName": "首选交付方式",
+					"options": {
+						"Print": {
+							"displayName": "打印"
+						},
+						"Email": {
+							"displayName": "电子邮件"
+						},
+						"None": {
+							"displayName": "无"
+						}
+					}
+				},
+				"PrimaryEmailAddr": {
+					"displayName": "主邮箱地址"
+				},
+				"PrimaryPhone": {
+					"displayName": "主要电话"
+				},
+				"PrintOnCheckName": {
+					"displayName": "支票打印名称",
+					"description": "支票上打印的供应商名称"
+				},
+				"Taxable": {
+					"displayName": "应税",
+					"description": "此客户的交易是否应税"
+				},
+				"BillableTime": {
+					"displayName": "计费时间"
+				},
+				"DisplayName": {
+					"displayName": "显示名称"
+				},
+				"SSN": {
+					"displayName": "社会保障号码"
+				},
+				"ApplyTaxAfterDiscount": {
+					"displayName": "折扣后应用税费"
+				},
+				"BillEmail": {
+					"displayName": "账单邮箱",
+					"description": "发票将发送至的电子邮件地址"
+				},
+				"CustomFields": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"Field": {
+							"displayName": "字段",
+							"options": {
+								"DefinitionId": {
+									"displayName": "字段定义名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"StringValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"Field": {
+							"displayName": "字段",
+							"options": {
+								"DefinitionId": {
+									"displayName": "字段定义名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"StringValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"CustomFields": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"CustomerMemo": {
+					"displayName": "客户备忘录",
+					"description": "用户输入给客户的消息。此消息在最终用户的交易记录中可见。"
+				},
+				"DocNumber": {
+					"displayName": "单据编号",
+					"description": "交易参考编号"
+				},
+				"EmailStatus": {
+					"displayName": "邮件状态",
+					"options": {
+						"NotSet": {
+							"displayName": "未设置"
+						},
+						"NeedToSend": {
+							"displayName": "需要发送"
+						},
+						"EmailSent": {
+							"displayName": "邮件已发送"
+						}
+					}
+				},
+				"PrintStatus": {
+					"displayName": "打印状态",
+					"options": {
+						"NotSet": {
+							"displayName": "未设置"
+						},
+						"NeedToPrint": {
+							"displayName": "需要打印"
+						},
+						"PrintComplete": {
+							"displayName": "打印完成"
+						}
+					}
+				},
+				"ShipAddr": {
+					"displayName": "收货地址",
+					"placeholder": "添加收货地址字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"City": {
+									"displayName": "城市"
+								},
+								"Line1": {
+									"displayName": "第1行"
+								},
+								"PostalCode": {
+									"displayName": "邮政编码"
+								},
+								"Lat": {
+									"displayName": "纬度"
+								},
+								"Long": {
+									"displayName": "经度"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "国家行政区划代码"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"City": {
+									"displayName": "城市"
+								},
+								"Line1": {
+									"displayName": "第1行"
+								},
+								"PostalCode": {
+									"displayName": "邮政编码"
+								},
+								"Lat": {
+									"displayName": "纬度"
+								},
+								"Long": {
+									"displayName": "经度"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "国家行政区划代码"
+								}
+							}
+						},
+						"ShipAddr": {
+							"displayName": "收货地址",
+							"placeholder": "添加收货地址字段"
+						}
+					}
+				},
+				"AcctNum": {
+					"displayName": "账户编号"
+				},
+				"Vendor1099": {
+					"displayName": "供应商 1099",
+					"description": "供应商是否为独立承包商，在年底收到 1099-MISC 表格"
+				}
+			}
+		},
+		"displayName": {
+			"displayName": "显示名称",
+			"description": "要创建的供应商显示名称"
+		},
+		"customerId": {
+			"displayName": "客户ID",
+			"description": "要更新的客户ID"
+		},
+		"FamilyName": {
+			"displayName": "姓氏"
+		},
+		"GivenName": {
+			"displayName": "名"
+		},
+		"employeeId": {
+			"displayName": "员工ID",
+			"description": "要更新的员工ID"
+		},
+		"CustomerRef": {
+			"displayName": "客户名称或ID",
+			"description": "付款对应的客户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"estimateId": {
+			"displayName": "报价单ID",
+			"description": "要更新的报价单ID"
+		},
+		"download": {
+			"displayName": "下载",
+			"description": "是否将估算下载为PDF文件"
+		},
+		"binaryProperty": {
+			"displayName": "将输出文件放入字段"
+		},
+		"fileName": {
+			"displayName": "文件名",
+			"description": "将要下载的文件名称",
+			"placeholder": "data.pdf"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "收款人的电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"invoiceId": {
+			"displayName": "发票ID",
+			"description": "要更新的发票ID"
+		},
+		"itemId": {
+			"displayName": "项目ID",
+			"description": "要获取的项目的ID"
+		},
+		"TotalAmt": {
+			"displayName": "总金额",
+			"description": "交易总金额"
+		},
+		"paymentId": {
+			"displayName": "付款ID",
+			"description": "要更新的付款ID"
+		},
+		"purchaseId": {
+			"displayName": "采购ID",
+			"description": "要检索的采购ID"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"vendorId": {
+			"displayName": "供应商ID",
+			"description": "要更新的供应商ID"
+		}
+	}
+}

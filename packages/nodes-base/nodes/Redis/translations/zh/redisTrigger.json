@@ -1,0 +1,26 @@
+{
+	"header": {
+		"displayName": "Redis触发器",
+		"description": "订阅Redis频道"
+	},
+	"nodeView": {
+		"channels": {
+			"displayName": "频道",
+			"description": "要订阅的频道，多个频道可用逗号分隔。支持通配符(*)。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"jsonParseBody": {
+					"displayName": "JSON解析正文",
+					"description": "是否尝试将消息解析为对象"
+				},
+				"onlyMessage": {
+					"displayName": "仅返回消息",
+					"description": "是否仅返回消息属性"
+				}
+			}
+		}
+	}
+}

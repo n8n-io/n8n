@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "跟踪节省时间",
+		"description": "根据工作流的执行路径和处理的条目数量动态跟踪节省时间"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "每次运行时，节省的时间是所有执行的'节省时间'节点之和。当不同的执行路径或项目节省不同时间量时使用此方法。"
+		},
+		"mode": {
+			"displayName": "计算模式",
+			"options": {
+				"once": {
+					"displayName": "对所有项目执行一次",
+					"description": "为所有输入项目计算节省的分钟数（仅一次）"
+				},
+				"perItem": {
+					"displayName": "按项目",
+					"description": "将节省的分钟数乘以输入项目数量"
+				}
+			}
+		},
+		"minutesSaved": {
+			"displayName": "节省分钟数",
+			"description": "此工作流执行节省的分钟数"
+		}
+	}
+}

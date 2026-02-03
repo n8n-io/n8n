@@ -1,0 +1,51 @@
+{
+	"header": {
+		"displayName": "拆分输出",
+		"description": "将项目内的列表转换为独立项目"
+	},
+	"nodeView": {
+		"fieldToSplitOut": {
+			"displayName": "要拆分出的字段",
+			"description": "要拆分为独立条目的输入字段名称。多个字段名称用逗号分隔。对于二进制数据，请使用$binary。",
+			"placeholder": "从左侧拖拽字段或输入其名称"
+		},
+		"include": {
+			"displayName": "包含",
+			"description": "是否将任何其他字段复制到新项目中",
+			"options": {
+				"noOtherFields": {
+					"displayName": "无其他字段"
+				},
+				"allOtherFields": {
+					"displayName": "所有其他字段"
+				},
+				"selectedOtherFields": {
+					"displayName": "已选择其他字段"
+				}
+			}
+		},
+		"fieldsToInclude": {
+			"displayName": "要包含的字段",
+			"description": "输入项中要聚合在一起的字段",
+			"placeholder": "例如：邮箱、姓名"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				},
+				"destinationFieldName": {
+					"displayName": "目标字段名称",
+					"description": "输出中用于存放拆分字段内容的字段"
+				},
+				"includeBinary": {
+					"displayName": "包含二进制数据",
+					"description": "是否在新项目中包含二进制数据"
+				}
+			}
+		}
+	}
+}

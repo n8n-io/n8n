@@ -1,0 +1,39 @@
+{
+	"header": {
+		"displayName": "MSG91",
+		"description": "Sends transactional SMS via MSG91"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"sms": {
+					"displayName": "SMS"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"send": {
+					"displayName": "Send",
+					"description": "Send SMS"
+				}
+			}
+		},
+		"from": {
+			"displayName": "Sender ID",
+			"description": "The number from which to send the message",
+			"placeholder": "4155238886"
+		},
+		"to": {
+			"displayName": "To",
+			"description": "The number, with coutry code, to which to send the message",
+			"placeholder": "+14155238886"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The message to send"
+		}
+	}
+}

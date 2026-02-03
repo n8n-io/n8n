@@ -1,0 +1,51 @@
+{
+	"header": {
+		"displayName": "Split Out",
+		"description": "Turn a list inside item(s) into separate items"
+	},
+	"nodeView": {
+		"fieldToSplitOut": {
+			"displayName": "Fields To Split Out",
+			"description": "The name of the input fields to break out into separate items. Separate multiple field names by commas. For binary data, use $binary.",
+			"placeholder": "Drag fields from the left or type their names"
+		},
+		"include": {
+			"displayName": "Include",
+			"description": "Whether to copy any other fields into the new items",
+			"options": {
+				"noOtherFields": {
+					"displayName": "No Other Fields"
+				},
+				"allOtherFields": {
+					"displayName": "All Other Fields"
+				},
+				"selectedOtherFields": {
+					"displayName": "Selected Other Fields"
+				}
+			}
+		},
+		"fieldsToInclude": {
+			"displayName": "Fields To Include",
+			"description": "Fields in the input items to aggregate together",
+			"placeholder": "e.g. email, name"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "Disable Dot Notation",
+					"description": "Whether to disallow referencing child fields using `parent.child` in the field name"
+				},
+				"destinationFieldName": {
+					"displayName": "Destination Field Name",
+					"description": "The field in the output under which to put the split field contents"
+				},
+				"includeBinary": {
+					"displayName": "Include Binary",
+					"description": "Whether to include the binary data in the new items"
+				}
+			}
+		}
+	}
+}

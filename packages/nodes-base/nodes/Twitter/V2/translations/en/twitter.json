@@ -1,0 +1,153 @@
+{
+	"header": {
+		"displayName": "X (Formerly Twitter)",
+		"description": "Post, like, and search tweets, send messages, search users, and add users to lists"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"directMessage": {
+					"displayName": "Direct Message",
+					"description": "Send a direct message to a user"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "Add a user to a list"
+				},
+				"tweet": {
+					"displayName": "Tweet",
+					"description": "Create, like, search, or delete a tweet"
+				},
+				"user": {
+					"displayName": "User",
+					"description": "Search users by username"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create, quote, or reply to a tweet"
+				},
+				"add": {
+					"displayName": "Add Member",
+					"description": "Add a member to a list"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a tweet"
+				},
+				"like": {
+					"displayName": "Like",
+					"description": "Like a tweet"
+				},
+				"retweet": {
+					"displayName": "Retweet",
+					"description": "Retweet a tweet"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search for tweets from the last seven days"
+				},
+				"searchUser": {
+					"displayName": "Get",
+					"description": "Retrieve a user by username"
+				}
+			}
+		},
+		"user": {
+			"displayName": "User",
+			"description": "The user you want to search"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "The text of the status update. URLs must be encoded. Links wrapped with the t.co shortener will affect character count"
+		},
+		"additionalFields": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"attachments": {
+					"displayName": "Media ID",
+					"description": "The attachment ID to associate with the message",
+					"placeholder": "1664279886239010824"
+				},
+				"location": {
+					"displayName": "Location ID",
+					"description": "Location information for the tweet",
+					"placeholder": "4e696bef7e24d378"
+				},
+				"inQuoteToStatusId": {
+					"displayName": "Quote a Tweet",
+					"description": "The tweet being quoted"
+				},
+				"inReplyToStatusId": {
+					"displayName": "Reply to Tweet",
+					"description": "The tweet being replied to"
+				},
+				"sortOrder": {
+					"displayName": "Sort Order",
+					"description": "The order in which to return results",
+					"options": {
+						"recency": {
+							"displayName": "Recent"
+						},
+						"relevancy": {
+							"displayName": "Relevant"
+						}
+					}
+				},
+				"startTime": {
+					"displayName": "After",
+					"description": "Tweets before this date will not be returned. This date must be within the last 7 days if you don't have Academic Research access."
+				},
+				"endTime": {
+					"displayName": "Before",
+					"description": "Tweets after this date will not be returned. This date must be within the last 7 days if you don't have Academic Research access."
+				},
+				"tweetFieldsObject": {
+					"displayName": "Tweet Fields",
+					"description": "The fields to add to each returned tweet object. Default fields are: ID, text, edit_history_tweet_ids."
+				}
+			}
+		},
+		"list": {
+			"displayName": "List",
+			"description": "The list you want to add the user to"
+		},
+		"noticeLocation": {
+			"displayName": "Locations are not supported due to Twitter V2 API limitations"
+		},
+		"noticeAttachments": {
+			"displayName": "Attachements are not supported due to Twitter V2 API limitations"
+		},
+		"tweetDeleteId": {
+			"displayName": "Tweet",
+			"description": "The tweet to delete"
+		},
+		"tweetId": {
+			"displayName": "Tweet",
+			"description": "The tweet to retweet"
+		},
+		"searchText": {
+			"displayName": "Search Term",
+			"description": "A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href=\"https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators\">here</a>.",
+			"placeholder": "e.g. automation"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"me": {
+			"displayName": "Me",
+			"description": "Whether you want to search the authenticated user"
+		}
+	}
+}

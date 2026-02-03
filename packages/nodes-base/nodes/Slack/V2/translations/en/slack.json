@@ -1,0 +1,1490 @@
+{
+	"header": {
+		"displayName": "Slack",
+		"description": "Consume Slack API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"channel": {
+					"displayName": "Channel"
+				},
+				"file": {
+					"displayName": "File"
+				},
+				"message": {
+					"displayName": "Message"
+				},
+				"reaction": {
+					"displayName": "Reaction"
+				},
+				"star": {
+					"displayName": "Star"
+				},
+				"user": {
+					"displayName": "User"
+				},
+				"userGroup": {
+					"displayName": "User Group"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"archive": {
+					"displayName": "Archive",
+					"description": "Archives a conversation"
+				},
+				"close": {
+					"displayName": "Close",
+					"description": "Closes a direct message or multi-person direct message"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Initiates a public or private channel-based conversation"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get the reactions of a message"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get a list of many users"
+				},
+				"history": {
+					"displayName": "History",
+					"description": "Get a conversation's history of messages and events"
+				},
+				"invite": {
+					"displayName": "Invite",
+					"description": "Invite a user to a channel"
+				},
+				"join": {
+					"displayName": "Join",
+					"description": "Joins an existing conversation"
+				},
+				"kick": {
+					"displayName": "Kick",
+					"description": "Removes a user from a channel"
+				},
+				"leave": {
+					"displayName": "Leave",
+					"description": "Leaves a conversation"
+				},
+				"member": {
+					"displayName": "Member",
+					"description": "List members of a conversation"
+				},
+				"open": {
+					"displayName": "Open",
+					"description": "Opens or resumes a direct message or multi-person direct message"
+				},
+				"rename": {
+					"displayName": "Rename",
+					"description": "Renames a conversation"
+				},
+				"replies": {
+					"displayName": "Replies",
+					"description": "Get a thread of messages posted to a channel"
+				},
+				"setPurpose": {
+					"displayName": "Set Purpose",
+					"description": "Sets the purpose for a conversation"
+				},
+				"setTopic": {
+					"displayName": "Set Topic",
+					"description": "Sets the topic for a conversation"
+				},
+				"unarchive": {
+					"displayName": "Unarchive",
+					"description": "Unarchives a conversation"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a star from an item"
+				},
+				"getPermalink": {
+					"displayName": "Get Permalink"
+				},
+				"search": {
+					"displayName": "Search"
+				},
+				"post": {
+					"displayName": "Send"
+				},
+				"sendAndWait": {
+					"displayName": "Send and Wait for Response"
+				},
+				"update": {
+					"displayName": "Update"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Adds a reaction to a message"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Create or upload an existing file"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a reaction of a message"
+				},
+				"info": {
+					"displayName": "Get",
+					"description": "Get information about a user"
+				},
+				"getProfile": {
+					"displayName": "Get User's Profile",
+					"description": "Get a user's profile"
+				},
+				"getPresence": {
+					"displayName": "Get User's Status",
+					"description": "Get online status of a user"
+				},
+				"updateProfile": {
+					"displayName": "Update User's Profile",
+					"description": "Update a user's profile"
+				},
+				"updateUsers": {
+					"displayName": "Add Users"
+				},
+				"disable": {
+					"displayName": "Disable"
+				},
+				"enable": {
+					"displayName": "Enable"
+				},
+				"getUsers": {
+					"displayName": "Get Users"
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "Channel",
+			"description": "The Slack channel to get the reactions from",
+			"placeholder": "Select a channel..."
+		},
+		"channelVisibility": {
+			"displayName": "Channel Visibility",
+			"description": "Whether to create a Public or a Private Slack channel. <a href=\"https://slack.com/help/articles/360017938993-What-is-a-channel\">More info</a>.",
+			"options": {
+				"public": {
+					"displayName": "Public Channel"
+				},
+				"private": {
+					"displayName": "Private Channel"
+				}
+			}
+		},
+		"userIds": {
+			"displayName": "User Names or IDs",
+			"description": "The ID of the user to invite into channel. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"includeNumMembers": {
+					"displayName": "Include Num of Members"
+				},
+				"channelId": {
+					"displayName": "Channel Name or ID",
+					"description": "The channel to send the file to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"returnIm": {
+					"displayName": "Return IM",
+					"description": "Whether you want the full IM channel definition in the response"
+				},
+				"users": {
+					"displayName": "User Names or IDs",
+					"description": "If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"searchChannel": {
+					"displayName": "Search in Channel",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"limitWaitTime": {
+					"displayName": "Limit Wait Time",
+					"description": "Whether to limit the time this node should wait for a user response before execution resumes",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "Limit Wait Time"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the phrase \"This message was sent automatically with n8n\" to the end of the message"
+				},
+				"thread_ts": {
+					"displayName": "Reply to a Message",
+					"description": "Provide another message's Timestamp value to make this message a reply",
+					"placeholder": "Reply to a Message",
+					"options": {
+						"replyValues": {
+							"displayName": "Reply to a Message",
+							"options": {
+								"thread_ts": {
+									"displayName": "Message Timestamp to Reply To",
+									"description": "Message timestamps are included in output data of Slack nodes, abbreviated to ts",
+									"placeholder": "1663233118.856619"
+								},
+								"reply_broadcast": {
+									"displayName": "Also Send to Channel",
+									"description": "Whether the reply should be made visible to everyone in the channel or conversation"
+								}
+							}
+						}
+					},
+					"values": {
+						"replyValues": {
+							"displayName": "Reply to a Message",
+							"options": {
+								"thread_ts": {
+									"displayName": "Message Timestamp to Reply To",
+									"description": "Message timestamps are included in output data of Slack nodes, abbreviated to ts",
+									"placeholder": "1663233118.856619"
+								},
+								"reply_broadcast": {
+									"displayName": "Also Send to Channel",
+									"description": "Whether the reply should be made visible to everyone in the channel or conversation"
+								}
+							}
+						},
+						"thread_ts": {
+							"displayName": "Reply to a Message",
+							"placeholder": "Reply to a Message"
+						}
+					}
+				},
+				"messageButtonLabel": {
+					"displayName": "Message Button Label"
+				},
+				"responseFormTitle": {
+					"displayName": "Response Form Title",
+					"description": "Title of the form that the user can access to provide their response"
+				},
+				"responseFormDescription": {
+					"displayName": "Response Form Description",
+					"description": "Description of the form that the user can access to provide their response"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "Response Form Button Label"
+				},
+				"responseFormCustomCss": {
+					"displayName": "Response Form Custom Styling",
+					"description": "Override default styling of the response form with CSS"
+				},
+				"fileComment": {
+					"displayName": "File Comment",
+					"description": "File comment to add star to"
+				},
+				"fileId": {
+					"displayName": "File ID",
+					"description": "File to add star to"
+				},
+				"timestamp": {
+					"displayName": "Message Timestamp",
+					"description": "Timestamp of the message to delete",
+					"placeholder": "1663233118.856619"
+				},
+				"channelIds": {
+					"displayName": "Channel Names or IDs",
+					"description": "The channels to send the file to. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"fileName": {
+					"displayName": "File Name"
+				},
+				"initialComment": {
+					"displayName": "Initial Comment",
+					"description": "The message text introducing the file in specified channels"
+				},
+				"threadTs": {
+					"displayName": "Thread Timestamp",
+					"description": "Provide another message's Timestamp value to upload this file as a reply. Never use a reply's Timestamp value; use its parent instead."
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"customFieldUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Fields",
+					"multipleValueButtonText": "Add Custom Fields",
+					"options": {
+						"customFieldValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"id": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								},
+								"alt": {
+									"displayName": "Alt"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"id": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								},
+								"alt": {
+									"displayName": "Alt"
+								}
+							}
+						},
+						"customFieldUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Fields"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "This field can only be changed by admins for users on paid teams",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "First Name"
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"status": {
+					"displayName": "Set Status",
+					"placeholder": "Set Status",
+					"multipleValueButtonText": "Set Status",
+					"options": {
+						"set_status": {
+							"displayName": "Set Status",
+							"options": {
+								"status_emoji": {
+									"displayName": "Status Emoji",
+									"description": "Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:"
+								},
+								"status_expiration": {
+									"displayName": "Status Expiration",
+									"description": "The number of minutes to wait until this status expires and is cleared. Optional."
+								},
+								"status_text": {
+									"displayName": "Status Text",
+									"description": "Allows up to 100 characters, though we strongly encourage brevity"
+								}
+							}
+						}
+					},
+					"values": {
+						"set_status": {
+							"displayName": "Set Status",
+							"options": {
+								"status_emoji": {
+									"displayName": "Status Emoji",
+									"description": "Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:"
+								},
+								"status_expiration": {
+									"displayName": "Status Expiration",
+									"description": "The number of minutes to wait until this status expires and is cleared. Optional."
+								},
+								"status_text": {
+									"displayName": "Status Text",
+									"description": "Allows up to 100 characters, though we strongly encourage brevity"
+								}
+							}
+						},
+						"status": {
+							"displayName": "Set Status",
+							"placeholder": "Set Status"
+						}
+					}
+				},
+				"user": {
+					"displayName": "User ID",
+					"description": "ID of user to change. This argument may only be specified by team admins on paid teams."
+				},
+				"include_count": {
+					"displayName": "Include Count",
+					"description": "Whether to include the number of users in the User Group"
+				},
+				"include_disabled": {
+					"displayName": "Include Disabled",
+					"description": "Whether to include disabled User Groups"
+				},
+				"include_users": {
+					"displayName": "Include Users",
+					"description": "Whether to include the list of users for each User Group"
+				},
+				"resolveData": {
+					"displayName": "Resolve Data",
+					"description": "Whether to return full user objects instead of just user IDs"
+				}
+			},
+			"description": "Other options to set"
+		},
+		"userId": {
+			"displayName": "User Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return",
+			"placeholder": "Limit"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"excludeArchived": {
+					"displayName": "Exclude Archived",
+					"description": "Whether to exclude archived channels from the list"
+				},
+				"types": {
+					"displayName": "Types",
+					"description": "Filter files by type"
+				},
+				"inclusive": {
+					"displayName": "Inclusive",
+					"description": "Whether to include messages with latest or oldest timestamp in results only when either timestamp is specified"
+				},
+				"latest": {
+					"displayName": "Latest",
+					"description": "End of time range of messages to include in results"
+				},
+				"oldest": {
+					"displayName": "Oldest",
+					"description": "Start of time range of messages to include in results"
+				},
+				"channelId": {
+					"displayName": "Channel Name or ID",
+					"description": "Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"showFilesHidden": {
+					"displayName": "Show Files Hidden By Limit",
+					"description": "Whether to show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit"
+				},
+				"tsFrom": {
+					"displayName": "Message Timestamp From",
+					"description": "Filter files created after this timestamp (inclusive)"
+				},
+				"tsTo": {
+					"displayName": "Message Timestamp To",
+					"description": "Filter files created before this timestamp (inclusive)"
+				},
+				"userId": {
+					"displayName": "User Name or ID",
+					"description": "Filter files created by a single user. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "Whether to resolve the data automatically. By default the response only contain the ID to resource."
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "A name for the User Group. Must be unique among User Groups.",
+			"placeholder": "+1"
+		},
+		"ts": {
+			"displayName": "Message Timestamp",
+			"description": "Timestamp of the message to update",
+			"placeholder": "1663233118.856619"
+		},
+		"purpose": {
+			"displayName": "Purpose",
+			"description": "A new, specialer purpose"
+		},
+		"topic": {
+			"displayName": "Topic"
+		},
+		"timestamp": {
+			"displayName": "Message Timestamp",
+			"description": "Timestamp of the message to add, get or remove",
+			"placeholder": "1663233118.856619"
+		},
+		"select": {
+			"displayName": "Send Message To",
+			"placeholder": "Select...",
+			"options": {
+				"channel": {
+					"displayName": "Channel"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"user": {
+			"displayName": "User",
+			"placeholder": "Select a user...",
+			"description": "The ID of the user to get the online status of"
+		},
+		"messageType": {
+			"displayName": "Message Type",
+			"description": "Whether to send a simple text message, or use Slack’s Blocks UI builder for more sophisticated messages that include form fields, sections and more",
+			"options": {
+				"text": {
+					"displayName": "Simple Text Message",
+					"description": "Supports basic Markdown"
+				},
+				"block": {
+					"displayName": "Blocks",
+					"description": "Combine text, buttons, form elements, dividers and more in Slack 's visual builder"
+				},
+				"attachment": {
+					"displayName": "Attachments"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Message Text",
+			"description": "The message text to update. Supports <a href=\"https://api.slack.com/reference/surfaces/formatting/\">markdown</a> by default - this can be disabled in \"Options\"."
+		},
+		"blocksUi": {
+			"displayName": "Blocks",
+			"description": "Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>"
+		},
+		"noticeAttachments": {
+			"displayName": "This is a legacy Slack feature. Slack advises to instead use Blocks."
+		},
+		"attachments": {
+			"displayName": "Attachments",
+			"placeholder": "Add attachment item",
+			"multipleValueButtonText": "Add attachment",
+			"options": {
+				"fallback": {
+					"displayName": "Fallback Text",
+					"description": "Required plain-text summary of the attachment"
+				},
+				"text": {
+					"displayName": "Text"
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"title_link": {
+					"displayName": "Title Link"
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "Color of the line left of text"
+				},
+				"pretext": {
+					"displayName": "Pretext",
+					"description": "Text which appears before the message block"
+				},
+				"author_name": {
+					"displayName": "Author Name",
+					"description": "Name that should appear"
+				},
+				"author_link": {
+					"displayName": "Author Link"
+				},
+				"author_icon": {
+					"displayName": "Author Icon",
+					"description": "Icon which should appear for the user"
+				},
+				"image_url": {
+					"displayName": "Image URL"
+				},
+				"thumb_url": {
+					"displayName": "Thumbnail URL"
+				},
+				"footer": {
+					"displayName": "Footer",
+					"description": "Text of footer to add"
+				},
+				"footer_icon": {
+					"displayName": "Footer Icon",
+					"description": "Icon which should appear next to footer"
+				},
+				"ts": {
+					"displayName": "Message Timestamp",
+					"description": "Timestamp of the message to post",
+					"placeholder": "1663233118.856619"
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields to add to message",
+					"placeholder": "Add Fields",
+					"multipleValueButtonText": "Add Fields",
+					"options": {
+						"item": {
+							"displayName": "Item",
+							"options": {
+								"title": {
+									"displayName": "Title"
+								},
+								"value": {
+									"displayName": "Value"
+								},
+								"short": {
+									"displayName": "Short",
+									"description": "Whether items can be displayed next to each other"
+								}
+							}
+						}
+					},
+					"values": {
+						"item": {
+							"displayName": "Item",
+							"options": {
+								"title": {
+									"displayName": "Title"
+								},
+								"value": {
+									"displayName": "Value"
+								},
+								"short": {
+									"displayName": "Short",
+									"description": "Whether items can be displayed next to each other"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "Fields",
+							"placeholder": "Add Fields"
+						}
+					}
+				}
+			}
+		},
+		"otherOptions": {
+			"displayName": "Options",
+			"description": "Other options to set",
+			"placeholder": "Add option",
+			"options": {
+				"includeLinkToWorkflow": {
+					"displayName": "Include Link to Workflow",
+					"description": "Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending Slack messages."
+				},
+				"botProfile": {
+					"displayName": "Custom Bot Profile Photo",
+					"description": "Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user.",
+					"options": {
+						"imageValues": {
+							"displayName": "Add Bot Profile Photo",
+							"options": {
+								"profilePhotoType": {
+									"displayName": "Profile Photo Type",
+									"placeholder": "Select a type…",
+									"options": {
+										"image": {
+											"displayName": "Image URL"
+										},
+										"emoji": {
+											"displayName": "Emoji Code"
+										}
+									}
+								},
+								"icon_emoji": {
+									"displayName": "Emoji Code",
+									"description": "Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target=\"_blank\" href=\" https://www.webfx.com/tools/emoji-cheat-sheet/\">List of common emoji codes</a>"
+								},
+								"icon_url": {
+									"displayName": "Image URL",
+									"description": "Only used if sending message as a bot"
+								}
+							}
+						}
+					},
+					"values": {
+						"imageValues": {
+							"displayName": "Add Bot Profile Photo",
+							"options": {
+								"profilePhotoType": {
+									"displayName": "Profile Photo Type",
+									"placeholder": "Select a type…",
+									"options": {
+										"image": {
+											"displayName": "Image URL"
+										},
+										"emoji": {
+											"displayName": "Emoji Code"
+										}
+									}
+								},
+								"icon_emoji": {
+									"displayName": "Emoji Code",
+									"description": "Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target=\"_blank\" href=\" https://www.webfx.com/tools/emoji-cheat-sheet/\">List of common emoji codes</a>"
+								},
+								"icon_url": {
+									"displayName": "Image URL",
+									"description": "Only used if sending message as a bot"
+								}
+							}
+						},
+						"botProfile": {
+							"displayName": "Custom Bot Profile Photo"
+						}
+					}
+				},
+				"link_names": {
+					"displayName": "Link User and Channel Names",
+					"description": "Whether to turn @users and #channels in message text into clickable links"
+				},
+				"thread_ts": {
+					"displayName": "Reply to a Message",
+					"description": "Provide another message's Timestamp value to make this message a reply",
+					"placeholder": "Reply to a Message",
+					"options": {
+						"replyValues": {
+							"displayName": "Reply to a Message",
+							"options": {
+								"thread_ts": {
+									"displayName": "Message Timestamp to Reply To",
+									"description": "Message timestamps are included in output data of Slack nodes, abbreviated to ts",
+									"placeholder": "1663233118.856619"
+								},
+								"reply_broadcast": {
+									"displayName": "Also Send to Channel",
+									"description": "Whether the reply should be made visible to everyone in the channel or conversation"
+								}
+							}
+						}
+					},
+					"values": {
+						"replyValues": {
+							"displayName": "Reply to a Message",
+							"options": {
+								"thread_ts": {
+									"displayName": "Message Timestamp to Reply To",
+									"description": "Message timestamps are included in output data of Slack nodes, abbreviated to ts",
+									"placeholder": "1663233118.856619"
+								},
+								"reply_broadcast": {
+									"displayName": "Also Send to Channel",
+									"description": "Whether the reply should be made visible to everyone in the channel or conversation"
+								}
+							}
+						},
+						"thread_ts": {
+							"displayName": "Reply to a Message",
+							"placeholder": "Reply to a Message"
+						}
+					}
+				},
+				"mrkdwn": {
+					"displayName": "Use Markdown?",
+					"description": "Whether to use Slack Markdown to format the message"
+				},
+				"unfurl_links": {
+					"displayName": "Unfurl Links",
+					"description": "Whether to enable unfurling of primarily text-based content"
+				},
+				"unfurl_media": {
+					"displayName": "Unfurl Media",
+					"description": "Whether to disable unfurling of media content"
+				},
+				"ephemeral": {
+					"displayName": "Send as Ephemeral Message",
+					"description": "Whether to send a temporary, ephemeral message"
+				},
+				"sendAsUser": {
+					"displayName": "Send as User",
+					"description": "The message will be sent from this username (i.e. as if this individual sent the message). Add chat:write.customize scope on Slack API"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"link_names": {
+					"displayName": "Link User and Channel Names",
+					"description": "Whether to find and link channel names and usernames"
+				},
+				"parse": {
+					"displayName": "Parse",
+					"description": "Change how messages are treated",
+					"options": {
+						"client": {
+							"displayName": "Client"
+						},
+						"full": {
+							"displayName": "Full"
+						},
+						"none": {
+							"displayName": "None"
+						}
+					}
+				},
+				"channels": {
+					"displayName": "Channel Names or IDs",
+					"description": "A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "A short description of the User Group"
+				},
+				"handle": {
+					"displayName": "Handle",
+					"description": "A mention handle. Must be unique among channels, users and User Groups."
+				},
+				"include_count": {
+					"displayName": "Include Count",
+					"description": "Whether to include the number of users in each User Group"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "A name for the User Group. Must be unique among User Groups."
+				}
+			}
+		},
+		"query": {
+			"displayName": "Search Query",
+			"description": "The text to search for within messages"
+		},
+		"sort": {
+			"displayName": "Sort By",
+			"description": "How search results should be sorted. You can sort by.",
+			"options": {
+				"desc": {
+					"displayName": "Newest"
+				},
+				"asc": {
+					"displayName": "Oldest"
+				},
+				"relevance": {
+					"displayName": "Relevance Score"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message"
+		},
+		"responseType": {
+			"displayName": "Response Type",
+			"options": {
+				"approval": {
+					"displayName": "Approval",
+					"description": "User can approve/disapprove from within the message"
+				},
+				"freeText": {
+					"displayName": "Free Text",
+					"description": "User can submit a response via a form"
+				},
+				"customForm": {
+					"displayName": "Custom Form",
+					"description": "User can submit a response via a custom form"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "Define Form",
+			"options": {
+				"fields": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "Form Fields"
+		},
+		"formFields": {
+			"displayName": "Form Elements",
+			"placeholder": "Add Form Element",
+			"multipleValueButtonText": "Add Form Element",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "Form Elements",
+					"placeholder": "Add Form Element"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "Approval Options",
+			"placeholder": "Add option",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "Approve Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "Disapprove Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "Approve Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "Disapprove Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "Approval Options",
+					"placeholder": "Add option"
+				}
+			}
+		},
+		"target": {
+			"displayName": "Item to Add Star",
+			"description": "Choose whether to add a star to a message or a file",
+			"placeholder": "Select...",
+			"options": {
+				"message": {
+					"displayName": "Message"
+				},
+				"file": {
+					"displayName": "File"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "File ID",
+			"description": "File to add star to"
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the data to upload should be taken from binary field"
+		},
+		"fileContent": {
+			"displayName": "File Content"
+		},
+		"binaryPropertyName": {
+			"displayName": "File Property",
+			"description": "Name of the binary property which contains the data for the file to be uploaded"
+		},
+		"Options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"channelIds": {
+					"displayName": "Channel Names or IDs",
+					"description": "A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "A short description of the User Group"
+				},
+				"handle": {
+					"displayName": "Handle",
+					"description": "A mention handle. Must be unique among channels, users and User Groups."
+				},
+				"include_count": {
+					"displayName": "Include Count",
+					"description": "Whether to include the number of users in each User Group"
+				}
+			}
+		},
+		"userGroupId": {
+			"displayName": "User Group ID",
+			"description": "The encoded ID of the User Group"
+		},
+		"option": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"include_count": {
+					"displayName": "Include Count",
+					"description": "Whether to include the number of users in each User Group"
+				}
+			}
+		},
+		"users": {
+			"displayName": "User Names or IDs",
+			"description": "Users to add to the User Group. Existing users will be preserved. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

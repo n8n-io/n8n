@@ -1,0 +1,566 @@
+{
+	"header": {
+		"displayName": "HighLevel",
+		"description": "消费HighLevel API v2"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				},
+				"opportunity": {
+					"displayName": "商机"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"calendar": {
+					"displayName": "日历"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				},
+				"bookAppointment": {
+					"displayName": "预约"
+				},
+				"getFreeSlots": {
+					"displayName": "获取空闲时段"
+				}
+			}
+		},
+		"contactCreateNotice": {
+			"displayName": "创建新联系人，若邮箱或电话匹配则更新现有联系人（upsert）"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "通过邮箱查找联系人。如果未找到邮箱，将尝试通过电话查找联系人。",
+			"placeholder": "name@email.com"
+		},
+		"phone": {
+			"displayName": "电话",
+			"description": "通过电话查找联系人。它将首先尝试通过电子邮件查找联系人，然后通过电话查找。",
+			"placeholder": "+491234567890"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address1": {
+					"displayName": "地址"
+				},
+				"city": {
+					"displayName": "城市"
+				},
+				"customFields": {
+					"displayName": "自定义字段",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用表达式指定ID"
+								},
+								"fieldValue": {
+									"displayName": "字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用表达式指定ID"
+								},
+								"fieldValue": {
+									"displayName": "字段值"
+								}
+							}
+						},
+						"customFields": {
+							"displayName": "自定义字段",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"dnd": {
+					"displayName": "请勿打扰",
+					"description": "是否允许自动/手动发送外发消息。True表示禁止发送任何外发消息。"
+				},
+				"firstName": {
+					"displayName": "名字"
+				},
+				"lastName": {
+					"displayName": "姓氏"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "联系人的全名，如果设置了“名字”和“姓氏”将被覆盖"
+				},
+				"postalCode": {
+					"displayName": "邮政编码"
+				},
+				"source": {
+					"displayName": "源",
+					"placeholder": "例如：公共API"
+				},
+				"state": {
+					"displayName": "状态"
+				},
+				"notes": {
+					"displayName": "备注"
+				},
+				"tags": {
+					"displayName": "标签"
+				},
+				"timezone": {
+					"displayName": "时区",
+					"description": "用于返回时间段时使用的时区。示例：America/Chihuahua。",
+					"placeholder": "选择时区"
+				},
+				"website": {
+					"displayName": "网站"
+				},
+				"assignedTo": {
+					"displayName": "分配给",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"companyName": {
+					"displayName": "公司名称"
+				},
+				"monetaryValue": {
+					"displayName": "货币价值",
+					"description": "销售机会货币价值"
+				},
+				"stageId": {
+					"displayName": "阶段名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"body": {
+					"displayName": "正文"
+				},
+				"endTime": {
+					"displayName": "结束时间",
+					"description": "示例：2021-06-23T04:30:00+05:30"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"appointmentStatus": {
+					"displayName": "预约状态",
+					"description": "预约的状态。允许的值：新建、已确认、已取消、已到访、未到访、无效。",
+					"options": {
+						"cancelled": {
+							"displayName": "已取消"
+						},
+						"confirmed": {
+							"displayName": "已确认"
+						},
+						"invalid": {
+							"displayName": "无效"
+						},
+						"new": {
+							"displayName": "新建"
+						},
+						"noshow": {
+							"displayName": "未出席"
+						},
+						"showed": {
+							"displayName": "已显示"
+						}
+					}
+				},
+				"assignedUserId": {
+					"displayName": "分配的用户ID"
+				},
+				"address": {
+					"displayName": "地址"
+				},
+				"ignoreDateRange": {
+					"displayName": "忽略日期范围"
+				},
+				"toNotify": {
+					"displayName": "通知"
+				},
+				"userId": {
+					"displayName": "用户ID",
+					"description": "用于筛选槽位的用户ID（可选）"
+				},
+				"userIds": {
+					"displayName": "用户ID",
+					"options": {
+						"userIds": {
+							"displayName": "用户ID",
+							"description": "用于筛选时段（slots）的用户ID逗号分隔列表"
+						}
+					}
+				},
+				"enableLookBusy": {
+					"displayName": "应用忙碌外观",
+					"description": "将忙碌外观应用到插槽"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "任务所属的联系人。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address1": {
+					"displayName": "地址"
+				},
+				"city": {
+					"displayName": "城市"
+				},
+				"customFields": {
+					"displayName": "自定义字段",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用表达式指定ID"
+								},
+								"fieldValue": {
+									"displayName": "字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用表达式指定ID"
+								},
+								"fieldValue": {
+									"displayName": "字段值"
+								}
+							}
+						},
+						"customFields": {
+							"displayName": "自定义字段",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"dnd": {
+					"displayName": "请勿打扰",
+					"description": "是否允许自动/手动发送外发消息。True表示禁止发送任何外发消息。"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "名字"
+				},
+				"lastName": {
+					"displayName": "姓氏"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "联系人的全名，如果设置了“名字”和“姓氏”将被覆盖",
+					"placeholder": "例如：John Deo"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "电话号码必须以有效的<a href=\"https://en.wikipedia.org/wiki/List_of_country_calling_codes\">国家代码</a>开头，并以+号引导",
+					"placeholder": "+491234567890"
+				},
+				"postalCode": {
+					"displayName": "邮政编码"
+				},
+				"state": {
+					"displayName": "状态"
+				},
+				"tags": {
+					"displayName": "标签"
+				},
+				"timezone": {
+					"displayName": "时区",
+					"description": "从列表中选择，或使用表达式指定时区",
+					"placeholder": "选择时区"
+				},
+				"website": {
+					"displayName": "网站"
+				},
+				"assignedTo": {
+					"displayName": "分配给",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"monetaryValue": {
+					"displayName": "货币价值",
+					"description": "销售机会货币价值"
+				},
+				"pipelineId": {
+					"displayName": "工作流名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"stageId": {
+					"displayName": "阶段名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"won": {
+							"displayName": "未完成"
+						},
+						"lost": {
+							"displayName": "丢失"
+						},
+						"abandoned": {
+							"displayName": "已放弃"
+						}
+					}
+				},
+				"completed": {
+					"displayName": "已完成"
+				},
+				"body": {
+					"displayName": "正文"
+				},
+				"dueDate": {
+					"displayName": "截止日期"
+				},
+				"title": {
+					"displayName": "标题"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"query": {
+					"displayName": "查询",
+					"description": "查询将在以下字段中搜索：姓名、电话、电子邮件、标签和公司名称"
+				},
+				"assignedTo": {
+					"displayName": "分配给",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"campaignId": {
+					"displayName": "活动ID"
+				},
+				"endDate": {
+					"displayName": "结束日期"
+				},
+				"pipelineId": {
+					"displayName": "工作流名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"stageId": {
+					"displayName": "阶段名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"startDate": {
+					"displayName": "开始日期"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"won": {
+							"displayName": "未完成"
+						},
+						"lost": {
+							"displayName": "丢失"
+						},
+						"abandoned": {
+							"displayName": "已放弃"
+						}
+					}
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"order": {
+					"displayName": "排序",
+					"options": {
+						"desc": {
+							"displayName": "降序"
+						},
+						"asc": {
+							"displayName": "升序"
+						}
+					}
+				},
+				"sortBy": {
+					"displayName": "排序方式",
+					"options": {
+						"date_added": {
+							"displayName": "添加日期"
+						},
+						"date_updated": {
+							"displayName": "更新日期"
+						}
+					}
+				}
+			}
+		},
+		"pipelineId": {
+			"displayName": "工作流名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"name": {
+			"displayName": "名称"
+		},
+		"status": {
+			"displayName": "状态",
+			"options": {
+				"open": {
+					"displayName": "打开"
+				},
+				"won": {
+					"displayName": "未完成"
+				},
+				"lost": {
+					"displayName": "丢失"
+				},
+				"abandoned": {
+					"displayName": "已放弃"
+				}
+			}
+		},
+		"opportunityId": {
+			"displayName": "商机ID"
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"dueDate": {
+			"displayName": "截止日期"
+		},
+		"completed": {
+			"displayName": "已完成"
+		},
+		"taskId": {
+			"displayName": "任务ID"
+		},
+		"calendarId": {
+			"displayName": "日历ID"
+		},
+		"locationId": {
+			"displayName": "位置ID"
+		},
+		"startTime": {
+			"displayName": "开始时间",
+			"description": "示例：2021-06-23T03:30:00+05:30"
+		},
+		"startDate": {
+			"displayName": "开始日期",
+			"description": "获取空闲日历时段的开始日期。示例：1548898600000。"
+		},
+		"endDate": {
+			"displayName": "结束日期",
+			"description": "获取空闲日历时段结束日期。示例：1601490599999。"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,250 @@
+{
+	"header": {
+		"displayName": "PayPal",
+		"description": "使用PayPal API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"payout": {
+					"displayName": "支付"
+				},
+				"payoutItem": {
+					"displayName": "付款项目"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建批量付款"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "显示付款项目详情"
+				},
+				"cancel": {
+					"displayName": "取消",
+					"description": "取消一个未领取的付款项目"
+				}
+			}
+		},
+		"senderBatchId": {
+			"displayName": "发送方批次ID",
+			"description": "发送方指定的ID编号。用于在会计系统中跟踪付款。"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"itemsUi": {
+			"displayName": "项目",
+			"placeholder": "添加项目",
+			"multipleValueButtonText": "添加项目",
+			"options": {
+				"itemsValues": {
+					"displayName": "项目",
+					"options": {
+						"recipientType": {
+							"displayName": "收款方类型",
+							"description": "标识付款收款方的ID类型",
+							"options": {
+								"phone": {
+									"displayName": "电话",
+									"description": "未加密的手机号码"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"description": "未加密的邮件"
+								},
+								"paypalId": {
+									"displayName": "PayPal ID",
+									"description": "加密的PayPal账号"
+								}
+							}
+						},
+						"receiverValue": {
+							"displayName": "收款方值",
+							"description": "付款的接收方。对应请求中的 recipient_type 值。最大长度：127 个字符。"
+						},
+						"currency": {
+							"displayName": "货币",
+							"options": {
+								"AUD": {
+									"displayName": "澳大利亚元"
+								},
+								"BRL": {
+									"displayName": "巴西雷亚尔"
+								},
+								"CAD": {
+									"displayName": "加拿大元"
+								},
+								"CZK": {
+									"displayName": "捷克克朗"
+								},
+								"DKK": {
+									"displayName": "丹麦克朗"
+								},
+								"EUR": {
+									"displayName": "欧元"
+								},
+								"USD": {
+									"displayName": "美元"
+								}
+							}
+						},
+						"amount": {
+							"displayName": "金额",
+							"description": "该值，可能"
+						},
+						"note": {
+							"displayName": "备注",
+							"description": "通知的发件人指定备注。支持最多4000个ASCII字符和1000个非ASCII字符。"
+						},
+						"senderItemId": {
+							"displayName": "发送方项目ID",
+							"description": "发送方指定的ID编号。用于在会计系统中追踪付款。"
+						},
+						"recipientWallet": {
+							"displayName": "收款钱包",
+							"options": {
+								"paypal": {
+									"displayName": "PayPal",
+									"description": "PayPal钱包"
+								},
+								"venmo": {
+									"displayName": "Venmo",
+									"description": "Venmo钱包"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"itemsValues": {
+					"displayName": "项目",
+					"options": {
+						"recipientType": {
+							"displayName": "收款方类型",
+							"description": "标识付款收款方的ID类型",
+							"options": {
+								"phone": {
+									"displayName": "电话",
+									"description": "未加密的手机号码"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"description": "未加密的邮件"
+								},
+								"paypalId": {
+									"displayName": "PayPal ID",
+									"description": "加密的PayPal账号"
+								}
+							}
+						},
+						"receiverValue": {
+							"displayName": "收款方值",
+							"description": "付款的接收方。对应请求中的 recipient_type 值。最大长度：127 个字符。"
+						},
+						"currency": {
+							"displayName": "货币",
+							"options": {
+								"AUD": {
+									"displayName": "澳大利亚元"
+								},
+								"BRL": {
+									"displayName": "巴西雷亚尔"
+								},
+								"CAD": {
+									"displayName": "加拿大元"
+								},
+								"CZK": {
+									"displayName": "捷克克朗"
+								},
+								"DKK": {
+									"displayName": "丹麦克朗"
+								},
+								"EUR": {
+									"displayName": "欧元"
+								},
+								"USD": {
+									"displayName": "美元"
+								}
+							}
+						},
+						"amount": {
+							"displayName": "金额",
+							"description": "该值，可能"
+						},
+						"note": {
+							"displayName": "备注",
+							"description": "通知的发件人指定备注。支持最多4000个ASCII字符和1000个非ASCII字符。"
+						},
+						"senderItemId": {
+							"displayName": "发送方项目ID",
+							"description": "发送方指定的ID编号。用于在会计系统中追踪付款。"
+						},
+						"recipientWallet": {
+							"displayName": "收款钱包",
+							"options": {
+								"paypal": {
+									"displayName": "PayPal",
+									"description": "PayPal钱包"
+								},
+								"venmo": {
+									"displayName": "Venmo",
+									"description": "Venmo钱包"
+								}
+							}
+						}
+					}
+				},
+				"itemsUi": {
+					"displayName": "项目",
+					"placeholder": "添加项目"
+				}
+			}
+		},
+		"itemsJson": {
+			"displayName": "项目",
+			"description": "一个包含单个支付项目的数组"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"emailSubject": {
+					"displayName": "邮件主题",
+					"description": "PayPal在支付项目完成时发送的邮件主题行。该主题行对所有收件人均相同。最大长度：255个字符。"
+				},
+				"emailMessage": {
+					"displayName": "电子邮件消息",
+					"description": "当PayPal支付项目完成时发送的电子邮件消息。该消息对所有收件人都是相同的。"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "付款信息和项目级备注会在邮件中合并显示。最大长度：1000个字符。"
+				}
+			}
+		},
+		"payoutBatchId": {
+			"displayName": "支付批次ID",
+			"description": "要显示详情的支付ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"payoutItemId": {
+			"displayName": "支付项ID",
+			"description": "要取消的支付项ID"
+		}
+	}
+}

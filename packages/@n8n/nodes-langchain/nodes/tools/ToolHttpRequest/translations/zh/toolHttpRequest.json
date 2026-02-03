@@ -1,0 +1,462 @@
+{
+	"header": {
+		"displayName": "HTTP请求工具",
+		"description": "发起HTTP请求并返回响应数据"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"toolDescription": {
+			"displayName": "描述",
+			"description": "向LLM解释此工具的功能，更好的描述能让LLM产生预期结果",
+			"placeholder": "例如：获取指定城市的当前天气"
+		},
+		"method": {
+			"displayName": "方法",
+			"options": {
+				"DELETE": {
+					"displayName": "删除"
+				},
+				"GET": {
+					"displayName": "获取"
+				},
+				"PATCH": {
+					"displayName": "PATCH"
+				},
+				"POST": {
+					"displayName": "POST"
+				},
+				"PUT": {
+					"displayName": "PUT"
+				}
+			}
+		},
+		"placeholderNotice": {
+			"displayName": "提示：您可以使用 {占位符} 表示请求中任何需要由模型填充的部分。请在占位符部分提供更多关于它们的上下文。"
+		},
+		"url": {
+			"displayName": "URL",
+			"placeholder": "例如 http://www.example.com/{path}"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "如需使用，请选择认证类型，认证将由n8n执行，您的凭据不会与LLM共享",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"predefinedCredentialType": {
+					"displayName": "预定义凭据类型",
+					"description": "我们已为众多服务预先实现认证，您无需手动设置"
+				},
+				"genericCredentialType": {
+					"displayName": "通用凭据类型",
+					"description": "完全可自定义。可在基础认证、Header认证、OAuth2等类型中选择。"
+				}
+			}
+		},
+		"nodeCredentialType": {
+			"displayName": "凭据类型"
+		},
+		"googleApiWarning": {
+			"displayName": "请确保已在凭据中为服务账号指定了作用域"
+		},
+		"genericAuthType": {
+			"displayName": "通用认证类型"
+		},
+		"sendQuery": {
+			"displayName": "发送查询参数",
+			"description": "请求是否包含查询参数"
+		},
+		"specifyQuery": {
+			"displayName": "指定查询参数",
+			"options": {
+				"keypair": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用下方JSON"
+				},
+				"model": {
+					"displayName": "让模型指定完整正文"
+				}
+			}
+		},
+		"parametersQuery": {
+			"displayName": "查询参数",
+			"placeholder": "添加参数",
+			"multipleValueButtonText": "添加参数",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称"
+						},
+						"valueProvider": {
+							"displayName": "已提供的值",
+							"options": {
+								"modelRequired": {
+									"displayName": "按模型（且为必填项）"
+								},
+								"modelOptional": {
+									"displayName": "按模型（但可选）"
+								},
+								"fieldValue": {
+									"displayName": "使用下方字段"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称"
+						},
+						"valueProvider": {
+							"displayName": "已提供的值",
+							"options": {
+								"modelRequired": {
+									"displayName": "按模型（且为必填项）"
+								},
+								"modelOptional": {
+									"displayName": "按模型（但可选）"
+								},
+								"fieldValue": {
+									"displayName": "使用下方字段"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"parametersQuery": {
+					"displayName": "查询参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"jsonQuery": {
+			"displayName": "JSON"
+		},
+		"sendHeaders": {
+			"displayName": "发送请求头",
+			"description": "请求是否包含请求头"
+		},
+		"specifyHeaders": {
+			"displayName": "指定请求头",
+			"options": {
+				"keypair": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用下方JSON"
+				},
+				"model": {
+					"displayName": "让模型指定完整正文"
+				}
+			}
+		},
+		"parametersHeaders": {
+			"displayName": "请求头参数",
+			"placeholder": "添加参数",
+			"multipleValueButtonText": "添加参数",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称"
+						},
+						"valueProvider": {
+							"displayName": "已提供的值",
+							"options": {
+								"modelRequired": {
+									"displayName": "按模型（且为必填项）"
+								},
+								"modelOptional": {
+									"displayName": "按模型（但可选）"
+								},
+								"fieldValue": {
+									"displayName": "使用下方字段"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称"
+						},
+						"valueProvider": {
+							"displayName": "已提供的值",
+							"options": {
+								"modelRequired": {
+									"displayName": "按模型（且为必填项）"
+								},
+								"modelOptional": {
+									"displayName": "按模型（但可选）"
+								},
+								"fieldValue": {
+									"displayName": "使用下方字段"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"parametersHeaders": {
+					"displayName": "请求头参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"jsonHeaders": {
+			"displayName": "JSON"
+		},
+		"sendBody": {
+			"displayName": "发送正文",
+			"description": "请求是否包含正文"
+		},
+		"specifyBody": {
+			"displayName": "指定请求体",
+			"options": {
+				"keypair": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用下方JSON"
+				},
+				"model": {
+					"displayName": "让模型指定完整正文"
+				}
+			}
+		},
+		"parametersBody": {
+			"displayName": "Body参数",
+			"placeholder": "添加参数",
+			"multipleValueButtonText": "添加参数",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称"
+						},
+						"valueProvider": {
+							"displayName": "已提供的值",
+							"options": {
+								"modelRequired": {
+									"displayName": "按模型（且为必填项）"
+								},
+								"modelOptional": {
+									"displayName": "按模型（但可选）"
+								},
+								"fieldValue": {
+									"displayName": "使用下方字段"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称"
+						},
+						"valueProvider": {
+							"displayName": "已提供的值",
+							"options": {
+								"modelRequired": {
+									"displayName": "按模型（且为必填项）"
+								},
+								"modelOptional": {
+									"displayName": "按模型（但可选）"
+								},
+								"fieldValue": {
+									"displayName": "使用下方字段"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"parametersBody": {
+					"displayName": "请求体参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"jsonBody": {
+			"displayName": "JSON"
+		},
+		"placeholderDefinitions": {
+			"displayName": "占位符定义",
+			"placeholder": "添加定义",
+			"multipleValueButtonText": "添加定义",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "占位符名称"
+						},
+						"description": {
+							"displayName": "描述"
+						},
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"not specified": {
+									"displayName": "未指定（默认）"
+								},
+								"string": {
+									"displayName": "字符串"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"boolean": {
+									"displayName": "布尔值"
+								},
+								"json": {
+									"displayName": "JSON"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "占位符名称"
+						},
+						"description": {
+							"displayName": "描述"
+						},
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"not specified": {
+									"displayName": "未指定（默认）"
+								},
+								"string": {
+									"displayName": "字符串"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"boolean": {
+									"displayName": "布尔值"
+								},
+								"json": {
+									"displayName": "JSON"
+								}
+							}
+						}
+					}
+				},
+				"placeholderDefinitions": {
+					"displayName": "占位符定义",
+					"placeholder": "添加定义"
+				}
+			}
+		},
+		"optimizeResponse": {
+			"displayName": "优化响应",
+			"description": "是否优化工具响应以减少传递给LLM的数据量，可能带来更好结果并降低成本"
+		},
+		"responseType": {
+			"displayName": "预期响应类型",
+			"options": {
+				"json": {
+					"displayName": "JSON"
+				},
+				"html": {
+					"displayName": "HTML"
+				},
+				"text": {
+					"displayName": "文本"
+				}
+			}
+		},
+		"dataField": {
+			"displayName": "包含数据的字段",
+			"description": "指定响应中包含数据的字段名称",
+			"placeholder": "例如：records"
+		},
+		"fieldsToInclude": {
+			"displayName": "包含字段",
+			"description": "响应对象应包含哪些字段",
+			"options": {
+				"all": {
+					"displayName": "全部",
+					"description": "包含所有字段"
+				},
+				"selected": {
+					"displayName": "已选择",
+					"description": "仅包含下方指定的字段"
+				},
+				"except": {
+					"displayName": "排除",
+					"description": "排除以下指定字段"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "字段",
+			"description": "字段名称的逗号分隔列表。支持点表示法。您可以从输入面板拖动所选字段。",
+			"placeholder": "例如：field1,field2"
+		},
+		"cssSelector": {
+			"displayName": "选择器 (CSS)",
+			"description": "在响应的HTML中选择特定元素（例如body）或选定类型的多个元素（例如div）。",
+			"placeholder": "例如 body"
+		},
+		"onlyContent": {
+			"displayName": "仅返回内容",
+			"description": "是否仅返回HTML元素的内容，去除HTML标签和属性"
+		},
+		"elementsToOmit": {
+			"displayName": "要忽略的元素",
+			"description": "提取内容时要排除的选择器列表，用逗号分隔",
+			"placeholder": "例如：img, .className, #ItemId"
+		},
+		"truncateResponse": {
+			"displayName": "截断响应"
+		},
+		"maxLength": {
+			"displayName": "最大响应字符数"
+		}
+	}
+}

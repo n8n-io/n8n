@@ -1,0 +1,473 @@
+{
+	"header": {
+		"displayName": "GitLab",
+		"description": "Retrieve data from GitLab API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"file": {
+					"displayName": "File"
+				},
+				"issue": {
+					"displayName": "Issue"
+				},
+				"release": {
+					"displayName": "Release"
+				},
+				"repository": {
+					"displayName": "Repository"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new file in repository"
+				},
+				"createComment": {
+					"displayName": "Create Comment",
+					"description": "Create a new comment on an issue"
+				},
+				"edit": {
+					"displayName": "Edit",
+					"description": "Edit a file in repository"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get the data of a single file"
+				},
+				"lock": {
+					"displayName": "Lock",
+					"description": "Lock an issue"
+				},
+				"getIssues": {
+					"displayName": "Get Issues",
+					"description": "Returns issues of a repository"
+				},
+				"getRepositories": {
+					"displayName": "Get Repositories",
+					"description": "Returns the repositories of a user"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a file in repository"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many releases"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a release"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "List contents of a folder"
+				}
+			}
+		},
+		"owner": {
+			"displayName": "Project Owner",
+			"description": "User, group or namespace of the project",
+			"placeholder": "n8n-io"
+		},
+		"repository": {
+			"displayName": "Project Name",
+			"description": "The name of the project",
+			"placeholder": "n8n"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The title of the issue"
+		},
+		"body": {
+			"displayName": "Body",
+			"description": "The body of the comment"
+		},
+		"due_date": {
+			"displayName": "Due Date",
+			"description": "Due Date for issue"
+		},
+		"labels": {
+			"displayName": "Labels",
+			"multipleValueButtonText": "Add Label",
+			"options": {
+				"label": {
+					"displayName": "Label",
+					"description": "Label to add to issue"
+				}
+			}
+		},
+		"assignee_ids": {
+			"displayName": "Assignees",
+			"multipleValueButtonText": "Add Assignee",
+			"options": {
+				"assignee": {
+					"displayName": "Assignee",
+					"description": "User ID to assign issue to"
+				}
+			}
+		},
+		"issueNumber": {
+			"displayName": "Issue Number",
+			"description": "The number of the issue to lock"
+		},
+		"editFields": {
+			"displayName": "Edit Fields",
+			"options": {
+				"title": {
+					"displayName": "Title",
+					"description": "The title of the issue"
+				},
+				"description": {
+					"displayName": "Body",
+					"description": "The body of the issue"
+				},
+				"state": {
+					"displayName": "State",
+					"description": "The state to set",
+					"options": {
+						"closed": {
+							"displayName": "Closed",
+							"description": "Set the state to \"closed\""
+						},
+						"open": {
+							"displayName": "Open",
+							"description": "Set the state to \"open\""
+						}
+					}
+				},
+				"labels": {
+					"displayName": "Labels",
+					"multipleValueButtonText": "Add Label",
+					"options": {
+						"label": {
+							"displayName": "Label",
+							"description": "Label to add to issue"
+						}
+					}
+				},
+				"assignee_ids": {
+					"displayName": "Assignees",
+					"multipleValueButtonText": "Add Assignee",
+					"options": {
+						"assignee": {
+							"displayName": "Assignees",
+							"description": "User to assign issue too"
+						}
+					}
+				},
+				"due_date": {
+					"displayName": "Due Date",
+					"description": "Due Date for issue"
+				}
+			}
+		},
+		"lockReason": {
+			"displayName": "Lock Reason",
+			"description": "The reason to lock the issue",
+			"options": {
+				"off-topic": {
+					"displayName": "Off-Topic",
+					"description": "The issue is Off-Topic"
+				},
+				"too heated": {
+					"displayName": "Too Heated",
+					"description": "The discussion is too heated"
+				},
+				"resolved": {
+					"displayName": "Resolved",
+					"description": "The issue got resolved"
+				},
+				"spam": {
+					"displayName": "Spam",
+					"description": "The issue is spam"
+				}
+			}
+		},
+		"releaseTag": {
+			"displayName": "Tag",
+			"description": "The tag of the release"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "The release name"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The description of the release. You can use Markdown."
+				},
+				"ref": {
+					"displayName": "Ref",
+					"description": "If Tag doesn’t exist, the release will be created from Ref. It can be a commit SHA, another tag name, or a branch name."
+				},
+				"order_by": {
+					"displayName": "Order By",
+					"description": "The field to use as order",
+					"options": {
+						"created_at": {
+							"displayName": "Created At"
+						},
+						"released_at": {
+							"displayName": "Released At"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The direction of the order. .",
+					"options": {
+						"asc": {
+							"displayName": "ASC"
+						},
+						"desc": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"milestones": {
+					"displayName": "Milestones",
+					"description": "The title of each milestone to associate with the release (provide a titles list spearated with comma)"
+				},
+				"released_at": {
+					"displayName": "Released At",
+					"description": "The date when the release is/was ready"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "Project ID",
+			"description": "The ID or URL-encoded path of the project"
+		},
+		"tag_name": {
+			"displayName": "Tag Name",
+			"description": "The Git tag the release is associated with"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"getRepositoryIssuesFilters": {
+			"displayName": "Filters",
+			"options": {
+				"assignee_username": {
+					"displayName": "Assignee",
+					"description": "Return only issues which are assigned to a specific user"
+				},
+				"author_username": {
+					"displayName": "Creator",
+					"description": "Return only issues which were created by a specific user"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search issues against their title and description"
+				},
+				"labels": {
+					"displayName": "Labels",
+					"description": "Return only issues with the given labels. Multiple lables can be separated by comma."
+				},
+				"updated_after": {
+					"displayName": "Updated After",
+					"description": "Return only issues updated at or after this time"
+				},
+				"state": {
+					"displayName": "State",
+					"description": "The state to filter by",
+					"options": {
+						"": {
+							"displayName": "All",
+							"description": "Returns issues with any state"
+						},
+						"closed": {
+							"displayName": "Closed",
+							"description": "Return issues with \"closed\" state"
+						},
+						"opened": {
+							"displayName": "Open",
+							"description": "Return issues with \"open\" state"
+						}
+					}
+				},
+				"order_by": {
+					"displayName": "Sort",
+					"description": "The order the issues should be returned in",
+					"options": {
+						"created_at": {
+							"displayName": "Created At",
+							"description": "Sort by created date"
+						},
+						"updated_at": {
+							"displayName": "Updated At",
+							"description": "Sort by updated date"
+						},
+						"priority": {
+							"displayName": "Priority",
+							"description": "Sort by priority"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Direction",
+					"description": "The sort order",
+					"options": {
+						"asc": {
+							"displayName": "Ascending",
+							"description": "Sort in ascending order"
+						},
+						"desc": {
+							"displayName": "Descending",
+							"description": "Sort in descending order"
+						}
+					}
+				}
+			}
+		},
+		"filePath": {
+			"displayName": "Path",
+			"description": "The path of the folder to list",
+			"placeholder": "docs/"
+		},
+		"page": {
+			"displayName": "Page",
+			"description": "Page of results to display"
+		},
+		"additionalParameters": {
+			"displayName": "Additional Parameters",
+			"description": "Additional fields to add",
+			"placeholder": "Add Parameter",
+			"options": {
+				"ref": {
+					"displayName": "Reference",
+					"description": "The name of the commit/branch/tag. Default: the repository’s default branch (usually main).",
+					"placeholder": "main"
+				},
+				"recursive": {
+					"displayName": "Recursive",
+					"description": "Whether or not to get a recursive file tree. Default is false."
+				},
+				"reference": {
+					"displayName": "Reference",
+					"description": "The name of the commit/branch/tag. Default: the repository’s default branch (usually main).",
+					"placeholder": "main"
+				},
+				"branchStart": {
+					"displayName": "Start Branch",
+					"options": {
+						"branchStart": {
+							"displayName": "Start Branch",
+							"description": "Name of the base branch to create the new branch from"
+						}
+					}
+				},
+				"author": {
+					"displayName": "Author",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the author of the commit"
+						},
+						"email": {
+							"displayName": "Email",
+							"description": "The email of the author of the commit",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"encoding": {
+					"displayName": "Encoding",
+					"options": {
+						"encoding": {
+							"displayName": "Encoding",
+							"description": "Change encoding to base64. Default is text."
+						}
+					}
+				}
+			},
+			"values": {
+				"branchStart": {
+					"displayName": "Start Branch",
+					"options": {
+						"branchStart": {
+							"displayName": "Start Branch",
+							"description": "Name of the base branch to create the new branch from"
+						}
+					}
+				},
+				"author": {
+					"displayName": "Author",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the author of the commit"
+						},
+						"email": {
+							"displayName": "Email",
+							"description": "The email of the author of the commit",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"encoding": {
+					"displayName": "Encoding",
+					"options": {
+						"encoding": {
+							"displayName": "Encoding",
+							"description": "Change encoding to base64. Default is text."
+						}
+					}
+				},
+				"additionalParameters": {
+					"displayName": "Additional Parameters",
+					"placeholder": "Add Parameter"
+				}
+			}
+		},
+		"asBinaryProperty": {
+			"displayName": "As Binary Property",
+			"description": "Whether to set the data of the file as binary property instead of returning the raw API response"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the data to upload should be taken from binary field"
+		},
+		"fileContent": {
+			"displayName": "File Content",
+			"description": "The text content of the file"
+		},
+		"commitMessage": {
+			"displayName": "Commit Message"
+		},
+		"branch": {
+			"displayName": "Branch",
+			"description": "Name of the new branch to create. The commit is added to this branch."
+		}
+	}
+}

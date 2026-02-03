@@ -1,0 +1,46 @@
+{
+	"header": {
+		"displayName": "Lemonade Model",
+		"description": "Language Model Lemonade"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will generate the completion. Models are loaded and managed through the Lemonade server."
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls the randomness of the generated text. Lower values make the output more focused and deterministic, while higher values make it more diverse and random."
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "Chooses from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p. Helps generate more human-like text by reducing repetitions."
+				},
+				"frequencyPenalty": {
+					"displayName": "Frequency Penalty",
+					"description": "Adjusts the penalty for tokens that have already appeared in the generated text. Positive values discourage repetition, negative values encourage it."
+				},
+				"presencePenalty": {
+					"displayName": "Presence Penalty",
+					"description": "Adjusts the penalty for tokens based on their presence in the generated text so far. Positive values penalize tokens that have already appeared, encouraging diversity."
+				},
+				"maxTokens": {
+					"displayName": "Max Tokens to Generate",
+					"description": "The maximum number of tokens to generate. Set to -1 for no limit. Be cautious when setting this to a large value, as it can lead to very long outputs."
+				},
+				"stop": {
+					"displayName": "Stop Sequences",
+					"description": "Comma-separated list of sequences where the model will stop generating text"
+				}
+			}
+		}
+	}
+}

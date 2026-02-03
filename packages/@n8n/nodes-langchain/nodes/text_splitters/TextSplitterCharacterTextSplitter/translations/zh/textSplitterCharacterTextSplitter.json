@@ -1,0 +1,22 @@
+{
+	"header": {
+		"displayName": "字符文本分割器",
+		"description": "按字符将文本分割成块"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到文档加载器。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_document'>插入一个</a>"
+		},
+		"separator": {
+			"displayName": "分隔符"
+		},
+		"chunkSize": {
+			"displayName": "分块大小",
+			"description": "每块最大字符数"
+		},
+		"chunkOverlap": {
+			"displayName": "分块重叠",
+			"description": "连续块之间共享的字符数，用于保持上下文"
+		}
+	}
+}

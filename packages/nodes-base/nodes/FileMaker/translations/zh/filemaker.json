@@ -1,0 +1,348 @@
+{
+	"header": {
+		"displayName": "FileMaker",
+		"description": "从FileMaker数据API检索数据"
+	},
+	"nodeView": {
+		"action": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建记录"
+				},
+				"delete": {
+					"displayName": "删除记录"
+				},
+				"duplicate": {
+					"displayName": "复制记录"
+				},
+				"edit": {
+					"displayName": "编辑记录"
+				},
+				"find": {
+					"displayName": "查找记录"
+				},
+				"records": {
+					"displayName": "获取记录"
+				},
+				"record": {
+					"displayName": "按ID获取记录"
+				},
+				"performscript": {
+					"displayName": "执行脚本"
+				}
+			}
+		},
+		"layout": {
+			"displayName": "布局名称或ID",
+			"description": "FileMaker布局名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "布局名称",
+			"options": {}
+		},
+		"recid": {
+			"displayName": "记录ID",
+			"description": "get操作返回的内部记录ID (recordid)",
+			"placeholder": "记录ID"
+		},
+		"offset": {
+			"displayName": "偏移量",
+			"description": "记录范围内第一条记录的记录号",
+			"placeholder": "0"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量",
+			"placeholder": "100"
+		},
+		"getPortals": {
+			"displayName": "获取门户",
+			"description": "是否同时获取门户数据"
+		},
+		"portals": {
+			"displayName": "门户名称或ID",
+			"description": "要返回的门户结果集。使用门户对象名称或门户表名称。如果省略此参数，API将返回布局中的所有门户对象和记录。为获得最佳性能，请传递门户对象名称或门户表名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "门户",
+			"options": {}
+		},
+		"responseLayout": {
+			"displayName": "响应布局名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+			"options": {}
+		},
+		"queries": {
+			"displayName": "查询",
+			"placeholder": "添加查询",
+			"multipleValueButtonText": "添加查询",
+			"options": {
+				"query": {
+					"displayName": "查询",
+					"options": {
+						"fields": {
+							"displayName": "字段",
+							"description": "字段名称",
+							"placeholder": "添加字段",
+							"multipleValueButtonText": "添加字段",
+							"options": {
+								"field": {
+									"displayName": "字段",
+									"options": {
+										"name": {
+											"displayName": "字段名称或ID",
+											"description": "搜索字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+											"options": {}
+										},
+										"value": {
+											"displayName": "值",
+											"description": "搜索值"
+										}
+									}
+								}
+							},
+							"values": {
+								"field": {
+									"displayName": "字段",
+									"options": {
+										"name": {
+											"displayName": "字段名称或ID",
+											"description": "搜索字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+											"options": {}
+										},
+										"value": {
+											"displayName": "值",
+											"description": "搜索值"
+										}
+									}
+								},
+								"fields": {
+									"displayName": "字段",
+									"placeholder": "添加字段"
+								}
+							}
+						},
+						"omit": {
+							"displayName": "省略"
+						}
+					}
+				}
+			},
+			"values": {
+				"query": {
+					"displayName": "查询",
+					"options": {
+						"fields": {
+							"displayName": "字段",
+							"description": "字段名称",
+							"placeholder": "添加字段",
+							"multipleValueButtonText": "添加字段",
+							"options": {
+								"field": {
+									"displayName": "字段",
+									"options": {
+										"name": {
+											"displayName": "字段名称或ID",
+											"description": "搜索字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+											"options": {}
+										},
+										"value": {
+											"displayName": "值",
+											"description": "搜索值"
+										}
+									}
+								}
+							},
+							"values": {
+								"field": {
+									"displayName": "字段",
+									"options": {
+										"name": {
+											"displayName": "字段名称或ID",
+											"description": "搜索字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+											"options": {}
+										},
+										"value": {
+											"displayName": "值",
+											"description": "搜索值"
+										}
+									}
+								},
+								"fields": {
+									"displayName": "字段",
+									"placeholder": "添加字段"
+								}
+							}
+						},
+						"omit": {
+							"displayName": "省略"
+						}
+					}
+				},
+				"queries": {
+					"displayName": "查询",
+					"placeholder": "添加查询"
+				}
+			}
+		},
+		"setSort": {
+			"displayName": "排序数据？",
+			"description": "是否对数据进行排序"
+		},
+		"sortParametersUi": {
+			"displayName": "排序",
+			"description": "排序规则",
+			"placeholder": "添加排序规则",
+			"multipleValueButtonText": "添加排序规则",
+			"options": {
+				"rules": {
+					"displayName": "规则",
+					"options": {
+						"name": {
+							"displayName": "字段名称或ID",
+							"description": "字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+							"options": {}
+						},
+						"value": {
+							"displayName": "排序",
+							"description": "排序顺序",
+							"options": {
+								"ascend": {
+									"displayName": "提升"
+								},
+								"descend": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"rules": {
+					"displayName": "规则",
+					"options": {
+						"name": {
+							"displayName": "字段名称或ID",
+							"description": "字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+							"options": {}
+						},
+						"value": {
+							"displayName": "排序",
+							"description": "排序顺序",
+							"options": {
+								"ascend": {
+									"displayName": "提升"
+								},
+								"descend": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				},
+				"sortParametersUi": {
+					"displayName": "排序",
+					"placeholder": "添加排序规则"
+				}
+			}
+		},
+		"setScriptBefore": {
+			"displayName": "前置查找脚本",
+			"description": "是否定义在API调用指定的操作之后、后续排序之前运行的脚本"
+		},
+		"scriptBefore": {
+			"displayName": "脚本名称或ID",
+			"description": "在API调用指定的操作及后续排序之后要运行的FileMaker脚本名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "脚本名称",
+			"options": {}
+		},
+		"scriptBeforeParam": {
+			"displayName": "脚本参数",
+			"description": "FileMaker脚本的参数",
+			"placeholder": "脚本参数"
+		},
+		"setScriptSort": {
+			"displayName": "排序前脚本",
+			"description": "是否定义在API调用指定的操作之后、后续排序之前运行的脚本"
+		},
+		"scriptSort": {
+			"displayName": "脚本名称或ID",
+			"description": "在API调用指定的操作之后、后续排序之前要运行的FileMaker脚本名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "脚本名称",
+			"options": {}
+		},
+		"scriptSortParam": {
+			"displayName": "脚本参数",
+			"description": "FileMaker脚本的参数",
+			"placeholder": "脚本参数"
+		},
+		"setScriptAfter": {
+			"displayName": "排序后脚本",
+			"description": "是否定义在API调用指定的操作之后、后续排序之前运行的脚本"
+		},
+		"scriptAfter": {
+			"displayName": "脚本名称或ID",
+			"description": "在API调用指定的操作及后续排序之后要运行的FileMaker脚本名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "脚本名称",
+			"options": {}
+		},
+		"scriptAfterParam": {
+			"displayName": "脚本参数",
+			"description": "FileMaker脚本的参数",
+			"placeholder": "脚本参数"
+		},
+		"modId": {
+			"displayName": "修改ID",
+			"description": "最后修改ID。使用modId时，仅当modId匹配时才会编辑记录。"
+		},
+		"fieldsParametersUi": {
+			"displayName": "字段",
+			"description": "要定义的字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"name": {
+							"displayName": "字段名称或ID",
+							"description": "字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+							"options": {}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"name": {
+							"displayName": "字段名称或ID",
+							"description": "字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+							"options": {}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"fieldsParametersUi": {
+					"displayName": "字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"script": {
+			"displayName": "脚本名称或ID",
+			"description": "要运行的FileMaker脚本名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "脚本名称",
+			"options": {}
+		},
+		"scriptParam": {
+			"displayName": "脚本参数",
+			"description": "FileMaker脚本的参数",
+			"placeholder": "脚本参数"
+		}
+	}
+}

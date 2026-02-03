@@ -1,0 +1,77 @@
+{
+	"header": {
+		"displayName": "Gotify",
+		"description": "Consume Gotify API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"message": {
+					"displayName": "Message"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The message to send, If using Markdown add the Content Type option"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"priority": {
+					"displayName": "Priority",
+					"description": "The priority of the message"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "The title of the message"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"contentType": {
+					"displayName": "Content Type",
+					"description": "The message content type",
+					"options": {
+						"text/plain": {
+							"displayName": "Plain"
+						},
+						"text/markdown": {
+							"displayName": "Markdown"
+						}
+					}
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "Message ID"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		}
+	}
+}

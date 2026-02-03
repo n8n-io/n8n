@@ -1,0 +1,25 @@
+{
+	"header": {
+		"displayName": "Item List Output Parser",
+		"description": "Return the results as separate items"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"numberOfItems": {
+					"displayName": "Number Of Items",
+					"description": "Defines how many items should be returned maximally. If set to -1, there is no limit."
+				},
+				"separator": {
+					"displayName": "Separator",
+					"description": "Defines the separator that should be used to split the results into separate items. Defaults to a new line but can be changed depending on the data that should be returned."
+				}
+			}
+		}
+	}
+}

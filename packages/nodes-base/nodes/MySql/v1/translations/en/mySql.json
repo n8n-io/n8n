@@ -1,0 +1,71 @@
+{
+	"header": {
+		"displayName": "MySQL",
+		"description": "Get, add and update data in MySQL"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"executeQuery": {
+					"displayName": "Execute Query",
+					"description": "Execute an SQL query"
+				},
+				"insert": {
+					"displayName": "Insert",
+					"description": "Insert rows in database"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update rows in database"
+				}
+			}
+		},
+		"query": {
+			"displayName": "Query",
+			"description": "The SQL query to execute",
+			"placeholder": "SELECT id, name FROM product WHERE id < 40"
+		},
+		"table": {
+			"displayName": "Table",
+			"description": "Name of the table in which to update data in"
+		},
+		"columns": {
+			"displayName": "Columns",
+			"description": "Comma-separated list of the properties which should used as columns for rows to update",
+			"placeholder": "name,description"
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Modifiers for INSERT statement",
+			"placeholder": "Add modifiers",
+			"options": {
+				"ignore": {
+					"displayName": "Ignore",
+					"description": "Whether to ignore any ignorable errors that occur while executing the INSERT statement"
+				},
+				"priority": {
+					"displayName": "Priority",
+					"description": "Ignore any ignorable errors that occur while executing the INSERT statement",
+					"options": {
+						"LOW_PRIORITY": {
+							"displayName": "Low Prioirity",
+							"description": "Delays execution of the INSERT until no other clients are reading from the table"
+						},
+						"HIGH_PRIORITY": {
+							"displayName": "High Priority",
+							"description": "Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used."
+						}
+					}
+				}
+			}
+		},
+		"updateKey": {
+			"displayName": "Update Key",
+			"description": "Name of the property which decides which rows in the database should be updated. Normally that would be \"id\"."
+		}
+	}
+}

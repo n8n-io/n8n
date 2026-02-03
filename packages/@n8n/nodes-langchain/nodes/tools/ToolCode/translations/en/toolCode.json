@@ -1,0 +1,68 @@
+{
+	"header": {
+		"displayName": "Code Tool",
+		"description": "Write a tool in JS or Python"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "All properties will be required. To make them optional, use the 'JSON Schema' schema type instead"
+		},
+		"noticeTemplateExample": {
+			"displayName": "See an example of a conversational agent with custom tool written in JavaScript <a href=\"/templates/1963\" target=\"_blank\">here</a>."
+		},
+		"name": {
+			"displayName": "Name",
+			"placeholder": "e.g. My_Tool",
+			"description": "The name of the function to be called, could contain letters, numbers, and underscores only"
+		},
+		"description": {
+			"displayName": "Description",
+			"placeholder": "Call this tool to get a random color. The input should be a string with comma separted names of colors to exclude."
+		},
+		"language": {
+			"displayName": "Language",
+			"options": {
+				"javaScript": {
+					"displayName": "JavaScript"
+				},
+				"python": {
+					"displayName": "Python (Beta)"
+				}
+			}
+		},
+		"jsCode": {
+			"displayName": "JavaScript",
+			"description": "E.g. Converts any text to uppercase"
+		},
+		"pythonCode": {
+			"displayName": "Python",
+			"description": "E.g. Converts any text to uppercase"
+		},
+		"specifyInputSchema": {
+			"displayName": "Specify Input Schema",
+			"description": "Whether to specify the schema for the function. This would require the LLM to provide the input in the correct format and would validate it against the schema."
+		},
+		"schemaType": {
+			"displayName": "Schema Type",
+			"description": "How to specify the schema for the function",
+			"options": {
+				"fromJson": {
+					"displayName": "Generate From JSON Example",
+					"description": "Generate a schema from an example JSON object"
+				},
+				"manual": {
+					"displayName": "Define using JSON Schema",
+					"description": "Define the JSON schema manually"
+				}
+			}
+		},
+		"jsonSchemaExample": {
+			"displayName": "JSON Example",
+			"description": "Example JSON object to use to generate the schema"
+		},
+		"inputSchema": {
+			"displayName": "Input Schema",
+			"description": "Schema to use for the function"
+		}
+	}
+}

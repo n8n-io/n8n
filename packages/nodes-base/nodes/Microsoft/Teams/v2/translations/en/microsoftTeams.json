@@ -1,0 +1,742 @@
+{
+	"header": {
+		"displayName": "Microsoft Teams",
+		"description": "Consume Microsoft Teams API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"channel": {
+					"displayName": "Channel"
+				},
+				"channelMessage": {
+					"displayName": "Channel Message"
+				},
+				"chatMessage": {
+					"displayName": "Chat Message"
+				},
+				"task": {
+					"displayName": "Task"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a task"
+				},
+				"deleteChannel": {
+					"displayName": "Delete",
+					"description": "Delete a channel"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a task"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many tasks"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a task"
+				},
+				"sendAndWait": {
+					"displayName": "Send and Wait for Response",
+					"description": "Send a message and wait for response"
+				},
+				"deleteTask": {
+					"displayName": "Delete",
+					"description": "Delete a task"
+				}
+			}
+		},
+		"teamId": {
+			"displayName": "Team",
+			"description": "Select the team from the list, by URL, or by ID (the ID is the \"groupId\" parameter in the URL you get from \"Get a link to the team\")"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the channel",
+			"placeholder": "e.g. My New Channel name"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"description": {
+					"displayName": "Description",
+					"description": "The description of the channel"
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Standard: Accessible to everyone on the team. Private: Accessible only to a specific group of people within the team.",
+					"options": {
+						"private": {
+							"displayName": "Private"
+						},
+						"standard": {
+							"displayName": "Standard"
+						}
+					}
+				},
+				"includeLinkToWorkflow": {
+					"displayName": "Include Link to Workflow",
+					"description": "Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages."
+				},
+				"makeReply": {
+					"displayName": "Reply to ID",
+					"description": "An optional ID of the message you want to reply to. The message ID is the number before \"?tenantId\" in the message URL.",
+					"placeholder": "e.g. 1673348720590"
+				},
+				"limitWaitTime": {
+					"displayName": "Limit Wait Time",
+					"description": "Whether to limit the time this node should wait for a user response before execution resumes",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "Limit Wait Time"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the phrase \"This message was sent automatically with n8n\" to the end of the message"
+				},
+				"messageButtonLabel": {
+					"displayName": "Message Button Label"
+				},
+				"responseFormTitle": {
+					"displayName": "Response Form Title",
+					"description": "Title of the form that the user can access to provide their response"
+				},
+				"responseFormDescription": {
+					"displayName": "Response Form Description",
+					"description": "Description of the form that the user can access to provide their response"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "Response Form Button Label"
+				},
+				"responseFormCustomCss": {
+					"displayName": "Response Form Custom Styling",
+					"description": "Override default styling of the response form with CSS"
+				},
+				"assignedTo": {
+					"displayName": "Assigned To",
+					"description": "Who the task should be assigned to"
+				},
+				"dueDateTime": {
+					"displayName": "Due Date Time",
+					"description": "Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time."
+				},
+				"percentComplete": {
+					"displayName": "Percent Complete",
+					"description": "Percentage of task completion. When set to 100, the task is considered completed.",
+					"placeholder": "e.g. 75"
+				}
+			},
+			"description": "Other options to set"
+		},
+		"channelId": {
+			"displayName": "Channel",
+			"description": "Select the channel from the list, by URL, or by ID (the ID is the \"threadId\" in the URL)"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"contentType": {
+			"displayName": "Content Type",
+			"description": "Whether the message is plain text or HTML",
+			"options": {
+				"text": {
+					"displayName": "Text"
+				},
+				"html": {
+					"displayName": "HTML"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The content of the message to be sent"
+		},
+		"chatId": {
+			"displayName": "Chat",
+			"description": "Select the chat from the list, by URL, or by ID (find the chat ID after \"conversations/\" in the URL)"
+		},
+		"messageId": {
+			"displayName": "Message ID",
+			"description": "The ID of the message to retrieve",
+			"placeholder": "e.g. 1673355049064"
+		},
+		"responseType": {
+			"displayName": "Response Type",
+			"options": {
+				"approval": {
+					"displayName": "Approval",
+					"description": "User can approve/disapprove from within the message"
+				},
+				"freeText": {
+					"displayName": "Free Text",
+					"description": "User can submit a response via a form"
+				},
+				"customForm": {
+					"displayName": "Custom Form",
+					"description": "User can submit a response via a custom form"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "Define Form",
+			"options": {
+				"fields": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "Form Fields"
+		},
+		"formFields": {
+			"displayName": "Form Elements",
+			"placeholder": "Add Form Element",
+			"multipleValueButtonText": "Add Form Element",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "Form Elements",
+					"placeholder": "Add Form Element"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "Approval Options",
+			"placeholder": "Add option",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "Approval Options",
+					"placeholder": "Add option"
+				}
+			}
+		},
+		"groupId": {
+			"displayName": "Team"
+		},
+		"planId": {
+			"displayName": "Plan",
+			"description": "The plan for the task to belong to"
+		},
+		"bucketId": {
+			"displayName": "Bucket",
+			"description": "The bucket for the task to belong to"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the task",
+			"placeholder": "e.g. new task"
+		},
+		"taskId": {
+			"displayName": "Task ID",
+			"description": "The ID of the task to update",
+			"placeholder": "e.g. h3ufgLvXPkSRzYm-zO5cY5gANtBQ"
+		},
+		"tasksFor": {
+			"displayName": "Tasks For",
+			"description": "Whether to retrieve the tasks for a user or for a plan",
+			"options": {
+				"member": {
+					"displayName": "Group Member",
+					"description": "Tasks assigned to group member"
+				},
+				"plan": {
+					"displayName": "Plan",
+					"description": "Tasks in group plan"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assignedTo": {
+					"displayName": "Assigned To",
+					"description": "Who the task should be assigned to"
+				},
+				"bucketId": {
+					"displayName": "Bucket",
+					"description": "The bucket for the task to belong to"
+				},
+				"dueDateTime": {
+					"displayName": "Due Date Time",
+					"description": "Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time."
+				},
+				"groupId": {
+					"displayName": "Team"
+				},
+				"percentComplete": {
+					"displayName": "Percent Complete",
+					"description": "Percentage of task completion. When set to 100, the task is considered completed.",
+					"placeholder": "e.g. 75"
+				},
+				"planId": {
+					"displayName": "Plan",
+					"description": "The plan for the task to belong to"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the task",
+					"placeholder": "e.g. my task"
+				}
+			}
+		}
+	}
+}

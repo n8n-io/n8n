@@ -1,0 +1,321 @@
+{
+	"header": {
+		"displayName": "Taiga",
+		"description": "使用Taiga API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"epic": {
+					"displayName": "史诗"
+				},
+				"issue": {
+					"displayName": "问题"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"userStory": {
+					"displayName": "用户故事"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建一个用户故事"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户故事"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户故事"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户故事"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户故事"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "项目名称或ID",
+			"description": "要设置用户故事的项目ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"subject": {
+			"displayName": "主题"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assigned_to": {
+					"displayName": "负责人姓名或ID",
+					"description": "用户故事分配对象的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"blocked_note": {
+					"displayName": "阻塞说明",
+					"description": "用户故事被阻塞的原因。需要启用“已阻塞”开关。"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "十六进制颜色代码"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"is_blocked": {
+					"displayName": "是否被阻止",
+					"description": "用户故事是否被阻止"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"milestone": {
+					"displayName": "里程碑（冲刺）名称或ID",
+					"description": "用户故事的里程碑ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"priority": {
+					"displayName": "优先级名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"severity": {
+					"displayName": "严重性名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"status": {
+					"displayName": "状态名称或ID",
+					"description": "用户故事状态的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"taskboard_order": {
+					"displayName": "任务板排序",
+					"description": "任务在任务板中的顺序"
+				},
+				"user_story": {
+					"displayName": "用户故事名称或ID",
+					"description": "任务所属用户故事的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"us_order": {
+					"displayName": "用户故事顺序",
+					"description": "用户故事中的任务顺序"
+				},
+				"backlog_order": {
+					"displayName": "待办事项排序",
+					"description": "待办事项中用户故事的顺序"
+				},
+				"kanban_order": {
+					"displayName": "看板排序",
+					"description": "看板中用户故事的顺序"
+				},
+				"sprint_order": {
+					"displayName": "冲刺顺序",
+					"description": "里程碑中用户故事的顺序"
+				}
+			}
+		},
+		"epicId": {
+			"displayName": "史诗ID",
+			"description": "要更新的史诗ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"assigned_to": {
+					"displayName": "负责人姓名或ID",
+					"description": "用户故事分配对象的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"statusIsClosed": {
+					"displayName": "已关闭",
+					"description": "用户故事是否已关闭"
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"description": "问题排序字段",
+					"options": {
+						"assigned_to": {
+							"displayName": "分配给"
+						},
+						"created_date": {
+							"displayName": "创建日期"
+						},
+						"modified_date": {
+							"displayName": "修改日期"
+						},
+						"owner": {
+							"displayName": "所有者"
+						},
+						"priority": {
+							"displayName": "优先级"
+						},
+						"severity": {
+							"displayName": "严重程度"
+						},
+						"status": {
+							"displayName": "状态"
+						},
+						"subject": {
+							"displayName": "主题"
+						},
+						"type": {
+							"displayName": "类型"
+						}
+					}
+				},
+				"owner": {
+					"displayName": "所有者姓名或ID",
+					"description": "任务所有者的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"priority": {
+					"displayName": "优先级名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"role": {
+					"displayName": "角色名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"severity": {
+					"displayName": "严重性名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"status": {
+					"displayName": "状态名称或ID",
+					"description": "用户故事状态的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"milestone": {
+					"displayName": "里程碑（冲刺）名称或ID",
+					"description": "用户故事的里程碑ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"userStory": {
+					"displayName": "用户故事名称或ID",
+					"description": "任务所属用户故事的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"epic": {
+					"displayName": "史诗名称或ID",
+					"description": "用户故事所属的史诗ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"statusIsArchived": {
+					"displayName": "是否已归档",
+					"description": "用户故事是否已归档"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assigned_to": {
+					"displayName": "负责人姓名或ID",
+					"description": "要分配用户故事的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"blocked_note": {
+					"displayName": "阻塞说明",
+					"description": "用户故事被阻塞的原因。需要启用“已阻塞”开关。"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "十六进制颜色代码"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"is_blocked": {
+					"displayName": "是否被阻止",
+					"description": "用户故事是否被阻止"
+				},
+				"subject": {
+					"displayName": "主题"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"milestone": {
+					"displayName": "里程碑（冲刺）名称或ID",
+					"description": "用户故事的里程碑ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"priority": {
+					"displayName": "优先级名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"severity": {
+					"displayName": "严重性名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"status": {
+					"displayName": "状态名称或ID",
+					"description": "用户故事状态的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"user_story": {
+					"displayName": "用户故事名称或ID",
+					"description": "任务所属用户故事的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"us_order": {
+					"displayName": "用户故事顺序",
+					"description": "用户故事中的任务顺序"
+				},
+				"taskboard_order": {
+					"displayName": "任务板排序",
+					"description": "任务在任务板中的顺序"
+				},
+				"backlog_order": {
+					"displayName": "待办事项排序",
+					"description": "待办事项中用户故事的顺序"
+				},
+				"kanban_order": {
+					"displayName": "看板排序",
+					"description": "看板中用户故事的顺序"
+				},
+				"sprint_order": {
+					"displayName": "冲刺顺序",
+					"description": "里程碑中用户故事的顺序"
+				}
+			}
+		},
+		"issueId": {
+			"displayName": "问题ID",
+			"description": "要更新的问题ID"
+		},
+		"taskId": {
+			"displayName": "任务ID",
+			"description": "要更新的任务ID"
+		},
+		"userStoryId": {
+			"displayName": "用户故事ID",
+			"description": "要更新的用户故事ID"
+		}
+	}
+}

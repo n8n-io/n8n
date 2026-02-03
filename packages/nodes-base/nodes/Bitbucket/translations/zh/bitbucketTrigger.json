@@ -1,0 +1,42 @@
+{
+	"header": {
+		"displayName": "Bitbucket触发器",
+		"description": "通过Webhook处理Bitbucket事件"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"password": {
+					"displayName": "密码（已弃用）"
+				},
+				"accessToken": {
+					"displayName": "访问令牌"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"repository": {
+					"displayName": "仓库"
+				},
+				"workspace": {
+					"displayName": "工作区"
+				}
+			}
+		},
+		"workspace": {
+			"displayName": "工作区名称或ID",
+			"description": "要监听其事件的仓库。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"events": {
+			"displayName": "事件名称或ID",
+			"description": "要监听的事件。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"repository": {
+			"displayName": "仓库名称或ID",
+			"description": "要监听其事件的仓库。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

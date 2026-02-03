@@ -1,0 +1,274 @@
+{
+	"header": {
+		"displayName": "Crypto",
+		"description": "Provide cryptographic utilities"
+	},
+	"nodeView": {
+		"action": {
+			"displayName": "Action",
+			"options": {
+				"generate": {
+					"displayName": "Generate",
+					"description": "Generate random string"
+				},
+				"hash": {
+					"displayName": "Hash",
+					"description": "Hash a text or file in a specified format"
+				},
+				"hmac": {
+					"displayName": "Hmac",
+					"description": "Hmac a text or file in a specified format"
+				},
+				"sign": {
+					"displayName": "Sign",
+					"description": "Sign a string using a private key"
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "The hash type to use",
+			"options": {
+				"MD5": {
+					"displayName": "MD5"
+				},
+				"SHA256": {
+					"displayName": "SHA256"
+				},
+				"SHA3-256": {
+					"displayName": "SHA3-256"
+				},
+				"SHA3-384": {
+					"displayName": "SHA3-384"
+				},
+				"SHA3-512": {
+					"displayName": "SHA3-512"
+				},
+				"SHA384": {
+					"displayName": "SHA384"
+				},
+				"SHA512": {
+					"displayName": "SHA512"
+				}
+			}
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the data to hashed should be taken from binary field"
+		},
+		"binaryPropertyName": {
+			"displayName": "Binary Property Name",
+			"description": "Name of the binary property which contains the input data"
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "The value that should be signed"
+		},
+		"dataPropertyName": {
+			"displayName": "Property Name",
+			"description": "Name of the property to which to write the random string"
+		},
+		"encoding": {
+			"displayName": "Encoding",
+			"options": {
+				"base64": {
+					"displayName": "BASE64"
+				},
+				"hex": {
+					"displayName": "HEX"
+				}
+			}
+		},
+		"secret": {
+			"displayName": "Secret"
+		},
+		"algorithm": {
+			"displayName": "Algorithm Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+			"options": {
+				"RSA-MD5": {
+					"displayName": "RSA-MD5"
+				},
+				"RSA-RIPEMD160": {
+					"displayName": "RSA-RIPEMD160"
+				},
+				"RSA-SHA1": {
+					"displayName": "RSA-SHA1"
+				},
+				"RSA-SHA1-2": {
+					"displayName": "RSA-SHA1-2"
+				},
+				"RSA-SHA224": {
+					"displayName": "RSA-SHA224"
+				},
+				"RSA-SHA256": {
+					"displayName": "RSA-SHA256"
+				},
+				"RSA-SHA3-224": {
+					"displayName": "RSA-SHA3-224"
+				},
+				"RSA-SHA3-256": {
+					"displayName": "RSA-SHA3-256"
+				},
+				"RSA-SHA3-384": {
+					"displayName": "RSA-SHA3-384"
+				},
+				"RSA-SHA3-512": {
+					"displayName": "RSA-SHA3-512"
+				},
+				"RSA-SHA384": {
+					"displayName": "RSA-SHA384"
+				},
+				"RSA-SHA512": {
+					"displayName": "RSA-SHA512"
+				},
+				"RSA-SHA512/224": {
+					"displayName": "RSA-SHA512/224"
+				},
+				"RSA-SHA512/256": {
+					"displayName": "RSA-SHA512/256"
+				},
+				"RSA-SM3": {
+					"displayName": "RSA-SM3"
+				},
+				"blake2b512": {
+					"displayName": "blake2b512"
+				},
+				"blake2s256": {
+					"displayName": "blake2s256"
+				},
+				"id-rsassa-pkcs1-v1_5-with-sha3-224": {
+					"displayName": "id-rsassa-pkcs1-v1_5-with-sha3-224"
+				},
+				"id-rsassa-pkcs1-v1_5-with-sha3-256": {
+					"displayName": "id-rsassa-pkcs1-v1_5-with-sha3-256"
+				},
+				"id-rsassa-pkcs1-v1_5-with-sha3-384": {
+					"displayName": "id-rsassa-pkcs1-v1_5-with-sha3-384"
+				},
+				"id-rsassa-pkcs1-v1_5-with-sha3-512": {
+					"displayName": "id-rsassa-pkcs1-v1_5-with-sha3-512"
+				},
+				"md5": {
+					"displayName": "md5"
+				},
+				"md5-sha1": {
+					"displayName": "md5-sha1"
+				},
+				"md5WithRSAEncryption": {
+					"displayName": "md5WithRSAEncryption"
+				},
+				"ripemd": {
+					"displayName": "ripemd"
+				},
+				"ripemd160": {
+					"displayName": "ripemd160"
+				},
+				"ripemd160WithRSA": {
+					"displayName": "ripemd160WithRSA"
+				},
+				"rmd160": {
+					"displayName": "rmd160"
+				},
+				"sha1": {
+					"displayName": "sha1"
+				},
+				"sha1WithRSAEncryption": {
+					"displayName": "sha1WithRSAEncryption"
+				},
+				"sha224": {
+					"displayName": "sha224"
+				},
+				"sha224WithRSAEncryption": {
+					"displayName": "sha224WithRSAEncryption"
+				},
+				"sha256": {
+					"displayName": "sha256"
+				},
+				"sha256WithRSAEncryption": {
+					"displayName": "sha256WithRSAEncryption"
+				},
+				"sha3-224": {
+					"displayName": "sha3-224"
+				},
+				"sha3-256": {
+					"displayName": "sha3-256"
+				},
+				"sha3-384": {
+					"displayName": "sha3-384"
+				},
+				"sha3-512": {
+					"displayName": "sha3-512"
+				},
+				"sha384": {
+					"displayName": "sha384"
+				},
+				"sha384WithRSAEncryption": {
+					"displayName": "sha384WithRSAEncryption"
+				},
+				"sha512": {
+					"displayName": "sha512"
+				},
+				"sha512-224": {
+					"displayName": "sha512-224"
+				},
+				"sha512-224WithRSAEncryption": {
+					"displayName": "sha512-224WithRSAEncryption"
+				},
+				"sha512-256": {
+					"displayName": "sha512-256"
+				},
+				"sha512-256WithRSAEncryption": {
+					"displayName": "sha512-256WithRSAEncryption"
+				},
+				"sha512WithRSAEncryption": {
+					"displayName": "sha512WithRSAEncryption"
+				},
+				"shake128": {
+					"displayName": "shake128"
+				},
+				"shake256": {
+					"displayName": "shake256"
+				},
+				"sm3": {
+					"displayName": "sm3"
+				},
+				"sm3WithRSAEncryption": {
+					"displayName": "sm3WithRSAEncryption"
+				},
+				"ssl3-md5": {
+					"displayName": "ssl3-md5"
+				},
+				"ssl3-sha1": {
+					"displayName": "ssl3-sha1"
+				}
+			}
+		},
+		"privateKey": {
+			"displayName": "Private Key",
+			"description": "Private key to use when signing the string"
+		},
+		"encodingType": {
+			"displayName": "Type",
+			"description": "Encoding that will be used to generate string",
+			"options": {
+				"ascii": {
+					"displayName": "ASCII"
+				},
+				"base64": {
+					"displayName": "BASE64"
+				},
+				"hex": {
+					"displayName": "HEX"
+				},
+				"uuid": {
+					"displayName": "UUID"
+				}
+			}
+		},
+		"stringLength": {
+			"displayName": "Length",
+			"description": "Length of the generated string"
+		}
+	}
+}

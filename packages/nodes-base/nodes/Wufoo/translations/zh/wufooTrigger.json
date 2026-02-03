@@ -1,0 +1,16 @@
+{
+	"header": {
+		"displayName": "Wufoo 触发器",
+		"description": "通过 Webhook 处理 Wufoo 事件"
+	},
+	"nodeView": {
+		"form": {
+			"displayName": "表单名称或ID",
+			"description": "当有新条目提交时将触发此节点的表单。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"onlyAnswers": {
+			"displayName": "仅返回答案",
+			"description": "是否仅返回表单的答案而不返回任何其他数据"
+		}
+	}
+}

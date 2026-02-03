@@ -1,0 +1,43 @@
+{
+	"header": {
+		"displayName": "AMQP Sender",
+		"description": "Sends a raw-message via AMQP 1.0, executed once per item"
+	},
+	"nodeView": {
+		"sink": {
+			"displayName": "Queue / Topic",
+			"description": "Name of the queue of topic to publish to",
+			"placeholder": "e.g. topic://sourcename.something"
+		},
+		"headerParametersJson": {
+			"displayName": "Headers",
+			"description": "Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"containerId": {
+					"displayName": "Container ID",
+					"description": "Will be used to pass to the RHEA Backend as container_id"
+				},
+				"dataAsObject": {
+					"displayName": "Data as Object",
+					"description": "Whether to send the data as an object"
+				},
+				"reconnect": {
+					"displayName": "Reconnect",
+					"description": "Whether to automatically reconnect if disconnected"
+				},
+				"reconnectLimit": {
+					"displayName": "Reconnect Limit",
+					"description": "Maximum number of reconnect attempts"
+				},
+				"sendOnlyProperty": {
+					"displayName": "Send Property",
+					"description": "The only property to send. If empty the whole item will be sent."
+				}
+			}
+		}
+	}
+}

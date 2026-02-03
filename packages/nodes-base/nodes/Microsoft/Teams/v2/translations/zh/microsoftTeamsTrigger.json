@@ -1,0 +1,58 @@
+{
+	"header": {
+		"displayName": "Microsoft Teams 触发器",
+		"description": "基于 Microsoft Teams 的事件（如新消息或团队更新），使用指定配置在 n8n 中触发工作流。"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "触发器开启",
+			"description": "选择触发工作流的事件",
+			"options": {
+				"newChannel": {
+					"displayName": "新频道",
+					"description": "新频道已创建"
+				},
+				"newChannelMessage": {
+					"displayName": "新频道消息",
+					"description": "有消息发布到频道"
+				},
+				"newChat": {
+					"displayName": "新聊天",
+					"description": "已创建新聊天"
+				},
+				"newChatMessage": {
+					"displayName": "新聊天消息",
+					"description": "有消息发布到聊天"
+				},
+				"newTeamMember": {
+					"displayName": "新团队成员",
+					"description": "有新成员加入团队"
+				}
+			}
+		},
+		"watchAllTeams": {
+			"displayName": "监视所有团队",
+			"description": "是否在所有可用团队中监视此事件"
+		},
+		"teamId": {
+			"displayName": "团队",
+			"description": "从列表中选择团队，输入ID或URL"
+		},
+		"watchAllChannels": {
+			"displayName": "监听所有频道",
+			"description": "是否在所有可用频道中监听该事件"
+		},
+		"channelId": {
+			"displayName": "频道",
+			"description": "从列表中选择频道，输入ID或URL"
+		},
+		"watchAllChats": {
+			"displayName": "监控所有聊天",
+			"description": "是否在所有可用聊天中监控此事件"
+		},
+		"chatId": {
+			"displayName": "聊天",
+			"description": "从列表中选择聊天、输入ID或URL"
+		}
+	}
+}

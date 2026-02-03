@@ -1,0 +1,364 @@
+{
+	"header": {
+		"displayName": "Zoom",
+		"description": "使用Zoom API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"meeting": {
+					"displayName": "会议"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建会议"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除会议"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索会议"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个会议"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新会议"
+				}
+			}
+		},
+		"topic": {
+			"displayName": "主题",
+			"description": "会议主题"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"agenda": {
+					"displayName": "议程",
+					"description": "会议议程"
+				},
+				"duration": {
+					"displayName": "持续时间",
+					"description": "会议时长（分钟）"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "加入会议的密码，最多10个字符"
+				},
+				"scheduleFor": {
+					"displayName": "排程对象",
+					"description": "为账户中的其他用户安排会议，请提供其电子邮件ID"
+				},
+				"settings": {
+					"displayName": "设置",
+					"placeholder": "添加设置",
+					"options": {
+						"audio": {
+							"displayName": "音频",
+							"description": "确定参与者如何加入会议的音频部分",
+							"options": {
+								"both": {
+									"displayName": "电话与VoIP"
+								},
+								"telephony": {
+									"displayName": "电话系统"
+								},
+								"voip": {
+									"displayName": "VOIP"
+								}
+							}
+						},
+						"alternativeHosts": {
+							"displayName": "备用主持人",
+							"description": "备用主持人邮箱ID"
+						},
+						"autoRecording": {
+							"displayName": "自动录制",
+							"options": {
+								"local": {
+									"displayName": "本地记录"
+								},
+								"cloud": {
+									"displayName": "云端记录"
+								},
+								"none": {
+									"displayName": "已禁用"
+								}
+							}
+						},
+						"cnMeeting": {
+							"displayName": "在中国主持会议"
+						},
+						"inMeeting": {
+							"displayName": "在印度主持会议"
+						},
+						"hostVideo": {
+							"displayName": "主持人视频",
+							"description": "主持人加入会议时是否开启视频"
+						},
+						"joinBeforeHost": {
+							"displayName": "允许在主持人之前加入",
+							"description": "是否允许参与者在主持人开始会议前加入"
+						},
+						"muteUponEntry": {
+							"displayName": "进入时静音",
+							"description": "是否在参与者进入时静音"
+						},
+						"participantVideo": {
+							"displayName": "参与者视频",
+							"description": "是否在参与者加入会议时开始视频"
+						},
+						"registrationType": {
+							"displayName": "注册类型",
+							"description": "注册类型。仅用于固定时间的定期会议。",
+							"options": {
+								"1": {
+									"displayName": "参会者只需注册一次，即可参加任意场次"
+								},
+								"2": {
+									"displayName": "参与者需要为每个活动场次进行注册"
+								},
+								"3": {
+									"displayName": "参会者只需注册一次，即可选择参加一个或多个场次"
+								}
+							}
+						},
+						"watermark": {
+							"displayName": "水印",
+							"description": "查看共享屏幕时是否添加水印"
+						}
+					}
+				},
+				"startTime": {
+					"displayName": "开始时间",
+					"description": "开始时间仅应用于预定或定期会议（固定时间）"
+				},
+				"timeZone": {
+					"displayName": "时区名称或ID",
+					"description": "响应中使用的时区。默认使用日历的时区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "会议类型",
+					"options": {
+						"1": {
+							"displayName": "即时会议"
+						},
+						"2": {
+							"displayName": "预定会议"
+						},
+						"3": {
+							"displayName": "无固定时间的定期会议"
+						},
+						"8": {
+							"displayName": "固定时间循环会议"
+						}
+					}
+				},
+				"occurrenceId": {
+					"displayName": "发生ID",
+					"description": "会议发生ID"
+				},
+				"showPreviousOccurrences": {
+					"displayName": "显示之前的会议",
+					"description": "是否查看循环会议所有之前会议详情"
+				},
+				"scheduleForReminder": {
+					"displayName": "计划提醒",
+					"description": "是否通过电子邮件通知主持人和备用主持人会议已取消"
+				}
+			}
+		},
+		"meetingId": {
+			"displayName": "ID",
+			"description": "会议ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"type": {
+					"displayName": "类型",
+					"description": "会议类型",
+					"options": {
+						"scheduled": {
+							"displayName": "计划执行",
+							"description": "这包括所有有效的过往会议、实时会议和即将安排的会议"
+						},
+						"live": {
+							"displayName": "实时",
+							"description": "所有进行中的会议"
+						},
+						"upcoming": {
+							"displayName": "即将到来",
+							"description": "所有即将举行的会议（包括实时会议）"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"agenda": {
+					"displayName": "议程",
+					"description": "会议议程"
+				},
+				"duration": {
+					"displayName": "持续时间",
+					"description": "会议时长（分钟）"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "加入会议的密码，最多10个字符"
+				},
+				"scheduleFor": {
+					"displayName": "排程对象",
+					"description": "为账户中的其他用户安排会议，请提供其电子邮件ID"
+				},
+				"settings": {
+					"displayName": "设置",
+					"placeholder": "添加设置",
+					"options": {
+						"audio": {
+							"displayName": "音频",
+							"description": "确定参与者如何加入会议的音频部分",
+							"options": {
+								"both": {
+									"displayName": "电话与VoIP"
+								},
+								"telephony": {
+									"displayName": "电话系统"
+								},
+								"voip": {
+									"displayName": "VOIP"
+								}
+							}
+						},
+						"alternativeHosts": {
+							"displayName": "备用主持人",
+							"description": "备用主持人邮箱ID"
+						},
+						"autoRecording": {
+							"displayName": "自动录制",
+							"options": {
+								"local": {
+									"displayName": "本地记录"
+								},
+								"cloud": {
+									"displayName": "云端记录"
+								},
+								"none": {
+									"displayName": "已禁用"
+								}
+							}
+						},
+						"cnMeeting": {
+							"displayName": "在中国主持会议"
+						},
+						"inMeeting": {
+							"displayName": "在印度主持会议"
+						},
+						"hostVideo": {
+							"displayName": "主持人视频",
+							"description": "主持人加入会议时是否开启视频"
+						},
+						"joinBeforeHost": {
+							"displayName": "允许在主持人之前加入",
+							"description": "是否允许参与者在主持人开始会议前加入"
+						},
+						"muteUponEntry": {
+							"displayName": "进入时静音",
+							"description": "是否在参与者进入时静音"
+						},
+						"participantVideo": {
+							"displayName": "参与者视频",
+							"description": "是否在参与者加入会议时开始视频"
+						},
+						"registrationType": {
+							"displayName": "注册类型",
+							"description": "注册类型。仅用于固定时间的定期会议。",
+							"options": {
+								"1": {
+									"displayName": "参会者注册一次即可参加任意场次"
+								},
+								"2": {
+									"displayName": "参会者需为每次活动单独注册"
+								},
+								"3": {
+									"displayName": "参会者只需注册一次，即可选择一个或多个场次参加"
+								}
+							}
+						},
+						"watermark": {
+							"displayName": "水印",
+							"description": "查看共享屏幕时是否添加水印"
+						}
+					}
+				},
+				"startTime": {
+					"displayName": "开始时间",
+					"description": "开始时间仅应用于预定或定期会议（固定时间）"
+				},
+				"timeZone": {
+					"displayName": "时区名称或ID",
+					"description": "响应中使用的时区。默认使用日历的时区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"topic": {
+					"displayName": "主题",
+					"description": "会议主题"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "会议类型",
+					"options": {
+						"1": {
+							"displayName": "即时会议"
+						},
+						"2": {
+							"displayName": "预定会议"
+						},
+						"3": {
+							"displayName": "无固定时间的定期会议"
+						},
+						"8": {
+							"displayName": "固定时间循环会议"
+						}
+					}
+				}
+			}
+		}
+	}
+}

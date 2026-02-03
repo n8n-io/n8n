@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "内存向量存储加载",
+		"description": "从内存向量存储加载嵌入数据"
+	},
+	"nodeView": {
+		"memoryKey": {
+			"displayName": "内存键",
+			"description": "用于在工作流数据中存储向量内存的键。该键将添加工作流ID作为前缀以避免冲突。"
+		}
+	}
+}

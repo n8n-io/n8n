@@ -1,0 +1,114 @@
+{
+	"header": {
+		"displayName": "Set",
+		"description": "Sets values on items and optionally remove other values"
+	},
+	"nodeView": {
+		"keepOnlySet": {
+			"displayName": "Keep Only Set",
+			"description": "Whether only the values set on this node should be kept and all others removed"
+		},
+		"values": {
+			"displayName": "Values to Set",
+			"description": "The value to set",
+			"placeholder": "Add Value",
+			"multipleValueButtonText": "Add Value",
+			"options": {
+				"boolean": {
+					"displayName": "Boolean",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the property to write data to. Supports dot-notation. Example: \"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "The boolean value to write in the property"
+						}
+					}
+				},
+				"number": {
+					"displayName": "Number",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the property to write data to. Supports dot-notation. Example: \"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "The number value to write in the property"
+						}
+					}
+				},
+				"string": {
+					"displayName": "String",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the property to write data to. Supports dot-notation. Example: \"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "The string value to write in the property"
+						}
+					}
+				}
+			},
+			"values": {
+				"boolean": {
+					"displayName": "Boolean",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the property to write data to. Supports dot-notation. Example: \"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "The boolean value to write in the property"
+						}
+					}
+				},
+				"number": {
+					"displayName": "Number",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the property to write data to. Supports dot-notation. Example: \"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "The number value to write in the property"
+						}
+					}
+				},
+				"string": {
+					"displayName": "String",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the property to write data to. Supports dot-notation. Example: \"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "The string value to write in the property"
+						}
+					}
+				},
+				"values": {
+					"displayName": "Values to Set",
+					"placeholder": "Add Value"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"dotNotation": {
+					"displayName": "Dot Notation",
+					"description": "<p>By default, dot-notation is used in property names. This means that \"a.b\" will set the property \"b\" underneath \"a\" so { \"a\": { \"b\": value} }.<p></p>If that is not intended this can be deactivated, it will then set { \"a.b\": value } instead.</p>."
+				}
+			}
+		}
+	}
+}

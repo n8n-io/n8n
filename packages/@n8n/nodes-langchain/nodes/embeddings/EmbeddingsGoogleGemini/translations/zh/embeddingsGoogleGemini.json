@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "Google Gemini嵌入",
+		"description": "使用Google Gemini嵌入"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "每个模型使用不同维度的嵌入向量密度。请确保您的向量存储使用相同的维度。默认模型使用768维嵌入向量。"
+		},
+		"modelName": {
+			"displayName": "模型",
+			"description": "将生成嵌入向量的模型。<a href=\"https://developers.generativeai.google/api/rest/generativelanguage/models/list\">了解更多</a>。"
+		}
+	}
+}

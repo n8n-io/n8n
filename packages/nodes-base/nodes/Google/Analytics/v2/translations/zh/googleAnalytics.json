@@ -1,0 +1,2493 @@
+{
+	"header": {
+		"displayName": "Google Analytics",
+		"description": "使用Google Analytics API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"report": {
+					"displayName": "报告"
+				},
+				"userActivity": {
+					"displayName": "用户活动"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "返回分析数据"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "返回用户活动数据"
+				}
+			}
+		},
+		"propertyType": {
+			"displayName": "属性类型",
+			"description": "Google Analytics 4 是最新版本。Universal Analytics 是旧版本，在 2023 年 6 月底后将无法完全正常使用。",
+			"options": {
+				"ga4": {
+					"displayName": "Google Analytics 4"
+				},
+				"universal": {
+					"displayName": "通用分析"
+				}
+			}
+		},
+		"propertyId": {
+			"displayName": "属性",
+			"description": "Google Analytics 属性"
+		},
+		"dateRange": {
+			"displayName": "日期范围",
+			"options": {
+				"last7days": {
+					"displayName": "最近7天"
+				},
+				"last30days": {
+					"displayName": "最近30天"
+				},
+				"today": {
+					"displayName": "今天"
+				},
+				"yesterday": {
+					"displayName": "昨天"
+				},
+				"lastCalendarWeek": {
+					"displayName": "上周完整日历周"
+				},
+				"lastCalendarMonth": {
+					"displayName": "上个月完整日历月"
+				},
+				"custom": {
+					"displayName": "自定义"
+				}
+			}
+		},
+		"startDate": {
+			"displayName": "开始"
+		},
+		"endDate": {
+			"displayName": "结束"
+		},
+		"metricsGA4": {
+			"displayName": "指标",
+			"description": "报告的定量测量值。例如，指标eventCount是事件总数。请求最多允许10个指标。",
+			"placeholder": "添加指标",
+			"multipleValueButtonText": "添加指标",
+			"options": {
+				"metricValues": {
+					"displayName": "值",
+					"options": {
+						"listName": {
+							"displayName": "指标",
+							"options": {
+								"active1DayUsers": {
+									"displayName": "1日活跃用户数"
+								},
+								"active28DayUsers": {
+									"displayName": "28天活跃用户"
+								},
+								"active7DayUsers": {
+									"displayName": "7日活跃用户数"
+								},
+								"checkouts": {
+									"displayName": "结账"
+								},
+								"eventCount": {
+									"displayName": "事件"
+								},
+								"screenPageViews": {
+									"displayName": "页面浏览量"
+								},
+								"userEngagementDuration": {
+									"displayName": "会话时长"
+								},
+								"sessions": {
+									"displayName": "会话"
+								},
+								"sessionsPerUser": {
+									"displayName": "每位用户的会话数"
+								},
+								"totalUsers": {
+									"displayName": "用户总数"
+								},
+								"other": {
+									"displayName": "其他指标…"
+								},
+								"custom": {
+									"displayName": "自定义指标…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "名称"
+						},
+						"expression": {
+							"displayName": "表达式",
+							"description": "派生指标的数学表达式。例如，指标“每位用户的事件数”的表达式为 eventCount/totalUsers。",
+							"placeholder": "例如：eventCount/totalUsers"
+						},
+						"invisible": {
+							"displayName": "不可见",
+							"description": "指标在报告响应中是否不可见。如果指标不可见，该指标不会在响应中生成列，但可在指标过滤器、排序依据或指标表达式中使用。"
+						}
+					}
+				}
+			},
+			"values": {
+				"metricValues": {
+					"displayName": "值",
+					"options": {
+						"listName": {
+							"displayName": "指标",
+							"options": {
+								"active1DayUsers": {
+									"displayName": "1日活跃用户数"
+								},
+								"active28DayUsers": {
+									"displayName": "28天活跃用户"
+								},
+								"active7DayUsers": {
+									"displayName": "7日活跃用户数"
+								},
+								"checkouts": {
+									"displayName": "结账"
+								},
+								"eventCount": {
+									"displayName": "事件"
+								},
+								"screenPageViews": {
+									"displayName": "页面浏览量"
+								},
+								"userEngagementDuration": {
+									"displayName": "会话时长"
+								},
+								"sessions": {
+									"displayName": "会话"
+								},
+								"sessionsPerUser": {
+									"displayName": "每位用户的会话数"
+								},
+								"totalUsers": {
+									"displayName": "用户总数"
+								},
+								"other": {
+									"displayName": "其他指标…"
+								},
+								"custom": {
+									"displayName": "自定义指标…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "名称"
+						},
+						"expression": {
+							"displayName": "表达式",
+							"description": "派生指标的数学表达式。例如，指标“每位用户的事件数”的表达式为 eventCount/totalUsers。",
+							"placeholder": "例如：eventCount/totalUsers"
+						},
+						"invisible": {
+							"displayName": "不可见",
+							"description": "指标在报告响应中是否不可见。如果指标不可见，该指标不会在响应中生成列，但可在指标过滤器、排序依据或指标表达式中使用。"
+						}
+					}
+				},
+				"metricsGA4": {
+					"displayName": "指标",
+					"placeholder": "添加指标"
+				}
+			}
+		},
+		"dimensionsGA4": {
+			"displayName": "拆分维度",
+			"description": "维度是数据的属性。例如，城市维度表示事件来源的城市。报告响应中的维度值是字符串；例如，城市可以是“巴黎”或“纽约”。请求最多允许9个维度。",
+			"placeholder": "添加维度",
+			"multipleValueButtonText": "添加维度",
+			"options": {
+				"dimensionValues": {
+					"displayName": "值",
+					"options": {
+						"listName": {
+							"displayName": "维度",
+							"options": {
+								"browser": {
+									"displayName": "浏览器"
+								},
+								"campaignName": {
+									"displayName": "营销活动"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"deviceCategory": {
+									"displayName": "设备类别"
+								},
+								"itemName": {
+									"displayName": "项目名称"
+								},
+								"language": {
+									"displayName": "语言"
+								},
+								"pageLocation": {
+									"displayName": "页面位置"
+								},
+								"sourceMedium": {
+									"displayName": "来源 / 媒体"
+								},
+								"other": {
+									"displayName": "其他维度…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "名称或ID",
+							"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						}
+					}
+				}
+			},
+			"values": {
+				"dimensionValues": {
+					"displayName": "值",
+					"options": {
+						"listName": {
+							"displayName": "维度",
+							"options": {
+								"browser": {
+									"displayName": "浏览器"
+								},
+								"campaignName": {
+									"displayName": "营销活动"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"deviceCategory": {
+									"displayName": "设备类别"
+								},
+								"itemName": {
+									"displayName": "项目名称"
+								},
+								"language": {
+									"displayName": "语言"
+								},
+								"pageLocation": {
+									"displayName": "页面位置"
+								},
+								"sourceMedium": {
+									"displayName": "来源 / 媒体"
+								},
+								"other": {
+									"displayName": "其他维度…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "名称或ID",
+							"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						}
+					}
+				},
+				"dimensionsGA4": {
+					"displayName": "Dimensions to split by",
+					"placeholder": "添加维度"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"simple": {
+			"displayName": "简化输出",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"currencyCode": {
+					"displayName": "货币代码",
+					"description": "ISO4217格式的货币代码，如\"AED\"、\"USD\"、\"JPY\"。如果该字段为空，报告将使用属性的默认货币。"
+				},
+				"dimensionFiltersUI": {
+					"displayName": "维度筛选器",
+					"placeholder": "添加筛选器",
+					"options": {
+						"filterExpressions": {
+							"displayName": "筛选表达式",
+							"options": {
+								"filterExpressionType": {
+									"displayName": "筛选表达式类型",
+									"options": {
+										"andGroup": {
+											"displayName": "与组"
+										},
+										"orGroup": {
+											"displayName": "或分组"
+										}
+									}
+								},
+								"expression": {
+									"displayName": "表达式",
+									"placeholder": "添加表达式",
+									"multipleValueButtonText": "添加表达式",
+									"options": {
+										"stringFilter": {
+											"displayName": "字符串过滤器",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"caseSensitive": {
+													"displayName": "区分大小写"
+												},
+												"matchType": {
+													"displayName": "匹配类型",
+													"options": {
+														"BEGINS_WITH": {
+															"displayName": "以...开始"
+														},
+														"CONTAINS": {
+															"displayName": "Contains Value"
+														},
+														"ENDS_WITH": {
+															"displayName": "以...结尾"
+														},
+														"EXACT": {
+															"displayName": "精确匹配"
+														},
+														"FULL_REGEXP": {
+															"displayName": "完全匹配正则表达式"
+														},
+														"PARTIAL_REGEXP": {
+															"displayName": "正则表达式的部分匹配"
+														}
+													}
+												}
+											}
+										},
+										"inListFilter": {
+											"displayName": "列表过滤",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"values": {
+													"displayName": "值"
+												},
+												"caseSensitive": {
+													"displayName": "区分大小写"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "数值过滤器",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"operation": {
+													"displayName": "操作",
+													"options": {
+														"EQUAL": {
+															"displayName": "等于"
+														},
+														"GREATER_THAN": {
+															"displayName": "大于"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "大于或等于"
+														},
+														"LESS_THAN": {
+															"displayName": "小于"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "小于或等于"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"stringFilter": {
+											"displayName": "字符串过滤器",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"caseSensitive": {
+													"displayName": "区分大小写"
+												},
+												"matchType": {
+													"displayName": "匹配类型",
+													"options": {
+														"BEGINS_WITH": {
+															"displayName": "以...开始"
+														},
+														"CONTAINS": {
+															"displayName": "Contains Value"
+														},
+														"ENDS_WITH": {
+															"displayName": "以...结尾"
+														},
+														"EXACT": {
+															"displayName": "精确匹配"
+														},
+														"FULL_REGEXP": {
+															"displayName": "完全匹配正则表达式"
+														},
+														"PARTIAL_REGEXP": {
+															"displayName": "正则表达式的部分匹配"
+														}
+													}
+												}
+											}
+										},
+										"inListFilter": {
+											"displayName": "列表过滤",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"values": {
+													"displayName": "值"
+												},
+												"caseSensitive": {
+													"displayName": "区分大小写"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "数值过滤器",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"operation": {
+													"displayName": "操作",
+													"options": {
+														"EQUAL": {
+															"displayName": "等于"
+														},
+														"GREATER_THAN": {
+															"displayName": "大于"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "大于或等于"
+														},
+														"LESS_THAN": {
+															"displayName": "小于"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "小于或等于"
+														}
+													}
+												}
+											}
+										},
+										"expression": {
+											"displayName": "表达式",
+											"placeholder": "添加表达式"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"filterExpressions": {
+							"displayName": "筛选表达式",
+							"options": {
+								"filterExpressionType": {
+									"displayName": "筛选表达式类型",
+									"options": {
+										"andGroup": {
+											"displayName": "与组"
+										},
+										"orGroup": {
+											"displayName": "或分组"
+										}
+									}
+								},
+								"expression": {
+									"displayName": "表达式",
+									"placeholder": "添加表达式",
+									"multipleValueButtonText": "添加表达式",
+									"options": {
+										"stringFilter": {
+											"displayName": "字符串过滤器",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"caseSensitive": {
+													"displayName": "区分大小写"
+												},
+												"matchType": {
+													"displayName": "匹配类型",
+													"options": {
+														"BEGINS_WITH": {
+															"displayName": "以...开始"
+														},
+														"CONTAINS": {
+															"displayName": "Contains Value"
+														},
+														"ENDS_WITH": {
+															"displayName": "以...结尾"
+														},
+														"EXACT": {
+															"displayName": "精确匹配"
+														},
+														"FULL_REGEXP": {
+															"displayName": "完全匹配正则表达式"
+														},
+														"PARTIAL_REGEXP": {
+															"displayName": "正则表达式的部分匹配"
+														}
+													}
+												}
+											}
+										},
+										"inListFilter": {
+											"displayName": "列表过滤",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"values": {
+													"displayName": "值"
+												},
+												"caseSensitive": {
+													"displayName": "区分大小写"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "数值过滤器",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"operation": {
+													"displayName": "操作",
+													"options": {
+														"EQUAL": {
+															"displayName": "等于"
+														},
+														"GREATER_THAN": {
+															"displayName": "大于"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "大于或等于"
+														},
+														"LESS_THAN": {
+															"displayName": "小于"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "小于或等于"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"stringFilter": {
+											"displayName": "字符串过滤器",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"caseSensitive": {
+													"displayName": "区分大小写"
+												},
+												"matchType": {
+													"displayName": "匹配类型",
+													"options": {
+														"BEGINS_WITH": {
+															"displayName": "以...开始"
+														},
+														"CONTAINS": {
+															"displayName": "包含值"
+														},
+														"ENDS_WITH": {
+															"displayName": "以...结尾"
+														},
+														"EXACT": {
+															"displayName": "精确匹配"
+														},
+														"FULL_REGEXP": {
+															"displayName": "完全匹配正则表达式"
+														},
+														"PARTIAL_REGEXP": {
+															"displayName": "正则表达式的部分匹配"
+														}
+													}
+												}
+											}
+										},
+										"inListFilter": {
+											"displayName": "列表过滤",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"values": {
+													"displayName": "值"
+												},
+												"caseSensitive": {
+													"displayName": "区分大小写"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "数值过滤器",
+											"options": {
+												"listName": {
+													"displayName": "维度",
+													"options": {
+														"browser": {
+															"displayName": "浏览器"
+														},
+														"campaignName": {
+															"displayName": "营销活动"
+														},
+														"city": {
+															"displayName": "城市"
+														},
+														"country": {
+															"displayName": "国家"
+														},
+														"date": {
+															"displayName": "日期"
+														},
+														"deviceCategory": {
+															"displayName": "设备类别"
+														},
+														"itemName": {
+															"displayName": "项目名称"
+														},
+														"language": {
+															"displayName": "语言"
+														},
+														"pageLocation": {
+															"displayName": "页面位置"
+														},
+														"sourceMedium": {
+															"displayName": "来源 / 媒体"
+														},
+														"other": {
+															"displayName": "其他维度…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称或ID",
+													"description": "维度的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"operation": {
+													"displayName": "操作",
+													"options": {
+														"EQUAL": {
+															"displayName": "等于"
+														},
+														"GREATER_THAN": {
+															"displayName": "大于"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "大于或等于"
+														},
+														"LESS_THAN": {
+															"displayName": "小于"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "小于或等于"
+														}
+													}
+												}
+											}
+										},
+										"expression": {
+											"displayName": "表达式",
+											"placeholder": "添加表达式"
+										}
+									}
+								}
+							}
+						},
+						"dimensionFiltersUI": {
+							"displayName": "维度筛选器",
+							"placeholder": "添加筛选器"
+						}
+					}
+				},
+				"metricAggregations": {
+					"displayName": "指标聚合"
+				},
+				"metricsFiltersUI": {
+					"displayName": "指标过滤器",
+					"placeholder": "添加筛选器",
+					"options": {
+						"filterExpressions": {
+							"displayName": "筛选表达式",
+							"options": {
+								"filterExpressionType": {
+									"displayName": "筛选表达式类型",
+									"options": {
+										"andGroup": {
+											"displayName": "与组"
+										},
+										"orGroup": {
+											"displayName": "或分组"
+										}
+									}
+								},
+								"expression": {
+									"displayName": "表达式",
+									"placeholder": "添加表达式",
+									"multipleValueButtonText": "添加表达式",
+									"options": {
+										"betweenFilter": {
+											"displayName": "区间过滤器",
+											"options": {
+												"listName": {
+													"displayName": "指标",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1日活跃用户数"
+														},
+														"active28DayUsers": {
+															"displayName": "28天活跃用户"
+														},
+														"active7DayUsers": {
+															"displayName": "7日活跃用户数"
+														},
+														"checkouts": {
+															"displayName": "结账"
+														},
+														"eventCount": {
+															"displayName": "事件"
+														},
+														"screenPageViews": {
+															"displayName": "页面浏览量"
+														},
+														"userEngagementDuration": {
+															"displayName": "会话时长"
+														},
+														"sessions": {
+															"displayName": "会话"
+														},
+														"sessionsPerUser": {
+															"displayName": "每位用户的会话数"
+														},
+														"totalUsers": {
+															"displayName": "用户总数"
+														},
+														"other": {
+															"displayName": "其他指标…"
+														},
+														"custom": {
+															"displayName": "自定义指标…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"fromValue": {
+													"displayName": "来源值"
+												},
+												"toValue": {
+													"displayName": "目标值"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "数值过滤器",
+											"options": {
+												"listName": {
+													"displayName": "指标",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1日活跃用户数"
+														},
+														"active28DayUsers": {
+															"displayName": "28天活跃用户"
+														},
+														"active7DayUsers": {
+															"displayName": "7日活跃用户数"
+														},
+														"checkouts": {
+															"displayName": "结账"
+														},
+														"eventCount": {
+															"displayName": "事件"
+														},
+														"screenPageViews": {
+															"displayName": "页面浏览量"
+														},
+														"userEngagementDuration": {
+															"displayName": "会话时长"
+														},
+														"sessions": {
+															"displayName": "会话"
+														},
+														"sessionsPerUser": {
+															"displayName": "每位用户的会话数"
+														},
+														"totalUsers": {
+															"displayName": "用户总数"
+														},
+														"other": {
+															"displayName": "其他指标…"
+														},
+														"custom": {
+															"displayName": "自定义指标…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"operation": {
+													"displayName": "操作",
+													"options": {
+														"EQUAL": {
+															"displayName": "等于"
+														},
+														"GREATER_THAN": {
+															"displayName": "大于"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "大于或等于"
+														},
+														"LESS_THAN": {
+															"displayName": "小于"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "小于或等于"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"betweenFilter": {
+											"displayName": "区间过滤器",
+											"options": {
+												"listName": {
+													"displayName": "指标",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1日活跃用户数"
+														},
+														"active28DayUsers": {
+															"displayName": "28天活跃用户"
+														},
+														"active7DayUsers": {
+															"displayName": "7日活跃用户数"
+														},
+														"checkouts": {
+															"displayName": "结账"
+														},
+														"eventCount": {
+															"displayName": "事件"
+														},
+														"screenPageViews": {
+															"displayName": "页面浏览量"
+														},
+														"userEngagementDuration": {
+															"displayName": "会话时长"
+														},
+														"sessions": {
+															"displayName": "会话"
+														},
+														"sessionsPerUser": {
+															"displayName": "每位用户的会话数"
+														},
+														"totalUsers": {
+															"displayName": "用户总数"
+														},
+														"other": {
+															"displayName": "其他指标…"
+														},
+														"custom": {
+															"displayName": "自定义指标…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"fromValue": {
+													"displayName": "来源值"
+												},
+												"toValue": {
+													"displayName": "目标值"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "数值过滤器",
+											"options": {
+												"listName": {
+													"displayName": "指标",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1日活跃用户数"
+														},
+														"active28DayUsers": {
+															"displayName": "28天活跃用户"
+														},
+														"active7DayUsers": {
+															"displayName": "7日活跃用户数"
+														},
+														"checkouts": {
+															"displayName": "结账"
+														},
+														"eventCount": {
+															"displayName": "事件"
+														},
+														"screenPageViews": {
+															"displayName": "页面浏览量"
+														},
+														"userEngagementDuration": {
+															"displayName": "会话时长"
+														},
+														"sessions": {
+															"displayName": "会话"
+														},
+														"sessionsPerUser": {
+															"displayName": "每位用户的会话数"
+														},
+														"totalUsers": {
+															"displayName": "用户总数"
+														},
+														"other": {
+															"displayName": "其他指标…"
+														},
+														"custom": {
+															"displayName": "自定义指标…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"operation": {
+													"displayName": "操作",
+													"options": {
+														"EQUAL": {
+															"displayName": "等于"
+														},
+														"GREATER_THAN": {
+															"displayName": "大于"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "大于或等于"
+														},
+														"LESS_THAN": {
+															"displayName": "小于"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "小于或等于"
+														}
+													}
+												}
+											}
+										},
+										"expression": {
+											"displayName": "表达式",
+											"placeholder": "添加表达式"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"filterExpressions": {
+							"displayName": "筛选表达式",
+							"options": {
+								"filterExpressionType": {
+									"displayName": "筛选表达式类型",
+									"options": {
+										"andGroup": {
+											"displayName": "与组"
+										},
+										"orGroup": {
+											"displayName": "或分组"
+										}
+									}
+								},
+								"expression": {
+									"displayName": "表达式",
+									"placeholder": "添加表达式",
+									"multipleValueButtonText": "添加表达式",
+									"options": {
+										"betweenFilter": {
+											"displayName": "区间过滤器",
+											"options": {
+												"listName": {
+													"displayName": "指标",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1日活跃用户数"
+														},
+														"active28DayUsers": {
+															"displayName": "28天活跃用户"
+														},
+														"active7DayUsers": {
+															"displayName": "7日活跃用户数"
+														},
+														"checkouts": {
+															"displayName": "结账"
+														},
+														"eventCount": {
+															"displayName": "事件"
+														},
+														"screenPageViews": {
+															"displayName": "页面浏览量"
+														},
+														"userEngagementDuration": {
+															"displayName": "会话时长"
+														},
+														"sessions": {
+															"displayName": "会话"
+														},
+														"sessionsPerUser": {
+															"displayName": "每位用户的会话数"
+														},
+														"totalUsers": {
+															"displayName": "用户总数"
+														},
+														"other": {
+															"displayName": "其他指标…"
+														},
+														"custom": {
+															"displayName": "自定义指标…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"fromValue": {
+													"displayName": "来源值"
+												},
+												"toValue": {
+													"displayName": "目标值"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "数值过滤器",
+											"options": {
+												"listName": {
+													"displayName": "指标",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1日活跃用户数"
+														},
+														"active28DayUsers": {
+															"displayName": "28天活跃用户"
+														},
+														"active7DayUsers": {
+															"displayName": "7日活跃用户数"
+														},
+														"checkouts": {
+															"displayName": "结账"
+														},
+														"eventCount": {
+															"displayName": "事件"
+														},
+														"screenPageViews": {
+															"displayName": "页面浏览量"
+														},
+														"userEngagementDuration": {
+															"displayName": "会话时长"
+														},
+														"sessions": {
+															"displayName": "会话"
+														},
+														"sessionsPerUser": {
+															"displayName": "每位用户的会话数"
+														},
+														"totalUsers": {
+															"displayName": "用户总数"
+														},
+														"other": {
+															"displayName": "其他指标…"
+														},
+														"custom": {
+															"displayName": "自定义指标…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"operation": {
+													"displayName": "操作",
+													"options": {
+														"EQUAL": {
+															"displayName": "等于"
+														},
+														"GREATER_THAN": {
+															"displayName": "大于"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "大于或等于"
+														},
+														"LESS_THAN": {
+															"displayName": "小于"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "小于或等于"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"betweenFilter": {
+											"displayName": "区间过滤器",
+											"options": {
+												"listName": {
+													"displayName": "指标",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1日活跃用户数"
+														},
+														"active28DayUsers": {
+															"displayName": "28天活跃用户"
+														},
+														"active7DayUsers": {
+															"displayName": "7日活跃用户数"
+														},
+														"checkouts": {
+															"displayName": "结账"
+														},
+														"eventCount": {
+															"displayName": "事件"
+														},
+														"screenPageViews": {
+															"displayName": "页面浏览量"
+														},
+														"userEngagementDuration": {
+															"displayName": "会话时长"
+														},
+														"sessions": {
+															"displayName": "会话"
+														},
+														"sessionsPerUser": {
+															"displayName": "每位用户的会话数"
+														},
+														"totalUsers": {
+															"displayName": "用户总数"
+														},
+														"other": {
+															"displayName": "其他指标…"
+														},
+														"custom": {
+															"displayName": "自定义指标…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"fromValue": {
+													"displayName": "来源值"
+												},
+												"toValue": {
+													"displayName": "目标值"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "数值过滤器",
+											"options": {
+												"listName": {
+													"displayName": "指标",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1日活跃用户数"
+														},
+														"active28DayUsers": {
+															"displayName": "28天活跃用户"
+														},
+														"active7DayUsers": {
+															"displayName": "7日活跃用户数"
+														},
+														"checkouts": {
+															"displayName": "结账"
+														},
+														"eventCount": {
+															"displayName": "事件"
+														},
+														"screenPageViews": {
+															"displayName": "页面浏览量"
+														},
+														"userEngagementDuration": {
+															"displayName": "会话时长"
+														},
+														"sessions": {
+															"displayName": "会话"
+														},
+														"sessionsPerUser": {
+															"displayName": "每位用户的会话数"
+														},
+														"totalUsers": {
+															"displayName": "用户总数"
+														},
+														"other": {
+															"displayName": "其他指标…"
+														},
+														"custom": {
+															"displayName": "自定义指标…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称"
+												},
+												"valueType": {
+													"displayName": "值类型",
+													"options": {
+														"doubleValue": {
+															"displayName": "双精度值"
+														},
+														"int64Value": {
+															"displayName": "整数值"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值"
+												},
+												"operation": {
+													"displayName": "操作",
+													"options": {
+														"EQUAL": {
+															"displayName": "等于"
+														},
+														"GREATER_THAN": {
+															"displayName": "大于"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "大于或等于"
+														},
+														"LESS_THAN": {
+															"displayName": "小于"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "小于或等于"
+														}
+													}
+												}
+											}
+										},
+										"expression": {
+											"displayName": "表达式",
+											"placeholder": "添加表达式"
+										}
+									}
+								}
+							}
+						},
+						"metricsFiltersUI": {
+							"displayName": "指标筛选器",
+							"placeholder": "添加筛选器"
+						}
+					}
+				},
+				"keepEmptyRows": {
+					"displayName": "保留空行",
+					"description": "若设为false或未指定，所有指标值均为0的行将不会被返回。若设为true，除非被筛选器单独移除，否则这些行将被返回。"
+				},
+				"orderByUI": {
+					"displayName": "排序方式",
+					"description": "指定响应中行的排序方式",
+					"placeholder": "添加排序",
+					"multipleValueButtonText": "添加排序",
+					"options": {
+						"metricOrderBy": {
+							"displayName": "指标排序依据",
+							"options": {
+								"desc": {
+									"displayName": "降序",
+									"description": "若为true，则按降序排序"
+								},
+								"metricName": {
+									"displayName": "指标名称或ID",
+									"description": "按指标值排序。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								}
+							}
+						},
+						"dimmensionOrderBy": {
+							"displayName": "维度排序依据",
+							"options": {
+								"desc": {
+									"displayName": "降序",
+									"description": "若为true，则按降序排序"
+								},
+								"dimensionName": {
+									"displayName": "维度名称或ID",
+									"description": "按指标值排序。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"orderType": {
+									"displayName": "订单类型",
+									"options": {
+										"ALPHANUMERIC": {
+											"displayName": "字母数字",
+											"description": "按Unicode码点进行字母数字排序"
+										},
+										"CASE_INSENSITIVE_ALPHANUMERIC": {
+											"displayName": "不区分大小写的字母数字",
+											"description": "不区分大小写的字母数字排序（按小写Unicode码点）"
+										},
+										"NUMERIC": {
+											"displayName": "数值",
+											"description": "维度值在排序前会转换为数字"
+										},
+										"ORDER_TYPE_UNSPECIFIED": {
+											"displayName": "未指定"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"metricOrderBy": {
+							"displayName": "指标排序依据",
+							"options": {
+								"desc": {
+									"displayName": "降序",
+									"description": "若为true，则按降序排序"
+								},
+								"metricName": {
+									"displayName": "指标名称或ID",
+									"description": "按指标值排序。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								}
+							}
+						},
+						"dimmensionOrderBy": {
+							"displayName": "维度排序依据",
+							"options": {
+								"desc": {
+									"displayName": "降序",
+									"description": "若为true，则按降序排序"
+								},
+								"dimensionName": {
+									"displayName": "维度名称或ID",
+									"description": "按指标值排序。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"orderType": {
+									"displayName": "订单类型",
+									"options": {
+										"ALPHANUMERIC": {
+											"displayName": "字母数字",
+											"description": "按Unicode码点进行字母数字排序"
+										},
+										"CASE_INSENSITIVE_ALPHANUMERIC": {
+											"displayName": "不区分大小写的字母数字",
+											"description": "不区分大小写的字母数字排序（按小写Unicode码点）"
+										},
+										"NUMERIC": {
+											"displayName": "数值",
+											"description": "维度值在排序前会转换为数字"
+										},
+										"ORDER_TYPE_UNSPECIFIED": {
+											"displayName": "未指定"
+										}
+									}
+								}
+							}
+						},
+						"orderByUI": {
+							"displayName": "排序方式",
+							"placeholder": "添加订单"
+						}
+					}
+				},
+				"returnPropertyQuota": {
+					"displayName": "返回属性配额",
+					"description": "是否返回此分析属性的当前配额状态。配额信息将在PropertyQuota中返回。"
+				},
+				"dimensionFiltersUi": {
+					"displayName": "维度筛选器",
+					"description": "请求中的维度筛选器",
+					"placeholder": "添加维度筛选器",
+					"multipleValueButtonText": "添加维度筛选器",
+					"options": {
+						"filterValues": {
+							"displayName": "筛选器",
+							"options": {
+								"listName": {
+									"displayName": "维度",
+									"options": {
+										"ga:browser": {
+											"displayName": "浏览器"
+										},
+										"ga:campaign": {
+											"displayName": "营销活动"
+										},
+										"ga:city": {
+											"displayName": "城市"
+										},
+										"ga:country": {
+											"displayName": "国家"
+										},
+										"ga:date": {
+											"displayName": "日期"
+										},
+										"ga:deviceCategory": {
+											"displayName": "设备类别"
+										},
+										"ga:productName": {
+											"displayName": "项目名称"
+										},
+										"ga:language": {
+											"displayName": "语言"
+										},
+										"ga:pagePath": {
+											"displayName": "页面"
+										},
+										"ga:sourceMedium": {
+											"displayName": "来源 / 媒体"
+										},
+										"other": {
+											"displayName": "其他维度…"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称或ID",
+									"description": "要获取的维度名称，例如 ga:browser。从列表中选择，或使用 <a href=\"https://docs.n8n.io/code/expressions/\">表达式</a> 指定 ID。"
+								},
+								"operator": {
+									"displayName": "操作员",
+									"description": "与值组合使用的运算符",
+									"options": {
+										"BEGINS_WITH": {
+											"displayName": "以...开始"
+										},
+										"ENDS_WITH": {
+											"displayName": "以...结尾"
+										},
+										"NUMERIC_EQUAL": {
+											"displayName": "等于（数字）"
+										},
+										"EXACT": {
+											"displayName": "完全匹配"
+										},
+										"NUMERIC_GREATER_THAN": {
+											"displayName": "大于（数字）"
+										},
+										"NUMERIC_LESS_THAN": {
+											"displayName": "小于（数字）"
+										},
+										"PARTIAL": {
+											"displayName": "部分匹配"
+										},
+										"REGEXP": {
+											"displayName": "正则表达式"
+										}
+									}
+								},
+								"expressions": {
+									"displayName": "值",
+									"description": "用于匹配的字符串或<a href=\"https://support.google.com/analytics/answer/1034324?hl=zh_CN\">正则表达式</a>"
+								}
+							}
+						}
+					},
+					"values": {
+						"filterValues": {
+							"displayName": "筛选器",
+							"options": {
+								"listName": {
+									"displayName": "维度",
+									"options": {
+										"ga:browser": {
+											"displayName": "浏览器"
+										},
+										"ga:campaign": {
+											"displayName": "营销活动"
+										},
+										"ga:city": {
+											"displayName": "城市"
+										},
+										"ga:country": {
+											"displayName": "国家"
+										},
+										"ga:date": {
+											"displayName": "日期"
+										},
+										"ga:deviceCategory": {
+											"displayName": "设备类别"
+										},
+										"ga:productName": {
+											"displayName": "项目名称"
+										},
+										"ga:language": {
+											"displayName": "语言"
+										},
+										"ga:pagePath": {
+											"displayName": "页面"
+										},
+										"ga:sourceMedium": {
+											"displayName": "来源 / 媒体"
+										},
+										"other": {
+											"displayName": "其他维度…"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称或ID",
+									"description": "要获取的维度名称，例如 ga:browser。从列表中选择，或使用 <a href=\"https://docs.n8n.io/code/expressions/\">表达式</a> 指定 ID。"
+								},
+								"operator": {
+									"displayName": "操作员",
+									"description": "与值组合使用的运算符",
+									"options": {
+										"BEGINS_WITH": {
+											"displayName": "以...开始"
+										},
+										"ENDS_WITH": {
+											"displayName": "以...结尾"
+										},
+										"NUMERIC_EQUAL": {
+											"displayName": "等于（数字）"
+										},
+										"EXACT": {
+											"displayName": "完全匹配"
+										},
+										"NUMERIC_GREATER_THAN": {
+											"displayName": "大于（数字）"
+										},
+										"NUMERIC_LESS_THAN": {
+											"displayName": "小于（数字）"
+										},
+										"PARTIAL": {
+											"displayName": "部分匹配"
+										},
+										"REGEXP": {
+											"displayName": "正则表达式"
+										}
+									}
+								},
+								"expressions": {
+									"displayName": "值",
+									"description": "用于匹配的字符串或<a href=\"https://support.google.com/analytics/answer/1034324?hl=zh_CN\">正则表达式</a>"
+								}
+							}
+						},
+						"dimensionFiltersUi": {
+							"displayName": "维度筛选器",
+							"placeholder": "添加维度筛选器"
+						}
+					}
+				},
+				"hideTotals": {
+					"displayName": "隐藏总计",
+					"description": "是否针对每个日期范围，隐藏所有匹配行的所有指标总计"
+				},
+				"hideValueRanges": {
+					"displayName": "隐藏数值范围",
+					"description": "是否隐藏所有匹配行的最小值和最大值"
+				},
+				"includeEmptyRows": {
+					"displayName": "包含空行",
+					"description": "当所有检索指标都为零时是否排除该行"
+				},
+				"useResourceQuotas": {
+					"displayName": "使用资源配额",
+					"description": "是否启用基于资源的配额"
+				},
+				"activityTypes": {
+					"displayName": "活动类型",
+					"description": "请求的活动类型"
+				}
+			}
+		},
+		"viewId": {
+			"displayName": "视图名称或ID",
+			"description": "来自Google Analytics的视图。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "123456"
+		},
+		"metricsUA": {
+			"displayName": "指标",
+			"description": "请求中的指标",
+			"placeholder": "添加指标",
+			"multipleValueButtonText": "添加指标",
+			"options": {
+				"metricValues": {
+					"displayName": "指标",
+					"options": {
+						"listName": {
+							"displayName": "指标",
+							"options": {
+								"ga:productCheckouts": {
+									"displayName": "结账"
+								},
+								"ga:totalEvents": {
+									"displayName": "事件"
+								},
+								"ga:pageviews": {
+									"displayName": "页面浏览量"
+								},
+								"ga:sessionDuration": {
+									"displayName": "会话时长"
+								},
+								"ga:sessions": {
+									"displayName": "会话"
+								},
+								"ga:sessionsPerUser": {
+									"displayName": "每位用户的会话数"
+								},
+								"ga:users": {
+									"displayName": "用户总数"
+								},
+								"other": {
+									"displayName": "其他指标…"
+								},
+								"custom": {
+									"displayName": "自定义指标…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "名称"
+						},
+						"expression": {
+							"displayName": "表达式",
+							"description": "了解更多关于Google Analytics<a href=\"https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Metric\">指标表达式</a>的信息",
+							"placeholder": "例如 ga:totalRefunds/ga:users"
+						},
+						"formattingType": {
+							"displayName": "格式化类型",
+							"description": "指定指标表达式的格式化方式",
+							"options": {
+								"CURRENCY": {
+									"displayName": "货币"
+								},
+								"FLOAT": {
+									"displayName": "浮点数"
+								},
+								"INTEGER": {
+									"displayName": "整数"
+								},
+								"PERCENT": {
+									"displayName": "百分比"
+								},
+								"TIME": {
+									"displayName": "时间"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"metricValues": {
+					"displayName": "指标",
+					"options": {
+						"listName": {
+							"displayName": "指标",
+							"options": {
+								"ga:productCheckouts": {
+									"displayName": "结账"
+								},
+								"ga:totalEvents": {
+									"displayName": "事件"
+								},
+								"ga:pageviews": {
+									"displayName": "页面浏览量"
+								},
+								"ga:sessionDuration": {
+									"displayName": "会话时长"
+								},
+								"ga:sessions": {
+									"displayName": "会话"
+								},
+								"ga:sessionsPerUser": {
+									"displayName": "每位用户的会话数"
+								},
+								"ga:users": {
+									"displayName": "用户总数"
+								},
+								"other": {
+									"displayName": "其他指标…"
+								},
+								"custom": {
+									"displayName": "自定义指标…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "名称"
+						},
+						"expression": {
+							"displayName": "表达式",
+							"description": "了解更多关于Google Analytics<a href=\"https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Metric\">指标表达式</a>的信息",
+							"placeholder": "例如 ga:totalRefunds/ga:users"
+						},
+						"formattingType": {
+							"displayName": "格式化类型",
+							"description": "指定指标表达式的格式化方式",
+							"options": {
+								"CURRENCY": {
+									"displayName": "货币"
+								},
+								"FLOAT": {
+									"displayName": "浮点数"
+								},
+								"INTEGER": {
+									"displayName": "整数"
+								},
+								"PERCENT": {
+									"displayName": "百分比"
+								},
+								"TIME": {
+									"displayName": "时间"
+								}
+							}
+						}
+					}
+				},
+				"metricsUA": {
+					"displayName": "指标",
+					"placeholder": "添加指标"
+				}
+			}
+		},
+		"dimensionsUA": {
+			"displayName": "拆分维度",
+			"description": "维度是数据的属性。例如，维度 ga:city 表示会话来源的城市，如“巴黎”或“纽约”。",
+			"placeholder": "添加维度",
+			"multipleValueButtonText": "添加维度",
+			"options": {
+				"dimensionValues": {
+					"displayName": "值",
+					"options": {
+						"listName": {
+							"displayName": "维度",
+							"options": {
+								"ga:browser": {
+									"displayName": "浏览器"
+								},
+								"ga:campaign": {
+									"displayName": "营销活动"
+								},
+								"ga:city": {
+									"displayName": "城市"
+								},
+								"ga:country": {
+									"displayName": "国家"
+								},
+								"ga:date": {
+									"displayName": "日期"
+								},
+								"ga:deviceCategory": {
+									"displayName": "设备类别"
+								},
+								"ga:productName": {
+									"displayName": "项目名称"
+								},
+								"ga:language": {
+									"displayName": "语言"
+								},
+								"ga:pagePath": {
+									"displayName": "页面"
+								},
+								"ga:sourceMedium": {
+									"displayName": "来源 / 媒体"
+								},
+								"other": {
+									"displayName": "其他维度…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "名称或ID",
+							"description": "要获取的维度名称，例如 ga:browser。从列表中选择，或使用 <a href=\"https://docs.n8n.io/code/expressions/\">表达式</a> 指定 ID。"
+						}
+					}
+				}
+			},
+			"values": {
+				"dimensionValues": {
+					"displayName": "值",
+					"options": {
+						"listName": {
+							"displayName": "维度",
+							"options": {
+								"ga:browser": {
+									"displayName": "浏览器"
+								},
+								"ga:campaign": {
+									"displayName": "营销活动"
+								},
+								"ga:city": {
+									"displayName": "城市"
+								},
+								"ga:country": {
+									"displayName": "国家"
+								},
+								"ga:date": {
+									"displayName": "日期"
+								},
+								"ga:deviceCategory": {
+									"displayName": "设备类别"
+								},
+								"ga:productName": {
+									"displayName": "项目名称"
+								},
+								"ga:language": {
+									"displayName": "语言"
+								},
+								"ga:pagePath": {
+									"displayName": "页面"
+								},
+								"ga:sourceMedium": {
+									"displayName": "来源 / 媒体"
+								},
+								"other": {
+									"displayName": "其他维度…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "名称或ID",
+							"description": "要获取的维度名称，例如 ga:browser。从列表中选择，或使用 <a href=\"https://docs.n8n.io/code/expressions/\">表达式</a> 指定 ID。"
+						}
+					}
+				},
+				"dimensionsUA": {
+					"displayName": "拆分维度",
+					"placeholder": "添加维度"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "用户ID",
+			"placeholder": "123456"
+		}
+	}
+}

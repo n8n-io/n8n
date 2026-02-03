@@ -1,0 +1,300 @@
+{
+	"header": {
+		"displayName": "合并",
+		"description": "当多个流的数据都可用时，合并它们的数据"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "模式",
+			"description": "输入数据应如何合并",
+			"options": {
+				"append": {
+					"displayName": "追加",
+					"description": "依次输出每个输入项"
+				},
+				"combine": {
+					"displayName": "合并",
+					"description": "合并匹配项"
+				},
+				"combineBySql": {
+					"displayName": "SQL查询",
+					"description": "编写一个查询来执行合并操作"
+				},
+				"chooseBranch": {
+					"displayName": "选择分支",
+					"description": "从特定分支输出数据，不作修改"
+				}
+			}
+		},
+		"combineBy": {
+			"displayName": "合并方式",
+			"description": "输入数据应如何合并",
+			"options": {
+				"combineByFields": {
+					"displayName": "匹配字段",
+					"description": "合并具有相同字段值的项目"
+				},
+				"combineByPosition": {
+					"displayName": "位置",
+					"description": "根据顺序组合项目"
+				},
+				"combineAll": {
+					"displayName": "所有可能的组合",
+					"description": "每两个项目的所有配对（交叉连接）"
+				}
+			}
+		},
+		"numberInputs": {
+			"displayName": "输入数量",
+			"description": "您想要合并的数据输入数量。节点会等待所有已连接的输入执行完毕。",
+			"options": {
+				"2": {
+					"displayName": "2"
+				},
+				"3": {
+					"displayName": "3"
+				},
+				"4": {
+					"displayName": "4"
+				},
+				"5": {
+					"displayName": "5"
+				},
+				"6": {
+					"displayName": "6"
+				},
+				"7": {
+					"displayName": "7"
+				},
+				"8": {
+					"displayName": "8"
+				},
+				"9": {
+					"displayName": "9"
+				},
+				"10": {
+					"displayName": "10"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"clashHandling": {
+					"displayName": "冲突处理",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"resolveClash": {
+									"displayName": "字段值冲突时"
+								},
+								"mergeMode": {
+									"displayName": "合并嵌套字段",
+									"options": {
+										"deepMerge": {
+											"displayName": "深度合并",
+											"description": "在每个嵌套级别合并"
+										},
+										"shallowMerge": {
+											"displayName": "浅层合并",
+											"description": "仅合并顶层（所有嵌套字段将来自同一输入）"
+										}
+									}
+								},
+								"overrideEmpty": {
+									"displayName": "最小化空字段",
+									"description": "当字段为空且另一版本不为空时，是否覆盖字段的首选输入版本。此处'空'指未定义、null或空字符串。"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"resolveClash": {
+									"displayName": "字段值冲突时"
+								},
+								"mergeMode": {
+									"displayName": "合并嵌套字段",
+									"options": {
+										"deepMerge": {
+											"displayName": "深度合并",
+											"description": "在每个嵌套级别合并"
+										},
+										"shallowMerge": {
+											"displayName": "浅层合并",
+											"description": "仅合并顶层（所有嵌套字段将来自同一输入）"
+										}
+									}
+								},
+								"overrideEmpty": {
+									"displayName": "最小化空字段",
+									"description": "当字段为空且另一版本不为空时，是否覆盖字段的首选输入版本。此处'空'指未定义、null或空字符串。"
+								}
+							}
+						},
+						"clashHandling": {
+							"displayName": "冲突处理"
+						}
+					}
+				},
+				"fuzzyCompare": {
+					"displayName": "模糊比较",
+					"description": "比较字段时是否容忍小的类型差异。例如，数字3和字符串'3'被视为相同。"
+				},
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				},
+				"multipleMatches": {
+					"displayName": "多个匹配项",
+					"options": {
+						"all": {
+							"displayName": "包含所有匹配项",
+							"description": "若有多个匹配项则输出多项"
+						},
+						"first": {
+							"displayName": "仅包含首个匹配项",
+							"description": "每个匹配仅输出单个项目"
+						}
+					}
+				},
+				"emptyQueryResult": {
+					"displayName": "空查询结果",
+					"description": "查询成功执行但无结果时返回什么",
+					"options": {
+						"success": {
+							"displayName": "成功"
+						},
+						"empty": {
+							"displayName": "空结果"
+						}
+					}
+				},
+				"includeUnpaired": {
+					"displayName": "包含任何未配对的项",
+					"description": "Whether unpaired items should be included in the result when there are differing numbers of items among the inputs"
+				}
+			}
+		},
+		"advanced": {
+			"displayName": "匹配字段名称不同",
+			"description": "输入1和输入2中要匹配的字段名称是否不同"
+		},
+		"fieldsToMatchString": {
+			"displayName": "匹配字段",
+			"description": "指定用于匹配输入项的字段",
+			"placeholder": "例如：id、name"
+		},
+		"mergeByFields": {
+			"displayName": "匹配字段",
+			"description": "指定用于匹配输入项的字段",
+			"placeholder": "添加匹配字段",
+			"multipleValueButtonText": "添加匹配字段",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field1": {
+							"displayName": "输入1字段",
+							"placeholder": "例如 id"
+						},
+						"field2": {
+							"displayName": "输入2字段",
+							"placeholder": "例如 id"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field1": {
+							"displayName": "输入1字段",
+							"placeholder": "例如 id"
+						},
+						"field2": {
+							"displayName": "输入2字段",
+							"placeholder": "例如 id"
+						}
+					}
+				},
+				"mergeByFields": {
+					"displayName": "匹配字段",
+					"placeholder": "添加匹配字段"
+				}
+			}
+		},
+		"joinMode": {
+			"displayName": "输出类型",
+			"description": "如何选择要发送到输出的项目",
+			"options": {
+				"keepMatches": {
+					"displayName": "保留匹配项",
+					"description": "匹配的项，合并在一起（内连接）"
+				},
+				"keepNonMatches": {
+					"displayName": "保留不匹配项",
+					"description": "不匹配的项目"
+				},
+				"keepEverything": {
+					"displayName": "保留所有项",
+					"description": "匹配项合并，加上不匹配项（外连接）"
+				},
+				"enrichInput1": {
+					"displayName": "丰富输入1",
+					"description": "输入1的全部数据，并加入输入2的数据（左连接）"
+				},
+				"enrichInput2": {
+					"displayName": "丰富输入2",
+					"description": "所有输入2的数据，并加入来自输入1的数据（右连接）"
+				}
+			}
+		},
+		"outputDataFrom": {
+			"displayName": "来自节点的输出数据",
+			"options": {
+				"both": {
+					"displayName": "两个输入拼接在一起"
+				},
+				"input1": {
+					"displayName": "输入 1"
+				},
+				"input2": {
+					"displayName": "输入2"
+				}
+			}
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "输入数据以带对应编号的表格形式提供，例如 input1、input2"
+		},
+		"chooseBranchMode": {
+			"displayName": "输出类型",
+			"options": {
+				"waitForAll": {
+					"displayName": "等待所有输入到达"
+				}
+			}
+		},
+		"output": {
+			"displayName": "输出",
+			"options": {
+				"specifiedInput": {
+					"displayName": "指定输入的数据"
+				},
+				"empty": {
+					"displayName": "一个单独的、空的项"
+				}
+			}
+		},
+		"useDataOfInput": {
+			"displayName": "使用输入数据",
+			"description": "要使用数据的输入编号"
+		}
+	}
+}

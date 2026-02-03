@@ -1,0 +1,206 @@
+{
+	"header": {
+		"displayName": "Git",
+		"description": "Control git."
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "The way to authenticate",
+			"options": {
+				"gitPassword": {
+					"displayName": "Authenticate"
+				},
+				"none": {
+					"displayName": "None"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"add": {
+					"displayName": "Add",
+					"description": "Add a file or folder to commit"
+				},
+				"addConfig": {
+					"displayName": "Add Config",
+					"description": "Add configuration property"
+				},
+				"clone": {
+					"displayName": "Clone",
+					"description": "Clone a repository"
+				},
+				"commit": {
+					"displayName": "Commit",
+					"description": "Commit files or folders to git"
+				},
+				"fetch": {
+					"displayName": "Fetch",
+					"description": "Fetch from remote repository"
+				},
+				"listConfig": {
+					"displayName": "List Config",
+					"description": "Return current configuration"
+				},
+				"log": {
+					"displayName": "Log",
+					"description": "Return git commit history"
+				},
+				"pull": {
+					"displayName": "Pull",
+					"description": "Pull from remote repository"
+				},
+				"push": {
+					"displayName": "Push",
+					"description": "Push to remote repository"
+				},
+				"pushTags": {
+					"displayName": "Push Tags",
+					"description": "Push Tags to remote repository"
+				},
+				"reflog": {
+					"displayName": "Reflog",
+					"description": "Return reference log"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Return status of current repository"
+				},
+				"switchBranch": {
+					"displayName": "Switch Branch",
+					"description": "Switch to a different branch"
+				},
+				"tag": {
+					"displayName": "Tag",
+					"description": "Create a new tag"
+				},
+				"userSetup": {
+					"displayName": "User Setup",
+					"description": "Set the user"
+				}
+			}
+		},
+		"repositoryPath": {
+			"displayName": "New Repository Path",
+			"description": "Local path to which the git repository should be cloned into",
+			"placeholder": "/tmp/repository"
+		},
+		"pathsToAdd": {
+			"displayName": "Paths to Add",
+			"description": "Comma-separated list of paths (absolute or relative to Repository Path) of files or folders to add",
+			"placeholder": "README.md"
+		},
+		"key": {
+			"displayName": "Key",
+			"description": "Name of the key to set",
+			"options": {
+				"user.email": {
+					"displayName": "user.email"
+				},
+				"user.name": {
+					"displayName": "user.name"
+				},
+				"remote.origin.url": {
+					"displayName": "remote.origin.url"
+				}
+			},
+			"placeholder": "user.email"
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "Value of the key to set",
+			"placeholder": "name@example.com"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"mode": {
+					"displayName": "Mode",
+					"description": "Append setting rather than set it in the local config",
+					"options": {
+						"append": {
+							"displayName": "Append"
+						},
+						"set": {
+							"displayName": "Set"
+						}
+					}
+				},
+				"branch": {
+					"displayName": "Branch",
+					"description": "The branch to switch to before pushing. If empty or not set, will push current branch.",
+					"placeholder": "main"
+				},
+				"pathsToAdd": {
+					"displayName": "Paths to Add",
+					"description": "Comma-separated list of paths (absolute or relative to Repository Path) of files or folders to commit. If not set will all \"added\" files and folders be committed.",
+					"placeholder": "/data/file1.json"
+				},
+				"file": {
+					"displayName": "File",
+					"description": "The path (absolute or relative to Repository Path) of file or folder to get the history of"
+				},
+				"targetRepository": {
+					"displayName": "Target Repository",
+					"description": "The URL or path of the repository to push to",
+					"placeholder": "https://github.com/n8n-io/n8n"
+				},
+				"reference": {
+					"displayName": "Reference",
+					"description": "The reference to show the reflog for (e.g., HEAD, branch name). Leave empty for HEAD.",
+					"placeholder": "HEAD"
+				},
+				"createBranch": {
+					"displayName": "Create Branch If Not Exists",
+					"description": "Whether to create the branch if it does not exist"
+				},
+				"startPoint": {
+					"displayName": "Start Point",
+					"description": "The commit/branch/tag to create the new branch from. If not set, creates from current HEAD.",
+					"placeholder": "main"
+				},
+				"force": {
+					"displayName": "Force Switch",
+					"description": "Whether to force the branch switch, discarding any local changes"
+				},
+				"setUpstream": {
+					"displayName": "Set Upstream",
+					"description": "Whether to set up tracking to a remote branch when creating a new branch"
+				},
+				"remoteName": {
+					"displayName": "Remote Name",
+					"description": "The name of the remote to track",
+					"placeholder": "origin"
+				}
+			}
+		},
+		"sourceRepository": {
+			"displayName": "Source Repository",
+			"description": "The URL or path of the repository to clone",
+			"placeholder": "https://github.com/n8n-io/n8n"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The commit message to use"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"branchName": {
+			"displayName": "Branch Name",
+			"description": "The name of the branch to switch to",
+			"placeholder": "feature/new-feature"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the tag to create"
+		}
+	}
+}

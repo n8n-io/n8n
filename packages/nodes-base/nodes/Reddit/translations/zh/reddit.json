@@ -1,0 +1,260 @@
+{
+	"header": {
+		"displayName": "Reddit",
+		"description": "使用Reddit API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"post": {
+					"displayName": "发布"
+				},
+				"postComment": {
+					"displayName": "发布评论"
+				},
+				"profile": {
+					"displayName": "个人资料"
+				},
+				"subreddit": {
+					"displayName": "子版块"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "向子版块提交帖子"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "从子版块获取多个帖子"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从子版块删除帖子"
+				},
+				"reply": {
+					"displayName": "回复",
+					"description": "回复帖子中的评论"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "从子版块获取帖子"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "在子版块或整个Reddit中搜索帖子"
+				}
+			}
+		},
+		"postId": {
+			"displayName": "帖子ID",
+			"description": "要检索帖子的ID。在帖子URL中找到：<code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>",
+			"placeholder": "l0me7x"
+		},
+		"commentText": {
+			"displayName": "评论文本",
+			"description": "评论内容。支持Markdown格式。"
+		},
+		"subreddit": {
+			"displayName": "子版块",
+			"description": "要搜索的子版块名称"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"commentId": {
+			"displayName": "评论ID",
+			"description": "要回复的评论ID。可在评论URL中找到：<code>www.reddit.com/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>",
+			"placeholder": "gl9iroa"
+		},
+		"replyText": {
+			"displayName": "回复文本",
+			"description": "回复的文本内容。支持Markdown格式。"
+		},
+		"details": {
+			"displayName": "详细信息",
+			"description": "要检索的用户详细信息",
+			"options": {
+				"blockedUsers": {
+					"displayName": "已屏蔽用户",
+					"description": "返回当前登录用户的已屏蔽用户"
+				},
+				"friends": {
+					"displayName": "好友",
+					"description": "返回当前登录用户的好友"
+				},
+				"identity": {
+					"displayName": "身份",
+					"description": "返回已登录用户的身份信息"
+				},
+				"karma": {
+					"displayName": "Karma",
+					"description": "返回已登录用户的子版块Karma"
+				},
+				"prefs": {
+					"displayName": "偏好设置",
+					"description": "返回当前登录用户的设置偏好"
+				},
+				"saved": {
+					"displayName": "已保存",
+					"description": "返回用户已保存的帖子"
+				},
+				"trophies": {
+					"displayName": "奖杯",
+					"description": "返回已登录用户的奖杯"
+				},
+				"about": {
+					"displayName": "关于"
+				},
+				"comments": {
+					"displayName": "评论"
+				},
+				"gilded": {
+					"displayName": "镀金"
+				},
+				"overview": {
+					"displayName": "概览"
+				},
+				"submitted": {
+					"displayName": "已提交"
+				}
+			}
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "要获取的子版块内容",
+			"options": {
+				"about": {
+					"displayName": "关于"
+				},
+				"rules": {
+					"displayName": "规则"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"keyword": {
+					"displayName": "关键词",
+					"description": "用于子版块搜索的关键词"
+				},
+				"trending": {
+					"displayName": "热门趋势",
+					"description": "是否获取Reddit全站当前热门子版块"
+				},
+				"category": {
+					"displayName": "分类",
+					"description": "Category of the posts to retrieve",
+					"options": {
+						"top": {
+							"displayName": "热门帖子"
+						},
+						"hot": {
+							"displayName": "热门帖子"
+						},
+						"new": {
+							"displayName": "新帖子"
+						},
+						"rising": {
+							"displayName": "热门帖子"
+						}
+					}
+				}
+			}
+		},
+		"kind": {
+			"displayName": "类型",
+			"description": "要创建的帖子类型",
+			"options": {
+				"self": {
+					"displayName": "文本帖子"
+				},
+				"link": {
+					"displayName": "链接帖子"
+				},
+				"image": {
+					"displayName": "图片帖子"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "帖子标题，最长300个字符"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "帖子的URL"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "帖子正文。支持Markdown格式。"
+		},
+		"resubmit": {
+			"displayName": "重新提交",
+			"description": "即使该URL之前已在subreddit发布过，是否仍要发布。否则，重复发布将触发错误。"
+		},
+		"location": {
+			"displayName": "位置",
+			"description": "搜索帖子的位置",
+			"options": {
+				"allReddit": {
+					"displayName": "所有Reddit",
+					"description": "搜索Reddit全部帖子"
+				},
+				"subreddit": {
+					"displayName": "子版块",
+					"description": "在特定子版块中搜索帖子"
+				}
+			}
+		},
+		"keyword": {
+			"displayName": "关键词",
+			"description": "搜索关键词"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"sort": {
+					"displayName": "排序",
+					"description": "用于排序结果的类别",
+					"options": {
+						"comments": {
+							"displayName": "评论"
+						},
+						"hot": {
+							"displayName": "热门"
+						},
+						"new": {
+							"displayName": "新建"
+						},
+						"relevance": {
+							"displayName": "相关性"
+						},
+						"top": {
+							"displayName": "顶部"
+						}
+					}
+				}
+			}
+		},
+		"username": {
+			"displayName": "用户名",
+			"description": "要检索的用户的Reddit ID"
+		}
+	}
+}

@@ -1,0 +1,279 @@
+{
+	"header": {
+		"displayName": "Ghost",
+		"description": "Consume Ghost API"
+	},
+	"nodeView": {
+		"source": {
+			"displayName": "Source",
+			"description": "Pick where your data comes from, Content or Admin API",
+			"options": {
+				"adminApi": {
+					"displayName": "Admin API"
+				},
+				"contentApi": {
+					"displayName": "Content API"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"post": {
+					"displayName": "Post"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a post"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many posts"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a post"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a post"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a post"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Post's title"
+		},
+		"contentFormat": {
+			"displayName": "Content Format",
+			"description": "The format of the post",
+			"options": {
+				"html": {
+					"displayName": "HTML"
+				},
+				"mobileDoc": {
+					"displayName": "Mobile Doc"
+				},
+				"lexical": {
+					"displayName": "Lexical"
+				}
+			}
+		},
+		"content": {
+			"displayName": "Content (JSON)",
+			"description": "Lexical is the JSON format returned by the Ghost Default editor"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"authors": {
+					"displayName": "Author Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"canonical_url": {
+					"displayName": "Cannonical URL"
+				},
+				"codeinjection_foot": {
+					"displayName": "Code Injection Foot",
+					"description": "The Code Injection allows you inject a small snippet into your Ghost site"
+				},
+				"codeinjection_head": {
+					"displayName": "Code Injection Head",
+					"description": "The Code Injection allows you inject a small snippet into your Ghost site"
+				},
+				"featured": {
+					"displayName": "Featured"
+				},
+				"meta_description": {
+					"displayName": "Meta Description"
+				},
+				"meta_title": {
+					"displayName": "Meta Title"
+				},
+				"og_description": {
+					"displayName": "Open Graph Description"
+				},
+				"og_image": {
+					"displayName": "Open Graph Image",
+					"description": "URL of the image"
+				},
+				"og_title": {
+					"displayName": "Open Graph Title"
+				},
+				"published_at": {
+					"displayName": "Published At"
+				},
+				"slug": {
+					"displayName": "Slug"
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"draft": {
+							"displayName": "Draft"
+						},
+						"published": {
+							"displayName": "Published"
+						},
+						"scheduled": {
+							"displayName": "Scheduled"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"twitter_description": {
+					"displayName": "Twitter Description"
+				},
+				"twitter_image": {
+					"displayName": "Twitter Image",
+					"description": "URL of the image"
+				},
+				"twitter_title": {
+					"displayName": "Twitter Title"
+				}
+			}
+		},
+		"postId": {
+			"displayName": "Post ID",
+			"description": "The ID of the post to update"
+		},
+		"by": {
+			"displayName": "By",
+			"description": "Get the post either by slug or ID",
+			"options": {
+				"id": {
+					"displayName": "ID"
+				},
+				"slug": {
+					"displayName": "Slug"
+				}
+			}
+		},
+		"identifier": {
+			"displayName": "Identifier",
+			"description": "The ID or slug of the post to get"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "Limit the fields returned in the response object. E.g. for posts fields=title,url."
+				},
+				"formats": {
+					"displayName": "Formats",
+					"description": "By default, only html is returned, however each post and page in Ghost has 2 available formats: html and plaintext"
+				},
+				"include": {
+					"displayName": "Include",
+					"description": "Tells the API to return additional data related to the resource you have requested"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"authors": {
+					"displayName": "Author Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"canonical_url": {
+					"displayName": "Cannonical URL"
+				},
+				"codeinjection_foot": {
+					"displayName": "Code Injection Foot"
+				},
+				"codeinjection_head": {
+					"displayName": "Code Injection Head"
+				},
+				"content": {
+					"displayName": "Content"
+				},
+				"contentJson": {
+					"displayName": "Content (JSON)",
+					"description": "Lexical is the JSON format returned by the Ghost Default editor"
+				},
+				"featured": {
+					"displayName": "Featured"
+				},
+				"meta_description": {
+					"displayName": "Meta Description"
+				},
+				"meta_title": {
+					"displayName": "Meta Title"
+				},
+				"og_description": {
+					"displayName": "Open Graph Description"
+				},
+				"og_image": {
+					"displayName": "Open Graph Image",
+					"description": "URL of the image"
+				},
+				"og_title": {
+					"displayName": "Open Graph Title"
+				},
+				"published_at": {
+					"displayName": "Published At"
+				},
+				"slug": {
+					"displayName": "Slug"
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"draft": {
+							"displayName": "Draft"
+						},
+						"published": {
+							"displayName": "Published"
+						},
+						"scheduled": {
+							"displayName": "Scheduled"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Post's title"
+				},
+				"twitter_description": {
+					"displayName": "Twitter Description"
+				},
+				"twitter_image": {
+					"displayName": "Twitter Image",
+					"description": "URL of the image"
+				},
+				"twitter_title": {
+					"displayName": "Twitter Title"
+				}
+			}
+		}
+	}
+}

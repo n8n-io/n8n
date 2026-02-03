@@ -1,0 +1,639 @@
+{
+	"header": {
+		"displayName": "Brevo",
+		"description": "Consume Brevo API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				},
+				"attribute": {
+					"displayName": "Contact Attribute"
+				},
+				"email": {
+					"displayName": "Email"
+				},
+				"sender": {
+					"displayName": "Sender"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"update": {
+					"displayName": "Update"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"upsert": {
+					"displayName": "Create or Update"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"send": {
+					"displayName": "Send"
+				},
+				"sendTemplate": {
+					"displayName": "Send Template"
+				}
+			}
+		},
+		"attributeCategory": {
+			"displayName": "Category",
+			"description": "Category of the attribute",
+			"options": {
+				"calculated": {
+					"displayName": "Calculated"
+				},
+				"category": {
+					"displayName": "Category"
+				},
+				"global": {
+					"displayName": "Global"
+				},
+				"normal": {
+					"displayName": "Normal"
+				},
+				"transactional": {
+					"displayName": "Transactional"
+				}
+			}
+		},
+		"attributeName": {
+			"displayName": "Name",
+			"description": "Name of the attribute"
+		},
+		"attributeType": {
+			"displayName": "Type",
+			"description": "Attribute Type",
+			"options": {
+				"boolean": {
+					"displayName": "Boolean"
+				},
+				"date": {
+					"displayName": "Date"
+				},
+				"float": {
+					"displayName": "Float"
+				},
+				"text": {
+					"displayName": "Text"
+				}
+			}
+		},
+		"attributeValue": {
+			"displayName": "Value",
+			"description": "Value of the attribute"
+		},
+		"attributeCategoryList": {
+			"displayName": "Contact Attribute List",
+			"placeholder": "Add Attributes",
+			"options": {
+				"categoryEnumeration": {
+					"displayName": "Contact Attributes",
+					"description": "List of values and labels that the attribute can take",
+					"placeholder": "Add Attribute",
+					"multipleValueButtonText": "Add Attribute",
+					"options": {
+						"attributesValues": {
+							"displayName": "Attribute",
+							"options": {
+								"attributeCategoryValue": {
+									"displayName": "Value ID",
+									"description": "ID of the value, must be numeric"
+								},
+								"attributeCategoryLabel": {
+									"displayName": "Label",
+									"description": "Label of the value"
+								}
+							}
+						}
+					},
+					"values": {
+						"attributesValues": {
+							"displayName": "Attribute",
+							"options": {
+								"attributeCategoryValue": {
+									"displayName": "Value ID",
+									"description": "ID of the value, must be numeric"
+								},
+								"attributeCategoryLabel": {
+									"displayName": "Label",
+									"description": "Label of the value"
+								}
+							}
+						},
+						"categoryEnumeration": {
+							"displayName": "Contact Attributes",
+							"placeholder": "Add Attribute"
+						}
+					}
+				}
+			}
+		},
+		"updateAttributeCategory": {
+			"displayName": "Category",
+			"description": "Category of the attribute",
+			"options": {
+				"calculated": {
+					"displayName": "Calculated"
+				},
+				"category": {
+					"displayName": "Category"
+				},
+				"global": {
+					"displayName": "Global"
+				}
+			}
+		},
+		"updateAttributeName": {
+			"displayName": "Name",
+			"description": "Name of the existing attribute"
+		},
+		"updateAttributeValue": {
+			"displayName": "Value",
+			"description": "Value of the attribute to update"
+		},
+		"updateAttributeCategoryList": {
+			"displayName": "Update Fields",
+			"description": "List of the values and labels that the attribute can take",
+			"placeholder": "Add Field",
+			"options": {
+				"updateCategoryEnumeration": {
+					"displayName": "Contact Attributes",
+					"description": "List of values and labels that the attribute can take",
+					"placeholder": "Add Attribute",
+					"multipleValueButtonText": "Add Attribute",
+					"options": {
+						"updateAttributesValues": {
+							"displayName": "Attribute",
+							"options": {
+								"attributeCategoryValue": {
+									"displayName": "Value",
+									"description": "ID of the value, must be numeric"
+								},
+								"attributeCategoryLabel": {
+									"displayName": "Label",
+									"description": "Label of the value"
+								}
+							}
+						}
+					},
+					"values": {
+						"updateAttributesValues": {
+							"displayName": "Attribute",
+							"options": {
+								"attributeCategoryValue": {
+									"displayName": "Value",
+									"description": "ID of the value, must be numeric"
+								},
+								"attributeCategoryLabel": {
+									"displayName": "Label",
+									"description": "Label of the value"
+								}
+							}
+						},
+						"updateCategoryEnumeration": {
+							"displayName": "Contact Attributes",
+							"placeholder": "Add Attribute"
+						}
+					}
+				}
+			}
+		},
+		"deleteAttributeCategory": {
+			"displayName": "Category",
+			"description": "Category of the attribute",
+			"options": {
+				"calculated": {
+					"displayName": "Calculated"
+				},
+				"category": {
+					"displayName": "Category"
+				},
+				"global": {
+					"displayName": "Global"
+				},
+				"normal": {
+					"displayName": "Normal"
+				},
+				"transactional": {
+					"displayName": "Transactional"
+				}
+			}
+		},
+		"deleteAttributeName": {
+			"displayName": "Name",
+			"description": "Name of the attribute"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the sender"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email of the contact",
+			"placeholder": "name@email.com"
+		},
+		"id": {
+			"displayName": "Sender ID",
+			"description": "ID of the sender to delete"
+		},
+		"createContactAttributes": {
+			"displayName": "Contact Attributes",
+			"description": "Array of attributes to be added",
+			"placeholder": "Add Attribute",
+			"multipleValueButtonText": "Add Attribute",
+			"options": {
+				"attributesValues": {
+					"displayName": "Attribute",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributesValues": {
+					"displayName": "Attribute",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"createContactAttributes": {
+					"displayName": "Contact Attributes",
+					"placeholder": "Add Attribute"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"sort": {
+					"displayName": "Sort",
+					"description": "Sort the results in the ascending/descending order of record creation",
+					"options": {
+						"desc": {
+							"displayName": "DESC"
+						},
+						"asc": {
+							"displayName": "ASC"
+						}
+					}
+				}
+			}
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"modifiedSince": {
+					"displayName": "Modified Since",
+					"description": "Filter (urlencoded) the contacts modified after a given UTC date-time (YYYY-MM-DDTHH:mm:ss.SSSZ)"
+				}
+			}
+		},
+		"identifier": {
+			"displayName": "Contact Identifier",
+			"description": "Email (urlencoded) OR ID of the contact OR its SMS attribute value"
+		},
+		"updateAttributes": {
+			"displayName": "Attributes",
+			"description": "Array of attributes to be updated",
+			"placeholder": "Add Attribute",
+			"multipleValueButtonText": "Add Attribute",
+			"options": {
+				"updateAttributesValues": {
+					"displayName": "Attribute",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"updateAttributesValues": {
+					"displayName": "Attribute",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"updateAttributes": {
+					"displayName": "Attributes",
+					"placeholder": "Add Attribute"
+				}
+			}
+		},
+		"upsertAttributes": {
+			"displayName": "Contact Attributes",
+			"description": "Array of attributes to be updated",
+			"placeholder": "Add Attribute",
+			"multipleValueButtonText": "Add Attribute",
+			"options": {
+				"upsertAttributesValues": {
+					"displayName": "Attribute",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"upsertAttributesValues": {
+					"displayName": "Attribute",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"upsertAttributes": {
+					"displayName": "Contact Attributes",
+					"placeholder": "Add Attribute"
+				}
+			}
+		},
+		"sendHTML": {
+			"displayName": "Send HTML"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "Subject of the email"
+		},
+		"textContent": {
+			"displayName": "Text Content",
+			"description": "Text content of the message"
+		},
+		"htmlContent": {
+			"displayName": "HTML Content",
+			"description": "HTML content of the message"
+		},
+		"sender": {
+			"displayName": "Sender"
+		},
+		"receipients": {
+			"displayName": "Receipients"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"description": "Additional fields to add",
+			"placeholder": "Add Field",
+			"options": {
+				"emailAttachments": {
+					"displayName": "Attachments",
+					"placeholder": "Add Attachment",
+					"options": {
+						"attachment": {
+							"displayName": "Attachment Data",
+							"options": {
+								"binaryPropertyName": {
+									"displayName": "Input Data Field Name",
+									"description": "The name of the incoming field containing the binary file data to be processed"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachment": {
+							"displayName": "Attachment Data",
+							"options": {
+								"binaryPropertyName": {
+									"displayName": "Input Data Field Name",
+									"description": "The name of the incoming field containing the binary file data to be processed"
+								}
+							}
+						},
+						"emailAttachments": {
+							"displayName": "Attachments",
+							"placeholder": "Add Attachment"
+						}
+					}
+				},
+				"receipientsBCC": {
+					"displayName": "Receipients BCC",
+					"placeholder": "Add BCC",
+					"options": {
+						"receipientBcc": {
+							"displayName": "Receipient",
+							"options": {
+								"bcc": {
+									"displayName": "Receipient"
+								}
+							}
+						}
+					},
+					"values": {
+						"receipientBcc": {
+							"displayName": "Receipient",
+							"options": {
+								"bcc": {
+									"displayName": "Receipient"
+								}
+							}
+						},
+						"receipientsBCC": {
+							"displayName": "Receipients BCC",
+							"placeholder": "Add BCC"
+						}
+					}
+				},
+				"receipientsCC": {
+					"displayName": "Receipients CC",
+					"placeholder": "Add CC",
+					"options": {
+						"receipientCc": {
+							"displayName": "Receipient",
+							"options": {
+								"cc": {
+									"displayName": "Receipient"
+								}
+							}
+						}
+					},
+					"values": {
+						"receipientCc": {
+							"displayName": "Receipient",
+							"options": {
+								"cc": {
+									"displayName": "Receipient"
+								}
+							}
+						},
+						"receipientsCC": {
+							"displayName": "Receipients CC",
+							"placeholder": "Add CC"
+						}
+					}
+				},
+				"emailTags": {
+					"displayName": "Email Tags",
+					"description": "Add tags to your emails to find them more easily",
+					"placeholder": "Add Email Tags",
+					"options": {
+						"tags": {
+							"displayName": "Tags",
+							"options": {
+								"tag": {
+									"displayName": "Tag"
+								}
+							}
+						}
+					},
+					"values": {
+						"tags": {
+							"displayName": "Tags",
+							"options": {
+								"tag": {
+									"displayName": "Tag"
+								}
+							}
+						},
+						"emailTags": {
+							"displayName": "Email Tags",
+							"placeholder": "Add Email Tags"
+						}
+					}
+				},
+				"templateParameters": {
+					"displayName": "Template Parameters",
+					"description": "Pass a set of attributes to customize the template",
+					"placeholder": "Add Parameter",
+					"options": {
+						"parameterValues": {
+							"displayName": "Parameters",
+							"options": {
+								"parameters": {
+									"displayName": "Parameter",
+									"description": "Comma-separated key=value pairs",
+									"placeholder": "key=value"
+								}
+							}
+						}
+					},
+					"values": {
+						"parameterValues": {
+							"displayName": "Parameters",
+							"options": {
+								"parameters": {
+									"displayName": "Parameter",
+									"description": "Comma-separated key=value pairs",
+									"placeholder": "key=value"
+								}
+							}
+						},
+						"templateParameters": {
+							"displayName": "Template Parameters",
+							"placeholder": "Add Parameter"
+						}
+					}
+				}
+			}
+		},
+		"templateId": {
+			"displayName": "Template ID"
+		},
+		"requestOptions": {
+			"displayName": "Request Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batching": {
+					"displayName": "Batching",
+					"placeholder": "Add Batching",
+					"options": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						},
+						"batching": {
+							"displayName": "Batching",
+							"placeholder": "Add Batching"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to accept the response even if SSL certificate validation is not possible"
+				},
+				"proxy": {
+					"displayName": "Proxy",
+					"description": "HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128",
+					"placeholder": "e.g. http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for the server to send response headers (and start the response body) before aborting the request"
+				}
+			}
+		}
+	}
+}

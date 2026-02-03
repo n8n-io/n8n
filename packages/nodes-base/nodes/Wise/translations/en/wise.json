@@ -1,0 +1,330 @@
+{
+	"header": {
+		"displayName": "Wise",
+		"description": "Consume the Wise API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"account": {
+					"displayName": "Account"
+				},
+				"exchangeRate": {
+					"displayName": "Exchange Rate"
+				},
+				"profile": {
+					"displayName": "Profile"
+				},
+				"quote": {
+					"displayName": "Quote"
+				},
+				"recipient": {
+					"displayName": "Recipient"
+				},
+				"transfer": {
+					"displayName": "Transfer"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getBalances": {
+					"displayName": "Get Balances",
+					"description": "Retrieve balances for all account currencies of this user"
+				},
+				"getCurrencies": {
+					"displayName": "Get Currencies",
+					"description": "Retrieve currencies in the borderless account of this user"
+				},
+				"getStatement": {
+					"displayName": "Get Statement",
+					"description": "Retrieve the statement for the borderless account of this user"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"execute": {
+					"displayName": "Execute"
+				}
+			}
+		},
+		"profileId": {
+			"displayName": "Profile Name or ID",
+			"description": "ID of the user profile to retrieve. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"borderlessAccountId": {
+			"displayName": "Borderless Account Name or ID",
+			"description": "ID of the borderless account to retrieve the statement of. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"currency": {
+			"displayName": "Currency",
+			"description": "Code of the currency of the borderless account to retrieve the statement of"
+		},
+		"format": {
+			"displayName": "Format",
+			"description": "File format to retrieve the statement in",
+			"options": {
+				"json": {
+					"displayName": "JSON"
+				},
+				"csv": {
+					"displayName": "CSV"
+				},
+				"pdf": {
+					"displayName": "PDF"
+				},
+				"xml": {
+					"displayName": "XML (CAMT.053)"
+				}
+			}
+		},
+		"binaryProperty": {
+			"displayName": "Put Output File in Field"
+		},
+		"fileName": {
+			"displayName": "File Name",
+			"description": "Name of the file that will be downloaded",
+			"placeholder": "data.pdf"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"lineStyle": {
+					"displayName": "Line Style",
+					"description": "Line style to retrieve the statement in",
+					"options": {
+						"COMPACT": {
+							"displayName": "Compact",
+							"description": "Single line per transaction"
+						},
+						"FLAT": {
+							"displayName": "Flat",
+							"description": "Separate lines for transaction fees"
+						}
+					}
+				},
+				"range": {
+					"displayName": "Range",
+					"placeholder": "Add Range",
+					"options": {
+						"rangeProperties": {
+							"displayName": "Range Properties",
+							"options": {
+								"intervalStart": {
+									"displayName": "Range Start"
+								},
+								"intervalEnd": {
+									"displayName": "Range End"
+								},
+								"from": {
+									"displayName": "Range Start"
+								},
+								"to": {
+									"displayName": "Range End"
+								}
+							}
+						}
+					},
+					"values": {
+						"rangeProperties": {
+							"displayName": "Range Properties",
+							"options": {
+								"intervalStart": {
+									"displayName": "Range Start"
+								},
+								"intervalEnd": {
+									"displayName": "Range End"
+								},
+								"from": {
+									"displayName": "Range Start"
+								},
+								"to": {
+									"displayName": "Range End"
+								}
+							}
+						},
+						"range": {
+							"displayName": "Range",
+							"placeholder": "Add Range"
+						}
+					},
+					"description": "Range of time to retrieve the exchange rate for"
+				},
+				"interval": {
+					"displayName": "Interval",
+					"options": {
+						"day": {
+							"displayName": "Day"
+						},
+						"hour": {
+							"displayName": "Hour"
+						},
+						"minute": {
+							"displayName": "Minute"
+						}
+					}
+				},
+				"time": {
+					"displayName": "Time",
+					"description": "Point in time to retrieve the exchange rate for"
+				},
+				"reference": {
+					"displayName": "Reference",
+					"description": "Reference text to show in the recipient's bank statement"
+				}
+			}
+		},
+		"source": {
+			"displayName": "Source Currency",
+			"description": "Code of the source currency to retrieve the exchange rate for"
+		},
+		"target": {
+			"displayName": "Target Currency",
+			"description": "Code of the target currency to retrieve the exchange rate for"
+		},
+		"targetAccountId": {
+			"displayName": "Target Account Name or ID",
+			"description": "ID of the account that will receive the funds. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"amountType": {
+			"displayName": "Amount Type",
+			"description": "Whether the amount is to be sent or received",
+			"options": {
+				"source": {
+					"displayName": "Source"
+				},
+				"target": {
+					"displayName": "Target"
+				}
+			}
+		},
+		"amount": {
+			"displayName": "Amount",
+			"description": "Amount of funds for the quote to create"
+		},
+		"sourceCurrency": {
+			"displayName": "Source Currency",
+			"description": "Code of the currency to send for the quote to create"
+		},
+		"targetCurrency": {
+			"displayName": "Target Currency",
+			"description": "Code of the currency to receive for the quote to create"
+		},
+		"quoteId": {
+			"displayName": "Quote ID",
+			"description": "ID of the quote based on which to create the transfer"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"transferId": {
+			"displayName": "Transfer ID",
+			"description": "ID of the transfer to retrieve"
+		},
+		"downloadReceipt": {
+			"displayName": "Download Receipt",
+			"description": "Whether to download the transfer receipt as a PDF file. Only for executed transfers, having status 'Outgoing Payment Sent'."
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"range": {
+					"displayName": "Range",
+					"description": "Range of time for filtering the transfers",
+					"placeholder": "Add Range",
+					"options": {
+						"rangeProperties": {
+							"displayName": "Range Properties",
+							"options": {
+								"createdDateStart": {
+									"displayName": "Created Date Start"
+								},
+								"createdDateEnd": {
+									"displayName": "Created Date End"
+								}
+							}
+						}
+					},
+					"values": {
+						"rangeProperties": {
+							"displayName": "Range Properties",
+							"options": {
+								"createdDateStart": {
+									"displayName": "Created Date Start"
+								},
+								"createdDateEnd": {
+									"displayName": "Created Date End"
+								}
+							}
+						},
+						"range": {
+							"displayName": "Range",
+							"placeholder": "Add Range"
+						}
+					}
+				},
+				"sourceCurrency": {
+					"displayName": "Source Currency",
+					"description": "Code of the source currency for filtering the transfers"
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"bounced_back": {
+							"displayName": "Bounced Back"
+						},
+						"cancelled": {
+							"displayName": "Cancelled"
+						},
+						"charged_back": {
+							"displayName": "Charged Back"
+						},
+						"funds_converted": {
+							"displayName": "Funds Converted"
+						},
+						"funds_refunded": {
+							"displayName": "Funds Refunded"
+						},
+						"incoming_payment_waiting": {
+							"displayName": "Incoming Payment Waiting"
+						},
+						"outgoing_payment_sent": {
+							"displayName": "Outgoing Payment Sent"
+						},
+						"processing": {
+							"displayName": "Processing"
+						},
+						"unknown": {
+							"displayName": "Unknown"
+						},
+						"waiting_recipient_input_to_proceed": {
+							"displayName": "Waiting for Recipient Input to Proceed"
+						}
+					}
+				},
+				"targetCurrency": {
+					"displayName": "Target Currency",
+					"description": "Code of the target currency for filtering the transfers"
+				}
+			}
+		}
+	}
+}

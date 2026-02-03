@@ -1,0 +1,186 @@
+{
+	"header": {
+		"displayName": "QuickChart",
+		"description": "Create a chart via QuickChart"
+	},
+	"nodeView": {
+		"chartType": {
+			"displayName": "Chart Type",
+			"description": "The type of chart to create",
+			"options": {
+				"bar": {
+					"displayName": "Bar Chart"
+				},
+				"doughnut": {
+					"displayName": "Doughnut Chart"
+				},
+				"line": {
+					"displayName": "Line Chart"
+				},
+				"pie": {
+					"displayName": "Pie Chart"
+				},
+				"polarArea": {
+					"displayName": "Polar Chart"
+				}
+			}
+		},
+		"labelsMode": {
+			"displayName": "Add Labels",
+			"options": {
+				"manually": {
+					"displayName": "Manually"
+				},
+				"array": {
+					"displayName": "From Array"
+				}
+			}
+		},
+		"labelsUi": {
+			"displayName": "Labels",
+			"description": "Labels to use in the chart",
+			"placeholder": "Add Label",
+			"multipleValueButtonText": "Add Label",
+			"options": {
+				"labelsValues": {
+					"displayName": "Labels",
+					"options": {
+						"label": {
+							"displayName": "Label"
+						}
+					}
+				}
+			},
+			"values": {
+				"labelsValues": {
+					"displayName": "Labels",
+					"options": {
+						"label": {
+							"displayName": "Label"
+						}
+					}
+				},
+				"labelsUi": {
+					"displayName": "Labels",
+					"placeholder": "Add Label"
+				}
+			}
+		},
+		"labelsArray": {
+			"displayName": "Labels Array",
+			"description": "The array of labels to be used in the chart",
+			"placeholder": "e.g. [\"Berlin\", \"Paris\", \"Rome\", \"New York\"]"
+		},
+		"data": {
+			"displayName": "Data",
+			"description": "Data to use for the dataset, documentation and examples <a href=\"https://quickchart.io/documentation/chart-types/\" target=\"_blank\">here</a>",
+			"placeholder": "e.g. [60, 10, 12, 20]"
+		},
+		"output": {
+			"displayName": "Put Output In Field",
+			"description": "The binary data will be displayed in the Output panel on the right, under the Binary tab"
+		},
+		"chartOptions": {
+			"displayName": "Chart Options",
+			"placeholder": "Add option",
+			"options": {
+				"backgroundColor": {
+					"displayName": "Background Color",
+					"description": "Background color of the chart"
+				},
+				"devicePixelRatio": {
+					"displayName": "Device Pixel Ratio",
+					"description": "Pixel ratio of the chart"
+				},
+				"format": {
+					"displayName": "Format",
+					"description": "File format of the resulting chart",
+					"options": {
+						"png": {
+							"displayName": "PNG"
+						},
+						"pdf": {
+							"displayName": "PDF"
+						},
+						"svg": {
+							"displayName": "SVG"
+						},
+						"webp": {
+							"displayName": "WebP"
+						}
+					}
+				},
+				"height": {
+					"displayName": "Height",
+					"description": "Height of the chart"
+				},
+				"horizontal": {
+					"displayName": "Horizontal",
+					"description": "Whether the chart should use its Y axis horizontal"
+				},
+				"width": {
+					"displayName": "Width",
+					"description": "Width of the chart"
+				}
+			}
+		},
+		"datasetOptions": {
+			"displayName": "Dataset Options",
+			"placeholder": "Add option",
+			"options": {
+				"backgroundColor": {
+					"displayName": "Background Color",
+					"description": "Color used for the background the dataset (area of a line graph, fill of a bar chart, etc.)"
+				},
+				"borderColor": {
+					"displayName": "Border Color",
+					"description": "Color used for lines of the dataset"
+				},
+				"fill": {
+					"displayName": "Fill",
+					"description": "Whether to fill area of the dataset"
+				},
+				"label": {
+					"displayName": "Label",
+					"description": "The label of the dataset"
+				},
+				"pointStyle": {
+					"displayName": "Point Style",
+					"description": "Style to use for points of the dataset",
+					"options": {
+						"circle": {
+							"displayName": "Circle"
+						},
+						"cross": {
+							"displayName": "Cross"
+						},
+						"crossRot": {
+							"displayName": "CrossRot"
+						},
+						"dash": {
+							"displayName": "Dash"
+						},
+						"line": {
+							"displayName": "Line"
+						},
+						"rect": {
+							"displayName": "Rect"
+						},
+						"rectRot": {
+							"displayName": "Rect Rot"
+						},
+						"rectRounded": {
+							"displayName": "Rect Rounded"
+						},
+						"star": {
+							"displayName": "Star"
+						},
+						"triangle": {
+							"displayName": "Triangle"
+						}
+					}
+				}
+			}
+		}
+	}
+}

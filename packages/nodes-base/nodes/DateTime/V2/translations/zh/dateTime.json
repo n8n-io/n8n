@@ -1,0 +1,234 @@
+{
+	"header": {
+		"displayName": "日期与时间",
+		"description": "Manipulate date and time values"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"addToDate": {
+					"displayName": "添加到日期"
+				},
+				"extractDate": {
+					"displayName": "提取日期部分"
+				},
+				"formatDate": {
+					"displayName": "格式化日期"
+				},
+				"getCurrentDate": {
+					"displayName": "获取当前日期"
+				},
+				"getTimeBetweenDates": {
+					"displayName": "获取日期之间的时间"
+				},
+				"roundDate": {
+					"displayName": "日期取整"
+				},
+				"subtractFromDate": {
+					"displayName": "从日期中减去"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "您也可以使用表达式实现此功能，例如 <code>{{ your_date.extract(\"month\") }}}</code>。<a target=\"_blank\" href=\"https://docs.n8n.io/code/cookbook/luxon/\">更多信息</a>"
+		},
+		"includeTime": {
+			"displayName": "包含当前时间",
+			"description": "停用时，时间将设为午夜"
+		},
+		"outputFieldName": {
+			"displayName": "输出字段名称",
+			"description": "存放输出的字段名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"includeInputFields": {
+					"displayName": "包含输入字段",
+					"description": "是否将输入项的所有字段包含在输出项中"
+				},
+				"timezone": {
+					"displayName": "使用工作流时区",
+					"description": "使用输入时区还是工作流时区",
+					"placeholder": "美国/纽约"
+				},
+				"fromFormat": {
+					"displayName": "源日期格式",
+					"description": "输入'日期'的格式，当格式无法自动识别时很有帮助。使用这些<a href=\"https://moment.github.io/luxon/#/formatting?id=table-of-tokens&id=table-of-tokens\" target=\"_blank\">标记</a>来定义格式。"
+				},
+				"isoString": {
+					"displayName": "输出为ISO字符串",
+					"description": "是否将日期输出为ISO字符串"
+				}
+			}
+		},
+		"magnitude": {
+			"displayName": "起始日期",
+			"description": "您想要调整的日期"
+		},
+		"timeUnit": {
+			"displayName": "要减去的时间单位",
+			"description": "下方时长参数的时间单位",
+			"options": {
+				"years": {
+					"displayName": "年"
+				},
+				"quarters": {
+					"displayName": "季度"
+				},
+				"months": {
+					"displayName": "月"
+				},
+				"weeks": {
+					"displayName": "周"
+				},
+				"days": {
+					"displayName": "天"
+				},
+				"hours": {
+					"displayName": "小时"
+				},
+				"minutes": {
+					"displayName": "分钟"
+				},
+				"seconds": {
+					"displayName": "秒"
+				},
+				"milliseconds": {
+					"displayName": "毫秒"
+				}
+			}
+		},
+		"duration": {
+			"displayName": "持续时间",
+			"description": "要从日期中减去的时间单位数量"
+		},
+		"date": {
+			"displayName": "日期",
+			"description": "要四舍五入的日期"
+		},
+		"format": {
+			"displayName": "格式",
+			"description": "日期转换格式",
+			"options": {
+				"custom": {
+					"displayName": "自定义格式"
+				},
+				"MM/dd/yyyy": {
+					"displayName": "月/日/年",
+					"description": "示例：1986年9月4日"
+				},
+				"yyyy/MM/dd": {
+					"displayName": "YYYY/MM/DD",
+					"description": "示例：1986/04/09"
+				},
+				"MMMM dd yyyy": {
+					"displayName": "MMMM DD YYYY",
+					"description": "示例: 四月 09 1986"
+				},
+				"MM-dd-yyyy": {
+					"displayName": "月-日-年",
+					"description": "示例：09-04-1986"
+				},
+				"yyyy-MM-dd": {
+					"displayName": "YYYY-MM-DD",
+					"description": "示例：1986-04-09"
+				},
+				"X": {
+					"displayName": "Unix时间戳",
+					"description": "示例：1672531200"
+				},
+				"x": {
+					"displayName": "Unix毫秒时间戳",
+					"description": "示例: 1674691200000"
+				}
+			}
+		},
+		"customFormat": {
+			"displayName": "自定义格式",
+			"placeholder": "yyyy-MM-dd"
+		},
+		"mode": {
+			"displayName": "模式",
+			"options": {
+				"roundDown": {
+					"displayName": "向下取整"
+				},
+				"roundUp": {
+					"displayName": "向上取整"
+				}
+			}
+		},
+		"toNearest": {
+			"displayName": "四舍五入",
+			"options": {
+				"year": {
+					"displayName": "年"
+				},
+				"month": {
+					"displayName": "月份"
+				},
+				"week": {
+					"displayName": "周"
+				},
+				"day": {
+					"displayName": "天"
+				},
+				"hour": {
+					"displayName": "小时"
+				},
+				"minute": {
+					"displayName": "分钟"
+				},
+				"second": {
+					"displayName": "秒"
+				}
+			}
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"options": {
+				"month": {
+					"displayName": "月末"
+				}
+			}
+		},
+		"startDate": {
+			"displayName": "开始日期"
+		},
+		"endDate": {
+			"displayName": "结束日期"
+		},
+		"units": {
+			"displayName": "单位"
+		},
+		"part": {
+			"displayName": "部分",
+			"options": {
+				"year": {
+					"displayName": "年"
+				},
+				"month": {
+					"displayName": "月份"
+				},
+				"week": {
+					"displayName": "周"
+				},
+				"day": {
+					"displayName": "天"
+				},
+				"hour": {
+					"displayName": "小时"
+				},
+				"minute": {
+					"displayName": "分钟"
+				},
+				"second": {
+					"displayName": "秒"
+				}
+			}
+		}
+	}
+}

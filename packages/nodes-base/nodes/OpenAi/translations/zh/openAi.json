@@ -1,0 +1,284 @@
+{
+	"header": {
+		"displayName": "OpenAI",
+		"description": "使用OpenAI"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"chat": {
+					"displayName": "聊天"
+				},
+				"image": {
+					"displayName": "图片"
+				},
+				"text": {
+					"displayName": "文本"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"complete": {
+					"displayName": "完成",
+					"description": "为给定文本创建一个或多个补全"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "为给定文本创建图像"
+				},
+				"edit": {
+					"displayName": "编辑",
+					"description": "为指定文本创建编辑版本"
+				},
+				"moderate": {
+					"displayName": "中等",
+					"description": "判断文本是否违反OpenAI内容政策"
+				}
+			}
+		},
+		"model": {
+			"displayName": "模型",
+			"description": "用于文本分类的模型。<a href=\"https://beta.openai.com/docs/models/overview\">了解更多</a>。",
+			"options": {
+				"code-davinci-edit-001": {
+					"displayName": "代码达芬奇编辑-001"
+				},
+				"text-davinci-edit-001": {
+					"displayName": "text-davinci-edit-001"
+				},
+				"text-moderation-stable": {
+					"displayName": "文本审核稳定版"
+				},
+				"text-moderation-latest": {
+					"displayName": "文本审核-最新版"
+				}
+			}
+		},
+		"chatModel": {
+			"displayName": "模型",
+			"description": "用于生成补全的模型。<a href=\"https://beta.openai.com/docs/models/overview\">了解更多</a>。"
+		},
+		"prompt": {
+			"displayName": "提示",
+			"placeholder": "例如：假设这是一个测试",
+			"multipleValueButtonText": "添加消息",
+			"options": {
+				"messages": {
+					"displayName": "消息",
+					"options": {
+						"role": {
+							"displayName": "角色",
+							"options": {
+								"assistant": {
+									"displayName": "助手"
+								},
+								"system": {
+									"displayName": "系统"
+								},
+								"user": {
+									"displayName": "用户"
+								}
+							}
+						},
+						"content": {
+							"displayName": "内容"
+						}
+					}
+				}
+			},
+			"values": {
+				"messages": {
+					"displayName": "消息",
+					"options": {
+						"role": {
+							"displayName": "角色",
+							"options": {
+								"assistant": {
+									"displayName": "助手"
+								},
+								"system": {
+									"displayName": "系统"
+								},
+								"user": {
+									"displayName": "用户"
+								}
+							}
+						},
+						"content": {
+							"displayName": "内容"
+						}
+					}
+				},
+				"prompt": {
+					"displayName": "提示词",
+					"placeholder": "添加消息"
+				}
+			},
+			"description": "用于生成补全结果的提示"
+		},
+		"simplifyOutput": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"echo": {
+					"displayName": "回显提示",
+					"description": "除了完成内容外是否还应回显提示"
+				},
+				"frequency_penalty": {
+					"displayName": "频率惩罚",
+					"description": "正值会根据新词元在文本中已有的出现频率进行惩罚，降低模型逐字重复相同内容的可能性。"
+				},
+				"maxTokens": {
+					"displayName": "最大令牌数",
+					"description": "完成生成的最大令牌数。大多数模型的上下文长度为2048个令牌（最新模型除外，支持32,768个）。"
+				},
+				"n": {
+					"displayName": "完成次数",
+					"description": "为每个提示生成多少次完成。注意：由于此参数会生成多次完成，可能快速消耗您的令牌配额。请谨慎使用，并确保为最大令牌数和停止条件设置了合理的参数。"
+				},
+				"presence_penalty": {
+					"displayName": "存在惩罚",
+					"description": "正值会根据新标记是否已在现有文本中出现来惩罚它们，从而增加模型谈论新话题的可能性"
+				},
+				"temperature": {
+					"displayName": "采样温度",
+					"description": "控制随机性：降低温度会使生成结果更少随机性。当温度趋近于零时，模型会变得确定且重复。"
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "通过核心采样控制多样性：0.5表示考虑所有似然加权选项的一半。我们通常建议调整此参数或温度，但不要同时调整两者。"
+				},
+				"quality": {
+					"displayName": "质量",
+					"options": {
+						"hd": {
+							"displayName": "高清"
+						},
+						"standard": {
+							"displayName": "标准"
+						}
+					}
+				},
+				"size": {
+					"displayName": "解决方案",
+					"options": {
+						"1024x1024": {
+							"displayName": "1024x1024"
+						},
+						"1792x1024": {
+							"displayName": "1792x1024"
+						},
+						"1024x1792": {
+							"displayName": "1024x1792"
+						}
+					}
+				},
+				"style": {
+					"displayName": "样式",
+					"options": {
+						"natural": {
+							"displayName": "自然"
+						},
+						"vivid": {
+							"displayName": "生动"
+						}
+					}
+				}
+			}
+		},
+		"imageModel": {
+			"displayName": "模型",
+			"description": "用于图像生成的模型"
+		},
+		"responseFormat": {
+			"displayName": "响应格式",
+			"description": "返回图像的格式",
+			"options": {
+				"binaryData": {
+					"displayName": "二进制文件"
+				},
+				"imageUrl": {
+					"displayName": "图片URL"
+				}
+			}
+		},
+		"input": {
+			"displayName": "输入",
+			"description": "要分类的输入文本",
+			"placeholder": "例如：我的猫很可爱 ❤️❤️"
+		},
+		"instruction": {
+			"displayName": "指令",
+			"description": "告诉模型如何编辑输入文本的指令",
+			"placeholder": "例如：修正拼写错误"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

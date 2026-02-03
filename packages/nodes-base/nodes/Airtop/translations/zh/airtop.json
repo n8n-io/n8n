@@ -1,0 +1,1391 @@
+{
+	"header": {
+		"displayName": "Airtop",
+		"description": "使用Airtop抓取并控制任何网站"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"agent": {
+					"displayName": "代理"
+				},
+				"extraction": {
+					"displayName": "提取"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"interaction": {
+					"displayName": "交互"
+				},
+				"session": {
+					"displayName": "会话"
+				},
+				"window": {
+					"displayName": "窗口"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"run": {
+					"displayName": "运行",
+					"description": "运行Airtop代理"
+				},
+				"create": {
+					"displayName": "创建新浏览器窗口",
+					"description": "在会话内创建一个新的浏览器窗口。创建时可加载URL。"
+				},
+				"save": {
+					"displayName": "终止时保存配置文件",
+					"description": "将浏览会话中的更改（如Cookie和本地存储）保存到配置文件中"
+				},
+				"terminate": {
+					"displayName": "终止会话",
+					"description": "终止会话"
+				},
+				"waitForDownload": {
+					"displayName": "等待下载",
+					"description": "等待文件下载变为可用状态"
+				},
+				"close": {
+					"displayName": "关闭窗口",
+					"description": "关闭会话内的窗口"
+				},
+				"getLiveView": {
+					"displayName": "获取实时视图",
+					"description": "获取浏览器窗口信息，包括实时视图URL"
+				},
+				"list": {
+					"displayName": "列出窗口",
+					"description": "列出会话中的所有浏览器窗口"
+				},
+				"load": {
+					"displayName": "加载",
+					"description": "将文件加载到会话中"
+				},
+				"takeScreenshot": {
+					"displayName": "截取屏幕截图",
+					"description": "截取当前窗口的屏幕截图"
+				},
+				"deleteFile": {
+					"displayName": "删除",
+					"description": "删除已上传的文件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取已上传文件的详细信息"
+				},
+				"getMany": {
+					"displayName": "获取多个",
+					"description": "获取多个上传文件的详细信息"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传文件到会话"
+				},
+				"query": {
+					"displayName": "查询页面",
+					"description": "查询页面以提取数据，或根据页面数据提出问题"
+				},
+				"getPaginated": {
+					"displayName": "带分页查询页面",
+					"description": "从分页或动态加载页面提取内容"
+				},
+				"scrape": {
+					"displayName": "智能抓取",
+					"description": "抓取页面并将数据以Markdown格式返回"
+				},
+				"click": {
+					"displayName": "点击元素",
+					"description": "根据描述对元素执行点击操作"
+				},
+				"fill": {
+					"displayName": "填写表单",
+					"description": "使用提供的信息填写表单"
+				},
+				"hover": {
+					"displayName": "悬停在元素上",
+					"description": "对给定描述的元素执行悬停操作"
+				},
+				"scroll": {
+					"displayName": "滚动",
+					"description": "在页面上执行滚动操作"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "根据描述对元素执行类型操作"
+				}
+			}
+		},
+		"agentId": {
+			"displayName": "代理",
+			"description": "要运行的Airtop代理。访问<a href=\"https://portal.airtop.ai/agents\" target=\"_blank\">Airtop代理</a>获取更多信息。"
+		},
+		"agentParameters": {
+			"displayName": "代理参数"
+		},
+		"awaitExecution": {
+			"displayName": "等待代理",
+			"description": "是否等待代理完成其执行"
+		},
+		"timeout": {
+			"displayName": "超时",
+			"description": "等待代理完成执行的超时秒数"
+		},
+		"profileName": {
+			"displayName": "配置文件名称",
+			"description": "要加载或创建的Airtop配置文件的名称",
+			"placeholder": "例如：my-x-profile"
+		},
+		"saveProfileOnTermination": {
+			"displayName": "保存配置文件",
+			"description": "是否在会话终止时自动保存本次的<a href=\"https://docs.airtop.ai/guides/how-to/saving-a-profile\" target=\"_blank\">Airtop配置文件</a>"
+		},
+		"record": {
+			"displayName": "记录会话",
+			"description": "是否记录浏览器会话。<a href=\"https://docs.airtop.ai/guides/how-to/recording-a-session\" target=\"_blank\">更多详情</a>。"
+		},
+		"timeoutMinutes": {
+			"displayName": "空闲超时",
+			"description": "会话因无活动而被终止前的等待分钟数"
+		},
+		"proxy": {
+			"displayName": "代理",
+			"description": "选择如何为此会话配置代理",
+			"options": {
+				"none": {
+					"displayName": "无",
+					"description": "不使用代理"
+				},
+				"integrated": {
+					"displayName": "已集成",
+					"description": "使用Airtop提供的代理"
+				},
+				"proxyUrl": {
+					"displayName": "代理URL",
+					"description": "使用代理URL来配置代理"
+				}
+			}
+		},
+		"proxyConfig": {
+			"displayName": "代理配置",
+			"description": "Airtop提供的代理配置",
+			"placeholder": "添加属性",
+			"options": {
+				"country": {
+					"displayName": "国家",
+					"description": "代理使用的国家。并非所有国家都保证提供代理。了解更多<a href=\"https://docs.airtop.ai/api-reference/airtop-api/sessions/create#request.body.configuration.proxy.Proxy.Airtop-Proxy-Configuration.country\" target=\"_blank\">此处</a>。",
+					"options": {
+						"AF": {
+							"displayName": "阿富汗"
+						},
+						"AX": {
+							"displayName": "奥兰群岛"
+						},
+						"AL": {
+							"displayName": "阿尔巴尼亚"
+						},
+						"DZ": {
+							"displayName": "阿尔及利亚"
+						},
+						"AS": {
+							"displayName": "美属萨摩亚"
+						},
+						"AD": {
+							"displayName": "安道尔"
+						},
+						"AO": {
+							"displayName": "安哥拉"
+						},
+						"AI": {
+							"displayName": "安圭拉"
+						},
+						"AQ": {
+							"displayName": "南极洲"
+						},
+						"AG": {
+							"displayName": "安提瓜和巴布达"
+						},
+						"AR": {
+							"displayName": "阿根廷"
+						},
+						"AM": {
+							"displayName": "亚美尼亚"
+						},
+						"AW": {
+							"displayName": "Aruba"
+						},
+						"AU": {
+							"displayName": "澳大利亚"
+						},
+						"AT": {
+							"displayName": "奥地利"
+						},
+						"AZ": {
+							"displayName": "阿塞拜疆"
+						},
+						"BS": {
+							"displayName": "巴哈马"
+						},
+						"BH": {
+							"displayName": "巴林"
+						},
+						"BD": {
+							"displayName": "孟加拉国"
+						},
+						"BB": {
+							"displayName": "巴巴多斯"
+						},
+						"BY": {
+							"displayName": "白俄罗斯"
+						},
+						"BE": {
+							"displayName": "比利时"
+						},
+						"BZ": {
+							"displayName": "伯利兹"
+						},
+						"BJ": {
+							"displayName": "贝宁"
+						},
+						"BM": {
+							"displayName": "百慕大"
+						},
+						"BT": {
+							"displayName": "不丹"
+						},
+						"BO": {
+							"displayName": "玻利维亚多民族国"
+						},
+						"BQ": {
+							"displayName": "博奈尔、圣尤斯特歇斯和萨巴"
+						},
+						"BA": {
+							"displayName": "波斯尼亚和黑塞哥维那"
+						},
+						"BW": {
+							"displayName": "博茨瓦纳"
+						},
+						"BV": {
+							"displayName": "布韦岛"
+						},
+						"BR": {
+							"displayName": "巴西"
+						},
+						"IO": {
+							"displayName": "英属印度洋领地"
+						},
+						"BN": {
+							"displayName": "文莱达鲁萨兰国"
+						},
+						"BG": {
+							"displayName": "保加利亚"
+						},
+						"BF": {
+							"displayName": "布基纳法索"
+						},
+						"BI": {
+							"displayName": "布隆迪"
+						},
+						"CV": {
+							"displayName": "佛得角"
+						},
+						"KH": {
+							"displayName": "柬埔寨"
+						},
+						"CM": {
+							"displayName": "喀麦隆"
+						},
+						"CA": {
+							"displayName": "加拿大"
+						},
+						"KY": {
+							"displayName": "开曼群岛"
+						},
+						"CF": {
+							"displayName": "中非共和国"
+						},
+						"TD": {
+							"displayName": "乍得"
+						},
+						"CL": {
+							"displayName": "智利"
+						},
+						"CN": {
+							"displayName": "中国"
+						},
+						"CX": {
+							"displayName": "圣诞岛"
+						},
+						"CC": {
+							"displayName": "科科斯（基林）群岛"
+						},
+						"CO": {
+							"displayName": "哥伦比亚"
+						},
+						"KM": {
+							"displayName": "科摩罗"
+						},
+						"CG": {
+							"displayName": "刚果"
+						},
+						"CD": {
+							"displayName": "刚果民主共和国"
+						},
+						"CK": {
+							"displayName": "库克群岛"
+						},
+						"CR": {
+							"displayName": "哥斯达黎加"
+						},
+						"CI": {
+							"displayName": "科特迪瓦"
+						},
+						"HR": {
+							"displayName": "克罗地亚"
+						},
+						"CU": {
+							"displayName": "古巴"
+						},
+						"CW": {
+							"displayName": "库拉索"
+						},
+						"CY": {
+							"displayName": "塞浦路斯"
+						},
+						"CZ": {
+							"displayName": "捷克"
+						},
+						"DK": {
+							"displayName": "丹麦"
+						},
+						"DJ": {
+							"displayName": "吉布提"
+						},
+						"DM": {
+							"displayName": "多米尼克"
+						},
+						"DO": {
+							"displayName": "多米尼加共和国"
+						},
+						"EC": {
+							"displayName": "厄瓜多尔"
+						},
+						"EG": {
+							"displayName": "埃及"
+						},
+						"SV": {
+							"displayName": "萨尔瓦多"
+						},
+						"GQ": {
+							"displayName": "赤道几内亚"
+						},
+						"ER": {
+							"displayName": "厄立特里亚"
+						},
+						"EE": {
+							"displayName": "爱沙尼亚"
+						},
+						"SZ": {
+							"displayName": "斯威士兰"
+						},
+						"ET": {
+							"displayName": "埃塞俄比亚"
+						},
+						"FK": {
+							"displayName": "福克兰群岛（马尔维纳斯）"
+						},
+						"FO": {
+							"displayName": "法罗群岛"
+						},
+						"FJ": {
+							"displayName": "斐济"
+						},
+						"FI": {
+							"displayName": "芬兰"
+						},
+						"FR": {
+							"displayName": "法国"
+						},
+						"GF": {
+							"displayName": "法属圭亚那"
+						},
+						"PF": {
+							"displayName": "法属波利尼西亚"
+						},
+						"TF": {
+							"displayName": "法属南部领地"
+						},
+						"GA": {
+							"displayName": "加蓬"
+						},
+						"GM": {
+							"displayName": "冈比亚"
+						},
+						"GE": {
+							"displayName": "格鲁吉亚"
+						},
+						"DE": {
+							"displayName": "德国"
+						},
+						"GH": {
+							"displayName": "加纳"
+						},
+						"GI": {
+							"displayName": "直布罗陀"
+						},
+						"GR": {
+							"displayName": "希腊"
+						},
+						"GL": {
+							"displayName": "格陵兰"
+						},
+						"GD": {
+							"displayName": "格林纳达"
+						},
+						"GP": {
+							"displayName": "瓜德罗普"
+						},
+						"GU": {
+							"displayName": "关岛"
+						},
+						"GT": {
+							"displayName": "危地马拉"
+						},
+						"GG": {
+							"displayName": "根西岛"
+						},
+						"GN": {
+							"displayName": "几内亚"
+						},
+						"GW": {
+							"displayName": "几内亚比绍"
+						},
+						"GY": {
+							"displayName": "圭亚那"
+						},
+						"HT": {
+							"displayName": "海地"
+						},
+						"HM": {
+							"displayName": "赫德岛和麦克唐纳群岛"
+						},
+						"VA": {
+							"displayName": "梵蒂冈"
+						},
+						"HN": {
+							"displayName": "洪都拉斯"
+						},
+						"HK": {
+							"displayName": "香港"
+						},
+						"HU": {
+							"displayName": "匈牙利"
+						},
+						"IS": {
+							"displayName": "冰岛"
+						},
+						"IN": {
+							"displayName": "印度"
+						},
+						"ID": {
+							"displayName": "印度尼西亚"
+						},
+						"IR": {
+							"displayName": "伊朗（伊斯兰共和国）"
+						},
+						"IQ": {
+							"displayName": "伊拉克"
+						},
+						"IE": {
+							"displayName": "爱尔兰"
+						},
+						"IM": {
+							"displayName": "马恩岛"
+						},
+						"IL": {
+							"displayName": "以色列"
+						},
+						"IT": {
+							"displayName": "意大利"
+						},
+						"JM": {
+							"displayName": "牙买加"
+						},
+						"JP": {
+							"displayName": "日本"
+						},
+						"JE": {
+							"displayName": "Jersey"
+						},
+						"JO": {
+							"displayName": "乔丹"
+						},
+						"KZ": {
+							"displayName": "哈萨克斯坦"
+						},
+						"KE": {
+							"displayName": "肯尼亚"
+						},
+						"KI": {
+							"displayName": "基里巴斯"
+						},
+						"KP": {
+							"displayName": "朝鲜民主主义人民共和国"
+						},
+						"KR": {
+							"displayName": "韩国"
+						},
+						"KW": {
+							"displayName": "科威特"
+						},
+						"KG": {
+							"displayName": "吉尔吉斯斯坦"
+						},
+						"LA": {
+							"displayName": "老挝人民民主共和国"
+						},
+						"LV": {
+							"displayName": "拉脱维亚"
+						},
+						"LB": {
+							"displayName": "黎巴嫩"
+						},
+						"LS": {
+							"displayName": "莱索托"
+						},
+						"LR": {
+							"displayName": "利比里亚"
+						},
+						"LY": {
+							"displayName": "利比亚"
+						},
+						"LI": {
+							"displayName": "列支敦士登"
+						},
+						"LT": {
+							"displayName": "立陶宛"
+						},
+						"LU": {
+							"displayName": "卢森堡"
+						},
+						"MO": {
+							"displayName": "澳门"
+						},
+						"MG": {
+							"displayName": "马达加斯加"
+						},
+						"MW": {
+							"displayName": "马拉维"
+						},
+						"MY": {
+							"displayName": "马来西亚"
+						},
+						"MV": {
+							"displayName": "马尔代夫"
+						},
+						"ML": {
+							"displayName": "马里"
+						},
+						"MT": {
+							"displayName": "马耳他"
+						},
+						"MH": {
+							"displayName": "马绍尔群岛"
+						},
+						"MQ": {
+							"displayName": "马提尼克"
+						},
+						"MR": {
+							"displayName": "毛里塔尼亚"
+						},
+						"MU": {
+							"displayName": "毛里求斯"
+						},
+						"YT": {
+							"displayName": "马约特"
+						},
+						"MX": {
+							"displayName": "墨西哥"
+						},
+						"FM": {
+							"displayName": "密克罗尼西亚联邦"
+						},
+						"MD": {
+							"displayName": "摩尔多瓦共和国"
+						},
+						"MC": {
+							"displayName": "Monaco"
+						},
+						"MN": {
+							"displayName": "蒙古"
+						},
+						"ME": {
+							"displayName": "黑山"
+						},
+						"MS": {
+							"displayName": "Montserrat"
+						},
+						"MA": {
+							"displayName": "摩洛哥"
+						},
+						"MZ": {
+							"displayName": "莫桑比克"
+						},
+						"MM": {
+							"displayName": "缅甸"
+						},
+						"NA": {
+							"displayName": "纳米比亚"
+						},
+						"NR": {
+							"displayName": "瑙鲁"
+						},
+						"NP": {
+							"displayName": "尼泊尔"
+						},
+						"NL": {
+							"displayName": "荷兰王国"
+						},
+						"NC": {
+							"displayName": "新喀里多尼亚"
+						},
+						"NZ": {
+							"displayName": "新西兰"
+						},
+						"NI": {
+							"displayName": "尼加拉瓜"
+						},
+						"NE": {
+							"displayName": "尼日尔"
+						},
+						"NG": {
+							"displayName": "尼日利亚"
+						},
+						"NU": {
+							"displayName": "纽埃"
+						},
+						"NF": {
+							"displayName": "诺福克岛"
+						},
+						"MK": {
+							"displayName": "北马其顿"
+						},
+						"MP": {
+							"displayName": "北马里亚纳群岛"
+						},
+						"NO": {
+							"displayName": "挪威"
+						},
+						"OM": {
+							"displayName": "阿曼"
+						},
+						"PK": {
+							"displayName": "巴基斯坦"
+						},
+						"PW": {
+							"displayName": "帕劳"
+						},
+						"PS": {
+							"displayName": "巴勒斯坦国"
+						},
+						"PA": {
+							"displayName": "巴拿马"
+						},
+						"PG": {
+							"displayName": "巴布亚新几内亚"
+						},
+						"PY": {
+							"displayName": "巴拉圭"
+						},
+						"PE": {
+							"displayName": "秘鲁"
+						},
+						"PH": {
+							"displayName": "菲律宾"
+						},
+						"PN": {
+							"displayName": "皮特凯恩"
+						},
+						"PL": {
+							"displayName": "波兰"
+						},
+						"PT": {
+							"displayName": "葡萄牙"
+						},
+						"PR": {
+							"displayName": "波多黎各"
+						},
+						"QA": {
+							"displayName": "卡塔尔"
+						},
+						"RE": {
+							"displayName": "会议"
+						},
+						"RO": {
+							"displayName": "罗马尼亚"
+						},
+						"RU": {
+							"displayName": "俄罗斯联邦"
+						},
+						"RW": {
+							"displayName": "卢旺达"
+						},
+						"BL": {
+							"displayName": "圣巴泰勒米"
+						},
+						"SH": {
+							"displayName": "圣赫勒拿、阿森松和特里斯坦-达库尼亚"
+						},
+						"KN": {
+							"displayName": "圣基茨和尼维斯"
+						},
+						"LC": {
+							"displayName": "圣卢西亚"
+						},
+						"MF": {
+							"displayName": "圣马丁（法属部分）"
+						},
+						"PM": {
+							"displayName": "圣皮埃尔和密克隆"
+						},
+						"VC": {
+							"displayName": "圣文森特和格林纳丁斯"
+						},
+						"WS": {
+							"displayName": "萨摩亚"
+						},
+						"SM": {
+							"displayName": "圣马力诺"
+						},
+						"ST": {
+							"displayName": "圣多美和普林西比"
+						},
+						"SA": {
+							"displayName": "沙特阿拉伯"
+						},
+						"SN": {
+							"displayName": "塞内加尔"
+						},
+						"RS": {
+							"displayName": "塞尔维亚"
+						},
+						"SC": {
+							"displayName": "塞舌尔"
+						},
+						"SL": {
+							"displayName": "塞拉利昂"
+						},
+						"SG": {
+							"displayName": "新加坡"
+						},
+						"SX": {
+							"displayName": "圣马丁（荷兰部分）"
+						},
+						"SK": {
+							"displayName": "斯洛伐克"
+						},
+						"SI": {
+							"displayName": "斯洛文尼亚"
+						},
+						"SB": {
+							"displayName": "所罗门群岛"
+						},
+						"SO": {
+							"displayName": "索马里"
+						},
+						"ZA": {
+							"displayName": "南非"
+						},
+						"GS": {
+							"displayName": "南乔治亚和南桑威奇群岛"
+						},
+						"SS": {
+							"displayName": "南苏丹"
+						},
+						"ES": {
+							"displayName": "西班牙"
+						},
+						"LK": {
+							"displayName": "斯里兰卡"
+						},
+						"SD": {
+							"displayName": "苏丹"
+						},
+						"SR": {
+							"displayName": "苏里南"
+						},
+						"SJ": {
+							"displayName": "斯瓦尔巴和扬马延"
+						},
+						"SE": {
+							"displayName": "瑞典"
+						},
+						"CH": {
+							"displayName": "瑞士"
+						},
+						"SY": {
+							"displayName": "阿拉伯叙利亚共和国"
+						},
+						"TW": {
+							"displayName": "中国台湾省"
+						},
+						"TJ": {
+							"displayName": "塔吉克斯坦"
+						},
+						"TZ": {
+							"displayName": "坦桑尼亚联合共和国"
+						},
+						"TH": {
+							"displayName": "泰国"
+						},
+						"TL": {
+							"displayName": "东帝汶"
+						},
+						"TG": {
+							"displayName": "多哥"
+						},
+						"TK": {
+							"displayName": "托克劳"
+						},
+						"TO": {
+							"displayName": "汤加"
+						},
+						"TT": {
+							"displayName": "特立尼达和多巴哥"
+						},
+						"TN": {
+							"displayName": "突尼斯"
+						},
+						"TR": {
+							"displayName": "土耳其"
+						},
+						"TM": {
+							"displayName": "土库曼斯坦"
+						},
+						"TC": {
+							"displayName": "特克斯和凯科斯群岛"
+						},
+						"TV": {
+							"displayName": "图瓦卢"
+						},
+						"UG": {
+							"displayName": "乌干达"
+						},
+						"UA": {
+							"displayName": "乌克兰"
+						},
+						"AE": {
+							"displayName": "阿拉伯联合酋长国"
+						},
+						"GB": {
+							"displayName": "大不列颠及北爱尔兰联合王国"
+						},
+						"UM": {
+							"displayName": "美国本土外小岛屿"
+						},
+						"US": {
+							"displayName": "美利坚合众国"
+						},
+						"UY": {
+							"displayName": "乌拉圭"
+						},
+						"UZ": {
+							"displayName": "乌兹别克斯坦"
+						},
+						"VU": {
+							"displayName": "瓦努阿图"
+						},
+						"VE": {
+							"displayName": "委内瑞拉玻利瓦尔共和国"
+						},
+						"VN": {
+							"displayName": "越南"
+						},
+						"VG": {
+							"displayName": "英属维尔京群岛"
+						},
+						"VI": {
+							"displayName": "美属维尔京群岛"
+						},
+						"WF": {
+							"displayName": "瓦利斯和富图纳"
+						},
+						"EH": {
+							"displayName": "西撒哈拉"
+						},
+						"YE": {
+							"displayName": "也门"
+						},
+						"ZM": {
+							"displayName": "赞比亚"
+						},
+						"ZW": {
+							"displayName": "津巴布韦"
+						}
+					}
+				},
+				"sticky": {
+					"displayName": "保持相同IP",
+					"description": "是否在会话期间尝试保持相同的IP地址。Airtop可以保证同一IP地址最多可用30分钟。"
+				}
+			}
+		},
+		"proxyUrl": {
+			"displayName": "代理URL",
+			"description": "要使用的代理URL"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"solveCaptcha": {
+					"displayName": "自动解决验证码",
+					"description": "是否自动解决<a href=\"https://docs.airtop.ai/guides/how-to/solving-captchas\" target=\"_blank\">验证码挑战</a>"
+				},
+				"extensionIds": {
+					"displayName": "扩展程序ID",
+					"description": "要从Google Web Store加载到会话中的扩展程序ID，以逗号分隔。了解更多信息<a href=\"https://docs.airtop.ai/guides/how-to/using-chrome-extensions\" target=\"_blank\">请点击此处</a>。",
+					"placeholder": "例如：extId1, extId2, ..."
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待下载可用的时间（秒）"
+				},
+				"waitUntil": {
+					"displayName": "等待直到",
+					"description": "等待指定的加载事件发生。默认为'完全加载'。",
+					"options": {
+						"load": {
+							"displayName": "完全加载",
+							"description": "等待页面DOM及其资源加载完成"
+						},
+						"domContentLoaded": {
+							"displayName": "仅DOM加载完成",
+							"description": "等待DOM加载完成"
+						},
+						"complete": {
+							"displayName": "完成",
+							"description": "等待页面及其所有iframe加载完DOM和资源"
+						},
+						"noWait": {
+							"displayName": "不等待",
+							"description": "不等待任何加载事件，立即返回"
+						}
+					}
+				},
+				"includeNavigationBar": {
+					"displayName": "包含导航栏",
+					"description": "是否在实时视图中包含导航栏。启用后，导航栏将可见，允许您在页面之间导航。"
+				},
+				"screenResolution": {
+					"displayName": "屏幕分辨率",
+					"description": "实时视图的屏幕分辨率。设置分辨率将强制窗口以该特定尺寸打开。",
+					"placeholder": "例如 1280x720"
+				},
+				"disableResize": {
+					"displayName": "禁用调整大小",
+					"description": "是否在实时视图中禁用窗口调整大小功能"
+				},
+				"outputSchema": {
+					"displayName": "JSON输出模式",
+					"description": "定义输出结构的JSON模式"
+				},
+				"parseJsonOutput": {
+					"displayName": "Parse JSON Output",
+					"description": "Whether to parse the model's response to JSON in the output. Requires the 'JSON Output Schema' parameter to be set."
+				},
+				"interactionMode": {
+					"displayName": "交互模式",
+					"description": "与页面交互的策略",
+					"options": {
+						"auto": {
+							"displayName": "自动",
+							"description": "自动选择最具成本效益的模式"
+						},
+						"accurate": {
+							"displayName": "准确",
+							"description": "优先考虑准确性而非成本"
+						},
+						"cost-efficient": {
+							"displayName": "成本效益",
+							"description": "在确保有效性的同时最小化成本"
+						}
+					}
+				},
+				"paginationMode": {
+					"displayName": "分页模式",
+					"description": "要使用的分页方法",
+					"options": {
+						"auto": {
+							"displayName": "自动",
+							"description": "先查找分页链接，再尝试无限滚动"
+						},
+						"paginated": {
+							"displayName": "分页",
+							"description": "仅使用分页链接"
+						},
+						"infinite-scroll": {
+							"displayName": "无限滚动",
+							"description": "滚动页面以加载更多内容"
+						}
+					}
+				},
+				"includeVisualAnalysis": {
+					"displayName": "包含视觉分析",
+					"description": "执行请求时是否对网页进行视觉分析"
+				},
+				"visualScope": {
+					"displayName": "视觉范围",
+					"description": "定义当前窗口的视觉分析策略",
+					"options": {
+						"auto": {
+							"displayName": "自动",
+							"description": "为大多数网页提供最简单的开箱即用体验"
+						},
+						"viewport": {
+							"displayName": "视口",
+							"description": "仅用于分析当前浏览器视图"
+						},
+						"page": {
+							"displayName": "页面",
+							"description": "用于整个页面分析"
+						},
+						"scan": {
+							"displayName": "扫描",
+							"description": "针对与'页面'模式存在兼容性问题的网站进行完整页面分析"
+						}
+					}
+				},
+				"waitForNavigation": {
+					"displayName": "等待导航后事件",
+					"description": "等待交互（点击、输入或悬停）后导航完成的条件。默认为'完全加载'。",
+					"options": {
+						"load": {
+							"displayName": "完全加载（较慢）"
+						},
+						"domcontentloaded": {
+							"displayName": "仅DOM加载（更快）"
+						},
+						"networkidle0": {
+							"displayName": "所有网络活动已停止"
+						},
+						"networkidle2": {
+							"displayName": "大部分网络活动已停止"
+						}
+					}
+				}
+			}
+		},
+		"notice": {
+			"displayName": "注意：如果在'创建会话'操作中启用了'保存配置文件'，则无需此操作"
+		},
+		"sessionId": {
+			"displayName": "会话ID",
+			"description": "要使用的<a href=\"https://docs.airtop.ai/guides/how-to/creating-a-session\" target=\"_blank\">会话</a>ID"
+		},
+		"windowId": {
+			"displayName": "窗口ID",
+			"description": "要使用的<a href=\"https://docs.airtop.ai/guides/how-to/creating-a-session#windows\" target=\"_blank\">窗口</a>的ID"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "窗口中加载的URL",
+			"placeholder": "例如 https://google.com"
+		},
+		"getLiveView": {
+			"displayName": "获取实时视图",
+			"description": "是否获取窗口<a href=\"https://docs.airtop.ai/guides/how-to/creating-a-live-view\" target=\"_blank\">实时视图</a>的URL"
+		},
+		"includeNavigationBar": {
+			"displayName": "包含导航栏",
+			"description": "是否在实时视图中包含导航栏。启用后，导航栏将可见，允许您在页面之间导航。"
+		},
+		"screenResolution": {
+			"displayName": "屏幕分辨率",
+			"description": "实时视图的屏幕分辨率。设置分辨率将强制窗口以该特定尺寸打开。",
+			"placeholder": "例如 1280x720"
+		},
+		"disableResize": {
+			"displayName": "禁用调整大小",
+			"description": "是否在实时视图中禁用窗口调整大小功能"
+		},
+		"outputImageAsBinary": {
+			"displayName": "输出二进制图像",
+			"description": "是否将图像输出为二进制文件而非base64编码字符串"
+		},
+		"fileId": {
+			"displayName": "文件ID",
+			"description": "要加载到会话中的文件ID"
+		},
+		"outputBinaryFile": {
+			"displayName": "输出二进制文件",
+			"description": "如果文件已准备好下载，是否以二进制格式输出文件"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"sessionIds": {
+			"displayName": "会话ID",
+			"description": "用于按会话筛选文件的<a href=\"https://docs.airtop.ai/api-reference/airtop-api/sessions/create\" target=\"_blank\">会话ID</a>逗号分隔列表。为空时，将返回所有会话中的所有文件。",
+			"placeholder": "例如：6aac6f73-bd89-4a76-ab32-5a6c422e8b0b, a13c6f73-bd89-4a76-ab32-5a6c422e8224"
+		},
+		"outputSingleItem": {
+			"displayName": "输出文件为单个项目",
+			"description": "是否输出一个包含所有文件的项目，或将每个文件作为单独项目输出"
+		},
+		"elementDescription": {
+			"displayName": "元素描述",
+			"description": "要执行交互的元素的特定描述",
+			"placeholder": "例如：页面顶部的搜索框"
+		},
+		"includeHiddenElements": {
+			"displayName": "包含隐藏元素",
+			"description": "交互中是否包含隐藏元素"
+		},
+		"fileName": {
+			"displayName": "文件名",
+			"description": "要上传文件的名称。对于会话，所有加载的文件都应具有<b>唯一的名称</b>。"
+		},
+		"fileType": {
+			"displayName": "文件类型",
+			"description": "选择要上传的文件类型。默认为'客户上传'。",
+			"options": {
+				"browser_download": {
+					"displayName": "浏览器下载"
+				},
+				"screenshot": {
+					"displayName": "截图"
+				},
+				"video": {
+					"displayName": "视频"
+				},
+				"customer_upload": {
+					"displayName": "客户上传"
+				}
+			}
+		},
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "要上传文件的来源",
+			"options": {
+				"url": {
+					"displayName": "URL"
+				},
+				"binary": {
+					"displayName": "二进制"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "二进制属性",
+			"description": "包含文件数据的二进制属性名称"
+		},
+		"triggerFileInputParameter": {
+			"displayName": "触发文件输入",
+			"description": "是否在当前窗口自动触发文件输入对话框。如果禁用，文件将仅上传到会话而不会打开文件输入对话框。"
+		},
+		"sessionMode": {
+			"displayName": "会话模式",
+			"description": "选择创建新会话或使用现有会话",
+			"options": {
+				"new": {
+					"displayName": "自动创建会话",
+					"description": "为此操作自动创建新会话和窗口"
+				},
+				"existing": {
+					"displayName": "使用现有会话",
+					"description": "使用现有会话和窗口执行此操作"
+				}
+			}
+		},
+		"autoTerminateSession": {
+			"displayName": "自动终止会话",
+			"description": "是否在操作完成后终止会话。禁用时，您必须手动终止会话。默认情况下，空闲会话将在10分钟后超时。"
+		},
+		"prompt": {
+			"displayName": "提示",
+			"description": "查询页面内容的提示",
+			"placeholder": "例如：此页面中是否有登录表单？"
+		},
+		"clickType": {
+			"displayName": "点击类型",
+			"description": "要执行的点击类型。默认为左键点击。",
+			"options": {
+				"click": {
+					"displayName": "左键单击"
+				},
+				"doubleClick": {
+					"displayName": "双击"
+				},
+				"rightClick": {
+					"displayName": "右键点击"
+				}
+			}
+		},
+		"formData": {
+			"displayName": "表单数据",
+			"description": "要用自然语言填写到表单中的信息",
+			"placeholder": "例如：“姓名：John Doe，邮箱：john.doe@example.com”"
+		},
+		"scrollingMode": {
+			"displayName": "滚动模式",
+			"description": "选择滚动模式",
+			"options": {
+				"automatic": {
+					"displayName": "自动",
+					"description": "Describe with natural language the element to scroll to"
+				},
+				"manual": {
+					"displayName": "手动",
+					"description": "Define the direction and amount to scroll by"
+				}
+			}
+		},
+		"scrollToElement": {
+			"displayName": "元素描述",
+			"description": "要滚动到的元素的自然语言描述",
+			"placeholder": "例如：标题为“联系我们”的页面区域"
+		},
+		"scrollToEdge": {
+			"displayName": "滚动至边缘",
+			"description": "要滚动到的方向。当定义了'滚动距离'时，将先执行'滚动至边缘'操作，再执行'滚动距离'操作。",
+			"placeholder": "添加边缘方向",
+			"options": {
+				"edgeValues": {
+					"displayName": "页面边缘",
+					"options": {
+						"yAxis": {
+							"displayName": "垂直",
+							"options": {
+								"": {
+									"displayName": "空"
+								},
+								"top": {
+									"displayName": "顶部"
+								},
+								"bottom": {
+									"displayName": "底部"
+								}
+							}
+						},
+						"xAxis": {
+							"displayName": "水平排列",
+							"options": {
+								"": {
+									"displayName": "空"
+								},
+								"left": {
+									"displayName": "左侧"
+								},
+								"right": {
+									"displayName": "右侧"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"edgeValues": {
+					"displayName": "页面边缘",
+					"options": {
+						"yAxis": {
+							"displayName": "垂直",
+							"options": {
+								"": {
+									"displayName": "空"
+								},
+								"top": {
+									"displayName": "顶部"
+								},
+								"bottom": {
+									"displayName": "底部"
+								}
+							}
+						},
+						"xAxis": {
+							"displayName": "水平排列",
+							"options": {
+								"": {
+									"displayName": "空"
+								},
+								"left": {
+									"displayName": "左侧"
+								},
+								"right": {
+									"displayName": "右侧"
+								}
+							}
+						}
+					}
+				},
+				"scrollToEdge": {
+					"displayName": "滚动到边缘",
+					"placeholder": "添加边缘方向"
+				}
+			}
+		},
+		"scrollBy": {
+			"displayName": "滚动距离",
+			"description": "要滚动的距离。当定义了'滚动至边缘'时，'滚动距离'操作将在'滚动至边缘'之后执行。",
+			"placeholder": "添加滚动量",
+			"options": {
+				"scrollValues": {
+					"displayName": "滚动值",
+					"options": {
+						"yAxis": {
+							"displayName": "垂直",
+							"placeholder": "例如 200px、50%、-100px"
+						},
+						"xAxis": {
+							"displayName": "水平排列",
+							"placeholder": "例如 50px, 10%, -200px"
+						}
+					}
+				}
+			},
+			"values": {
+				"scrollValues": {
+					"displayName": "滚动值",
+					"options": {
+						"yAxis": {
+							"displayName": "垂直",
+							"placeholder": "例如 200px、50%、-100px"
+						},
+						"xAxis": {
+							"displayName": "水平排列",
+							"placeholder": "例如 50px, 10%, -200px"
+						}
+					}
+				},
+				"scrollBy": {
+					"displayName": "滚动距离",
+					"placeholder": "添加滚动量"
+				}
+			}
+		},
+		"scrollWithin": {
+			"displayName": "可滚动区域",
+			"description": "在页面元素内滚动",
+			"placeholder": "例如左侧边栏"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "要在浏览器窗口中输入的文本",
+			"placeholder": "例如 email@example.com"
+		},
+		"pressEnterKey": {
+			"displayName": "按下回车键",
+			"description": "输入文本后是否按下回车键"
+		}
+	}
+}

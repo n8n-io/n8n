@@ -1,0 +1,30 @@
+{
+	"header": {
+		"displayName": "MQTT Trigger",
+		"description": "Listens to MQTT events"
+	},
+	"nodeView": {
+		"topics": {
+			"displayName": "Topics",
+			"description": "Topics to subscribe to, multiple can be defined with comma. Wildcard characters are supported (+ - for single level and # - for multi level). By default all subscription used QoS=0. To set a different QoS, write the QoS desired after the topic preceded by a colom. For Example: topicA:1,topicB:2"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"jsonParseBody": {
+					"displayName": "JSON Parse Body",
+					"description": "Whether to try parse the message to an object"
+				},
+				"onlyMessage": {
+					"displayName": "Only Message",
+					"description": "Whether to return only the message property"
+				},
+				"parallelProcessing": {
+					"displayName": "Parallel Processing",
+					"description": "Whether to process messages in parallel or by keeping the message in order"
+				}
+			}
+		}
+	}
+}

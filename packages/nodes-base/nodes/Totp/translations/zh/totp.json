@@ -1,0 +1,63 @@
+{
+	"header": {
+		"displayName": "TOTP",
+		"description": "生成基于时间的一次性密码"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"generateSecret": {
+					"displayName": "生成密钥"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"algorithm": {
+					"displayName": "算法",
+					"description": "HMAC哈希算法。默认为SHA1。",
+					"options": {
+						"SHA1": {
+							"displayName": "SHA1"
+						},
+						"SHA224": {
+							"displayName": "SHA224"
+						},
+						"SHA256": {
+							"displayName": "SHA256"
+						},
+						"SHA3-224": {
+							"displayName": "SHA3-224"
+						},
+						"SHA3-256": {
+							"displayName": "SHA3-256"
+						},
+						"SHA3-384": {
+							"displayName": "SHA3-384"
+						},
+						"SHA3-512": {
+							"displayName": "SHA3-512"
+						},
+						"SHA384": {
+							"displayName": "SHA384"
+						},
+						"SHA512": {
+							"displayName": "SHA512"
+						}
+					}
+				},
+				"digits": {
+					"displayName": "位数",
+					"description": "生成的TOTP码中的数字位数。默认为6位。"
+				},
+				"period": {
+					"displayName": "有效期",
+					"description": "生成的TOTP代码有效的秒数。默认为30秒。"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,98 @@
+{
+	"header": {
+		"displayName": "Google BigQuery",
+		"description": "使用 Google BigQuery API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				},
+				"serviceAccount": {
+					"displayName": "服务账号"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"record": {
+					"displayName": "记录"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新记录"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多条记录"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "项目名称或ID",
+			"description": "要从中检索所有行的项目ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"datasetId": {
+			"displayName": "数据集名称或ID",
+			"description": "要从中检索所有行的数据集ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"tableId": {
+			"displayName": "表名或ID",
+			"description": "要从中检索所有行的表ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"columns": {
+			"displayName": "列",
+			"description": "用作列的项属性逗号分隔列表",
+			"placeholder": "id,名称,描述"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"ignoreUnknownValues": {
+					"displayName": "忽略未知值",
+					"description": "是否忽略与架构不匹配的行值"
+				},
+				"skipInvalidRows": {
+					"displayName": "跳过无效行",
+					"description": "是否跳过包含与架构不匹配值的行"
+				},
+				"templateSuffix": {
+					"displayName": "模板后缀",
+					"description": "基于目标表创建新表并将行插入新表。新表将命名为<code>{destinationTable}{templateSuffix}</code>"
+				},
+				"traceId": {
+					"displayName": "追踪ID",
+					"description": "请求的唯一标识符，仅用于调试。区分大小写，最多36个ASCII字符。建议使用UUID。"
+				},
+				"selectedFields": {
+					"displayName": "字段",
+					"description": "要返回的字段子集，支持选择到子字段。示例：<code>selectedFields = \"a,e.d.f\"</code>"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		}
+	}
+}

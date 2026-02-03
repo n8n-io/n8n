@@ -1,0 +1,232 @@
+{
+	"header": {
+		"displayName": "Raindrop",
+		"description": "Consume the Raindrop API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"bookmark": {
+					"displayName": "Bookmark"
+				},
+				"collection": {
+					"displayName": "Collection"
+				},
+				"tag": {
+					"displayName": "Tag"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"collectionId": {
+			"displayName": "Collection ID",
+			"description": "The ID of the collection to update"
+		},
+		"link": {
+			"displayName": "Link",
+			"description": "Link of the bookmark to be created"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Filter",
+			"options": {
+				"important": {
+					"displayName": "Important",
+					"description": "Whether this bookmark is marked as favorite"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "Sort order for the bookmark. For example, to move it to first place, enter 0."
+				},
+				"pleaseParse": {
+					"displayName": "Parse Metadata",
+					"description": "Whether Raindrop should load cover, description and HTML for the URL"
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Bookmark tags. Multiple tags can be set separated by comma."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the bookmark to create"
+				},
+				"cover": {
+					"displayName": "Cover",
+					"description": "URL of an image to use as cover for the collection"
+				},
+				"public": {
+					"displayName": "Public",
+					"description": "Whether the collection will be accessible without authentication"
+				},
+				"parentId": {
+					"displayName": "Parent ID",
+					"description": "ID of this collection's parent collection, if it is a child collection"
+				},
+				"sort": {
+					"displayName": "Sort Order",
+					"description": "Descending sort order of this collection. The number is the position of the collection among all the collections with the same parent ID."
+				},
+				"view": {
+					"displayName": "View",
+					"description": "View style of this collection",
+					"options": {
+						"list": {
+							"displayName": "List"
+						},
+						"simple": {
+							"displayName": "Simple"
+						},
+						"grid": {
+							"displayName": "Grid"
+						},
+						"Masonry": {
+							"displayName": "Masonry"
+						}
+					}
+				},
+				"collectionId": {
+					"displayName": "Collection Name or ID",
+					"description": "It's possible to restrict remove action to just one collection. It's optional. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"bookmarkId": {
+			"displayName": "Bookmark ID",
+			"description": "The ID of the bookmark to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"collectionId": {
+					"displayName": "Collection Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"important": {
+					"displayName": "Important",
+					"description": "Whether this bookmark is marked as favorite"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "For example if you want to move bookmark to the first place set this field to 0"
+				},
+				"pleaseParse": {
+					"displayName": "Parse Metadata",
+					"description": "Whether Raindrop should reload cover, description and HTML for the URL"
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Bookmark tags. Multiple tags can be set separated by comma."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the collection to update"
+				},
+				"cover": {
+					"displayName": "Cover",
+					"description": "Name of the binary property containing the data for the image to upload as a cover"
+				},
+				"public": {
+					"displayName": "Public",
+					"description": "Whether the collection will be accessible without authentication"
+				},
+				"parentId": {
+					"displayName": "Parent ID",
+					"description": "ID of this collection's parent collection, if it is a child collection"
+				},
+				"sort": {
+					"displayName": "Sort Order",
+					"description": "Descending sort order of this collection. The number is the position of the collection among all the collections with the same parent ID."
+				},
+				"view": {
+					"displayName": "View",
+					"description": "View style of this collection",
+					"options": {
+						"list": {
+							"displayName": "List"
+						},
+						"simple": {
+							"displayName": "Simple"
+						},
+						"grid": {
+							"displayName": "Grid"
+						},
+						"Masonry": {
+							"displayName": "Masonry"
+						}
+					}
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the collection to create"
+		},
+		"type": {
+			"displayName": "Type",
+			"options": {
+				"parent": {
+					"displayName": "Parent",
+					"description": "Root-level collections"
+				},
+				"children": {
+					"displayName": "Children",
+					"description": "Nested collections"
+				}
+			}
+		},
+		"tags": {
+			"displayName": "Tags",
+			"description": "One or more tags to delete. Enter comma-separated values to delete multiple tags."
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"collectionId": {
+					"displayName": "Collection Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				}
+			}
+		},
+		"self": {
+			"displayName": "Self",
+			"description": "Whether to return details on the logged-in user"
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "The ID of the user to retrieve"
+		}
+	}
+}

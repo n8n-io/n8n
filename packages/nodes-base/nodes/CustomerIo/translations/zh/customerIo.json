@@ -1,0 +1,239 @@
+{
+	"header": {
+		"displayName": "Customer.io",
+		"description": "使用Customer.io API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"customer": {
+					"displayName": "客户"
+				},
+				"event": {
+					"displayName": "事件"
+				},
+				"campaign": {
+					"displayName": "营销活动"
+				},
+				"segment": {
+					"displayName": "分段"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"getMetrics": {
+					"displayName": "获取指标"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新客户，若已存在则更新现有客户（增补更新）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除客户"
+				},
+				"track": {
+					"displayName": "追踪",
+					"description": "追踪客户事件"
+				},
+				"trackAnonymous": {
+					"displayName": "追踪匿名事件",
+					"description": "追踪匿名事件"
+				},
+				"add": {
+					"displayName": "添加客户"
+				},
+				"remove": {
+					"displayName": "移除客户"
+				}
+			}
+		},
+		"campaignId": {
+			"displayName": "活动ID",
+			"description": "活动的唯一标识符"
+		},
+		"period": {
+			"displayName": "周期",
+			"description": "指定指标周期",
+			"options": {
+				"hours": {
+					"displayName": "小时"
+				},
+				"days": {
+					"displayName": "天"
+				},
+				"weeks": {
+					"displayName": "周"
+				},
+				"months": {
+					"displayName": "月"
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"steps": {
+					"displayName": "步骤数",
+					"description": "指定要返回的步骤数量。默认为可用的最大时间段数，使用月份周期时默认为12。可用的最大时间段为24小时、45天、12周和120个月。"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "用于更改事件类型。对于页面浏览事件，请设置为“page”。",
+					"options": {
+						"email": {
+							"displayName": "电子邮件"
+						},
+						"empty": {
+							"displayName": "空"
+						},
+						"push": {
+							"displayName": "推送"
+						},
+						"slack": {
+							"displayName": "Slack"
+						},
+						"twilio": {
+							"displayName": "Twilio"
+						},
+						"urbanAirship": {
+							"displayName": "Urban Airship"
+						},
+						"webhook": {
+							"displayName": "Webhook"
+						}
+					}
+				},
+				"customProperties": {
+					"displayName": "自定义属性",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"customProperty": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "属性名称",
+									"placeholder": "方案"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值",
+									"placeholder": "基础"
+								}
+							}
+						}
+					},
+					"values": {
+						"customProperty": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "属性名称",
+									"placeholder": "方案"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值",
+									"placeholder": "基础"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "自定义属性"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用户的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"createdAt": {
+					"displayName": "创建时间",
+					"description": "用户创建时的UNIX时间戳"
+				},
+				"customAttributes": {
+					"displayName": "自定义属性",
+					"description": "自定义属性",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"customAttribute": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "属性名称",
+									"placeholder": "价格"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值",
+									"placeholder": "25.50"
+								}
+							}
+						}
+					},
+					"values": {
+						"customAttribute": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "属性名称",
+									"placeholder": "价格"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值",
+									"placeholder": "25.50"
+								}
+							}
+						},
+						"customAttributes": {
+							"displayName": "自定义属性"
+						}
+					}
+				}
+			}
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "客户的唯一标识符"
+		},
+		"additionalFieldsJson": {
+			"displayName": "附加字段",
+			"description": "要设置的值对象，格式描述见<a href=\"https://customer.io/docs/api-triggered-data-format#basic-data-formatting\">此处</a>"
+		},
+		"customerId": {
+			"displayName": "客户ID",
+			"description": "客户的唯一标识符"
+		},
+		"eventName": {
+			"displayName": "事件名称",
+			"description": "客户的唯一标识符"
+		},
+		"segmentId": {
+			"displayName": "分段ID",
+			"description": "分段的唯一标识符"
+		},
+		"customerIds": {
+			"displayName": "客户ID",
+			"description": "要添加到分段的客户ID列表"
+		}
+	}
+}

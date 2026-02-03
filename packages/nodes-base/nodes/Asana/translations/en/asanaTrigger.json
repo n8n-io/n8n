@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "Asana Trigger",
+		"description": "Starts the workflow when Asana events occur."
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"description": "The resource ID to subscribe to. The resource can be a task or project."
+		},
+		"workspace": {
+			"displayName": "Workspace Name or ID",
+			"description": "The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		}
+	}
+}

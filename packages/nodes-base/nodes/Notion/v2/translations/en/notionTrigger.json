@@ -1,0 +1,226 @@
+{
+	"header": {
+		"displayName": "Notion Trigger",
+		"description": "Starts the workflow when Notion events occur"
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "Poll Times",
+			"description": "Time at which polling should occur",
+			"placeholder": "Add Poll Time",
+			"multipleValueButtonText": "Add Poll Time",
+			"options": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "Poll Times",
+					"placeholder": "Add Poll Time"
+				}
+			}
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"pageAddedToDatabase": {
+					"displayName": "Page Added to Database"
+				},
+				"pagedUpdatedInDatabase": {
+					"displayName": "Page Updated in Database"
+				}
+			}
+		},
+		"notionNotice": {
+			"displayName": "In Notion, make sure to <a href=\"https://www.notion.so/help/add-and-manage-connections-with-the-api\" target=\"_blank\">add your connection</a> to the pages you want to access."
+		},
+		"databaseId": {
+			"displayName": "Database",
+			"description": "The Notion Database to operate on"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		}
+	}
+}

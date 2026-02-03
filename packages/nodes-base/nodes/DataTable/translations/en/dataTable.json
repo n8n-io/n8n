@@ -1,0 +1,282 @@
+{
+	"header": {
+		"displayName": "Data table",
+		"description": "Permanently save data across workflow executions in a table"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"row": {
+					"displayName": "Row"
+				},
+				"table": {
+					"displayName": "Table"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"deleteRows": {
+					"displayName": "Delete",
+					"description": "Delete row(s)"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get row(s)"
+				},
+				"rowExists": {
+					"displayName": "If Row Exists",
+					"description": "Match input items that are in the data table"
+				},
+				"rowNotExists": {
+					"displayName": "If Row Does Not Exist",
+					"description": "Match input items that are not in the data table"
+				},
+				"insert": {
+					"displayName": "Insert",
+					"description": "Insert a new row"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a data table name"
+				},
+				"upsert": {
+					"displayName": "Upsert",
+					"description": "Update row(s), or insert if there is no match"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new data table"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a data table"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "List all data tables"
+				}
+			}
+		},
+		"dataTableId": {
+			"displayName": "Data table"
+		},
+		"matchType": {
+			"displayName": "Must Match",
+			"options": {
+				"anyCondition": {
+					"displayName": "Any Condition"
+				},
+				"allConditions": {
+					"displayName": "All Conditions"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "Conditions",
+			"description": "Filter to decide which rows get",
+			"placeholder": "Add Condition",
+			"multipleValueButtonText": "Add Condition",
+			"options": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"keyName": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"condition": {
+							"displayName": "Condition"
+						},
+						"keyValue": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"keyName": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"condition": {
+							"displayName": "Condition"
+						},
+						"keyValue": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "Conditions",
+					"placeholder": "Add Condition"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"dryRun": {
+					"displayName": "Dry Run",
+					"description": "Whether the operation simulates and returns affected rows in their \"before\" and \"after\" states"
+				},
+				"optimizeBulk": {
+					"displayName": "Optimize Bulk",
+					"description": "Whether to improve bulk insert performance 5x by not returning inserted data"
+				},
+				"createIfNotExists": {
+					"displayName": "Reuse Existing Tables",
+					"description": "Whether to return existing table if one exists with the same name without throwing an error"
+				},
+				"filterName": {
+					"displayName": "Filter by Name",
+					"description": "Filter data tables by name (case-insensitive)"
+				},
+				"sortField": {
+					"displayName": "Sort Field",
+					"description": "Field to sort by",
+					"options": {
+						"createdAt": {
+							"displayName": "Created"
+						},
+						"name": {
+							"displayName": "Name"
+						},
+						"sizeBytes": {
+							"displayName": "Size"
+						},
+						"updatedAt": {
+							"displayName": "Updated"
+						}
+					}
+				},
+				"sortDirection": {
+					"displayName": "Sort Direction",
+					"options": {
+						"asc": {
+							"displayName": "Ascending"
+						},
+						"desc": {
+							"displayName": "Descending"
+						}
+					}
+				}
+			}
+		},
+		"columns": {
+			"displayName": "Columns",
+			"description": "The columns to create in the data table",
+			"placeholder": "Add Column",
+			"multipleValueButtonText": "Add Column",
+			"options": {
+				"column": {
+					"displayName": "Column",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the column"
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "The type of the column",
+							"options": {
+								"boolean": {
+									"displayName": "Boolean"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"string": {
+									"displayName": "String"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"column": {
+					"displayName": "Column",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the column"
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "The type of the column",
+							"options": {
+								"boolean": {
+									"displayName": "Boolean"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"string": {
+									"displayName": "String"
+								}
+							}
+						}
+					}
+				},
+				"columns": {
+					"displayName": "Columns",
+					"placeholder": "Add Column"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"orderBy": {
+			"displayName": "Order By",
+			"description": "Whether to sort the results by a column"
+		},
+		"orderByColumn": {
+			"displayName": "Order By Column",
+			"description": "Choose from the list, or specify using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"orderByDirection": {
+			"displayName": "Order By Direction",
+			"description": "Sort direction for the column",
+			"options": {
+				"ASC": {
+					"displayName": "Ascending"
+				},
+				"DESC": {
+					"displayName": "Descending"
+				}
+			}
+		},
+		"tableName": {
+			"displayName": "Name",
+			"description": "The name of the data table to create",
+			"placeholder": "e.g. My Data Table"
+		},
+		"deleteWarning": {
+			"displayName": "This will permanently delete the data table and all its data. This action cannot be undone."
+		},
+		"newName": {
+			"displayName": "New Name",
+			"description": "The new name for the data table",
+			"placeholder": "e.g. Renamed Data Table"
+		}
+	}
+}

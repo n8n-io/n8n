@@ -1,0 +1,14 @@
+{
+	"header": {
+		"displayName": "Twilio Trigger",
+		"description": "Starts the workflow on a Twilio update"
+	},
+	"nodeView": {
+		"updates": {
+			"displayName": "Trigger On"
+		},
+		"callTriggerNotice": {
+			"displayName": "The 'New Call' event may take up to thirty minutes to be triggered"
+		}
+	}
+}

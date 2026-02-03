@@ -1,0 +1,137 @@
+{
+	"header": {
+		"displayName": "JWT",
+		"description": "JWT"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"decode": {
+					"displayName": "解码"
+				},
+				"sign": {
+					"displayName": "签名"
+				},
+				"verify": {
+					"displayName": "验证"
+				}
+			}
+		},
+		"useJson": {
+			"displayName": "使用JSON构建载荷",
+			"description": "是否使用JSON构建声明"
+		},
+		"claims": {
+			"displayName": "载荷声明",
+			"placeholder": "添加声明",
+			"options": {
+				"audience": {
+					"displayName": "受众",
+					"description": "标识JWT的目标接收者",
+					"placeholder": "例如 https://example.com"
+				},
+				"expiresIn": {
+					"displayName": "过期时间",
+					"description": "令牌的生命周期（秒）",
+					"placeholder": "例如：3600"
+				},
+				"issuer": {
+					"displayName": "签发者",
+					"description": "标识签发JWT的主体",
+					"placeholder": "例如 https://example.com"
+				},
+				"jwtid": {
+					"displayName": "JWT ID",
+					"description": "JWT的唯一标识符",
+					"placeholder": "例如：123456"
+				},
+				"notBefore": {
+					"displayName": "生效时间",
+					"description": "JWT在此时间之前不得被接受处理"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "标识作为JWT主体的主体"
+				}
+			}
+		},
+		"claimsJson": {
+			"displayName": "Payload Claims (JSON)",
+			"description": "要添加到令牌中的Claims（JSON格式）"
+		},
+		"token": {
+			"displayName": "令牌",
+			"description": "要验证或解码的令牌"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"complete": {
+					"displayName": "返回额外信息",
+					"description": "是否返回包含头部和签名信息的完整解码令牌，还是仅返回有效载荷"
+				},
+				"ignoreExpiration": {
+					"displayName": "忽略过期",
+					"description": "是否忽略令牌的过期时间"
+				},
+				"ignoreNotBefore": {
+					"displayName": "忽略Not Before声明",
+					"description": "是否忽略令牌的Not Before声明"
+				},
+				"clockTolerance": {
+					"displayName": "时钟容差",
+					"description": "检查nbf和exp声明时允许的秒数容差，用于处理不同服务器间的小时钟差异"
+				},
+				"kid": {
+					"displayName": "密钥ID",
+					"description": "kid（密钥ID）声明是一个可选的头部声明，用于指定验证签名所用的密钥",
+					"placeholder": "例如：123456"
+				},
+				"algorithm": {
+					"displayName": "覆盖算法",
+					"description": "用于签名或验证令牌的算法，将覆盖凭据中的算法设置",
+					"options": {
+						"ES256": {
+							"displayName": "ES256"
+						},
+						"ES384": {
+							"displayName": "ES384"
+						},
+						"ES512": {
+							"displayName": "ES512"
+						},
+						"HS256": {
+							"displayName": "HS256"
+						},
+						"HS384": {
+							"displayName": "HS384"
+						},
+						"HS512": {
+							"displayName": "HS512"
+						},
+						"PS256": {
+							"displayName": "PS256"
+						},
+						"PS384": {
+							"displayName": "PS384"
+						},
+						"PS512": {
+							"displayName": "PS512"
+						},
+						"RS256": {
+							"displayName": "RS256"
+						},
+						"RS384": {
+							"displayName": "RS384"
+						},
+						"RS512": {
+							"displayName": "RS512"
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,541 @@
+{
+	"header": {
+		"displayName": "OpenAI",
+		"description": "向助手或GPT发送消息、分析图像、生成音频等。"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"assistant": {
+					"displayName": "助手"
+				},
+				"text": {
+					"displayName": "文本"
+				},
+				"image": {
+					"displayName": "图片"
+				},
+				"audio": {
+					"displayName": "音频"
+				},
+				"file": {
+					"displayName": "文件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建助手",
+					"description": "创建新助手"
+				},
+				"deleteAssistant": {
+					"displayName": "删除助手",
+					"description": "从账户中删除助手"
+				},
+				"list": {
+					"displayName": "列出文件",
+					"description": "返回属于用户组织的文件列表"
+				},
+				"message": {
+					"displayName": "向模型发送消息",
+					"description": "Create a completion with GPT 3, 4, etc."
+				},
+				"update": {
+					"displayName": "更新助手",
+					"description": "更新现有助手"
+				},
+				"generate": {
+					"displayName": "生成图像",
+					"description": "根据文本提示创建图像"
+				},
+				"transcribe": {
+					"displayName": "转录录音",
+					"description": "将音频转录为文本"
+				},
+				"translate": {
+					"displayName": "翻译录音",
+					"description": "将音频翻译为英文文本"
+				},
+				"deleteFile": {
+					"displayName": "删除文件",
+					"description": "从服务器删除文件"
+				},
+				"upload": {
+					"displayName": "上传文件",
+					"description": "上传一个可在多个端点使用的文件"
+				},
+				"analyze": {
+					"displayName": "分析图像",
+					"description": "接收图像并回答相关问题"
+				},
+				"classify": {
+					"displayName": "文本违规分类",
+					"description": "检查内容是否符合使用政策"
+				}
+			}
+		},
+		"modelId": {
+			"displayName": "模型"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "助手名称。最大长度为256个字符。",
+			"placeholder": "例如：我的助手"
+		},
+		"description": {
+			"displayName": "描述",
+			"description": "助手的描述。最大长度为512个字符。",
+			"placeholder": "例如：我的个人助手"
+		},
+		"instructions": {
+			"displayName": "说明",
+			"description": "助手使用的系统指令。最大长度为32768个字符。"
+		},
+		"codeInterpreter": {
+			"displayName": "代码解释器",
+			"description": "是否启用代码解释器，允许助手在沙盒执行环境中编写和运行Python代码，<a href=\"https://platform.openai.com/docs/assistants/tools/code-interpreter\" target=\"_blank\">了解更多</a>"
+		},
+		"knowledgeRetrieval": {
+			"displayName": "知识检索",
+			"description": "是否使用模型外部的知识（如专有产品信息或文档）来增强助手功能，了解更多信息请访问<a href=\"https://platform.openai.com/docs/assistants/tools/knowledge-retrieval\" target=\"_blank\">此处</a>"
+		},
+		"file_ids": {
+			"displayName": "文件",
+			"description": "助手将使用的文件，每个助手最多可附加20个文件"
+		},
+		"noticeTools": {
+			"displayName": "在画布上将此节点连接到您自定义的n8n工具"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"temperature": {
+					"displayName": "输出随机性（温度）",
+					"description": "控制随机性：降低数值会减少随机性。当温度接近零时，模型会变得确定且重复。我们通常建议调整此参数或温度参数，但不要同时调整两者。"
+				},
+				"topP": {
+					"displayName": "输出随机性（Top P）",
+					"description": "作为温度采样的替代方案，通过核心采样控制多样性：0.5表示考虑所有似然加权选项的一半。我们通常建议调整此参数或温度参数，但不要同时调整两者。"
+				},
+				"failIfExists": {
+					"displayName": "如果助手已存在则失败",
+					"description": "当同名助手已存在时是否使操作失败"
+				},
+				"baseURL": {
+					"displayName": "基础URL",
+					"description": "覆盖API的默认基础URL"
+				},
+				"maxRetries": {
+					"displayName": "最大重试次数",
+					"description": "尝试的最大重试次数"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "请求允许执行的最长时间（毫秒）"
+				},
+				"preserveOriginalTools": {
+					"displayName": "[0]保留原始工具",
+					"description": "[1]是否在执行此节点后保留助手的原始工具，否则如果有连接的工具，将被替换，默认为true"
+				},
+				"codeInterpreter": {
+					"displayName": "代码解释器",
+					"description": "是否启用代码解释器，允许助手在沙盒执行环境中编写和运行Python代码，更多信息请查看<a href=\"https://platform.openai.com/docs/assistants/tools/code-interpreter\" target=\"_blank\">此处</a>"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "助手的描述。最大长度为512个字符。",
+					"placeholder": "例如：我的个人助手"
+				},
+				"file_ids": {
+					"displayName": "文件",
+					"description": "供助手使用的文件，最多可为助手附加20个文件。您可以使用表达式将文件ID作为数组或逗号分隔的字符串传递。"
+				},
+				"instructions": {
+					"displayName": "活动说明",
+					"description": "助手使用的系统指令。最大长度为32768个字符。"
+				},
+				"knowledgeRetrieval": {
+					"displayName": "知识检索",
+					"description": "是否使用模型外部知识（如专有产品信息或文档）增强助手功能，详情请<a href=\"https://platform.openai.com/docs/assistants/tools/knowledge-retrieval\" target=\"_blank\">查看此处</a>"
+				},
+				"modelId": {
+					"displayName": "模型"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "助手的名称。最大长度为256个字符。",
+					"placeholder": "例如：我的助手"
+				},
+				"removeCustomTools": {
+					"displayName": "移除所有自定义工具（函数）",
+					"description": "是否从助手移除所有自定义工具（函数）"
+				},
+				"response_format": {
+					"displayName": "响应格式",
+					"options": {
+						"mp3": {
+							"displayName": "MP3"
+						},
+						"opus": {
+							"displayName": "OPUS"
+						},
+						"aac": {
+							"displayName": "AAC"
+						},
+						"flac": {
+							"displayName": "FLAC"
+						}
+					}
+				},
+				"speed": {
+					"displayName": "音频速度"
+				},
+				"binaryPropertyOutput": {
+					"displayName": "将输出放入字段"
+				},
+				"language": {
+					"displayName": "音频文件语言",
+					"description": "输入音频的语言。以<a href=\"https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes\" target=\"_blank\">ISO-639-1</a>格式提供输入语言将提高准确性和降低延迟。"
+				},
+				"purpose": {
+					"displayName": "用途",
+					"description": "仅返回具有指定用途的文件",
+					"options": {
+						"assistants": {
+							"displayName": "助手"
+						},
+						"fine-tune": {
+							"displayName": "微调"
+						},
+						"any": {
+							"displayName": "任意 [默认]"
+						}
+					}
+				},
+				"n": {
+					"displayName": "完成次数",
+					"description": "为每个提示生成多少次完成。注意：由于此参数会生成多次完成，可能快速消耗您的令牌配额。请谨慎使用，并确保为最大令牌数和停止条件设置了合理的参数。"
+				},
+				"dalleQuality": {
+					"displayName": "质量",
+					"description": "生成图像的质量，高清模式将创建细节更精细、整体一致性更强的图像",
+					"options": {
+						"hd": {
+							"displayName": "高清"
+						},
+						"standard": {
+							"displayName": "标准"
+						}
+					}
+				},
+				"quality": {
+					"displayName": "质量",
+					"description": "将生成的图像质量，高选项可创建细节更精细、整体一致性更强的图像",
+					"options": {
+						"high": {
+							"displayName": "高"
+						},
+						"medium": {
+							"displayName": "中等"
+						},
+						"low": {
+							"displayName": "低"
+						}
+					}
+				},
+				"size": {
+					"displayName": "解决方案",
+					"options": {
+						"1024x1024": {
+							"displayName": "1024x1024"
+						},
+						"1024x1536": {
+							"displayName": "1024x1536"
+						},
+						"1536x1024": {
+							"displayName": "1536x1024"
+						}
+					}
+				},
+				"style": {
+					"displayName": "样式",
+					"options": {
+						"natural": {
+							"displayName": "自然",
+							"description": "生成更自然的图像"
+						},
+						"vivid": {
+							"displayName": "生动",
+							"description": "倾向于生成超现实且富有戏剧性的图像"
+						}
+					}
+				},
+				"returnImageUrls": {
+					"displayName": "是否返回图片URL",
+					"description": "是否返回图片URL而非二进制文件"
+				},
+				"detail": {
+					"displayName": "详情",
+					"options": {
+						"auto": {
+							"displayName": "自动",
+							"description": "模型将根据图像输入尺寸决定使用低或高设置"
+						},
+						"low": {
+							"displayName": "低",
+							"description": "返回更快的响应并消耗更少的令牌"
+						},
+						"high": {
+							"displayName": "高",
+							"description": "返回更详细的响应，消耗更多令牌"
+						}
+					}
+				},
+				"maxTokens": {
+					"displayName": "最大令牌数",
+					"description": "完成生成的最大令牌数。大多数模型的上下文长度为2048个令牌（最新模型除外，支持32,768个）。"
+				},
+				"useStableModel": {
+					"displayName": "使用稳定模型",
+					"description": "是否使用模型的稳定版本而非最新版本，准确性可能略低"
+				},
+				"frequency_penalty": {
+					"displayName": "频率惩罚",
+					"description": "正值会根据新词元在文本中已有的出现频率进行惩罚，降低模型逐字重复相同内容的可能性。"
+				},
+				"presence_penalty": {
+					"displayName": "存在惩罚",
+					"description": "正值会根据新标记是否已在现有文本中出现来惩罚它们，从而增加模型谈论新话题的可能性"
+				},
+				"reasoning_effort": {
+					"displayName": "推理强度",
+					"description": "控制使用的推理令牌数量。设为“低”将优先考虑速度和节省令牌使用，设为“高”将优先考虑更完整的推理，但会生成更多令牌且响应速度较慢。",
+					"options": {
+						"low": {
+							"displayName": "低",
+							"description": "优先考虑速度和节省令牌用量"
+						},
+						"medium": {
+							"displayName": "中等",
+							"description": "速度与推理准确性之间的平衡"
+						},
+						"high": {
+							"displayName": "高",
+							"description": "倾向于更完整的推理，代价是生成更多令牌和响应变慢"
+						}
+					}
+				},
+				"maxToolsIterations": {
+					"displayName": "最大工具调用迭代次数",
+					"description": "LLM在停止前将运行的最大工具迭代循环次数。单次迭代可包含多个工具调用。设为0表示无限制。"
+				}
+			},
+			"description": "要添加的附加选项"
+		},
+		"assistantId": {
+			"displayName": "助手",
+			"description": "助手用于响应消息。您可以在<a href=\"https://platform.openai.com/playground?mode=assistant\" target=\"_blank\">Playground</a>中添加、修改或移除助手。"
+		},
+		"prompt": {
+			"displayName": "提示",
+			"options": {
+				"auto": {
+					"displayName": "已连接的聊天触发器节点",
+					"description": "查找名为'chatInput'的输入字段，该字段来自直接连接的聊天触发器"
+				},
+				"guardrails": {
+					"displayName": "已连接的护栏节点",
+					"description": "查找来自直接连接的护栏节点的名为'guardrailsInput'的输入字段"
+				},
+				"define": {
+					"displayName": "定义如下",
+					"description": "使用表达式引用先前节点中的数据或输入静态文本"
+				}
+			},
+			"description": "所需图像的文本描述。对于dall-e-2，最大长度为1000个字符；对于dall-e-3，最大长度为4000个字符。",
+			"placeholder": "例如：一只可爱的猫正在吃恐龙"
+		},
+		"text": {
+			"displayName": "文本输入",
+			"placeholder": "例如：这张图片里有什么？"
+		},
+		"memory": {
+			"displayName": "内存",
+			"options": {
+				"connector": {
+					"displayName": "使用内存连接器",
+					"description": "连接一个支持的内存节点"
+				},
+				"threadId": {
+					"displayName": "使用线程ID",
+					"description": "指定要继续的线程ID"
+				}
+			}
+		},
+		"threadId": {
+			"displayName": "线程ID",
+			"description": "要续接的线程ID，如果未指定将创建新线程"
+		},
+		"simplify": {
+			"displayName": "简化输出",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"fileSizeLimitNotice": {
+			"displayName": "OpenAI API将音频文件大小限制为25 MB"
+		},
+		"model": {
+			"displayName": "模型",
+			"options": {
+				"tts-1": {
+					"displayName": "TTS-1"
+				},
+				"tts-1-hd": {
+					"displayName": "TTS-1-HD"
+				},
+				"dall-e-2": {
+					"displayName": "DALL·E 2"
+				},
+				"dall-e-3": {
+					"displayName": "DALL·E 3"
+				},
+				"gpt-image-1": {
+					"displayName": "GPT 图像 1"
+				}
+			},
+			"description": "用于图像生成的模型"
+		},
+		"input": {
+			"displayName": "文本输入",
+			"description": "要分类的输入文本，判断是否违反内容审核政策",
+			"placeholder": "例如：示例文本在此输入"
+		},
+		"voice": {
+			"displayName": "语音",
+			"description": "生成音频时使用的语音",
+			"options": {
+				"alloy": {
+					"displayName": "合金"
+				},
+				"echo": {
+					"displayName": "回显"
+				},
+				"fable": {
+					"displayName": "Fable"
+				},
+				"nova": {
+					"displayName": "Nova"
+				},
+				"onyx": {
+					"displayName": "Onyx"
+				},
+				"shimmer": {
+					"displayName": "微光"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "输入数据字段名称",
+			"description": "包含图像的二值属性名称",
+			"placeholder": "例如：data"
+		},
+		"fileId": {
+			"displayName": "文件"
+		},
+		"inputType": {
+			"displayName": "输入类型",
+			"options": {
+				"url": {
+					"displayName": "图片URL"
+				},
+				"base64": {
+					"displayName": "二进制文件"
+				}
+			}
+		},
+		"imageUrls": {
+			"displayName": "URL地址",
+			"description": "要分析的图片URL地址，多个URL可用逗号分隔添加",
+			"placeholder": "例如 https://example.com/image.jpeg"
+		},
+		"messages": {
+			"displayName": "消息",
+			"placeholder": "添加消息",
+			"multipleValueButtonText": "添加消息",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"assistant": {
+									"displayName": "助手",
+									"description": "指示模型采用特定语气或个性"
+								},
+								"system": {
+									"displayName": "系统",
+									"description": "通常用于设置模型对下一条用户消息的行为或上下文"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"assistant": {
+									"displayName": "助手",
+									"description": "指示模型采用特定语气或个性"
+								},
+								"system": {
+									"displayName": "系统",
+									"description": "通常用于设置模型对下一条用户消息的行为或上下文"
+								}
+							}
+						}
+					}
+				},
+				"messages": {
+					"displayName": "消息",
+					"placeholder": "添加消息"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "将输出内容作为JSON",
+			"description": "是否尝试以JSON格式返回响应。兼容GPT-4 Turbo及所有新于gpt-3.5-turbo-1106的GPT-3.5 Turbo模型。"
+		},
+		"hideTools": {
+			"displayName": "隐藏工具"
+		}
+	}
+}

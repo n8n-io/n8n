@@ -1,0 +1,517 @@
+{
+	"header": {
+		"displayName": "AWS DynamoDB",
+		"description": "Consume the AWS DynamoDB API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"item": {
+					"displayName": "Item"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new record, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an item"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get an item"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many items"
+				}
+			}
+		},
+		"tableName": {
+			"displayName": "Table Name or ID",
+			"description": "Table to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"dataToSend": {
+			"displayName": "Data to Send",
+			"description": "Whether to insert the input data this node receives in the new row",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties match destination column names"
+				},
+				"defineBelow": {
+					"displayName": "Define Below for Each Column",
+					"description": "Set the value for each destination column"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "Inputs to Ignore",
+			"description": "List of input properties to avoid sending, separated by commas. Leave empty to send all properties.",
+			"placeholder": "Enter properties..."
+		},
+		"fieldsUi": {
+			"displayName": "Fields to Send",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field to Send",
+			"options": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field ID"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field ID"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "Fields to Send",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"eavUi": {
+					"displayName": "Expression Attribute Values",
+					"description": "Substitution tokens for attribute names in an expression. Only needed when the parameter \"condition expression\" is set.",
+					"placeholder": "Add Attribute Value",
+					"multipleValueButtonText": "Add Attribute Value",
+					"options": {
+						"eavValues": {
+							"displayName": "Expression Attribute Vaue",
+							"options": {
+								"attribute": {
+									"displayName": "Attribute"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"N": {
+											"displayName": "Number"
+										},
+										"S": {
+											"displayName": "String"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"eavValues": {
+							"displayName": "Expression Attribute Vaue",
+							"options": {
+								"attribute": {
+									"displayName": "Attribute"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"N": {
+											"displayName": "Number"
+										},
+										"S": {
+											"displayName": "String"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"eavUi": {
+							"displayName": "Expression Attribute Values",
+							"placeholder": "Add Attribute Value"
+						}
+					}
+				},
+				"conditionExpression": {
+					"displayName": "Condition Expression",
+					"description": "A condition that must be satisfied in order for a conditional delete to succeed"
+				},
+				"eanUi": {
+					"displayName": "Expression Attribute Names",
+					"description": "One or more substitution tokens for attribute names in an expression. <a href=\"https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html\">View details</a>.",
+					"placeholder": "Add Expression",
+					"multipleValueButtonText": "Add Expression",
+					"options": {
+						"eanValues": {
+							"displayName": "Expression",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"eanValues": {
+							"displayName": "Expression",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"eanUi": {
+							"displayName": "Expression Attribute Names",
+							"placeholder": "Add Expression"
+						}
+					}
+				},
+				"expressionAttributeUi": {
+					"displayName": "Expression Attribute Values",
+					"description": "Substitution tokens for attribute names in an expression. Only needed when the parameter \"condition expression\" is set.",
+					"placeholder": "Add Attribute Value",
+					"multipleValueButtonText": "Add Attribute Value",
+					"options": {
+						"expressionAttributeValues": {
+							"displayName": "Expression Attribute Value",
+							"options": {
+								"attribute": {
+									"displayName": "Attribute"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"N": {
+											"displayName": "Number"
+										},
+										"S": {
+											"displayName": "String"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"expressionAttributeValues": {
+							"displayName": "Expression Attribute Value",
+							"options": {
+								"attribute": {
+									"displayName": "Attribute"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"N": {
+											"displayName": "Number"
+										},
+										"S": {
+											"displayName": "String"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"expressionAttributeUi": {
+							"displayName": "Expression Attribute Values",
+							"placeholder": "Add Attribute Value"
+						}
+					}
+				},
+				"projectionExpression": {
+					"displayName": "Attributes to Select",
+					"placeholder": "id, name"
+				},
+				"readType": {
+					"displayName": "Read Type",
+					"description": "Type of read to perform on the table. <a href=\"https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html\">View details</a>.",
+					"options": {
+						"stronglyConsistentRead": {
+							"displayName": "Strongly Consistent Read"
+						},
+						"eventuallyConsistentRead": {
+							"displayName": "Eventually Consistent Read"
+						}
+					}
+				}
+			}
+		},
+		"returnValues": {
+			"displayName": "Return",
+			"description": "Use ReturnValues if you want to get the item attributes as they appeared before they were deleted",
+			"options": {
+				"ALL_OLD": {
+					"displayName": "Attribute Values",
+					"description": "The content of the old item is returned"
+				},
+				"NONE": {
+					"displayName": "Nothing",
+					"description": "Nothing is returned"
+				}
+			}
+		},
+		"keysUi": {
+			"displayName": "Keys",
+			"description": "Item's primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.",
+			"placeholder": "Add Key",
+			"multipleValueButtonText": "Add Key",
+			"options": {
+				"keyValues": {
+					"displayName": "Key",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"B": {
+									"displayName": "Binary"
+								},
+								"N": {
+									"displayName": "Number"
+								},
+								"S": {
+									"displayName": "String"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"keyValues": {
+					"displayName": "Key",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"B": {
+									"displayName": "Binary"
+								},
+								"N": {
+									"displayName": "Number"
+								},
+								"S": {
+									"displayName": "String"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"keysUi": {
+					"displayName": "Keys",
+					"placeholder": "Add Key"
+				}
+			}
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"select": {
+			"displayName": "Select",
+			"options": {
+				"ALL_ATTRIBUTES": {
+					"displayName": "All Attributes"
+				},
+				"ALL_PROJECTED_ATTRIBUTES": {
+					"displayName": "All Projected Attributes"
+				},
+				"SPECIFIC_ATTRIBUTES": {
+					"displayName": "Specific Attributes",
+					"description": "Select them in Attributes to Select under Additional Fields"
+				},
+				"COUNT": {
+					"displayName": "Count"
+				}
+			}
+		},
+		"scan": {
+			"displayName": "Scan",
+			"description": "Whether to do an scan or query. Check <a href=\"https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html\" >differences</a>."
+		},
+		"filterExpression": {
+			"displayName": "Filter Expression",
+			"description": "A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded. Empty value will return all Scan results."
+		},
+		"keyConditionExpression": {
+			"displayName": "Key Condition Expression",
+			"description": "Condition to determine the items to be retrieved. The condition must perform an equality test on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>",
+			"placeholder": "id = :id"
+		},
+		"eavUi": {
+			"displayName": "Expression Attribute Values",
+			"description": "Substitution tokens for attribute names in an expression",
+			"placeholder": "Add Attribute Value",
+			"multipleValueButtonText": "Add Attribute Value",
+			"options": {
+				"eavValues": {
+					"displayName": "Expression Attribute Vaue",
+					"options": {
+						"attribute": {
+							"displayName": "Attribute"
+						},
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"N": {
+									"displayName": "Number"
+								},
+								"S": {
+									"displayName": "String"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"eavValues": {
+					"displayName": "Expression Attribute Vaue",
+					"options": {
+						"attribute": {
+							"displayName": "Attribute"
+						},
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"N": {
+									"displayName": "Number"
+								},
+								"S": {
+									"displayName": "String"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"eavUi": {
+					"displayName": "Expression Attribute Values",
+					"placeholder": "Add Attribute Value"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"indexName": {
+					"displayName": "Index Name",
+					"description": "Name of the index to query. It can be any secondary local or global index on the table."
+				},
+				"projectionExpression": {
+					"displayName": "Attributes to Select",
+					"description": "Text that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas."
+				},
+				"filterExpression": {
+					"displayName": "Filter Expression",
+					"description": "Text that contains conditions that DynamoDB applies after the Query operation, but before the data is returned. Items that do not satisfy the FilterExpression criteria are not returned."
+				},
+				"eanUi": {
+					"displayName": "Expression Attribute Names",
+					"description": "One or more substitution tokens for attribute names in an expression. Check <a href=\"https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html\">Info</a>.",
+					"placeholder": "Add Expression",
+					"multipleValueButtonText": "Add Expression",
+					"options": {
+						"eanValues": {
+							"displayName": "Expression",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"eanValues": {
+							"displayName": "Expression",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"eanUi": {
+							"displayName": "Expression Attribute Names",
+							"placeholder": "Add Expression"
+						}
+					}
+				}
+			}
+		}
+	}
+}

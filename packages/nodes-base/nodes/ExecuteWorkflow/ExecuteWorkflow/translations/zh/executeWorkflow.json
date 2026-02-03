@@ -1,0 +1,83 @@
+{
+	"header": {
+		"displayName": "执行子工作流",
+		"description": "执行其他工作流"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作"
+		},
+		"outdatedVersionWarning": {
+			"displayName": "此节点已过时。请移除并添加新节点进行升级"
+		},
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "从何处获取要执行的工作流",
+			"options": {
+				"database": {
+					"displayName": "数据库",
+					"description": "按ID从数据库加载工作流"
+				},
+				"localFile": {
+					"displayName": "本地文件",
+					"description": "从本地保存的文件加载工作流"
+				},
+				"parameter": {
+					"displayName": "定义如下",
+					"description": "传递工作流的JSON代码"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "从URL加载工作流"
+				}
+			}
+		},
+		"workflowId": {
+			"displayName": "工作流",
+			"description": "在此使用表达式的注意事项：如果此节点设置为对所有项目仅运行一次，则所有项目都将发送到<em>同一个</em>工作流。该工作流的ID将通过评估<strong>第一个输入项</strong>的表达式来计算。"
+		},
+		"workflowPath": {
+			"displayName": "工作流路径",
+			"description": "要执行的本地JSON工作流文件路径",
+			"placeholder": "/data/workflow.json"
+		},
+		"workflowJson": {
+			"displayName": "工作流JSON",
+			"description": "要执行的工作流JSON代码"
+		},
+		"workflowUrl": {
+			"displayName": "工作流URL",
+			"description": "加载工作流的来源URL",
+			"placeholder": "https://example.com/workflow.json"
+		},
+		"executeWorkflowNotice": {
+			"displayName": "传入此节点的所有数据都将由执行工作流触发器输出。<a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/\" target=\"_blank\">更多信息</a>"
+		},
+		"workflowInputs": {
+			"displayName": "工作流输入"
+		},
+		"mode": {
+			"displayName": "模式",
+			"options": {
+				"once": {
+					"displayName": "对所有项目运行一次",
+					"description": "将所有项目传递到子工作流的单次执行中"
+				},
+				"each": {
+					"displayName": "对每个项目运行一次",
+					"description": "为每个项目单独调用子工作流"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"waitForSubWorkflow": {
+					"displayName": "等待子工作流完成",
+					"description": "主工作流是否应等待子工作流完成执行后再继续"
+				}
+			}
+		}
+	}
+}

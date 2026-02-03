@@ -1,0 +1,937 @@
+{
+	"header": {
+		"displayName": "Discord",
+		"description": "发送数据到Discord"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "连接类型",
+			"options": {
+				"botToken": {
+					"displayName": "机器人令牌",
+					"description": "管理服务器上的消息、频道和成员"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2",
+					"description": "与'机器人令牌'功能相同，但机器人安装更简单"
+				},
+				"webhook": {
+					"displayName": "Webhook",
+					"description": "向特定频道发送消息"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"channel": {
+					"displayName": "频道"
+				},
+				"message": {
+					"displayName": "消息"
+				},
+				"member": {
+					"displayName": "成员"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"deleteMessage": {
+					"displayName": "删除",
+					"description": "删除频道中的消息"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取频道"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索服务器的成员"
+				},
+				"react": {
+					"displayName": "使用表情符号进行反应",
+					"description": "用表情符号对消息进行反应"
+				},
+				"send": {
+					"displayName": "发送",
+					"description": "向频道、线程或成员发送消息"
+				},
+				"sendAndWait": {
+					"displayName": "发送并等待响应",
+					"description": "发送消息并等待响应"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新频道"
+				},
+				"deleteChannel": {
+					"displayName": "删除",
+					"description": "删除频道"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新频道"
+				},
+				"roleAdd": {
+					"displayName": "角色添加",
+					"description": "为成员添加角色"
+				},
+				"roleRemove": {
+					"displayName": "角色移除",
+					"description": "从成员中移除角色"
+				},
+				"sendLegacy": {
+					"displayName": "发送消息",
+					"description": "使用Webhook向频道发送消息"
+				}
+			}
+		},
+		"guildId": {
+			"displayName": "服务器",
+			"description": "选择您的机器人已连接的服务器（公会）"
+		},
+		"channelId": {
+			"displayName": "频道",
+			"description": "通过名称、URL或ID选择频道"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"simplify": {
+					"displayName": "简化",
+					"description": "是否返回简化版本的响应而非原始数据"
+				},
+				"flags": {
+					"displayName": "标志",
+					"description": "消息标志。<a href=\"https://discord.com/developers/docs/resources/channel#message-object-message-flags\" target=\"_blank\">更多信息</a>。"
+				},
+				"message_reference": {
+					"displayName": "要回复的消息",
+					"description": "填写此项以使您的消息成为回复。添加消息ID。",
+					"placeholder": "例如：1059467601836773386"
+				},
+				"tts": {
+					"displayName": "文本转语音 (TTS)",
+					"description": "是否让机器人在频道内直接朗读消息"
+				},
+				"limitWaitTime": {
+					"displayName": "等待时间限制",
+					"description": "是否限制此节点在继续执行前等待用户响应的时间",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "等待时间限制"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "添加n8n归属声明",
+					"description": "是否在消息末尾包含短语“此消息由n8n自动发送”"
+				},
+				"messageButtonLabel": {
+					"displayName": "消息按钮标签"
+				},
+				"responseFormTitle": {
+					"displayName": "响应表单标题",
+					"description": "用户可访问以提供其响应的表单标题"
+				},
+				"responseFormDescription": {
+					"displayName": "响应表单描述",
+					"description": "用户可访问以提供其响应的表单描述"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "响应表单按钮标签"
+				},
+				"responseFormCustomCss": {
+					"displayName": "响应表单自定义样式",
+					"description": "使用CSS覆盖响应表单的默认样式"
+				},
+				"nsfw": {
+					"displayName": "年龄限制（NSFW）",
+					"description": "频道内容是否可能为NSFW（不适合工作场所观看）"
+				},
+				"bitrate": {
+					"displayName": "比特率",
+					"description": "语音通道的比特率（单位：比特）",
+					"placeholder": "例如：8000"
+				},
+				"categoryId": {
+					"displayName": "父级分类",
+					"description": "希望频道显示的父级分类"
+				},
+				"position": {
+					"displayName": "位置"
+				},
+				"rate_limit_per_user": {
+					"displayName": "用户速率限制",
+					"description": "用户发送下一条消息前需等待的秒数"
+				},
+				"topic": {
+					"displayName": "主题",
+					"description": "频道主题描述（0-1024个字符）",
+					"placeholder": "例如：本频道是关于…"
+				},
+				"user_limit": {
+					"displayName": "用户上限",
+					"description": "频道可容纳成员数量的限制（0表示无限制）",
+					"placeholder": "例如：20"
+				},
+				"filter": {
+					"displayName": "按类型筛选"
+				},
+				"avatar_url": {
+					"displayName": "头像URL",
+					"description": "覆盖Webhook的默认头像",
+					"placeholder": "例如 https://example.com/image.png"
+				},
+				"username": {
+					"displayName": "用户名",
+					"description": "覆盖Webhook的默认用户名",
+					"placeholder": "例如：我的用户名"
+				},
+				"wait": {
+					"displayName": "等待",
+					"description": "是否等待消息创建完成后再返回响应"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "消息ID",
+			"description": "消息ID",
+			"placeholder": "例如：1057576506244726804"
+		},
+		"emoji": {
+			"displayName": "表情符号",
+			"description": "要使用的表情符号"
+		},
+		"sendTo": {
+			"displayName": "发送到",
+			"description": "向频道发送消息或向用户发送私信",
+			"options": {
+				"user": {
+					"displayName": "用户"
+				},
+				"channel": {
+					"displayName": "频道"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户",
+			"description": "选择要分配角色的用户"
+		},
+		"content": {
+			"displayName": "消息",
+			"description": "消息内容（最多2000个字符）",
+			"placeholder": "例如：我的消息"
+		},
+		"embeds": {
+			"displayName": "嵌入内容",
+			"placeholder": "添加嵌入内容",
+			"multipleValueButtonText": "添加嵌入内容",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"inputMethod": {
+							"displayName": "输入法",
+							"options": {
+								"fields": {
+									"displayName": "输入字段"
+								},
+								"json": {
+									"displayName": "原始JSON"
+								}
+							}
+						},
+						"json": {
+							"displayName": "值"
+						},
+						"description": {
+							"displayName": "描述",
+							"description": "嵌入的描述",
+							"placeholder": "例如：我的描述"
+						},
+						"author": {
+							"displayName": "作者",
+							"description": "作者姓名",
+							"placeholder": "例如：张三"
+						},
+						"color": {
+							"displayName": "颜色",
+							"description": "嵌入消息的颜色代码",
+							"placeholder": "例如：12123432"
+						},
+						"timestamp": {
+							"displayName": "时间戳",
+							"description": "嵌入内容底部显示的时间。请提供ISO8601格式。",
+							"placeholder": "例如：2023-02-08 09:30:26"
+						},
+						"title": {
+							"displayName": "标题",
+							"description": "嵌入标题",
+							"placeholder": "例如：嵌入标题"
+						},
+						"url": {
+							"displayName": "URL",
+							"description": "嵌入链接的目标URL",
+							"placeholder": "例如 https://discord.com/"
+						},
+						"image": {
+							"displayName": "URL图片",
+							"description": "图片源URL（仅支持http(s)和附件）",
+							"placeholder": "例如 https://example.com/image.png"
+						},
+						"thumbnail": {
+							"displayName": "URL 缩略图",
+							"description": "缩略图源 URL（仅支持 http(s) 和附件）",
+							"placeholder": "例如 https://example.com/image.png"
+						},
+						"video": {
+							"displayName": "视频URL",
+							"description": "视频源URL",
+							"placeholder": "例如 https://example.com/video.mp4"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"inputMethod": {
+							"displayName": "输入法",
+							"options": {
+								"fields": {
+									"displayName": "输入字段"
+								},
+								"json": {
+									"displayName": "原始JSON"
+								}
+							}
+						},
+						"json": {
+							"displayName": "值"
+						},
+						"description": {
+							"displayName": "描述",
+							"description": "嵌入的描述",
+							"placeholder": "例如：我的描述"
+						},
+						"author": {
+							"displayName": "作者",
+							"description": "作者姓名",
+							"placeholder": "例如：张三"
+						},
+						"color": {
+							"displayName": "颜色",
+							"description": "嵌入消息的颜色代码",
+							"placeholder": "例如：12123432"
+						},
+						"timestamp": {
+							"displayName": "时间戳",
+							"description": "嵌入内容底部显示的时间。请提供ISO8601格式。",
+							"placeholder": "例如：2023-02-08 09:30:26"
+						},
+						"title": {
+							"displayName": "标题",
+							"description": "嵌入标题",
+							"placeholder": "例如：嵌入标题"
+						},
+						"url": {
+							"displayName": "URL",
+							"description": "嵌入链接的目标URL",
+							"placeholder": "例如 https://discord.com/"
+						},
+						"image": {
+							"displayName": "URL图片",
+							"description": "图片源URL（仅支持http(s)和附件）",
+							"placeholder": "例如 https://example.com/image.png"
+						},
+						"thumbnail": {
+							"displayName": "URL 缩略图",
+							"description": "缩略图源 URL（仅支持 http(s) 和附件）",
+							"placeholder": "例如 https://example.com/image.png"
+						},
+						"video": {
+							"displayName": "视频URL",
+							"description": "视频源URL",
+							"placeholder": "例如 https://example.com/video.mp4"
+						}
+					}
+				},
+				"embeds": {
+					"displayName": "嵌入",
+					"placeholder": "添加嵌入"
+				}
+			}
+		},
+		"files": {
+			"displayName": "文件",
+			"placeholder": "添加文件",
+			"multipleValueButtonText": "添加文件",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"inputFieldName": {
+							"displayName": "输入数据字段名称",
+							"description": "随消息发送的文件内容",
+							"placeholder": "例如：data"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"inputFieldName": {
+							"displayName": "输入数据字段名称",
+							"description": "随消息发送的文件内容",
+							"placeholder": "例如：data"
+						}
+					}
+				},
+				"files": {
+					"displayName": "文件",
+					"placeholder": "添加文件"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息"
+		},
+		"responseType": {
+			"displayName": "响应类型",
+			"options": {
+				"approval": {
+					"displayName": "审批",
+					"description": "用户可直接在消息内批准/拒绝"
+				},
+				"freeText": {
+					"displayName": "自由文本",
+					"description": "用户可通过表单提交响应"
+				},
+				"customForm": {
+					"displayName": "自定义表单",
+					"description": "用户可通过自定义表单提交响应"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "定义表单",
+			"options": {
+				"fields": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "表单字段"
+		},
+		"formFields": {
+			"displayName": "表单元素",
+			"placeholder": "添加表单元素",
+			"multipleValueButtonText": "添加表单元素",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "表单元素",
+					"placeholder": "添加表单元素"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "审批选项",
+			"placeholder": "添加选项",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "审批选项",
+					"placeholder": "添加选项"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "频道的新名称。仅在需要更改频道名称时填写此字段。",
+			"placeholder": "例如：new-channel-name"
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "要创建的通道类型",
+			"options": {
+				"0": {
+					"displayName": "公会文本频道"
+				},
+				"2": {
+					"displayName": "公会语音"
+				},
+				"4": {
+					"displayName": "公会分类"
+				}
+			}
+		},
+		"after": {
+			"displayName": "之后",
+			"description": "指定用户ID，返回该ID之后的成员",
+			"placeholder": "例如：786953432728469534"
+		},
+		"role": {
+			"displayName": "角色",
+			"description": "选择要添加到用户的角色"
+		}
+	}
+}

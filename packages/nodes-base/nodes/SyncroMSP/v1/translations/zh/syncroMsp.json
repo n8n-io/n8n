@@ -1,0 +1,492 @@
+{
+	"header": {
+		"displayName": "SyncroMSP",
+		"description": "从SyncroMSP获取数据"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				},
+				"customer": {
+					"displayName": "客户"
+				},
+				"rmm": {
+					"displayName": "RMM"
+				},
+				"ticket": {
+					"displayName": "工单"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新的RMM警报"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除RMM警报"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索RMM警报"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个RMM警报"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新联系人"
+				},
+				"mute": {
+					"displayName": "静音",
+					"description": "静音RMM警报"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"businessName": {
+					"displayName": "企业名称"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "名字"
+				},
+				"includeDisabled": {
+					"displayName": "包含已停用"
+				},
+				"lastname": {
+					"displayName": "姓氏"
+				},
+				"query": {
+					"displayName": "搜索查询",
+					"description": "搜索查询，可以是与工单数据相关的任何内容，例如用户等",
+					"placeholder": "张三"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "用于排序的客户字段，例如：“firstname ASC”、“city DESC”等",
+					"placeholder": "firstname ASC"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"Customer Reply": {
+							"displayName": "客户回复"
+						},
+						"In Progress": {
+							"displayName": "执行中"
+						},
+						"New": {
+							"displayName": "新建"
+						},
+						"Resolved": {
+							"displayName": "已解析"
+						},
+						"Scheduled": {
+							"displayName": "计划执行"
+						},
+						"Waiting for Parts": {
+							"displayName": "等待部件"
+						},
+						"Waiting on Customer": {
+							"displayName": "等待客户响应"
+						},
+						"active": {
+							"displayName": "激活状态"
+						},
+						"all": {
+							"displayName": "全部"
+						},
+						"resolved": {
+							"displayName": "已解析"
+						}
+					}
+				}
+			}
+		},
+		"customerId": {
+			"displayName": "客户ID",
+			"description": "按ID删除特定客户"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"placeholder": "添加地址字段",
+					"options": {
+						"addressFields": {
+							"displayName": "地址字段",
+							"options": {
+								"address": {
+									"displayName": "第1行"
+								},
+								"address2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zip": {
+									"displayName": "ZIP"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "地址字段",
+							"options": {
+								"address": {
+									"displayName": "第1行"
+								},
+								"address2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zip": {
+									"displayName": "ZIP"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加地址字段"
+						}
+					}
+				},
+				"businessName": {
+					"displayName": "企业名称"
+				},
+				"firstName": {
+					"displayName": "名字"
+				},
+				"getSms": {
+					"displayName": "获取短信"
+				},
+				"invoiceCcEmails": {
+					"displayName": "发票邮件"
+				},
+				"lastname": {
+					"displayName": "姓氏"
+				},
+				"noEmail": {
+					"displayName": "无邮件"
+				},
+				"notes": {
+					"displayName": "备注"
+				},
+				"notificationEmail": {
+					"displayName": "通知邮件"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"referredBy": {
+					"displayName": "推荐人",
+					"description": "客户推荐来源，如领英、谷歌、客户名称等"
+				},
+				"assetId": {
+					"displayName": "资产ID"
+				},
+				"contactId": {
+					"displayName": "分配给联系人",
+					"description": "您要将工单分配给的联系人ID"
+				},
+				"issueType": {
+					"displayName": "问题类型",
+					"options": {
+						"Contract Work": {
+							"displayName": "合同工作"
+						},
+						"Network Project": {
+							"displayName": "网络项目"
+						},
+						"Other": {
+							"displayName": "其他"
+						},
+						"Regular Maintenance": {
+							"displayName": "常规维护"
+						},
+						"Remote Support": {
+							"displayName": "远程支持"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "如果与搜索查询参数同时使用，则仅应用搜索查询",
+					"options": {
+						"Customer Reply": {
+							"displayName": "客户回复"
+						},
+						"In Progress": {
+							"displayName": "执行中"
+						},
+						"New": {
+							"displayName": "新建"
+						},
+						"Resolved": {
+							"displayName": "已解析"
+						},
+						"Scheduled": {
+							"displayName": "计划执行"
+						},
+						"Waiting for Parts": {
+							"displayName": "等待部件"
+						},
+						"Waiting on Customer": {
+							"displayName": "等待客户响应"
+						}
+					}
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"resolved": {
+					"displayName": "已解析"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"placeholder": "添加地址字段",
+					"options": {
+						"addressFields": {
+							"displayName": "地址字段",
+							"options": {
+								"address": {
+									"displayName": "第1行"
+								},
+								"address2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zip": {
+									"displayName": "ZIP"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "地址字段",
+							"options": {
+								"address": {
+									"displayName": "第1行"
+								},
+								"address2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zip": {
+									"displayName": "ZIP"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加地址字段"
+						}
+					}
+				},
+				"businessName": {
+					"displayName": "企业名称"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "名字"
+				},
+				"getSms": {
+					"displayName": "获取短信"
+				},
+				"invoiceCcEmails": {
+					"displayName": "发票邮件"
+				},
+				"lastName": {
+					"displayName": "姓氏"
+				},
+				"noEmail": {
+					"displayName": "无邮件"
+				},
+				"notes": {
+					"displayName": "备注"
+				},
+				"notificationEmail": {
+					"displayName": "通知邮件"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"referredBy": {
+					"displayName": "推荐人",
+					"description": "客户推荐来源，如领英、谷歌、客户名称等"
+				},
+				"assetId": {
+					"displayName": "资产ID"
+				},
+				"contactId": {
+					"displayName": "分配给联系人",
+					"description": "您要将工单分配给的联系人ID"
+				},
+				"customerId": {
+					"displayName": "客户ID"
+				},
+				"dueDate": {
+					"displayName": "截止日期"
+				},
+				"issueType": {
+					"displayName": "问题类型",
+					"options": {
+						"Contract Work": {
+							"displayName": "合同工作"
+						},
+						"Network Project": {
+							"displayName": "网络项目"
+						},
+						"Other": {
+							"displayName": "其他"
+						},
+						"Regular Maintenance": {
+							"displayName": "常规维护"
+						},
+						"Remote Support": {
+							"displayName": "远程支持"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"Customer Reply": {
+							"displayName": "客户回复"
+						},
+						"In Progress": {
+							"displayName": "执行中"
+						},
+						"New": {
+							"displayName": "新建"
+						},
+						"Resolved": {
+							"displayName": "已解析"
+						},
+						"Scheduled": {
+							"displayName": "计划执行"
+						},
+						"Waiting for Parts": {
+							"displayName": "等待部件"
+						},
+						"Waiting on Customer": {
+							"displayName": "等待客户响应"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "主题"
+				},
+				"name": {
+					"displayName": "名称"
+				}
+			}
+		},
+		"subject": {
+			"displayName": "主题"
+		},
+		"ticketId": {
+			"displayName": "工单ID",
+			"description": "根据ID删除特定客户"
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "根据ID删除特定联系人"
+		},
+		"alertId": {
+			"displayName": "RMM 警报 ID",
+			"description": "按 ID 静音 RMM 警报"
+		},
+		"assetId": {
+			"displayName": "资产ID"
+		},
+		"description": {
+			"displayName": "描述"
+		},
+		"muteFor": {
+			"displayName": "静默期",
+			"description": "警报静默时长",
+			"options": {
+				"1-hour": {
+					"displayName": "1小时"
+				},
+				"1-day": {
+					"displayName": "1天"
+				},
+				"2-days": {
+					"displayName": "2天"
+				},
+				"1-week": {
+					"displayName": "1周"
+				},
+				"2-weeks": {
+					"displayName": "2周"
+				},
+				"1-month": {
+					"displayName": "1个月"
+				},
+				"forever": {
+					"displayName": "永久"
+				}
+			}
+		}
+	}
+}

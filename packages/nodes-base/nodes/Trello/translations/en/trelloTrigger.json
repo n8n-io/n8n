@@ -1,0 +1,13 @@
+{
+	"header": {
+		"displayName": "Trello Trigger",
+		"description": "Starts the workflow when Trello events occur"
+	},
+	"nodeView": {
+		"id": {
+			"displayName": "Model ID",
+			"description": "ID of the model of which to subscribe to events",
+			"placeholder": "4d5ea62fd76aa1136000000c"
+		}
+	}
+}

@@ -1,0 +1,13 @@
+{
+	"header": {
+		"displayName": "Trello触发器",
+		"description": "当Trello事件发生时启动工作流"
+	},
+	"nodeView": {
+		"id": {
+			"displayName": "模型ID",
+			"description": "要订阅事件的模型ID",
+			"placeholder": "4d5ea62fd76aa1136000000c"
+		}
+	}
+}

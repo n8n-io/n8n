@@ -1,0 +1,3902 @@
+{
+	"header": {
+		"displayName": "uProc",
+		"description": "Consume uProc API"
+	},
+	"nodeView": {
+		"group": {
+			"displayName": "Resource",
+			"options": {
+				"audio": {
+					"displayName": "Audio",
+					"description": "The Audio Resource allows you to get tools from this resource"
+				},
+				"communication": {
+					"displayName": "Communication",
+					"description": "The Communication Resource allows you to get tools from this resource"
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "The Company Resource allows you to get tools from this resource"
+				},
+				"finance": {
+					"displayName": "Finance",
+					"description": "The Finance Resource allows you to get tools from this resource"
+				},
+				"geographic": {
+					"displayName": "Geographical",
+					"description": "The Geographical Resource allows you to get tools from this resource"
+				},
+				"image": {
+					"displayName": "Image",
+					"description": "The Image Resource allows you to get tools from this resource"
+				},
+				"internet": {
+					"displayName": "Internet",
+					"description": "The Internet Resource allows you to get tools from this resource"
+				},
+				"personal": {
+					"displayName": "Personal",
+					"description": "The Personal Resource allows you to get tools from this resource"
+				},
+				"product": {
+					"displayName": "Product",
+					"description": "The Product Resource allows you to get tools from this resource"
+				},
+				"security": {
+					"displayName": "Security",
+					"description": "The Security Resource allows you to get tools from this resource"
+				},
+				"text": {
+					"displayName": "Text",
+					"description": "The Text Resource allows you to get tools from this resource"
+				}
+			}
+		},
+		"tool": {
+			"displayName": "Operation",
+			"description": "The Operation to consume",
+			"options": {
+				"getAudioAdvancedSpeechByText": {
+					"displayName": "Get Advanced Speech By Text",
+					"description": "Get advanced human audio file by provided text and language <a href=\"https://app.uproc.io/#/tools/processor/get/audio/advanced-speech-by-text\" target='_blank'>Info</a>"
+				},
+				"getAudioSpeechByText": {
+					"displayName": "Get Speech By Text",
+					"description": "Get audio file by provided text and language <a href=\"https://app.uproc.io/#/tools/processor/get/audio/speech-by-text\" target='_blank'>Info</a>"
+				},
+				"checkSocialDomainExist": {
+					"displayName": "Check Domain Has Social Activity",
+					"description": "Discover if a domain has social network presence <a href=\"https://app.uproc.io/#/tools/processor/check/social/domain-exist\" target='_blank'>Info</a>"
+				},
+				"checkDomainCatchall": {
+					"displayName": "Check Email Domain Is Catchall",
+					"description": "Check if domain accepts all emails, existing or not <a href=\"https://app.uproc.io/#/tools/processor/check/domain/catchall\" target='_blank'>Info</a>"
+				},
+				"checkDomainFree": {
+					"displayName": "Check Email Domain Is Free",
+					"description": "Check if domain is a free service domain provider <a href=\"https://app.uproc.io/#/tools/processor/check/domain/free\" target='_blank'>Info</a>"
+				},
+				"checkDomainDisposable": {
+					"displayName": "Check Email Domain Is Temporary",
+					"description": "Check if domain is temporary or not <a href=\"https://app.uproc.io/#/tools/processor/check/domain/disposable\" target='_blank'>Info</a>"
+				},
+				"checkEmailExistsExtended": {
+					"displayName": "Check Email Exists (Extended)",
+					"description": "Discover if an email is valid, hardbounce, softbounce, spamtrap, free, temporary and recipient exists.<br><br>There are catchall (like Yahoo) or temporary domains that do not return the actual existence of an email <a href=\"https://app.uproc.io/#/tools/processor/check/email/exists-extended\" target='_blank'>Info</a>"
+				},
+				"checkEmailExists": {
+					"displayName": "Check Email Exists (Simple)",
+					"description": "Discover if the email recipient exists, returning email status <a href=\"https://app.uproc.io/#/tools/processor/check/email/exists\" target='_blank'>Info</a>"
+				},
+				"checkEmailSmtp": {
+					"displayName": "Check Email Has SMTP Server",
+					"description": "Check if email domain has an SMTP server to receive emails <a href=\"https://app.uproc.io/#/tools/processor/check/email/smtp\" target='_blank'>Info</a>"
+				},
+				"checkSocialEmailExist": {
+					"displayName": "Check Email Has Social Activity",
+					"description": "Discover if the email has social network presence <a href=\"https://app.uproc.io/#/tools/processor/check/social/email-exist\" target='_blank'>Info</a>"
+				},
+				"checkEmailFormat": {
+					"displayName": "Check Email Has Valid Format",
+					"description": "Check if email has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/email/format\" target='_blank'>Info</a>"
+				},
+				"checkEmailCatchall": {
+					"displayName": "Check Email Is Catchall",
+					"description": "Check if email belongs to a catchall email server <a href=\"https://app.uproc.io/#/tools/processor/check/email/catchall\" target='_blank'>Info</a>"
+				},
+				"checkEmailDisposable": {
+					"displayName": "Check Email Is Disposable Domain",
+					"description": "Check if email domain belongs to a disposable email service <a href=\"https://app.uproc.io/#/tools/processor/check/email/disposable\" target='_blank'>Info</a>"
+				},
+				"checkEmailFree": {
+					"displayName": "Check Email Is Free",
+					"description": "Check if email belongs to free service provider, like gmail, hotmail, ... <a href=\"https://app.uproc.io/#/tools/processor/check/email/free\" target='_blank'>Info</a>"
+				},
+				"checkRobinsonEmailExist": {
+					"displayName": "Check Email Is Robinson (ES)",
+					"description": "Discover if an email exists in the Robinson list (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/check/robinson/email-exist\" target='_blank'>Info</a>"
+				},
+				"checkEmailRole": {
+					"displayName": "Check Email Is Role Based",
+					"description": "Check if email belongs to a system or role based account <a href=\"https://app.uproc.io/#/tools/processor/check/email/role\" target='_blank'>Info</a>"
+				},
+				"checkEmailSpamtrap": {
+					"displayName": "Check Email Is Spam Trap",
+					"description": "Check if email is a spam trap <a href=\"https://app.uproc.io/#/tools/processor/check/email/spamtrap\" target='_blank'>Info</a>"
+				},
+				"checkMobileImei": {
+					"displayName": "Check Imei Is Valid",
+					"description": "Discover if Imei number has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/mobile/imei\" target='_blank'>Info</a>"
+				},
+				"checkLinkedinProfileIsContact": {
+					"displayName": "Check LinkedIn Profile Is Contact",
+					"description": "Check if a LinkedIn profile (url format accepted: https://linkedin.com/in/USERNAME) is a first degree contact <a href=\"https://app.uproc.io/#/tools/processor/check/linkedin/profile-is-contact\" target='_blank'>Info</a>"
+				},
+				"checkMobileExist": {
+					"displayName": "Check Mobile Exists",
+					"description": "Discover if mobile phone number exists in network operator, with worldwide coverage.<br>Get advanced mobile KPIs with <a href='/app/catalog/processor/get/mobile/lookup'>'Mobile lookup'</a> tool. <a href=\"https://app.uproc.io/#/tools/processor/check/mobile/exist\" target='_blank'>Info</a>"
+				},
+				"checkSocialMobileExist": {
+					"displayName": "Check Mobile Has Social Activity",
+					"description": "Discover if the mobile phone has social network presence <a href=\"https://app.uproc.io/#/tools/processor/check/social/mobile-exist\" target='_blank'>Info</a>"
+				},
+				"checkMobileFormat": {
+					"displayName": "Check Mobile Has Valid Format",
+					"description": "Discover if mobile phone number has a valid format, with worldwide coverage <a href=\"https://app.uproc.io/#/tools/processor/check/mobile/format\" target='_blank'>Info</a>"
+				},
+				"checkMobileFormatEs": {
+					"displayName": "Check Mobile Has Valid Format (ES)",
+					"description": "Discover if mobile phone number has a valid format (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/check/mobile/format-es\" target='_blank'>Info</a>"
+				},
+				"checkMobileValidPrefix": {
+					"displayName": "Check Mobile Has Valid Prefix",
+					"description": "Discover if mobile phone number has a valid prefix, with worldwide coverage <a href=\"https://app.uproc.io/#/tools/processor/check/mobile/valid-prefix\" target='_blank'>Info</a>"
+				},
+				"checkMobileValidPrefixEs": {
+					"displayName": "Check Mobile Has Valid Prefix (ES)",
+					"description": "Discover if spanish mobile phone number has a valid prefix <a href=\"https://app.uproc.io/#/tools/processor/check/mobile/valid-prefix-es\" target='_blank'>Info</a>"
+				},
+				"checkMobileAlive": {
+					"displayName": "Check Mobile Is Alive",
+					"description": "Discover if a mobile number is switched on to call it later, with worldwide coverage.<br>Some carriers don't return if mobile is alive (like Vodafone) <a href=\"https://app.uproc.io/#/tools/processor/check/mobile/alive\" target='_blank'>Info</a>"
+				},
+				"checkMobileSms": {
+					"displayName": "Check Mobile Supports Sms",
+					"description": "Discover if a mobile number can receive sms, with worldwide coverage <a href=\"https://app.uproc.io/#/tools/processor/check/mobile/sms\" target='_blank'>Info</a>"
+				},
+				"checkRobinsonPhoneExist": {
+					"displayName": "Check Phone Is Robinson (ES)",
+					"description": "Discover if a phone (landline or mobile) exists in a Robinson list (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/check/robinson/phone-exist\" target='_blank'>Info</a>"
+				},
+				"checkPhoneOrMobileValid": {
+					"displayName": "Check Phone Or Mobile Valid",
+					"description": "Discover if landline or mobile number has a valid prefix <a href=\"https://app.uproc.io/#/tools/processor/check/phone/or-mobile-valid\" target='_blank'>Info</a>"
+				},
+				"checkPhoneFormatEs": {
+					"displayName": "Check Valid Phone Format (ES)",
+					"description": "Discover if landline phone number is valid, with Spain coverage <a href=\"https://app.uproc.io/#/tools/processor/check/phone/format-es\" target='_blank'>Info</a>"
+				},
+				"checkPhoneFormat": {
+					"displayName": "Check Valid Phone Format By Country",
+					"description": "Allow to discover if landline number has a good international format, depending on country  <a href=\"https://app.uproc.io/#/tools/processor/check/phone/format\" target='_blank'>Info</a>"
+				},
+				"checkPhoneValidPrefix": {
+					"displayName": "Check Valid Phone Prefix",
+					"description": "Discover if a landline phone number prefix exists, with worldwide coverage <a href=\"https://app.uproc.io/#/tools/processor/check/phone/valid-prefix\" target='_blank'>Info</a>"
+				},
+				"getPhoneNormalized": {
+					"displayName": "Get Cleaned Phone",
+					"description": "Clean a phone removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/phone/normalized\" target='_blank'>Info</a>"
+				},
+				"getMobileCountryCode": {
+					"displayName": "Get Country ISO Code By Mobile",
+					"description": "Allow to get country code (two chars) of a mobile phone number with international format <a href=\"https://app.uproc.io/#/tools/processor/get/mobile/country-code\" target='_blank'>Info</a>"
+				},
+				"getEmailDomain": {
+					"displayName": "Get Domain By Email",
+					"description": "Get domain part from an email <a href=\"https://app.uproc.io/#/tools/processor/get/email/domain\" target='_blank'>Info</a>"
+				},
+				"getEmailRecipientByCompanyFirstnameAndLastname": {
+					"displayName": "Get Email By Firstname, Lastname And Company",
+					"description": "Discover an email by company's name and prospect's firstname and lastname.<br><br>If the 'verify' method is selected, the tool checks multiple email variants in real-time, and returns a result depending on the email server response <a href=\"https://app.uproc.io/#/tools/processor/get/email/recipient-by-company-firstname-and-lastname\" target='_blank'>Info</a>"
+				},
+				"getEmailRecipientByCompanyAndFullname": {
+					"displayName": "Get Email By Fullname And Company",
+					"description": "Discover an email by company's name and prospect's fullname.<br><br>If the 'verify' method is selected, the tool checks multiple email variants in real-time, and returns a result depending on the email server response <a href=\"https://app.uproc.io/#/tools/processor/get/email/recipient-by-company-and-fullname\" target='_blank'>Info</a>"
+				},
+				"getEmailRecipientByDomainAndFullname": {
+					"displayName": "Get Email By Fullname And Domain",
+					"description": "Discover an email by company website or domain and prospect's fullname.<br><br>If the 'verify' method is selected, the tool checks multiple email variants in real-time, and returns a result depending on the email server response <a href=\"https://app.uproc.io/#/tools/processor/get/email/recipient-by-domain-and-fullname\" target='_blank'>Info</a>"
+				},
+				"getEmailRecipient": {
+					"displayName": "Get Email By Name, Surname And Domain",
+					"description": "Discover an email by company website or domain and prospect's firstname and lastname.<br><br>If the 'verify' method is selected, the tool checks multiple email variants in real-time, and returns a result depending on email server response <a href=\"https://app.uproc.io/#/tools/processor/get/email/recipient\" target='_blank'>Info</a>"
+				},
+				"getEmailRecipientByProfile": {
+					"displayName": "Get Email By Social Network Profile",
+					"description": "Discover an email by contact's LinkedIn profile URI <a href=\"https://app.uproc.io/#/tools/processor/get/email/recipient-by-profile\" target='_blank'>Info</a>"
+				},
+				"getEmailType": {
+					"displayName": "Get Email Type",
+					"description": "Get email type <a href=\"https://app.uproc.io/#/tools/processor/get/email/type\" target='_blank'>Info</a>"
+				},
+				"getEmailListByDomain": {
+					"displayName": "Get Emails By Domain",
+					"description": "Get emails list found on internet by domain or URI (similar to hunter.io) <a href=\"https://app.uproc.io/#/tools/processor/get/email/list-by-domain\" target='_blank'>Info</a>"
+				},
+				"getEmailListByEmail": {
+					"displayName": "Get Emails By Email",
+					"description": "Get emails list found on internet by non-free email (similar to hunter.io) <a href=\"https://app.uproc.io/#/tools/processor/get/email/list-by-email\" target='_blank'>Info</a>"
+				},
+				"getEmailFirstReferences": {
+					"displayName": "Get First Web References Of An Email",
+					"description": "Get three first web references of an email published on Internet <a href=\"https://app.uproc.io/#/tools/processor/get/email/first-references\" target='_blank'>Info</a>"
+				},
+				"getEmailFix": {
+					"displayName": "Get Fixed Domain Email",
+					"description": "Fix the email domain of those misspelled emails (supports all domains) <a href=\"https://app.uproc.io/#/tools/processor/get/email/fix\" target='_blank'>Info</a>"
+				},
+				"getPhoneFixed": {
+					"displayName": "Get Fixed Phone",
+					"description": "Fix the international prefix of a phone based on the ISO code of a country <a href=\"https://app.uproc.io/#/tools/processor/get/phone/fixed\" target='_blank'>Info</a>"
+				},
+				"getMobileFormatted": {
+					"displayName": "Get Formatted Mobile",
+					"description": "Format international mobile number by country ISO code (2 letters). <a href=\"https://app.uproc.io/#/tools/processor/get/mobile/formatted\" target='_blank'>Info</a>"
+				},
+				"getEmailGdprListByDomain": {
+					"displayName": "Get GDPR Emails By Domain",
+					"description": "Get GDPR compliant emails list by domain for your Email Marketing campaigns in Europe. <a href=\"https://app.uproc.io/#/tools/processor/get/email/gdpr-list-by-domain\" target='_blank'>Info</a>"
+				},
+				"getMobileHlrLookup": {
+					"displayName": "Get HLR Mobile Lookup",
+					"description": "Discover if mobile exist via real time [HLR](https://en.wikipedia.org/wiki/Home_location_register) query <a href=\"https://app.uproc.io/#/tools/processor/get/mobile/hlr-lookup\" target='_blank'>Info</a>"
+				},
+				"getMobileOrPhoneMnpEs": {
+					"displayName": "Get Landline/Mobile Portability Lookup (ES)",
+					"description": "Get portability data about a landline or mobile number, only for Spain <a href=\"https://app.uproc.io/#/tools/processor/get/mobile/or-phone-mnp-es\" target='_blank'>Info</a>"
+				},
+				"getLinkedinProfilesByCompany": {
+					"displayName": "Get LinkedIn Company Employees",
+					"description": "Extract results from a LinkedIn search (url format accepted: https://linkedin.com/search/results/people/) <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/profiles-by-company\" target='_blank'>Info</a>"
+				},
+				"getLinkedinGroupMembers": {
+					"displayName": "Get LinkedIn Group Members",
+					"description": "Get members in a LinkedIn group <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/group-members\" target='_blank'>Info</a>"
+				},
+				"getLinkedinConnections": {
+					"displayName": "Get LinkedIn Last Received Connections",
+					"description": "Extract last <a href='https://www.linkedin.com/mynetwork/invite-connect/connections/' target='_blank'>80 connections</a> from your LinkedIn profile <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/connections\" target='_blank'>Info</a>"
+				},
+				"getLinkedinInvitations": {
+					"displayName": "Get LinkedIn Last Sent Invitations",
+					"description": "Extract last <a href='https://www.linkedin.com/mynetwork/invitation-manager/sent/' target='_blank'>80 invitations</a> sent from your LinkedIn <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/invitations\" target='_blank'>Info</a>"
+				},
+				"getLinkedinPostComments": {
+					"displayName": "Get LinkedIn Post Comments",
+					"description": "Get users who comment a post on LinkedIn <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/post-comments\" target='_blank'>Info</a>"
+				},
+				"getLinkedinPostLikes": {
+					"displayName": "Get LinkedIn Post Likes",
+					"description": "Get users who like a post on LinkedIn <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/post-likes\" target='_blank'>Info</a>"
+				},
+				"getLinkedinProfile": {
+					"displayName": "Get LinkedIn Profile",
+					"description": "Extract a LinkedIn profile (url format accepted: https://linkedin.com/in/USERNAME) <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/profile\" target='_blank'>Info</a>"
+				},
+				"getLinkedinProfiles": {
+					"displayName": "Get LinkedIn Profiles",
+					"description": "Extract results from a LinkedIn search (url format accepted: https://linkedin.com/search/results/people/) <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/profiles\" target='_blank'>Info</a>"
+				},
+				"getLinkedinProfilesByContent": {
+					"displayName": "Get LinkedIn Profiles By Content",
+					"description": "Extract fastly last profiles that have published content on LinkedIn by specific keywords <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/profiles-by-content\" target='_blank'>Info</a>"
+				},
+				"getMobileLookup": {
+					"displayName": "Get Mobile Lookup",
+					"description": "Discover if mobile exist via real time [HLR](https://en.wikipedia.org/wiki/Home_location_register) query, as well as portability and roaming data <a href=\"https://app.uproc.io/#/tools/processor/get/mobile/lookup\" target='_blank'>Info</a>"
+				},
+				"getMobileMnpLookup": {
+					"displayName": "Get Mobile Portability Lookup",
+					"description": "Get existence, portability and roaming of a mobile phone, via [MNP](https://en.wikipedia.org/wiki/Mobile_number_portability) query <a href=\"https://app.uproc.io/#/tools/processor/get/mobile/mnp-lookup\" target='_blank'>Info</a>"
+				},
+				"getMobileOrPhoneLookupEs": {
+					"displayName": "Get Mobile/Landline Lookup (Spain)",
+					"description": "Discover if mobile or landline prefix exists on Spain. <a href=\"https://app.uproc.io/#/tools/processor/get/mobile/or-phone-lookup-es\" target='_blank'>Info</a>"
+				},
+				"getEmailNormalized": {
+					"displayName": "Get Normalized Email",
+					"description": "Normalize email address, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/email/normalized\" target='_blank'>Info</a>"
+				},
+				"getMobileNormalized": {
+					"displayName": "Get Normalized Mobile",
+					"description": "Allow to normalize a mobile phone, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/mobile/normalized\" target='_blank'>Info</a>"
+				},
+				"getPhoneParsed": {
+					"displayName": "Get Parsed And Validated Phone",
+					"description": "Parse phone numbers in multiple fields and verify the format and prefix validity <a href=\"https://app.uproc.io/#/tools/processor/get/phone/parsed\" target='_blank'>Info</a>"
+				},
+				"getEmailPersonalRecipientByProfile": {
+					"displayName": "Get Personal Email By Social Network Profile",
+					"description": "Discover all the personal emails by social profile <a href=\"https://app.uproc.io/#/tools/processor/get/email/personal-recipient-by-profile\" target='_blank'>Info</a>"
+				},
+				"getMobileCountryPrefix": {
+					"displayName": "Get Phone Prefix By Country ISO Code",
+					"description": "Allow to get country prefix number by country code (2 characters) <a href=\"https://app.uproc.io/#/tools/processor/get/mobile/country-prefix\" target='_blank'>Info</a>"
+				},
+				"getLinkedinPublicProfileBySalesProfile": {
+					"displayName": "Get Public Profile By Sales Profile",
+					"description": "Convert a LinkedIn Sales profile (/sales/people/) to a LinkedIn public profile (/in/) <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/public-profile-by-sales-profile\" target='_blank'>Info</a>"
+				},
+				"getLinkedinSearchContactsUrl": {
+					"displayName": "Get Search LinkedIn Contacts Url",
+					"description": "Generate a LinkedIn search contacts URL considering the keywords provided <a href=\"https://app.uproc.io/#/tools/processor/get/linkedin/search-contacts-url\" target='_blank'>Info</a>"
+				},
+				"getSocialUriParsed": {
+					"displayName": "Get Social Network Activity",
+					"description": "This tools parses a social uri address and extracts any available indicators <a href=\"https://app.uproc.io/#/tools/processor/get/social/uri-parsed\" target='_blank'>Info</a>"
+				},
+				"getSocialDomainParsed": {
+					"displayName": "Get Social Networks Activity By Domain",
+					"description": "Search all social networks by domain, parses all found urls and returns social networks kpis (if data available) <a href=\"https://app.uproc.io/#/tools/processor/get/social/domain-parsed\" target='_blank'>Info</a>"
+				},
+				"getSocialDomainLookup": {
+					"displayName": "Get Social Networks By Domain",
+					"description": "Discover if a domain or a website has social activity and returns all social network profiles found <a href=\"https://app.uproc.io/#/tools/processor/get/social/domain-lookup\" target='_blank'>Info</a>"
+				},
+				"getSocialEmailLookup": {
+					"displayName": "Get Social Networks By Email",
+					"description": "Discover if an email has social activity, and get all social network profiles found <a href=\"https://app.uproc.io/#/tools/processor/get/social/email-lookup\" target='_blank'>Info</a>"
+				},
+				"getSocialMobileLookup": {
+					"displayName": "Get Social Networks By Mobile",
+					"description": "Discover if an mobile phone has social activity, and get all social network profiles found <a href=\"https://app.uproc.io/#/tools/processor/get/social/mobile-lookup\" target='_blank'>Info</a>"
+				},
+				"getEmailReferences": {
+					"displayName": "Get Web References Of An Email",
+					"description": "Get web references of an email published on Internet <a href=\"https://app.uproc.io/#/tools/processor/get/email/references\" target='_blank'>Info</a>"
+				},
+				"sendLinkedinInvitation": {
+					"displayName": "Send Connection Request To Linkedin Profile",
+					"description": "Send a custom message invitation to a non connected Linkedin profile (supported uris: https://www.linkedin.com/in/USERID) <a href=\"https://app.uproc.io/#/tools/processor/send/linkedin/invitation\" target='_blank'>Info</a>"
+				},
+				"sendEmailCustom": {
+					"displayName": "Send Custom Email",
+					"description": "Send a custom email (HTML supported) to a recipient <a href=\"https://app.uproc.io/#/tools/processor/send/email/custom\" target='_blank'>Info</a>"
+				},
+				"sendMobileSms": {
+					"displayName": "Send Custom Sms",
+					"description": "Send a custom sms to a recipient with worldwide coverage <a href=\"https://app.uproc.io/#/tools/processor/send/mobile/sms\" target='_blank'>Info</a>"
+				},
+				"sendLinkedinInvitationOrMessage": {
+					"displayName": "Send Invitation Or Message To Linkedin Profile",
+					"description": "Send a custom invitation message (parameter message1) if profile is connected or a custom message (parameter message2) otherwise (supported uris: https://www.linkedin.com/in/USERID) <a href=\"https://app.uproc.io/#/tools/processor/send/linkedin/invitation-or-message\" target='_blank'>Info</a>"
+				},
+				"sendLinkedinVisit": {
+					"displayName": "Send LinkedIn Profile Visit",
+					"description": "Visits a profile to show interest and get profile views in return from contact, increasing your LinkedIn network <a href=\"https://app.uproc.io/#/tools/processor/send/linkedin/visit\" target='_blank'>Info</a>"
+				},
+				"sendLinkedinMessage": {
+					"displayName": "Send Message To Linkedin Profile",
+					"description": "Send a custom private message to a connected Linkedin profile (supported uris: https://www.linkedin.com/in/USERID) <a href=\"https://app.uproc.io/#/tools/processor/send/linkedin/message\" target='_blank'>Info</a>"
+				},
+				"checkCifValid": {
+					"displayName": "Check CIF Is Valid (ES)",
+					"description": "Discover if a cif card number is valid <a href=\"https://app.uproc.io/#/tools/processor/check/cif/valid\" target='_blank'>Info</a>"
+				},
+				"checkCompanyDebtorByTaxid": {
+					"displayName": "Check Company Is Debtor By TaxId (ES)",
+					"description": "Check if company is debtor by TaxId <a href=\"https://app.uproc.io/#/tools/processor/check/company/debtor-by-taxid\" target='_blank'>Info</a>"
+				},
+				"checkNumberIsin": {
+					"displayName": "Check ISIN Code Is Valid",
+					"description": "Check if ISIN number is valid <a href=\"https://app.uproc.io/#/tools/processor/check/number/isin\" target='_blank'>Info</a>"
+				},
+				"checkNumberSsEs": {
+					"displayName": "Check Social Security Number Is Valid (ES)",
+					"description": "Check if SS number is valid, only for Spain <a href=\"https://app.uproc.io/#/tools/processor/check/number/ss-es\" target='_blank'>Info</a>"
+				},
+				"getRoleClassified": {
+					"displayName": "Get Classified Role",
+					"description": "Identify and classify a prospect role detecting the right area and seniority to filter later <a href=\"https://app.uproc.io/#/tools/processor/get/role/classified\" target='_blank'>Info</a>"
+				},
+				"getCompanyByCif": {
+					"displayName": "Get Company By CIF (ES)",
+					"description": "Get company data by CIF <a href=\"https://app.uproc.io/#/tools/processor/get/company/by-cif\" target='_blank'>Info</a>"
+				},
+				"getCompanyByDuns": {
+					"displayName": "Get Company By DUNS (ES)",
+					"description": "Get company data by DUNS <a href=\"https://app.uproc.io/#/tools/processor/get/company/by-duns\" target='_blank'>Info</a>"
+				},
+				"getCompanyByDomain": {
+					"displayName": "Get Company By Domain",
+					"description": "Get company data by domain <a href=\"https://app.uproc.io/#/tools/processor/get/company/by-domain\" target='_blank'>Info</a>"
+				},
+				"getCompanyByEmail": {
+					"displayName": "Get Company By Email",
+					"description": "Get company data by email <a href=\"https://app.uproc.io/#/tools/processor/get/company/by-email\" target='_blank'>Info</a>"
+				},
+				"getCompanyByIp": {
+					"displayName": "Get Company By IP",
+					"description": "Get company data by IP address <a href=\"https://app.uproc.io/#/tools/processor/get/company/by-ip\" target='_blank'>Info</a>"
+				},
+				"getCompanyByName": {
+					"displayName": "Get Company By Name",
+					"description": "Obtains the data of a company by its name <a href=\"https://app.uproc.io/#/tools/processor/get/company/by-name\" target='_blank'>Info</a>"
+				},
+				"getCompanyByPhone": {
+					"displayName": "Get Company By Phone",
+					"description": "Get company data by phone number <a href=\"https://app.uproc.io/#/tools/processor/get/company/by-phone\" target='_blank'>Info</a>"
+				},
+				"getCompanyByProfile": {
+					"displayName": "Get Company By Social Profile",
+					"description": "Get company data by social network uri.<br>The tools supports the next social networks: Facebook, GitHub, Instagram, LinkedIn (/company/), Pinterest, Slack, TikTok, Twitch, Twitter <a href=\"https://app.uproc.io/#/tools/processor/get/company/by-profile\" target='_blank'>Info</a>"
+				},
+				"getCompanyNameByDomain": {
+					"displayName": "Get Company's Name By Domain",
+					"description": "Get company name by company domain <a href=\"https://app.uproc.io/#/tools/processor/get/company/name-by-domain\" target='_blank'>Info</a>"
+				},
+				"getPersonDecisionMaker": {
+					"displayName": "Get Decision Maker",
+					"description": "Get professional data of a decision maker by company name/domain and area <a href=\"https://app.uproc.io/#/tools/processor/get/person/decision-maker\" target='_blank'>Info</a>"
+				},
+				"getPersonDecisionMakerBySearch": {
+					"displayName": "Get Decision Maker By Search Engine",
+					"description": "Discover the more suitable decision maker using search engines (Bing) by company name and area (optional) <a href=\"https://app.uproc.io/#/tools/processor/get/person/decision-maker-by-search\" target='_blank'>Info</a>"
+				},
+				"getPersonEmailsByDomainAndArea": {
+					"displayName": "Get Decision Maker's Emails By Domain And Area",
+					"description": "Get professional emails of decision makers (by priority: executive, manager and directors) by company domain and area <a href=\"https://app.uproc.io/#/tools/processor/get/person/emails-by-domain-and-area\" target='_blank'>Info</a>"
+				},
+				"getPersonMultipleDecisionMakerBySearch": {
+					"displayName": "Get Decision Makers By Search Engine",
+					"description": "Discover up to ten decision makers using search engines (Bing) by company name and area (optional) <a href=\"https://app.uproc.io/#/tools/processor/get/person/multiple-decision-maker-by-search\" target='_blank'>Info</a>"
+				},
+				"getCompanyDomainByName": {
+					"displayName": "Get Domain By Company Name",
+					"description": "Get company domain by company name <a href=\"https://app.uproc.io/#/tools/processor/get/company/domain-by-name\" target='_blank'>Info</a>"
+				},
+				"getPersonListByParams": {
+					"displayName": "Get Employees By Parameters",
+					"description": "Get employees by company name or domain, area, seniority and country <a href=\"https://app.uproc.io/#/tools/processor/get/person/list-by-params\" target='_blank'>Info</a>"
+				},
+				"getProfileFacebookByCompany": {
+					"displayName": "Get Facebook URI By Company",
+					"description": "Get Facebook company profile by name without manual search on Google or Facebook.<br><br>This tool uses search engines (Bing and Google) through proxies <a href=\"https://app.uproc.io/#/tools/processor/get/profile/facebook-by-company\" target='_blank'>Info</a>"
+				},
+				"getProfileFacebookByCompanyDomain": {
+					"displayName": "Get Facebook URI By Company's Domain",
+					"description": "Get Facebook company profile by domain without manual search on Google or LinkedIn.<br><br>This tool uses our internal databases. <a href=\"https://app.uproc.io/#/tools/processor/get/profile/facebook-by-company-domain\" target='_blank'>Info</a>"
+				},
+				"getCompanyGeocodedByIp": {
+					"displayName": "Get Geocoded Company By IP",
+					"description": "Get geocoded company data by IP address <a href=\"https://app.uproc.io/#/tools/processor/get/company/geocoded-by-ip\" target='_blank'>Info</a>"
+				},
+				"getProfileGithubByCompanyDomain": {
+					"displayName": "Get GitHub URI By Company's Domain",
+					"description": "Get GitHub company profile by domain without manual search on Google or LinkedIn.<br><br>This tool uses our internal databases. <a href=\"https://app.uproc.io/#/tools/processor/get/profile/github-by-company-domain\" target='_blank'>Info</a>"
+				},
+				"getProfileInstagramByCompanyDomain": {
+					"displayName": "Get Instagram URI By Company's Domain",
+					"description": "Get Instagram company profile by domain without manual search on Google or LinkedIn.<br><br>This tool uses our internal databases. <a href=\"https://app.uproc.io/#/tools/processor/get/profile/instagram-by-company-domain\" target='_blank'>Info</a>"
+				},
+				"getProfileLinkedinByCompany": {
+					"displayName": "Get LinkedIn URI By Company",
+					"description": "Get LinkedIn company profile by name without manual search on Google or LinkedIn.<br><br>This tool uses search engines (Bing and Google) through proxies <a href=\"https://app.uproc.io/#/tools/processor/get/profile/linkedin-by-company\" target='_blank'>Info</a>"
+				},
+				"getProfileLinkedinByCompanyDomain": {
+					"displayName": "Get LinkedIn URI By Company's Domain",
+					"description": "Get LinkedIn company profile by domain without manual search on Google or LinkedIn.<br><br>This tool uses our internal databases. <a href=\"https://app.uproc.io/#/tools/processor/get/profile/linkedin-by-company-domain\" target='_blank'>Info</a>"
+				},
+				"getCifNormalized": {
+					"displayName": "Get Normalized CIF",
+					"description": "Allow to normalize a CIF number, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/cif/normalized\" target='_blank'>Info</a>"
+				},
+				"getCompanyPhoneByDomain": {
+					"displayName": "Get Phone By Company Domain",
+					"description": "Get company phone by company domain <a href=\"https://app.uproc.io/#/tools/processor/get/company/phone-by-domain\" target='_blank'>Info</a>"
+				},
+				"getCompanyPhoneByName": {
+					"displayName": "Get Phone By Company Name",
+					"description": "Get company phone by company name <a href=\"https://app.uproc.io/#/tools/processor/get/company/phone-by-name\" target='_blank'>Info</a>"
+				},
+				"getProfilePinterestByCompanyDomain": {
+					"displayName": "Get Pinterest URI By Company's Domain",
+					"description": "Get Pinterest company profile by domain without manual search on Google or LinkedIn.<br><br>This tool uses our internal databases. <a href=\"https://app.uproc.io/#/tools/processor/get/profile/pinterest-by-company-domain\" target='_blank'>Info</a>"
+				},
+				"getCompanyFinancialByDuns": {
+					"displayName": "Get Sales Data By Company's DUNS",
+					"description": "Get company sales data by company's DUNS number.<br><br>Next countries are supported: Spain <a href=\"https://app.uproc.io/#/tools/processor/get/company/financial-by-duns\" target='_blank'>Info</a>"
+				},
+				"getCompanyFinancialByDomain": {
+					"displayName": "Get Sales Data By Company's Domain",
+					"description": "Get company sales data by company's domain name with worldwide coverage <a href=\"https://app.uproc.io/#/tools/processor/get/company/financial-by-domain\" target='_blank'>Info</a>"
+				},
+				"getCompanyFinancialByName": {
+					"displayName": "Get Sales Data By Company's Name",
+					"description": "Get company sales data by company's name.<br><br>Next countries are supported: Spain <a href=\"https://app.uproc.io/#/tools/processor/get/company/financial-by-name\" target='_blank'>Info</a>"
+				},
+				"getCompanyFinancialByTaxid": {
+					"displayName": "Get Sales Data By Company's Taxid",
+					"description": "Get company sales data by company's taxid (CIF).<br><br>Next countries are supported: Spain <a href=\"https://app.uproc.io/#/tools/processor/get/company/financial-by-taxid\" target='_blank'>Info</a>"
+				},
+				"getProfileTwitterByCompany": {
+					"displayName": "Get Twitter URI By Company",
+					"description": "Get Twitter company profile by name without manual search on Google or Twitter.<br><br>This tool uses search engines (Bing and Google) through proxies <a href=\"https://app.uproc.io/#/tools/processor/get/profile/twitter-by-company\" target='_blank'>Info</a>"
+				},
+				"getProfileTwitterByCompanyDomain": {
+					"displayName": "Get Twitter URI By Company's Domain",
+					"description": "Get Twitter company profile by domain without manual search on Google or LinkedIn.<br><br>This tool uses our internal databases. <a href=\"https://app.uproc.io/#/tools/processor/get/profile/twitter-by-company-domain\" target='_blank'>Info</a>"
+				},
+				"getProfileYoutubeByCompanyDomain": {
+					"displayName": "Get YouTube URI By Company's Domain",
+					"description": "Get YouTube company profile by domain without manual search on Google or LinkedIn.<br><br>This tool uses our internal databases. <a href=\"https://app.uproc.io/#/tools/processor/get/profile/youtube-by-company-domain\" target='_blank'>Info</a>"
+				},
+				"checkBankBicValid": {
+					"displayName": "Check BIC Is Valid",
+					"description": "Discover if BIC number has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/bank/bic-valid\" target='_blank'>Info</a>"
+				},
+				"checkBankAccountValidEs": {
+					"displayName": "Check Bank Account Is Valid (ES)",
+					"description": "Discover if account number has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/bank/account-valid-es\" target='_blank'>Info</a>"
+				},
+				"checkCreditcardChecksum": {
+					"displayName": "Check Card Number Has Valid Format",
+					"description": "Check if credit card number checksum is valid (Visa, Mastercard, Diners Club, Carte Blanche, American Express, Discover, JCB, enRoute, Solo, Switch, Maestro, LaserCard, ChinaUnionPay, BankCard, Voyager) <a href=\"https://app.uproc.io/#/tools/processor/check/creditcard/checksum\" target='_blank'>Info</a>"
+				},
+				"checkCryptoWalletAddressValid": {
+					"displayName": "Check Crypto Wallet Is Valid",
+					"description": "Check if a wallet crypto address has a valid format depending on the selected coin.<br><strong>IMPORTANT</strong>: You need to check that the wallet accepts the cryptocoin to send.<br><br>Next coins are supported:<br>0x, Aave Coin, Algorand, Aragon, Augur, AugurV2, AuroraCoin, Bancor, Bankex, Basic Attention Token, BeaverCoin, BioCoin, Bitcoin, Bitcoin SV, BitcoinCash, BitcoinGold, BitcoinPrivate, BitcoinZ, BlockTrade, BTU Protocol, Callisto, Cardano, Chainlink, Civic, Compound, Cred, Crypto.com Coin, CUSD, Dash, Decentraland, Decred, DigiByte, District0x, DogeCoin, Enjin Coin, EOS, Ethereum, EthereumClassic, EtherZero, Expanse, FirmaChain, FreiCoin, GameCredits, GarliCoin, Gnosis, Golem, Golem (GNT), HedgeTrade, Hush, HyperSpace, iExec RLC, Komodo, LBRY Credits, Lisk, LiteCoin, loki, Loom Network, Maker, Matchpool, Matic, MegaCoin, Melon, Metal, MonaCoin, Monero, Multi-collateral DAI, NameCoin, Nano, Nem, Neo, NeoGas, Numeraire, Ocean Protocol, Odyssey, OmiseGO, Paxos, PeerCoin, PIVX, Polkadot, Polymath, PrimeCoin, ProtoShares, Qtum, Quant, Quantum Resistant Ledger, RaiBlocks, Ripio Credit Network, Ripple, Salt, Serve, Siacoin, SnowGem, SolarCoin, SOLVE, Spendcoin, Status, Stellar, Storj, Storm, StormX, Swarm City, Synthetix Network, Tap, TEMCO, TenX, Tether, Tezos, Tron, TrueUSD, Uniswap Coin, USD Coin, VeChain, VertCoin, Viberate, VoteCoin, Waves, Wings, ZCash, ZClassic, ZenCash <a href=\"https://app.uproc.io/#/tools/processor/check/crypto/wallet-address-valid\" target='_blank'>Info</a>"
+				},
+				"checkBankIbanValid": {
+					"displayName": "Check IBAN Is Valid",
+					"description": "Discover if IBAN account number has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/bank/iban-valid\" target='_blank'>Info</a>"
+				},
+				"checkCurrencyValidIso": {
+					"displayName": "Check ISO Currency Code Is Valid",
+					"description": "Discover if an ISO currency code is valid <a href=\"https://app.uproc.io/#/tools/processor/check/currency/valid-iso\" target='_blank'>Info</a>"
+				},
+				"checkVatExist": {
+					"displayName": "Check TIN Exists (VIES)",
+					"description": "Check if TIN number exists in Europe <a href=\"https://app.uproc.io/#/tools/processor/check/vat/exist\" target='_blank'>Info</a>"
+				},
+				"getCurrencyConvertedBetweenIsocodeDate": {
+					"displayName": "Get Conversion By Currencies And Date",
+					"description": "Convert amount between supported currencies and an exchange date <a href=\"https://app.uproc.io/#/tools/processor/get/currency/converted-between-isocode-date\" target='_blank'>Info</a>"
+				},
+				"getCreditcardType": {
+					"displayName": "Get Credit Card Type By Number",
+					"description": "Get credit card type (Visa, Mastercard, Diners Club, Carte Blanche, American Express, Discover, JCB, enRoute, Solo, Switch, Maestro, LaserCard, ChinaUnionPay, BankCard, Voyager) <a href=\"https://app.uproc.io/#/tools/processor/get/creditcard/type\" target='_blank'>Info</a>"
+				},
+				"getCurrencyListByCountry": {
+					"displayName": "Get Currencies By Country",
+					"description": "Get multiple ISO currency codes by a country name <a href=\"https://app.uproc.io/#/tools/processor/get/currency/list-by-country\" target='_blank'>Info</a>"
+				},
+				"getCurrencyListByIp": {
+					"displayName": "Get Currencies By IP",
+					"description": "Get all ISO currency codes by an IP address <a href=\"https://app.uproc.io/#/tools/processor/get/currency/list-by-ip\" target='_blank'>Info</a>"
+				},
+				"getCurrencyListByIsocode": {
+					"displayName": "Get Currencies By ISO Code",
+					"description": "Get multiple ISO currency codes by a country ISO code <a href=\"https://app.uproc.io/#/tools/processor/get/currency/list-by-isocode\" target='_blank'>Info</a>"
+				},
+				"getCurrencyByIp": {
+					"displayName": "Get Currency By IP",
+					"description": "Get ISO currency code by IP address <a href=\"https://app.uproc.io/#/tools/processor/get/currency/by-ip\" target='_blank'>Info</a>"
+				},
+				"getCurrencyByIsocode": {
+					"displayName": "Get Currency By ISO Currency Code",
+					"description": "Get an ISO currency code by a currency ISO code <a href=\"https://app.uproc.io/#/tools/processor/get/currency/by-isocode\" target='_blank'>Info</a>"
+				},
+				"getCurrencyByCountryIsocode": {
+					"displayName": "Get Currency Code By Country Code",
+					"description": "Get ISO currency code by an ISO country code <a href=\"https://app.uproc.io/#/tools/processor/get/currency/by-country-isocode\" target='_blank'>Info</a>"
+				},
+				"getCurrencyByCountry": {
+					"displayName": "Get Currency Code By Country Name",
+					"description": "Get ISO currency code by a country name <a href=\"https://app.uproc.io/#/tools/processor/get/currency/by-country\" target='_blank'>Info</a>"
+				},
+				"getVatByNumber": {
+					"displayName": "Get Data By TIN (VIES)",
+					"description": "Get related european TIN number in Europe <a href=\"https://app.uproc.io/#/tools/processor/get/vat/by-number\" target='_blank'>Info</a>"
+				},
+				"getBankIbanByAccount": {
+					"displayName": "Get IBAN By Account",
+					"description": "Get IBAN number by account number of the country <a href=\"https://app.uproc.io/#/tools/processor/get/bank/iban-by-account\" target='_blank'>Info</a>"
+				},
+				"getBankIbanLookup": {
+					"displayName": "Get IBAN Lookup",
+					"description": "Get to search data bank information by IBAN account number <a href=\"https://app.uproc.io/#/tools/processor/get/bank/iban-lookup\" target='_blank'>Info</a>"
+				},
+				"getSwiftLookup": {
+					"displayName": "Get Swift Code Lookup",
+					"description": "Get financial data by swift code <a href=\"https://app.uproc.io/#/tools/processor/get/swift/lookup\" target='_blank'>Info</a>"
+				},
+				"getVatByAddress": {
+					"displayName": "Get VAT% By Address",
+					"description": "Get country VAT by address <a href=\"https://app.uproc.io/#/tools/processor/get/vat/by-address\" target='_blank'>Info</a>"
+				},
+				"getVatByCoordinates": {
+					"displayName": "Get VAT% By Coordinates",
+					"description": "Get country VAT by coordinates <a href=\"https://app.uproc.io/#/tools/processor/get/vat/by-coordinates\" target='_blank'>Info</a>"
+				},
+				"getVatByIp": {
+					"displayName": "Get VAT% By IP",
+					"description": "Get VAT by IP address <a href=\"https://app.uproc.io/#/tools/processor/get/vat/by-ip\" target='_blank'>Info</a>"
+				},
+				"getVatByIsocode": {
+					"displayName": "Get VAT% By ISO Code",
+					"description": "Get VAT value by country ISO code <a href=\"https://app.uproc.io/#/tools/processor/get/vat/by-isocode\" target='_blank'>Info</a>"
+				},
+				"getVatByPhone": {
+					"displayName": "Get VAT% By Phone",
+					"description": "Get VAT by phone number, with worldwide coverage <a href=\"https://app.uproc.io/#/tools/processor/get/vat/by-phone\" target='_blank'>Info</a>"
+				},
+				"getVatByZipcode": {
+					"displayName": "Get VAT% By Zipcode",
+					"description": "Get VAT by zipcode <a href=\"https://app.uproc.io/#/tools/processor/get/vat/by-zipcode\" target='_blank'>Info</a>"
+				},
+				"checkCountryValidIso": {
+					"displayName": "Check Country Code Exists",
+					"description": "Check if country ISO code exists <a href=\"https://app.uproc.io/#/tools/processor/check/country/valid-iso\" target='_blank'>Info</a>"
+				},
+				"checkDistanceEq": {
+					"displayName": "Check Distance Is Equal",
+					"description": "Discover if the distance between two coordinates is equal to another <a href=\"https://app.uproc.io/#/tools/processor/check/distance/eq\" target='_blank'>Info</a>"
+				},
+				"checkDistanceGt": {
+					"displayName": "Check Distance Is Greater",
+					"description": "Discover if the distance in quilometers between two coordinates is greater than another <a href=\"https://app.uproc.io/#/tools/processor/check/distance/gt\" target='_blank'>Info</a>"
+				},
+				"checkDistanceGe": {
+					"displayName": "Check Distance Is Greater Or Equal",
+					"description": "Discover if the distance in quilometers between two coordinates is greater or equal than another <a href=\"https://app.uproc.io/#/tools/processor/check/distance/ge\" target='_blank'>Info</a>"
+				},
+				"checkDistanceLt": {
+					"displayName": "Check Distance Is Lower",
+					"description": "Discover if the distance in quilometers between two coordinates is lower than another <a href=\"https://app.uproc.io/#/tools/processor/check/distance/lt\" target='_blank'>Info</a>"
+				},
+				"checkDistanceLe": {
+					"displayName": "Check Distance Is Lower Or Equal",
+					"description": "Discover if the distance in quilometers between two coordinates is lower or equal than another <a href=\"https://app.uproc.io/#/tools/processor/check/distance/le\" target='_blank'>Info</a>"
+				},
+				"checkAddressExist": {
+					"displayName": "Check Exact Address Exists",
+					"description": "Check if an exact address exists by a partial address search <a href=\"https://app.uproc.io/#/tools/processor/check/address/exist\" target='_blank'>Info</a>"
+				},
+				"checkAddressNumberExist": {
+					"displayName": "Check Street Number Exists",
+					"description": "Check if a house number exists by a partial address search <a href=\"https://app.uproc.io/#/tools/processor/check/address/number-exist\" target='_blank'>Info</a>"
+				},
+				"checkCoordinateValid": {
+					"displayName": "Check Valid Coordinates",
+					"description": "Check if coordinates have a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/coordinate/valid\" target='_blank'>Info</a>"
+				},
+				"checkZipcodeExist": {
+					"displayName": "Check Zipcode By Prefix Exists (ES)",
+					"description": "Discover if a zipcode number prefix exists, only for Spain <a href=\"https://app.uproc.io/#/tools/processor/check/zipcode/exist\" target='_blank'>Info</a>"
+				},
+				"checkZipcodeFormat": {
+					"displayName": "Check Zipcode Has Valid Format (ES)",
+					"description": "Discover if a zipcode number has a valid format, only for Spain <a href=\"https://app.uproc.io/#/tools/processor/check/zipcode/format\" target='_blank'>Info</a>"
+				},
+				"getCoordinateCartesian": {
+					"displayName": "Get Cartesian Coordinates",
+					"description": "Get Cartesian coordinates (X,Y,Z/WGS84) by Latitude and Longitude <a href=\"https://app.uproc.io/#/tools/processor/get/coordinate/cartesian\" target='_blank'>Info</a>"
+				},
+				"getCityListByPhone": {
+					"displayName": "Get Cities By Phone (ES)",
+					"description": "Get multiple cities by phone prefix (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/city/list-by-phone\" target='_blank'>Info</a>"
+				},
+				"getCityListByName": {
+					"displayName": "Get Cities By Prefix (ES)",
+					"description": "Get multiple cities by partial initial text (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/city/list-by-name\" target='_blank'>Info</a>"
+				},
+				"getCityListByZipcode": {
+					"displayName": "Get Cities By Zipcode (ES)",
+					"description": "Get multiple cities by zipcode prefix (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/city/list-by-zipcode\" target='_blank'>Info</a>"
+				},
+				"getCityByIp": {
+					"displayName": "Get City By IP",
+					"description": "Get city from ip <a href=\"https://app.uproc.io/#/tools/processor/get/city/by-ip\" target='_blank'>Info</a>"
+				},
+				"getCityByName": {
+					"displayName": "Get City By Name (ES)",
+					"description": "City search by partial name (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/city/by-name\" target='_blank'>Info</a>"
+				},
+				"getCityByPhone": {
+					"displayName": "Get City By Phone (ES)",
+					"description": "Discover the city name by the local phone number (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/city/by-phone\" target='_blank'>Info</a>"
+				},
+				"getCityByZipcode": {
+					"displayName": "Get City By Zipcode (ES)",
+					"description": "Discover the city name by the zipcode (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/city/by-zipcode\" target='_blank'>Info</a>"
+				},
+				"getCommunityByZipcode": {
+					"displayName": "Get Community By Zipcode (ES)",
+					"description": "Discover the community name from a zipcode number (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/community/by-zipcode\" target='_blank'>Info</a>"
+				},
+				"getCoordinateByIp": {
+					"displayName": "Get Coordinates By IP",
+					"description": "Discover latitude and longitude coordinates of an IP address <a href=\"https://app.uproc.io/#/tools/processor/get/coordinate/by-ip\" target='_blank'>Info</a>"
+				},
+				"getCoordinateBySearch": {
+					"displayName": "Get Coordinates By Search",
+					"description": "Discover latitude and longitude coordinates of a postal address <a href=\"https://app.uproc.io/#/tools/processor/get/coordinate/by-search\" target='_blank'>Info</a>"
+				},
+				"getCountryListByCurrencyCode": {
+					"displayName": "Get Countries By Currency",
+					"description": "Get multiple country names by currency ISO code <a href=\"https://app.uproc.io/#/tools/processor/get/country/list-by-currency-code\" target='_blank'>Info</a>"
+				},
+				"getCountryListByCode": {
+					"displayName": "Get Countries By ISO Code",
+					"description": "Get multiple countries by ISO code <a href=\"https://app.uproc.io/#/tools/processor/get/country/list-by-code\" target='_blank'>Info</a>"
+				},
+				"getCountryListByName": {
+					"displayName": "Get Countries By Prefix",
+					"description": "Get multiple country names by initial name <a href=\"https://app.uproc.io/#/tools/processor/get/country/list-by-name\" target='_blank'>Info</a>"
+				},
+				"getCountryByCurrencyCode": {
+					"displayName": "Get Country By Currency",
+					"description": "Get country name by currency ISO code <a href=\"https://app.uproc.io/#/tools/processor/get/country/by-currency-code\" target='_blank'>Info</a>"
+				},
+				"getCountryByIp": {
+					"displayName": "Get Country By IP",
+					"description": "Get country name by IP address <a href=\"https://app.uproc.io/#/tools/processor/get/country/by-ip\" target='_blank'>Info</a>"
+				},
+				"getCountryByCode": {
+					"displayName": "Get Country By ISO Code",
+					"description": "Get country name by its ISO code <a href=\"https://app.uproc.io/#/tools/processor/get/country/by-code\" target='_blank'>Info</a>"
+				},
+				"getCountryByName": {
+					"displayName": "Get Country By Name",
+					"description": "Get country by prefix <a href=\"https://app.uproc.io/#/tools/processor/get/country/by-name\" target='_blank'>Info</a>"
+				},
+				"getCountryByPhone": {
+					"displayName": "Get Country By Phone",
+					"description": "Get country name by phone number, with worldwide coverage <a href=\"https://app.uproc.io/#/tools/processor/get/country/by-phone\" target='_blank'>Info</a>"
+				},
+				"getCountryCodeByName": {
+					"displayName": "Get Country Code By Name",
+					"description": "Get Alpha2 code by country prefix or name <a href=\"https://app.uproc.io/#/tools/processor/get/country/code-by-name\" target='_blank'>Info</a>"
+				},
+				"getCoordinateDecimal": {
+					"displayName": "Get Decimal Coordinates",
+					"description": "Get Decimal coordinates (degrees, minutes and seconds) by latitude and longitude <a href=\"https://app.uproc.io/#/tools/processor/get/coordinate/decimal\" target='_blank'>Info</a>"
+				},
+				"getDistanceByAddresses": {
+					"displayName": "Get Distance Between Addresses",
+					"description": "Returns straight-line distance in kilometers between two addresses <a href=\"https://app.uproc.io/#/tools/processor/get/distance/by-addresses\" target='_blank'>Info</a>"
+				},
+				"getDistanceByCoordinates": {
+					"displayName": "Get Distance Between Coordinates",
+					"description": "Returns straight-line distance in kilometers between two GPS coordinates (latitude and longitude) <a href=\"https://app.uproc.io/#/tools/processor/get/distance/by-coordinates\" target='_blank'>Info</a>"
+				},
+				"getDistanceByIps": {
+					"displayName": "Get Distance Between IPs",
+					"description": "Returns straight-line distance in kilometers between two IP addresses <a href=\"https://app.uproc.io/#/tools/processor/get/distance/by-ips\" target='_blank'>Info</a>"
+				},
+				"getDistanceByPhones": {
+					"displayName": "Get Distance Between Phones",
+					"description": "Returns straight-line distance in kilometers between two landline phones, using city and province of every phone <a href=\"https://app.uproc.io/#/tools/processor/get/distance/by-phones\" target='_blank'>Info</a>"
+				},
+				"getDistanceByZipcodes": {
+					"displayName": "Get Distance Between Zipcodes",
+					"description": "Returns straight-line distance in kilometers between two zipcodes, using city and province of every zipcode <a href=\"https://app.uproc.io/#/tools/processor/get/distance/by-zipcodes\" target='_blank'>Info</a>"
+				},
+				"getAddressBySearch": {
+					"displayName": "Get Exact Address By Search",
+					"description": "Get an exact address (street name, number, city, zipcode, province, region, country, latitude and longitude) by a partial address search <a href=\"https://app.uproc.io/#/tools/processor/get/address/by-search\" target='_blank'>Info</a>"
+				},
+				"getLocationExtendedByIp": {
+					"displayName": "Get Extended Location By IP",
+					"description": "Discover geographical, company, timezone and reputation data by IPv4 address <a href=\"https://app.uproc.io/#/tools/processor/get/location/extended-by-ip\" target='_blank'>Info</a>"
+				},
+				"getLocationGeocodedByIp": {
+					"displayName": "Get Geocoded Location By IP",
+					"description": "Discover the city name, zipcode, province, country, latitude and longitude from an ipv4 or ipv6 address and geocodes it <a href=\"https://app.uproc.io/#/tools/processor/get/location/geocoded-by-ip\" target='_blank'>Info</a>"
+				},
+				"getAddressSplittedBest": {
+					"displayName": "Get Improved Parsed Address",
+					"description": "Parse postal address into separated fields, getting an improved resolution <a href=\"https://app.uproc.io/#/tools/processor/get/address/splitted-best\" target='_blank'>Info</a>"
+				},
+				"getLocaleByIp": {
+					"displayName": "Get Locale Data By IP",
+					"description": "Discover locale data (currency, language) by ipv4 or ipv6 address. <a href=\"https://app.uproc.io/#/tools/processor/get/locale/by-ip\" target='_blank'>Info</a>"
+				},
+				"getLocationByCoordinates": {
+					"displayName": "Get Location By Coordinates",
+					"description": "Discover the city name, zipcode, province or country by latitude and longitude <a href=\"https://app.uproc.io/#/tools/processor/get/location/by-coordinates\" target='_blank'>Info</a>"
+				},
+				"getLocationByIp": {
+					"displayName": "Get Location By IP",
+					"description": "Discover the city name, zipcode, province, country, latitude and longitude from an ipv4 or ipv6 address <a href=\"https://app.uproc.io/#/tools/processor/get/location/by-ip\" target='_blank'>Info</a>"
+				},
+				"getLocationByPhone": {
+					"displayName": "Get Location By Landline Phone (ES)",
+					"description": "Discover the city and the province from a landline phone number (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/location/by-phone\" target='_blank'>Info</a>"
+				},
+				"getLocationByName": {
+					"displayName": "Get Location By Name",
+					"description": "Discover location data by name <a href=\"https://app.uproc.io/#/tools/processor/get/location/by-name\" target='_blank'>Info</a>"
+				},
+				"getLocationByParams": {
+					"displayName": "Get Location By Parameters",
+					"description": "Get the most nearer locations by name, category, location and radius <a href=\"https://app.uproc.io/#/tools/processor/get/location/by-params\" target='_blank'>Info</a>"
+				},
+				"getLocationByZipcode": {
+					"displayName": "Get Location By Zipcode (ES)",
+					"description": "Discover the city and the province from a zipcode number (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/location/by-zipcode\" target='_blank'>Info</a>"
+				},
+				"getLocationListByName": {
+					"displayName": "Get Locations By Name",
+					"description": "Get most relevants locations by name (Google Maps typical search) <a href=\"https://app.uproc.io/#/tools/processor/get/location/list-by-name\" target='_blank'>Info</a>"
+				},
+				"getLocationListByParams": {
+					"displayName": "Get Locations By Parameters",
+					"description": "Get most relevants locations by name, category, location and radius <a href=\"https://app.uproc.io/#/tools/processor/get/location/list-by-params\" target='_blank'>Info</a>"
+				},
+				"getNameListByPrefix": {
+					"displayName": "Get Names By Prefix",
+					"description": "Get multiple personal names by prefix <a href=\"https://app.uproc.io/#/tools/processor/get/name/list-by-prefix\" target='_blank'>Info</a>"
+				},
+				"getNetByIp": {
+					"displayName": "Get Network By IP",
+					"description": "Discover network data by ipv4 or ipv6 address <a href=\"https://app.uproc.io/#/tools/processor/get/net/by-ip\" target='_blank'>Info</a>"
+				},
+				"getAddressNormalized": {
+					"displayName": "Get Normalized Address",
+					"description": "Allow to normalize an address, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/address/normalized\" target='_blank'>Info</a>"
+				},
+				"getCityNormalized": {
+					"displayName": "Get Normalized City",
+					"description": "Allow to normalize a city, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/city/normalized\" target='_blank'>Info</a>"
+				},
+				"getCountryNormalized": {
+					"displayName": "Get Normalized Country",
+					"description": "Allows to normalize a country name, detecting ISO codes (two or three characters) or a misspelled country name, and converting it to the selected language (english by default) <a href=\"https://app.uproc.io/#/tools/processor/get/country/normalized\" target='_blank'>Info</a>"
+				},
+				"getProvinceNormalized": {
+					"displayName": "Get Normalized Province",
+					"description": "Allow to normalize a province, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/province/normalized\" target='_blank'>Info</a>"
+				},
+				"getZipcodeNormalized": {
+					"displayName": "Get Normalized Zipcode",
+					"description": "Allow to normalize a zipcode, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/zipcode/normalized\" target='_blank'>Info</a>"
+				},
+				"getAddressSplitted": {
+					"displayName": "Get Parsed Address",
+					"description": "Parse postal address into separated fields, getting a basic resolution <a href=\"https://app.uproc.io/#/tools/processor/get/address/splitted\" target='_blank'>Info</a>"
+				},
+				"getProvinceByIp": {
+					"displayName": "Get Province By IP",
+					"description": "Discover the province name from an IP address <a href=\"https://app.uproc.io/#/tools/processor/get/province/by-ip\" target='_blank'>Info</a>"
+				},
+				"getProvinceByName": {
+					"displayName": "Get Province By Name (ES)",
+					"description": "You can get the first province by a name prefix (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/province/by-name\" target='_blank'>Info</a>"
+				},
+				"getProvinceByPhone": {
+					"displayName": "Get Province By Phone (ES)",
+					"description": "Discover the province name from a landline phone number (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/province/by-phone\" target='_blank'>Info</a>"
+				},
+				"getProvinceByZipcode": {
+					"displayName": "Get Province By Zipcode (ES)",
+					"description": "Discover the province name from a zipcode number (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/province/by-zipcode\" target='_blank'>Info</a>"
+				},
+				"getProvinceListByName": {
+					"displayName": "Get Provinces By Name (ES)",
+					"description": "You can get a province list by a name prefix (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/province/list-by-name\" target='_blank'>Info</a>"
+				},
+				"getProvinceListByPhone": {
+					"displayName": "Get Provinces By Phone (ES)",
+					"description": "You can get a province list by a phone prefix (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/province/list-by-phone\" target='_blank'>Info</a>"
+				},
+				"getProvinceListByZipcode": {
+					"displayName": "Get Provinces By Zipcode (ES)",
+					"description": "You can get a province list by a zipcode prefix, only for Spain <a href=\"https://app.uproc.io/#/tools/processor/get/province/list-by-zipcode\" target='_blank'>Info</a>"
+				},
+				"getReputationByIp": {
+					"displayName": "Get Reputation By IP",
+					"description": "Discover reputation by ipv4 or ipv6 address <a href=\"https://app.uproc.io/#/tools/processor/get/reputation/by-ip\" target='_blank'>Info</a>"
+				},
+				"getRouteByAddresses": {
+					"displayName": "Get Route Between Addresses",
+					"description": "Returns driving routing time, distance, fuel consumption and cost between two addresses <a href=\"https://app.uproc.io/#/tools/processor/get/route/by-addresses\" target='_blank'>Info</a>"
+				},
+				"getRouteByCoordinates": {
+					"displayName": "Get Route Between Coordinates",
+					"description": "Returns driving routing time, distance, fuel consumption and cost between two GPS coordinates (latitude and longitude) <a href=\"https://app.uproc.io/#/tools/processor/get/route/by-coordinates\" target='_blank'>Info</a>"
+				},
+				"getRouteByIps": {
+					"displayName": "Get Route Between IPs",
+					"description": "Returns driving routing time, distance, fuel consumption and cost between two IP addresses <a href=\"https://app.uproc.io/#/tools/processor/get/route/by-ips\" target='_blank'>Info</a>"
+				},
+				"getRouteByPhones": {
+					"displayName": "Get Route Between Phones",
+					"description": "Returns driving routing time, distance, fuel consumption and cost between two landline phones, using city and province of every phone (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/route/by-phones\" target='_blank'>Info</a>"
+				},
+				"getRouteByZipcodes": {
+					"displayName": "Get Route Between Zipcodes",
+					"description": "Returns driving routing time, distance, fuel consumption and cost between two zipcodes, using city and province of every zipcode <a href=\"https://app.uproc.io/#/tools/processor/get/route/by-zipcodes\" target='_blank'>Info</a>"
+				},
+				"getTimeByCoordinates": {
+					"displayName": "Get Time Data By Coordinates",
+					"description": "Discover datetime data by coordinates (latitude and longitude) <a href=\"https://app.uproc.io/#/tools/processor/get/time/by-coordinates\" target='_blank'>Info</a>"
+				},
+				"getTimeByIp": {
+					"displayName": "Get Time Data By IP",
+					"description": "Discover datetime data by the IPv4 or the IPv6 address <a href=\"https://app.uproc.io/#/tools/processor/get/time/by-ip\" target='_blank'>Info</a>"
+				},
+				"getTimeByAddress": {
+					"displayName": "Get Time Data By Postal Address",
+					"description": "Discover DateTime data by the postal address <a href=\"https://app.uproc.io/#/tools/processor/get/time/by-address\" target='_blank'>Info</a>"
+				},
+				"getCoordinateUsng": {
+					"displayName": "Get USNG Coordinates",
+					"description": "Get USNG coordinates by latitude and longitude <a href=\"https://app.uproc.io/#/tools/processor/get/coordinate/usng\" target='_blank'>Info</a>"
+				},
+				"getCoordinateUtm": {
+					"displayName": "Get UTM Coordinates",
+					"description": "Get UTM coordinates by latitude and longitude <a href=\"https://app.uproc.io/#/tools/processor/get/coordinate/utm\" target='_blank'>Info</a>"
+				},
+				"getZipcodeByIp": {
+					"displayName": "Get Zipcode By IP",
+					"description": "Discover the zipcode if you have an IP address <a href=\"https://app.uproc.io/#/tools/processor/get/zipcode/by-ip\" target='_blank'>Info</a>"
+				},
+				"getZipcodeByPrefix": {
+					"displayName": "Get Zipcode By Prefix (ES)",
+					"description": "Get first zipcode by prefix, only for Spain <a href=\"https://app.uproc.io/#/tools/processor/get/zipcode/by-prefix\" target='_blank'>Info</a>"
+				},
+				"getZipcodeListByPrefix": {
+					"displayName": "Get Zipcodes By Prefix (ES)",
+					"description": "Get multiple zipcodes by prefix, with worldwide coverage <a href=\"https://app.uproc.io/#/tools/processor/get/zipcode/list-by-prefix\" target='_blank'>Info</a>"
+				},
+				"getQrDecoded": {
+					"displayName": "Get Decoded QR Code",
+					"description": "Get QR Code decoded content by an image URL <a href=\"https://app.uproc.io/#/tools/processor/get/qr/decoded\" target='_blank'>Info</a>"
+				},
+				"getImageExif": {
+					"displayName": "Get EXIF Metadata From Image",
+					"description": "It allows to discover all geograhical and technical EXIF metadata present in a photographic JPEG image. <a href=\"https://app.uproc.io/#/tools/processor/get/image/exif\" target='_blank'>Info</a>"
+				},
+				"getBarcodeEncoded": {
+					"displayName": "Get Encoded Barcode",
+					"description": "Get an encoded barcode by number and required standard <a href=\"https://app.uproc.io/#/tools/processor/get/barcode/encoded\" target='_blank'>Info</a>"
+				},
+				"getQrEncoded": {
+					"displayName": "Get Encoded QR Code",
+					"description": "Get QR Code encoded by a text <a href=\"https://app.uproc.io/#/tools/processor/get/qr/encoded\" target='_blank'>Info</a>"
+				},
+				"getImageWithText": {
+					"displayName": "Get Image With Text",
+					"description": "Generate a new image by URL and text <a href=\"https://app.uproc.io/#/tools/processor/get/image/with-text\" target='_blank'>Info</a>"
+				},
+				"getDomainLogo": {
+					"displayName": "Get Logo By Domain",
+					"description": "Discover logo (favicon) used in domain <a href=\"https://app.uproc.io/#/tools/processor/get/domain/logo\" target='_blank'>Info</a>"
+				},
+				"getImageOcr": {
+					"displayName": "Get OCR Text From Image",
+					"description": "Extracts OCR text from an image <a href=\"https://app.uproc.io/#/tools/processor/get/image/ocr\" target='_blank'>Info</a>"
+				},
+				"getUrlScreenshot": {
+					"displayName": "Get Screenshot By URL",
+					"description": "Generate a screenshot by URL provided using Chrome browser <a href=\"https://app.uproc.io/#/tools/processor/get/url/screenshot\" target='_blank'>Info</a>"
+				},
+				"checkDomainExist": {
+					"displayName": "Check Domain Exists",
+					"description": "Check if domain exists <a href=\"https://app.uproc.io/#/tools/processor/check/domain/exist\" target='_blank'>Info</a>"
+				},
+				"checkDomainRecord": {
+					"displayName": "Check Domain Has DNS Record",
+					"description": "Check if domain has a record of that type <a href=\"https://app.uproc.io/#/tools/processor/check/domain/record\" target='_blank'>Info</a>"
+				},
+				"checkDomainReverse": {
+					"displayName": "Check Domain Has IP",
+					"description": "Check if domain has assigned the IP address defined <a href=\"https://app.uproc.io/#/tools/processor/check/domain/reverse\" target='_blank'>Info</a>"
+				},
+				"checkDomainMx": {
+					"displayName": "Check Domain Has MX Record",
+					"description": "Check if domain has a MX record <a href=\"https://app.uproc.io/#/tools/processor/check/domain/mx\" target='_blank'>Info</a>"
+				},
+				"checkDomainCertificate": {
+					"displayName": "Check Domain Has Valid Certificate",
+					"description": "Check if domain has a valid SSL certificate <a href=\"https://app.uproc.io/#/tools/processor/check/domain/certificate\" target='_blank'>Info</a>"
+				},
+				"checkDomainFormat": {
+					"displayName": "Check Domain Has Valid Format",
+					"description": "Check if domain has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/domain/format\" target='_blank'>Info</a>"
+				},
+				"checkNetHostAlive": {
+					"displayName": "Check Host Is Up",
+					"description": "Discover if a computer is switched on <a href=\"https://app.uproc.io/#/tools/processor/check/net/host-alive\" target='_blank'>Info</a>"
+				},
+				"checkNetServiceUp": {
+					"displayName": "Check Service Is Up",
+					"description": "Discover if a service in a port is available <a href=\"https://app.uproc.io/#/tools/processor/check/net/service-up\" target='_blank'>Info</a>"
+				},
+				"checkUrlContains": {
+					"displayName": "Check URL Contains",
+					"description": "Check if an URL contains string or regular expression (case insensitive) <a href=\"https://app.uproc.io/#/tools/processor/check/url/contains\" target='_blank'>Info</a>"
+				},
+				"checkUrlExist": {
+					"displayName": "Check URL Exists",
+					"description": "Check if an URL exists <a href=\"https://app.uproc.io/#/tools/processor/check/url/exist\" target='_blank'>Info</a>"
+				},
+				"checkUrlValid": {
+					"displayName": "Check URL Is Valid",
+					"description": "Check that an URL has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/url/valid\" target='_blank'>Info</a>"
+				},
+				"getDomainCertificate": {
+					"displayName": "Get Certificate By Domain",
+					"description": "Get full SSL certificate data by domain (or website) and monitor your certificate status.<br><br>If domain has port 443 opened, a response will be returned. <a href=\"https://app.uproc.io/#/tools/processor/get/domain/certificate\" target='_blank'>Info</a>"
+				},
+				"getUrlContents": {
+					"displayName": "Get Contents From URL",
+					"description": "Get text data from web, pdf or image (png, jpg, gif), allowing to filter some elements by regular expressions or field names (email, phone, zipcode).<br><br>Learn about regular expressions on [Wikipedia](https://en.wikipedia.org/wiki/Regular_expression) <a href=\"https://app.uproc.io/#/tools/processor/get/url/contents\" target='_blank'>Info</a>"
+				},
+				"getUrlDecode": {
+					"displayName": "Get Decoded URL",
+					"description": "Decode URL to recover original <a href=\"https://app.uproc.io/#/tools/processor/get/url/decode\" target='_blank'>Info</a>"
+				},
+				"getUrlByDomain": {
+					"displayName": "Get Default URL By Domain",
+					"description": "Get valid, existing and default URL when accessing a domain using a web browser. <a href=\"https://app.uproc.io/#/tools/processor/get/url/by-domain\" target='_blank'>Info</a>"
+				},
+				"getDeviceByUa": {
+					"displayName": "Get Device By User Agent",
+					"description": "Discover device features by user agent <a href=\"https://app.uproc.io/#/tools/processor/get/device/by-ua\" target='_blank'>Info</a>"
+				},
+				"getDomainByIp": {
+					"displayName": "Get Domain By IP",
+					"description": "Get the domain name related with the IP address <a href=\"https://app.uproc.io/#/tools/processor/get/domain/by-ip\" target='_blank'>Info</a>"
+				},
+				"getDomainRecords": {
+					"displayName": "Get Domain DNS Records",
+					"description": "Get all domain dns records <a href=\"https://app.uproc.io/#/tools/processor/get/domain/records\" target='_blank'>Info</a>"
+				},
+				"getDomainRecord": {
+					"displayName": "Get Domain Record By DNS Type",
+					"description": "Get the domain record by its type <a href=\"https://app.uproc.io/#/tools/processor/get/domain/record\" target='_blank'>Info</a>"
+				},
+				"getUrlEncode": {
+					"displayName": "Get Encoded URL",
+					"description": "Encode URL to avoid problems <a href=\"https://app.uproc.io/#/tools/processor/get/url/encode\" target='_blank'>Info</a>"
+				},
+				"getFeedEntriesByDomain": {
+					"displayName": "Get Feed Entries By Domain",
+					"description": "Get Feed entries of a domain <a href=\"https://app.uproc.io/#/tools/processor/get/feed/entries-by-domain\" target='_blank'>Info</a>"
+				},
+				"getFileCopiedBetweenUrls": {
+					"displayName": "Get File Copied Between URLs",
+					"description": "Copy file from one URL to another URL <a href=\"https://app.uproc.io/#/tools/processor/get/file/copied-between-urls\" target='_blank'>Info</a>"
+				},
+				"getNetFixip": {
+					"displayName": "Get Fixed IP",
+					"description": "Fix an IP address to the right format <a href=\"https://app.uproc.io/#/tools/processor/get/net/fixip\" target='_blank'>Info</a>"
+				},
+				"getDomainReverseIp": {
+					"displayName": "Get IP By Domain",
+					"description": "Get the IPv4 address linked with a domain <a href=\"https://app.uproc.io/#/tools/processor/get/domain/reverse-ip\" target='_blank'>Info</a>"
+				},
+				"getNetNtoa": {
+					"displayName": "Get IP By Number",
+					"description": "Convert a number to an IP address <a href=\"https://app.uproc.io/#/tools/processor/get/net/ntoa\" target='_blank'>Info</a>"
+				},
+				"getDomainIsp": {
+					"displayName": "Get ISP By Domain",
+					"description": "Get ISP known name of email domain name (hotmail, yahoo, gmail, mailgun, zoho, other) <a href=\"https://app.uproc.io/#/tools/processor/get/domain/isp\" target='_blank'>Info</a>"
+				},
+				"getFeedLastEntryByDomain": {
+					"displayName": "Get Last Feed Entry By Domain",
+					"description": "Get the most recent feed entry of a domain <a href=\"https://app.uproc.io/#/tools/processor/get/feed/last-entry-by-domain\" target='_blank'>Info</a>"
+				},
+				"getUrlUnshortened": {
+					"displayName": "Get Long Version Of Shortened URL",
+					"description": "Discover the URL behind a shortened URL (bit.ly, linked.in, rb.gy, and similars), or the first redirection of any existing URL <a href=\"https://app.uproc.io/#/tools/processor/get/url/unshortened\" target='_blank'>Info</a>"
+				},
+				"getNetAton": {
+					"displayName": "Get Number By IP",
+					"description": "Convert an IP address to numeric notation <a href=\"https://app.uproc.io/#/tools/processor/get/net/aton\" target='_blank'>Info</a>"
+				},
+				"getNetScan": {
+					"displayName": "Get Opened Ports In Host",
+					"description": "Scan a host and returns most common open ports: 21, 22, 23, 25, 53, 80, 110, 143, 443, 3306, 27017 <a href=\"https://app.uproc.io/#/tools/processor/get/net/scan\" target='_blank'>Info</a>"
+				},
+				"getUrlListContentsParsed": {
+					"displayName": "Get Parsed Contents From Results URL",
+					"description": "Obtains a list with multiple results from a website in a structured way in JSON format to be able to save it wherever you want <a href=\"https://app.uproc.io/#/tools/processor/get/url/list-contents-parsed\" target='_blank'>Info</a>"
+				},
+				"getUrlContentsParsed": {
+					"displayName": "Get Parsed Contents From URL",
+					"description": "Obtains the content of a web in a structured way in JSON format to be able to save it wherever you want <a href=\"https://app.uproc.io/#/tools/processor/get/url/contents-parsed\" target='_blank'>Info</a>"
+				},
+				"getUrlParsed": {
+					"displayName": "Get Parsed URL",
+					"description": "Decode URL into multiple fields <a href=\"https://app.uproc.io/#/tools/processor/get/url/parsed\" target='_blank'>Info</a>"
+				},
+				"getUrlPdf": {
+					"displayName": "Get Pdf By URL",
+					"description": "Generate a PDF file by URL provided using Chrome browser <a href=\"https://app.uproc.io/#/tools/processor/get/url/pdf\" target='_blank'>Info</a>"
+				},
+				"getDomainByUrl": {
+					"displayName": "Get Root Domain By Web Address",
+					"description": "Get root domain of any web address, removing non needed characters. <a href=\"https://app.uproc.io/#/tools/processor/get/domain/by-url\" target='_blank'>Info</a>"
+				},
+				"getUrlShareableLinks": {
+					"displayName": "Get Shareable Links",
+					"description": "Generates shareable URIs to use on social networks and email using a content URI and a text. <a href=\"https://app.uproc.io/#/tools/processor/get/url/shareable-links\" target='_blank'>Info</a>"
+				},
+				"getUrlTables": {
+					"displayName": "Get Table From URL",
+					"description": "Get data from existing table in  HTML page (by table number) or in a PDF file (by table column number) in CSV format (columns delimited by ;) <a href=\"https://app.uproc.io/#/tools/processor/get/url/tables\" target='_blank'>Info</a>"
+				},
+				"getDomainTechnologies": {
+					"displayName": "Get Technologies By Domain",
+					"description": "Discover client and server technologies used in domain <a href=\"https://app.uproc.io/#/tools/processor/get/domain/technologies\" target='_blank'>Info</a>"
+				},
+				"getUrlTechnologies": {
+					"displayName": "Get Technologies By URL",
+					"description": "Discover client and server technologies used in web page <a href=\"https://app.uproc.io/#/tools/processor/get/url/technologies\" target='_blank'>Info</a>"
+				},
+				"getUrlAnalysis": {
+					"displayName": "Get URL Analysis",
+					"description": "Analyze URL's health status about SSL, broken links, conflictive HTTP links with SSL, and more. <a href=\"https://app.uproc.io/#/tools/processor/get/url/analysis\" target='_blank'>Info</a>"
+				},
+				"getDomainVisits": {
+					"displayName": "Get Visits By Domain",
+					"description": "Get Website visits and rank of any domain <a href=\"https://app.uproc.io/#/tools/processor/get/domain/visits\" target='_blank'>Info</a>"
+				},
+				"getDomainWhois": {
+					"displayName": "Get Whois By Domain",
+					"description": "Get the domain whois data by fields <a href=\"https://app.uproc.io/#/tools/processor/get/domain/whois\" target='_blank'>Info</a>"
+				},
+				"getIpWhois": {
+					"displayName": "Get Whois By IP Address",
+					"description": "Get whois data fields by IP address provided. <a href=\"https://app.uproc.io/#/tools/processor/get/ip/whois\" target='_blank'>Info</a>"
+				},
+				"checkAgeBetw": {
+					"displayName": "Check Age Between",
+					"description": "Check if age is between two numbers <a href=\"https://app.uproc.io/#/tools/processor/check/age/betw\" target='_blank'>Info</a>"
+				},
+				"checkAgeIsTwenties": {
+					"displayName": "Check Age Is Between 20 And 29 Years",
+					"description": "Check if date returns an age between 20 and 29 years old <a href=\"https://app.uproc.io/#/tools/processor/check/age/is-twenties\" target='_blank'>Info</a>"
+				},
+				"checkAgeIsForties": {
+					"displayName": "Check Age Is Between 40 And 49 Years",
+					"description": "Check if date returns an age between 40 and 49 years old <a href=\"https://app.uproc.io/#/tools/processor/check/age/is-forties\" target='_blank'>Info</a>"
+				},
+				"checkAgeGt": {
+					"displayName": "Check Age Is Greater",
+					"description": "Check if age is greater than another <a href=\"https://app.uproc.io/#/tools/processor/check/age/gt\" target='_blank'>Info</a>"
+				},
+				"checkAgeGe": {
+					"displayName": "Check Age Is Greater Or Equal",
+					"description": "Check if age is greater or equal than another <a href=\"https://app.uproc.io/#/tools/processor/check/age/ge\" target='_blank'>Info</a>"
+				},
+				"checkAgeIsRetired": {
+					"displayName": "Check Age Is Greater Than 64 Years",
+					"description": "Check if birth date returns an age greater than 64 years old <a href=\"https://app.uproc.io/#/tools/processor/check/age/is-retired\" target='_blank'>Info</a>"
+				},
+				"checkAgeIsAdult": {
+					"displayName": "Check Age Is Greater Than Or Equal To 18 Years",
+					"description": "Check if birth date belongs to an adult: 18 years old (Spain) <a href=\"https://app.uproc.io/#/tools/processor/check/age/is-adult\" target='_blank'>Info</a>"
+				},
+				"checkAgeLt": {
+					"displayName": "Check Age Is Lower",
+					"description": "Chekc if age is lower than another <a href=\"https://app.uproc.io/#/tools/processor/check/age/lt\" target='_blank'>Info</a>"
+				},
+				"checkAgeLe": {
+					"displayName": "Check Age Is Lower Or Equal",
+					"description": "Check if age is lower or equal than another <a href=\"https://app.uproc.io/#/tools/processor/check/age/le\" target='_blank'>Info</a>"
+				},
+				"checkAgeEq": {
+					"displayName": "Check Ages Are Equal",
+					"description": "Check if ages are equal <a href=\"https://app.uproc.io/#/tools/processor/check/age/eq\" target='_blank'>Info</a>"
+				},
+				"checkDateBetw": {
+					"displayName": "Check Date Is Between Dates",
+					"description": "Discover if a date (date1) is betwen two dates (date2, date3) <a href=\"https://app.uproc.io/#/tools/processor/check/date/betw\" target='_blank'>Info</a>"
+				},
+				"checkDateGt": {
+					"displayName": "Check Date Is Greater",
+					"description": "Discover if a date is greater <a href=\"https://app.uproc.io/#/tools/processor/check/date/gt\" target='_blank'>Info</a>"
+				},
+				"checkDateGe": {
+					"displayName": "Check Date Is Greater Or Equal",
+					"description": "Discover if a date is greater or equal <a href=\"https://app.uproc.io/#/tools/processor/check/date/ge\" target='_blank'>Info</a>"
+				},
+				"checkDateLeap": {
+					"displayName": "Check Date Is Leap Year",
+					"description": "Discover if a date belongs to a leap year <a href=\"https://app.uproc.io/#/tools/processor/check/date/leap\" target='_blank'>Info</a>"
+				},
+				"checkDateLt": {
+					"displayName": "Check Date Is Lower",
+					"description": "Discover if a date is lower <a href=\"https://app.uproc.io/#/tools/processor/check/date/lt\" target='_blank'>Info</a>"
+				},
+				"checkDateLe": {
+					"displayName": "Check Date Is Lower Or Equal",
+					"description": "Discover if a date is lower or equal <a href=\"https://app.uproc.io/#/tools/processor/check/date/le\" target='_blank'>Info</a>"
+				},
+				"checkDateValid": {
+					"displayName": "Check Date Is Valid",
+					"description": "Discover if a date has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/date/valid\" target='_blank'>Info</a>"
+				},
+				"checkDateEq": {
+					"displayName": "Check Dates Are Equal",
+					"description": "Discover if two dates are equal <a href=\"https://app.uproc.io/#/tools/processor/check/date/eq\" target='_blank'>Info</a>"
+				},
+				"checkGenderValid": {
+					"displayName": "Check Gender Is Valid",
+					"description": "Discover if a gender value is valid (multilanguage) <a href=\"https://app.uproc.io/#/tools/processor/check/gender/valid\" target='_blank'>Info</a>"
+				},
+				"checkNieValid": {
+					"displayName": "Check NIE Is Valid (ES)",
+					"description": "Discover if a NIE card number is valid <a href=\"https://app.uproc.io/#/tools/processor/check/nie/valid\" target='_blank'>Info</a>"
+				},
+				"checkNifValid": {
+					"displayName": "Check NIF Is Valid (ES)",
+					"description": "Discover if a nif card number is valid <a href=\"https://app.uproc.io/#/tools/processor/check/nif/valid\" target='_blank'>Info</a>"
+				},
+				"checkNameExist": {
+					"displayName": "Check Name Exists (ES)",
+					"description": "Check if a personal name exists in INE data source (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/check/name/exist\" target='_blank'>Info</a>"
+				},
+				"checkNameValid": {
+					"displayName": "Check Name Has Valid Format",
+					"description": "Check if name contains accepted characters <a href=\"https://app.uproc.io/#/tools/processor/check/name/valid\" target='_blank'>Info</a>"
+				},
+				"checkRobinsonNifExist": {
+					"displayName": "Check Nif Number Is Robinson (ES)",
+					"description": "Discover if an nif exists in the Robinson list (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/check/robinson/nif-exist\" target='_blank'>Info</a>"
+				},
+				"checkSurnameValid": {
+					"displayName": "Check Surname Has Valid Format",
+					"description": "Check if surname contains accepted characters <a href=\"https://app.uproc.io/#/tools/processor/check/surname/valid\" target='_blank'>Info</a>"
+				},
+				"checkSurnameExist": {
+					"displayName": "Check Surname Is Valid (ES)",
+					"description": "Check if a personal surname appears in INE data source (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/check/surname/exist\" target='_blank'>Info</a>"
+				},
+				"checkDniValid": {
+					"displayName": "Check Valid Dni (ES)",
+					"description": "Discover if a dni card number is valid <a href=\"https://app.uproc.io/#/tools/processor/check/dni/valid\" target='_blank'>Info</a>"
+				},
+				"getAgeByDate": {
+					"displayName": "Get Age By Date",
+					"description": "Discover the age of a birth date (multiple formats allowed) <a href=\"https://app.uproc.io/#/tools/processor/get/age/by-date\" target='_blank'>Info</a>"
+				},
+				"getAgeRange": {
+					"displayName": "Get Age Range By Date",
+					"description": "Discover the age range of a person by birth date <a href=\"https://app.uproc.io/#/tools/processor/get/age/range\" target='_blank'>Info</a>"
+				},
+				"getDateDifference": {
+					"displayName": "Get Difference Between Dates",
+					"description": "Returns difference between two dates (start and end) in seconds, minutes, hours or days <a href=\"https://app.uproc.io/#/tools/processor/get/date/difference\" target='_blank'>Info</a>"
+				},
+				"getGenderByEmail": {
+					"displayName": "Get Gender By Email",
+					"description": "Discover the gender of a person by the email, if person name is included in email <a href=\"https://app.uproc.io/#/tools/processor/get/gender/by-email\" target='_blank'>Info</a>"
+				},
+				"getGenderByPersonalName": {
+					"displayName": "Get Gender By Name",
+					"description": "Discover the gender of a person or company by name <a href=\"https://app.uproc.io/#/tools/processor/get/gender/by-personal-name\" target='_blank'>Info</a>"
+				},
+				"getProfileLinkedinByEmail": {
+					"displayName": "Get LinkedIn URI By Email",
+					"description": "Get LinkedIn employee profile URI by <strong>business</strong> or <strong>personal</strong> email.<br><br>This tool uses search engines (Bing and Google) through proxies <a href=\"https://app.uproc.io/#/tools/processor/get/profile/linkedin-by-email\" target='_blank'>Info</a>"
+				},
+				"getProfileByEmployeeData": {
+					"displayName": "Get LinkedIn URI By First, Last And Company",
+					"description": "Get LinkedIn employee profile URI by firstname, lastname and company without manual search on Google or LinkedIn.<br><br>This tool uses search engines (Bing and Google) through proxies <a href=\"https://app.uproc.io/#/tools/processor/get/profile/by-employee-data\" target='_blank'>Info</a>"
+				},
+				"getProfileLinkedinByPhone": {
+					"displayName": "Get LinkedIn URI By Phone",
+					"description": "Get LinkedIn employee profile URI by <strong>landline</strong> or <strong>mobile</strong> phone.<br><br>This tool uses search engines (Bing and Google) through proxies <a href=\"https://app.uproc.io/#/tools/processor/get/profile/linkedin-by-phone\" target='_blank'>Info</a>"
+				},
+				"getNifByDni": {
+					"displayName": "Get NIF By DNI (ES)",
+					"description": "Discover the letter of a dni card number <a href=\"https://app.uproc.io/#/tools/processor/get/nif/by-dni\" target='_blank'>Info</a>"
+				},
+				"getNameByPrefix": {
+					"displayName": "Get Name By Prefix (ES)",
+					"description": "Get first personal name matching by prefix and gender from INE data source (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/name/by-prefix\" target='_blank'>Info</a>"
+				},
+				"getDniNormalized": {
+					"displayName": "Get Normalized DNI (ES)",
+					"description": "Allow to normalize a DNI number, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/dni/normalized\" target='_blank'>Info</a>"
+				},
+				"getDateNormalized": {
+					"displayName": "Get Normalized Date",
+					"description": "Allow to normalize a date, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/date/normalized\" target='_blank'>Info</a>"
+				},
+				"getNieNormalized": {
+					"displayName": "Get Normalized NIE (ES)",
+					"description": "Allow to normalize a NIE number, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/nie/normalized\" target='_blank'>Info</a>"
+				},
+				"getNifNormalized": {
+					"displayName": "Get Normalized NIF (ES)",
+					"description": "Allow to normalize a NIF number, removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/nif/normalized\" target='_blank'>Info</a>"
+				},
+				"getNameNormalized": {
+					"displayName": "Get Normalized Name",
+					"description": "Normalize name removing non allowed characters <a href=\"https://app.uproc.io/#/tools/processor/get/name/normalized\" target='_blank'>Info</a>"
+				},
+				"getSurnameNormalized": {
+					"displayName": "Get Normalized Surname",
+					"description": "Normalize surname <a href=\"https://app.uproc.io/#/tools/processor/get/surname/normalized\" target='_blank'>Info</a>"
+				},
+				"getDateParsed": {
+					"displayName": "Get Parsed Datetime",
+					"description": "Parse datetime, without format dependency, into multiple fields <a href=\"https://app.uproc.io/#/tools/processor/get/date/parsed\" target='_blank'>Info</a>"
+				},
+				"getFullnameParsed": {
+					"displayName": "Get Parsed Fullname",
+					"description": "Normalize fullname, fixing abbreviations, sorting if necessary and returning firstname, lastname and gender <a href=\"https://app.uproc.io/#/tools/processor/get/fullname/parsed\" target='_blank'>Info</a>"
+				},
+				"getPersonExtendedByEmail": {
+					"displayName": "Get Person (Extended) By Email",
+					"description": "Get prospect's contact data and company's location and social data by email <a href=\"https://app.uproc.io/#/tools/processor/get/person/extended-by-email\" target='_blank'>Info</a>"
+				},
+				"getPersonExtendedByEmailAndCompany": {
+					"displayName": "Get Person (Extended) By Email And Company",
+					"description": "Get contact, location and social data by email and company name and location <a href=\"https://app.uproc.io/#/tools/processor/get/person/extended-by-email-and-company\" target='_blank'>Info</a>"
+				},
+				"getPersonExtendedByProfile": {
+					"displayName": "Get Person (Extended) By Profile",
+					"description": "Get personal and social data by social profile <a href=\"https://app.uproc.io/#/tools/processor/get/person/extended-by-profile\" target='_blank'>Info</a>"
+				},
+				"getPersonByEmail": {
+					"displayName": "Get Person By Email",
+					"description": "Get personal data by email <a href=\"https://app.uproc.io/#/tools/processor/get/person/by-email\" target='_blank'>Info</a>"
+				},
+				"getPersonByFirstnameLastnameCompanyLocation": {
+					"displayName": "Get Person By Firstname, Lastname, Company And Location",
+					"description": "Get personal data by firstname, lastname, company and location <a href=\"https://app.uproc.io/#/tools/processor/get/person/by-firstname-lastname-company-location\" target='_blank'>Info</a>"
+				},
+				"getPersonByMobile": {
+					"displayName": "Get Person By Mobile",
+					"description": "Get personal data by mobile <a href=\"https://app.uproc.io/#/tools/processor/get/person/by-mobile\" target='_blank'>Info</a>"
+				},
+				"getPersonByProfile": {
+					"displayName": "Get Person By Social Profile",
+					"description": "Get personal data by social network profile <a href=\"https://app.uproc.io/#/tools/processor/get/person/by-profile\" target='_blank'>Info</a>"
+				},
+				"getPersonFakedData": {
+					"displayName": "Get Random Person Data",
+					"description": "Generates random fake data <a href=\"https://app.uproc.io/#/tools/processor/get/person/faked-data\" target='_blank'>Info</a>"
+				},
+				"getSurnameByPrefix": {
+					"displayName": "Get Surname By Prefix (ES)",
+					"description": "Get first personal surname matching by prefix from INE data source (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/surname/by-prefix\" target='_blank'>Info</a>"
+				},
+				"getSurnameListByPrefix": {
+					"displayName": "Get Surnames By Prefix (ES)",
+					"description": "Get personal surnames matching by prefix from INE data source (only Spain) <a href=\"https://app.uproc.io/#/tools/processor/get/surname/list-by-prefix\" target='_blank'>Info</a>"
+				},
+				"getProfileXingByEmployeeData": {
+					"displayName": "Get Xing URI By First, Last And Company",
+					"description": "Get Xing profile by firstname, lastname and company without manual search on Google or Xing.<br><br>This tool uses search engines (Bing and Google) through proxies <a href=\"https://app.uproc.io/#/tools/processor/get/profile/xing-by-employee-data\" target='_blank'>Info</a>"
+				},
+				"sendPersonEmailToList": {
+					"displayName": "Send Email's Contact To List",
+					"description": "Add a contact email to a person list <a href=\"https://app.uproc.io/#/tools/processor/send/person/email-to-list\" target='_blank'>Info</a>"
+				},
+				"sendPersonProfileToList": {
+					"displayName": "Send LinkedIn's Contact To List",
+					"description": "Add a contact LinkedIn profile to a person list <a href=\"https://app.uproc.io/#/tools/processor/send/person/profile-to-list\" target='_blank'>Info</a>"
+				},
+				"checkAsinExist": {
+					"displayName": "Check ASIN Exists",
+					"description": "Check if a ASIN code exists on Amazon marketplace <a href=\"https://app.uproc.io/#/tools/processor/check/asin/exist\" target='_blank'>Info</a>"
+				},
+				"checkAsinValid": {
+					"displayName": "Check ASIN Valid",
+					"description": "Check if a ASIN code has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/asin/valid\" target='_blank'>Info</a>"
+				},
+				"checkEanExist": {
+					"displayName": "Check EAN Exists",
+					"description": "Check if a EAN code exists on Amazon Marketplace (.com supported) <a href=\"https://app.uproc.io/#/tools/processor/check/ean/exist\" target='_blank'>Info</a>"
+				},
+				"checkEanValid": {
+					"displayName": "Check EAN Is Valid",
+					"description": "Check if a EAN barcode (8 or 13 digits) has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/ean/valid\" target='_blank'>Info</a>"
+				},
+				"checkEan13Valid": {
+					"displayName": "Check EAN13 Is Valid",
+					"description": "Check if a EAN barcode of 13 digits has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/ean13/valid\" target='_blank'>Info</a>"
+				},
+				"checkEan14Valid": {
+					"displayName": "Check EAN14 Is Valid",
+					"description": "Check if a EAN barcode of 14 digits has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/ean14/valid\" target='_blank'>Info</a>"
+				},
+				"checkEan18Valid": {
+					"displayName": "Check EAN18 Is Valid",
+					"description": "Check if a EAN barcode of 18 digits has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/ean18/valid\" target='_blank'>Info</a>"
+				},
+				"checkEan8Valid": {
+					"displayName": "Check EAN8 Is Valid",
+					"description": "Check if a EAN barcode of 8 digits has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/ean8/valid\" target='_blank'>Info</a>"
+				},
+				"checkGtinValid": {
+					"displayName": "Check GTIN Is Valid",
+					"description": "Check if a GTIN barcode (8 or 13 digits) has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/gtin/valid\" target='_blank'>Info</a>"
+				},
+				"checkGtin13Valid": {
+					"displayName": "Check GTIN13 Is Valid",
+					"description": "Check if a GTIN barcode of 13 digits has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/gtin13/valid\" target='_blank'>Info</a>"
+				},
+				"checkGtin14Valid": {
+					"displayName": "Check GTIN14 Is Valid",
+					"description": "Check if a GTIN barcode of 14 digits has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/gtin14/valid\" target='_blank'>Info</a>"
+				},
+				"checkGtin8Valid": {
+					"displayName": "Check GTIN8 Is Valid",
+					"description": "Check if a GTIN barcode of 8 digits has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/gtin8/valid\" target='_blank'>Info</a>"
+				},
+				"checkBookIsbnExist": {
+					"displayName": "Check ISBN Code Exists",
+					"description": "Allow to check if an ISBN book exist <a href=\"https://app.uproc.io/#/tools/processor/check/book/isbn-exist\" target='_blank'>Info</a>"
+				},
+				"checkBookIsbn": {
+					"displayName": "Check ISBN Code Is Valid",
+					"description": "Allow to check if an ISBN10/13 code has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/book/isbn\" target='_blank'>Info</a>"
+				},
+				"checkBookIsbn10": {
+					"displayName": "Check ISBN10 Code Is Valid",
+					"description": "Allow to check if an ISBN10 code has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/book/isbn10\" target='_blank'>Info</a>"
+				},
+				"checkBookIsbn13": {
+					"displayName": "Check ISBN13 Code Is Valid",
+					"description": "Allow to check if an ISBN13 code has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/book/isbn13\" target='_blank'>Info</a>"
+				},
+				"checkUpcExist": {
+					"displayName": "Check UPC Exists",
+					"description": "Check if a UPC code exists <a href=\"https://app.uproc.io/#/tools/processor/check/upc/exist\" target='_blank'>Info</a>"
+				},
+				"checkUpcFormat": {
+					"displayName": "Check UPC Has Valid Format",
+					"description": "Check if a UPC code has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/upc/format\" target='_blank'>Info</a>"
+				},
+				"checkVinFormat": {
+					"displayName": "Check VIN Number Is Valid",
+					"description": "Check if VIN number has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/vin/format\" target='_blank'>Info</a>"
+				},
+				"getAsinByEan": {
+					"displayName": "Get ASIN By EAN",
+					"description": "Get ASIN code by EAN code querying Internet. <a href=\"https://app.uproc.io/#/tools/processor/get/asin/by-ean\" target='_blank'>Info</a>"
+				},
+				"getBookAuthorLookup": {
+					"displayName": "Get Book By Author",
+					"description": "Get book by author's surname <a href=\"https://app.uproc.io/#/tools/processor/get/book/author-lookup\" target='_blank'>Info</a>"
+				},
+				"getBookCategoryLookup": {
+					"displayName": "Get Book By Category",
+					"description": "Get all publications by category <a href=\"https://app.uproc.io/#/tools/processor/get/book/category-lookup\" target='_blank'>Info</a>"
+				},
+				"getBookPublisherLookup": {
+					"displayName": "Get Book By Editor",
+					"description": "Get book data by editor's name <a href=\"https://app.uproc.io/#/tools/processor/get/book/publisher-lookup\" target='_blank'>Info</a>"
+				},
+				"getBookIsbnLookup": {
+					"displayName": "Get Book By ISBN",
+					"description": "Get book or publication data by 10 or 13 digits ISBN code <a href=\"https://app.uproc.io/#/tools/processor/get/book/isbn-lookup\" target='_blank'>Info</a>"
+				},
+				"getBookTitleLookup": {
+					"displayName": "Get Book By Title",
+					"description": "Get book data by title <a href=\"https://app.uproc.io/#/tools/processor/get/book/title-lookup\" target='_blank'>Info</a>"
+				},
+				"getBookListAuthorLookup": {
+					"displayName": "Get Books By Author",
+					"description": "Get books by author's surname <a href=\"https://app.uproc.io/#/tools/processor/get/book/list-author-lookup\" target='_blank'>Info</a>"
+				},
+				"getBookListCategoryLookup": {
+					"displayName": "Get Books By Category",
+					"description": "Get all books by category <a href=\"https://app.uproc.io/#/tools/processor/get/book/list-category-lookup\" target='_blank'>Info</a>"
+				},
+				"getBookListPublisherLookup": {
+					"displayName": "Get Books By Editor",
+					"description": "Get all books by editor <a href=\"https://app.uproc.io/#/tools/processor/get/book/list-publisher-lookup\" target='_blank'>Info</a>"
+				},
+				"getBookListTitleLookup": {
+					"displayName": "Get Books By Title",
+					"description": "Get all books by title <a href=\"https://app.uproc.io/#/tools/processor/get/book/list-title-lookup\" target='_blank'>Info</a>"
+				},
+				"getVinLookup": {
+					"displayName": "Get Data By VIN Number",
+					"description": "Get related data by a VIN (Vehicle Identifier Number) <a href=\"https://app.uproc.io/#/tools/processor/get/vin/lookup\" target='_blank'>Info</a>"
+				},
+				"getEanByAsin": {
+					"displayName": "Get EAN By ASIN",
+					"description": "Get EAN code by ASIN code querying Internet. <a href=\"https://app.uproc.io/#/tools/processor/get/ean/by-asin\" target='_blank'>Info</a>"
+				},
+				"getBookIsbn13ToIsbn10": {
+					"displayName": "Get ISBN10 Code By ISBN13 Code",
+					"description": "Convert a valid ISBN code from 13 digits to 10 digits. <a href=\"https://app.uproc.io/#/tools/processor/get/book/isbn13-to-isbn10\" target='_blank'>Info</a>"
+				},
+				"getBookIsbn10ToIsbn13": {
+					"displayName": "Get ISBN13 Code By ISBN10 Code",
+					"description": "Convert a valid ISBN code from 10 digits to 13 digits. <a href=\"https://app.uproc.io/#/tools/processor/get/book/isbn10-to-isbn13\" target='_blank'>Info</a>"
+				},
+				"getUpcLookup": {
+					"displayName": "Get Product By UPC",
+					"description": "Get product data of an UPC code on Amazon Marketplace (.com supported) <a href=\"https://app.uproc.io/#/tools/processor/get/upc/lookup\" target='_blank'>Info</a>"
+				},
+				"checkNumberLuhn": {
+					"displayName": "Check Luhn Number Is Valid",
+					"description": "Check if it a valid Luhn number <a href=\"https://app.uproc.io/#/tools/processor/check/number/luhn\" target='_blank'>Info</a>"
+				},
+				"checkPasswordStrong": {
+					"displayName": "Check Password Is Strong",
+					"description": "Check is password is sure and contains a lowercase, uppercase, numbers, special characters and have a minimum length of four characters <a href=\"https://app.uproc.io/#/tools/processor/check/password/strong\" target='_blank'>Info</a>"
+				},
+				"checkNumberUuid": {
+					"displayName": "Check UUID Number Is Valid",
+					"description": "Check if it a valid UUID number <a href=\"https://app.uproc.io/#/tools/processor/check/number/uuid\" target='_blank'>Info</a>"
+				},
+				"getDomainBlacklists": {
+					"displayName": "Get Domain Blacklists",
+					"description": "Get all blacklists where a domain appears <a href=\"https://app.uproc.io/#/tools/processor/get/domain/blacklists\" target='_blank'>Info</a>"
+				},
+				"getIpBlacklists": {
+					"displayName": "Get Ip Blacklists",
+					"description": "Get all blacklists where an IP address appears <a href=\"https://app.uproc.io/#/tools/processor/get/ip/blacklists\" target='_blank'>Info</a>"
+				},
+				"checkStringAlpha": {
+					"displayName": "Check Alphabetic String Is Valid",
+					"description": "Check if string length contains only letters <a href=\"https://app.uproc.io/#/tools/processor/check/string/alpha\" target='_blank'>Info</a>"
+				},
+				"checkStringAlphanumeric": {
+					"displayName": "Check Alphanumeric String Is Valid",
+					"description": "Check if string length contains only numbers and letters <a href=\"https://app.uproc.io/#/tools/processor/check/string/alphanumeric\" target='_blank'>Info</a>"
+				},
+				"checkStringBoolean": {
+					"displayName": "Check Boolean String Is Valid",
+					"description": "Check if string is true or false <a href=\"https://app.uproc.io/#/tools/processor/check/string/boolean\" target='_blank'>Info</a>"
+				},
+				"checkNumberDecimal": {
+					"displayName": "Check Decimal Number Is Valid",
+					"description": "Check if value is a decimal number <a href=\"https://app.uproc.io/#/tools/processor/check/number/decimal\" target='_blank'>Info</a>"
+				},
+				"checkNumberEven": {
+					"displayName": "Check Even Number Is Valid",
+					"description": "Check if number is even <a href=\"https://app.uproc.io/#/tools/processor/check/number/even\" target='_blank'>Info</a>"
+				},
+				"checkListMax": {
+					"displayName": "Check Greater Element",
+					"description": "Checks if the largest item in a list matches the provided item <a href=\"https://app.uproc.io/#/tools/processor/check/list/max\" target='_blank'>Info</a>"
+				},
+				"checkStringIp": {
+					"displayName": "Check IP Has Valid Format",
+					"description": "Check if IPv4 or IPv6 address has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/string/ip\" target='_blank'>Info</a>"
+				},
+				"checkStringIp4": {
+					"displayName": "Check IPv4 Has Valid Format",
+					"description": "Check if IPv4 address has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/string/ip4\" target='_blank'>Info</a>"
+				},
+				"checkStringIp6": {
+					"displayName": "Check IPv6 Has Valid Format",
+					"description": "Check if IPv6 address has a valid format <a href=\"https://app.uproc.io/#/tools/processor/check/string/ip6\" target='_blank'>Info</a>"
+				},
+				"checkListLengthBetw": {
+					"displayName": "Check Length List Between",
+					"description": "Check if the length of a list is between two quantities <a href=\"https://app.uproc.io/#/tools/processor/check/list/length-betw\" target='_blank'>Info</a>"
+				},
+				"checkListLengthEq": {
+					"displayName": "Check Length List Equal",
+					"description": "Checks if the length of a list equals a specified quantity <a href=\"https://app.uproc.io/#/tools/processor/check/list/length-eq\" target='_blank'>Info</a>"
+				},
+				"checkListLengthGt": {
+					"displayName": "Check Length List Greater",
+					"description": "Check if the length of a list is greater than a certain amount <a href=\"https://app.uproc.io/#/tools/processor/check/list/length-gt\" target='_blank'>Info</a>"
+				},
+				"checkListLengthGe": {
+					"displayName": "Check Length List Greater Or Equal",
+					"description": "Check if the length of a list is greater than or equal to a certain amount <a href=\"https://app.uproc.io/#/tools/processor/check/list/length-ge\" target='_blank'>Info</a>"
+				},
+				"checkListLengthLt": {
+					"displayName": "Check Length List Lower",
+					"description": " <a href=\"https://app.uproc.io/#/tools/processor/check/list/length-lt\" target='_blank'>Info</a>"
+				},
+				"checkListLengthLe": {
+					"displayName": "Check Length List Lower Or Equal",
+					"description": "Check if the length of a list is less than or equal to a certain amount <a href=\"https://app.uproc.io/#/tools/processor/check/list/length-le\" target='_blank'>Info</a>"
+				},
+				"checkListContains": {
+					"displayName": "Check List Contains",
+					"description": "Check if the list contains a specific item <a href=\"https://app.uproc.io/#/tools/processor/check/list/contains\" target='_blank'>Info</a>"
+				},
+				"checkListEnds": {
+					"displayName": "Check List Ends With",
+					"description": "Check if the list ends with a specific element <a href=\"https://app.uproc.io/#/tools/processor/check/list/ends\" target='_blank'>Info</a>"
+				},
+				"checkListSorted": {
+					"displayName": "Check List Is Sorted",
+					"description": "Check if a list is sorted in ascending order <a href=\"https://app.uproc.io/#/tools/processor/check/list/sorted\" target='_blank'>Info</a>"
+				},
+				"checkListStarts": {
+					"displayName": "Check List Starts With",
+					"description": "Check if the list starts with a specific element <a href=\"https://app.uproc.io/#/tools/processor/check/list/starts\" target='_blank'>Info</a>"
+				},
+				"checkListMin": {
+					"displayName": "Check Lower Element",
+					"description": "Checks if the smallest element in a list matches the provided element <a href=\"https://app.uproc.io/#/tools/processor/check/list/min\" target='_blank'>Info</a>"
+				},
+				"checkNumberMod": {
+					"displayName": "Check Modulus Is Equals",
+					"description": "Check if modulus between two numbers is equal to a value <a href=\"https://app.uproc.io/#/tools/processor/check/number/mod\" target='_blank'>Info</a>"
+				},
+				"checkNumberNatural": {
+					"displayName": "Check Natural Number Is Valid",
+					"description": "Check if value is a natural number <a href=\"https://app.uproc.io/#/tools/processor/check/number/natural\" target='_blank'>Info</a>"
+				},
+				"checkNumberBetw": {
+					"displayName": "Check Number Is Between",
+					"description": "Check if number is between two values <a href=\"https://app.uproc.io/#/tools/processor/check/number/betw\" target='_blank'>Info</a>"
+				},
+				"checkNumberEq": {
+					"displayName": "Check Number Is Equal",
+					"description": "Check if number is equal to another <a href=\"https://app.uproc.io/#/tools/processor/check/number/eq\" target='_blank'>Info</a>"
+				},
+				"checkNumberGt": {
+					"displayName": "Check Number Is Greater",
+					"description": "Check if number is greater than another <a href=\"https://app.uproc.io/#/tools/processor/check/number/gt\" target='_blank'>Info</a>"
+				},
+				"checkNumberGe": {
+					"displayName": "Check Number Is Greater Or Equal",
+					"description": "Check if number is greater or equal than another <a href=\"https://app.uproc.io/#/tools/processor/check/number/ge\" target='_blank'>Info</a>"
+				},
+				"checkNumberLt": {
+					"displayName": "Check Number Is Lower",
+					"description": "Check if number is lower than another <a href=\"https://app.uproc.io/#/tools/processor/check/number/lt\" target='_blank'>Info</a>"
+				},
+				"checkNumberLe": {
+					"displayName": "Check Number Is Lower Or Equal",
+					"description": "Check if number is lower or equal than another <a href=\"https://app.uproc.io/#/tools/processor/check/number/le\" target='_blank'>Info</a>"
+				},
+				"checkStringNumeric": {
+					"displayName": "Check Numeric String Is Valid",
+					"description": "Check if string length contains only numbers <a href=\"https://app.uproc.io/#/tools/processor/check/string/numeric\" target='_blank'>Info</a>"
+				},
+				"checkNumberOdd": {
+					"displayName": "Check Odd Number Is Valid",
+					"description": "Check if number is odd <a href=\"https://app.uproc.io/#/tools/processor/check/number/odd\" target='_blank'>Info</a>"
+				},
+				"checkNumberPrime": {
+					"displayName": "Check Prime Number Is Valid",
+					"description": "Check if number is prime <a href=\"https://app.uproc.io/#/tools/processor/check/number/prime\" target='_blank'>Info</a>"
+				},
+				"checkStringContains": {
+					"displayName": "Check String Contains Char",
+					"description": "Check if string contains a character <a href=\"https://app.uproc.io/#/tools/processor/check/string/contains\" target='_blank'>Info</a>"
+				},
+				"checkStringEnds": {
+					"displayName": "Check String Ends With",
+					"description": "Check if string ends with a character <a href=\"https://app.uproc.io/#/tools/processor/check/string/ends\" target='_blank'>Info</a>"
+				},
+				"checkStringBlank": {
+					"displayName": "Check String Is Empty",
+					"description": "Check if string has no content <a href=\"https://app.uproc.io/#/tools/processor/check/string/blank\" target='_blank'>Info</a>"
+				},
+				"checkStringRandom": {
+					"displayName": "Check String Is Random",
+					"description": "Check if string contains random characters without sense <a href=\"https://app.uproc.io/#/tools/processor/check/string/random\" target='_blank'>Info</a>"
+				},
+				"checkStringRegex": {
+					"displayName": "Check String Is Valid By Pattern",
+					"description": "Check if string contains a value that matches with a regular expression <a href=\"https://app.uproc.io/#/tools/processor/check/string/regex\" target='_blank'>Info</a>"
+				},
+				"checkStringLengthBetw": {
+					"displayName": "Check String Length Is Between",
+					"description": "Check if string length is between two numbers <a href=\"https://app.uproc.io/#/tools/processor/check/string/length-betw\" target='_blank'>Info</a>"
+				},
+				"checkStringLengthEq": {
+					"displayName": "Check String Length Is Equal",
+					"description": "Check if string length is equal to number <a href=\"https://app.uproc.io/#/tools/processor/check/string/length-eq\" target='_blank'>Info</a>"
+				},
+				"checkStringLengthGt": {
+					"displayName": "Check String Length Is Greater",
+					"description": "Check if string length is greater than number <a href=\"https://app.uproc.io/#/tools/processor/check/string/length-gt\" target='_blank'>Info</a>"
+				},
+				"checkStringLengthGe": {
+					"displayName": "Check String Length Is Greater Or Equal",
+					"description": "Check if string length is greater or equal than number <a href=\"https://app.uproc.io/#/tools/processor/check/string/length-ge\" target='_blank'>Info</a>"
+				},
+				"checkStringLengthLt": {
+					"displayName": "Check String Length Is Lower",
+					"description": "Check if string length is lower than number <a href=\"https://app.uproc.io/#/tools/processor/check/string/length-lt\" target='_blank'>Info</a>"
+				},
+				"checkStringLengthLe": {
+					"displayName": "Check String Length Is Lower Or Equal",
+					"description": "Check if string length is lower or equal than number <a href=\"https://app.uproc.io/#/tools/processor/check/string/length-le\" target='_blank'>Info</a>"
+				},
+				"checkStringStarts": {
+					"displayName": "Check String Starts With",
+					"description": "Check if string starts with a character <a href=\"https://app.uproc.io/#/tools/processor/check/string/starts\" target='_blank'>Info</a>"
+				},
+				"checkStringLowercase": {
+					"displayName": "Check Text Is Lowercased",
+					"description": "Check if string only contains lowercase characters <a href=\"https://app.uproc.io/#/tools/processor/check/string/lowercase\" target='_blank'>Info</a>"
+				},
+				"checkStringUppercase": {
+					"displayName": "Check Text Is Uppercased",
+					"description": "Check if string only contains uppercase characters <a href=\"https://app.uproc.io/#/tools/processor/check/string/uppercase\" target='_blank'>Info</a>"
+				},
+				"checkListUnique": {
+					"displayName": "Check Unique Es List",
+					"description": "Check if a list consists of unique elements <a href=\"https://app.uproc.io/#/tools/processor/check/list/unique\" target='_blank'>Info</a>"
+				},
+				"checkListValid": {
+					"displayName": "Check Valid List",
+					"description": "Check if the supplied values ​​form a valid list of elements <a href=\"https://app.uproc.io/#/tools/processor/check/list/valid\" target='_blank'>Info</a>"
+				},
+				"checkWordCountBetw": {
+					"displayName": "Check Word Count Between",
+					"description": "Check if the number of words in a sentence is between two determined quantities <a href=\"https://app.uproc.io/#/tools/processor/check/word/count-betw\" target='_blank'>Info</a>"
+				},
+				"checkWordCountEq": {
+					"displayName": "Check Word Count Equal",
+					"description": "Check if the number of words in a sentence equals a certain amount <a href=\"https://app.uproc.io/#/tools/processor/check/word/count-eq\" target='_blank'>Info</a>"
+				},
+				"checkWordCountGt": {
+					"displayName": "Check Word Count Greater",
+					"description": "Check if the number of words in a sentence is greater than a certain amount <a href=\"https://app.uproc.io/#/tools/processor/check/word/count-gt\" target='_blank'>Info</a>"
+				},
+				"checkWordCountGe": {
+					"displayName": "Check Word Count Greater Or Equal",
+					"description": "Check if the number of words in a sentence is greater than or equal to a certain amount <a href=\"https://app.uproc.io/#/tools/processor/check/word/count-ge\" target='_blank'>Info</a>"
+				},
+				"checkWordCountLt": {
+					"displayName": "Check Word Count Lower",
+					"description": " <a href=\"https://app.uproc.io/#/tools/processor/check/word/count-lt\" target='_blank'>Info</a>"
+				},
+				"checkWordCountLe": {
+					"displayName": "Check Word Count Lower Or Equal",
+					"description": "Check if the number of words present in a sentence is less than or equal to a quantity <a href=\"https://app.uproc.io/#/tools/processor/check/word/count-le\" target='_blank'>Info</a>"
+				},
+				"getStringBase64": {
+					"displayName": "Get BASE64 Value",
+					"description": "Convert a string to a BASE64 encoded value <a href=\"https://app.uproc.io/#/tools/processor/get/string/base64\" target='_blank'>Info</a>"
+				},
+				"getWordBanned": {
+					"displayName": "Get Banned Words",
+					"description": "Discover English banned words in the email body or subject <a href=\"https://app.uproc.io/#/tools/processor/get/word/banned\" target='_blank'>Info</a>"
+				},
+				"getStringFieldName": {
+					"displayName": "Get Field Type By Value",
+					"description": "Get field name, analyzing field value provided.<br><br>Supported values: Email, Domain, Isbn, Ean, Upc, Dni, Nie, Cif, Date, Gender (male, female), Landline, Mobile phone, Zip code, Web address <a href=\"https://app.uproc.io/#/tools/processor/get/string/field-name\" target='_blank'>Info</a>"
+				},
+				"getStringByFormat": {
+					"displayName": "Get Formatted String By Pattern",
+					"description": "It allows to format a string using a format pattern <a href=\"https://app.uproc.io/#/tools/processor/get/string/by-format\" target='_blank'>Info</a>"
+				},
+				"getStringByRegex": {
+					"displayName": "Get Generated Text By Pattern",
+					"description": "Generate a random string using a regular expression as a pattern <a href=\"https://app.uproc.io/#/tools/processor/get/string/by-regex\" target='_blank'>Info</a>"
+				},
+				"getListMax": {
+					"displayName": "Get Greater Element",
+					"description": "Returns the largest item in a list <a href=\"https://app.uproc.io/#/tools/processor/get/list/max\" target='_blank'>Info</a>"
+				},
+				"getStringHtmlByMarkdown": {
+					"displayName": "Get HTML Code From Markdown",
+					"description": "Convert Markdown code to HTML code <a href=\"https://app.uproc.io/#/tools/processor/get/string/html-by-markdown\" target='_blank'>Info</a>"
+				},
+				"getListMin": {
+					"displayName": "Get Lower Element",
+					"description": "Returns the smallest item in a list <a href=\"https://app.uproc.io/#/tools/processor/get/list/min\" target='_blank'>Info</a>"
+				},
+				"getStringLowercase": {
+					"displayName": "Get Lowercased Text",
+					"description": "Convert all letters found in a string to lowercase <a href=\"https://app.uproc.io/#/tools/processor/get/string/lowercase\" target='_blank'>Info</a>"
+				},
+				"getStringMd5": {
+					"displayName": "Get MD5 String",
+					"description": "Convert a string to a MD5 encoded value <a href=\"https://app.uproc.io/#/tools/processor/get/string/md5\" target='_blank'>Info</a>"
+				},
+				"getStringMarkdownByHtml": {
+					"displayName": "Get Markdown Text From HTML",
+					"description": "Convert HTML code to Markdown code <a href=\"https://app.uproc.io/#/tools/processor/get/string/markdown-by-html\" target='_blank'>Info</a>"
+				},
+				"getStringJoin": {
+					"displayName": "Get Merged Values By Text",
+					"description": "Join a character or string to join two values <a href=\"https://app.uproc.io/#/tools/processor/get/string/join\" target='_blank'>Info</a>"
+				},
+				"getStringNormalized": {
+					"displayName": "Get Normalized String By Field",
+					"description": "Normalize a string depending on the field name <a href=\"https://app.uproc.io/#/tools/processor/get/string/normalized\" target='_blank'>Info</a>"
+				},
+				"getStringParsed": {
+					"displayName": "Get Parsed Text",
+					"description": "Analyze string and return all emails, phones, zipcodes and links detected <a href=\"https://app.uproc.io/#/tools/processor/get/string/parsed\" target='_blank'>Info</a>"
+				},
+				"getStringSha": {
+					"displayName": "Get SHA String",
+					"description": "Convert a string to a SHA encoded value <a href=\"https://app.uproc.io/#/tools/processor/get/string/sha\" target='_blank'>Info</a>"
+				},
+				"getSentimentByText": {
+					"displayName": "Get Sentiment From A Text",
+					"description": "It allows to analyze an english text with Emojis and detect sentiment <a href=\"https://app.uproc.io/#/tools/processor/get/sentiment/by-text\" target='_blank'>Info</a>"
+				},
+				"getListSort": {
+					"displayName": "Get Sorted List",
+					"description": "Returns an ascending sorted list <a href=\"https://app.uproc.io/#/tools/processor/get/list/sort\" target='_blank'>Info</a>"
+				},
+				"getStringSpin": {
+					"displayName": "Get Spin String",
+					"description": "Generates a spin string <a href=\"https://app.uproc.io/#/tools/processor/get/string/spin\" target='_blank'>Info</a>"
+				},
+				"getStringSplitAndJoin": {
+					"displayName": "Get Splitted And Merged Values By Separator",
+					"description": "Split a value in two parts and join them, using a separator present in the original string <a href=\"https://app.uproc.io/#/tools/processor/get/string/split-and-join\" target='_blank'>Info</a>"
+				},
+				"getStringSplit": {
+					"displayName": "Get Splitted Values By Separator",
+					"description": "Split a value in two parts, using a separator present in the original string <a href=\"https://app.uproc.io/#/tools/processor/get/string/split\" target='_blank'>Info</a>"
+				},
+				"getStringLength": {
+					"displayName": "Get String Length",
+					"description": "Get length of a string <a href=\"https://app.uproc.io/#/tools/processor/get/string/length\" target='_blank'>Info</a>"
+				},
+				"getStringVlookup": {
+					"displayName": "Get String VLookup",
+					"description": "Lookup string between multiple values by fuzzy logic and regex patterns <a href=\"https://app.uproc.io/#/tools/processor/get/string/vlookup\" target='_blank'>Info</a>"
+				},
+				"getWordCleanAbuse": {
+					"displayName": "Get Text Cleaned Without Abuse Words",
+					"description": "Clean abuse words from a string <a href=\"https://app.uproc.io/#/tools/processor/get/word/clean-abuse\" target='_blank'>Info</a>"
+				},
+				"getStringReplaceFirst": {
+					"displayName": "Get Text Replaced By String",
+					"description": "Replace first value found in a string by another <a href=\"https://app.uproc.io/#/tools/processor/get/string/replace-first\" target='_blank'>Info</a>"
+				},
+				"getStringWithoutHtml": {
+					"displayName": "Get Text Without HTML",
+					"description": "Extract text from HTML, removing html tags and replacing special tags <a href=\"https://app.uproc.io/#/tools/processor/get/string/without-html\" target='_blank'>Info</a>"
+				},
+				"getStringReplaceAll": {
+					"displayName": "Get Texts Replaced By String",
+					"description": "Replace all values found in a string by another <a href=\"https://app.uproc.io/#/tools/processor/get/string/replace-all\" target='_blank'>Info</a>"
+				},
+				"getStringTranslated": {
+					"displayName": "Get Translated Text",
+					"description": "It allows to translate a text to any language <a href=\"https://app.uproc.io/#/tools/processor/get/string/translated\" target='_blank'>Info</a>"
+				},
+				"getListUnique": {
+					"displayName": "Get Unique List",
+					"description": "Returns a single list, with no repeating elements <a href=\"https://app.uproc.io/#/tools/processor/get/list/unique\" target='_blank'>Info</a>"
+				},
+				"getStringUppercase": {
+					"displayName": "Get Uppercased Text",
+					"description": "Convert all letters found in a string to uppercase <a href=\"https://app.uproc.io/#/tools/processor/get/string/uppercase\" target='_blank'>Info</a>"
+				},
+				"getWordCount": {
+					"displayName": "Get Words Count",
+					"description": "Count total words in a text <a href=\"https://app.uproc.io/#/tools/processor/get/word/count\" target='_blank'>Info</a>"
+				}
+			}
+		},
+		"credit_card": {
+			"displayName": "Credit card",
+			"description": "The \"Credit card\" value to use as a parameter for this Operation",
+			"placeholder": "4024007151839544"
+		},
+		"address": {
+			"displayName": "Address",
+			"description": "The \"Address\" value to use as a parameter for this Operation",
+			"placeholder": "Compte Mallorca, 120, Barcelona, España"
+		},
+		"country": {
+			"displayName": "Country",
+			"description": "The \"Country\" value to use as a parameter for this Operation",
+			"placeholder": "ES"
+		},
+		"coordinates": {
+			"displayName": "Coordinates",
+			"description": "The \"Coordinates\" value to use as a parameter for this Operation",
+			"placeholder": "41.2522,-12.30"
+		},
+		"date": {
+			"displayName": "Date",
+			"description": "The \"Date\" value to use as a parameter for this Operation",
+			"placeholder": "1975-05-20"
+		},
+		"years1": {
+			"displayName": "Years1",
+			"description": "The \"Years1\" value to use as a parameter for this Operation",
+			"placeholder": "35"
+		},
+		"years2": {
+			"displayName": "Years2",
+			"description": "The \"Years2\" value to use as a parameter for this Operation",
+			"placeholder": "50"
+		},
+		"years": {
+			"displayName": "Years",
+			"description": "The \"Years\" value to use as a parameter for this Operation",
+			"placeholder": "46"
+		},
+		"ean": {
+			"displayName": "Ean",
+			"description": "The \"Ean\" value to use as a parameter for this Operation",
+			"placeholder": "0635753490879"
+		},
+		"asin": {
+			"displayName": "Asin",
+			"description": "The \"Asin\" value to use as a parameter for this Operation",
+			"placeholder": "B00005N5PF"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "The \"Text\" value to use as a parameter for this Operation",
+			"placeholder": "Hi! My name is Miquel. I will read any text you type here."
+		},
+		"gender": {
+			"displayName": "Gender",
+			"description": "The \"Gender\" value to use as a parameter for this Operation",
+			"placeholder": "male",
+			"options": {
+				"female": {
+					"displayName": "Female"
+				},
+				"male": {
+					"displayName": "Male"
+				}
+			}
+		},
+		"language": {
+			"displayName": "Language",
+			"description": "The \"Language\" value to use as a parameter for this Operation",
+			"placeholder": "american",
+			"options": {
+				"american": {
+					"displayName": "American"
+				},
+				"arabic": {
+					"displayName": "Arabic"
+				},
+				"bengali": {
+					"displayName": "Bengali"
+				},
+				"british": {
+					"displayName": "British"
+				},
+				"czech": {
+					"displayName": "Czech"
+				},
+				"danish": {
+					"displayName": "Danish"
+				},
+				"dutch": {
+					"displayName": "Dutch"
+				},
+				"filipino": {
+					"displayName": "Filipino"
+				},
+				"finnish": {
+					"displayName": "Finnish"
+				},
+				"french": {
+					"displayName": "French"
+				},
+				"german": {
+					"displayName": "German"
+				},
+				"greek": {
+					"displayName": "Greek"
+				},
+				"gujurati": {
+					"displayName": "Gujurati"
+				},
+				"hindi": {
+					"displayName": "Hindi"
+				},
+				"hungarian": {
+					"displayName": "Hungarian"
+				},
+				"indonesian": {
+					"displayName": "Indonesian"
+				},
+				"italian": {
+					"displayName": "Italian"
+				},
+				"japanese": {
+					"displayName": "Japanese"
+				},
+				"kannada": {
+					"displayName": "Kannada"
+				},
+				"korean": {
+					"displayName": "Korean"
+				},
+				"malayalam": {
+					"displayName": "Malayalam"
+				},
+				"mandarin": {
+					"displayName": "Mandarin"
+				},
+				"norwegian": {
+					"displayName": "Norwegian"
+				},
+				"polish": {
+					"displayName": "Polish"
+				},
+				"portuguese": {
+					"displayName": "Portuguese"
+				},
+				"russian": {
+					"displayName": "Russian"
+				},
+				"slovak": {
+					"displayName": "Slovak"
+				},
+				"spanish": {
+					"displayName": "Spanish"
+				},
+				"tamil": {
+					"displayName": "Tamil"
+				},
+				"telugu": {
+					"displayName": "Telugu"
+				},
+				"thai": {
+					"displayName": "Thai"
+				},
+				"turkish": {
+					"displayName": "Turkish"
+				},
+				"ukranian": {
+					"displayName": "Ukranian"
+				},
+				"vietnamese": {
+					"displayName": "Vietnamese"
+				}
+			}
+		},
+		"account": {
+			"displayName": "Account",
+			"description": "The \"Account\" value to use as a parameter for this Operation",
+			"placeholder": "14650120311716144388"
+		},
+		"bic": {
+			"displayName": "Bic",
+			"description": "The \"Bic\" value to use as a parameter for this Operation",
+			"placeholder": "DABAIE2D"
+		},
+		"isocode": {
+			"displayName": "Isocode",
+			"description": "The \"Isocode\" value to use as a parameter for this Operation",
+			"placeholder": "ES"
+		},
+		"iban": {
+			"displayName": "Iban",
+			"description": "The \"Iban\" value to use as a parameter for this Operation",
+			"placeholder": "NL91ABNA0417164300"
+		},
+		"swift": {
+			"displayName": "Swift",
+			"description": "The \"Swift\" value to use as a parameter for this Operation",
+			"placeholder": "INGDESMMXXX"
+		},
+		"bcid": {
+			"displayName": "Bcid",
+			"description": "The \"Bcid\" value to use as a parameter for this Operation",
+			"placeholder": "ean13",
+			"options": {
+				"auspost": {
+					"displayName": "Auspost"
+				},
+				"azteccode": {
+					"displayName": "Azteccode"
+				},
+				"azteccodecompact": {
+					"displayName": "Azteccodecompact"
+				},
+				"aztecrune": {
+					"displayName": "Aztecrune"
+				},
+				"bc412": {
+					"displayName": "Bc412"
+				},
+				"channelcode": {
+					"displayName": "Channelcode"
+				},
+				"codablockf": {
+					"displayName": "Codablockf"
+				},
+				"code11": {
+					"displayName": "Code11"
+				},
+				"code128": {
+					"displayName": "Code128"
+				},
+				"code16k": {
+					"displayName": "Code16k"
+				},
+				"code2of5": {
+					"displayName": "Code2of5"
+				},
+				"code32": {
+					"displayName": "Code32"
+				},
+				"code39": {
+					"displayName": "Code39"
+				},
+				"code39ext": {
+					"displayName": "Code39ext"
+				},
+				"code49": {
+					"displayName": "Code49"
+				},
+				"code93": {
+					"displayName": "Code93"
+				},
+				"code93ext": {
+					"displayName": "Code93ext"
+				},
+				"codeone": {
+					"displayName": "Codeone"
+				},
+				"coop2of5": {
+					"displayName": "Coop2of5"
+				},
+				"daft": {
+					"displayName": "Daft"
+				},
+				"databarexpanded": {
+					"displayName": "Databarexpanded"
+				},
+				"databarexpandedcomposite": {
+					"displayName": "Databarexpandedcomposite"
+				},
+				"databarexpandedstacked": {
+					"displayName": "Databarexpandedstacked"
+				},
+				"databarexpandedstackedcomposite": {
+					"displayName": "Databarexpandedstackedcomposite"
+				},
+				"databarlimited": {
+					"displayName": "Databarlimited"
+				},
+				"databarlimitedcomposite": {
+					"displayName": "Databarlimitedcomposite"
+				},
+				"databaromni": {
+					"displayName": "Databaromni"
+				},
+				"databaromnicomposite": {
+					"displayName": "Databaromnicomposite"
+				},
+				"databarstacked": {
+					"displayName": "Databarstacked"
+				},
+				"databarstackedcomposite": {
+					"displayName": "Databarstackedcomposite"
+				},
+				"databarstackedomni": {
+					"displayName": "Databarstackedomni"
+				},
+				"databarstackedomnicomposite": {
+					"displayName": "Databarstackedomnicomposite"
+				},
+				"databartruncated": {
+					"displayName": "Databartruncated"
+				},
+				"databartruncatedcomposite": {
+					"displayName": "Databartruncatedcomposite"
+				},
+				"datalogic2of5": {
+					"displayName": "Datalogic2of5"
+				},
+				"datamatrix": {
+					"displayName": "Datamatrix"
+				},
+				"datamatrixrectangular": {
+					"displayName": "Datamatrixrectangular"
+				},
+				"dotcode": {
+					"displayName": "Dotcode"
+				},
+				"ean13": {
+					"displayName": "Ean13"
+				},
+				"ean13composite": {
+					"displayName": "Ean13composite"
+				},
+				"ean14": {
+					"displayName": "Ean14"
+				},
+				"ean2": {
+					"displayName": "Ean2"
+				},
+				"ean5": {
+					"displayName": "Ean5"
+				},
+				"ean8": {
+					"displayName": "Ean8"
+				},
+				"ean8composite": {
+					"displayName": "Ean8composite"
+				},
+				"flattermarken": {
+					"displayName": "Flattermarken"
+				},
+				"gs1-128": {
+					"displayName": "Gs1-128"
+				},
+				"gs1-128composite": {
+					"displayName": "Gs1-128composite"
+				},
+				"gs1-cc": {
+					"displayName": "Gs1-cc"
+				},
+				"gs1datamatrix": {
+					"displayName": "Gs1datamatrix"
+				},
+				"gs1datamatrixrectangular": {
+					"displayName": "Gs1datamatrixrectangular"
+				},
+				"gs1northamericancoupon": {
+					"displayName": "Gs1northamericancoupon"
+				},
+				"hanxin": {
+					"displayName": "Hanxin"
+				},
+				"hibcazteccode": {
+					"displayName": "Hibcazteccode"
+				},
+				"hibccodablockf": {
+					"displayName": "Hibccodablockf"
+				},
+				"hibccode128": {
+					"displayName": "Hibccode128"
+				},
+				"hibccode39": {
+					"displayName": "Hibccode39"
+				},
+				"hibcdatamatrix": {
+					"displayName": "Hibcdatamatrix"
+				},
+				"hibcdatamatrixrectangular": {
+					"displayName": "Hibcdatamatrixrectangular"
+				},
+				"hibcmicropdf417": {
+					"displayName": "Hibcmicropdf417"
+				},
+				"hibcpdf417": {
+					"displayName": "Hibcpdf417"
+				},
+				"iata2of5": {
+					"displayName": "Iata2of5"
+				},
+				"identcode": {
+					"displayName": "Identcode"
+				},
+				"industrial2of5": {
+					"displayName": "Industrial2of5"
+				},
+				"interleaved2of5": {
+					"displayName": "Interleaved2of5"
+				},
+				"isbn": {
+					"displayName": "Isbn"
+				},
+				"ismn": {
+					"displayName": "Ismn"
+				},
+				"issn": {
+					"displayName": "Issn"
+				},
+				"itf14": {
+					"displayName": "Itf14"
+				},
+				"japanpost": {
+					"displayName": "Japanpost"
+				},
+				"kix": {
+					"displayName": "Kix"
+				},
+				"leitcode": {
+					"displayName": "Leitcode"
+				},
+				"matrix2of5": {
+					"displayName": "Matrix2of5"
+				},
+				"maxicode": {
+					"displayName": "Maxicode"
+				},
+				"micropdf417": {
+					"displayName": "Micropdf417"
+				},
+				"msi": {
+					"displayName": "Msi"
+				},
+				"onecode": {
+					"displayName": "Onecode"
+				},
+				"pdf417": {
+					"displayName": "Pdf417"
+				},
+				"pdf417compact": {
+					"displayName": "Pdf417compact"
+				},
+				"pharmacode": {
+					"displayName": "Pharmacode"
+				},
+				"pharmacode2": {
+					"displayName": "Pharmacode2"
+				},
+				"planet": {
+					"displayName": "Planet"
+				},
+				"plessey": {
+					"displayName": "Plessey"
+				},
+				"posicode": {
+					"displayName": "Posicode"
+				},
+				"postnet": {
+					"displayName": "Postnet"
+				},
+				"pzn": {
+					"displayName": "Pzn"
+				},
+				"rationalizedCodabar": {
+					"displayName": "RationalizedCodabar"
+				},
+				"raw": {
+					"displayName": "Raw"
+				},
+				"royalmail": {
+					"displayName": "Royalmail"
+				},
+				"sscc18": {
+					"displayName": "Sscc18"
+				},
+				"symbol": {
+					"displayName": "Symbol"
+				},
+				"telepen": {
+					"displayName": "Telepen"
+				},
+				"telepennumeric": {
+					"displayName": "Telepennumeric"
+				},
+				"ultracode": {
+					"displayName": "Ultracode"
+				},
+				"upca": {
+					"displayName": "Upca"
+				},
+				"upcacomposite": {
+					"displayName": "Upcacomposite"
+				},
+				"upce": {
+					"displayName": "Upce"
+				},
+				"upcecomposite": {
+					"displayName": "Upcecomposite"
+				}
+			}
+		},
+		"author": {
+			"displayName": "Author",
+			"description": "The \"Author\" value to use as a parameter for this Operation",
+			"placeholder": "Albert Einstein"
+		},
+		"category": {
+			"displayName": "Category",
+			"description": "The \"Category\" value to use as a parameter for this Operation",
+			"placeholder": "science"
+		},
+		"isbn": {
+			"displayName": "Isbn",
+			"description": "The \"Isbn\" value to use as a parameter for this Operation",
+			"placeholder": "0306406152"
+		},
+		"publisher": {
+			"displayName": "Publisher",
+			"description": "The \"Publisher\" value to use as a parameter for this Operation",
+			"placeholder": "Grupo RBA"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The \"Title\" value to use as a parameter for this Operation",
+			"placeholder": "Science"
+		},
+		"dni": {
+			"displayName": "Dni",
+			"description": "The \"Dni\" value to use as a parameter for this Operation",
+			"placeholder": "44016116"
+		},
+		"cif": {
+			"displayName": "Cif",
+			"description": "The \"Cif\" value to use as a parameter for this Operation",
+			"placeholder": "B 62084 959"
+		},
+		"nie": {
+			"displayName": "Nie",
+			"description": "The \"Nie\" value to use as a parameter for this Operation",
+			"placeholder": "X402001 122g"
+		},
+		"nif": {
+			"displayName": "Nif",
+			"description": "The \"Nif\" value to use as a parameter for this Operation",
+			"placeholder": "402001 122g"
+		},
+		"ip": {
+			"displayName": "Ip",
+			"description": "The \"Ip\" value to use as a parameter for this Operation",
+			"placeholder": "95.23.100.79"
+		},
+		"city": {
+			"displayName": "City",
+			"description": "The \"City\" value to use as a parameter for this Operation",
+			"placeholder": "Bar"
+		},
+		"phone": {
+			"displayName": "Phone",
+			"description": "The \"Phone\" value to use as a parameter for this Operation",
+			"placeholder": "932187670"
+		},
+		"zipcode": {
+			"displayName": "Zipcode",
+			"description": "The \"Zipcode\" value to use as a parameter for this Operation",
+			"placeholder": "08012"
+		},
+		"upc": {
+			"displayName": "Upc",
+			"description": "The \"Upc\" value to use as a parameter for this Operation",
+			"placeholder": "635753490879"
+		},
+		"isin": {
+			"displayName": "Isin",
+			"description": "The \"Isin\" value to use as a parameter for this Operation",
+			"placeholder": "US0378331005"
+		},
+		"number": {
+			"displayName": "Number",
+			"description": "The \"Number\" value to use as a parameter for this Operation",
+			"placeholder": "998239812282"
+		},
+		"uuid": {
+			"displayName": "Uuid",
+			"description": "The \"Uuid\" value to use as a parameter for this Operation",
+			"placeholder": "550e8400-e29b-41d4-a716-446655440000"
+		},
+		"domain": {
+			"displayName": "Domain",
+			"description": "The \"Domain\" value to use as a parameter for this Operation",
+			"placeholder": "killia.com"
+		},
+		"duns": {
+			"displayName": "Duns",
+			"description": "The \"Duns\" value to use as a parameter for this Operation",
+			"placeholder": "464016690"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The \"Email\" value to use as a parameter for this Operation",
+			"placeholder": "hello@killia.com"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The \"Name\" value to use as a parameter for this Operation",
+			"placeholder": "Cyberclick S.L."
+		},
+		"url": {
+			"displayName": "Url",
+			"description": "The \"Url\" value to use as a parameter for this Operation",
+			"placeholder": "https://www.facebook.com/cyberclicknet"
+		},
+		"profile": {
+			"displayName": "Profile",
+			"description": "The \"Profile\" value to use as a parameter for this Operation",
+			"placeholder": "https://www.linkedin.com/in/miquelcolomersalas"
+		},
+		"role": {
+			"displayName": "Role",
+			"description": "The \"Role\" value to use as a parameter for this Operation",
+			"placeholder": "Project Manager"
+		},
+		"taxid": {
+			"displayName": "Taxid",
+			"description": "The \"Taxid\" value to use as a parameter for this Operation",
+			"placeholder": "B04363115"
+		},
+		"company": {
+			"displayName": "Company",
+			"description": "The \"Company\" value to use as a parameter for this Operation",
+			"placeholder": "uproc.io"
+		},
+		"area": {
+			"displayName": "Area",
+			"description": "The \"Area\" value to use as a parameter for this Operation",
+			"options": {
+				"Communications": {
+					"displayName": "Communications"
+				},
+				"Consulting": {
+					"displayName": "Consulting"
+				},
+				"Customer service": {
+					"displayName": "Customer service"
+				},
+				"Education": {
+					"displayName": "Education"
+				},
+				"Engineering": {
+					"displayName": "Engineering"
+				},
+				"Finance": {
+					"displayName": "Finance"
+				},
+				"Health professional": {
+					"displayName": "Health professional"
+				},
+				"Human resources": {
+					"displayName": "Human resources"
+				},
+				"Information technology": {
+					"displayName": "Information technology"
+				},
+				"Legal": {
+					"displayName": "Legal"
+				},
+				"Marketing": {
+					"displayName": "Marketing"
+				},
+				"Operations": {
+					"displayName": "Operations"
+				},
+				"Owner": {
+					"displayName": "Owner"
+				},
+				"President": {
+					"displayName": "President"
+				},
+				"Product": {
+					"displayName": "Product"
+				},
+				"Public relations": {
+					"displayName": "Public relations"
+				},
+				"Real estate": {
+					"displayName": "Real estate"
+				},
+				"Recruiting": {
+					"displayName": "Recruiting"
+				},
+				"Research": {
+					"displayName": "Research"
+				},
+				"Sales": {
+					"displayName": "Sales"
+				}
+			}
+		},
+		"clevel": {
+			"displayName": "Clevel",
+			"description": "The \"Clevel\" value to use as a parameter for this Operation",
+			"options": {
+				"No": {
+					"displayName": "No"
+				},
+				"Yes": {
+					"displayName": "Yes"
+				}
+			}
+		},
+		"location": {
+			"displayName": "Location",
+			"description": "The \"Location\" value to use as a parameter for this Operation"
+		},
+		"keyword": {
+			"displayName": "Keyword",
+			"description": "The \"Keyword\" value to use as a parameter for this Operation"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The \"Message\" value to use as a parameter for this Operation",
+			"placeholder": "Hi {{first}}, would you like to be part of my network! Thanks"
+		},
+		"message1": {
+			"displayName": "Message1",
+			"description": "The \"Message1\" value to use as a parameter for this Operation",
+			"placeholder": "Hi {{first}}, would you like to be part of my network? Thanks"
+		},
+		"message2": {
+			"displayName": "Message2",
+			"description": "The \"Message2\" value to use as a parameter for this Operation",
+			"placeholder": "Hi {{first}}, thank you for accepting my invitation!"
+		},
+		"seniority": {
+			"displayName": "Seniority",
+			"description": "The \"Seniority\" value to use as a parameter for this Operation",
+			"options": {
+				"Apprentice": {
+					"displayName": "Apprentice"
+				},
+				"Director": {
+					"displayName": "Director"
+				},
+				"Executive": {
+					"displayName": "Executive"
+				},
+				"Intermediate": {
+					"displayName": "Intermediate"
+				},
+				"Manager": {
+					"displayName": "Manager"
+				}
+			}
+		},
+		"address1": {
+			"displayName": "Address1",
+			"description": "The \"Address1\" value to use as a parameter for this Operation",
+			"placeholder": "Mallorca 120, 08036, Barcelona"
+		},
+		"address2": {
+			"displayName": "Address2",
+			"description": "The \"Address2\" value to use as a parameter for this Operation",
+			"placeholder": "Mallorca 70, 08036, Barcelona"
+		},
+		"fuel_consumption": {
+			"displayName": "Fuel consumption",
+			"description": "The \"Fuel consumption\" value to use as a parameter for this Operation",
+			"placeholder": "5"
+		},
+		"price_liter": {
+			"displayName": "Price liter",
+			"description": "The \"Price liter\" value to use as a parameter for this Operation",
+			"placeholder": "1.2"
+		},
+		"coordinates1": {
+			"displayName": "Coordinates1",
+			"description": "The \"Coordinates1\" value to use as a parameter for this Operation",
+			"placeholder": "41.2522,-12.10"
+		},
+		"coordinates2": {
+			"displayName": "Coordinates2",
+			"description": "The \"Coordinates2\" value to use as a parameter for this Operation",
+			"placeholder": "41.2522,-12.30"
+		},
+		"ip1": {
+			"displayName": "Ip1",
+			"description": "The \"Ip1\" value to use as a parameter for this Operation",
+			"placeholder": "95.23.100.79"
+		},
+		"ip2": {
+			"displayName": "Ip2",
+			"description": "The \"Ip2\" value to use as a parameter for this Operation",
+			"placeholder": "88.190.16.36"
+		},
+		"phone1": {
+			"displayName": "Phone1",
+			"description": "The \"Phone1\" value to use as a parameter for this Operation",
+			"placeholder": "932187670"
+		},
+		"phone2": {
+			"displayName": "Phone2",
+			"description": "The \"Phone2\" value to use as a parameter for this Operation",
+			"placeholder": "91213111111"
+		},
+		"zipcode1": {
+			"displayName": "Zipcode1",
+			"description": "The \"Zipcode1\" value to use as a parameter for this Operation",
+			"placeholder": "08012"
+		},
+		"zipcode2": {
+			"displayName": "Zipcode2",
+			"description": "The \"Zipcode2\" value to use as a parameter for this Operation",
+			"placeholder": "28080"
+		},
+		"distance": {
+			"displayName": "Distance",
+			"description": "The \"Distance\" value to use as a parameter for this Operation",
+			"placeholder": "33.44"
+		},
+		"coin": {
+			"displayName": "Coin",
+			"description": "The \"Coin\" value to use as a parameter for this Operation",
+			"placeholder": "Bitcoin",
+			"options": {
+				"0x": {
+					"displayName": "0x"
+				},
+				"Aave Coin": {
+					"displayName": "Aave Coin"
+				},
+				"Algorand": {
+					"displayName": "Algorand"
+				},
+				"Aragon": {
+					"displayName": "Aragon"
+				},
+				"Augur": {
+					"displayName": "Augur"
+				},
+				"AugurV2": {
+					"displayName": "AugurV2"
+				},
+				"AuroraCoin": {
+					"displayName": "AuroraCoin"
+				},
+				"BTU Protocol": {
+					"displayName": "BTU Protocol"
+				},
+				"Bancor": {
+					"displayName": "Bancor"
+				},
+				"Bankex": {
+					"displayName": "Bankex"
+				},
+				"Basic Attention Token": {
+					"displayName": "Basic Attention Token"
+				},
+				"BeaverCoin": {
+					"displayName": "BeaverCoin"
+				},
+				"BioCoin": {
+					"displayName": "BioCoin"
+				},
+				"Bitcoin": {
+					"displayName": "Bitcoin"
+				},
+				"Bitcoin SV": {
+					"displayName": "Bitcoin SV"
+				},
+				"BitcoinCash": {
+					"displayName": "BitcoinCash"
+				},
+				"BitcoinGold": {
+					"displayName": "BitcoinGold"
+				},
+				"BitcoinPrivate": {
+					"displayName": "BitcoinPrivate"
+				},
+				"BitcoinZ": {
+					"displayName": "BitcoinZ"
+				},
+				"BlockTrade": {
+					"displayName": "BlockTrade"
+				},
+				"CUSD": {
+					"displayName": "CUSD"
+				},
+				"Callisto": {
+					"displayName": "Callisto"
+				},
+				"Cardano": {
+					"displayName": "Cardano"
+				},
+				"Chainlink": {
+					"displayName": "Chainlink"
+				},
+				"Civic": {
+					"displayName": "Civic"
+				},
+				"Compound": {
+					"displayName": "Compound"
+				},
+				"Cred": {
+					"displayName": "Cred"
+				},
+				"Crypto.com Coin": {
+					"displayName": "Crypto.com Coin"
+				},
+				"Dash": {
+					"displayName": "Dash"
+				},
+				"Decentraland": {
+					"displayName": "Decentraland"
+				},
+				"Decred": {
+					"displayName": "Decred"
+				},
+				"DigiByte": {
+					"displayName": "DigiByte"
+				},
+				"District0x": {
+					"displayName": "District0x"
+				},
+				"DogeCoin": {
+					"displayName": "DogeCoin"
+				},
+				"EOS": {
+					"displayName": "EOS"
+				},
+				"Enjin Coin": {
+					"displayName": "Enjin Coin"
+				},
+				"EtherZero": {
+					"displayName": "EtherZero"
+				},
+				"Ethereum": {
+					"displayName": "Ethereum"
+				},
+				"EthereumClassic": {
+					"displayName": "EthereumClassic"
+				},
+				"Expanse": {
+					"displayName": "Expanse"
+				},
+				"FirmaChain": {
+					"displayName": "FirmaChain"
+				},
+				"FreiCoin": {
+					"displayName": "FreiCoin"
+				},
+				"GameCredits": {
+					"displayName": "GameCredits"
+				},
+				"GarliCoin": {
+					"displayName": "GarliCoin"
+				},
+				"Gnosis": {
+					"displayName": "Gnosis"
+				},
+				"Golem": {
+					"displayName": "Golem"
+				},
+				"Golem (GNT)": {
+					"displayName": "Golem (GNT)"
+				},
+				"HedgeTrade": {
+					"displayName": "HedgeTrade"
+				},
+				"Hush": {
+					"displayName": "Hush"
+				},
+				"HyperSpace": {
+					"displayName": "HyperSpace"
+				},
+				"Komodo": {
+					"displayName": "Komodo"
+				},
+				"LBRY Credits": {
+					"displayName": "LBRY Credits"
+				},
+				"Lisk": {
+					"displayName": "Lisk"
+				},
+				"LiteCoin": {
+					"displayName": "LiteCoin"
+				},
+				"Loom Network": {
+					"displayName": "Loom Network"
+				},
+				"Maker": {
+					"displayName": "Maker"
+				},
+				"Matchpool": {
+					"displayName": "Matchpool"
+				},
+				"Matic": {
+					"displayName": "Matic"
+				},
+				"MegaCoin": {
+					"displayName": "MegaCoin"
+				},
+				"Melon": {
+					"displayName": "Melon"
+				},
+				"Metal": {
+					"displayName": "Metal"
+				},
+				"MonaCoin": {
+					"displayName": "MonaCoin"
+				},
+				"Monero": {
+					"displayName": "Monero"
+				},
+				"Multi-collateral DAI": {
+					"displayName": "Multi-collateral DAI"
+				},
+				"NameCoin": {
+					"displayName": "NameCoin"
+				},
+				"Nano": {
+					"displayName": "Nano"
+				},
+				"Nem": {
+					"displayName": "Nem"
+				},
+				"Neo": {
+					"displayName": "Neo"
+				},
+				"NeoGas": {
+					"displayName": "NeoGas"
+				},
+				"Numeraire": {
+					"displayName": "Numeraire"
+				},
+				"Ocean Protocol": {
+					"displayName": "Ocean Protocol"
+				},
+				"Odyssey": {
+					"displayName": "Odyssey"
+				},
+				"OmiseGO": {
+					"displayName": "OmiseGO"
+				},
+				"PIVX": {
+					"displayName": "PIVX"
+				},
+				"Paxos": {
+					"displayName": "Paxos"
+				},
+				"PeerCoin": {
+					"displayName": "PeerCoin"
+				},
+				"Polkadot": {
+					"displayName": "Polkadot"
+				},
+				"Polymath": {
+					"displayName": "Polymath"
+				},
+				"PrimeCoin": {
+					"displayName": "PrimeCoin"
+				},
+				"ProtoShares": {
+					"displayName": "ProtoShares"
+				},
+				"Qtum": {
+					"displayName": "Qtum"
+				},
+				"Quant": {
+					"displayName": "Quant"
+				},
+				"Quantum Resistant Ledger": {
+					"displayName": "Quantum Resistant Ledger"
+				},
+				"RaiBlocks": {
+					"displayName": "RaiBlocks"
+				},
+				"Ripio Credit Network": {
+					"displayName": "Ripio Credit Network"
+				},
+				"Ripple": {
+					"displayName": "Ripple"
+				},
+				"SOLVE": {
+					"displayName": "SOLVE"
+				},
+				"Salt": {
+					"displayName": "Salt"
+				},
+				"Serve": {
+					"displayName": "Serve"
+				},
+				"Siacoin": {
+					"displayName": "Siacoin"
+				},
+				"SnowGem": {
+					"displayName": "SnowGem"
+				},
+				"SolarCoin": {
+					"displayName": "SolarCoin"
+				},
+				"Spendcoin": {
+					"displayName": "Spendcoin"
+				},
+				"Status": {
+					"displayName": "Status"
+				},
+				"Stellar": {
+					"displayName": "Stellar"
+				},
+				"Storj": {
+					"displayName": "Storj"
+				},
+				"Storm": {
+					"displayName": "Storm"
+				},
+				"StormX": {
+					"displayName": "StormX"
+				},
+				"Swarm City": {
+					"displayName": "Swarm City"
+				},
+				"Synthetix Network": {
+					"displayName": "Synthetix Network"
+				},
+				"TEMCO": {
+					"displayName": "TEMCO"
+				},
+				"Tap": {
+					"displayName": "Tap"
+				},
+				"TenX": {
+					"displayName": "TenX"
+				},
+				"Tether": {
+					"displayName": "Tether"
+				},
+				"Tezos": {
+					"displayName": "Tezos"
+				},
+				"Tron": {
+					"displayName": "Tron"
+				},
+				"TrueUSD": {
+					"displayName": "TrueUSD"
+				},
+				"USD Coin": {
+					"displayName": "USD Coin"
+				},
+				"Uniswap Coin": {
+					"displayName": "Uniswap Coin"
+				},
+				"VeChain": {
+					"displayName": "VeChain"
+				},
+				"VertCoin": {
+					"displayName": "VertCoin"
+				},
+				"Viberate": {
+					"displayName": "Viberate"
+				},
+				"VoteCoin": {
+					"displayName": "VoteCoin"
+				},
+				"Waves": {
+					"displayName": "Waves"
+				},
+				"Wings": {
+					"displayName": "Wings"
+				},
+				"ZCash": {
+					"displayName": "ZCash"
+				},
+				"ZClassic": {
+					"displayName": "ZClassic"
+				},
+				"ZenCash": {
+					"displayName": "ZenCash"
+				},
+				"iExec RLC": {
+					"displayName": "IExec RLC"
+				},
+				"loki": {
+					"displayName": "Loki"
+				}
+			}
+		},
+		"country_code": {
+			"displayName": "Country code",
+			"description": "The \"Country code\" value to use as a parameter for this Operation",
+			"placeholder": "ES"
+		},
+		"amount": {
+			"displayName": "Amount",
+			"description": "The \"Amount\" value to use as a parameter for this Operation",
+			"placeholder": "10"
+		},
+		"isocode1": {
+			"displayName": "Isocode1",
+			"description": "The \"Isocode1\" value to use as a parameter for this Operation",
+			"placeholder": "EUR",
+			"options": {
+				"AUD": {
+					"displayName": "AUD"
+				},
+				"BGN": {
+					"displayName": "BGN"
+				},
+				"BRL": {
+					"displayName": "BRL"
+				},
+				"CAD": {
+					"displayName": "CAD"
+				},
+				"CHF": {
+					"displayName": "CHF"
+				},
+				"CNY": {
+					"displayName": "CNY"
+				},
+				"CZK": {
+					"displayName": "CZK"
+				},
+				"DKK": {
+					"displayName": "DKK"
+				},
+				"EUR": {
+					"displayName": "EUR"
+				},
+				"GBP": {
+					"displayName": "GBP"
+				},
+				"HKD": {
+					"displayName": "HKD"
+				},
+				"HRK": {
+					"displayName": "HRK"
+				},
+				"HUF": {
+					"displayName": "HUF"
+				},
+				"IDR": {
+					"displayName": "IDR"
+				},
+				"ILS": {
+					"displayName": "ILS"
+				},
+				"INR": {
+					"displayName": "INR"
+				},
+				"ISK": {
+					"displayName": "ISK"
+				},
+				"JPY": {
+					"displayName": "JPY"
+				},
+				"KRW": {
+					"displayName": "KRW"
+				},
+				"MXN": {
+					"displayName": "MXN"
+				},
+				"MYR": {
+					"displayName": "MYR"
+				},
+				"NOK": {
+					"displayName": "NOK"
+				},
+				"NZD": {
+					"displayName": "NZD"
+				},
+				"PHP": {
+					"displayName": "PHP"
+				},
+				"PLN": {
+					"displayName": "PLN"
+				},
+				"RON": {
+					"displayName": "RON"
+				},
+				"RUB": {
+					"displayName": "RUB"
+				},
+				"SEK": {
+					"displayName": "SEK"
+				},
+				"SGD": {
+					"displayName": "SGD"
+				},
+				"THB": {
+					"displayName": "THB"
+				},
+				"TRY": {
+					"displayName": "TRY"
+				},
+				"USD": {
+					"displayName": "USD"
+				},
+				"ZAR": {
+					"displayName": "ZAR"
+				}
+			}
+		},
+		"isocode2": {
+			"displayName": "Isocode2",
+			"description": "The \"Isocode2\" value to use as a parameter for this Operation",
+			"placeholder": "USD",
+			"options": {
+				"AUD": {
+					"displayName": "AUD"
+				},
+				"BGN": {
+					"displayName": "BGN"
+				},
+				"BRL": {
+					"displayName": "BRL"
+				},
+				"CAD": {
+					"displayName": "CAD"
+				},
+				"CHF": {
+					"displayName": "CHF"
+				},
+				"CNY": {
+					"displayName": "CNY"
+				},
+				"CZK": {
+					"displayName": "CZK"
+				},
+				"DKK": {
+					"displayName": "DKK"
+				},
+				"EUR": {
+					"displayName": "EUR"
+				},
+				"GBP": {
+					"displayName": "GBP"
+				},
+				"HKD": {
+					"displayName": "HKD"
+				},
+				"HRK": {
+					"displayName": "HRK"
+				},
+				"HUF": {
+					"displayName": "HUF"
+				},
+				"IDR": {
+					"displayName": "IDR"
+				},
+				"ILS": {
+					"displayName": "ILS"
+				},
+				"INR": {
+					"displayName": "INR"
+				},
+				"ISK": {
+					"displayName": "ISK"
+				},
+				"JPY": {
+					"displayName": "JPY"
+				},
+				"KRW": {
+					"displayName": "KRW"
+				},
+				"MXN": {
+					"displayName": "MXN"
+				},
+				"MYR": {
+					"displayName": "MYR"
+				},
+				"NOK": {
+					"displayName": "NOK"
+				},
+				"NZD": {
+					"displayName": "NZD"
+				},
+				"PHP": {
+					"displayName": "PHP"
+				},
+				"PLN": {
+					"displayName": "PLN"
+				},
+				"RON": {
+					"displayName": "RON"
+				},
+				"RUB": {
+					"displayName": "RUB"
+				},
+				"SEK": {
+					"displayName": "SEK"
+				},
+				"SGD": {
+					"displayName": "SGD"
+				},
+				"THB": {
+					"displayName": "THB"
+				},
+				"TRY": {
+					"displayName": "TRY"
+				},
+				"USD": {
+					"displayName": "USD"
+				},
+				"ZAR": {
+					"displayName": "ZAR"
+				}
+			}
+		},
+		"date1": {
+			"displayName": "Date1",
+			"description": "The \"Date1\" value to use as a parameter for this Operation",
+			"placeholder": "1975-05-20"
+		},
+		"date2": {
+			"displayName": "Date2",
+			"description": "The \"Date2\" value to use as a parameter for this Operation",
+			"placeholder": "1975-05-19"
+		},
+		"date3": {
+			"displayName": "Date3",
+			"description": "The \"Date3\" value to use as a parameter for this Operation",
+			"placeholder": "1975-05-22"
+		},
+		"period": {
+			"displayName": "Period",
+			"description": "The \"Period\" value to use as a parameter for this Operation",
+			"placeholder": "seconds",
+			"options": {
+				"days": {
+					"displayName": "Days"
+				},
+				"hours": {
+					"displayName": "Hours"
+				},
+				"minutes": {
+					"displayName": "Minutes"
+				},
+				"seconds": {
+					"displayName": "Seconds"
+				}
+			}
+		},
+		"useragent": {
+			"displayName": "Useragent",
+			"description": "The \"Useragent\" value to use as a parameter for this Operation",
+			"placeholder": "AppleTV5,3/9.1.1"
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "The \"Type\" value to use as a parameter for this Operation",
+			"placeholder": "A",
+			"options": {
+				"A": {
+					"displayName": "A"
+				},
+				"AAAA": {
+					"displayName": "AAAA"
+				},
+				"CNAME": {
+					"displayName": "CNAME"
+				},
+				"MX": {
+					"displayName": "MX"
+				},
+				"NS": {
+					"displayName": "NS"
+				},
+				"TXT": {
+					"displayName": "TXT"
+				}
+			}
+		},
+		"width": {
+			"displayName": "Width",
+			"description": "The \"Width\" value to use as a parameter for this Operation",
+			"placeholder": "640",
+			"options": {
+				"160": {
+					"displayName": "160"
+				},
+				"320": {
+					"displayName": "320"
+				},
+				"640": {
+					"displayName": "640"
+				},
+				"800": {
+					"displayName": "800"
+				},
+				"1024": {
+					"displayName": "1024"
+				}
+			}
+		},
+		"fullpage": {
+			"displayName": "Fullpage",
+			"description": "The \"Fullpage\" value to use as a parameter for this Operation",
+			"placeholder": "no",
+			"options": {
+				"no": {
+					"displayName": "No"
+				},
+				"yes": {
+					"displayName": "Yes"
+				}
+			}
+		},
+		"selector": {
+			"displayName": "Selector",
+			"description": "The \"Selector\" value to use as a parameter for this Operation",
+			"placeholder": "h1.mt-4"
+		},
+		"delay": {
+			"displayName": "Delay",
+			"description": "The \"Delay\" value to use as a parameter for this Operation",
+			"placeholder": "1000"
+		},
+		"viewport": {
+			"displayName": "Viewport",
+			"description": "The \"Viewport\" value to use as a parameter for this Operation",
+			"placeholder": "1440x900"
+		},
+		"email_from": {
+			"displayName": "Email from",
+			"description": "The \"Email from\" value to use as a parameter for this Operation",
+			"placeholder": "mcolomer@killia.com"
+		},
+		"email_to": {
+			"displayName": "Email to",
+			"description": "The \"Email to\" value to use as a parameter for this Operation",
+			"placeholder": "mcolomer@gmail.com"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "The \"Subject\" value to use as a parameter for this Operation",
+			"placeholder": "Welcome email"
+		},
+		"body": {
+			"displayName": "Body",
+			"description": "The \"Body\" value to use as a parameter for this Operation",
+			"placeholder": "Hi!<br><br>Welcome to uProc and start <b>improving</b> your business processes!"
+		},
+		"page": {
+			"displayName": "Page",
+			"description": "The \"Page\" value to use as a parameter for this Operation",
+			"placeholder": "1"
+		},
+		"firstname": {
+			"displayName": "Firstname",
+			"description": "The \"Firstname\" value to use as a parameter for this Operation",
+			"placeholder": "Miquel"
+		},
+		"lastname": {
+			"displayName": "Lastname",
+			"description": "The \"Lastname\" value to use as a parameter for this Operation",
+			"placeholder": "Colomer"
+		},
+		"mode": {
+			"displayName": "Mode",
+			"description": "The \"Mode\" value to use as a parameter for this Operation",
+			"placeholder": "verify",
+			"options": {
+				"guess": {
+					"displayName": "Guess"
+				},
+				"only_verify": {
+					"displayName": "Only_verify"
+				},
+				"verify": {
+					"displayName": "Verify"
+				}
+			}
+		},
+		"fullname": {
+			"displayName": "Fullname",
+			"description": "The \"Fullname\" value to use as a parameter for this Operation",
+			"placeholder": "Miquel Colomer"
+		},
+		"mobile": {
+			"displayName": "Mobile",
+			"description": "The \"Mobile\" value to use as a parameter for this Operation",
+			"placeholder": "34605281220"
+		},
+		"url_dlr": {
+			"displayName": "Url dlr",
+			"description": "The \"Url dlr\" value to use as a parameter for this Operation",
+			"placeholder": "https://sms-dlr.free.beeceptor.com"
+		},
+		"source": {
+			"displayName": "Source",
+			"description": "The \"Source\" value to use as a parameter for this Operation",
+			"placeholder": "https://habilon.com/wp-content/uploads/2019/09/11b07c01.pdf"
+		},
+		"destination": {
+			"displayName": "Destination",
+			"description": "The \"Destination\" value to use as a parameter for this Operation",
+			"placeholder": "s3://ACCESSKEY:SECRETKEY@s3.amazon.com/BUCKET_NAME/sample.pdf"
+		},
+		"size": {
+			"displayName": "Size",
+			"description": "The \"Size\" value to use as a parameter for this Operation",
+			"placeholder": "80"
+		},
+		"list": {
+			"displayName": "List",
+			"description": "The \"List\" value to use as a parameter for this Operation",
+			"placeholder": "last-connections"
+		},
+		"keywords": {
+			"displayName": "Keywords",
+			"description": "The \"Keywords\" value to use as a parameter for this Operation",
+			"placeholder": "Growth"
+		},
+		"current_company": {
+			"displayName": "Current company",
+			"description": "The \"Current company\" value to use as a parameter for this Operation",
+			"placeholder": "Apple"
+		},
+		"current_title": {
+			"displayName": "Current title",
+			"description": "The \"Current title\" value to use as a parameter for this Operation",
+			"placeholder": "Software Engineer"
+		},
+		"included_companies": {
+			"displayName": "Included companies",
+			"description": "The \"Included companies\" value to use as a parameter for this Operation",
+			"placeholder": "Sony,IBM"
+		},
+		"excluded_companies": {
+			"displayName": "Excluded companies",
+			"description": "The \"Excluded companies\" value to use as a parameter for this Operation",
+			"placeholder": "Apple,BP"
+		},
+		"included_titles": {
+			"displayName": "Included titles",
+			"description": "The \"Included titles\" value to use as a parameter for this Operation",
+			"placeholder": "DevOps Engineer,Systems Engineer"
+		},
+		"excluded_titles": {
+			"displayName": "Excluded titles",
+			"description": "The \"Excluded titles\" value to use as a parameter for this Operation",
+			"placeholder": "Big Data,Inspector"
+		},
+		"included_keywords": {
+			"displayName": "Included keywords",
+			"description": "The \"Included keywords\" value to use as a parameter for this Operation",
+			"placeholder": "keyword_to_include"
+		},
+		"excluded_keywords": {
+			"displayName": "Excluded keywords",
+			"description": "The \"Excluded keywords\" value to use as a parameter for this Operation",
+			"placeholder": "keyword_to_exclude"
+		},
+		"length1": {
+			"displayName": "Length1",
+			"description": "The \"Length1\" value to use as a parameter for this Operation",
+			"placeholder": "3"
+		},
+		"length2": {
+			"displayName": "Length2",
+			"description": "The \"Length2\" value to use as a parameter for this Operation",
+			"placeholder": "4"
+		},
+		"length": {
+			"displayName": "Length",
+			"description": "The \"Length\" value to use as a parameter for this Operation",
+			"placeholder": "3"
+		},
+		"separator": {
+			"displayName": "Separator",
+			"description": "The \"Separator\" value to use as a parameter for this Operation",
+			"placeholder": ","
+		},
+		"latitude": {
+			"displayName": "Latitude",
+			"description": "The \"Latitude\" value to use as a parameter for this Operation",
+			"placeholder": "40.4379331"
+		},
+		"longitude": {
+			"displayName": "Longitude",
+			"description": "The \"Longitude\" value to use as a parameter for this Operation",
+			"placeholder": "-3.7497476"
+		},
+		"radius": {
+			"displayName": "Radius",
+			"description": "The \"Radius\" value to use as a parameter for this Operation",
+			"placeholder": "250"
+		},
+		"imei": {
+			"displayName": "Imei",
+			"description": "The \"Imei\" value to use as a parameter for this Operation",
+			"placeholder": "490154203237518"
+		},
+		"regex": {
+			"displayName": "Regex",
+			"description": "The \"Regex\" value to use as a parameter for this Operation",
+			"placeholder": "uProc"
+		},
+		"host": {
+			"displayName": "Host",
+			"description": "The \"Host\" value to use as a parameter for this Operation",
+			"placeholder": "www.google.es"
+		},
+		"port": {
+			"displayName": "Port",
+			"description": "The \"Port\" value to use as a parameter for this Operation",
+			"placeholder": "80"
+		},
+		"table": {
+			"displayName": "Table",
+			"description": "The \"Table\" value to use as a parameter for this Operation",
+			"placeholder": "3"
+		},
+		"number1": {
+			"displayName": "Number1",
+			"description": "The \"Number1\" value to use as a parameter for this Operation",
+			"placeholder": "23"
+		},
+		"number2": {
+			"displayName": "Number2",
+			"description": "The \"Number2\" value to use as a parameter for this Operation",
+			"placeholder": "21"
+		},
+		"number3": {
+			"displayName": "Number3",
+			"description": "The \"Number3\" value to use as a parameter for this Operation",
+			"placeholder": "24"
+		},
+		"luhn": {
+			"displayName": "Luhn",
+			"description": "The \"Luhn\" value to use as a parameter for this Operation",
+			"placeholder": "79927398713"
+		},
+		"mod": {
+			"displayName": "Mod",
+			"description": "The \"Mod\" value to use as a parameter for this Operation",
+			"placeholder": "2"
+		},
+		"rest": {
+			"displayName": "Rest",
+			"description": "The \"Rest\" value to use as a parameter for this Operation",
+			"placeholder": "0"
+		},
+		"password": {
+			"displayName": "Password",
+			"description": "The \"Password\" value to use as a parameter for this Operation",
+			"placeholder": "1agdA*$#"
+		},
+		"locality": {
+			"displayName": "Locality",
+			"description": "The \"Locality\" value to use as a parameter for this Operation",
+			"placeholder": "English",
+			"options": {
+				"Australia (English)": {
+					"displayName": "Australia (English)"
+				},
+				"Australia Ocker (English)": {
+					"displayName": "Australia Ocker (English)"
+				},
+				"Azerbaijani": {
+					"displayName": "Azerbaijani"
+				},
+				"Bork (English)": {
+					"displayName": "Bork (English)"
+				},
+				"Canada (English)": {
+					"displayName": "Canada (English)"
+				},
+				"Canada (French)": {
+					"displayName": "Canada (French)"
+				},
+				"Chinese": {
+					"displayName": "Chinese"
+				},
+				"Chinese (Taiwan)": {
+					"displayName": "Chinese (Taiwan)"
+				},
+				"Czech": {
+					"displayName": "Czech"
+				},
+				"Dutch": {
+					"displayName": "Dutch"
+				},
+				"English": {
+					"displayName": "English"
+				},
+				"Farsi": {
+					"displayName": "Farsi"
+				},
+				"French": {
+					"displayName": "French"
+				},
+				"Georgian": {
+					"displayName": "Georgian"
+				},
+				"German": {
+					"displayName": "German"
+				},
+				"German (Austria)": {
+					"displayName": "German (Austria)"
+				},
+				"German (Switzerland)": {
+					"displayName": "German (Switzerland)"
+				},
+				"Great Britain (English)": {
+					"displayName": "Great Britain (English)"
+				},
+				"India (English)": {
+					"displayName": "India (English)"
+				},
+				"Indonesia": {
+					"displayName": "Indonesia"
+				},
+				"Ireland (English)": {
+					"displayName": "Ireland (English)"
+				},
+				"Italian": {
+					"displayName": "Italian"
+				},
+				"Japanese": {
+					"displayName": "Japanese"
+				},
+				"Korean": {
+					"displayName": "Korean"
+				},
+				"Nepalese": {
+					"displayName": "Nepalese"
+				},
+				"Norwegian": {
+					"displayName": "Norwegian"
+				},
+				"Polish": {
+					"displayName": "Polish"
+				},
+				"Portuguese (Brazil)": {
+					"displayName": "Portuguese (Brazil)"
+				},
+				"Russian": {
+					"displayName": "Russian"
+				},
+				"Slovakian": {
+					"displayName": "Slovakian"
+				},
+				"Spanish": {
+					"displayName": "Spanish"
+				},
+				"Spanish Mexico": {
+					"displayName": "Spanish Mexico"
+				},
+				"Swedish": {
+					"displayName": "Swedish"
+				},
+				"Turkish": {
+					"displayName": "Turkish"
+				},
+				"Ukrainian": {
+					"displayName": "Ukrainian"
+				},
+				"United States (English)": {
+					"displayName": "United States (English)"
+				},
+				"Vietnamese": {
+					"displayName": "Vietnamese"
+				}
+			}
+		},
+		"surname": {
+			"displayName": "Surname",
+			"description": "The \"Surname\" value to use as a parameter for this Operation",
+			"placeholder": "Col"
+		},
+		"province": {
+			"displayName": "Province",
+			"description": "The \"Province\" value to use as a parameter for this Operation",
+			"placeholder": "B"
+		},
+		"format": {
+			"displayName": "Format",
+			"description": "The \"Format\" value to use as a parameter for this Operation",
+			"placeholder": "%09d"
+		},
+		"text1": {
+			"displayName": "Text1",
+			"description": "The \"Text1\" value to use as a parameter for this Operation",
+			"placeholder": "test"
+		},
+		"text2": {
+			"displayName": "Text2",
+			"description": "The \"Text2\" value to use as a parameter for this Operation",
+			"placeholder": "t"
+		},
+		"glue": {
+			"displayName": "Glue",
+			"description": "The \"Glue\" value to use as a parameter for this Operation",
+			"placeholder": ","
+		},
+		"field": {
+			"displayName": "Field",
+			"description": "The \"Field\" value to use as a parameter for this Operation",
+			"placeholder": "name",
+			"options": {
+				"alphabetic": {
+					"displayName": "Alphabetic"
+				},
+				"alphanumeric": {
+					"displayName": "Alphanumeric"
+				},
+				"cif": {
+					"displayName": "Cif"
+				},
+				"city": {
+					"displayName": "City"
+				},
+				"country": {
+					"displayName": "Country"
+				},
+				"date": {
+					"displayName": "Date"
+				},
+				"decimal": {
+					"displayName": "Decimal"
+				},
+				"dni": {
+					"displayName": "Dni"
+				},
+				"domain": {
+					"displayName": "Domain"
+				},
+				"email": {
+					"displayName": "Email"
+				},
+				"gender": {
+					"displayName": "Gender"
+				},
+				"integer": {
+					"displayName": "Integer"
+				},
+				"ip": {
+					"displayName": "Ip"
+				},
+				"mobile": {
+					"displayName": "Mobile"
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"nie": {
+					"displayName": "Nie"
+				},
+				"nif": {
+					"displayName": "Nif"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"province": {
+					"displayName": "Province"
+				},
+				"zipcode": {
+					"displayName": "Zipcode"
+				}
+			}
+		},
+		"find": {
+			"displayName": "Find",
+			"description": "The \"Find\" value to use as a parameter for this Operation",
+			"placeholder": "o"
+		},
+		"replace": {
+			"displayName": "Replace",
+			"description": "The \"Replace\" value to use as a parameter for this Operation",
+			"placeholder": "u"
+		},
+		"texts": {
+			"displayName": "Texts",
+			"description": "The \"Texts\" value to use as a parameter for this Operation",
+			"placeholder": "sample,samples"
+		},
+		"html": {
+			"displayName": "Html",
+			"description": "The \"Html\" value to use as a parameter for this Operation",
+			"placeholder": "<div>Esto es <strong>fant&aacute;stico!</strong></div>"
+		},
+		"tin": {
+			"displayName": "Tin",
+			"description": "The \"Tin\" value to use as a parameter for this Operation",
+			"placeholder": "44016116G"
+		},
+		"vin": {
+			"displayName": "Vin",
+			"description": "The \"Vin\" value to use as a parameter for this Operation",
+			"placeholder": "JF2AC53B3GE202643"
+		},
+		"count1": {
+			"displayName": "Count1",
+			"description": "The \"Count1\" value to use as a parameter for this Operation",
+			"placeholder": "1"
+		},
+		"count2": {
+			"displayName": "Count2",
+			"description": "The \"Count2\" value to use as a parameter for this Operation",
+			"placeholder": "2"
+		},
+		"count": {
+			"displayName": "Count",
+			"description": "The \"Count\" value to use as a parameter for this Operation",
+			"placeholder": "2"
+		},
+		"additionalOptions": {
+			"displayName": "Additional Options",
+			"placeholder": "Add option",
+			"options": {
+				"dataWebhook": {
+					"displayName": "Data Webhook",
+					"description": "URL to send tool response when tool has resolved your request"
+				}
+			}
+		}
+	}
+}

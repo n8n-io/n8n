@@ -1,0 +1,63 @@
+{
+	"header": {
+		"displayName": "TOTP",
+		"description": "Generate a time-based one-time password"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"generateSecret": {
+					"displayName": "Generate Secret"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"algorithm": {
+					"displayName": "Algorithm",
+					"description": "HMAC hashing algorithm. Defaults to SHA1.",
+					"options": {
+						"SHA1": {
+							"displayName": "SHA1"
+						},
+						"SHA224": {
+							"displayName": "SHA224"
+						},
+						"SHA256": {
+							"displayName": "SHA256"
+						},
+						"SHA3-224": {
+							"displayName": "SHA3-224"
+						},
+						"SHA3-256": {
+							"displayName": "SHA3-256"
+						},
+						"SHA3-384": {
+							"displayName": "SHA3-384"
+						},
+						"SHA3-512": {
+							"displayName": "SHA3-512"
+						},
+						"SHA384": {
+							"displayName": "SHA384"
+						},
+						"SHA512": {
+							"displayName": "SHA512"
+						}
+					}
+				},
+				"digits": {
+					"displayName": "Digits",
+					"description": "Number of digits in the generated TOTP code. Defaults to 6 digits."
+				},
+				"period": {
+					"displayName": "Period",
+					"description": "How many seconds the generated TOTP code is valid for. Defaults to 30 seconds."
+				}
+			}
+		}
+	}
+}

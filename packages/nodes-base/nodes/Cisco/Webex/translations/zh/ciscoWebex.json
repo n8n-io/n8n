@@ -1,0 +1,1723 @@
+{
+	"header": {
+		"displayName": "思科 Webex",
+		"description": "使用思科 Webex API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"meeting": {
+					"displayName": "会议"
+				},
+				"message": {
+					"displayName": "消息"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "会议标题。标题最多可包含128个字符。"
+		},
+		"start": {
+			"displayName": "开始",
+			"description": "会议开始的日期和时间。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+		},
+		"end": {
+			"displayName": "结束",
+			"description": "会议结束的日期和时间。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"agenda": {
+					"displayName": "议程",
+					"description": "会议议程。议程最多可包含1300个字符。"
+				},
+				"allowAnyUserToBeCoHost": {
+					"displayName": "允许任何用户成为联席主持人",
+					"description": "是否允许目标站点上拥有主持人账户的任何与会者在加入会议时成为联席主持人"
+				},
+				"allowAuthenticatedDevices": {
+					"displayName": "允许已验证设备",
+					"description": "是否允许会议组织内已验证的视频设备无需提示即可开始或加入会议"
+				},
+				"allowFirstUserToBeCoHost": {
+					"displayName": "允许首位用户成为联席主持人",
+					"description": "是否允许目标站点上拥有主持人账户的会议首位参会者成为联席主持人"
+				},
+				"autoAcceptRequest": {
+					"displayName": "自动接受请求",
+					"description": "会议注册请求是否自动接受"
+				},
+				"enableConnectAudioBeforeHost": {
+					"displayName": "启用主持人加入前连接音频",
+					"description": "是否允许任何与会者在主持人加入会议前连接音频"
+				},
+				"enabledAutoRecordMeeting": {
+					"displayName": "启用自动录制会议",
+					"description": "会议是否自动录制"
+				},
+				"enabledJoinBeforeHost": {
+					"displayName": "启用主持人加入前加入",
+					"description": "是否允许任何参与者在主持人加入会议前加入会议"
+				},
+				"excludePassword": {
+					"displayName": "排除密码",
+					"description": "是否从会议邮件邀请中排除密码"
+				},
+				"hostEmail": {
+					"displayName": "主持人邮箱",
+					"description": "会议主持人的电子邮件地址。仅管理员可设置。"
+				},
+				"integrationTags": {
+					"displayName": "集成标签",
+					"description": "由集成应用程序在其自身域中创建的外部键。它们可能是Zendesk工单ID、Jira ID、Salesforce商机ID等。"
+				},
+				"inviteesUi": {
+					"displayName": "受邀者",
+					"placeholder": "添加受邀者",
+					"multipleValueButtonText": "添加受邀者",
+					"options": {
+						"inviteeValues": {
+							"displayName": "被邀请人",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"description": "会议受邀者邮箱地址",
+									"placeholder": "name@email.com"
+								},
+								"displayName": {
+									"displayName": "显示名称",
+									"description": "会议受邀者显示名称"
+								},
+								"coHost": {
+									"displayName": "联席主持人",
+									"description": "是否允许被邀请者成为会议的联席主持人"
+								}
+							}
+						}
+					},
+					"values": {
+						"inviteeValues": {
+							"displayName": "被邀请人",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"description": "会议受邀者邮箱地址",
+									"placeholder": "name@email.com"
+								},
+								"displayName": {
+									"displayName": "显示名称",
+									"description": "会议受邀者显示名称"
+								},
+								"coHost": {
+									"displayName": "联席主持人",
+									"description": "是否允许被邀请者成为会议的联席主持人"
+								}
+							}
+						},
+						"inviteesUi": {
+							"displayName": "受邀者",
+							"placeholder": "添加受邀者"
+						}
+					}
+				},
+				"joinBeforeHostMinutes": {
+					"displayName": "主持人加入前可加入分钟数",
+					"description": "参会者可在会议开始时间前加入会议，且早于主持人加入的分钟数",
+					"options": {
+						"0": {
+							"displayName": "0"
+						},
+						"5": {
+							"displayName": "5"
+						},
+						"10": {
+							"displayName": "10"
+						},
+						"15": {
+							"displayName": "15"
+						}
+					}
+				},
+				"publicMeeting": {
+					"displayName": "公开会议",
+					"description": "是否允许在公共日历中列出此会议"
+				},
+				"recurrence": {
+					"displayName": "重复规则",
+					"description": "会议重复的规则。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+				},
+				"requireRegistrationInfo": {
+					"displayName": "必填注册信息",
+					"description": "会议注册所需数据"
+				},
+				"reminderTime": {
+					"displayName": "提醒时间",
+					"description": "会议开始前多少分钟，向主持人发送电子邮件提醒"
+				},
+				"sendEmail": {
+					"displayName": "发送邮件",
+					"description": "是否向主持人和受邀者发送邮件"
+				},
+				"siteUrl": {
+					"displayName": "站点URL",
+					"description": "创建会议所在的Webex站点URL。如果未指定，将在用户的偏好站点上创建会议。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"attachmentsUi": {
+					"displayName": "附件",
+					"placeholder": "添加附件",
+					"multipleValueButtonText": "添加附件",
+					"options": {
+						"attachmentValues": {
+							"displayName": "附件",
+							"options": {
+								"elementsUi": {
+									"displayName": "元素",
+									"placeholder": "添加元素",
+									"multipleValueButtonText": "添加元素",
+									"options": {
+										"elementValues": {
+											"displayName": "元素",
+											"options": {
+												"type": {
+													"displayName": "类型",
+													"options": {
+														"textBlock": {
+															"displayName": "文本块"
+														},
+														"inputText": {
+															"displayName": "Input Text"
+														}
+													}
+												},
+												"text": {
+													"displayName": "文本",
+													"description": "要显示的文本。支持Markdown子集（https://aka.ms/ACTextFeatures）。"
+												},
+												"color": {
+													"displayName": "颜色",
+													"description": "TextBlock元素的颜色",
+													"options": {
+														"accent": {
+															"displayName": "口音"
+														},
+														"attention": {
+															"displayName": "注意"
+														},
+														"dark": {
+															"displayName": "深色"
+														},
+														"default": {
+															"displayName": "默认"
+														},
+														"good": {
+															"displayName": "良好"
+														},
+														"light": {
+															"displayName": "浅色"
+														},
+														"warning": {
+															"displayName": "警告"
+														}
+													}
+												},
+												"fontType": {
+													"displayName": "字体类型",
+													"description": "用于渲染的字体类型",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"monospace": {
+															"displayName": "等宽字体"
+														}
+													}
+												},
+												"horizontalAlignment": {
+													"displayName": "水平对齐",
+													"description": "控制文本的水平对齐方式",
+													"options": {
+														"left": {
+															"displayName": "左侧"
+														},
+														"center": {
+															"displayName": "居中"
+														},
+														"right": {
+															"displayName": "右侧"
+														}
+													}
+												},
+												"isSubtle": {
+													"displayName": "是否使用柔和色调",
+													"description": "是否将文本显示为略微柔和的色调，使其看起来不那么突出"
+												},
+												"maxLines": {
+													"displayName": "最大行数",
+													"description": "指定要显示的最大行数"
+												},
+												"size": {
+													"displayName": "规模",
+													"description": "控制文本大小",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"extraLarge": {
+															"displayName": "特大号"
+														},
+														"large": {
+															"displayName": "大型"
+														},
+														"medium": {
+															"displayName": "中等"
+														},
+														"small": {
+															"displayName": "小"
+														}
+													}
+												},
+												"weight": {
+													"displayName": "重量",
+													"description": "控制TextBlock元素的权重",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"lighter": {
+															"displayName": "更轻量"
+														},
+														"bolder": {
+															"displayName": "加粗"
+														}
+													}
+												},
+												"wrap": {
+													"displayName": "换行",
+													"description": "是否允许文本换行。否则文本将被裁剪。"
+												},
+												"height": {
+													"displayName": "高度",
+													"description": "指定元素的高度",
+													"options": {
+														"auto": {
+															"displayName": "自动"
+														},
+														"stretch": {
+															"displayName": "拉伸"
+														}
+													}
+												},
+												"separator": {
+													"displayName": "分隔符",
+													"description": "是否在元素顶部绘制分隔线"
+												},
+												"spacing": {
+													"displayName": "间距",
+													"description": "控制此元素与前一个元素之间的间距量",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"extraLarge": {
+															"displayName": "特大号"
+														},
+														"large": {
+															"displayName": "大型"
+														},
+														"medium": {
+															"displayName": "中等"
+														},
+														"none": {
+															"displayName": "无"
+														},
+														"padding": {
+															"displayName": "填充"
+														},
+														"small": {
+															"displayName": "小"
+														}
+													}
+												},
+												"id": {
+													"displayName": "ID",
+													"description": "该值的唯一标识符。在执行提交操作时用于识别收集的输入。"
+												},
+												"isVisible": {
+													"displayName": "是否可见",
+													"description": "此项是否将从可视化树中移除"
+												},
+												"isMultiline": {
+													"displayName": "是否允许多行输入",
+													"description": "Whether to allow multiple lines of input"
+												},
+												"maxLength": {
+													"displayName": "最大长度",
+													"description": "要收集的最大字符长度提示（某些客户端可能忽略）"
+												},
+												"placeholder": {
+													"displayName": "占位符",
+													"description": "期望输入的描述。当未输入任何文本时显示。"
+												},
+												"regex": {
+													"displayName": "正则表达式",
+													"description": "指示此文本输入所需格式的正则表达式"
+												},
+												"style": {
+													"displayName": "样式",
+													"description": "文本输入框样式提示",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"tel": {
+															"displayName": "电话"
+														},
+														"url": {
+															"displayName": "URL"
+														},
+														"email": {
+															"displayName": "电子邮件"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值",
+													"description": "此字段的初始值"
+												}
+											}
+										}
+									},
+									"values": {
+										"elementValues": {
+											"displayName": "元素",
+											"options": {
+												"type": {
+													"displayName": "类型",
+													"options": {
+														"textBlock": {
+															"displayName": "文本块"
+														},
+														"inputText": {
+															"displayName": "Input Text"
+														}
+													}
+												},
+												"text": {
+													"displayName": "文本",
+													"description": "要显示的文本。支持Markdown子集（https://aka.ms/ACTextFeatures）。"
+												},
+												"color": {
+													"displayName": "颜色",
+													"description": "TextBlock元素的颜色",
+													"options": {
+														"accent": {
+															"displayName": "口音"
+														},
+														"attention": {
+															"displayName": "注意"
+														},
+														"dark": {
+															"displayName": "深色"
+														},
+														"default": {
+															"displayName": "默认"
+														},
+														"good": {
+															"displayName": "良好"
+														},
+														"light": {
+															"displayName": "浅色"
+														},
+														"warning": {
+															"displayName": "警告"
+														}
+													}
+												},
+												"fontType": {
+													"displayName": "字体类型",
+													"description": "用于渲染的字体类型",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"monospace": {
+															"displayName": "等宽字体"
+														}
+													}
+												},
+												"horizontalAlignment": {
+													"displayName": "水平对齐",
+													"description": "控制文本的水平对齐方式",
+													"options": {
+														"left": {
+															"displayName": "左侧"
+														},
+														"center": {
+															"displayName": "居中"
+														},
+														"right": {
+															"displayName": "右侧"
+														}
+													}
+												},
+												"isSubtle": {
+													"displayName": "是否使用柔和色调",
+													"description": "是否将文本显示为略微柔和的色调，使其看起来不那么突出"
+												},
+												"maxLines": {
+													"displayName": "最大行数",
+													"description": "指定要显示的最大行数"
+												},
+												"size": {
+													"displayName": "规模",
+													"description": "控制文本大小",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"extraLarge": {
+															"displayName": "特大号"
+														},
+														"large": {
+															"displayName": "大型"
+														},
+														"medium": {
+															"displayName": "中等"
+														},
+														"small": {
+															"displayName": "小"
+														}
+													}
+												},
+												"weight": {
+													"displayName": "重量",
+													"description": "控制TextBlock元素的权重",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"lighter": {
+															"displayName": "更轻量"
+														},
+														"bolder": {
+															"displayName": "加粗"
+														}
+													}
+												},
+												"wrap": {
+													"displayName": "换行",
+													"description": "是否允许文本换行。否则文本将被裁剪。"
+												},
+												"height": {
+													"displayName": "高度",
+													"description": "指定元素的高度",
+													"options": {
+														"auto": {
+															"displayName": "自动"
+														},
+														"stretch": {
+															"displayName": "拉伸"
+														}
+													}
+												},
+												"separator": {
+													"displayName": "分隔符",
+													"description": "是否在元素顶部绘制分隔线"
+												},
+												"spacing": {
+													"displayName": "间距",
+													"description": "控制此元素与前一个元素之间的间距量",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"extraLarge": {
+															"displayName": "特大号"
+														},
+														"large": {
+															"displayName": "大型"
+														},
+														"medium": {
+															"displayName": "中等"
+														},
+														"none": {
+															"displayName": "无"
+														},
+														"padding": {
+															"displayName": "填充"
+														},
+														"small": {
+															"displayName": "小"
+														}
+													}
+												},
+												"id": {
+													"displayName": "ID",
+													"description": "该值的唯一标识符。在执行提交操作时用于识别收集的输入。"
+												},
+												"isVisible": {
+													"displayName": "是否可见",
+													"description": "此项是否将从可视化树中移除"
+												},
+												"isMultiline": {
+													"displayName": "是否允许多行输入",
+													"description": "是否允许多行输入"
+												},
+												"maxLength": {
+													"displayName": "最大长度",
+													"description": "要收集的最大字符长度提示（某些客户端可能忽略）"
+												},
+												"placeholder": {
+													"displayName": "占位符",
+													"description": "期望输入的描述。当未输入任何文本时显示。"
+												},
+												"regex": {
+													"displayName": "正则表达式",
+													"description": "指示此文本输入所需格式的正则表达式"
+												},
+												"style": {
+													"displayName": "样式",
+													"description": "文本输入框样式提示",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"tel": {
+															"displayName": "电话"
+														},
+														"url": {
+															"displayName": "URL"
+														},
+														"email": {
+															"displayName": "电子邮件"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值",
+													"description": "此字段的初始值"
+												}
+											}
+										},
+										"elementsUi": {
+											"displayName": "元素",
+											"placeholder": "添加元素"
+										}
+									}
+								},
+								"actionsUi": {
+									"displayName": "操作",
+									"placeholder": "添加操作",
+									"multipleValueButtonText": "添加操作",
+									"options": {
+										"actionValues": {
+											"displayName": "操作",
+											"options": {
+												"type": {
+													"displayName": "类型",
+													"options": {
+														"execute": {
+															"displayName": "执行"
+														},
+														"openUrl": {
+															"displayName": "打开URL"
+														},
+														"submit": {
+															"displayName": "提交"
+														}
+													}
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "要打开的URL"
+												},
+												"data": {
+													"displayName": "数据",
+													"description": "要传递的任何额外数据。这些本质上是‘隐藏’属性。"
+												},
+												"verb": {
+													"displayName": "动词",
+													"description": "此操作关联的卡片作者自定义动词"
+												},
+												"title": {
+													"displayName": "标题",
+													"description": "表示此操作的按钮或链接标签"
+												},
+												"iconUrl": {
+													"displayName": "图标URL",
+													"description": "与标题一起显示在操作上的可选图标。1.2+版本支持数据URI。"
+												},
+												"style": {
+													"displayName": "样式",
+													"description": "控制一个操作（Action）的样式，这会影响该操作的显示方式、语音播报等",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"positive": {
+															"displayName": "正数"
+														},
+														"destructive": {
+															"displayName": "破坏性"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"actionValues": {
+											"displayName": "操作",
+											"options": {
+												"type": {
+													"displayName": "类型",
+													"options": {
+														"execute": {
+															"displayName": "执行"
+														},
+														"openUrl": {
+															"displayName": "打开URL"
+														},
+														"submit": {
+															"displayName": "提交"
+														}
+													}
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "要打开的URL"
+												},
+												"data": {
+													"displayName": "数据",
+													"description": "要传递的任何额外数据。这些本质上是‘隐藏’属性。"
+												},
+												"verb": {
+													"displayName": "动词",
+													"description": "此操作关联的卡片作者自定义动词"
+												},
+												"title": {
+													"displayName": "标题",
+													"description": "表示此操作的按钮或链接标签"
+												},
+												"iconUrl": {
+													"displayName": "图标URL",
+													"description": "与标题一起显示在操作上的可选图标。1.2+版本支持数据URI。"
+												},
+												"style": {
+													"displayName": "样式",
+													"description": "控制一个操作（Action）的样式，这会影响该操作的显示方式、语音播报等",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"positive": {
+															"displayName": "正数"
+														},
+														"destructive": {
+															"displayName": "破坏性"
+														}
+													}
+												}
+											}
+										},
+										"actionsUi": {
+											"displayName": "操作",
+											"placeholder": "添加操作"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"attachmentValues": {
+							"displayName": "附件",
+							"options": {
+								"elementsUi": {
+									"displayName": "元素",
+									"placeholder": "添加元素",
+									"multipleValueButtonText": "添加元素",
+									"options": {
+										"elementValues": {
+											"displayName": "元素",
+											"options": {
+												"type": {
+													"displayName": "类型",
+													"options": {
+														"textBlock": {
+															"displayName": "文本块"
+														},
+														"inputText": {
+															"displayName": "Input Text"
+														}
+													}
+												},
+												"text": {
+													"displayName": "文本",
+													"description": "要显示的文本。支持Markdown子集（https://aka.ms/ACTextFeatures）。"
+												},
+												"color": {
+													"displayName": "颜色",
+													"description": "TextBlock元素的颜色",
+													"options": {
+														"accent": {
+															"displayName": "口音"
+														},
+														"attention": {
+															"displayName": "注意"
+														},
+														"dark": {
+															"displayName": "深色"
+														},
+														"default": {
+															"displayName": "默认"
+														},
+														"good": {
+															"displayName": "良好"
+														},
+														"light": {
+															"displayName": "浅色"
+														},
+														"warning": {
+															"displayName": "警告"
+														}
+													}
+												},
+												"fontType": {
+													"displayName": "字体类型",
+													"description": "用于渲染的字体类型",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"monospace": {
+															"displayName": "等宽字体"
+														}
+													}
+												},
+												"horizontalAlignment": {
+													"displayName": "水平对齐",
+													"description": "控制文本的水平对齐方式",
+													"options": {
+														"left": {
+															"displayName": "左侧"
+														},
+														"center": {
+															"displayName": "居中"
+														},
+														"right": {
+															"displayName": "右侧"
+														}
+													}
+												},
+												"isSubtle": {
+													"displayName": "是否使用柔和色调",
+													"description": "是否将文本显示为略微柔和的色调，使其看起来不那么突出"
+												},
+												"maxLines": {
+													"displayName": "最大行数",
+													"description": "指定要显示的最大行数"
+												},
+												"size": {
+													"displayName": "规模",
+													"description": "控制文本大小",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"extraLarge": {
+															"displayName": "特大号"
+														},
+														"large": {
+															"displayName": "大型"
+														},
+														"medium": {
+															"displayName": "中等"
+														},
+														"small": {
+															"displayName": "小"
+														}
+													}
+												},
+												"weight": {
+													"displayName": "重量",
+													"description": "控制TextBlock元素的权重",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"lighter": {
+															"displayName": "更轻量"
+														},
+														"bolder": {
+															"displayName": "加粗"
+														}
+													}
+												},
+												"wrap": {
+													"displayName": "换行",
+													"description": "是否允许文本换行。否则文本将被裁剪。"
+												},
+												"height": {
+													"displayName": "高度",
+													"description": "指定元素的高度",
+													"options": {
+														"auto": {
+															"displayName": "自动"
+														},
+														"stretch": {
+															"displayName": "拉伸"
+														}
+													}
+												},
+												"separator": {
+													"displayName": "分隔符",
+													"description": "是否在元素顶部绘制分隔线"
+												},
+												"spacing": {
+													"displayName": "间距",
+													"description": "控制此元素与前一个元素之间的间距量",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"extraLarge": {
+															"displayName": "特大号"
+														},
+														"large": {
+															"displayName": "大型"
+														},
+														"medium": {
+															"displayName": "中等"
+														},
+														"none": {
+															"displayName": "无"
+														},
+														"padding": {
+															"displayName": "填充"
+														},
+														"small": {
+															"displayName": "小"
+														}
+													}
+												},
+												"id": {
+													"displayName": "ID",
+													"description": "该值的唯一标识符。在执行提交操作时用于识别收集的输入。"
+												},
+												"isVisible": {
+													"displayName": "是否可见",
+													"description": "此项是否将从可视化树中移除"
+												},
+												"isMultiline": {
+													"displayName": "是否允许多行输入",
+													"description": "是否允许多行输入"
+												},
+												"maxLength": {
+													"displayName": "最大长度",
+													"description": "要收集的最大字符长度提示（某些客户端可能忽略）"
+												},
+												"placeholder": {
+													"displayName": "占位符",
+													"description": "期望输入的描述。当未输入任何文本时显示。"
+												},
+												"regex": {
+													"displayName": "正则表达式",
+													"description": "指示此文本输入所需格式的正则表达式"
+												},
+												"style": {
+													"displayName": "样式",
+													"description": "文本输入框样式提示",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"tel": {
+															"displayName": "电话"
+														},
+														"url": {
+															"displayName": "URL"
+														},
+														"email": {
+															"displayName": "电子邮件"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值",
+													"description": "此字段的初始值"
+												}
+											}
+										}
+									},
+									"values": {
+										"elementValues": {
+											"displayName": "元素",
+											"options": {
+												"type": {
+													"displayName": "类型",
+													"options": {
+														"textBlock": {
+															"displayName": "文本块"
+														},
+														"inputText": {
+															"displayName": "Input Text"
+														}
+													}
+												},
+												"text": {
+													"displayName": "文本",
+													"description": "要显示的文本。支持Markdown子集（https://aka.ms/ACTextFeatures）。"
+												},
+												"color": {
+													"displayName": "颜色",
+													"description": "TextBlock元素的颜色",
+													"options": {
+														"accent": {
+															"displayName": "口音"
+														},
+														"attention": {
+															"displayName": "注意"
+														},
+														"dark": {
+															"displayName": "深色"
+														},
+														"default": {
+															"displayName": "默认"
+														},
+														"good": {
+															"displayName": "良好"
+														},
+														"light": {
+															"displayName": "浅色"
+														},
+														"warning": {
+															"displayName": "警告"
+														}
+													}
+												},
+												"fontType": {
+													"displayName": "字体类型",
+													"description": "用于渲染的字体类型",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"monospace": {
+															"displayName": "等宽字体"
+														}
+													}
+												},
+												"horizontalAlignment": {
+													"displayName": "水平对齐",
+													"description": "控制文本的水平对齐方式",
+													"options": {
+														"left": {
+															"displayName": "左侧"
+														},
+														"center": {
+															"displayName": "居中"
+														},
+														"right": {
+															"displayName": "右侧"
+														}
+													}
+												},
+												"isSubtle": {
+													"displayName": "是否使用柔和色调",
+													"description": "是否将文本显示为略微柔和的色调，使其看起来不那么突出"
+												},
+												"maxLines": {
+													"displayName": "最大行数",
+													"description": "指定要显示的最大行数"
+												},
+												"size": {
+													"displayName": "规模",
+													"description": "控制文本大小",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"extraLarge": {
+															"displayName": "特大号"
+														},
+														"large": {
+															"displayName": "大型"
+														},
+														"medium": {
+															"displayName": "中等"
+														},
+														"small": {
+															"displayName": "小"
+														}
+													}
+												},
+												"weight": {
+													"displayName": "重量",
+													"description": "控制TextBlock元素的权重",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"lighter": {
+															"displayName": "更轻量"
+														},
+														"bolder": {
+															"displayName": "加粗"
+														}
+													}
+												},
+												"wrap": {
+													"displayName": "换行",
+													"description": "是否允许文本换行。否则文本将被裁剪。"
+												},
+												"height": {
+													"displayName": "高度",
+													"description": "指定元素的高度",
+													"options": {
+														"auto": {
+															"displayName": "自动"
+														},
+														"stretch": {
+															"displayName": "拉伸"
+														}
+													}
+												},
+												"separator": {
+													"displayName": "分隔符",
+													"description": "是否在元素顶部绘制分隔线"
+												},
+												"spacing": {
+													"displayName": "间距",
+													"description": "控制此元素与前一个元素之间的间距量",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"extraLarge": {
+															"displayName": "特大号"
+														},
+														"large": {
+															"displayName": "大型"
+														},
+														"medium": {
+															"displayName": "中等"
+														},
+														"none": {
+															"displayName": "无"
+														},
+														"padding": {
+															"displayName": "填充"
+														},
+														"small": {
+															"displayName": "小"
+														}
+													}
+												},
+												"id": {
+													"displayName": "ID",
+													"description": "该值的唯一标识符。在执行提交操作时用于识别收集的输入。"
+												},
+												"isVisible": {
+													"displayName": "是否可见",
+													"description": "此项是否将从可视化树中移除"
+												},
+												"isMultiline": {
+													"displayName": "是否允许多行输入",
+													"description": "是否允许多行输入"
+												},
+												"maxLength": {
+													"displayName": "最大长度",
+													"description": "要收集的最大字符长度提示（某些客户端可能忽略）"
+												},
+												"placeholder": {
+													"displayName": "占位符",
+													"description": "期望输入的描述。当未输入任何文本时显示。"
+												},
+												"regex": {
+													"displayName": "正则表达式",
+													"description": "指示此文本输入所需格式的正则表达式"
+												},
+												"style": {
+													"displayName": "样式",
+													"description": "文本输入框样式提示",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"tel": {
+															"displayName": "电话"
+														},
+														"url": {
+															"displayName": "URL"
+														},
+														"email": {
+															"displayName": "电子邮件"
+														}
+													}
+												},
+												"value": {
+													"displayName": "值",
+													"description": "此字段的初始值"
+												}
+											}
+										},
+										"elementsUi": {
+											"displayName": "元素",
+											"placeholder": "添加元素"
+										}
+									}
+								},
+								"actionsUi": {
+									"displayName": "操作",
+									"placeholder": "添加操作",
+									"multipleValueButtonText": "添加操作",
+									"options": {
+										"actionValues": {
+											"displayName": "操作",
+											"options": {
+												"type": {
+													"displayName": "类型",
+													"options": {
+														"execute": {
+															"displayName": "执行"
+														},
+														"openUrl": {
+															"displayName": "打开URL"
+														},
+														"submit": {
+															"displayName": "提交"
+														}
+													}
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "要打开的URL"
+												},
+												"data": {
+													"displayName": "数据",
+													"description": "要传递的任何额外数据。这些本质上是‘隐藏’属性。"
+												},
+												"verb": {
+													"displayName": "动词",
+													"description": "此操作关联的卡片作者自定义动词"
+												},
+												"title": {
+													"displayName": "标题",
+													"description": "表示此操作的按钮或链接标签"
+												},
+												"iconUrl": {
+													"displayName": "图标URL",
+													"description": "与标题一起显示在操作上的可选图标。1.2+版本支持数据URI。"
+												},
+												"style": {
+													"displayName": "样式",
+													"description": "控制一个操作（Action）的样式，这会影响该操作的显示方式、语音播报等",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"positive": {
+															"displayName": "正数"
+														},
+														"destructive": {
+															"displayName": "破坏性"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"actionValues": {
+											"displayName": "操作",
+											"options": {
+												"type": {
+													"displayName": "类型",
+													"options": {
+														"execute": {
+															"displayName": "执行"
+														},
+														"openUrl": {
+															"displayName": "打开URL"
+														},
+														"submit": {
+															"displayName": "提交"
+														}
+													}
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "要打开的URL"
+												},
+												"data": {
+													"displayName": "数据",
+													"description": "要传递的任何额外数据。这些本质上是‘隐藏’属性。"
+												},
+												"verb": {
+													"displayName": "动词",
+													"description": "此操作关联的卡片作者自定义动词"
+												},
+												"title": {
+													"displayName": "标题",
+													"description": "表示此操作的按钮或链接标签"
+												},
+												"iconUrl": {
+													"displayName": "图标URL",
+													"description": "与标题一起显示在操作上的可选图标。1.2+版本支持数据URI。"
+												},
+												"style": {
+													"displayName": "样式",
+													"description": "控制一个操作（Action）的样式，这会影响该操作的显示方式、语音播报等",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"positive": {
+															"displayName": "正数"
+														},
+														"destructive": {
+															"displayName": "破坏性"
+														}
+													}
+												}
+											}
+										},
+										"actionsUi": {
+											"displayName": "操作",
+											"placeholder": "添加操作"
+										}
+									}
+								}
+							}
+						},
+						"attachmentsUi": {
+							"displayName": "附件",
+							"placeholder": "添加附件"
+						}
+					}
+				},
+				"fileUi": {
+					"displayName": "文件",
+					"placeholder": "添加文件",
+					"options": {
+						"fileValue": {
+							"displayName": "文件",
+							"options": {
+								"fileLocation": {
+									"displayName": "文件位置",
+									"options": {
+										"url": {
+											"displayName": "URL"
+										},
+										"binaryData": {
+											"displayName": "二进制文件"
+										}
+									}
+								},
+								"binaryPropertyName": {
+									"displayName": "带文件的输入字段",
+									"description": "节点输入中包含二进制文件数据的字段"
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "文件的公开URL"
+								}
+							}
+						}
+					},
+					"values": {
+						"fileValue": {
+							"displayName": "文件",
+							"options": {
+								"fileLocation": {
+									"displayName": "文件位置",
+									"options": {
+										"url": {
+											"displayName": "URL"
+										},
+										"binaryData": {
+											"displayName": "二进制文件"
+										}
+									}
+								},
+								"binaryPropertyName": {
+									"displayName": "带文件的输入字段",
+									"description": "节点输入中包含二进制文件数据的字段"
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "文件的公开URL"
+								}
+							}
+						},
+						"fileUi": {
+							"displayName": "文件",
+							"placeholder": "添加文件"
+						}
+					}
+				},
+				"markdown": {
+					"displayName": "Markdown",
+					"description": "以Markdown格式显示的消息。当使用text参数时，用于为不支持富文本的UI客户端提供替代文本。"
+				}
+			}
+		},
+		"meetingId": {
+			"displayName": "会议ID",
+			"description": "会议ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"hostEmail": {
+					"displayName": "主持人邮箱",
+					"description": "会议主持人的电子邮件地址。仅当调用API的用户或应用程序具有管理员级别权限时才使用此参数。"
+				},
+				"sendEmail": {
+					"displayName": "发送邮件",
+					"description": "是否向主持人和受邀者发送邮件。这是一个可选字段，默认值为 true。"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "会议密码。当会议受密码保护且当前用户不是主持人、联席主持人或被邀请者时，需要此密码才能查看会议。"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"from": {
+					"displayName": "从",
+					"description": "会议的开始日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+				},
+				"hostEmail": {
+					"displayName": "主持人邮箱",
+					"description": "会议主持人的电子邮件地址"
+				},
+				"integrationTag": {
+					"displayName": "集成标签",
+					"description": "由其他应用创建的外部标签，例如Zendesk工单ID或Jira ID"
+				},
+				"current": {
+					"displayName": "限制为当前会议",
+					"description": "是否仅返回当前会议或所有会议"
+				},
+				"meetingNumber": {
+					"displayName": "会议编号",
+					"description": "所请求会议对象的会议编号"
+				},
+				"meetingType": {
+					"displayName": "会议类型",
+					"options": {
+						"meetingSeries": {
+							"displayName": "会议系列",
+							"description": "基于重复规则，由一个或多个预定会议组成的预定系列会议的主控"
+						},
+						"scheduledMeeting": {
+							"displayName": "预定会议",
+							"description": "主会议系列中的实例"
+						},
+						"meeting": {
+							"displayName": "会议",
+							"description": "实际发生或已发生的会议实例"
+						}
+					}
+				},
+				"participantEmail": {
+					"displayName": "参与者邮箱",
+					"description": "必须作为会议参与者的个人邮箱"
+				},
+				"siteUrl": {
+					"displayName": "站点URL",
+					"description": "API列出会议的Webex站点URL。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "所请求会议对象的会议状态",
+					"options": {
+						"active": {
+							"displayName": "激活状态"
+						},
+						"ended": {
+							"displayName": "已结束"
+						},
+						"expired": {
+							"displayName": "已过期"
+						},
+						"inProgress": {
+							"displayName": "执行中"
+						},
+						"lobby": {
+							"displayName": "大厅"
+						},
+						"missed": {
+							"displayName": "未命中"
+						},
+						"ready": {
+							"displayName": "就绪"
+						},
+						"scheduled": {
+							"displayName": "计划执行"
+						}
+					}
+				},
+				"to": {
+					"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。",
+					"description": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+				},
+				"webLink": {
+					"displayName": "Weblink",
+					"description": "所请求会议对象的详细信息页面的URL编码链接"
+				},
+				"before": {
+					"displayName": "之前",
+					"description": "列出指定日期时间之前发送的消息"
+				},
+				"beforeMessage": {
+					"displayName": "之前消息",
+					"description": "按ID列出某条消息之前发送的消息"
+				},
+				"parentId": {
+					"displayName": "父消息ID",
+					"description": "按ID列出具有父级的消息"
+				},
+				"mentionedPeople": {
+					"displayName": "提及人员",
+					"description": "仅列出提及特定人员的消息。输入其ID。可使用'me'代指您自己"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"agenda": {
+					"displayName": "议程",
+					"description": "会议议程。不能超过1300个字符。"
+				},
+				"allowAnyUserToBeCoHost": {
+					"displayName": "允许任何用户成为联席主持人",
+					"description": "是否允许目标站点上拥有主持人账户的任何与会者在加入会议时成为联席主持人"
+				},
+				"allowAuthenticatedDevices": {
+					"displayName": "允许已验证设备",
+					"description": "是否允许会议组织内已验证的视频设备无需提示即可开始或加入会议"
+				},
+				"allowFirstUserToBeCoHost": {
+					"displayName": "允许首位用户成为联席主持人",
+					"description": "是否允许目标站点上拥有主持人账户的会议首位参会者成为联席主持人"
+				},
+				"enableConnectAudioBeforeHost": {
+					"displayName": "启用主持人加入前连接音频",
+					"description": "是否允许任何与会者在主持人加入会议前连接音频"
+				},
+				"enabledAutoRecordMeeting": {
+					"displayName": "启用自动录制会议",
+					"description": "会议是否自动录制"
+				},
+				"enabledJoinBeforeHost": {
+					"displayName": "启用主持人加入前加入",
+					"description": "是否允许任何参与者在主持人加入会议前加入会议"
+				},
+				"end": {
+					"displayName": "结束",
+					"description": "会议结束的日期和时间。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+				},
+				"excludePassword": {
+					"displayName": "排除密码",
+					"description": "是否从会议邮件邀请中排除密码"
+				},
+				"hostEmail": {
+					"displayName": "主持人邮箱",
+					"description": "会议主持人的电子邮件地址。仅当调用API的用户或应用程序拥有管理员级别权限时，才应设置此属性。"
+				},
+				"inviteesUi": {
+					"displayName": "受邀者",
+					"placeholder": "添加受邀者",
+					"multipleValueButtonText": "添加受邀者",
+					"options": {
+						"inviteeValues": {
+							"displayName": "被邀请人",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"description": "会议受邀者邮箱地址",
+									"placeholder": "name@email.com"
+								},
+								"displayName": {
+									"displayName": "显示名称",
+									"description": "会议受邀者显示名称"
+								},
+								"coHost": {
+									"displayName": "联席主持人",
+									"description": "是否允许被邀请者成为会议的联席主持人"
+								}
+							}
+						}
+					},
+					"values": {
+						"inviteeValues": {
+							"displayName": "被邀请人",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"description": "会议受邀者邮箱地址",
+									"placeholder": "name@email.com"
+								},
+								"displayName": {
+									"displayName": "显示名称",
+									"description": "会议受邀者显示名称"
+								},
+								"coHost": {
+									"displayName": "联席主持人",
+									"description": "是否允许被邀请者成为会议的联席主持人"
+								}
+							}
+						},
+						"inviteesUi": {
+							"displayName": "受邀者",
+							"placeholder": "添加受邀者"
+						}
+					}
+				},
+				"joinBeforeHostMinutes": {
+					"displayName": "主持人加入前可加入分钟数",
+					"description": "参会者可在会议开始时间前加入会议，且早于主持人加入的分钟数",
+					"options": {
+						"0": {
+							"displayName": "0"
+						},
+						"5": {
+							"displayName": "5"
+						},
+						"10": {
+							"displayName": "10"
+						},
+						"15": {
+							"displayName": "15"
+						}
+					}
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "会议密码。必须符合站点的密码复杂度设置。如未指定，将自动生成符合站点密码规则的随机密码"
+				},
+				"publicMeeting": {
+					"displayName": "公开会议",
+					"description": "是否允许在公共日历中列出此会议"
+				},
+				"recurrence": {
+					"displayName": "重复规则",
+					"description": "会议系列重复规则（符合RFC 2445标准），仅适用于会议系列"
+				},
+				"requireRegistrationInfo": {
+					"displayName": "必填注册信息",
+					"description": "会议注册所需数据"
+				},
+				"reminderTime": {
+					"displayName": "提醒时间",
+					"description": "会议开始前多少分钟，向主持人发送电子邮件提醒"
+				},
+				"sendEmail": {
+					"displayName": "发送邮件",
+					"description": "是否向主持人和受邀者发送邮件。这是一个可选字段，默认值为 true。"
+				},
+				"siteUrl": {
+					"displayName": "站点URL",
+					"description": "创建会议所在的Webex站点URL。如果未指定，将在用户的偏好站点上创建会议。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"start": {
+					"displayName": "开始",
+					"description": "会议开始的日期和时间。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "会议标题"
+				}
+			}
+		},
+		"destination": {
+			"displayName": "目标",
+			"options": {
+				"room": {
+					"displayName": "房间"
+				},
+				"person": {
+					"displayName": "人员"
+				}
+			}
+		},
+		"roomId": {
+			"displayName": "房间名称或ID",
+			"description": "按ID列出房间中的消息。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"specifyPersonBy": {
+			"displayName": "通过指定人员",
+			"options": {
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"id": {
+					"displayName": "ID"
+				}
+			}
+		},
+		"toPersonId": {
+			"displayName": "人员ID"
+		},
+		"toPersonEmail": {
+			"displayName": "人员邮箱"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "消息（纯文本）"
+		},
+		"messageId": {
+			"displayName": "消息ID",
+			"description": "要更新的消息ID"
+		},
+		"markdown": {
+			"displayName": "是否为Markdown",
+			"description": "消息是否使用Markdown格式"
+		},
+		"markdownText": {
+			"displayName": "Markdown",
+			"description": "消息，采用Markdown格式。最大消息长度为7439字节。"
+		}
+	}
+}

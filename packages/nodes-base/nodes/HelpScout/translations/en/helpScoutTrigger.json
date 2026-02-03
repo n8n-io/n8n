@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "Help Scout Trigger",
+		"description": "Starts the workflow when Help Scout events occur"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events"
+		}
+	}
+}

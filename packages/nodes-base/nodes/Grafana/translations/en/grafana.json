@@ -1,0 +1,159 @@
+{
+	"header": {
+		"displayName": "Grafana",
+		"description": "Consume the Grafana API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"dashboard": {
+					"displayName": "Dashboard"
+				},
+				"team": {
+					"displayName": "Team"
+				},
+				"teamMember": {
+					"displayName": "Team Member"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a team"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user from the current organization"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a team"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many users in the current organization"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a user in the current organization"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add a member to a team"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a member from a team"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the dashboard to create"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"folderId": {
+					"displayName": "Folder Name or ID",
+					"description": "Folder to create the dashboard in - if the folder is unspecified, the dashboard will be saved to the General folder. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email of the team to create",
+					"placeholder": "engineering@n8n.io"
+				}
+			}
+		},
+		"dashboardUidOrUrl": {
+			"displayName": "Dashboard UID or URL",
+			"description": "Unique alphabetic identifier or URL of the dashboard to update",
+			"placeholder": "cIBgcSjkk"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"query": {
+					"displayName": "Search Query"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the team to filter by"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"folderId": {
+					"displayName": "Folder Name or ID",
+					"description": "Folder to move the dashboard into - if the folder is unspecified, the dashboard will be saved to the General folder. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "New title of the dashboard"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email of the team to update",
+					"placeholder": "engineering@n8n.io"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the team to update",
+					"placeholder": "Engineering Team"
+				},
+				"role": {
+					"displayName": "Role",
+					"description": "New role for the user",
+					"options": {
+						"Admin": {
+							"displayName": "Admin"
+						},
+						"Editor": {
+							"displayName": "Editor"
+						},
+						"Viewer": {
+							"displayName": "Viewer"
+						}
+					}
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the team to create",
+			"placeholder": "Engineering"
+		},
+		"teamId": {
+			"displayName": "Team Name or ID",
+			"description": "Team to retrieve all members from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "ID of the user to delete"
+		},
+		"memberId": {
+			"displayName": "User Name or ID",
+			"description": "User to remove from the team. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

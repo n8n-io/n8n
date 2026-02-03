@@ -1,0 +1,300 @@
+{
+	"header": {
+		"displayName": "Merge",
+		"description": "Merges data of multiple streams once data from both is available"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "Mode",
+			"description": "How input data should be merged",
+			"options": {
+				"append": {
+					"displayName": "Append",
+					"description": "Output items of each input, one after the other"
+				},
+				"combine": {
+					"displayName": "Combine",
+					"description": "Merge matching items together"
+				},
+				"combineBySql": {
+					"displayName": "SQL Query",
+					"description": "Write a query to do the merge"
+				},
+				"chooseBranch": {
+					"displayName": "Choose Branch",
+					"description": "Output data from a specific branch, without modifying it"
+				}
+			}
+		},
+		"combineBy": {
+			"displayName": "Combine By",
+			"description": "How input data should be merged",
+			"options": {
+				"combineByFields": {
+					"displayName": "Matching Fields",
+					"description": "Combine items with the same field values"
+				},
+				"combineByPosition": {
+					"displayName": "Position",
+					"description": "Combine items based on their order"
+				},
+				"combineAll": {
+					"displayName": "All Possible Combinations",
+					"description": "Every pairing of every two items (cross join)"
+				}
+			}
+		},
+		"numberInputs": {
+			"displayName": "Number of Inputs",
+			"description": "The number of data inputs you want to merge. The node waits for all connected inputs to be executed.",
+			"options": {
+				"2": {
+					"displayName": "2"
+				},
+				"3": {
+					"displayName": "3"
+				},
+				"4": {
+					"displayName": "4"
+				},
+				"5": {
+					"displayName": "5"
+				},
+				"6": {
+					"displayName": "6"
+				},
+				"7": {
+					"displayName": "7"
+				},
+				"8": {
+					"displayName": "8"
+				},
+				"9": {
+					"displayName": "9"
+				},
+				"10": {
+					"displayName": "10"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"clashHandling": {
+					"displayName": "Clash Handling",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"resolveClash": {
+									"displayName": "When Field Values Clash"
+								},
+								"mergeMode": {
+									"displayName": "Merging Nested Fields",
+									"options": {
+										"deepMerge": {
+											"displayName": "Deep Merge",
+											"description": "Merge at every level of nesting"
+										},
+										"shallowMerge": {
+											"displayName": "Shallow Merge",
+											"description": "Merge at the top level only (all nested fields will come from the same input)"
+										}
+									}
+								},
+								"overrideEmpty": {
+									"displayName": "Minimize Empty Fields",
+									"description": "Whether to override the preferred input version for a field if it is empty and the other version isn't. Here 'empty' means undefined, null or an empty string."
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"resolveClash": {
+									"displayName": "When Field Values Clash"
+								},
+								"mergeMode": {
+									"displayName": "Merging Nested Fields",
+									"options": {
+										"deepMerge": {
+											"displayName": "Deep Merge",
+											"description": "Merge at every level of nesting"
+										},
+										"shallowMerge": {
+											"displayName": "Shallow Merge",
+											"description": "Merge at the top level only (all nested fields will come from the same input)"
+										}
+									}
+								},
+								"overrideEmpty": {
+									"displayName": "Minimize Empty Fields",
+									"description": "Whether to override the preferred input version for a field if it is empty and the other version isn't. Here 'empty' means undefined, null or an empty string."
+								}
+							}
+						},
+						"clashHandling": {
+							"displayName": "Clash Handling"
+						}
+					}
+				},
+				"fuzzyCompare": {
+					"displayName": "Fuzzy Compare",
+					"description": "Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same."
+				},
+				"disableDotNotation": {
+					"displayName": "Disable Dot Notation",
+					"description": "Whether to disallow referencing child fields using `parent.child` in the field name"
+				},
+				"multipleMatches": {
+					"displayName": "Multiple Matches",
+					"options": {
+						"all": {
+							"displayName": "Include All Matches",
+							"description": "Output multiple items if there are multiple matches"
+						},
+						"first": {
+							"displayName": "Include First Match Only",
+							"description": "Only ever output a single item per match"
+						}
+					}
+				},
+				"emptyQueryResult": {
+					"displayName": "Empty Query Result",
+					"description": "What to return if the query executed successfully but returned no results",
+					"options": {
+						"success": {
+							"displayName": "Success"
+						},
+						"empty": {
+							"displayName": "Empty Result"
+						}
+					}
+				},
+				"includeUnpaired": {
+					"displayName": "Include Any Unpaired Items",
+					"description": "Whether unpaired items should be included in the result when there are differing numbers of items among the inputs"
+				}
+			}
+		},
+		"advanced": {
+			"displayName": "Fields To Match Have Different Names",
+			"description": "Whether name(s) of field to match are different in input 1 and input 2"
+		},
+		"fieldsToMatchString": {
+			"displayName": "Fields to Match",
+			"description": "Specify the fields to use for matching input items",
+			"placeholder": "e.g. id, name"
+		},
+		"mergeByFields": {
+			"displayName": "Fields to Match",
+			"description": "Specify the fields to use for matching input items",
+			"placeholder": "Add Fields to Match",
+			"multipleValueButtonText": "Add Fields to Match",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field1": {
+							"displayName": "Input 1 Field",
+							"placeholder": "e.g. id"
+						},
+						"field2": {
+							"displayName": "Input 2 Field",
+							"placeholder": "e.g. id"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field1": {
+							"displayName": "Input 1 Field",
+							"placeholder": "e.g. id"
+						},
+						"field2": {
+							"displayName": "Input 2 Field",
+							"placeholder": "e.g. id"
+						}
+					}
+				},
+				"mergeByFields": {
+					"displayName": "Fields to Match",
+					"placeholder": "Add Fields to Match"
+				}
+			}
+		},
+		"joinMode": {
+			"displayName": "Output Type",
+			"description": "How to select the items to send to output",
+			"options": {
+				"keepMatches": {
+					"displayName": "Keep Matches",
+					"description": "Items that match, merged together (inner join)"
+				},
+				"keepNonMatches": {
+					"displayName": "Keep Non-Matches",
+					"description": "Items that don't match"
+				},
+				"keepEverything": {
+					"displayName": "Keep Everything",
+					"description": "Items that match merged together, plus items that don't match (outer join)"
+				},
+				"enrichInput1": {
+					"displayName": "Enrich Input 1",
+					"description": "All of input 1, with data from input 2 added in (left join)"
+				},
+				"enrichInput2": {
+					"displayName": "Enrich Input 2",
+					"description": "All of input 2, with data from input 1 added in (right join)"
+				}
+			}
+		},
+		"outputDataFrom": {
+			"displayName": "Output Data From",
+			"options": {
+				"both": {
+					"displayName": "Both Inputs Appended Together"
+				},
+				"input1": {
+					"displayName": "Input 1"
+				},
+				"input2": {
+					"displayName": "Input 2"
+				}
+			}
+		},
+		"query": {
+			"displayName": "Query",
+			"description": "Input data available as tables with corresponding number, e.g. input1, input2"
+		},
+		"chooseBranchMode": {
+			"displayName": "Output Type",
+			"options": {
+				"waitForAll": {
+					"displayName": "Wait for All Inputs to Arrive"
+				}
+			}
+		},
+		"output": {
+			"displayName": "Output",
+			"options": {
+				"specifiedInput": {
+					"displayName": "Data of Specified Input"
+				},
+				"empty": {
+					"displayName": "A Single, Empty Item"
+				}
+			}
+		},
+		"useDataOfInput": {
+			"displayName": "Use Data of Input",
+			"description": "The number of the input to use data of"
+		}
+	}
+}

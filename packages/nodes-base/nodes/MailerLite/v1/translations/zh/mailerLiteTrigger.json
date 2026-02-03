@@ -1,0 +1,58 @@
+{
+	"header": {
+		"displayName": "MailerLite 触发器",
+		"description": "当 MailerLite 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "事件",
+			"description": "要监听的事件",
+			"options": {
+				"campaign.sent": {
+					"displayName": "营销活动已发送",
+					"description": "当营销活动发送时触发"
+				},
+				"subscriber.added_through_webform": {
+					"displayName": "通过Web表单添加订阅者",
+					"description": "当通过表单添加订阅者时触发"
+				},
+				"subscriber.add_to_group": {
+					"displayName": "订阅者已加入群组",
+					"description": "当订阅者被添加到群组时触发"
+				},
+				"subscriber.automation_complete": {
+					"displayName": "订阅者自动化完成",
+					"description": "当订阅者完成自动化时触发"
+				},
+				"subscriber.automation_triggered": {
+					"displayName": "订阅者自动化已触发",
+					"description": "当订阅者启动自动化时触发"
+				},
+				"subscriber.bounced": {
+					"displayName": "订阅者邮件退回",
+					"description": "当电子邮件地址发生退回时触发"
+				},
+				"subscriber.complaint": {
+					"displayName": "订阅者投诉",
+					"description": "当订阅者将营销活动标记为垃圾邮件时触发"
+				},
+				"subscriber.create": {
+					"displayName": "订阅者已创建",
+					"description": "当新订阅者被添加到账户时触发"
+				},
+				"subscriber.remove_from_group": {
+					"displayName": "订阅者从群组中移除",
+					"description": "当订阅者从群组中移除时触发"
+				},
+				"subscriber.unsubscribe": {
+					"displayName": "订阅者取消订阅",
+					"description": "当订阅者取消订阅时触发"
+				},
+				"subscriber.update": {
+					"displayName": "订阅者已更新",
+					"description": "当订阅者的任何自定义字段被更新时触发"
+				}
+			}
+		}
+	}
+}

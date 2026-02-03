@@ -1,0 +1,71 @@
+{
+	"header": {
+		"displayName": "Embeddings OpenAI",
+		"description": "Use Embeddings OpenAI"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a vector store. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>Insert one</a>"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will generate the embeddings. <a href=\"https://platform.openai.com/docs/models/overview\">Learn more</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"dimensions": {
+					"displayName": "Dimensions",
+					"description": "The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.",
+					"options": {
+						"256": {
+							"displayName": "256"
+						},
+						"512": {
+							"displayName": "512"
+						},
+						"1024": {
+							"displayName": "1024"
+						},
+						"1536": {
+							"displayName": "1536"
+						},
+						"3072": {
+							"displayName": "3072"
+						}
+					}
+				},
+				"baseURL": {
+					"displayName": "Base URL",
+					"description": "Override the default base URL for the API"
+				},
+				"batchSize": {
+					"displayName": "Batch Size",
+					"description": "Maximum number of documents to send in each request"
+				},
+				"stripNewLines": {
+					"displayName": "Strip New Lines",
+					"description": "Whether to strip new lines from the input text"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout."
+				},
+				"encodingFormat": {
+					"displayName": "Encoding Format",
+					"description": "The format to return the embeddings in",
+					"options": {
+						"float": {
+							"displayName": "Float"
+						},
+						"base64": {
+							"displayName": "Base64"
+						}
+					}
+				}
+			}
+		}
+	}
+}

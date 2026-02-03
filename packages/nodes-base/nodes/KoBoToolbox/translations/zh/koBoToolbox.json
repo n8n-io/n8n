@@ -1,0 +1,321 @@
+{
+	"header": {
+		"displayName": "KoBoToolbox",
+		"description": "处理KoBoToolbox表单和提交"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"form": {
+					"displayName": "表单"
+				},
+				"hook": {
+					"displayName": "钩子"
+				},
+				"submission": {
+					"displayName": "提交"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取文件内容"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个文件"
+				},
+				"redeploy": {
+					"displayName": "重新部署",
+					"description": "重新部署当前表单版本"
+				},
+				"getLogs": {
+					"displayName": "日志",
+					"description": "获取Webhook日志"
+				},
+				"retryAll": {
+					"displayName": "全部重试",
+					"description": "重试指定钩子的所有失败尝试"
+				},
+				"retryOne": {
+					"displayName": "重试一次",
+					"description": "重试特定Webhook"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文件"
+				},
+				"getValidation": {
+					"displayName": "获取验证状态",
+					"description": "获取提交的验证状态"
+				},
+				"setValidation": {
+					"displayName": "更新验证状态",
+					"description": "设置提交的验证状态"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建文件"
+				}
+			}
+		},
+		"formId": {
+			"displayName": "表单名称或ID",
+			"description": "表单ID（例如 aSAvYreNzVEkrWg5Gdcvg）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"sort": {
+					"displayName": "排序",
+					"placeholder": "添加排序",
+					"options": {
+						"value": {
+							"displayName": "排序",
+							"options": {
+								"descending": {
+									"displayName": "降序",
+									"description": "是否按降序排序"
+								},
+								"ordering": {
+									"displayName": "排序方式",
+									"description": "排序字段",
+									"options": {
+										"asset_type": {
+											"displayName": "资产类型"
+										},
+										"date_modified": {
+											"displayName": "修改日期"
+										},
+										"name": {
+											"displayName": "名称"
+										},
+										"owner__username": {
+											"displayName": "所有者用户名"
+										},
+										"subscribers_count": {
+											"displayName": "订阅者数量"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "排序",
+							"options": {
+								"descending": {
+									"displayName": "降序",
+									"description": "是否按降序排序"
+								},
+								"ordering": {
+									"displayName": "排序方式",
+									"description": "排序字段",
+									"options": {
+										"asset_type": {
+											"displayName": "资产类型"
+										},
+										"date_modified": {
+											"displayName": "修改日期"
+										},
+										"name": {
+											"displayName": "名称"
+										},
+										"owner__username": {
+											"displayName": "所有者用户名"
+										},
+										"subscribers_count": {
+											"displayName": "订阅者数量"
+										}
+									}
+								}
+							}
+						},
+						"sort": {
+							"displayName": "排序",
+							"placeholder": "添加排序"
+						}
+					},
+					"description": "排序谓词，采用MongoDB JSON格式（例如{\"_submission_time\":1}）"
+				},
+				"download": {
+					"displayName": "下载附件",
+					"description": "是否下载提交的附件"
+				},
+				"binaryNamingScheme": {
+					"displayName": "附件命名方案",
+					"options": {
+						"sequence": {
+							"displayName": "序列（例如 attachment_N）"
+						},
+						"question": {
+							"displayName": "使用原始表单问题ID"
+						}
+					}
+				},
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "附件前缀",
+					"description": "用于写入附件的二进制属性名称前缀。将添加从0开始的索引。例如，如果名称为“attachment_”，则第一个附件将保存到“attachment_0”"
+				},
+				"fields": {
+					"displayName": "要检索的字段",
+					"description": "要检索的字段的逗号分隔列表（例如 _submission_time,_submitted_by）。如果留空，则检索所有字段。"
+				},
+				"version": {
+					"displayName": "文件大小",
+					"description": "要检索的附件大小（如果存在多个版本）",
+					"options": {
+						"download_url": {
+							"displayName": "[0]原文"
+						},
+						"download_small_url": {
+							"displayName": "小"
+						},
+						"download_medium_url": {
+							"displayName": "中等"
+						},
+						"download_large_url": {
+							"displayName": "大型"
+						}
+					}
+				},
+				"selectMask": {
+					"displayName": "多选掩码",
+					"description": "应视为多选字段（即解析为数组）的字段通配符选择器列表，以逗号分隔。"
+				},
+				"numberMask": {
+					"displayName": "数字掩码",
+					"description": "应视为数字的字段的通配符选择器列表（逗号分隔）"
+				},
+				"reformat": {
+					"displayName": "重新格式化",
+					"description": "是否对提交数据应用一些重新格式化，例如解析GeoJSON坐标"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"filter": {
+					"displayName": "筛选器",
+					"description": "基于表单数据的文本搜索查询 - 例如 \"owner__username:meg AND name__icontains:quixotic\" - 详见<a href=\"https://github.com/kobotoolbox/kpi#searching\" target=\"_blank\">文档</a>"
+				}
+			}
+		},
+		"hookId": {
+			"displayName": "Webhook ID",
+			"description": "Webhook ID（以h开头，例如 hVehywQ2oXPYGHJHKtqth4）"
+		},
+		"logId": {
+			"displayName": "Webhook日志ID",
+			"description": "Webhook日志ID（以hl开头，例如hlSbGKaUKzTVNoWEVMYbLHe）"
+		},
+		"status": {
+			"displayName": "日志状态",
+			"description": "仅检索特定状态的日志",
+			"options": {
+				"0": {
+					"displayName": "失败"
+				},
+				"1": {
+					"displayName": "待处理"
+				},
+				"2": {
+					"displayName": "成功"
+				},
+				"": {
+					"displayName": "全部"
+				}
+			}
+		},
+		"startDate": {
+			"displayName": "开始日期",
+			"description": "要检索的钩子日志的最早日期"
+		},
+		"endDate": {
+			"displayName": "结束日期",
+			"description": "要检索的钩子日志的最晚日期"
+		},
+		"submissionId": {
+			"displayName": "提交ID",
+			"description": "提交ID（数字，例如 245128）"
+		},
+		"validationStatus": {
+			"displayName": "验证状态",
+			"description": "期望的验证状态",
+			"options": {
+				"validation_status_approved": {
+					"displayName": "已批准"
+				},
+				"validation_status_not_approved": {
+					"displayName": "未批准"
+				},
+				"validation_status_on_hold": {
+					"displayName": "已暂停"
+				}
+			}
+		},
+		"filterType": {
+			"displayName": "筛选",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"jsonNotice": {
+			"displayName": "请参阅<a href=\"https://github.com/SEL-Columbia/formhub/wiki/Formhub-Access-Points-(API)#api-parameters\" target=\"_blank\">Formhub API文档</a>了解如何使用MongoDB JSON格式创建过滤器 - 例如 {\"_submission_time\":{\"$lt\":\"2021-10-01T01:02:03\"}}"
+		},
+		"filterJson": {
+			"displayName": "过滤器 (JSON)"
+		},
+		"fileId": {
+			"displayName": "文件ID",
+			"description": "文件的Uid（应以\"af\"开头，例如\"afQoJxA4kmKEXVpkH6SYbhb\"）"
+		},
+		"binaryPropertyName": {
+			"displayName": "属性名称",
+			"description": "包含要上传文件的二进制属性名称。支持类型：图像、音频、视频、CSV、XML、ZIP。"
+		},
+		"download": {
+			"displayName": "下载文件内容",
+			"description": "是否将文件内容下载到二进制属性中"
+		},
+		"fileMode": {
+			"displayName": "文件上传模式",
+			"options": {
+				"binary": {
+					"displayName": "二进制文件"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		},
+		"fileUrl": {
+			"displayName": "文件URL",
+			"description": "要上传文件的HTTP(s)链接"
+		}
+	}
+}

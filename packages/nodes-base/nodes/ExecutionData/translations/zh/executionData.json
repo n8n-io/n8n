@@ -1,0 +1,58 @@
+{
+	"header": {
+		"displayName": "执行数据",
+		"description": "添加执行数据以供搜索"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "使用此节点保存重要数据。它将在每次执行时显示以便参考，并且您可以按此数据进行筛选。<br />筛选功能适用于Pro和Enterprise计划。<a href='https://n8n.io/pricing/' target='_blank'>更多信息</a>"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"save": {
+					"displayName": "保存高亮数据（用于搜索/审阅）"
+				}
+			}
+		},
+		"dataToSave": {
+			"displayName": "要保存的数据",
+			"placeholder": "添加保存字段",
+			"multipleValueButtonText": "添加已保存字段",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"key": {
+							"displayName": "键",
+							"placeholder": "例如: myKey"
+						},
+						"value": {
+							"displayName": "值",
+							"placeholder": "例如：myValue"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"key": {
+							"displayName": "键",
+							"placeholder": "例如: myKey"
+						},
+						"value": {
+							"displayName": "值",
+							"placeholder": "例如：myValue"
+						}
+					}
+				},
+				"dataToSave": {
+					"displayName": "要保存的数据",
+					"placeholder": "添加保存字段"
+				}
+			}
+		}
+	}
+}

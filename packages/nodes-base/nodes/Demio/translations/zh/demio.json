@@ -1,0 +1,179 @@
+{
+	"header": {
+		"displayName": "Demio",
+		"description": "使用Demio API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"event": {
+					"displayName": "事件"
+				},
+				"report": {
+					"displayName": "报告"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取事件报告"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个事件"
+				},
+				"register": {
+					"displayName": "注册",
+					"description": "为某人注册活动"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"type": {
+					"displayName": "类型",
+					"options": {
+						"automated": {
+							"displayName": "自动化的"
+						},
+						"past": {
+							"displayName": "过去"
+						},
+						"upcoming": {
+							"displayName": "即将到来"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "按参与状态筛选结果",
+					"options": {
+						"attended": {
+							"displayName": "已处理"
+						},
+						"banned": {
+							"displayName": "已封禁"
+						},
+						"completed": {
+							"displayName": "已完成"
+						},
+						"did-not-attend": {
+							"displayName": "未出席"
+						},
+						"left-early": {
+							"displayName": "提前离开"
+						}
+					}
+				}
+			}
+		},
+		"eventId": {
+			"displayName": "事件名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"active": {
+					"displayName": "激活状态",
+					"description": "是否仅返回序列中的活跃日期"
+				},
+				"date_id": {
+					"displayName": "会话名称或ID",
+					"description": "事件会话ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"company": {
+					"displayName": "公司",
+					"description": "预定义公司字段的值"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段ID",
+									"description": "每个自定义字段的唯一标识符可在自定义选项卡的事件注册块中找到"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段ID",
+									"description": "每个自定义字段的唯一标识符可在自定义选项卡的事件注册块中找到"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"ref_url": {
+					"displayName": "事件注册URL",
+					"description": "事件注册页面URL。当您不知道事件ID但拥有事件链接时，这很有用。"
+				},
+				"gdpr": {
+					"displayName": "GDPR",
+					"description": "预定义GDPR字段的值"
+				},
+				"last_name": {
+					"displayName": "姓氏",
+					"description": "预定义姓氏字段的值"
+				},
+				"phone_number": {
+					"displayName": "电话号码",
+					"description": "预定义电话号码字段的值"
+				},
+				"website": {
+					"displayName": "网站",
+					"description": "预定义网站字段的值"
+				}
+			}
+		},
+		"firstName": {
+			"displayName": "名字",
+			"description": "注册人名字"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "注册人邮箱地址",
+			"placeholder": "name@email.com"
+		},
+		"dateId": {
+			"displayName": "会话名称或ID",
+			"description": "会话的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定一个ID。"
+		}
+	}
+}

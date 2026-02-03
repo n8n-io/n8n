@@ -1,0 +1,321 @@
+{
+	"header": {
+		"displayName": "KoBoToolbox",
+		"description": "Work with KoBoToolbox forms and submissions"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"file": {
+					"displayName": "File"
+				},
+				"form": {
+					"displayName": "Form"
+				},
+				"hook": {
+					"displayName": "Hook"
+				},
+				"submission": {
+					"displayName": "Submission"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a file content"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many files"
+				},
+				"redeploy": {
+					"displayName": "Redeploy",
+					"description": "Redeploy Current Form Version"
+				},
+				"getLogs": {
+					"displayName": "Logs",
+					"description": "Get hook logs"
+				},
+				"retryAll": {
+					"displayName": "Retry All",
+					"description": "Retry all failed attempts for a given hook"
+				},
+				"retryOne": {
+					"displayName": "Retry One",
+					"description": "Retry a specific hook"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete file"
+				},
+				"getValidation": {
+					"displayName": "Get Validation Status",
+					"description": "Get the validation status for the submission"
+				},
+				"setValidation": {
+					"displayName": "Update Validation Status",
+					"description": "Set the validation status of the submission"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a file"
+				}
+			}
+		},
+		"formId": {
+			"displayName": "Form Name or ID",
+			"description": "Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"sort": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort",
+					"options": {
+						"value": {
+							"displayName": "Sort",
+							"options": {
+								"descending": {
+									"displayName": "Descending",
+									"description": "Whether to sort by descending order"
+								},
+								"ordering": {
+									"displayName": "Order By",
+									"description": "Field to order by",
+									"options": {
+										"asset_type": {
+											"displayName": "Asset Type"
+										},
+										"date_modified": {
+											"displayName": "Date Modified"
+										},
+										"name": {
+											"displayName": "Name"
+										},
+										"owner__username": {
+											"displayName": "Owner Username"
+										},
+										"subscribers_count": {
+											"displayName": "Subscribers Count"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Sort",
+							"options": {
+								"descending": {
+									"displayName": "Descending",
+									"description": "Whether to sort by descending order"
+								},
+								"ordering": {
+									"displayName": "Order By",
+									"description": "Field to order by",
+									"options": {
+										"asset_type": {
+											"displayName": "Asset Type"
+										},
+										"date_modified": {
+											"displayName": "Date Modified"
+										},
+										"name": {
+											"displayName": "Name"
+										},
+										"owner__username": {
+											"displayName": "Owner Username"
+										},
+										"subscribers_count": {
+											"displayName": "Subscribers Count"
+										}
+									}
+								}
+							}
+						},
+						"sort": {
+							"displayName": "Sort",
+							"placeholder": "Add Sort"
+						}
+					},
+					"description": "Sort predicates, in MongoDB JSON format (e.g. {\"_submission_time\":1})"
+				},
+				"download": {
+					"displayName": "Download Attachments",
+					"description": "Whether to download submitted attachments"
+				},
+				"binaryNamingScheme": {
+					"displayName": "Attachments Naming Scheme",
+					"options": {
+						"sequence": {
+							"displayName": "Sequence (e.g. attachment_N)"
+						},
+						"question": {
+							"displayName": "Use Original Form Question ID"
+						}
+					}
+				},
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "Attachments Prefix",
+					"description": "Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is \"attachment_\" the first attachment is saved to \"attachment_0\""
+				},
+				"fields": {
+					"displayName": "Fields to Retrieve",
+					"description": "Comma-separated list of fields to retrieve (e.g. _submission_time,_submitted_by). If left blank, all fields are retrieved."
+				},
+				"version": {
+					"displayName": "File Size",
+					"description": "Attachment size to retrieve, if multiple versions are available",
+					"options": {
+						"download_url": {
+							"displayName": "Original"
+						},
+						"download_small_url": {
+							"displayName": "Small"
+						},
+						"download_medium_url": {
+							"displayName": "Medium"
+						},
+						"download_large_url": {
+							"displayName": "Large"
+						}
+					}
+				},
+				"selectMask": {
+					"displayName": "Multiselect Mask",
+					"description": "Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays."
+				},
+				"numberMask": {
+					"displayName": "Number Mask",
+					"description": "Comma-separated list of wildcard-style selectors for fields that should be treated as numbers"
+				},
+				"reformat": {
+					"displayName": "Reformat",
+					"description": "Whether to apply some reformatting to the submission data, such as parsing GeoJSON coordinates"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"filter": {
+					"displayName": "Filter",
+					"description": "A text search query based on form data - e.g. \"owner__username:meg AND name__icontains:quixotic\" - see <a href=\"https://github.com/kobotoolbox/kpi#searching\" target=\"_blank\">docs</a> for more details"
+				}
+			}
+		},
+		"hookId": {
+			"displayName": "Hook ID",
+			"description": "Hook ID (starts with h, e.g. hVehywQ2oXPYGHJHKtqth4)"
+		},
+		"logId": {
+			"displayName": "Hook Log ID",
+			"description": "Hook log ID (starts with hl, e.g. hlSbGKaUKzTVNoWEVMYbLHe)"
+		},
+		"status": {
+			"displayName": "Log Status",
+			"description": "Only retrieve logs with a specific status",
+			"options": {
+				"0": {
+					"displayName": "Failed"
+				},
+				"1": {
+					"displayName": "Pending"
+				},
+				"2": {
+					"displayName": "Success"
+				},
+				"": {
+					"displayName": "All"
+				}
+			}
+		},
+		"startDate": {
+			"displayName": "Start Date",
+			"description": "Minimum date for the hook log to retrieve"
+		},
+		"endDate": {
+			"displayName": "End Date",
+			"description": "Maximum date for the hook log to retrieve"
+		},
+		"submissionId": {
+			"displayName": "Submission ID",
+			"description": "Submission ID (number, e.g. 245128)"
+		},
+		"validationStatus": {
+			"displayName": "Validation Status",
+			"description": "Desired Validation Status",
+			"options": {
+				"validation_status_approved": {
+					"displayName": "Approved"
+				},
+				"validation_status_not_approved": {
+					"displayName": "Not Approved"
+				},
+				"validation_status_on_hold": {
+					"displayName": "On Hold"
+				}
+			}
+		},
+		"filterType": {
+			"displayName": "Filter",
+			"options": {
+				"none": {
+					"displayName": "None"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"jsonNotice": {
+			"displayName": "See <a href=\"https://github.com/SEL-Columbia/formhub/wiki/Formhub-Access-Points-(API)#api-parameters\" target=\"_blank\">Formhub API docs</a> to creating filters, using the MongoDB JSON format - e.g. {\"_submission_time\":{\"$lt\":\"2021-10-01T01:02:03\"}}"
+		},
+		"filterJson": {
+			"displayName": "Filters (JSON)"
+		},
+		"fileId": {
+			"displayName": "File ID",
+			"description": "Uid of the file (should start with \"af\" e.g. \"afQoJxA4kmKEXVpkH6SYbhb\""
+		},
+		"binaryPropertyName": {
+			"displayName": "Property Name",
+			"description": "Name of the binary property containing the file to upload. Supported types: image, audio, video, csv, xml, zip."
+		},
+		"download": {
+			"displayName": "Download File Content",
+			"description": "Whether to download the file content into a binary property"
+		},
+		"fileMode": {
+			"displayName": "File Upload Mode",
+			"options": {
+				"binary": {
+					"displayName": "Binary File"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		},
+		"fileUrl": {
+			"displayName": "File URL",
+			"description": "HTTP(s) link to the file to upload"
+		}
+	}
+}

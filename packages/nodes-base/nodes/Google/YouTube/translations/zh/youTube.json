@@ -1,0 +1,611 @@
+{
+	"header": {
+		"displayName": "YouTube",
+		"description": "使用YouTube API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"channel": {
+					"displayName": "频道"
+				},
+				"playlist": {
+					"displayName": "播放列表"
+				},
+				"playlistItem": {
+					"displayName": "播放列表项目"
+				},
+				"video": {
+					"displayName": "视频"
+				},
+				"videoCategory": {
+					"displayName": "视频分类"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取视频"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个视频分类"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新视频"
+				},
+				"uploadBanner": {
+					"displayName": "上传横幅",
+					"description": "上传频道横幅"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建播放列表"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除视频"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "向播放列表添加项目"
+				},
+				"rate": {
+					"displayName": "速率",
+					"description": "为视频评分"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传视频"
+				}
+			}
+		},
+		"part": {
+			"displayName": "字段",
+			"description": "fields参数指定一个或多个视频资源属性的逗号分隔列表，API响应将包含这些属性"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加选项",
+			"options": {
+				"categoryId": {
+					"displayName": "分类ID",
+					"description": "categoryId参数指定一个YouTube指南分类，从而请求与该分类关联的YouTube频道"
+				},
+				"forUsername": {
+					"displayName": "用于用户名",
+					"description": "forUsername 参数指定一个 YouTube 用户名，从而请求与该用户名关联的频道"
+				},
+				"id": {
+					"displayName": "ID",
+					"description": "ID参数指定要检索资源的YouTube播放列表ID的逗号分隔列表。在播放列表资源中，ID属性指定播放列表的YouTube播放列表ID。"
+				},
+				"managedByMe": {
+					"displayName": "由我管理",
+					"description": "是否指示API仅返回由onBehalfOfContentOwner参数指定的内容所有者管理的频道"
+				},
+				"channelId": {
+					"displayName": "频道ID",
+					"description": "channelId参数表示API响应应仅包含该频道创建的资源"
+				},
+				"forDeveloper": {
+					"displayName": "面向开发者",
+					"description": "是否将搜索限制为仅检索通过开发者应用或网站上传的视频"
+				},
+				"publishedAfter": {
+					"displayName": "发布时间晚于",
+					"description": "publishedAfter参数表示API响应应仅包含在指定时间或之后创建的资源"
+				},
+				"publishedBefore": {
+					"displayName": "发布时间早于",
+					"description": "publishedBefore参数表示API响应应仅包含在指定时间之前或之时创建的资源"
+				},
+				"q": {
+					"displayName": "查询",
+					"description": "q 参数指定要搜索的查询词"
+				},
+				"regionCode": {
+					"displayName": "区域代码",
+					"description": "regionCode参数指示API选择指定区域可用的视频排行榜。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"relatedToVideoId": {
+					"displayName": "关联视频ID",
+					"description": "relatedToVideoId参数用于获取与指定视频相关的视频列表"
+				},
+				"videoCategoryId": {
+					"displayName": "视频分类ID",
+					"description": "videoCategoryId参数指定要检索图表的视频分类"
+				},
+				"videoSyndicated": {
+					"displayName": "视频联合发布",
+					"description": "是否将搜索限制为仅可在youtube.com以外播放的视频"
+				},
+				"videoType": {
+					"displayName": "视频类型",
+					"description": "videoType参数允许您将搜索范围限制在特定类型的视频",
+					"options": {
+						"any": {
+							"displayName": "任意"
+						},
+						"episode": {
+							"displayName": "集数"
+						},
+						"movie": {
+							"displayName": "电影"
+						}
+					}
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"h1": {
+					"displayName": "语言代码",
+					"description": "hl参数指示API为YouTube网站支持的特定应用语言检索本地化资源元数据。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"onBehalfOfContentOwner": {
+					"displayName": "代表内容所有者",
+					"description": "onBehalfOfContentOwner参数表示，请求的授权凭据标识了一个YouTube CMS用户，该用户正代表参数值中指定的内容所有者进行操作"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "播放列表的描述"
+				},
+				"privacyStatus": {
+					"displayName": "隐私状态",
+					"description": "播放列表的隐私状态",
+					"options": {
+						"private": {
+							"displayName": "私有"
+						},
+						"public": {
+							"displayName": "公开"
+						},
+						"unlisted": {
+							"displayName": "未列出"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "与播放列表关联的关键词标签。多个标签可用逗号分隔定义。"
+				},
+				"defaultLanguage": {
+					"displayName": "默认语言名称或ID",
+					"description": "播放列表资源标题和描述属性中的文本语言。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"onBehalfOfContentOwnerChannel": {
+					"displayName": "代表内容所有者频道",
+					"description": "onBehalfOfContentOwnerChannel参数指定视频将被添加到的YouTube频道ID。当请求为onBehalfOfContentOwner参数指定值时，此参数为必需，并且只能与该参数结合使用。"
+				},
+				"endAt": {
+					"displayName": "结束时间",
+					"description": "从视频开始计算的秒数，表示视频应停止播放的时间点"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "用户为此项目生成的备注。属性值最大长度为280个字符。"
+				},
+				"position": {
+					"displayName": "位置",
+					"description": "项目在播放列表中的显示顺序。该值使用从零开始的索引，因此第一个项目的位置为0，第二个项目的位置为1，依此类推。"
+				},
+				"startAt": {
+					"displayName": "开始时间",
+					"description": "视频开始播放的时间点，以视频开始后的秒数计量"
+				},
+				"embeddable": {
+					"displayName": "可嵌入",
+					"description": "视频是否可在其他网站上嵌入"
+				},
+				"license": {
+					"displayName": "许可证",
+					"description": "视频许可证",
+					"options": {
+						"creativeCommon": {
+							"displayName": "知识共享"
+						},
+						"youtube": {
+							"displayName": "YouTube"
+						}
+					}
+				},
+				"notifySubscribers": {
+					"displayName": "通知订阅者",
+					"description": "YouTube是否应向订阅该视频频道的用户发送关于新视频的通知"
+				},
+				"publicStatsViewable": {
+					"displayName": "公开统计信息可见",
+					"description": "视频观看页面的扩展统计数据是否公开可见"
+				},
+				"publishAt": {
+					"displayName": "发布时间",
+					"description": "如果为此属性设置了值，则必须同时将 status.privacyStatus 属性设置为 private"
+				},
+				"recordingDate": {
+					"displayName": "录制日期",
+					"description": "视频录制的日期和时间"
+				},
+				"selfDeclaredMadeForKids": {
+					"displayName": "自行声明为儿童制作",
+					"description": "视频是否被指定为面向儿童，并包含视频当前的“为儿童制作”状态"
+				},
+				"order": {
+					"displayName": "排序",
+					"options": {
+						"date": {
+							"displayName": "日期"
+						},
+						"relevance": {
+							"displayName": "相关性"
+						}
+					}
+				},
+				"safeSearch": {
+					"displayName": "安全搜索",
+					"options": {
+						"moderate": {
+							"displayName": "中等",
+							"description": "YouTube 会过滤搜索结果中的部分内容，至少会过滤在您所在地区受限的内容。"
+						},
+						"none": {
+							"displayName": "无",
+							"description": "YouTube不会过滤搜索结果集"
+						},
+						"strict": {
+							"displayName": "严格",
+							"description": "YouTube将尝试从搜索结果中排除所有受限内容"
+						}
+					}
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "频道ID",
+			"description": "频道ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加选项",
+			"options": {
+				"brandingSettingsUi": {
+					"displayName": "品牌设置",
+					"description": "封装有关渠道品牌的信息",
+					"placeholder": "添加品牌设置",
+					"options": {
+						"channelSettingsValues": {
+							"displayName": "频道设置",
+							"options": {
+								"channel": {
+									"displayName": "频道",
+									"placeholder": "添加频道设置",
+									"options": {
+										"country": {
+											"displayName": "国家",
+											"description": "该频道关联的国家。更新此属性可设置snippet.country属性的值。"
+										},
+										"description": {
+											"displayName": "描述",
+											"description": "The channel description, which appears in the channel information box on your channel page. The property's value has a maximum length of 1000 characters."
+										},
+										"defaultLanguage": {
+											"displayName": "默认语言",
+											"description": "当访问者到达您的频道页面时，默认显示的内容标签页"
+										},
+										"defaultTab": {
+											"displayName": "默认标签页"
+										},
+										"featuredChannelsTitle": {
+											"displayName": "精选频道标题",
+											"description": "显示在精选频道模块上方的标题。标题最大长度为30个字符。"
+										},
+										"featuredChannelsUrls": {
+											"displayName": "精选频道网址",
+											"description": "您希望在精选频道模块中展示的频道列表，最多可包含100个频道。该属性值为YouTube频道ID列表，每个ID可唯一标识一个频道。"
+										},
+										"keywords": {
+											"displayName": "关键词",
+											"description": "与您的频道相关的关键词。值为以空格分隔的字符串列表。",
+											"placeholder": "科技,新闻"
+										},
+										"moderateComments": {
+											"displayName": "审核评论",
+											"description": "用户提交的频道页面评论是否需要频道所有者批准才能公开可见"
+										},
+										"profileColor": {
+											"displayName": "个人资料颜色",
+											"description": "与频道内容相衬的醒目颜色"
+										},
+										"showRelatedChannels": {
+											"displayName": "显示相关频道",
+											"description": "YouTube是否应在您的频道页面显示算法生成的相关频道列表"
+										},
+										"showBrowseView": {
+											"displayName": "显示浏览视图",
+											"description": "频道页面是否应以浏览或订阅视图显示内容"
+										},
+										"trackingAnalyticsAccountId": {
+											"displayName": "跟踪分析账户ID",
+											"description": "用于跟踪和衡量频道流量的Google Analytics账户ID"
+										},
+										"unsubscribedTrailer": {
+											"displayName": "未订阅用户预告片",
+											"description": "频道页浏览视图中，面向未订阅用户展示的特色视频模块应播放的视频"
+										}
+									}
+								}
+							}
+						},
+						"imageSettingsValues": {
+							"displayName": "图像设置",
+							"options": {
+								"image": {
+									"displayName": "图片",
+									"description": "图像对象封装了显示在频道页面或视频观看页面上的图像信息。",
+									"placeholder": "添加频道设置",
+									"options": {
+										"bannerExternalUrl": {
+											"displayName": "横幅外部链接"
+										},
+										"trackingImageUrl": {
+											"displayName": "追踪图片URL"
+										},
+										"watchIconImageUrl": {
+											"displayName": "监视图标图片链接"
+										}
+									}
+								}
+							}
+						},
+						"statusValue": {
+							"displayName": "状态",
+							"options": {
+								"status": {
+									"displayName": "状态",
+									"placeholder": "添加状态",
+									"options": {
+										"selfDeclaredMadeForKids": {
+											"displayName": "自行声明为儿童制作"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"channelSettingsValues": {
+							"displayName": "频道设置",
+							"options": {
+								"channel": {
+									"displayName": "频道",
+									"placeholder": "添加频道设置",
+									"options": {
+										"country": {
+											"displayName": "国家",
+											"description": "该频道关联的国家。更新此属性可设置snippet.country属性的值。"
+										},
+										"description": {
+											"displayName": "描述",
+											"description": "频道描述，显示在您频道页面的频道信息框中。该属性的值最大长度为1000个字符。"
+										},
+										"defaultLanguage": {
+											"displayName": "默认语言",
+											"description": "当访问者到达您的频道页面时，默认显示的内容标签页"
+										},
+										"defaultTab": {
+											"displayName": "默认标签页"
+										},
+										"featuredChannelsTitle": {
+											"displayName": "精选频道标题",
+											"description": "显示在精选频道模块上方的标题。标题最大长度为30个字符。"
+										},
+										"featuredChannelsUrls": {
+											"displayName": "精选频道网址",
+											"description": "您希望在精选频道模块中展示的频道列表，最多可包含100个频道。该属性值为YouTube频道ID列表，每个ID可唯一标识一个频道。"
+										},
+										"keywords": {
+											"displayName": "关键词",
+											"description": "与您的频道相关的关键词。值为以空格分隔的字符串列表。",
+											"placeholder": "科技,新闻"
+										},
+										"moderateComments": {
+											"displayName": "审核评论",
+											"description": "用户提交的频道页面评论是否需要频道所有者批准才能公开可见"
+										},
+										"profileColor": {
+											"displayName": "个人资料颜色",
+											"description": "与频道内容相衬的醒目颜色"
+										},
+										"showRelatedChannels": {
+											"displayName": "显示相关频道",
+											"description": "YouTube是否应在您的频道页面显示算法生成的相关频道列表"
+										},
+										"showBrowseView": {
+											"displayName": "显示浏览视图",
+											"description": "频道页面是否应以浏览或订阅视图显示内容"
+										},
+										"trackingAnalyticsAccountId": {
+											"displayName": "跟踪分析账户ID",
+											"description": "用于跟踪和衡量频道流量的Google Analytics账户ID"
+										},
+										"unsubscribedTrailer": {
+											"displayName": "未订阅用户预告片",
+											"description": "频道页浏览视图中，面向未订阅用户展示的特色视频模块应播放的视频"
+										}
+									}
+								}
+							}
+						},
+						"imageSettingsValues": {
+							"displayName": "图像设置",
+							"options": {
+								"image": {
+									"displayName": "图片",
+									"description": "图像对象封装了显示在频道页面或视频观看页面上的图像信息。",
+									"placeholder": "添加频道设置",
+									"options": {
+										"bannerExternalUrl": {
+											"displayName": "横幅外部链接"
+										},
+										"trackingImageUrl": {
+											"displayName": "追踪图片URL"
+										},
+										"watchIconImageUrl": {
+											"displayName": "监视图标图片链接"
+										}
+									}
+								}
+							}
+						},
+						"statusValue": {
+							"displayName": "状态",
+							"options": {
+								"status": {
+									"displayName": "状态",
+									"placeholder": "添加状态",
+									"options": {
+										"selfDeclaredMadeForKids": {
+											"displayName": "自行声明为儿童制作"
+										}
+									}
+								}
+							}
+						},
+						"brandingSettingsUi": {
+							"displayName": "品牌设置",
+							"placeholder": "添加品牌设置"
+						}
+					}
+				},
+				"onBehalfOfContentOwner": {
+					"displayName": "代表内容所有者",
+					"description": "onBehalfOfContentOwner参数表示，请求的授权凭据标识了一个YouTube CMS用户，该用户正代表参数值中指定的内容所有者进行操作"
+				},
+				"defaultLanguage": {
+					"displayName": "默认语言名称或ID",
+					"description": "播放列表资源标题和描述属性中的文本语言。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "播放列表的描述"
+				},
+				"privacyStatus": {
+					"displayName": "隐私状态",
+					"description": "播放列表的隐私状态",
+					"options": {
+						"private": {
+							"displayName": "私有"
+						},
+						"public": {
+							"displayName": "公开"
+						},
+						"unlisted": {
+							"displayName": "未列出"
+						},
+						"unlistef": {
+							"displayName": "未列出"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "与播放列表关联的关键词标签。多个标签可用逗号分隔定义。"
+				},
+				"embeddable": {
+					"displayName": "可嵌入",
+					"description": "视频是否可在其他网站上嵌入"
+				},
+				"license": {
+					"displayName": "许可证",
+					"description": "视频许可证",
+					"options": {
+						"creativeCommon": {
+							"displayName": "知识共享"
+						},
+						"youtube": {
+							"displayName": "YouTube"
+						}
+					}
+				},
+				"notifySubscribers": {
+					"displayName": "通知订阅者",
+					"description": "YouTube是否应向订阅该视频频道的用户发送关于新视频的通知"
+				},
+				"publicStatsViewable": {
+					"displayName": "公开统计信息可见",
+					"description": "视频观看页面的扩展统计数据是否公开可见"
+				},
+				"publishAt": {
+					"displayName": "发布时间",
+					"description": "如果为此属性设置了值，则必须同时将 status.privacyStatus 属性设置为 private"
+				},
+				"recordingDate": {
+					"displayName": "录制日期",
+					"description": "视频录制的日期和时间"
+				},
+				"selfDeclaredMadeForKids": {
+					"displayName": "自行声明为儿童制作",
+					"description": "视频是否被指定为面向儿童，并包含视频当前的“为儿童制作”状态"
+				}
+			}
+		},
+		"binaryProperty": {
+			"displayName": "输入二进制字段"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "播放列表标题"
+		},
+		"playlistId": {
+			"displayName": "播放列表名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"videoId": {
+			"displayName": "视频ID",
+			"description": "视频ID"
+		},
+		"playlistItemId": {
+			"displayName": "播放列表项目ID"
+		},
+		"regionCode": {
+			"displayName": "区域代码",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"categoryId": {
+			"displayName": "分类名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"rating": {
+			"displayName": "评分",
+			"options": {
+				"dislike": {
+					"displayName": "不喜欢",
+					"description": "记录认证用户不喜欢该视频"
+				},
+				"like": {
+					"displayName": "点赞",
+					"description": "已认证用户点赞了该视频的记录"
+				},
+				"none": {
+					"displayName": "无",
+					"description": "移除认证用户先前为该视频设置的任何评分"
+				}
+			}
+		}
+	}
+}

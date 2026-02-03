@@ -1,0 +1,54 @@
+{
+	"header": {
+		"displayName": "Discord",
+		"description": "Sends data to Discord"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"webhookUri": {
+			"displayName": "Webhook URL",
+			"placeholder": "https://discord.com/api/webhooks/ID/TOKEN"
+		},
+		"text": {
+			"displayName": "Content",
+			"placeholder": "Hello World!"
+		},
+		"options": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add option",
+			"options": {
+				"allowedMentions": {
+					"displayName": "Allowed Mentions"
+				},
+				"attachments": {
+					"displayName": "Attachments"
+				},
+				"avatarUrl": {
+					"displayName": "Avatar URL"
+				},
+				"components": {
+					"displayName": "Components"
+				},
+				"embeds": {
+					"displayName": "Embeds"
+				},
+				"flags": {
+					"displayName": "Flags"
+				},
+				"payloadJson": {
+					"displayName": "JSON Payload"
+				},
+				"username": {
+					"displayName": "Username",
+					"placeholder": "User"
+				},
+				"tts": {
+					"displayName": "TTS",
+					"description": "Whether this message be sent as a Text To Speech message"
+				}
+			}
+		}
+	}
+}

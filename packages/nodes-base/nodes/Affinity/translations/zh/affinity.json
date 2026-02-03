@@ -1,0 +1,161 @@
+{
+	"header": {
+		"displayName": "关联度",
+		"description": "使用关联度API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"list": {
+					"displayName": "列表"
+				},
+				"listEntry": {
+					"displayName": "列出条目"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"person": {
+					"displayName": "人员"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取人员"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个人员"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建人员"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除人员"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新人员"
+				}
+			}
+		},
+		"listId": {
+			"displayName": "列表名称或ID",
+			"description": "包含指定列表条目ID的列表的唯一ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"entityId": {
+			"displayName": "实体ID",
+			"description": "要添加到此列表的实体（人员、组织或商机）的唯一ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"creator_id": {
+					"displayName": "创建者 ID",
+					"description": "应记录为将条目添加到列表的人员资源ID。必须是能够访问Affinity的人员。如果未提供，创建者将默认为API密钥的所有者。"
+				},
+				"persons": {
+					"displayName": "人员姓名或ID",
+					"description": "新组织将关联的人员。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"organizations": {
+					"displayName": "组织名称或ID",
+					"description": "与此人关联的组织。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"listEntryId": {
+			"displayName": "列表条目ID",
+			"description": "要删除的列表条目对象的唯一ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "组织名称"
+		},
+		"domain": {
+			"displayName": "域名",
+			"description": "组织的域名"
+		},
+		"organizationId": {
+			"displayName": "组织ID",
+			"description": "组织的唯一标识符"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"domain": {
+					"displayName": "域名",
+					"description": "组织的域名"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "组织名称"
+				},
+				"persons": {
+					"displayName": "人员姓名或ID",
+					"description": "新组织将关联的人员。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "人员的名字"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "该人员的姓氏"
+				},
+				"organizations": {
+					"displayName": "组织名称或ID",
+					"description": "与此人关联的组织。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"withInteractionDates": {
+					"displayName": "包含互动日期",
+					"description": "返回的资源是否包含互动日期"
+				},
+				"term": {
+					"displayName": "术语",
+					"description": "用于搜索团队通讯录中所有人员的字符串。可以是电子邮件地址、名字或姓氏。"
+				}
+			}
+		},
+		"firstName": {
+			"displayName": "名字",
+			"description": "人员的名字"
+		},
+		"lastName": {
+			"displayName": "姓氏",
+			"description": "人员的姓氏"
+		},
+		"emails": {
+			"displayName": "电子邮件",
+			"description": "人员的电子邮件地址",
+			"placeholder": "info@example.com"
+		},
+		"personId": {
+			"displayName": "人员ID",
+			"description": "人员的唯一标识符"
+		}
+	}
+}

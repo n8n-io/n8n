@@ -1,0 +1,209 @@
+{
+	"header": {
+		"displayName": "APITemplate.io",
+		"description": "Consume the APITemplate.io API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"account": {
+					"displayName": "Account"
+				},
+				"image": {
+					"displayName": "Image"
+				},
+				"pdf": {
+					"displayName": "PDF"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"get": {
+					"displayName": "Get"
+				}
+			}
+		},
+		"imageTemplateId": {
+			"displayName": "Template Name or ID",
+			"description": "ID of the image template to use. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"pdfTemplateId": {
+			"displayName": "Template Name or ID",
+			"description": "ID of the PDF template to use. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"download": {
+			"displayName": "Download",
+			"description": "Name of the binary property to which to write the data of the read file"
+		},
+		"binaryProperty": {
+			"displayName": "Put Output File in Field"
+		},
+		"overridesJson": {
+			"displayName": "Overrides (JSON)",
+			"placeholder": "[ {\"name\": \"text_1\", \"text\": \"hello world\", \"textBackgroundColor\": \"rgba(246, 243, 243, 0)\" } ]"
+		},
+		"propertiesJson": {
+			"displayName": "Properties (JSON)",
+			"placeholder": "{ \"name\": \"text_1\" }"
+		},
+		"overridesUi": {
+			"displayName": "Overrides",
+			"placeholder": "Add Override",
+			"multipleValueButtonText": "Add Override",
+			"options": {
+				"overrideValues": {
+					"displayName": "Override",
+					"options": {
+						"propertiesUi": {
+							"displayName": "Properties",
+							"placeholder": "Add Property",
+							"multipleValueButtonText": "Add Property",
+							"options": {
+								"propertyValues": {
+									"displayName": "Property",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the property"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to the property"
+										}
+									}
+								}
+							},
+							"values": {
+								"propertyValues": {
+									"displayName": "Property",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the property"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to the property"
+										}
+									}
+								},
+								"propertiesUi": {
+									"displayName": "Properties",
+									"placeholder": "Add Property"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"overrideValues": {
+					"displayName": "Override",
+					"options": {
+						"propertiesUi": {
+							"displayName": "Properties",
+							"placeholder": "Add Property",
+							"multipleValueButtonText": "Add Property",
+							"options": {
+								"propertyValues": {
+									"displayName": "Property",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the property"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to the property"
+										}
+									}
+								}
+							},
+							"values": {
+								"propertyValues": {
+									"displayName": "Property",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the property"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to the property"
+										}
+									}
+								},
+								"propertiesUi": {
+									"displayName": "Properties",
+									"placeholder": "Add Property"
+								}
+							}
+						}
+					}
+				},
+				"overridesUi": {
+					"displayName": "Overrides",
+					"placeholder": "Add Override"
+				}
+			}
+		},
+		"propertiesUi": {
+			"displayName": "Properties",
+			"placeholder": "Add Property",
+			"multipleValueButtonText": "Add Property",
+			"options": {
+				"propertyValues": {
+					"displayName": "Property",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Name of the property"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to the property"
+						}
+					}
+				}
+			},
+			"values": {
+				"propertyValues": {
+					"displayName": "Property",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Name of the property"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to the property"
+						}
+					}
+				},
+				"propertiesUi": {
+					"displayName": "Properties",
+					"placeholder": "Add Property"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"fileName": {
+					"displayName": "File Name",
+					"description": "The name of the downloaded image/pdf. It has to include the extension. For example: report.pdf"
+				}
+			}
+		}
+	}
+}

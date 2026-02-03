@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "Box Trigger",
+		"description": "Starts the workflow when Box events occur"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events",
+			"description": "The events to listen to"
+		},
+		"targetType": {
+			"displayName": "Target Type",
+			"description": "The type of item to trigger a webhook",
+			"options": {
+				"file": {
+					"displayName": "File"
+				},
+				"folder": {
+					"displayName": "Folder"
+				}
+			}
+		},
+		"targetId": {
+			"displayName": "Target ID",
+			"description": "The ID of the item to trigger a webhook"
+		}
+	}
+}

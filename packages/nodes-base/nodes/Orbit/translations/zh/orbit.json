@@ -1,0 +1,407 @@
+{
+	"header": {
+		"displayName": "Orbit",
+		"description": "使用 Orbit API"
+	},
+	"nodeView": {
+		"deprecated": {
+			"displayName": "Orbit 已关闭，自7月11日起将不再运行。您可以在<a target=\"_blank\" href=\"https://orbit.love/blog/orbit-is-joining-postman\">此处</a>了解更多信息。"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"activity": {
+					"displayName": "活动"
+				},
+				"member": {
+					"displayName": "成员"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"post": {
+					"displayName": "发布"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建帖子"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多篇文章"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新成员，若已存在则更新当前成员（upsert）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除帖子"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取成员"
+				},
+				"lookup": {
+					"displayName": "查找",
+					"description": "按身份查找成员"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新笔记"
+				}
+			}
+		},
+		"workspaceId": {
+			"displayName": "工作区名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"memberId": {
+			"displayName": "成员ID"
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"activityType": {
+					"displayName": "活动类型名称或ID",
+					"description": "一种用户自定义的方式，用于对相同性质的活动进行分组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "活动描述；显示在时间线中"
+				},
+				"key": {
+					"displayName": "键",
+					"description": "提供一个必须唯一的键，或留空以自动生成"
+				},
+				"link": {
+					"displayName": "链接",
+					"description": "活动的URL；显示在时间线中"
+				},
+				"linkText": {
+					"displayName": "链接文本",
+					"description": "时间线链接的文本"
+				},
+				"occurredAt": {
+					"displayName": "发生时间",
+					"description": "活动发生的日期和时间；默认为当前时间"
+				},
+				"bio": {
+					"displayName": "生物"
+				},
+				"birthday": {
+					"displayName": "生日"
+				},
+				"company": {
+					"displayName": "公司"
+				},
+				"location": {
+					"displayName": "位置"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"pronouns": {
+					"displayName": "代词"
+				},
+				"shippingAddress": {
+					"displayName": "收货地址"
+				},
+				"slug": {
+					"displayName": "标识符"
+				},
+				"tagsToAdd": {
+					"displayName": "要添加的标签",
+					"description": "为成员添加标签；逗号分隔的字符串或数组"
+				},
+				"tagList": {
+					"displayName": "标签列表",
+					"description": "替换成员的所有标签；逗号分隔字符串或数组"
+				},
+				"tShirt": {
+					"displayName": "T恤"
+				},
+				"teammate": {
+					"displayName": "团队成员"
+				},
+				"url": {
+					"displayName": "URL"
+				},
+				"publishedAt": {
+					"displayName": "发生时间"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"memberId": {
+					"displayName": "成员ID",
+					"description": "设置后将按成员ID筛选帖子"
+				}
+			}
+		},
+		"resolveIdentities": {
+			"displayName": "解析身份",
+			"description": "默认情况下，响应仅包含身份的引用。设置为 true 时，身份将自动解析。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"sort": {
+					"displayName": "排序方式",
+					"description": "响应将按此字段排序"
+				},
+				"direction": {
+					"displayName": "排序方向",
+					"options": {
+						"ASC": {
+							"displayName": "升序"
+						},
+						"DESC": {
+							"displayName": "描述"
+						}
+					}
+				}
+			}
+		},
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "设置为github、twitter、email、discourse或您手动创建的任何身份来源",
+			"options": {
+				"discourse": {
+					"displayName": "Discourse"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"github": {
+					"displayName": "GitHub"
+				},
+				"twitter": {
+					"displayName": "Twitter"
+				}
+			}
+		},
+		"searchBy": {
+			"displayName": "搜索方式",
+			"options": {
+				"username": {
+					"displayName": "用户名"
+				},
+				"id": {
+					"displayName": "ID"
+				}
+			}
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "源端的用户名"
+		},
+		"username": {
+			"displayName": "用户名",
+			"description": "源端的用户名"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"host": {
+			"displayName": "主机"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"bio": {
+					"displayName": "生物"
+				},
+				"birthday": {
+					"displayName": "生日"
+				},
+				"company": {
+					"displayName": "公司"
+				},
+				"location": {
+					"displayName": "位置"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"pronouns": {
+					"displayName": "代词"
+				},
+				"shippingAddress": {
+					"displayName": "收货地址"
+				},
+				"slug": {
+					"displayName": "标识符"
+				},
+				"tagsToAdd": {
+					"displayName": "要添加的标签",
+					"description": "为成员添加标签；逗号分隔的字符串或数组"
+				},
+				"tagList": {
+					"displayName": "标签列表",
+					"description": "替换成员的所有标签；逗号分隔字符串或数组"
+				},
+				"tShirt": {
+					"displayName": "T恤"
+				},
+				"teammate": {
+					"displayName": "团队成员"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		},
+		"identityUi": {
+			"displayName": "身份标识",
+			"description": "此身份标识用于查找成员。如果成员不存在，将创建新成员并关联到此身份标识。",
+			"placeholder": "添加身份标识",
+			"options": {
+				"identityValue": {
+					"displayName": "身份",
+					"options": {
+						"source": {
+							"displayName": "源",
+							"description": "设置为github、twitter、email、discourse或您手动创建的任何身份来源",
+							"options": {
+								"discourse": {
+									"displayName": "Discourse"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"github": {
+									"displayName": "GitHub"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						},
+						"searchBy": {
+							"displayName": "搜索",
+							"options": {
+								"username": {
+									"displayName": "用户名"
+								},
+								"id": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"id": {
+							"displayName": "ID",
+							"description": "源端的用户名"
+						},
+						"username": {
+							"displayName": "用户名",
+							"description": "源端的用户名"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"host": {
+							"displayName": "主机"
+						}
+					}
+				}
+			},
+			"values": {
+				"identityValue": {
+					"displayName": "身份",
+					"options": {
+						"source": {
+							"displayName": "源",
+							"description": "设置为github、twitter、email、discourse或您手动创建的任何身份来源",
+							"options": {
+								"discourse": {
+									"displayName": "Discourse"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"github": {
+									"displayName": "GitHub"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						},
+						"searchBy": {
+							"displayName": "搜索",
+							"options": {
+								"username": {
+									"displayName": "用户名"
+								},
+								"id": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"id": {
+							"displayName": "ID",
+							"description": "源端的用户名"
+						},
+						"username": {
+							"displayName": "用户名",
+							"description": "源端的用户名"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"host": {
+							"displayName": "主机"
+						}
+					}
+				},
+				"identityUi": {
+					"displayName": "身份",
+					"placeholder": "添加身份"
+				}
+			}
+		},
+		"note": {
+			"displayName": "备注"
+		},
+		"resolveMember": {
+			"displayName": "解析成员"
+		},
+		"noteId": {
+			"displayName": "笔记ID"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "提供任意URL，Orbit将尽力解析出标题、描述和图像"
+		},
+		"postId": {
+			"displayName": "帖子ID"
+		}
+	}
+}

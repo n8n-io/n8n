@@ -1,0 +1,136 @@
+{
+	"header": {
+		"displayName": "重命名键",
+		"description": "更新项目字段名称"
+	},
+	"nodeView": {
+		"keys": {
+			"displayName": "键",
+			"description": "添加需要重命名的键",
+			"placeholder": "添加新键",
+			"multipleValueButtonText": "添加新密钥",
+			"options": {
+				"key": {
+					"displayName": "键",
+					"options": {
+						"currentKey": {
+							"displayName": "当前键名",
+							"description": "键的当前名称。也可以使用点符号定义深层键，例如：\"level1.level2.currentKey\"。",
+							"placeholder": "currentKey"
+						},
+						"newKey": {
+							"displayName": "新键名",
+							"description": "键应重命名为何名。也可使用点符号定义深层键，例如：\"level1.level2.newKey\"。",
+							"placeholder": "newKey"
+						}
+					}
+				}
+			},
+			"values": {
+				"key": {
+					"displayName": "键",
+					"options": {
+						"currentKey": {
+							"displayName": "当前键名",
+							"description": "键的当前名称。也可以使用点符号定义深层键，例如：\"level1.level2.currentKey\"。",
+							"placeholder": "currentKey"
+						},
+						"newKey": {
+							"displayName": "新键名",
+							"description": "键应重命名为何名。也可使用点符号定义深层键，例如：\"level1.level2.newKey\"。",
+							"placeholder": "newKey"
+						}
+					}
+				},
+				"keys": {
+					"displayName": "键",
+					"placeholder": "添加新密钥"
+				}
+			}
+		},
+		"additionalOptions": {
+			"displayName": "附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"regexReplacement": {
+					"displayName": "正则表达式",
+					"description": "添加正则表达式",
+					"placeholder": "添加新正则表达式",
+					"multipleValueButtonText": "添加新正则表达式",
+					"options": {
+						"replacements": {
+							"displayName": "替换",
+							"options": {
+								"regExNotice": {
+									"displayName": "请注意，使用正则表达式可能会影响先前已重命名的键"
+								},
+								"searchRegex": {
+									"displayName": "正则表达式",
+									"description": "匹配键名的正则表达式",
+									"placeholder": "例如：[N-n]ame"
+								},
+								"replaceRegex": {
+									"displayName": "替换为",
+									"description": "键/键组应重命名为何名称。可以使用正则表达式捕获组，例如 $1、$2……",
+									"placeholder": "替换名称"
+								},
+								"options": {
+									"displayName": "选项",
+									"placeholder": "添加正则表达式选项",
+									"options": {
+										"caseInsensitive": {
+											"displayName": "不区分大小写",
+											"description": "是否使用不区分大小写的匹配"
+										},
+										"depth": {
+											"displayName": "最大深度",
+											"description": "替换键的最大深度"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"replacements": {
+							"displayName": "替换",
+							"options": {
+								"regExNotice": {
+									"displayName": "请注意，使用正则表达式可能会影响先前已重命名的键"
+								},
+								"searchRegex": {
+									"displayName": "正则表达式",
+									"description": "匹配键名的正则表达式",
+									"placeholder": "例如：[N-n]ame"
+								},
+								"replaceRegex": {
+									"displayName": "替换为",
+									"description": "键/键组应重命名为何名称。可以使用正则表达式捕获组，例如 $1、$2……",
+									"placeholder": "替换名称"
+								},
+								"options": {
+									"displayName": "选项",
+									"placeholder": "添加正则表达式选项",
+									"options": {
+										"caseInsensitive": {
+											"displayName": "不区分大小写",
+											"description": "是否使用不区分大小写的匹配"
+										},
+										"depth": {
+											"displayName": "最大深度",
+											"description": "替换键的最大深度"
+										}
+									}
+								}
+							}
+						},
+						"regexReplacement": {
+							"displayName": "正则表达式",
+							"placeholder": "添加新正则表达式"
+						}
+					}
+				}
+			}
+		}
+	}
+}

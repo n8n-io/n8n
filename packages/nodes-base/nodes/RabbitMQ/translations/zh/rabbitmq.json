@@ -1,0 +1,175 @@
+{
+	"header": {
+		"displayName": "RabbitMQ",
+		"description": "向RabbitMQ主题发送消息"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"sendMessage": {
+					"displayName": "发送消息到RabbitMQ"
+				},
+				"deleteMessage": {
+					"displayName": "从队列中删除"
+				}
+			}
+		},
+		"deleteMessage": {
+			"displayName": "将删除由工作流中较早的RabbitMQ触发器节点触发的队列中的项目"
+		},
+		"mode": {
+			"displayName": "模式",
+			"description": "数据应移动至何处",
+			"options": {
+				"queue": {
+					"displayName": "队列",
+					"description": "发布数据到队列"
+				},
+				"exchange": {
+					"displayName": "交易所",
+					"description": "发布数据到交易所"
+				}
+			}
+		},
+		"queue": {
+			"displayName": "队列 / 主题",
+			"description": "要发布到的队列名称",
+			"placeholder": "队列名称"
+		},
+		"exchange": {
+			"displayName": "交易所",
+			"description": "要发布到的交换机名称",
+			"placeholder": "交换机名称"
+		},
+		"exchangeType": {
+			"displayName": "类型",
+			"description": "交换类型",
+			"options": {
+				"direct": {
+					"displayName": "直接",
+					"description": "直接交换类型"
+				},
+				"topic": {
+					"displayName": "主题",
+					"description": "主题交换类型"
+				},
+				"headers": {
+					"displayName": "请求头",
+					"description": "Headers 交换类型"
+				},
+				"fanout": {
+					"displayName": "扇出",
+					"description": "扇出交换类型"
+				}
+			}
+		},
+		"routingKey": {
+			"displayName": "路由键",
+			"description": "消息的路由键",
+			"placeholder": "routing-key"
+		},
+		"sendInputData": {
+			"displayName": "发送输入数据",
+			"description": "是否将节点接收的数据作为JSON发送"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"alternateExchange": {
+					"displayName": "备用交换器",
+					"description": "当此交换器无法将消息路由到任何队列时，用于发送消息的交换器"
+				},
+				"arguments": {
+					"displayName": "参数",
+					"description": "要添加的参数，有效选项请参见<a href=\"https://amqp-node.github.io/amqplib/channel_api.html#channel_publish\" target=\"_blank\">此处</a>",
+					"placeholder": "添加参数",
+					"multipleValueButtonText": "添加参数",
+					"options": {
+						"argument": {
+							"displayName": "参数",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"argument": {
+							"displayName": "参数",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"arguments": {
+							"displayName": "参数",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"autoDelete": {
+					"displayName": "自动删除队列",
+					"description": "当消费者数量降至零时是否删除队列"
+				},
+				"durable": {
+					"displayName": "持久化",
+					"description": "队列是否在代理重启后仍然保留"
+				},
+				"exclusive": {
+					"displayName": "独占",
+					"description": "是否将队列范围限定到连接"
+				},
+				"headers": {
+					"displayName": "请求头",
+					"description": "要添加的请求头",
+					"placeholder": "添加请求头",
+					"multipleValueButtonText": "添加请求头",
+					"options": {
+						"header": {
+							"displayName": "页眉",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"header": {
+							"displayName": "页眉",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"headers": {
+							"displayName": "请求头",
+							"placeholder": "添加请求头"
+						}
+					}
+				}
+			}
+		}
+	}
+}

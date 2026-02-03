@@ -1,0 +1,1930 @@
+{
+	"header": {
+		"displayName": "WooCommerce",
+		"description": "使用WooCommerce API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"customer": {
+					"displayName": "客户"
+				},
+				"order": {
+					"displayName": "排序"
+				},
+				"product": {
+					"displayName": "产品"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建订单"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除订单"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取订单"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个订单"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新订单"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"billing": {
+					"displayName": "账单地址",
+					"placeholder": "添加字段",
+					"options": {
+						"first_name": {
+							"displayName": "名字"
+						},
+						"last_name": {
+							"displayName": "姓氏"
+						},
+						"company": {
+							"displayName": "公司"
+						},
+						"address_1": {
+							"displayName": "地址 1"
+						},
+						"address_2": {
+							"displayName": "地址2"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"postcode": {
+							"displayName": "邮政编码"
+						},
+						"country": {
+							"displayName": "国家"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "电话"
+						}
+					}
+				},
+				"first_name": {
+					"displayName": "名字"
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"meta_data": {
+					"displayName": "元数据",
+					"placeholder": "添加元数据字段",
+					"multipleValueButtonText": "添加元数据字段",
+					"options": {
+						"meta_data_fields": {
+							"displayName": "元数据字段",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"meta_data_fields": {
+							"displayName": "元数据字段",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"meta_data": {
+							"displayName": "元数据",
+							"placeholder": "添加元数据字段"
+						}
+					}
+				},
+				"password": {
+					"displayName": "密码"
+				},
+				"shipping": {
+					"displayName": "收货地址",
+					"placeholder": "添加字段",
+					"options": {
+						"first_name": {
+							"displayName": "名字"
+						},
+						"last_name": {
+							"displayName": "姓氏"
+						},
+						"company": {
+							"displayName": "公司"
+						},
+						"address_1": {
+							"displayName": "地址 1"
+						},
+						"address_2": {
+							"displayName": "地址2"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"postcode": {
+							"displayName": "邮政编码"
+						},
+						"country": {
+							"displayName": "国家"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "电话"
+						}
+					}
+				},
+				"username": {
+					"displayName": "用户名"
+				},
+				"backorders": {
+					"displayName": "缺货订购",
+					"description": "若管理库存，此项控制是否允许缺货订购",
+					"options": {
+						"no": {
+							"displayName": "否"
+						},
+						"notify": {
+							"displayName": "通知"
+						},
+						"yes": {
+							"displayName": "是"
+						}
+					}
+				},
+				"buttonText": {
+					"displayName": "按钮文本",
+					"description": "产品外部按钮文本。仅适用于外部产品。"
+				},
+				"catalogVisibility": {
+					"displayName": "目录可见性",
+					"options": {
+						"catalog": {
+							"displayName": "目录"
+						},
+						"hidden": {
+							"displayName": "隐藏"
+						},
+						"search": {
+							"displayName": "搜索"
+						},
+						"visible": {
+							"displayName": "可见"
+						}
+					}
+				},
+				"categories": {
+					"displayName": "分类名称或ID",
+					"description": "分类列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"crossSellIds": {
+					"displayName": "交叉销售ID",
+					"description": "交叉销售产品ID列表。多个ID可用逗号分隔添加。"
+				},
+				"dateOnSaleFrom": {
+					"displayName": "开售日期",
+					"description": "促销价开始日期，使用站点时区"
+				},
+				"dateOnSaleTo": {
+					"displayName": "促销截止日期",
+					"description": "促销价结束日期，使用站点时区"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "产品描述"
+				},
+				"downloadable": {
+					"displayName": "可下载",
+					"description": "产品是否可下载"
+				},
+				"externalUrl": {
+					"displayName": "外部URL",
+					"description": "产品外部URL。仅适用于外部产品。"
+				},
+				"featured": {
+					"displayName": "精选",
+					"description": "产品是否为精选"
+				},
+				"manageStock": {
+					"displayName": "管理库存",
+					"description": "产品级库存管理"
+				},
+				"menuOrder": {
+					"displayName": "菜单排序",
+					"description": "菜单排序，用于自定义产品排序"
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "父订单ID"
+				},
+				"purchaseNote": {
+					"displayName": "购买备注",
+					"description": "购买后发送给客户的可选备注"
+				},
+				"regularPrice": {
+					"displayName": "常规价格",
+					"description": "产品常规价格"
+				},
+				"reviewsAllowed": {
+					"displayName": "允许评价",
+					"description": "是否允许评价"
+				},
+				"salePrice": {
+					"displayName": "销售价格",
+					"description": "产品销售价格"
+				},
+				"shippingClass": {
+					"displayName": "配送类别",
+					"description": "配送类别别名"
+				},
+				"shortDescription": {
+					"displayName": "简短描述",
+					"description": "产品简短描述"
+				},
+				"sku": {
+					"displayName": "SKU",
+					"description": "唯一标识符"
+				},
+				"slug": {
+					"displayName": "标识符",
+					"description": "产品别名"
+				},
+				"soldIndividually": {
+					"displayName": "单独销售",
+					"description": "是否允许单个订单中购买一件商品"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "订单的命名状态",
+					"options": {
+						"draft": {
+							"displayName": "草稿"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"publish": {
+							"displayName": "发布"
+						},
+						"cancelled": {
+							"displayName": "已取消"
+						},
+						"completed": {
+							"displayName": "已完成"
+						},
+						"failed": {
+							"displayName": "失败"
+						},
+						"on-hold": {
+							"displayName": "挂起中"
+						},
+						"processing": {
+							"displayName": "处理中"
+						},
+						"refunded": {
+							"displayName": "已退款"
+						},
+						"trash": {
+							"displayName": "回收站"
+						}
+					}
+				},
+				"stockQuantity": {
+					"displayName": "库存数量"
+				},
+				"stockStatus": {
+					"displayName": "库存状态",
+					"description": "控制产品的库存状态",
+					"options": {
+						"instock": {
+							"displayName": "有库存"
+						},
+						"outofstock": {
+							"displayName": "缺货"
+						},
+						"onbackorder": {
+							"displayName": "缺货待补"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "标签列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"taxClass": {
+					"displayName": "税类"
+				},
+				"taxStatus": {
+					"displayName": "税务状态",
+					"options": {
+						"taxable": {
+							"displayName": "应税"
+						},
+						"shipping": {
+							"displayName": "运输"
+						},
+						"none": {
+							"displayName": "无"
+						}
+					}
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "产品类型",
+					"options": {
+						"simple": {
+							"displayName": "简单"
+						},
+						"grouped": {
+							"displayName": "已分组"
+						},
+						"external": {
+							"displayName": "外部"
+						},
+						"variable": {
+							"displayName": "变量"
+						}
+					}
+				},
+				"upsellIds": {
+					"displayName": "追加销售ID",
+					"description": "追加销售产品ID列表。多个ID可用逗号分隔添加。"
+				},
+				"virtual": {
+					"displayName": "虚拟",
+					"description": "产品是否为虚拟产品"
+				},
+				"weight": {
+					"displayName": "重量",
+					"description": "产品重量"
+				},
+				"currency": {
+					"displayName": "货币",
+					"description": "订单创建时使用的货币"
+				},
+				"customerId": {
+					"displayName": "客户ID",
+					"description": "拥有订单的用户ID。0表示访客。"
+				},
+				"customerNote": {
+					"displayName": "客户备注",
+					"description": "客户结账时留下的备注"
+				},
+				"paymentMethodId": {
+					"displayName": "支付方式ID"
+				},
+				"paymentMethodTitle": {
+					"displayName": "支付方式标题"
+				},
+				"setPaid": {
+					"displayName": "设为已付款",
+					"description": "订单是否已付款。这将把状态设为处理中并减少库存商品。"
+				},
+				"transactionID": {
+					"displayName": "交易ID",
+					"description": "唯一交易ID"
+				}
+			}
+		},
+		"customerId": {
+			"displayName": "客户ID",
+			"description": "要更新的客户ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用于筛选客户的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"order": {
+					"displayName": "排序顺序",
+					"description": "客户排序顺序",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "降序"
+						}
+					}
+				},
+				"orderby": {
+					"displayName": "排序方式",
+					"description": "用于排序客户的字段",
+					"options": {
+						"id": {
+							"displayName": "ID"
+						},
+						"include": {
+							"displayName": "包含"
+						},
+						"name": {
+							"displayName": "名称"
+						},
+						"registered_date": {
+							"displayName": "注册日期"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"billing": {
+					"displayName": "账单地址",
+					"placeholder": "添加字段",
+					"options": {
+						"first_name": {
+							"displayName": "名字"
+						},
+						"last_name": {
+							"displayName": "姓氏"
+						},
+						"company": {
+							"displayName": "公司"
+						},
+						"address_1": {
+							"displayName": "地址 1"
+						},
+						"address_2": {
+							"displayName": "地址2"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"postcode": {
+							"displayName": "邮政编码"
+						},
+						"country": {
+							"displayName": "国家"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "电话"
+						}
+					}
+				},
+				"first_name": {
+					"displayName": "名字"
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"meta_data": {
+					"displayName": "元数据",
+					"placeholder": "添加元数据字段",
+					"multipleValueButtonText": "添加元数据字段",
+					"options": {
+						"meta_data_fields": {
+							"displayName": "元数据字段",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"meta_data_fields": {
+							"displayName": "元数据字段",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"meta_data": {
+							"displayName": "元数据",
+							"placeholder": "添加元数据字段"
+						}
+					}
+				},
+				"password": {
+					"displayName": "密码"
+				},
+				"shipping": {
+					"displayName": "收货地址",
+					"placeholder": "添加字段",
+					"options": {
+						"first_name": {
+							"displayName": "名字"
+						},
+						"last_name": {
+							"displayName": "姓氏"
+						},
+						"company": {
+							"displayName": "公司"
+						},
+						"address_1": {
+							"displayName": "地址 1"
+						},
+						"address_2": {
+							"displayName": "地址2"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"postcode": {
+							"displayName": "邮政编码"
+						},
+						"country": {
+							"displayName": "国家"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "电话"
+						}
+					}
+				},
+				"backorders": {
+					"displayName": "缺货订购",
+					"description": "若管理库存，此项控制是否允许缺货订购",
+					"options": {
+						"no": {
+							"displayName": "否"
+						},
+						"notify": {
+							"displayName": "通知"
+						},
+						"yes": {
+							"displayName": "是"
+						}
+					}
+				},
+				"buttonText": {
+					"displayName": "按钮文本",
+					"description": "产品外部按钮文本。仅适用于外部产品。"
+				},
+				"catalogVisibility": {
+					"displayName": "目录可见性",
+					"options": {
+						"visible": {
+							"displayName": "可见"
+						},
+						"catalog": {
+							"displayName": "目录"
+						},
+						"search": {
+							"displayName": "搜索"
+						},
+						"hidden": {
+							"displayName": "隐藏"
+						}
+					}
+				},
+				"categories": {
+					"displayName": "分类名称或ID",
+					"description": "分类列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"crossSellIds": {
+					"displayName": "交叉销售ID",
+					"description": "交叉销售产品ID列表。多个ID可用逗号分隔添加。"
+				},
+				"dateOnSaleFrom": {
+					"displayName": "开售日期",
+					"description": "促销价开始日期，使用站点时区"
+				},
+				"dateOnSaleTo": {
+					"displayName": "促销截止日期",
+					"description": "促销价结束日期，使用站点时区"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "产品描述"
+				},
+				"downloadable": {
+					"displayName": "可下载",
+					"description": "产品是否可下载"
+				},
+				"externalUrl": {
+					"displayName": "外部URL",
+					"description": "产品外部URL。仅适用于外部产品。"
+				},
+				"featured": {
+					"displayName": "精选",
+					"description": "产品是否为精选"
+				},
+				"manageStock": {
+					"displayName": "管理库存",
+					"description": "产品级库存管理"
+				},
+				"menuOrder": {
+					"displayName": "菜单排序",
+					"description": "菜单排序，用于自定义产品排序"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "产品名称"
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "父订单ID"
+				},
+				"purchaseNote": {
+					"displayName": "购买备注",
+					"description": "购买后发送给客户的可选备注"
+				},
+				"regularPrice": {
+					"displayName": "常规价格",
+					"description": "产品常规价格"
+				},
+				"reviewsAllowed": {
+					"displayName": "允许评价",
+					"description": "是否允许评价"
+				},
+				"salePrice": {
+					"displayName": "销售价格",
+					"description": "产品销售价格"
+				},
+				"shippingClass": {
+					"displayName": "配送类别",
+					"description": "配送类别别名"
+				},
+				"shortDescription": {
+					"displayName": "简短描述",
+					"description": "产品简短描述"
+				},
+				"sku": {
+					"displayName": "SKU",
+					"description": "唯一标识符"
+				},
+				"slug": {
+					"displayName": "标识符",
+					"description": "产品别名"
+				},
+				"soldIndividually": {
+					"displayName": "单独销售",
+					"description": "是否允许单个订单中购买一件商品"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "订单的命名状态",
+					"options": {
+						"draft": {
+							"displayName": "草稿"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"publish": {
+							"displayName": "发布"
+						},
+						"cancelled": {
+							"displayName": "已取消"
+						},
+						"completed": {
+							"displayName": "已完成"
+						},
+						"failed": {
+							"displayName": "失败"
+						},
+						"on-hold": {
+							"displayName": "挂起中"
+						},
+						"processing": {
+							"displayName": "处理中"
+						},
+						"refunded": {
+							"displayName": "已退款"
+						},
+						"trash": {
+							"displayName": "回收站"
+						}
+					}
+				},
+				"stockQuantity": {
+					"displayName": "库存数量"
+				},
+				"stockStatus": {
+					"displayName": "库存状态",
+					"description": "控制产品的库存状态",
+					"options": {
+						"instock": {
+							"displayName": "有库存"
+						},
+						"outofstock": {
+							"displayName": "缺货"
+						},
+						"onbackorder": {
+							"displayName": "缺货待补"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "标签列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"taxClass": {
+					"displayName": "税类"
+				},
+				"taxStatus": {
+					"displayName": "税务状态",
+					"options": {
+						"taxable": {
+							"displayName": "应税"
+						},
+						"shipping": {
+							"displayName": "运输"
+						},
+						"none": {
+							"displayName": "无"
+						}
+					}
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "产品类型",
+					"options": {
+						"simple": {
+							"displayName": "简单"
+						},
+						"grouped": {
+							"displayName": "已分组"
+						},
+						"external": {
+							"displayName": "外部"
+						},
+						"variable": {
+							"displayName": "变量"
+						}
+					}
+				},
+				"upsellIds": {
+					"displayName": "追加销售ID",
+					"description": "追加销售产品ID列表。多个ID可用逗号分隔添加。"
+				},
+				"virtual": {
+					"displayName": "虚拟",
+					"description": "产品是否为虚拟产品"
+				},
+				"weight": {
+					"displayName": "重量",
+					"description": "产品重量"
+				},
+				"currency": {
+					"displayName": "货币",
+					"description": "订单创建时使用的货币"
+				},
+				"customerId": {
+					"displayName": "客户ID",
+					"description": "拥有订单的用户ID。0表示访客。"
+				},
+				"customerNote": {
+					"displayName": "客户备注",
+					"description": "客户结账时留下的备注"
+				},
+				"paymentMethodId": {
+					"displayName": "支付方式ID"
+				},
+				"paymentMethodTitle": {
+					"displayName": "支付方式标题"
+				},
+				"transactionID": {
+					"displayName": "交易ID",
+					"description": "唯一交易ID"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "产品名称"
+		},
+		"dimensionsUi": {
+			"displayName": "维度",
+			"description": "产品维度",
+			"placeholder": "添加维度",
+			"options": {
+				"dimensionsValues": {
+					"displayName": "维度",
+					"options": {
+						"height": {
+							"displayName": "高度",
+							"description": "产品高度"
+						},
+						"length": {
+							"displayName": "长度",
+							"description": "产品长度"
+						},
+						"width": {
+							"displayName": "宽度",
+							"description": "产品宽度"
+						}
+					}
+				}
+			},
+			"values": {
+				"dimensionsValues": {
+					"displayName": "维度",
+					"options": {
+						"height": {
+							"displayName": "高度",
+							"description": "产品高度"
+						},
+						"length": {
+							"displayName": "长度",
+							"description": "产品长度"
+						},
+						"width": {
+							"displayName": "宽度",
+							"description": "产品宽度"
+						}
+					}
+				},
+				"dimensionsUi": {
+					"displayName": "维度",
+					"placeholder": "添加维度"
+				}
+			}
+		},
+		"imagesUi": {
+			"displayName": "图片",
+			"description": "产品图片",
+			"placeholder": "添加图片",
+			"multipleValueButtonText": "添加图片",
+			"options": {
+				"imagesValues": {
+					"displayName": "图片",
+					"options": {
+						"alt": {
+							"displayName": "Alt",
+							"description": "图像替代文本"
+						},
+						"src": {
+							"displayName": "源",
+							"description": "图片URL"
+						},
+						"name": {
+							"displayName": "名称",
+							"description": "镜像名称"
+						}
+					}
+				}
+			},
+			"values": {
+				"imagesValues": {
+					"displayName": "图片",
+					"options": {
+						"alt": {
+							"displayName": "Alt",
+							"description": "图像替代文本"
+						},
+						"src": {
+							"displayName": "源",
+							"description": "图片URL"
+						},
+						"name": {
+							"displayName": "名称",
+							"description": "镜像名称"
+						}
+					}
+				},
+				"imagesUi": {
+					"displayName": "图片",
+					"placeholder": "添加图片"
+				}
+			}
+		},
+		"metadataUi": {
+			"displayName": "元数据",
+			"description": "元数据",
+			"placeholder": "添加元数据",
+			"multipleValueButtonText": "添加元数据",
+			"options": {
+				"metadataValues": {
+					"displayName": "元数据",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要添加的元数据键名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为元数据键设置的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"metadataValues": {
+					"displayName": "元数据",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要添加的元数据键名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为元数据键设置的值"
+						}
+					}
+				},
+				"metadataUi": {
+					"displayName": "元数据",
+					"placeholder": "添加元数据"
+				}
+			}
+		},
+		"productId": {
+			"displayName": "产品ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"after": {
+					"displayName": "之后",
+					"description": "限制返回在指定ISO8601日期之后发布的资源"
+				},
+				"before": {
+					"displayName": "之前",
+					"description": "限制响应为在指定ISO8601兼容日期之前发布的资源"
+				},
+				"category": {
+					"displayName": "分类名称或ID",
+					"description": "Limit result set to products assigned a specific category ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"context": {
+					"displayName": "上下文",
+					"description": "请求的作用域；决定响应中包含的字段",
+					"options": {
+						"view": {
+							"displayName": "查看"
+						},
+						"embed": {
+							"displayName": "嵌入"
+						},
+						"edit": {
+							"displayName": "编辑"
+						}
+					}
+				},
+				"featured": {
+					"displayName": "精选",
+					"description": "是否将结果集限制为精选产品"
+				},
+				"maxPrice": {
+					"displayName": "最高价格",
+					"description": "根据最高价格限制结果集中的产品"
+				},
+				"minPrice": {
+					"displayName": "最低价格",
+					"description": "根据最低价格筛选产品结果集"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "排序属性升序或降序",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"description": "按对象属性排序集合",
+					"options": {
+						"date": {
+							"displayName": "日期"
+						},
+						"id": {
+							"displayName": "ID"
+						},
+						"include": {
+							"displayName": "包含"
+						},
+						"slug": {
+							"displayName": "标识符"
+						},
+						"title": {
+							"displayName": "标题"
+						}
+					}
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "将结果限制为匹配字符串的内容"
+				},
+				"sku": {
+					"displayName": "SKU",
+					"description": "将结果集限制为具有特定SKU的产品"
+				},
+				"slug": {
+					"displayName": "标识符",
+					"description": "将结果集限制为具有特定slug的产品"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "将结果集限制为分配了特定状态的订单",
+					"options": {
+						"any": {
+							"displayName": "任意"
+						},
+						"draft": {
+							"displayName": "草稿"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"publish": {
+							"displayName": "发布"
+						},
+						"cancelled": {
+							"displayName": "已取消"
+						},
+						"completed": {
+							"displayName": "已完成"
+						},
+						"failed": {
+							"displayName": "失败"
+						},
+						"on-hold": {
+							"displayName": "已暂停"
+						},
+						"processing": {
+							"displayName": "处理中"
+						},
+						"refunded": {
+							"displayName": "已退款"
+						},
+						"trash": {
+							"displayName": "回收站"
+						}
+					}
+				},
+				"stockStatus": {
+					"displayName": "库存状态",
+					"description": "控制产品的库存状态",
+					"options": {
+						"instock": {
+							"displayName": "有库存"
+						},
+						"outofstock": {
+							"displayName": "缺货"
+						},
+						"onbackorder": {
+							"displayName": "缺货待补"
+						}
+					}
+				},
+				"tag": {
+					"displayName": "标签名称或ID",
+					"description": "将结果集限制为分配了特定标签ID的产品。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"taxClass": {
+					"displayName": "税类",
+					"description": "将结果集限制为具有特定税类的产品",
+					"options": {
+						"standard": {
+							"displayName": "标准"
+						},
+						"reduced-rate": {
+							"displayName": "降低费率"
+						},
+						"zero-rate.": {
+							"displayName": "零费率"
+						}
+					}
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "产品类型",
+					"options": {
+						"simple": {
+							"displayName": "简单"
+						},
+						"grouped": {
+							"displayName": "已分组"
+						},
+						"external": {
+							"displayName": "外部"
+						},
+						"variable": {
+							"displayName": "变量"
+						}
+					}
+				},
+				"customer": {
+					"displayName": "客户",
+					"description": "将结果集限制为分配给特定客户的订单"
+				},
+				"decimalPoints": {
+					"displayName": "小数位数",
+					"description": "每个资源中使用的小数位数"
+				},
+				"product": {
+					"displayName": "产品",
+					"description": "将结果集限制为分配了特定产品的订单"
+				}
+			}
+		},
+		"billingUi": {
+			"displayName": "计费",
+			"description": "账单地址",
+			"placeholder": "添加账单信息",
+			"options": {
+				"billingValues": {
+					"displayName": "地址",
+					"options": {
+						"firstName": {
+							"displayName": "名字"
+						},
+						"lastName": {
+							"displayName": "姓氏"
+						},
+						"company": {
+							"displayName": "公司"
+						},
+						"address_1": {
+							"displayName": "地址行1"
+						},
+						"address_2": {
+							"displayName": "地址行2"
+						},
+						"city": {
+							"displayName": "城市",
+							"description": "州、省或地区的ISO代码或名称"
+						},
+						"postcode": {
+							"displayName": "邮政编码"
+						},
+						"country": {
+							"displayName": "国家"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "电话"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						}
+					}
+				}
+			},
+			"values": {
+				"billingValues": {
+					"displayName": "地址",
+					"options": {
+						"firstName": {
+							"displayName": "名字"
+						},
+						"lastName": {
+							"displayName": "姓氏"
+						},
+						"company": {
+							"displayName": "公司"
+						},
+						"address_1": {
+							"displayName": "地址行1"
+						},
+						"address_2": {
+							"displayName": "地址行2"
+						},
+						"city": {
+							"displayName": "城市",
+							"description": "州、省或地区的ISO代码或名称"
+						},
+						"postcode": {
+							"displayName": "邮政编码"
+						},
+						"country": {
+							"displayName": "国家"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "电话"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						}
+					}
+				},
+				"billingUi": {
+					"displayName": "计费",
+					"placeholder": "添加计费"
+				}
+			}
+		},
+		"couponLinesUi": {
+			"displayName": "优惠券行",
+			"description": "优惠券行数据",
+			"placeholder": "添加优惠券行",
+			"multipleValueButtonText": "添加优惠券行",
+			"options": {
+				"couponLinesValues": {
+					"displayName": "优惠券行",
+					"options": {
+						"code": {
+							"displayName": "代码",
+							"description": "优惠码"
+						},
+						"metadataUi": {
+							"displayName": "元数据",
+							"description": "元数据",
+							"placeholder": "添加元数据",
+							"multipleValueButtonText": "添加元数据",
+							"options": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "元数据",
+									"placeholder": "添加元数据"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"couponLinesValues": {
+					"displayName": "优惠券行",
+					"options": {
+						"code": {
+							"displayName": "代码",
+							"description": "优惠码"
+						},
+						"metadataUi": {
+							"displayName": "元数据",
+							"description": "元数据",
+							"placeholder": "添加元数据",
+							"multipleValueButtonText": "添加元数据",
+							"options": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "元数据",
+									"placeholder": "添加元数据"
+								}
+							}
+						}
+					}
+				},
+				"couponLinesUi": {
+					"displayName": "优惠券行",
+					"placeholder": "添加优惠券行"
+				}
+			}
+		},
+		"feeLinesUi": {
+			"displayName": "费用明细",
+			"description": "费用明细数据",
+			"placeholder": "添加费用明细",
+			"multipleValueButtonText": "添加费用行",
+			"options": {
+				"feeLinesValues": {
+					"displayName": "费用行",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "费用名称"
+						},
+						"taxClass": {
+							"displayName": "税类",
+							"description": "费用的税率类别"
+						},
+						"taxStatus": {
+							"displayName": "税务状态",
+							"description": "费用的税率类别",
+							"options": {
+								"taxable": {
+									"displayName": "应税"
+								},
+								"none": {
+									"displayName": "无"
+								}
+							}
+						},
+						"total": {
+							"displayName": "总计",
+							"description": "行项目总计（折扣后）"
+						},
+						"metadataUi": {
+							"displayName": "元数据",
+							"description": "元数据",
+							"placeholder": "添加元数据",
+							"multipleValueButtonText": "添加元数据",
+							"options": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "元数据",
+									"placeholder": "添加元数据"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"feeLinesValues": {
+					"displayName": "费用行",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "费用名称"
+						},
+						"taxClass": {
+							"displayName": "税类",
+							"description": "费用的税率类别"
+						},
+						"taxStatus": {
+							"displayName": "税务状态",
+							"description": "费用的税率类别",
+							"options": {
+								"taxable": {
+									"displayName": "应税"
+								},
+								"none": {
+									"displayName": "无"
+								}
+							}
+						},
+						"total": {
+							"displayName": "总计",
+							"description": "行项目总计（折扣后）"
+						},
+						"metadataUi": {
+							"displayName": "元数据",
+							"description": "元数据",
+							"placeholder": "添加元数据",
+							"multipleValueButtonText": "添加元数据",
+							"options": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "元数据",
+									"placeholder": "添加元数据"
+								}
+							}
+						}
+					}
+				},
+				"feeLinesUi": {
+					"displayName": "费用明细",
+					"placeholder": "添加费用明细"
+				}
+			}
+		},
+		"lineItemsUi": {
+			"displayName": "行项目",
+			"description": "行项目数据",
+			"placeholder": "添加行项目",
+			"multipleValueButtonText": "添加行项目",
+			"options": {
+				"lineItemsValues": {
+					"displayName": "行项目",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "产品名称"
+						},
+						"productId": {
+							"displayName": "产品ID"
+						},
+						"variationId": {
+							"displayName": "变体ID",
+							"description": "变体ID（如适用）"
+						},
+						"quantity": {
+							"displayName": "数量",
+							"description": "订购数量"
+						},
+						"taxClass": {
+							"displayName": "税类",
+							"description": "产品税类Slug"
+						},
+						"subtotal": {
+							"displayName": "小计",
+							"description": "行项目小计（折扣前）"
+						},
+						"total": {
+							"displayName": "总计",
+							"description": "行项目总计（折扣后）"
+						},
+						"metadataUi": {
+							"displayName": "元数据",
+							"description": "元数据",
+							"placeholder": "添加元数据",
+							"multipleValueButtonText": "添加元数据",
+							"options": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "元数据",
+									"placeholder": "添加元数据"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"lineItemsValues": {
+					"displayName": "行项目",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "产品名称"
+						},
+						"productId": {
+							"displayName": "产品ID"
+						},
+						"variationId": {
+							"displayName": "变体ID",
+							"description": "变体ID（如适用）"
+						},
+						"quantity": {
+							"displayName": "数量",
+							"description": "订购数量"
+						},
+						"taxClass": {
+							"displayName": "税类",
+							"description": "产品税类Slug"
+						},
+						"subtotal": {
+							"displayName": "小计",
+							"description": "行项目小计（折扣前）"
+						},
+						"total": {
+							"displayName": "总计",
+							"description": "行项目总计（折扣后）"
+						},
+						"metadataUi": {
+							"displayName": "元数据",
+							"description": "元数据",
+							"placeholder": "添加元数据",
+							"multipleValueButtonText": "添加元数据",
+							"options": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "元数据",
+									"placeholder": "添加元数据"
+								}
+							}
+						}
+					}
+				},
+				"lineItemsUi": {
+					"displayName": "行项目",
+					"placeholder": "添加行项目"
+				}
+			}
+		},
+		"shippingUi": {
+			"displayName": "配送",
+			"description": "配送地址",
+			"placeholder": "添加配送",
+			"options": {
+				"shippingValues": {
+					"displayName": "地址",
+					"options": {
+						"firstName": {
+							"displayName": "名字"
+						},
+						"lastName": {
+							"displayName": "姓氏"
+						},
+						"company": {
+							"displayName": "公司"
+						},
+						"address_1": {
+							"displayName": "地址行1"
+						},
+						"address_2": {
+							"displayName": "地址行2"
+						},
+						"city": {
+							"displayName": "城市",
+							"description": "州、省或地区的ISO代码或名称"
+						},
+						"postcode": {
+							"displayName": "邮政编码"
+						},
+						"country": {
+							"displayName": "国家"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						}
+					}
+				}
+			},
+			"values": {
+				"shippingValues": {
+					"displayName": "地址",
+					"options": {
+						"firstName": {
+							"displayName": "名字"
+						},
+						"lastName": {
+							"displayName": "姓氏"
+						},
+						"company": {
+							"displayName": "公司"
+						},
+						"address_1": {
+							"displayName": "地址行1"
+						},
+						"address_2": {
+							"displayName": "地址行2"
+						},
+						"city": {
+							"displayName": "城市",
+							"description": "州、省或地区的ISO代码或名称"
+						},
+						"postcode": {
+							"displayName": "邮政编码"
+						},
+						"country": {
+							"displayName": "国家"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						}
+					}
+				},
+				"shippingUi": {
+					"displayName": "运输",
+					"placeholder": "添加运费"
+				}
+			}
+		},
+		"shippingLinesUi": {
+			"displayName": "船运公司",
+			"description": "船运公司数据",
+			"placeholder": "添加船运公司",
+			"multipleValueButtonText": "添加运费行",
+			"options": {
+				"shippingLinesValues": {
+					"displayName": "费用行",
+					"options": {
+						"methodTitle": {
+							"displayName": "方法标题",
+							"description": "配送方式名称"
+						},
+						"method ID": {
+							"displayName": "方法ID",
+							"description": "配送方式ID"
+						},
+						"total": {
+							"displayName": "总计",
+							"description": "行项目总计（折扣后）"
+						},
+						"metadataUi": {
+							"displayName": "元数据",
+							"description": "元数据",
+							"placeholder": "添加元数据",
+							"multipleValueButtonText": "添加元数据",
+							"options": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "元数据",
+									"placeholder": "添加元数据"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"shippingLinesValues": {
+					"displayName": "费用行",
+					"options": {
+						"methodTitle": {
+							"displayName": "方法标题",
+							"description": "配送方式名称"
+						},
+						"method ID": {
+							"displayName": "方法ID",
+							"description": "配送方式ID"
+						},
+						"total": {
+							"displayName": "总计",
+							"description": "行项目总计（折扣后）"
+						},
+						"metadataUi": {
+							"displayName": "元数据",
+							"description": "元数据",
+							"placeholder": "添加元数据",
+							"multipleValueButtonText": "添加元数据",
+							"options": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "元数据",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "要添加的元数据键名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "为元数据键设置的值"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "元数据",
+									"placeholder": "添加元数据"
+								}
+							}
+						}
+					}
+				},
+				"shippingLinesUi": {
+					"displayName": "船运公司",
+					"placeholder": "添加船运公司"
+				}
+			}
+		},
+		"orderId": {
+			"displayName": "订单ID"
+		}
+	}
+}

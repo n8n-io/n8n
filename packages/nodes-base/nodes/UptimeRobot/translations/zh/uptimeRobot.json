@@ -1,0 +1,415 @@
+{
+	"header": {
+		"displayName": "UptimeRobot",
+		"description": "使用UptimeRobot API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"account": {
+					"displayName": "账户"
+				},
+				"alertContact": {
+					"displayName": "警报联系人"
+				},
+				"maintenanceWindow": {
+					"displayName": "维护窗口"
+				},
+				"monitor": {
+					"displayName": "监控"
+				},
+				"publicStatusPage": {
+					"displayName": "公共状态页面"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取公共状态页面"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建公共状态页面"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除公共状态页面"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个公共状态页面"
+				},
+				"reset": {
+					"displayName": "重置",
+					"description": "重置监控器"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新维护窗口"
+				}
+			}
+		},
+		"friendlyName": {
+			"displayName": "友好名称",
+			"description": "状态页面的友好名称"
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "维护窗口的类型",
+			"options": {
+				"1": {
+					"displayName": "一旦"
+				},
+				"2": {
+					"displayName": "每日"
+				},
+				"3": {
+					"displayName": "每周"
+				},
+				"4": {
+					"displayName": "每月"
+				},
+				"5": {
+					"displayName": "Webhook"
+				},
+				"6": {
+					"displayName": "Pushbullet"
+				},
+				"9": {
+					"displayName": "Pushover"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "监控器的URL/IP"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "公共状态页面的ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"alert_contacts": {
+					"displayName": "告警联系人ID",
+					"description": "告警联系人ID，用短横线分隔，例如 236-1782-4790"
+				},
+				"logs": {
+					"displayName": "日志",
+					"description": "是否返回每个监控器的日志"
+				},
+				"mwindow": {
+					"displayName": "维护窗口ID",
+					"description": "维护窗口ID，以短横线分隔，例如：236-1782-4790"
+				},
+				"monitors": {
+					"displayName": "监控ID",
+					"description": "监控ID，用短横线分隔，例如：15830-32696-83920"
+				},
+				"response_times": {
+					"displayName": "响应时间",
+					"description": "是否返回每个监控器的响应时间数据"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "用于匹配URL和友好名称的关键词"
+				},
+				"statuses": {
+					"displayName": "状态"
+				},
+				"types": {
+					"displayName": "类型",
+					"description": "选择监控类型"
+				},
+				"psps": {
+					"displayName": "公开状态页面ID",
+					"description": "公开状态页面ID，用短横线分隔，例如：236-1782-4790"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"friendly_name": {
+					"displayName": "友好名称",
+					"description": "状态页面的友好名称"
+				},
+				"http_auth_type": {
+					"displayName": "HTTP认证类型",
+					"description": "受密码保护网页的认证类型",
+					"options": {
+						"1": {
+							"displayName": "HTTP基本认证"
+						},
+						"2": {
+							"displayName": "摘要"
+						}
+					}
+				},
+				"http_method": {
+					"displayName": "HTTP方法",
+					"description": "要使用的HTTP方法",
+					"options": {
+						"1": {
+							"displayName": "HEAD"
+						},
+						"2": {
+							"displayName": "获取"
+						},
+						"3": {
+							"displayName": "POST"
+						},
+						"4": {
+							"displayName": "PUT"
+						},
+						"5": {
+							"displayName": "PATCH"
+						},
+						"6": {
+							"displayName": "删除"
+						},
+						"7": {
+							"displayName": "选项"
+						}
+					}
+				},
+				"http_password": {
+					"displayName": "HTTP密码",
+					"description": "用于访问受密码保护的网页的密码"
+				},
+				"http_username": {
+					"displayName": "HTTP用户名",
+					"description": "用于受密码保护的网页的用户名"
+				},
+				"interval": {
+					"displayName": "间隔时间",
+					"description": "监控检查的间隔时间"
+				},
+				"port": {
+					"displayName": "端口",
+					"description": "监控的端口"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "选择监控状态",
+					"options": {
+						"0": {
+							"displayName": "暂停"
+						},
+						"1": {
+							"displayName": "恢复"
+						}
+					}
+				},
+				"sub_type": {
+					"displayName": "子类型",
+					"description": "指定要监控的预定义端口/服务或自定义端口",
+					"options": {
+						"1": {
+							"displayName": "HTTP (80)"
+						},
+						"2": {
+							"displayName": "HTTPS (443)"
+						},
+						"3": {
+							"displayName": "FTP (21)"
+						},
+						"4": {
+							"displayName": "SMTP (25)"
+						},
+						"5": {
+							"displayName": "POP3 (110)"
+						},
+						"6": {
+							"displayName": "IMAP (143)"
+						},
+						"99": {
+							"displayName": "自定义端口"
+						}
+					}
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "监控器的URL/IP"
+				},
+				"value": {
+					"displayName": "值",
+					"description": "警报联系人类型的对应值（仅当为Webhook警报联系人时可用）"
+				},
+				"start_time": {
+					"displayName": "开始时间",
+					"description": "维护窗口开始日期时间"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "维护窗口的类型",
+					"options": {
+						"1": {
+							"displayName": "一旦"
+						},
+						"2": {
+							"displayName": "每日"
+						},
+						"3": {
+							"displayName": "每周"
+						},
+						"4": {
+							"displayName": "每月"
+						}
+					}
+				},
+				"weekDay": {
+					"displayName": "工作日",
+					"options": {
+						"1": {
+							"displayName": "Monday"
+						},
+						"2": {
+							"displayName": "周二"
+						},
+						"3": {
+							"displayName": "星期三"
+						},
+						"4": {
+							"displayName": "星期四"
+						},
+						"5": {
+							"displayName": "周五"
+						},
+						"6": {
+							"displayName": "星期六"
+						},
+						"7": {
+							"displayName": "星期日"
+						}
+					}
+				},
+				"monthDay": {
+					"displayName": "月 日"
+				},
+				"custom_domain": {
+					"displayName": "自定义域名",
+					"description": "状态页面将运行的域名或子域名"
+				},
+				"monitors": {
+					"displayName": "监控ID",
+					"description": "要在状态页面显示的监控ID（用短横线(-)分隔数值，或输入0表示所有监控）"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "状态页面的密码"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "状态页的排序",
+					"options": {
+						"1": {
+							"displayName": "友好名称 (A-Z)"
+						},
+						"2": {
+							"displayName": "友好名称 (Z-A)"
+						},
+						"3": {
+							"displayName": "状态（运行中-已停止-已暂停）"
+						},
+						"4": {
+							"displayName": "状态 (停止-运行-暂停)"
+						}
+					}
+				}
+			}
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "告警联系人类型的对应值"
+		},
+		"duration": {
+			"displayName": "持续时间（分钟）",
+			"description": "维护窗口激活时长（分钟）"
+		},
+		"weekDay": {
+			"displayName": "星期几",
+			"options": {
+				"1": {
+					"displayName": "Monday"
+				},
+				"2": {
+					"displayName": "周二"
+				},
+				"3": {
+					"displayName": "星期三"
+				},
+				"4": {
+					"displayName": "星期四"
+				},
+				"5": {
+					"displayName": "周五"
+				},
+				"6": {
+					"displayName": "星期六"
+				},
+				"7": {
+					"displayName": "星期日"
+				}
+			}
+		},
+		"monthDay": {
+			"displayName": "月 日"
+		},
+		"start_time": {
+			"displayName": "开始时间",
+			"description": "维护窗口开始日期时间"
+		},
+		"monitors": {
+			"displayName": "监控ID",
+			"description": "要在状态页面显示的监控ID（多个值用短横线(-)分隔，或输入0表示所有监控）"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"custom_domain": {
+					"displayName": "自定义域名",
+					"description": "状态页面将运行的域名或子域名"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "状态页面的密码"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "状态页的排序",
+					"options": {
+						"1": {
+							"displayName": "友好名称 (A-Z)"
+						},
+						"2": {
+							"displayName": "友好名称 (Z-A)"
+						},
+						"3": {
+							"displayName": "状态（运行中-已停止-已暂停）"
+						},
+						"4": {
+							"displayName": "状态 (停止-运行-暂停)"
+						}
+					}
+				}
+			}
+		}
+	}
+}

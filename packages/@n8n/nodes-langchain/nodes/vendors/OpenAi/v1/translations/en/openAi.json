@@ -1,0 +1,541 @@
+{
+	"header": {
+		"displayName": "OpenAI",
+		"description": "Message an assistant or GPT, analyze images, generate audio, etc."
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"assistant": {
+					"displayName": "Assistant"
+				},
+				"text": {
+					"displayName": "Text"
+				},
+				"image": {
+					"displayName": "Image"
+				},
+				"audio": {
+					"displayName": "Audio"
+				},
+				"file": {
+					"displayName": "File"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create an Assistant",
+					"description": "Create a new assistant"
+				},
+				"deleteAssistant": {
+					"displayName": "Delete an Assistant",
+					"description": "Delete an assistant from the account"
+				},
+				"list": {
+					"displayName": "List Files",
+					"description": "Returns a list of files that belong to the user's organization"
+				},
+				"message": {
+					"displayName": "Message a Model",
+					"description": "Create a completion with GPT 3, 4, etc."
+				},
+				"update": {
+					"displayName": "Update an Assistant",
+					"description": "Update an existing assistant"
+				},
+				"generate": {
+					"displayName": "Generate an Image",
+					"description": "Creates an image from a text prompt"
+				},
+				"transcribe": {
+					"displayName": "Transcribe a Recording",
+					"description": "Transcribes audio into text"
+				},
+				"translate": {
+					"displayName": "Translate a Recording",
+					"description": "Translates audio into text in English"
+				},
+				"deleteFile": {
+					"displayName": "Delete a File",
+					"description": "Delete a file from the server"
+				},
+				"upload": {
+					"displayName": "Upload a File",
+					"description": "Upload a file that can be used across various endpoints"
+				},
+				"analyze": {
+					"displayName": "Analyze Image",
+					"description": "Take in images and answer questions about them"
+				},
+				"classify": {
+					"displayName": "Classify Text for Violations",
+					"description": "Check whether content complies with usage policies"
+				}
+			}
+		},
+		"modelId": {
+			"displayName": "Model"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the assistant. The maximum length is 256 characters.",
+			"placeholder": "e.g. My Assistant"
+		},
+		"description": {
+			"displayName": "Description",
+			"description": "The description of the assistant. The maximum length is 512 characters.",
+			"placeholder": "e.g. My personal assistant"
+		},
+		"instructions": {
+			"displayName": "Instructions",
+			"description": "The system instructions that the assistant uses. The maximum length is 32768 characters."
+		},
+		"codeInterpreter": {
+			"displayName": "Code Interpreter",
+			"description": "Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href=\"https://platform.openai.com/docs/assistants/tools/code-interpreter\" target=\"_blank\">here</a>"
+		},
+		"knowledgeRetrieval": {
+			"displayName": "Knowledge Retrieval",
+			"description": "Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href=\"https://platform.openai.com/docs/assistants/tools/knowledge-retrieval\" target=\"_blank\">here</a>"
+		},
+		"file_ids": {
+			"displayName": "Files",
+			"description": "The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant"
+		},
+		"noticeTools": {
+			"displayName": "Connect your own custom n8n tools to this node on the canvas"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"temperature": {
+					"displayName": "Output Randomness (Temperature)",
+					"description": "Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. We generally recommend altering this or temperature but not both."
+				},
+				"topP": {
+					"displayName": "Output Randomness (Top P)",
+					"description": "An alternative to sampling with temperature, controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both."
+				},
+				"failIfExists": {
+					"displayName": "Fail if Assistant Already Exists",
+					"description": "Whether to fail an operation if the assistant with the same name already exists"
+				},
+				"baseURL": {
+					"displayName": "Base URL",
+					"description": "Override the default base URL for the API"
+				},
+				"maxRetries": {
+					"displayName": "Max Retries",
+					"description": "Maximum number of retries to attempt"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Maximum amount of time a request is allowed to take in milliseconds"
+				},
+				"preserveOriginalTools": {
+					"displayName": "Preserve Original Tools",
+					"description": "Whether to preserve the original tools of the assistant after the execution of this node, otherwise the tools will be replaced with the connected tools, if any, default is true"
+				},
+				"codeInterpreter": {
+					"displayName": "Code Interpreter",
+					"description": "Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href=\"https://platform.openai.com/docs/assistants/tools/code-interpreter\" target=\"_blank\">here</a>"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The description of the assistant. The maximum length is 512 characters.",
+					"placeholder": "e.g. My personal assistant"
+				},
+				"file_ids": {
+					"displayName": "Files",
+					"description": "The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant. You can use expression to pass file IDs as an array or comma-separated string."
+				},
+				"instructions": {
+					"displayName": "Instructions",
+					"description": "The system instructions that the assistant uses. The maximum length is 32768 characters."
+				},
+				"knowledgeRetrieval": {
+					"displayName": "Knowledge Retrieval",
+					"description": "Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href=\"https://platform.openai.com/docs/assistants/tools/knowledge-retrieval\" target=\"_blank\">here</a>"
+				},
+				"modelId": {
+					"displayName": "Model"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the assistant. The maximum length is 256 characters.",
+					"placeholder": "e.g. My Assistant"
+				},
+				"removeCustomTools": {
+					"displayName": "Remove All Custom Tools (Functions)",
+					"description": "Whether to remove all custom tools (functions) from the assistant"
+				},
+				"response_format": {
+					"displayName": "Response Format",
+					"options": {
+						"mp3": {
+							"displayName": "MP3"
+						},
+						"opus": {
+							"displayName": "OPUS"
+						},
+						"aac": {
+							"displayName": "AAC"
+						},
+						"flac": {
+							"displayName": "FLAC"
+						}
+					}
+				},
+				"speed": {
+					"displayName": "Audio Speed"
+				},
+				"binaryPropertyOutput": {
+					"displayName": "Put Output in Field"
+				},
+				"language": {
+					"displayName": "Language of the Audio File",
+					"description": "The language of the input audio. Supplying the input language in <a href=\"https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes\" target=\"_blank\">ISO-639-1</a> format will improve accuracy and latency."
+				},
+				"purpose": {
+					"displayName": "Purpose",
+					"description": "Only return files with the given purpose",
+					"options": {
+						"assistants": {
+							"displayName": "Assistants"
+						},
+						"fine-tune": {
+							"displayName": "Fine-Tune"
+						},
+						"any": {
+							"displayName": "Any [Default]"
+						}
+					}
+				},
+				"n": {
+					"displayName": "Number of Completions",
+					"description": "How many completions to generate for each prompt. Note: Because this parameter generates many completions, it can quickly consume your token quota. Use carefully and ensure that you have reasonable settings for max_tokens and stop."
+				},
+				"dalleQuality": {
+					"displayName": "Quality",
+					"description": "The quality of the image that will be generated, HD creates images with finer details and greater consistency across the image",
+					"options": {
+						"hd": {
+							"displayName": "HD"
+						},
+						"standard": {
+							"displayName": "Standard"
+						}
+					}
+				},
+				"quality": {
+					"displayName": "Quality",
+					"description": "The quality of the image that will be generated, High creates images with finer details and greater consistency across the image",
+					"options": {
+						"high": {
+							"displayName": "High"
+						},
+						"medium": {
+							"displayName": "Medium"
+						},
+						"low": {
+							"displayName": "Low"
+						}
+					}
+				},
+				"size": {
+					"displayName": "Resolution",
+					"options": {
+						"1024x1024": {
+							"displayName": "1024x1024"
+						},
+						"1024x1536": {
+							"displayName": "1024x1536"
+						},
+						"1536x1024": {
+							"displayName": "1536x1024"
+						}
+					}
+				},
+				"style": {
+					"displayName": "Style",
+					"options": {
+						"natural": {
+							"displayName": "Natural",
+							"description": "Produce more natural looking images"
+						},
+						"vivid": {
+							"displayName": "Vivid",
+							"description": "Lean towards generating hyper-real and dramatic images"
+						}
+					}
+				},
+				"returnImageUrls": {
+					"displayName": "Respond with Image URL(s)",
+					"description": "Whether to return image URL(s) instead of binary file(s)"
+				},
+				"detail": {
+					"displayName": "Detail",
+					"options": {
+						"auto": {
+							"displayName": "Auto",
+							"description": "Model will look at the image input size and decide if it should use the low or high setting"
+						},
+						"low": {
+							"displayName": "Low",
+							"description": "Return faster responses and consume fewer tokens"
+						},
+						"high": {
+							"displayName": "High",
+							"description": "Return more detailed responses, consumes more tokens"
+						}
+					}
+				},
+				"maxTokens": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768)."
+				},
+				"useStableModel": {
+					"displayName": "Use Stable Model",
+					"description": "Whether to use the stable version of the model instead of the latest version, accuracy may be slightly lower"
+				},
+				"frequency_penalty": {
+					"displayName": "Frequency Penalty",
+					"description": "Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim"
+				},
+				"presence_penalty": {
+					"displayName": "Presence Penalty",
+					"description": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics"
+				},
+				"reasoning_effort": {
+					"displayName": "Reasoning Effort",
+					"description": "Controls the amount of reasoning tokens to use. A value of \"low\" will favor speed and economical token usage, \"high\" will favor more complete reasoning at the cost of more tokens generated and slower responses.",
+					"options": {
+						"low": {
+							"displayName": "Low",
+							"description": "Favors speed and economical token usage"
+						},
+						"medium": {
+							"displayName": "Medium",
+							"description": "Balance between speed and reasoning accuracy"
+						},
+						"high": {
+							"displayName": "High",
+							"description": "Favors more complete reasoning at the cost of more tokens generated and slower responses"
+						}
+					}
+				},
+				"maxToolsIterations": {
+					"displayName": "Max Tool Calls Iterations",
+					"description": "The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit."
+				}
+			},
+			"description": "Additional options to add"
+		},
+		"assistantId": {
+			"displayName": "Assistant",
+			"description": "Assistant to respond to the message. You can add, modify or remove assistants in the <a href=\"https://platform.openai.com/playground?mode=assistant\" target=\"_blank\">playground</a>."
+		},
+		"prompt": {
+			"displayName": "Prompt",
+			"options": {
+				"auto": {
+					"displayName": "Connected Chat Trigger Node",
+					"description": "Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger"
+				},
+				"guardrails": {
+					"displayName": "Connected Guardrails Node",
+					"description": "Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node"
+				},
+				"define": {
+					"displayName": "Define below",
+					"description": "Use an expression to reference data in previous nodes or enter static text"
+				}
+			},
+			"description": "A text description of the desired image(s). The maximum length is 1000 characters for dall-e-2 and 4000 characters for dall-e-3.",
+			"placeholder": "e.g. A cute cat eating a dinosaur"
+		},
+		"text": {
+			"displayName": "Text Input",
+			"placeholder": "e.g. What's in this image?"
+		},
+		"memory": {
+			"displayName": "Memory",
+			"options": {
+				"connector": {
+					"displayName": "Use memory connector",
+					"description": "Connect one of the supported memory nodes"
+				},
+				"threadId": {
+					"displayName": "Use thread ID",
+					"description": "Specify the ID of the thread to continue"
+				}
+			}
+		},
+		"threadId": {
+			"displayName": "Thread ID",
+			"description": "The ID of the thread to continue, a new thread will be created if not specified"
+		},
+		"simplify": {
+			"displayName": "Simplify Output",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"fileSizeLimitNotice": {
+			"displayName": "OpenAI API limits the size of the audio file to 25 MB"
+		},
+		"model": {
+			"displayName": "Model",
+			"options": {
+				"tts-1": {
+					"displayName": "TTS-1"
+				},
+				"tts-1-hd": {
+					"displayName": "TTS-1-HD"
+				},
+				"dall-e-2": {
+					"displayName": "DALL·E 2"
+				},
+				"dall-e-3": {
+					"displayName": "DALL·E 3"
+				},
+				"gpt-image-1": {
+					"displayName": "GPT Image 1"
+				}
+			},
+			"description": "The model to use for image generation"
+		},
+		"input": {
+			"displayName": "Text Input",
+			"description": "The input text to classify if it is violates the moderation policy",
+			"placeholder": "e.g. Sample text goes here"
+		},
+		"voice": {
+			"displayName": "Voice",
+			"description": "The voice to use when generating the audio",
+			"options": {
+				"alloy": {
+					"displayName": "Alloy"
+				},
+				"echo": {
+					"displayName": "Echo"
+				},
+				"fable": {
+					"displayName": "Fable"
+				},
+				"nova": {
+					"displayName": "Nova"
+				},
+				"onyx": {
+					"displayName": "Onyx"
+				},
+				"shimmer": {
+					"displayName": "Shimmer"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Data Field Name",
+			"description": "Name of the binary property which contains the image(s)",
+			"placeholder": "e.g. data"
+		},
+		"fileId": {
+			"displayName": "File"
+		},
+		"inputType": {
+			"displayName": "Input Type",
+			"options": {
+				"url": {
+					"displayName": "Image URL(s)"
+				},
+				"base64": {
+					"displayName": "Binary File(s)"
+				}
+			}
+		},
+		"imageUrls": {
+			"displayName": "URL(s)",
+			"description": "URL(s) of the image(s) to analyze, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/image.jpeg"
+		},
+		"messages": {
+			"displayName": "Messages",
+			"placeholder": "Add Message",
+			"multipleValueButtonText": "Add Message",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be send",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality"
+								},
+								"system": {
+									"displayName": "System",
+									"description": "Usually used to set the model's behavior or context for the next user message"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be send",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality"
+								},
+								"system": {
+									"displayName": "System",
+									"description": "Usually used to set the model's behavior or context for the next user message"
+								}
+							}
+						}
+					}
+				},
+				"messages": {
+					"displayName": "Messages",
+					"placeholder": "Add Message"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "Output Content as JSON",
+			"description": "Whether to attempt to return the response in JSON format. Compatible with GPT-4 Turbo and all GPT-3.5 Turbo models newer than gpt-3.5-turbo-1106."
+		},
+		"hideTools": {
+			"displayName": "Hide Tools"
+		}
+	}
+}

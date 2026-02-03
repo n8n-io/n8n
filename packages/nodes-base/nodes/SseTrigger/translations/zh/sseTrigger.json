@@ -1,0 +1,13 @@
+{
+	"header": {
+		"displayName": "SSE触发器",
+		"description": "当服务器发送事件发生时触发工作流"
+	},
+	"nodeView": {
+		"url": {
+			"displayName": "URL",
+			"description": "接收SSE的URL",
+			"placeholder": "http://example.com"
+		}
+	}
+}

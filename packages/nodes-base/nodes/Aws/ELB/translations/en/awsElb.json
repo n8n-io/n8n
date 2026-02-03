@@ -1,0 +1,180 @@
+{
+	"header": {
+		"displayName": "AWS ELB",
+		"description": "Sends data to AWS ELB API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"listenerCertificate": {
+					"displayName": "Listener Certificate"
+				},
+				"loadBalancer": {
+					"displayName": "Load Balancer"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a load balancer"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a load balancer"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a load balancer"
+				},
+				"getMany": {
+					"displayName": "Get Many",
+					"description": "Get many listener certificates"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add the specified SSL server certificate to the certificate list for the specified HTTPS or TLS listener"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove the specified certificate from the certificate list for the specified HTTPS or TLS listener"
+				}
+			}
+		},
+		"ipAddressType": {
+			"displayName": "IP Address Type",
+			"description": "The type of IP addresses used by the subnets for your load balancer",
+			"options": {
+				"ipv4": {
+					"displayName": "Ipv4"
+				},
+				"dualstack": {
+					"displayName": "Dualstack"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "This name must be unique per region per account, can have a maximum of 32 characters"
+		},
+		"schema": {
+			"displayName": "Schema",
+			"options": {
+				"internal": {
+					"displayName": "Internal"
+				},
+				"internet-facing": {
+					"displayName": "Internet Facing"
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"options": {
+				"application": {
+					"displayName": "Application"
+				},
+				"network": {
+					"displayName": "Network"
+				}
+			}
+		},
+		"subnets": {
+			"displayName": "Subnet ID Names or IDs",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"securityGroups": {
+					"displayName": "Security Group IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"tagsUi": {
+					"displayName": "Tags",
+					"placeholder": "Add Tag",
+					"multipleValueButtonText": "Add Tag",
+					"options": {
+						"tagValues": {
+							"displayName": "Tag",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The key of the tag"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value of the tag"
+								}
+							}
+						}
+					},
+					"values": {
+						"tagValues": {
+							"displayName": "Tag",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The key of the tag"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value of the tag"
+								}
+							}
+						},
+						"tagsUi": {
+							"displayName": "Tags",
+							"placeholder": "Add Tag"
+						}
+					}
+				}
+			}
+		},
+		"loadBalancerId": {
+			"displayName": "Load Balancer ARN Name or ID",
+			"description": "Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"names": {
+					"displayName": "Names",
+					"description": "The names of the load balancers. Multiples can be defined separated by comma."
+				}
+			}
+		},
+		"listenerId": {
+			"displayName": "Listener ARN Name or ID",
+			"description": "Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"certificateId": {
+			"displayName": "Certificate ARN",
+			"description": "Unique identifier for a particular loadBalancer"
+		}
+	}
+}

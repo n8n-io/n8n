@@ -1,0 +1,63 @@
+{
+	"header": {
+		"displayName": "Rundeck",
+		"description": "管理Rundeck API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"job": {
+					"displayName": "作业"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"execute": {
+					"displayName": "执行",
+					"description": "执行一个作业"
+				},
+				"getMetadata": {
+					"displayName": "获取元数据",
+					"description": "获取作业的元数据"
+				}
+			}
+		},
+		"jobid": {
+			"displayName": "作业ID",
+			"description": "要获取元数据的作业ID",
+			"placeholder": "Rundeck作业ID"
+		},
+		"arguments": {
+			"displayName": "参数",
+			"placeholder": "添加参数",
+			"multipleValueButtonText": "添加参数",
+			"options": {
+				"arguments": {
+					"displayName": "参数",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"arguments": {
+					"displayName": "参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"filter": {
+			"displayName": "筛选器",
+			"description": "按名称筛选Rundeck节点",
+			"placeholder": "添加筛选器"
+		}
+	}
+}

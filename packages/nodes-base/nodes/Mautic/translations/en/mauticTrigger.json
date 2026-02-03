@@ -1,0 +1,35 @@
+{
+	"header": {
+		"displayName": "Mautic Trigger",
+		"description": "Handle Mautic events via webhooks"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"credentials": {
+					"displayName": "Credentials"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"events": {
+			"displayName": "Event Names or IDs",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"eventsOrder": {
+			"displayName": "Events Order",
+			"description": "Order direction for queued events in one webhook. Can be “DESC” or “ASC”.",
+			"options": {
+				"ASC": {
+					"displayName": "ASC"
+				},
+				"DESC": {
+					"displayName": "DESC"
+				}
+			}
+		}
+	}
+}

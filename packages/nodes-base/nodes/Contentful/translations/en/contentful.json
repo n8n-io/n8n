@@ -1,0 +1,125 @@
+{
+	"header": {
+		"displayName": "Contentful",
+		"description": "Consume Contentful API"
+	},
+	"nodeView": {
+		"source": {
+			"displayName": "Source",
+			"description": "Pick where your data comes from, delivery or preview API",
+			"options": {
+				"deliveryApi": {
+					"displayName": "Delivery API"
+				},
+				"previewApi": {
+					"displayName": "Preview API"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"asset": {
+					"displayName": "Asset"
+				},
+				"contentType": {
+					"displayName": "Content Type"
+				},
+				"entry": {
+					"displayName": "Entry"
+				},
+				"locale": {
+					"displayName": "Locale"
+				},
+				"space": {
+					"displayName": "Space"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				}
+			}
+		},
+		"environmentId": {
+			"displayName": "Environment ID",
+			"description": "The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use \"master\"."
+		},
+		"contentTypeId": {
+			"displayName": "Content Type ID"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"rawData": {
+					"displayName": "RAW Data",
+					"description": "Whether the data should be returned RAW instead of parsed"
+				},
+				"content_type": {
+					"displayName": "Content Type ID",
+					"description": "To search for entries with a specific content type"
+				},
+				"equal": {
+					"displayName": "Equal",
+					"description": "Search for all data that matches the condition: {attribute}={value}. Attribute can use dot notation.",
+					"placeholder": "fields.title=n8n"
+				},
+				"exclude": {
+					"displayName": "Exclude",
+					"description": "Search for all data that matches the condition: {attribute}[nin]={value}. Attribute can use dot notation.",
+					"placeholder": "fields.tags[nin]=accessories,flowers"
+				},
+				"exist": {
+					"displayName": "Exist",
+					"description": "Search for all data that matches the condition: {attribute}[exists]={value}. Attribute can use dot notation.",
+					"placeholder": "fields.tags[exists]=true"
+				},
+				"select": {
+					"displayName": "Fields",
+					"description": "The select operator allows you to choose what fields to return from an entity. You can choose multiple values by combining comma-separated operators.",
+					"placeholder": "fields.title"
+				},
+				"include": {
+					"displayName": "Include",
+					"description": "Search for all data that matches the condition: {attribute}[in]={value}. Attribute can use dot notation.",
+					"placeholder": "fields.tags[in]=accessories,flowers"
+				},
+				"notEqual": {
+					"displayName": "Not Equal",
+					"description": "Search for all data that matches the condition: {attribute}[ne]={value}. Attribute can use dot notation.",
+					"placeholder": "fields.title[ne]=n8n"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "You can order items in the response by specifying the order search parameter. You can use sys properties (such as sys.createdAt) or field values (such as fields.myCustomDateField) for ordering.",
+					"placeholder": "sys.createdAt"
+				},
+				"query": {
+					"displayName": "Query",
+					"description": "Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character."
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"entryId": {
+			"displayName": "Entry ID"
+		},
+		"assetId": {
+			"displayName": "Asset ID"
+		}
+	}
+}

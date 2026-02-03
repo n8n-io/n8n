@@ -1,0 +1,34 @@
+{
+	"header": {
+		"displayName": "Autopilot Trigger",
+		"description": "Handle Autopilot events via webhooks"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"contactAdded": {
+					"displayName": "Contact Added"
+				},
+				"contactAddedToList": {
+					"displayName": "Contact Added To List"
+				},
+				"contactEnteredSegment": {
+					"displayName": "Contact Entered Segment"
+				},
+				"contactLeftSegment": {
+					"displayName": "Contact Left Segment"
+				},
+				"contactRemovedFromList": {
+					"displayName": "Contact Removed From List"
+				},
+				"contactUnsubscribed": {
+					"displayName": "Contact Unsubscribed"
+				},
+				"contactUpdated": {
+					"displayName": "Contact Updated"
+				}
+			}
+		}
+	}
+}

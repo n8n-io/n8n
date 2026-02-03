@@ -1,0 +1,74 @@
+{
+	"header": {
+		"displayName": "Onfleet Trigger",
+		"description": "Starts the workflow when Onfleet events occur"
+	},
+	"nodeView": {
+		"triggerOn": {
+			"displayName": "Trigger On",
+			"options": {
+				"SMSRecipientOptOut": {
+					"displayName": "SMS Recipient Opt Out"
+				},
+				"smsRecipientResponseMissed": {
+					"displayName": "SMS Recipient Response Missed"
+				},
+				"taskArrival": {
+					"displayName": "Task Arrival"
+				},
+				"taskAssigned": {
+					"displayName": "Task Assigned"
+				},
+				"taskCloned": {
+					"displayName": "Task Cloned"
+				},
+				"taskCompleted": {
+					"displayName": "Task Completed"
+				},
+				"taskCreated": {
+					"displayName": "Task Created"
+				},
+				"taskDelayed": {
+					"displayName": "Task Delayed"
+				},
+				"taskDeleted": {
+					"displayName": "Task Deleted"
+				},
+				"taskEta": {
+					"displayName": "Task ETA"
+				},
+				"taskFailed": {
+					"displayName": "Task Failed"
+				},
+				"taskStarted": {
+					"displayName": "Task Started"
+				},
+				"taskUnassigned": {
+					"displayName": "Task Unassigned"
+				},
+				"taskUpdated": {
+					"displayName": "Task Updated"
+				},
+				"workerCreated": {
+					"displayName": "Worker Created"
+				},
+				"workerDeleted": {
+					"displayName": "Worker Deleted"
+				},
+				"workerDuty": {
+					"displayName": "Worker Duty"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "A name for the webhook for identification"
+				}
+			}
+		}
+	}
+}

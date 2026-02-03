@@ -1,0 +1,63 @@
+{
+	"header": {
+		"displayName": "Rundeck",
+		"description": "Manage Rundeck API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"job": {
+					"displayName": "Job"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"execute": {
+					"displayName": "Execute",
+					"description": "Execute a job"
+				},
+				"getMetadata": {
+					"displayName": "Get Metadata",
+					"description": "Get metadata of a job"
+				}
+			}
+		},
+		"jobid": {
+			"displayName": "Job ID",
+			"description": "The job ID to get metadata off",
+			"placeholder": "Rundeck Job ID"
+		},
+		"arguments": {
+			"displayName": "Arguments",
+			"placeholder": "Add Argument",
+			"multipleValueButtonText": "Add Argument",
+			"options": {
+				"arguments": {
+					"displayName": "Arguments",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"arguments": {
+					"displayName": "Arguments",
+					"placeholder": "Add Argument"
+				}
+			}
+		},
+		"filter": {
+			"displayName": "Filter",
+			"description": "Filter Rundeck nodes by name",
+			"placeholder": "Add Filters"
+		}
+	}
+}

@@ -1,0 +1,791 @@
+{
+	"header": {
+		"displayName": "Invoice Ninja",
+		"description": "使用 Invoice Ninja API"
+	},
+	"nodeView": {
+		"apiVersion": {
+			"displayName": "API 版本",
+			"options": {
+				"v4": {
+					"displayName": "版本 4"
+				},
+				"v5": {
+					"displayName": "版本 5"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"bank_transaction": {
+					"displayName": "银行交易"
+				},
+				"client": {
+					"displayName": "客户端"
+				},
+				"expense": {
+					"displayName": "费用"
+				},
+				"invoice": {
+					"displayName": "发票"
+				},
+				"payment": {
+					"displayName": "付款"
+				},
+				"quote": {
+					"displayName": "引用"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新的银行交易"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除银行交易"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取银行交易数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多笔银行交易数据"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "邮件发送报价单"
+				},
+				"matchPayment": {
+					"displayName": "匹配付款",
+					"description": "将付款与银行交易匹配"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"clientName": {
+					"displayName": "客户端名称"
+				},
+				"idNumber": {
+					"displayName": "ID编号"
+				},
+				"privateNotes": {
+					"displayName": "私有备注"
+				},
+				"vatNumber": {
+					"displayName": "增值税号"
+				},
+				"workPhone": {
+					"displayName": "工作电话"
+				},
+				"website": {
+					"displayName": "网站"
+				},
+				"client": {
+					"displayName": "客户端名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"autoBill": {
+					"displayName": "自动开票"
+				},
+				"customValue1": {
+					"displayName": "自定义值 1"
+				},
+				"customValue2": {
+					"displayName": "自定义值 2"
+				},
+				"discount": {
+					"displayName": "折扣"
+				},
+				"dueDate": {
+					"displayName": "截止日期"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"emailInvoice": {
+					"displayName": "邮件发票"
+				},
+				"invoiceDate": {
+					"displayName": "发票日期"
+				},
+				"invoiceNumber": {
+					"displayName": "发票编号"
+				},
+				"invoiceStatus": {
+					"displayName": "发票状态",
+					"options": {
+						"1": {
+							"displayName": "草稿"
+						},
+						"2": {
+							"displayName": "已发送"
+						}
+					}
+				},
+				"isAmountDiscount": {
+					"displayName": "是否为金额折扣"
+				},
+				"markSent": {
+					"displayName": "标记为已发送"
+				},
+				"paid": {
+					"displayName": "已付费"
+				},
+				"partial": {
+					"displayName": "部分"
+				},
+				"partialDueDate": {
+					"displayName": "部分到期日期"
+				},
+				"poNumber": {
+					"displayName": "采购订单号"
+				},
+				"publicNotes": {
+					"displayName": "公开笔记"
+				},
+				"taxName1": {
+					"displayName": "税种名称 1"
+				},
+				"taxName2": {
+					"displayName": "税项名称 2"
+				},
+				"taxRate1": {
+					"displayName": "税率 1"
+				},
+				"taxRate2": {
+					"displayName": "税率 2"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"project": {
+					"displayName": "项目名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"paymentType": {
+					"displayName": "付款类型",
+					"options": {
+						"1": {
+							"displayName": "银行转账"
+						},
+						"2": {
+							"displayName": "现金"
+						},
+						"3": {
+							"displayName": "现金"
+						},
+						"4": {
+							"displayName": "ACH"
+						},
+						"5": {
+							"displayName": "Visa"
+						},
+						"6": {
+							"displayName": "万事达卡"
+						},
+						"7": {
+							"displayName": "美国运通"
+						},
+						"8": {
+							"displayName": "探索"
+						},
+						"9": {
+							"displayName": "用餐者"
+						},
+						"10": {
+							"displayName": "Eurocard"
+						},
+						"11": {
+							"displayName": "Nova"
+						},
+						"12": {
+							"displayName": "其他信用卡"
+						},
+						"13": {
+							"displayName": "PayPal"
+						},
+						"14": {
+							"displayName": "Paypal"
+						},
+						"15": {
+							"displayName": "检查"
+						},
+						"16": {
+							"displayName": "完全自主"
+						},
+						"17": {
+							"displayName": "银联"
+						},
+						"18": {
+							"displayName": "JCB"
+						},
+						"19": {
+							"displayName": "激光"
+						},
+						"20": {
+							"displayName": "Maestro"
+						},
+						"21": {
+							"displayName": "单人模式"
+						},
+						"22": {
+							"displayName": "切换"
+						},
+						"23": {
+							"displayName": "切换"
+						},
+						"24": {
+							"displayName": "Venmo"
+						},
+						"25": {
+							"displayName": "Swish"
+						},
+						"26": {
+							"displayName": "Venmo"
+						},
+						"27": {
+							"displayName": "支付宝"
+						},
+						"28": {
+							"displayName": "即时"
+						},
+						"29": {
+							"displayName": "SEPA"
+						},
+						"30": {
+							"displayName": "GoCardless"
+						},
+						"31": {
+							"displayName": "加密"
+						},
+						"32": {
+							"displayName": "积分"
+						},
+						"33": {
+							"displayName": "Zelle"
+						},
+						"34": {
+							"displayName": "Mollie 银行转账"
+						},
+						"35": {
+							"displayName": "KBC"
+						},
+						"36": {
+							"displayName": "Bancontact"
+						},
+						"37": {
+							"displayName": "iDEAL"
+						},
+						"38": {
+							"displayName": "托管页面"
+						},
+						"39": {
+							"displayName": "Giropay"
+						},
+						"40": {
+							"displayName": "Przelewy24"
+						},
+						"41": {
+							"displayName": "EPS"
+						},
+						"42": {
+							"displayName": "直接扣款"
+						},
+						"43": {
+							"displayName": "BECS"
+						},
+						"44": {
+							"displayName": "ACSS"
+						},
+						"45": {
+							"displayName": "即时银行支付"
+						},
+						"46": {
+							"displayName": "FPX"
+						},
+						"47": {
+							"displayName": "Klarna"
+						},
+						"48": {
+							"displayName": "Interac电子转账"
+						},
+						"49": {
+							"displayName": "BACS"
+						},
+						"50": {
+							"displayName": "Stripe银行转账"
+						},
+						"51": {
+							"displayName": "Cash App"
+						},
+						"52": {
+							"displayName": "稍后支付"
+						}
+					}
+				},
+				"transferReference": {
+					"displayName": "转移引用"
+				},
+				"amount": {
+					"displayName": "金额"
+				},
+				"billable": {
+					"displayName": "计费"
+				},
+				"category": {
+					"displayName": "分类名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"expenseDate": {
+					"displayName": "费用日期"
+				},
+				"paymentDate": {
+					"displayName": "付款日期"
+				},
+				"transactionReference": {
+					"displayName": "交易参考号"
+				},
+				"vendor": {
+					"displayName": "供应商名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"emailQuote": {
+					"displayName": "邮件报价"
+				},
+				"quoteDate": {
+					"displayName": "报价日期"
+				},
+				"quoteNumber": {
+					"displayName": "报价单号"
+				},
+				"quoteStatus": {
+					"displayName": "报价状态",
+					"options": {
+						"1": {
+							"displayName": "草稿"
+						},
+						"2": {
+							"displayName": "已发送"
+						}
+					}
+				},
+				"bankIntegrationId": {
+					"displayName": "银行集成名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"baseType": {
+					"displayName": "基础类型",
+					"options": {
+						"CREDIT": {
+							"displayName": "存款"
+						},
+						"DEBIT": {
+							"displayName": "提现"
+						}
+					}
+				},
+				"currencyId": {
+					"displayName": "货币名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"date": {
+					"displayName": "日期"
+				}
+			}
+		},
+		"billingAddressUi": {
+			"displayName": "账单地址",
+			"placeholder": "添加账单地址",
+			"options": {
+				"billingAddressValue": {
+					"displayName": "账单地址",
+					"options": {
+						"streetAddress": {
+							"displayName": "街道地址"
+						},
+						"aptSuite": {
+							"displayName": "公寓/套房"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						},
+						"countryCode": {
+							"displayName": "国家/地区代码名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				}
+			},
+			"values": {
+				"billingAddressValue": {
+					"displayName": "账单地址",
+					"options": {
+						"streetAddress": {
+							"displayName": "街道地址"
+						},
+						"aptSuite": {
+							"displayName": "公寓/套房"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						},
+						"countryCode": {
+							"displayName": "国家/地区代码名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				},
+				"billingAddressUi": {
+					"displayName": "账单地址",
+					"placeholder": "添加账单地址"
+				}
+			}
+		},
+		"contactsUi": {
+			"displayName": "联系人",
+			"placeholder": "添加联系人",
+			"multipleValueButtonText": "添加联系人",
+			"options": {
+				"contacstValues": {
+					"displayName": "联系人",
+					"options": {
+						"firstName": {
+							"displayName": "名字"
+						},
+						"lastName": {
+							"displayName": "姓氏"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "电话"
+						}
+					}
+				}
+			},
+			"values": {
+				"contacstValues": {
+					"displayName": "联系人",
+					"options": {
+						"firstName": {
+							"displayName": "名字"
+						},
+						"lastName": {
+							"displayName": "姓氏"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "电话"
+						}
+					}
+				},
+				"contactsUi": {
+					"displayName": "联系人",
+					"placeholder": "添加联系人"
+				}
+			}
+		},
+		"shippingAddressUi": {
+			"displayName": "收货地址",
+			"placeholder": "添加收货地址",
+			"options": {
+				"shippingAddressValue": {
+					"displayName": "收货地址",
+					"options": {
+						"streetAddress": {
+							"displayName": "街道地址"
+						},
+						"aptSuite": {
+							"displayName": "公寓/套房"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						},
+						"countryCode": {
+							"displayName": "国家/地区代码名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				}
+			},
+			"values": {
+				"shippingAddressValue": {
+					"displayName": "收货地址",
+					"options": {
+						"streetAddress": {
+							"displayName": "街道地址"
+						},
+						"aptSuite": {
+							"displayName": "公寓/套房"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						},
+						"countryCode": {
+							"displayName": "国家/地区代码名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				},
+				"shippingAddressUi": {
+					"displayName": "收货地址",
+					"placeholder": "添加收货地址"
+				}
+			}
+		},
+		"clientId": {
+			"displayName": "客户端ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"include": {
+					"displayName": "包含",
+					"options": {
+						"invoices": {
+							"displayName": "发票"
+						},
+						"client": {
+							"displayName": "客户端"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"active": {
+							"displayName": "激活状态"
+						},
+						"archived": {
+							"displayName": "已归档"
+						},
+						"deleted": {
+							"displayName": "已删除"
+						}
+					}
+				},
+				"createdAt": {
+					"displayName": "创建时间"
+				},
+				"updatedAt": {
+					"displayName": "更新时间"
+				},
+				"isDeleted": {
+					"displayName": "是否已删除"
+				},
+				"invoiceNumber": {
+					"displayName": "发票编号"
+				},
+				"clientStatus": {
+					"displayName": "客户端状态",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						},
+						"paid": {
+							"displayName": "已付费"
+						},
+						"unpaid": {
+							"displayName": "未支付"
+						},
+						"overdue": {
+							"displayName": "已逾期"
+						}
+					}
+				},
+				"quoteNumber": {
+					"displayName": "报价单号"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"invoiceItemsUi": {
+			"displayName": "发票项目",
+			"placeholder": "添加发票项目",
+			"multipleValueButtonText": "添加发票项目",
+			"options": {
+				"invoiceItemsValues": {
+					"displayName": "发票项目",
+					"options": {
+						"cost": {
+							"displayName": "成本"
+						},
+						"description": {
+							"displayName": "描述"
+						},
+						"service": {
+							"displayName": "服务"
+						},
+						"hours": {
+							"displayName": "小时"
+						},
+						"taxName1": {
+							"displayName": "税种名称 1"
+						},
+						"taxName2": {
+							"displayName": "税项名称 2"
+						},
+						"taxRate1": {
+							"displayName": "税率 1"
+						},
+						"taxRate2": {
+							"displayName": "税率 2"
+						}
+					}
+				}
+			},
+			"values": {
+				"invoiceItemsValues": {
+					"displayName": "发票项目",
+					"options": {
+						"cost": {
+							"displayName": "成本"
+						},
+						"description": {
+							"displayName": "描述"
+						},
+						"service": {
+							"displayName": "服务"
+						},
+						"hours": {
+							"displayName": "小时"
+						},
+						"taxName1": {
+							"displayName": "税种名称 1"
+						},
+						"taxName2": {
+							"displayName": "税项名称 2"
+						},
+						"taxRate1": {
+							"displayName": "税率 1"
+						},
+						"taxRate2": {
+							"displayName": "税率 2"
+						}
+					}
+				},
+				"invoiceItemsUi": {
+					"displayName": "发票项目",
+					"placeholder": "添加发票项目"
+				}
+			}
+		},
+		"invoiceId": {
+			"displayName": "发票ID"
+		},
+		"timeLogsUi": {
+			"displayName": "时间日志",
+			"placeholder": "添加时间日志",
+			"multipleValueButtonText": "添加时间日志",
+			"options": {
+				"timeLogsValues": {
+					"displayName": "时间日志",
+					"options": {
+						"startDate": {
+							"displayName": "开始日期"
+						},
+						"endDate": {
+							"displayName": "结束日期"
+						},
+						"duration": {
+							"displayName": "时长（小时）"
+						}
+					}
+				}
+			},
+			"values": {
+				"timeLogsValues": {
+					"displayName": "时间日志",
+					"options": {
+						"startDate": {
+							"displayName": "开始日期"
+						},
+						"endDate": {
+							"displayName": "结束日期"
+						},
+						"duration": {
+							"displayName": "时长（小时）"
+						}
+					}
+				},
+				"timeLogsUi": {
+					"displayName": "时间记录",
+					"placeholder": "添加时间记录"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "任务ID"
+		},
+		"invoice": {
+			"displayName": "发票名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"amount": {
+			"displayName": "金额"
+		},
+		"paymentId": {
+			"displayName": "付款名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"expenseId": {
+			"displayName": "费用ID"
+		},
+		"quoteId": {
+			"displayName": "报价单ID"
+		},
+		"bankTransactionId": {
+			"displayName": "银行交易ID"
+		}
+	}
+}

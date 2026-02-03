@@ -1,0 +1,121 @@
+{
+	"header": {
+		"displayName": "Pushbullet",
+		"description": "Consume Pushbullet API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"push": {
+					"displayName": "Push"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a push"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a push"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many pushes"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a push"
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"options": {
+				"file": {
+					"displayName": "File"
+				},
+				"link": {
+					"displayName": "Link"
+				},
+				"note": {
+					"displayName": "Note"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the push"
+		},
+		"body": {
+			"displayName": "Body",
+			"description": "Body of the push"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "URL of the push"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"target": {
+			"displayName": "Target",
+			"description": "Define the medium that will be used to send the push",
+			"options": {
+				"channel_tag": {
+					"displayName": "Channel Tag",
+					"description": "Send the push to all subscribers to your channel that has this tag"
+				},
+				"default": {
+					"displayName": "Default",
+					"description": "Broadcast it to all of the user's devices"
+				},
+				"device_iden": {
+					"displayName": "Device ID",
+					"description": "Send the push to a specific device"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Send the push to this email address"
+				}
+			}
+		},
+		"value": {
+			"displayName": "Value Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"pushId": {
+			"displayName": "Push ID"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"active": {
+					"displayName": "Active",
+					"description": "Don't return deleted pushes"
+				},
+				"modified_after": {
+					"displayName": "Modified After",
+					"description": "Request pushes modified after this timestamp"
+				}
+			}
+		},
+		"dismissed": {
+			"displayName": "Dismissed",
+			"description": "Whether to mark a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible"
+		}
+	}
+}

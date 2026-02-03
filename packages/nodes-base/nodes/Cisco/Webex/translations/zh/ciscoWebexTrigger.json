@@ -1,0 +1,126 @@
+{
+	"header": {
+		"displayName": "Cisco Webex 触发器",
+		"description": "当 Cisco Webex 事件发生时启动工作流。"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"all": {
+					"displayName": "[0][全部]"
+				},
+				"attachmentAction": {
+					"displayName": "附件操作"
+				},
+				"meeting": {
+					"displayName": "会议"
+				},
+				"membership": {
+					"displayName": "成员资格"
+				},
+				"message": {
+					"displayName": "消息"
+				},
+				"recording": {
+					"displayName": "录制"
+				},
+				"room": {
+					"displayName": "房间"
+				}
+			}
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"created": {
+					"displayName": "已创建"
+				},
+				"deleted": {
+					"displayName": "已删除"
+				},
+				"updated": {
+					"displayName": "已更新"
+				},
+				"all": {
+					"displayName": "任何时候任何事件被触发（通配符事件）"
+				},
+				"started": {
+					"displayName": "已开始"
+				},
+				"ended": {
+					"displayName": "已结束"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，响应仅包含用户输入数据的引用。如果激活此选项，系统将自动解析数据。"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"hasFiles": {
+					"displayName": "包含文件",
+					"description": "是否限制为包含文件内容附件的消息"
+				},
+				"isLocked": {
+					"displayName": "是否锁定",
+					"description": "是否限制为已锁定的房间"
+				},
+				"isModerator": {
+					"displayName": "是否为版主",
+					"description": "是否限制为房间版主"
+				},
+				"mentionedPeople": {
+					"displayName": "提及的人员",
+					"description": "限制为包含这些提及人员的消息，按人员ID；接受 me 作为您自己人员ID的简写；多个值用逗号分隔"
+				},
+				"messageId": {
+					"displayName": "消息ID",
+					"description": "按ID限制到特定消息"
+				},
+				"ownedBy": {
+					"displayName": "所有者"
+				},
+				"personEmail": {
+					"displayName": "人员邮箱",
+					"description": "按邮箱限制到特定人员"
+				},
+				"personId": {
+					"displayName": "人员ID",
+					"description": "按ID限制到特定人员"
+				},
+				"roomId": {
+					"displayName": "房间ID",
+					"description": "按ID限制到特定房间"
+				},
+				"roomType": {
+					"displayName": "房间类型",
+					"description": "限制为特定房间类型",
+					"options": {
+						"direct": {
+							"displayName": "直接"
+						},
+						"group": {
+							"displayName": "分组"
+						}
+					}
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "限制为特定房间类型",
+					"options": {
+						"direct": {
+							"displayName": "直接"
+						},
+						"group": {
+							"displayName": "分组"
+						}
+					}
+				}
+			}
+		}
+	}
+}

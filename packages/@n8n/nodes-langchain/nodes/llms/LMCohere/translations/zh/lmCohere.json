@@ -1,0 +1,30 @@
+{
+	"header": {
+		"displayName": "Cohere模型",
+		"description": "语言模型Cohere"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI链。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"maxTokens": {
+					"displayName": "最大令牌数",
+					"description": "完成生成的最大令牌数。大多数模型的上下文长度为2048个令牌（最新模型除外，支持32,768个）。"
+				},
+				"model": {
+					"displayName": "模型",
+					"description": "要使用的模型名称"
+				},
+				"temperature": {
+					"displayName": "采样温度",
+					"description": "控制随机性：降低温度会使生成结果更少随机性。当温度趋近于零时，模型会变得确定且重复。"
+				}
+			}
+		}
+	}
+}

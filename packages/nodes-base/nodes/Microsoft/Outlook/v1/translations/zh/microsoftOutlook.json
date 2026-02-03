@@ -1,0 +1,448 @@
+{
+	"header": {
+		"displayName": "Microsoft Outlook",
+		"description": "使用 Microsoft Outlook API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"draft": {
+					"displayName": "草稿"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				},
+				"folderMessage": {
+					"displayName": "文件夹消息"
+				},
+				"message": {
+					"displayName": "消息"
+				},
+				"messageAttachment": {
+					"displayName": "消息附件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "在用户邮箱的根文件夹中创建新邮件文件夹"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文件夹"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取单个文件夹详情"
+				},
+				"send": {
+					"displayName": "发送",
+					"description": "发送消息"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新消息"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取文件夹中的多条消息"
+				},
+				"getMime": {
+					"displayName": "获取MIME内容",
+					"description": "获取邮件的MIME内容"
+				},
+				"move": {
+					"displayName": "移动",
+					"description": "移动消息"
+				},
+				"reply": {
+					"displayName": "回复",
+					"description": "创建消息回复"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "向消息添加附件"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载附件内容"
+				},
+				"getChildren": {
+					"displayName": "获取子项",
+					"description": "列出文件夹下的所有子文件夹"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "消息ID"
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "消息主题"
+		},
+		"bodyContent": {
+			"displayName": "正文内容",
+			"description": "消息正文内容"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"attachments": {
+					"displayName": "附件",
+					"placeholder": "添加附件",
+					"multipleValueButtonText": "添加附件",
+					"options": {
+						"attachments": {
+							"displayName": "附件",
+							"options": {
+								"binaryPropertyName": {
+									"displayName": "二进制属性名称",
+									"description": "包含要作为附件添加到邮件数据的二进制属性名称"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachments": {
+							"displayName": "附件",
+							"placeholder": "添加附件"
+						}
+					}
+				},
+				"bccRecipients": {
+					"displayName": "密送收件人",
+					"description": "密送收件人的电子邮件地址"
+				},
+				"bodyContentType": {
+					"displayName": "正文内容类型",
+					"description": "消息正文内容类型",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"Text": {
+							"displayName": "文本"
+						}
+					}
+				},
+				"categories": {
+					"displayName": "分类名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"ccRecipients": {
+					"displayName": "抄送收件人",
+					"description": "抄送收件人的电子邮件地址"
+				},
+				"internetMessageHeaders": {
+					"displayName": "自定义请求头",
+					"placeholder": "添加请求头",
+					"multipleValueButtonText": "添加请求头",
+					"options": {
+						"headers": {
+							"displayName": "页眉",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为标头设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"headers": {
+							"displayName": "页眉",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为标头设置的值"
+								}
+							}
+						},
+						"internetMessageHeaders": {
+							"displayName": "自定义请求头",
+							"placeholder": "添加请求头"
+						}
+					}
+				},
+				"from": {
+					"displayName": "从",
+					"description": "The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used."
+				},
+				"importance": {
+					"displayName": "重要性",
+					"description": "消息的重要性",
+					"options": {
+						"Low": {
+							"displayName": "低"
+						},
+						"Normal": {
+							"displayName": "普通"
+						},
+						"High": {
+							"displayName": "高"
+						}
+					}
+				},
+				"isReadReceiptRequested": {
+					"displayName": "已请求阅读回执",
+					"description": "是否为该消息请求阅读回执"
+				},
+				"toRecipients": {
+					"displayName": "收件人",
+					"description": "收件人邮箱地址。多个地址可用逗号分隔添加。"
+				},
+				"replyTo": {
+					"displayName": "回复至",
+					"description": "回复时使用的邮箱地址"
+				},
+				"recipients": {
+					"displayName": "收件人",
+					"description": "收件人的电子邮件地址。多个地址可用逗号分隔。"
+				},
+				"bodyContent": {
+					"displayName": "正文内容",
+					"description": "消息正文内容"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "消息主题"
+				},
+				"saveToSentItems": {
+					"displayName": "保存到已发送邮件",
+					"description": "是否将邮件保存到已发送邮件"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "附件的文件名。如果未设置，将使用二进制属性的文件名（如果存在）。"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "Fields the response will contain. Multiple can be added separated by comma."
+				},
+				"filter": {
+					"displayName": "筛选器",
+					"description": "Microsoft Graph API OData $filter查询。语法信息请参阅<a href=\"https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter\">此处</a>。",
+					"placeholder": "isRead eq false"
+				},
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "附件前缀",
+					"description": "用于写入附件的二进制属性名称前缀。将添加从0开始的索引。例如，如果名称为“attachment_”，则第一个附件将保存到“attachment_0”"
+				}
+			}
+		},
+		"replyType": {
+			"displayName": "回复类型",
+			"options": {
+				"reply": {
+					"displayName": "回复"
+				},
+				"replyAll": {
+					"displayName": "回复所有人"
+				}
+			}
+		},
+		"comment": {
+			"displayName": "评论",
+			"description": "要包含的注释。可以是空字符串。"
+		},
+		"send": {
+			"displayName": "发送",
+			"description": "是否直接发送回复消息。如果未设置，将保存为草稿。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"toRecipients": {
+			"displayName": "收件人",
+			"description": "收件人的电子邮件地址。多个地址可用逗号分隔添加。"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		},
+		"folderId": {
+			"displayName": "文件夹ID",
+			"description": "目标文件夹ID"
+		},
+		"attachmentId": {
+			"displayName": "附件ID"
+		},
+		"folderType": {
+			"displayName": "类型",
+			"description": "文件夹类型",
+			"options": {
+				"folder": {
+					"displayName": "文件夹"
+				},
+				"searchFolder": {
+					"displayName": "搜索文件夹"
+				}
+			}
+		},
+		"displayName": {
+			"displayName": "显示名称",
+			"description": "文件夹名称"
+		},
+		"includeNestedFolders": {
+			"displayName": "包含嵌套文件夹",
+			"description": "是否在搜索中包含子文件夹"
+		},
+		"sourceFolderIds": {
+			"displayName": "源文件夹ID",
+			"description": "应挖掘的邮箱文件夹"
+		},
+		"filterQuery": {
+			"displayName": "筛选查询",
+			"description": "用于筛选消息的OData查询"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"description": "要更新的字段",
+			"options": {
+				"displayName": {
+					"displayName": "显示名称",
+					"description": "文件夹名称"
+				},
+				"filterQuery": {
+					"displayName": "过滤查询",
+					"description": "用于筛选邮件的OData查询。仅适用于搜索文件夹。"
+				},
+				"includeNestedFolders": {
+					"displayName": "包含嵌套文件夹",
+					"description": "是否在搜索中包含子文件夹。仅适用于搜索文件夹。"
+				},
+				"sourceFolderIds": {
+					"displayName": "源文件夹ID",
+					"description": "应挖掘的邮箱文件夹。仅适用于搜索文件夹。"
+				},
+				"bccRecipients": {
+					"displayName": "密送收件人",
+					"description": "密送收件人的电子邮件地址"
+				},
+				"bodyContent": {
+					"displayName": "正文内容",
+					"description": "消息正文内容"
+				},
+				"bodyContentType": {
+					"displayName": "正文内容类型",
+					"description": "消息正文内容类型",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"Text": {
+							"displayName": "文本"
+						}
+					}
+				},
+				"categories": {
+					"displayName": "分类名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"ccRecipients": {
+					"displayName": "抄送收件人",
+					"description": "抄送收件人的电子邮件地址"
+				},
+				"internetMessageHeaders": {
+					"displayName": "自定义请求头",
+					"placeholder": "添加请求头",
+					"multipleValueButtonText": "添加请求头",
+					"options": {
+						"headers": {
+							"displayName": "页眉",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为标头设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"headers": {
+							"displayName": "页眉",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为标头设置的值"
+								}
+							}
+						},
+						"internetMessageHeaders": {
+							"displayName": "自定义请求头",
+							"placeholder": "添加请求头"
+						}
+					}
+				},
+				"from": {
+					"displayName": "从",
+					"description": "发送消息的邮箱所有者。必须与实际使用的邮箱一致。"
+				},
+				"importance": {
+					"displayName": "重要性",
+					"description": "消息的重要性",
+					"options": {
+						"Low": {
+							"displayName": "低"
+						},
+						"Normal": {
+							"displayName": "普通"
+						},
+						"High": {
+							"displayName": "高"
+						}
+					}
+				},
+				"isRead": {
+					"displayName": "已读状态",
+					"description": "消息是否已读"
+				},
+				"isReadReceiptRequested": {
+					"displayName": "已请求阅读回执",
+					"description": "是否为该消息请求阅读回执"
+				},
+				"toRecipients": {
+					"displayName": "收件人",
+					"description": "收件人邮箱地址。多个地址可用逗号分隔添加。"
+				},
+				"replyTo": {
+					"displayName": "回复至",
+					"description": "回复时使用的邮箱地址"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "消息主题"
+				}
+			},
+			"placeholder": "添加字段"
+		}
+	}
+}

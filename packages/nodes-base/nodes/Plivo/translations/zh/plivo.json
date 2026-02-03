@@ -1,0 +1,69 @@
+{
+	"header": {
+		"displayName": "Plivo",
+		"description": "发送短信/彩信或拨打电话"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"call": {
+					"displayName": "调用"
+				},
+				"mms": {
+					"displayName": "MMS"
+				},
+				"sms": {
+					"displayName": "短信"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "发送彩信（仅限美国/加拿大）"
+				},
+				"make": {
+					"displayName": "创建",
+					"description": "创建语音通话"
+				}
+			}
+		},
+		"from": {
+			"displayName": "可自定义的发件人名称。长度应在3到11个字符之间，仅允许使用字母数字字符。",
+			"description": "呼出电话的来电显示",
+			"placeholder": "+14156667777"
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"description": "要拨打的电话号码",
+			"placeholder": "+14156667778"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息"
+		},
+		"media_urls": {
+			"displayName": "媒体URL",
+			"description": "来自您文件服务器的文件媒体URL列表，以逗号分隔"
+		},
+		"answer_method": {
+			"displayName": "应答方法",
+			"description": "调用应答URL时使用的HTTP动词",
+			"options": {
+				"GET": {
+					"displayName": "获取"
+				},
+				"POST": {
+					"displayName": "POST"
+				}
+			}
+		},
+		"answer_url": {
+			"displayName": "应答URL",
+			"description": "Plivo在呼叫接通后将调用的URL。它应返回用于处理接通后呼叫的XML。"
+		}
+	}
+}

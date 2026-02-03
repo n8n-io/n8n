@@ -1,0 +1,492 @@
+{
+	"header": {
+		"displayName": "SyncroMSP",
+		"description": "Gets data from SyncroMSP"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				},
+				"customer": {
+					"displayName": "Customer"
+				},
+				"rmm": {
+					"displayName": "RMM"
+				},
+				"ticket": {
+					"displayName": "Ticket"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create new RMM Alert"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete RMM Alert"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve RMM Alert"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many RMM Alerts"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update contact"
+				},
+				"mute": {
+					"displayName": "Mute",
+					"description": "Mute RMM Alert"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"businessName": {
+					"displayName": "Business Name"
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "First Name"
+				},
+				"includeDisabled": {
+					"displayName": "Include Disabled"
+				},
+				"lastname": {
+					"displayName": "Last Name"
+				},
+				"query": {
+					"displayName": "Search Query",
+					"description": "Search query, it can be anything related to ticket data like user etc",
+					"placeholder": "John Doe"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "Customer field to order by, eg: \"firstname ASC\", \"city DESC\" etc",
+					"placeholder": "firstname ASC"
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"Customer Reply": {
+							"displayName": "Customer Reply"
+						},
+						"In Progress": {
+							"displayName": "In Progress"
+						},
+						"New": {
+							"displayName": "New"
+						},
+						"Resolved": {
+							"displayName": "Resolved"
+						},
+						"Scheduled": {
+							"displayName": "Scheduled"
+						},
+						"Waiting for Parts": {
+							"displayName": "Waiting for Parts"
+						},
+						"Waiting on Customer": {
+							"displayName": "Waiting on Customer"
+						},
+						"active": {
+							"displayName": "Active"
+						},
+						"all": {
+							"displayName": "All"
+						},
+						"resolved": {
+							"displayName": "Resolved"
+						}
+					}
+				}
+			}
+		},
+		"customerId": {
+			"displayName": "Customer ID",
+			"description": "Delete a specific customer by ID"
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Add Address Fields",
+					"options": {
+						"addressFields": {
+							"displayName": "Address Fields",
+							"options": {
+								"address": {
+									"displayName": "Line 1"
+								},
+								"address2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zip": {
+									"displayName": "ZIP"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "Address Fields",
+							"options": {
+								"address": {
+									"displayName": "Line 1"
+								},
+								"address2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zip": {
+									"displayName": "ZIP"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Address Fields"
+						}
+					}
+				},
+				"businessName": {
+					"displayName": "Business Name"
+				},
+				"firstName": {
+					"displayName": "First Name"
+				},
+				"getSms": {
+					"displayName": "Get SMS"
+				},
+				"invoiceCcEmails": {
+					"displayName": "Invoice Emails"
+				},
+				"lastname": {
+					"displayName": "Last Name"
+				},
+				"noEmail": {
+					"displayName": "No Email"
+				},
+				"notes": {
+					"displayName": "Notes"
+				},
+				"notificationEmail": {
+					"displayName": "Notification Email"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"referredBy": {
+					"displayName": "Referred By",
+					"description": "Source from which customer is referred to the platform like Linkedin, Google, Customer name etc"
+				},
+				"assetId": {
+					"displayName": "Asset ID"
+				},
+				"contactId": {
+					"displayName": "Assign to Contact",
+					"description": "The ID of the contact you want to assign the ticket to"
+				},
+				"issueType": {
+					"displayName": "Issue Type",
+					"options": {
+						"Contract Work": {
+							"displayName": "Contract Work"
+						},
+						"Network Project": {
+							"displayName": "Network Project"
+						},
+						"Other": {
+							"displayName": "Other"
+						},
+						"Regular Maintenance": {
+							"displayName": "Regular Maintenance"
+						},
+						"Remote Support": {
+							"displayName": "Remote Support"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "If used along the parameter Search Query, only Search Query will be applied",
+					"options": {
+						"Customer Reply": {
+							"displayName": "Customer Reply"
+						},
+						"In Progress": {
+							"displayName": "In Progress"
+						},
+						"New": {
+							"displayName": "New"
+						},
+						"Resolved": {
+							"displayName": "Resolved"
+						},
+						"Scheduled": {
+							"displayName": "Scheduled"
+						},
+						"Waiting for Parts": {
+							"displayName": "Waiting for Parts"
+						},
+						"Waiting on Customer": {
+							"displayName": "Waiting on Customer"
+						}
+					}
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"resolved": {
+					"displayName": "Resolved"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Add Address Fields",
+					"options": {
+						"addressFields": {
+							"displayName": "Address Fields",
+							"options": {
+								"address": {
+									"displayName": "Line 1"
+								},
+								"address2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zip": {
+									"displayName": "ZIP"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "Address Fields",
+							"options": {
+								"address": {
+									"displayName": "Line 1"
+								},
+								"address2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zip": {
+									"displayName": "ZIP"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Address Fields"
+						}
+					}
+				},
+				"businessName": {
+					"displayName": "Business Name"
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "First Name"
+				},
+				"getSms": {
+					"displayName": "Get SMS"
+				},
+				"invoiceCcEmails": {
+					"displayName": "Invoice Emails"
+				},
+				"lastName": {
+					"displayName": "Last Name"
+				},
+				"noEmail": {
+					"displayName": "No Email"
+				},
+				"notes": {
+					"displayName": "Notes"
+				},
+				"notificationEmail": {
+					"displayName": "Notification Email"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"referredBy": {
+					"displayName": "Referred By",
+					"description": "Source from which customer is referred to the platform like Linkedin, Google, Customer name etc"
+				},
+				"assetId": {
+					"displayName": "Asset ID"
+				},
+				"contactId": {
+					"displayName": "Assign to Contact",
+					"description": "The ID of the contact you want to assign the ticket to"
+				},
+				"customerId": {
+					"displayName": "Customer ID"
+				},
+				"dueDate": {
+					"displayName": "Due Date"
+				},
+				"issueType": {
+					"displayName": "Issue Type",
+					"options": {
+						"Contract Work": {
+							"displayName": "Contract Work"
+						},
+						"Network Project": {
+							"displayName": "Network Project"
+						},
+						"Other": {
+							"displayName": "Other"
+						},
+						"Regular Maintenance": {
+							"displayName": "Regular Maintenance"
+						},
+						"Remote Support": {
+							"displayName": "Remote Support"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"Customer Reply": {
+							"displayName": "Customer Reply"
+						},
+						"In Progress": {
+							"displayName": "In Progress"
+						},
+						"New": {
+							"displayName": "New"
+						},
+						"Resolved": {
+							"displayName": "Resolved"
+						},
+						"Scheduled": {
+							"displayName": "Scheduled"
+						},
+						"Waiting for Parts": {
+							"displayName": "Waiting for Parts"
+						},
+						"Waiting on Customer": {
+							"displayName": "Waiting on Customer"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "Subject"
+				},
+				"name": {
+					"displayName": "Name"
+				}
+			}
+		},
+		"subject": {
+			"displayName": "Subject"
+		},
+		"ticketId": {
+			"displayName": "Ticket ID",
+			"description": "Delete a specific customer by ID"
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "Delete a specific contact by ID"
+		},
+		"alertId": {
+			"displayName": "RMM Alert ID",
+			"description": "Mute the RMM alert by ID"
+		},
+		"assetId": {
+			"displayName": "Asset ID"
+		},
+		"description": {
+			"displayName": "Description"
+		},
+		"muteFor": {
+			"displayName": "Mute Period",
+			"description": "Length of time to mute alert for",
+			"options": {
+				"1-hour": {
+					"displayName": "1 Hour"
+				},
+				"1-day": {
+					"displayName": "1 Day"
+				},
+				"2-days": {
+					"displayName": "2 Days"
+				},
+				"1-week": {
+					"displayName": "1 Week"
+				},
+				"2-weeks": {
+					"displayName": "2 Weeks"
+				},
+				"1-month": {
+					"displayName": "1 Month"
+				},
+				"forever": {
+					"displayName": "Forever"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,661 @@
+{
+	"header": {
+		"displayName": "Send Email",
+		"description": "Sends an email using SMTP protocol"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource"
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"send": {
+					"displayName": "Send"
+				},
+				"sendAndWait": {
+					"displayName": "Send and Wait for Response"
+				}
+			}
+		},
+		"fromEmail": {
+			"displayName": "From Email",
+			"description": "Email address of the sender. You can also specify a name: Nathan Doe &lt;nate@n8n.io&gt;.",
+			"placeholder": "admin@example.com"
+		},
+		"toEmail": {
+			"displayName": "To Email",
+			"description": "Email address of the recipient. You can also specify a name: Nathan Doe &lt;nate@n8n.io&gt;.",
+			"placeholder": "info@example.com"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "Subject line of the email",
+			"placeholder": "e.g. Approval required"
+		},
+		"emailFormat": {
+			"displayName": "Email Format",
+			"options": {
+				"text": {
+					"displayName": "Text",
+					"description": "Send email as plain text"
+				},
+				"html": {
+					"displayName": "HTML",
+					"description": "Send email as HTML"
+				},
+				"both": {
+					"displayName": "Both",
+					"description": "Send both formats, recipient's client selects version to display"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "Plain text message of email"
+		},
+		"html": {
+			"displayName": "HTML",
+			"description": "HTML text message of email"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the phrase \"This message was sent automatically with n8n\" to the end of the message"
+				},
+				"attachments": {
+					"displayName": "Attachments",
+					"description": "Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated. Reference embedded images or other content within the body of an email message, e.g. &lt;img src=\"cid:image_1\"&gt;"
+				},
+				"ccEmail": {
+					"displayName": "CC Email",
+					"description": "Email address of CC recipient",
+					"placeholder": "cc@example.com"
+				},
+				"bccEmail": {
+					"displayName": "BCC Email",
+					"description": "Email address of BCC recipient",
+					"placeholder": "bcc@example.com"
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to connect even if SSL certificate validation is not possible"
+				},
+				"replyTo": {
+					"displayName": "Reply To",
+					"description": "The email address to send the reply to",
+					"placeholder": "info@example.com"
+				},
+				"limitWaitTime": {
+					"displayName": "Limit Wait Time",
+					"description": "Whether to limit the time this node should wait for a user response before execution resumes",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "Limit Wait Time"
+						}
+					}
+				},
+				"messageButtonLabel": {
+					"displayName": "Message Button Label"
+				},
+				"responseFormTitle": {
+					"displayName": "Response Form Title",
+					"description": "Title of the form that the user can access to provide their response"
+				},
+				"responseFormDescription": {
+					"displayName": "Response Form Description",
+					"description": "Description of the form that the user can access to provide their response"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "Response Form Button Label"
+				},
+				"responseFormCustomCss": {
+					"displayName": "Response Form Custom Styling",
+					"description": "Override default styling of the response form with CSS"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message"
+		},
+		"responseType": {
+			"displayName": "Response Type",
+			"options": {
+				"approval": {
+					"displayName": "Approval",
+					"description": "User can approve/disapprove from within the message"
+				},
+				"freeText": {
+					"displayName": "Free Text",
+					"description": "User can submit a response via a form"
+				},
+				"customForm": {
+					"displayName": "Custom Form",
+					"description": "User can submit a response via a custom form"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "Define Form",
+			"options": {
+				"fields": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "Form Fields"
+		},
+		"formFields": {
+			"displayName": "Form Elements",
+			"placeholder": "Add Form Element",
+			"multipleValueButtonText": "Add Form Element",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "Form Elements",
+					"placeholder": "Add Form Element"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "Approval Options",
+			"placeholder": "Add option",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "Approve Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "Disapprove Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "Approve Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "Disapprove Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "Approval Options",
+					"placeholder": "Add option"
+				}
+			}
+		}
+	}
+}

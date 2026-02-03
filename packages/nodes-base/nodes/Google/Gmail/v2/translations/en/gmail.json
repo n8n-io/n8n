@@ -1,0 +1,879 @@
+{
+	"header": {
+		"displayName": "Gmail",
+		"description": "Consume the Gmail API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				},
+				"serviceAccount": {
+					"displayName": "Service Account"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"message": {
+					"displayName": "Message"
+				},
+				"label": {
+					"displayName": "Label"
+				},
+				"draft": {
+					"displayName": "Draft"
+				},
+				"thread": {
+					"displayName": "Thread"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"addLabels": {
+					"displayName": "Add Label"
+				},
+				"markAsRead": {
+					"displayName": "Mark as Read"
+				},
+				"markAsUnread": {
+					"displayName": "Mark as Unread"
+				},
+				"removeLabels": {
+					"displayName": "Remove Label"
+				},
+				"reply": {
+					"displayName": "Reply"
+				},
+				"send": {
+					"displayName": "Send"
+				},
+				"sendAndWait": {
+					"displayName": "Send and Wait for Response"
+				},
+				"trash": {
+					"displayName": "Trash"
+				},
+				"untrash": {
+					"displayName": "Untrash"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "Message Snippet or ID",
+			"placeholder": "172ce2c4a72cc243",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"placeholder": "e.g. Approval required"
+		},
+		"threadNotice": {
+			"displayName": "To reply to an existing thread, specify the exact subject title of that thread."
+		},
+		"emailType": {
+			"displayName": "Email Type",
+			"options": {
+				"html": {
+					"displayName": "HTML"
+				},
+				"text": {
+					"displayName": "Text"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"attachmentsUi": {
+					"displayName": "Attachments",
+					"description": "Array of supported attachments to add to the message",
+					"placeholder": "Add Attachment",
+					"multipleValueButtonText": "Add Attachment",
+					"options": {
+						"attachmentsBinary": {
+							"displayName": "Attachment Binary",
+							"options": {
+								"property": {
+									"displayName": "Attachment Field Name",
+									"description": "Add the field name from the input node. Multiple properties can be set separated by comma."
+								}
+							}
+						}
+					},
+					"values": {
+						"attachmentsBinary": {
+							"displayName": "Attachment Binary",
+							"options": {
+								"property": {
+									"displayName": "Attachment Field Name",
+									"description": "Add the field name from the input node. Multiple properties can be set separated by comma."
+								}
+							}
+						},
+						"attachmentsUi": {
+							"displayName": "Attachments",
+							"placeholder": "Add Attachment"
+						}
+					}
+				},
+				"bccList": {
+					"displayName": "BCC",
+					"description": "The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.",
+					"placeholder": "info@example.com"
+				},
+				"ccList": {
+					"displayName": "CC",
+					"description": "The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.",
+					"placeholder": "info@example.com"
+				},
+				"fromAlias": {
+					"displayName": "From Alias Name or ID",
+					"description": "Select the alias to send the email from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"replyTo": {
+					"displayName": "Send Replies To",
+					"description": "The email address that the reply message is sent to",
+					"placeholder": "reply@example.com"
+				},
+				"threadId": {
+					"displayName": "Thread ID",
+					"description": "The identifier of the thread to attach the draft",
+					"placeholder": "18cc573e2431878f"
+				},
+				"sendTo": {
+					"displayName": "To Email",
+					"description": "The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.",
+					"placeholder": "info@example.com"
+				},
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "Attachment Prefix",
+					"description": "Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'."
+				},
+				"downloadAttachments": {
+					"displayName": "Download Attachments",
+					"description": "Whether the email's attachments will be downloaded and included in the output"
+				},
+				"includeSpamTrash": {
+					"displayName": "Include Spam and Trash",
+					"description": "Whether to include messages from SPAM and TRASH in the results"
+				},
+				"labelListVisibility": {
+					"displayName": "Label List Visibility",
+					"description": "The visibility of the label in the label list in the Gmail web interface",
+					"options": {
+						"labelHide": {
+							"displayName": "Hide"
+						},
+						"labelShow": {
+							"displayName": "Show"
+						},
+						"labelShowIfUnread": {
+							"displayName": "Show If Unread"
+						}
+					}
+				},
+				"messageListVisibility": {
+					"displayName": "Message List Visibility",
+					"description": "The visibility of messages with this label in the message list in the Gmail web interface",
+					"options": {
+						"hide": {
+							"displayName": "Hide"
+						},
+						"show": {
+							"displayName": "Show"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the phrase \"This message was sent automatically with n8n\" to the end of the message"
+				},
+				"senderName": {
+					"displayName": "Sender Name",
+					"description": "The name displayed in your contacts inboxes",
+					"placeholder": "e.g. Nathan"
+				},
+				"replyToSenderOnly": {
+					"displayName": "Reply to Sender Only",
+					"description": "Whether to reply to the sender only or to the entire list of recipients"
+				},
+				"limitWaitTime": {
+					"displayName": "Limit Wait Time",
+					"description": "Whether to limit the time this node should wait for a user response before execution resumes",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "Limit Wait Time"
+						}
+					}
+				},
+				"messageButtonLabel": {
+					"displayName": "Message Button Label"
+				},
+				"responseFormTitle": {
+					"displayName": "Response Form Title",
+					"description": "Title of the form that the user can access to provide their response"
+				},
+				"responseFormDescription": {
+					"displayName": "Response Form Description",
+					"description": "Description of the form that the user can access to provide their response"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "Response Form Button Label"
+				},
+				"responseFormCustomCss": {
+					"displayName": "Response Form Custom Styling",
+					"description": "Override default styling of the response form with CSS"
+				},
+				"replyToRecipientsOnly": {
+					"displayName": "Reply to Recipients Only",
+					"description": "Whether to exclude the sender from the reply"
+				},
+				"returnOnlyMessages": {
+					"displayName": "Return Only Messages",
+					"description": "Whether to return only thread messages"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Label Name",
+			"placeholder": "invoices"
+		},
+		"labelId": {
+			"displayName": "Label ID",
+			"description": "The ID of the label"
+		},
+		"sendTo": {
+			"displayName": "To",
+			"description": "The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.",
+			"placeholder": "e.g. info@example.com"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"filtersNotice": {
+			"displayName": "Fetching a lot of messages may take a long time. Consider using filters to speed things up"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"includeSpamTrash": {
+					"displayName": "Include Spam and Trash",
+					"description": "Whether to include threads from SPAM and TRASH in the results"
+				},
+				"labelIds": {
+					"displayName": "Label ID Names or IDs",
+					"description": "Only return threads with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"q": {
+					"displayName": "Search",
+					"description": "Only return messages matching the specified query",
+					"placeholder": "has:attachment"
+				},
+				"readStatus": {
+					"displayName": "Read Status",
+					"options": {
+						"both": {
+							"displayName": "Unread and read emails"
+						},
+						"unread": {
+							"displayName": "Unread emails only"
+						},
+						"read": {
+							"displayName": "Read emails only"
+						}
+					}
+				},
+				"receivedAfter": {
+					"displayName": "Received After",
+					"description": "Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds."
+				},
+				"receivedBefore": {
+					"displayName": "Received Before",
+					"description": "Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds."
+				},
+				"sender": {
+					"displayName": "Sender",
+					"description": "Sender name or email to filter by"
+				}
+			}
+		},
+		"labelIds": {
+			"displayName": "Label Names or IDs",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"responseType": {
+			"displayName": "Response Type",
+			"options": {
+				"approval": {
+					"displayName": "Approval",
+					"description": "User can approve/disapprove from within the message"
+				},
+				"freeText": {
+					"displayName": "Free Text",
+					"description": "User can submit a response via a form"
+				},
+				"customForm": {
+					"displayName": "Custom Form",
+					"description": "User can submit a response via a custom form"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "Define Form",
+			"options": {
+				"fields": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "Form Fields"
+		},
+		"formFields": {
+			"displayName": "Form Elements",
+			"placeholder": "Add Form Element",
+			"multipleValueButtonText": "Add Form Element",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "Form Elements",
+					"placeholder": "Add Form Element"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "Approval Options",
+			"placeholder": "Add option",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "Approve Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "Disapprove Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "Approve Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "Disapprove Button Style",
+							"options": {
+								"primary": {
+									"displayName": "Primary"
+								},
+								"secondary": {
+									"displayName": "Secondary"
+								}
+							}
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "Approval Options",
+					"placeholder": "Add option"
+				}
+			}
+		},
+		"threadId": {
+			"displayName": "Thread ID",
+			"description": "The ID of the thread you are operating on",
+			"placeholder": "172ce2c4a72cc243"
+		}
+	}
+}

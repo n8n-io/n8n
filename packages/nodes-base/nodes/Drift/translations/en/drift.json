@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "Drift",
+		"description": "Consume Drift API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a contact"
+				},
+				"getCustomAttributes": {
+					"displayName": "Custom Attributes",
+					"description": "Get custom attributes"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a contact"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a contact"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a contact"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email of the contact",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the contact"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "The phone number associated with the contact"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "Unique identifier for the contact"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"email": {
+					"displayName": "Email",
+					"description": "The email of the contact",
+					"placeholder": "name@email.com"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the contact"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "The phone number associated with the contact"
+				}
+			}
+		}
+	}
+}

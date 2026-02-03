@@ -1,0 +1,244 @@
+{
+	"header": {
+		"displayName": "n8n",
+		"description": "处理事件并在您的n8n实例上执行操作"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"audit": {
+					"displayName": "审计"
+				},
+				"credential": {
+					"displayName": "凭据"
+				},
+				"execution": {
+					"displayName": "执行"
+				},
+				"workflow": {
+					"displayName": "工作流"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"generate": {
+					"displayName": "生成",
+					"description": "为此n8n实例生成安全审计报告"
+				},
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"getSchema": {
+					"displayName": "获取架构"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"activate": {
+					"displayName": "发布"
+				},
+				"deactivate": {
+					"displayName": "取消发布"
+				},
+				"getVersion": {
+					"displayName": "获取版本"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"additionalOptions": {
+			"displayName": "附加选项",
+			"placeholder": "添加筛选器",
+			"options": {
+				"categories": {
+					"displayName": "分类",
+					"description": "审计中包含的风险分类"
+				},
+				"daysAbandonedWorkflow": {
+					"displayName": "工作流废弃天数",
+					"description": "工作流未执行多少天后视为废弃"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "新凭据名称",
+			"placeholder": "例如：n8n 账户"
+		},
+		"credentialTypeName": {
+			"displayName": "凭据类型",
+			"description": "可用类型取决于n8n实例上安装的节点。部分内置类型包括例如'githubApi'、'notionApi'和'slackApi'。",
+			"placeholder": "例如 n8nApi"
+		},
+		"data": {
+			"displayName": "数据",
+			"description": "一个有效的JSON对象，包含此凭据类型所需的属性。要查看预期格式，可以使用'获取模式'操作。",
+			"placeholder": "// 例如，对于n8nApi\n{\n  \"apiKey\": \"my-n8n-api-key\",\n  \"baseUrl\": \"https://<name>.app.n8n.cloud/api/v1\",\n}"
+		},
+		"credentialId": {
+			"displayName": "凭据ID"
+		},
+		"executionId": {
+			"displayName": "执行ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"workflowId": {
+					"displayName": "工作流",
+					"description": "按执行筛选的工作流"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "用于筛选执行记录的状态",
+					"options": {
+						"error": {
+							"displayName": "错误"
+						},
+						"success": {
+							"displayName": "成功"
+						},
+						"waiting": {
+							"displayName": "等待中"
+						}
+					}
+				},
+				"activeWorkflows": {
+					"displayName": "仅返回已发布的工作流"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "仅包含带有这些标签的工作流"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"projectId": {
+					"displayName": "项目ID"
+				},
+				"excludePinnedData": {
+					"displayName": "排除置顶数据",
+					"description": "是否从响应中排除置顶数据"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"activeWorkflows": {
+					"displayName": "包含执行详情",
+					"description": "是否包含详细的执行数据"
+				}
+			}
+		},
+		"workflowId": {
+			"displayName": "工作流",
+			"description": "按执行筛选的工作流"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"versionId": {
+					"displayName": "版本ID",
+					"description": "要发布的工作流版本ID"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "已发布版本名称（将被覆盖）"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "已发布版本描述（将被覆盖）"
+				}
+			}
+		},
+		"workflowObject": {
+			"displayName": "工作流对象",
+			"description": "包含必填字段'name'、'nodes'、'connections'和'settings'的有效JSON对象。更多信息请参阅<a href=\"https://docs.n8n.io/api/api-reference/#tag/workflow/paths/~1workflows~1%7bid%7d/put\">文档</a>。",
+			"placeholder": "{\n  \"name\": \"我的工作流\",\n  \"nodes\": [],\n  \"connections\": {},\n  \"settings\": {}\n}"
+		},
+		"versionId": {
+			"displayName": "版本ID",
+			"description": "要检索的版本ID"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

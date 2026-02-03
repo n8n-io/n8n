@@ -1,0 +1,31 @@
+{
+	"header": {
+		"displayName": "Zep向量存储：插入",
+		"description": "将数据插入Zep向量存储索引"
+	},
+	"nodeView": {
+		"deprecationNotice": {
+			"displayName": "此Zep集成已弃用，将在未来版本中移除。"
+		},
+		"collectionName": {
+			"displayName": "集合名称"
+		},
+		"notice": {
+			"displayName": "在文档加载器子节点中指定要加载的文档"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"embeddingDimensions": {
+					"displayName": "嵌入维度",
+					"description": "是否允许使用Unicode代理块中的字符"
+				},
+				"isAutoEmbedded": {
+					"displayName": "是否自动嵌入",
+					"description": "添加文档时是否自动嵌入"
+				}
+			}
+		}
+	}
+}

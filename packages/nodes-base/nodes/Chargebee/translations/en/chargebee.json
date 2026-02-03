@@ -1,0 +1,269 @@
+{
+	"header": {
+		"displayName": "Chargebee",
+		"description": "Retrieve data from Chargebee API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"customer": {
+					"displayName": "Customer"
+				},
+				"invoice": {
+					"displayName": "Invoice"
+				},
+				"subscription": {
+					"displayName": "Subscription"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a customer"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "Return the invoices"
+				},
+				"pdfUrl": {
+					"displayName": "PDF Invoice URL",
+					"description": "Get URL for the invoice PDF"
+				},
+				"cancel": {
+					"displayName": "Cancel",
+					"description": "Cancel a subscription"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a subscription"
+				}
+			}
+		},
+		"properties": {
+			"displayName": "Properties",
+			"description": "Properties to set on the new user",
+			"placeholder": "Add Property",
+			"options": {
+				"id": {
+					"displayName": "User ID",
+					"description": "ID for the new customer. If not given, this will be auto-generated."
+				},
+				"first_name": {
+					"displayName": "First Name",
+					"description": "The first name of the customer"
+				},
+				"last_name": {
+					"displayName": "Last Name",
+					"description": "The last name of the customer"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The email address of the customer",
+					"placeholder": "name@email.com"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "The phone number of the customer"
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "The company of the customer"
+				},
+				"customProperties": {
+					"displayName": "Custom Properties",
+					"description": "Adds a custom property to set also values which have not been predefined",
+					"placeholder": "Add Custom Property",
+					"multipleValueButtonText": "Add Custom Property",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Property Name",
+									"description": "Name of the property to set"
+								},
+								"value": {
+									"displayName": "Property Value",
+									"description": "Value of the property to set"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Property Name",
+									"description": "Name of the property to set"
+								},
+								"value": {
+									"displayName": "Property Value",
+									"description": "Value of the property to set"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "Custom Properties",
+							"placeholder": "Add Custom Property"
+						}
+					}
+				}
+			}
+		},
+		"maxResults": {
+			"displayName": "Max Results",
+			"description": "Max. amount of results to return(< 100)."
+		},
+		"filters": {
+			"displayName": "Filters",
+			"description": "Filter for invoices",
+			"placeholder": "Add Filter",
+			"multipleValueButtonText": "Add Filter",
+			"options": {
+				"date": {
+					"displayName": "Invoice Date",
+					"options": {
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"is": {
+									"displayName": "Is"
+								},
+								"is_not": {
+									"displayName": "Is Not"
+								},
+								"after": {
+									"displayName": "After"
+								},
+								"before": {
+									"displayName": "Before"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Date",
+							"description": "Query date"
+						}
+					}
+				},
+				"total": {
+					"displayName": "Invoice Amount",
+					"options": {
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"gte": {
+									"displayName": "Greater Equal Than"
+								},
+								"gt": {
+									"displayName": "Greater Than"
+								},
+								"is": {
+									"displayName": "Is"
+								},
+								"is_not": {
+									"displayName": "Is Not"
+								},
+								"lte": {
+									"displayName": "Less Equal Than"
+								},
+								"lt": {
+									"displayName": "Less Than"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Amount",
+							"description": "Query amount"
+						}
+					}
+				}
+			},
+			"values": {
+				"date": {
+					"displayName": "Invoice Date",
+					"options": {
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"is": {
+									"displayName": "Is"
+								},
+								"is_not": {
+									"displayName": "Is Not"
+								},
+								"after": {
+									"displayName": "After"
+								},
+								"before": {
+									"displayName": "Before"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Date",
+							"description": "Query date"
+						}
+					}
+				},
+				"total": {
+					"displayName": "Invoice Amount",
+					"options": {
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"gte": {
+									"displayName": "Greater Equal Than"
+								},
+								"gt": {
+									"displayName": "Greater Than"
+								},
+								"is": {
+									"displayName": "Is"
+								},
+								"is_not": {
+									"displayName": "Is Not"
+								},
+								"lte": {
+									"displayName": "Less Equal Than"
+								},
+								"lt": {
+									"displayName": "Less Than"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Amount",
+							"description": "Query amount"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "Filters",
+					"placeholder": "Add Filter"
+				}
+			}
+		},
+		"invoiceId": {
+			"displayName": "Invoice ID",
+			"description": "The ID of the invoice to get"
+		},
+		"subscriptionId": {
+			"displayName": "Subscription ID",
+			"description": "The ID of the subscription to delete"
+		},
+		"endOfTerm": {
+			"displayName": "Schedule End of Term",
+			"description": "Whether it will not cancel it directly in will instead schedule the cancelation for the end of the term"
+		}
+	}
+}

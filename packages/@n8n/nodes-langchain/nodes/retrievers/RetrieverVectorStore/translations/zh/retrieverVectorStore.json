@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "向量存储检索器",
+		"description": "使用向量存储作为检索器"
+	},
+	"nodeView": {
+		"topK": {
+			"displayName": "限制",
+			"description": "要返回的最大结果数量"
+		}
+	}
+}

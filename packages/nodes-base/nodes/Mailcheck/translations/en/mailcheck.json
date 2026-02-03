@@ -1,0 +1,29 @@
+{
+	"header": {
+		"displayName": "Mailcheck",
+		"description": "Consume Mailcheck API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"email": {
+					"displayName": "Email"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"check": {
+					"displayName": "Check"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email address to check",
+			"placeholder": "name@email.com"
+		}
+	}
+}

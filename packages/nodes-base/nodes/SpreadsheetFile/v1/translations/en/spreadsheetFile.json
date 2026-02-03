@@ -1,0 +1,181 @@
+{
+	"header": {
+		"displayName": "Spreadsheet File",
+		"description": "Reads and writes data from a spreadsheet file like CSV, XLS, ODS, etc"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"fromFile": {
+					"displayName": "Read From File",
+					"description": "Reads data from a spreadsheet file"
+				},
+				"toFile": {
+					"displayName": "Write to File",
+					"description": "Writes the workflow data to a spreadsheet file"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field"
+		},
+		"fileFormat": {
+			"displayName": "File Format",
+			"description": "The format of the file to save the data as",
+			"options": {
+				"csv": {
+					"displayName": "CSV",
+					"description": "Comma-separated values"
+				},
+				"html": {
+					"displayName": "HTML",
+					"description": "HTML Table"
+				},
+				"ods": {
+					"displayName": "ODS",
+					"description": "OpenDocument Spreadsheet"
+				},
+				"rtf": {
+					"displayName": "RTF",
+					"description": "Rich Text Format"
+				},
+				"xls": {
+					"displayName": "XLS",
+					"description": "Excel"
+				},
+				"xlsx": {
+					"displayName": "XLSX",
+					"description": "Excel"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"delimiter": {
+					"displayName": "Delimiter",
+					"description": "Set the field delimiter, usually a comma",
+					"placeholder": "e.g. ,"
+				},
+				"encoding": {
+					"displayName": "Encoding",
+					"options": {
+						"ascii": {
+							"displayName": "ASCII"
+						},
+						"latin1": {
+							"displayName": "Latin1"
+						},
+						"ucs-2": {
+							"displayName": "UCS-2"
+						},
+						"ucs2": {
+							"displayName": "UCS2"
+						},
+						"utf-8": {
+							"displayName": "UTF-8"
+						},
+						"utf16le": {
+							"displayName": "UTF16LE"
+						},
+						"utf8": {
+							"displayName": "UTF8"
+						}
+					}
+				},
+				"enableBOM": {
+					"displayName": "Exclude Byte Order Mark (BOM)",
+					"description": "Whether to detect and exclude the byte-order-mark from the CSV Input if present"
+				},
+				"relaxQuotes": {
+					"displayName": "Preserve Quotes",
+					"description": "Whether to handle unclosed quotes in CSV fields as part of the field's content instead of throwing a parsing error"
+				},
+				"headerRow": {
+					"displayName": "Header Row",
+					"description": "Whether the first row of the file contains the header names"
+				},
+				"includeEmptyCells": {
+					"displayName": "Include Empty Cells",
+					"description": "Whether to include empty cells when reading from file. They will be filled with an empty string."
+				},
+				"maxRowCount": {
+					"displayName": "Max Number of Rows to Load",
+					"description": "Stop handling records after the requested number of rows are read. Use -1 if you want to load all rows.",
+					"placeholder": "e.g. 10"
+				},
+				"range": {
+					"displayName": "Range",
+					"description": "The range to read from the table. If set to a number it will be the starting row. If set to string it will be used as A1-style notation range."
+				},
+				"rawData": {
+					"displayName": "RAW Data",
+					"description": "Whether to return RAW data, instead of parsing it"
+				},
+				"readAsString": {
+					"displayName": "Read As String",
+					"description": "In some cases and file formats, it is necessary to read as string to ensure special characters are interpreted correctly"
+				},
+				"sheetName": {
+					"displayName": "Sheet Name",
+					"description": "Name of the sheet to create in the spreadsheet",
+					"placeholder": "e.g. mySheet"
+				},
+				"fromLine": {
+					"displayName": "Starting Line",
+					"description": "Start handling records from the requested line number. Starts at 0.",
+					"placeholder": "e.g. 0"
+				},
+				"skipRecordsWithErrors": {
+					"displayName": "Skip Records With Errors",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"enabled": {
+									"displayName": "Enabled",
+									"description": "Whether to skip records with errors when reading from file"
+								},
+								"maxSkippedRecords": {
+									"displayName": "Max Skipped Records",
+									"description": "The maximum number of records that can be skipped, will throw an error if exceeded. Set to -1 to remove limit."
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"enabled": {
+									"displayName": "Enabled",
+									"description": "Whether to skip records with errors when reading from file"
+								},
+								"maxSkippedRecords": {
+									"displayName": "Max Skipped Records",
+									"description": "The maximum number of records that can be skipped, will throw an error if exceeded. Set to -1 to remove limit."
+								}
+							}
+						},
+						"skipRecordsWithErrors": {
+							"displayName": "Skip Records With Errors"
+						}
+					}
+				},
+				"compression": {
+					"displayName": "Compression",
+					"description": "Whether compression will be applied or not"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "File name to set in binary data. By default will \"spreadsheet.&lt;fileFormat&gt;\" be used."
+				}
+			}
+		}
+	}
+}

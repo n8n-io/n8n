@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "MCP Client Tool",
+		"description": "Connect tools from an MCP Server"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"sseEndpoint": {
+			"displayName": "SSE Endpoint",
+			"description": "SSE Endpoint of your MCP server",
+			"placeholder": "e.g. https://my-mcp-server.ai/sse"
+		},
+		"endpointUrl": {
+			"displayName": "Endpoint",
+			"description": "Endpoint of your MCP server",
+			"placeholder": "e.g. https://my-mcp-server.ai/mcp"
+		},
+		"serverTransport": {
+			"displayName": "Server Transport",
+			"description": "The transport used by your endpoint",
+			"options": {
+				"httpStreamable": {
+					"displayName": "HTTP Streamable"
+				},
+				"sse": {
+					"displayName": "Server Sent Events (Deprecated)"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "The way to authenticate with your endpoint",
+			"options": {
+				"bearerAuth": {
+					"displayName": "Bearer Auth"
+				},
+				"headerAuth": {
+					"displayName": "Header Auth"
+				},
+				"none": {
+					"displayName": "None"
+				},
+				"mcpOAuth2Api": {
+					"displayName": "MCP OAuth2"
+				},
+				"multipleHeadersAuth": {
+					"displayName": "Multiple Headers Auth"
+				}
+			}
+		},
+		"credentials": {
+			"displayName": "Credentials"
+		},
+		"include": {
+			"displayName": "Tools to Include",
+			"description": "How to select the tools you want to be exposed to the AI Agent",
+			"options": {
+				"all": {
+					"displayName": "All",
+					"description": "Also include all unchanged fields from the input"
+				},
+				"selected": {
+					"displayName": "Selected",
+					"description": "Also include the tools listed in the parameter \"Tools to Include\""
+				},
+				"except": {
+					"displayName": "All Except",
+					"description": "Exclude the tools listed in the parameter \"Tools to Exclude\""
+				}
+			}
+		},
+		"includeTools": {
+			"displayName": "Tools to Include",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"excludeTools": {
+			"displayName": "Tools to Exclude",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for tool calls to finish"
+				}
+			}
+		}
+	}
+}

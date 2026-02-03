@@ -1,0 +1,359 @@
+{
+	"header": {
+		"displayName": "Google Sheets触发器",
+		"description": "当Google Sheets事件发生时启动工作流"
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "轮询时间",
+			"description": "轮询应发生的时间",
+			"placeholder": "添加轮询时间",
+			"multipleValueButtonText": "添加轮询时间",
+			"options": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "轮询时间",
+					"placeholder": "添加轮询时间"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "身份验证"
+		},
+		"documentId": {
+			"displayName": "文档"
+		},
+		"sheetName": {
+			"displayName": "工作表"
+		},
+		"event": {
+			"displayName": "触发器开启",
+			"description": "新创建的列也会触发（如果未设置'要监视的列'选项）",
+			"options": {
+				"rowAdded": {
+					"displayName": "行已添加"
+				},
+				"rowUpdate": {
+					"displayName": "行已更新"
+				},
+				"anyUpdate": {
+					"displayName": "行已添加或更新"
+				}
+			}
+		},
+		"includeInOutput": {
+			"displayName": "包含在输出中",
+			"description": "此选项仅在自动执行工作流时生效",
+			"options": {
+				"new": {
+					"displayName": "新版本"
+				},
+				"old": {
+					"displayName": "旧版本"
+				},
+				"both": {
+					"displayName": "两个版本"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"columnsToWatch": {
+					"displayName": "要监控的列",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"dataLocationOnSheet": {
+					"displayName": "工作表中的数据位置",
+					"placeholder": "选择范围",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"rangeDefinition": {
+									"displayName": "范围定义",
+									"options": {
+										"specifyRangeA1": {
+											"displayName": "指定范围（A1表示法）",
+											"description": "手动指定数据范围"
+										},
+										"specifyRange": {
+											"displayName": "指定范围（行）",
+											"description": "手动指定数据范围"
+										}
+									}
+								},
+								"headerRow": {
+									"displayName": "标题行",
+									"description": "包含键的行索引。从1开始。传入的节点数据将与键进行匹配以进行分配。匹配区分大小写。"
+								},
+								"firstDataRow": {
+									"displayName": "首行数据",
+									"description": "包含实际数据而非键名的首行索引。从1开始计数。"
+								},
+								"range": {
+									"displayName": "范围",
+									"description": "要读取或追加数据的表格范围。详情请参阅Google<a href=\"https://developers.google.com/sheets/api/guides/values#writing\">文档</a>。",
+									"placeholder": "A:Z"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"rangeDefinition": {
+									"displayName": "范围定义",
+									"options": {
+										"specifyRangeA1": {
+											"displayName": "指定范围（A1表示法）",
+											"description": "手动指定数据范围"
+										},
+										"specifyRange": {
+											"displayName": "指定范围（行）",
+											"description": "手动指定数据范围"
+										}
+									}
+								},
+								"headerRow": {
+									"displayName": "标题行",
+									"description": "包含键的行索引。从1开始。传入的节点数据将与键进行匹配以进行分配。匹配区分大小写。"
+								},
+								"firstDataRow": {
+									"displayName": "首行数据",
+									"description": "包含实际数据而非键名的首行索引。从1开始计数。"
+								},
+								"range": {
+									"displayName": "范围",
+									"description": "要读取或追加数据的表格范围。详情请参阅Google<a href=\"https://developers.google.com/sheets/api/guides/values#writing\">文档</a>。",
+									"placeholder": "A:Z"
+								}
+							}
+						},
+						"dataLocationOnSheet": {
+							"displayName": "工作表中的数据位置",
+							"placeholder": "选择范围"
+						}
+					}
+				},
+				"valueRender": {
+					"displayName": "值渲染",
+					"description": "确定值在输出中的渲染方式。<a href=\"https://developers.google.com/sheets/api/reference/rest/v4/ValueRenderOption\" target=\"_blank\">更多信息</a>。",
+					"options": {
+						"UNFORMATTED_VALUE": {
+							"displayName": "未格式化",
+							"description": "数值将被计算，但不会在回复中进行格式化"
+						},
+						"FORMATTED_VALUE": {
+							"displayName": "已格式化",
+							"description": "数值将根据单元格的格式设置（基于电子表格的区域设置）进行格式化和计算"
+						},
+						"FORMULA": {
+							"displayName": "公式",
+							"description": "数值将不会被计算。回复将包含公式。"
+						}
+					}
+				},
+				"dateTimeRenderOption": {
+					"displayName": "日期时间渲染",
+					"description": "确定日期在输出中应如何渲染。<a href=\"https://developers.google.com/sheets/api/reference/rest/v4/DateTimeRenderOption\" target=\"_blank\">更多信息</a>。",
+					"options": {
+						"SERIAL_NUMBER": {
+							"displayName": "序列号",
+							"description": "字段将以“序列号”格式（由Lotus 1-2-3推广）作为双精度数返回"
+						},
+						"FORMATTED_STRING": {
+							"displayName": "格式化字符串",
+							"description": "字段将以其给定的数字格式（取决于电子表格的区域设置）呈现为字符串"
+						}
+					}
+				}
+			}
+		}
+	}
+}

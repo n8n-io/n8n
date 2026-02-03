@@ -1,0 +1,27 @@
+{
+	"header": {
+		"displayName": "Formstack Trigger",
+		"description": "Starts the workflow on a Formstack form submission."
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"formId": {
+			"displayName": "Form Name or ID",
+			"description": "The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		}
+	}
+}

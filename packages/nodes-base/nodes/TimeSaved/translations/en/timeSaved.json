@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "Track Time Saved",
+		"description": "Dynamically track time saved based on the workflow’s execution path and the number of items processed"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "For each run, time saved is the sum of all Time Saved nodes that execute. Use this when different execution paths or items save different amounts of time."
+		},
+		"mode": {
+			"displayName": "Calculation Mode",
+			"options": {
+				"once": {
+					"displayName": "Once For All Items",
+					"description": "Counts minutes saved once for all input items"
+				},
+				"perItem": {
+					"displayName": "Per Item",
+					"description": "Multiply minutes saved by the number of input items"
+				}
+			}
+		},
+		"minutesSaved": {
+			"displayName": "Minutes Saved",
+			"description": "Number of minutes saved by this workflow execution"
+		}
+	}
+}

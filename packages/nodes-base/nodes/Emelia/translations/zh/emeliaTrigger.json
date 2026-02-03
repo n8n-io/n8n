@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "Emelia触发器",
+		"description": "通过Webhook处理Emelia营销活动事件"
+	},
+	"nodeView": {
+		"campaignId": {
+			"displayName": "活动名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"events": {
+			"displayName": "事件"
+		}
+	}
+}

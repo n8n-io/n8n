@@ -1,0 +1,448 @@
+{
+	"header": {
+		"displayName": "Monica CRM",
+		"description": "使用Monica CRM API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"activity": {
+					"displayName": "活动"
+				},
+				"call": {
+					"displayName": "调用"
+				},
+				"contact": {
+					"displayName": "联系人"
+				},
+				"contactField": {
+					"displayName": "联系人字段"
+				},
+				"contactTag": {
+					"displayName": "联系人标签"
+				},
+				"conversation": {
+					"displayName": "对话"
+				},
+				"conversationMessage": {
+					"displayName": "对话消息"
+				},
+				"journalEntry": {
+					"displayName": "日记条目"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"reminder": {
+					"displayName": "提醒"
+				},
+				"tag": {
+					"displayName": "标签"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建任务"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除任务"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索任务"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个任务"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新任务"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "向对话添加消息"
+				},
+				"remove": {
+					"displayName": "移除"
+				}
+			}
+		},
+		"activityTypeId": {
+			"displayName": "活动类型名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"contacts": {
+			"displayName": "联系人",
+			"description": "要与活动关联的联系人ID列表（逗号分隔）"
+		},
+		"happenedAt": {
+			"displayName": "发生时间",
+			"description": "对话发生日期"
+		},
+		"summary": {
+			"displayName": "摘要",
+			"description": "活动简要描述 - 最多255个字符"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述",
+					"description": "任务描述 - 最多100,000个字符"
+				},
+				"birthdate": {
+					"displayName": "出生日期"
+				},
+				"deceasedDate": {
+					"displayName": "逝世日期"
+				},
+				"isDeceased": {
+					"displayName": "已故",
+					"description": "联系人是否已去世"
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"nickname": {
+					"displayName": "昵称"
+				},
+				"is_partial": {
+					"displayName": "类型",
+					"options": {
+						"false": {
+							"displayName": "真实",
+							"description": "使用自己的联系人列表联系"
+						},
+						"true": {
+							"displayName": "部分",
+							"description": "没有自己联系表的联系人"
+						}
+					}
+				},
+				"isFavorited": {
+					"displayName": "已收藏",
+					"description": "笔记是否已收藏"
+				}
+			}
+		},
+		"activityId": {
+			"displayName": "活动ID",
+			"description": "要更新的活动ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"activity_type_id": {
+					"displayName": "活动类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"contacts": {
+					"displayName": "联系人",
+					"description": "要关联此活动的联系人ID"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "任务描述 - 最多100,000个字符"
+				},
+				"happened_at": {
+					"displayName": "发生时间",
+					"description": "活动发生的日期"
+				},
+				"summary": {
+					"displayName": "摘要",
+					"description": "活动简述 - 最多255个字符"
+				},
+				"calledAt": {
+					"displayName": "调用时间",
+					"description": "通话发生日期"
+				},
+				"contactId": {
+					"displayName": "联系人ID",
+					"description": "要关联任务的联系人ID"
+				},
+				"content": {
+					"displayName": "内容",
+					"description": "消息内容"
+				},
+				"birthdate": {
+					"displayName": "出生日期"
+				},
+				"deceased_date": {
+					"displayName": "逝世日期"
+				},
+				"first_name": {
+					"displayName": "名字"
+				},
+				"gender_id": {
+					"displayName": "性别名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"is_deceased": {
+					"displayName": "已故",
+					"description": "联系人是否已去世"
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"nickname": {
+					"displayName": "昵称"
+				},
+				"is_partial": {
+					"displayName": "类型",
+					"options": {
+						"false": {
+							"displayName": "真实",
+							"description": "使用自己的联系人列表联系"
+						},
+						"true": {
+							"displayName": "部分",
+							"description": "没有自己联系表的联系人"
+						}
+					}
+				},
+				"contact_id": {
+					"displayName": "联系人ID",
+					"description": "要关联提醒的联系人ID"
+				},
+				"written_at": {
+					"displayName": "撰写时间",
+					"description": "消息撰写日期"
+				},
+				"written_by_me": {
+					"displayName": "撰写者",
+					"description": "消息作者",
+					"options": {
+						"true": {
+							"displayName": "用户"
+						},
+						"false": {
+							"displayName": "联系人"
+						}
+					}
+				},
+				"post": {
+					"displayName": "内容",
+					"description": "日记条目内容 - 最多100,000个字符"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "任务条目标题 - 最多250个字符"
+				},
+				"body": {
+					"displayName": "正文",
+					"description": "笔记正文 - 最多100,000个字符"
+				},
+				"is_favorited": {
+					"displayName": "已收藏",
+					"description": "笔记是否已收藏"
+				},
+				"frequency_type": {
+					"displayName": "频率类型",
+					"description": "提醒频率",
+					"options": {
+						"one_time": {
+							"displayName": "一次性"
+						},
+						"week": {
+							"displayName": "周"
+						},
+						"month": {
+							"displayName": "月份"
+						},
+						"year": {
+							"displayName": "年"
+						}
+					}
+				},
+				"initial_data": {
+					"displayName": "初始日期",
+					"description": "提醒日期"
+				},
+				"frequency_number": {
+					"displayName": "重复间隔",
+					"description": "提醒间隔"
+				},
+				"completed": {
+					"displayName": "已完成",
+					"description": "任务是否已完成"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "要关联任务的联系人ID"
+		},
+		"calledAt": {
+			"displayName": "调用时间",
+			"description": "调用发生日期"
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "消息内容"
+		},
+		"callId": {
+			"displayName": "通话ID",
+			"description": "要更新的通话ID"
+		},
+		"firstName": {
+			"displayName": "名字"
+		},
+		"genderId": {
+			"displayName": "性别名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"query": {
+					"displayName": "搜索词",
+					"description": "用于筛选结果的搜索词"
+				},
+				"sort": {
+					"displayName": "排序",
+					"options": {
+						"created_at": {
+							"displayName": "创建于（升序）"
+						},
+						"-created_at": {
+							"displayName": "降序创建时间"
+						},
+						"updated_at": {
+							"displayName": "升序更新时间"
+						},
+						"-updated_at": {
+							"displayName": "后代更新时间"
+						}
+					}
+				}
+			}
+		},
+		"contactFieldTypeId": {
+			"displayName": "联系人字段类型名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"data": {
+			"displayName": "内容",
+			"description": "联系人字段内容 - 最多255个字符"
+		},
+		"contactFieldId": {
+			"displayName": "联系人字段ID",
+			"description": "要更新的联系人字段ID"
+		},
+		"tagsToAdd": {
+			"displayName": "标签名称或ID",
+			"description": "要添加到联系人的标签。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"tagsToRemove": {
+			"displayName": "标签名称或ID",
+			"description": "要从联系人中移除的标签。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"conversationId": {
+			"displayName": "会话ID",
+			"description": "要更新消息的对话ID"
+		},
+		"writtenAt": {
+			"displayName": "撰写时间",
+			"description": "消息撰写日期"
+		},
+		"writtenByMe": {
+			"displayName": "撰写者",
+			"description": "消息作者",
+			"options": {
+				"true": {
+					"displayName": "用户"
+				},
+				"false": {
+					"displayName": "联系人"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "消息ID",
+			"description": "要更新的消息ID"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "任务条目标题 - 最多250个字符"
+		},
+		"post": {
+			"displayName": "内容",
+			"description": "日记条目内容 - 最多100,000个字符"
+		},
+		"journalId": {
+			"displayName": "日记账分录ID",
+			"description": "要更新的日记账分录ID"
+		},
+		"body": {
+			"displayName": "正文",
+			"description": "笔记正文 - 最多 100,000 个字符"
+		},
+		"noteId": {
+			"displayName": "笔记ID",
+			"description": "要更新的笔记ID"
+		},
+		"frequencyType": {
+			"displayName": "频率类型",
+			"description": "提醒的频率类型",
+			"options": {
+				"one_time": {
+					"displayName": "一旦"
+				},
+				"week": {
+					"displayName": "每周"
+				},
+				"month": {
+					"displayName": "每月"
+				},
+				"year": {
+					"displayName": "每年"
+				}
+			}
+		},
+		"frequencyNumber": {
+			"displayName": "重复间隔",
+			"description": "提醒间隔"
+		},
+		"initialDate": {
+			"displayName": "初始日期",
+			"description": "提醒日期"
+		},
+		"reminderId": {
+			"displayName": "提醒事项ID",
+			"description": "要更新的提醒事项ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "标签名称 - 最多250个字符"
+		},
+		"tagId": {
+			"displayName": "标签ID",
+			"description": "要更新的标签ID"
+		},
+		"taskId": {
+			"displayName": "任务ID",
+			"description": "要更新的任务ID"
+		}
+	}
+}

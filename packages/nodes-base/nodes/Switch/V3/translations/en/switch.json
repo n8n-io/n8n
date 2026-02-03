@@ -1,0 +1,105 @@
+{
+	"header": {
+		"displayName": "Switch",
+		"description": "Route items depending on defined expression or rules"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "Mode",
+			"description": "How data should be routed",
+			"options": {
+				"rules": {
+					"displayName": "Rules",
+					"description": "Build a matching rule for each output"
+				},
+				"expression": {
+					"displayName": "Expression",
+					"description": "Write an expression to return the output index"
+				}
+			}
+		},
+		"numberOutputs": {
+			"displayName": "Number of Outputs",
+			"description": "How many outputs to create"
+		},
+		"output": {
+			"displayName": "Output Index",
+			"description": "The output index to send the input item to. Use an expression to calculate which input item should be routed to which output. The expression must return a number."
+		},
+		"rules": {
+			"displayName": "Routing Rules",
+			"placeholder": "Add Routing Rule",
+			"multipleValueButtonText": "Add Routing Rule",
+			"options": {
+				"values": {
+					"displayName": "Routing Rule",
+					"values": {
+						"conditions": {
+							"displayName": "Conditions",
+							"placeholder": "Add Condition"
+						},
+						"renameOutput": {
+							"displayName": "Rename Output"
+						},
+						"outputKey": {
+							"displayName": "Output Name",
+							"description": "The label of output to which to send data to if rule matches"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Routing Rule",
+					"values": {
+						"conditions": {
+							"displayName": "Conditions",
+							"placeholder": "Add Condition"
+						},
+						"renameOutput": {
+							"displayName": "Rename Output"
+						},
+						"outputKey": {
+							"displayName": "Output Name",
+							"description": "The label of output to which to send data to if rule matches"
+						}
+					}
+				},
+				"rules": {
+					"displayName": "Routing Rules",
+					"placeholder": "Add Routing Rule"
+				}
+			}
+		},
+		"looseTypeValidation": {
+			"displayName": "Convert types where required",
+			"description": "If the type of an expression doesn't match the type of the comparison, n8n will try to cast the expression to the required type. E.g. for booleans <code>\"false\"</code> or <code>0</code> will be cast to <code>false</code>"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fallbackOutput": {
+					"displayName": "Fallback Output",
+					"description": "If no rule matches the item will be sent to this output, by default they will be ignored"
+				},
+				"ignoreCase": {
+					"displayName": "Ignore Case",
+					"description": "Whether to ignore letter case when evaluating conditions"
+				},
+				"looseTypeValidation": {
+					"displayName": "Convert types where required",
+					"description": "If the type of an expression doesn't match the type of the comparison, n8n will try to cast the expression to the required type. E.g. for booleans <code>\"false\"</code> or <code>0</code> will be cast to <code>false</code>"
+				},
+				"renameFallbackOutput": {
+					"displayName": "Rename Fallback Output",
+					"placeholder": "e.g. Fallback"
+				},
+				"allMatchingOutputs": {
+					"displayName": "Send data to all matching outputs",
+					"description": "Whether to send data to all outputs meeting conditions (and not just the first one)"
+				}
+			}
+		}
+	}
+}

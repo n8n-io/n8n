@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "读取PDF",
+		"description": "读取PDF并提取其内容"
+	},
+	"nodeView": {
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段",
+			"description": "要从中读取PDF文件的二进制属性名称"
+		},
+		"encrypted": {
+			"displayName": "已加密"
+		},
+		"password": {
+			"displayName": "密码",
+			"description": "用于解密PDF文件的密码"
+		}
+	}
+}

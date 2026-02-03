@@ -1,0 +1,78 @@
+{
+	"header": {
+		"displayName": "Hunter",
+		"description": "使用Hunter API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"description": "要消费的操作",
+			"options": {
+				"domainSearch": {
+					"displayName": "域名搜索",
+					"description": "获取互联网上使用指定域名的所有电子邮件地址，包含来源信息"
+				},
+				"emailFinder": {
+					"displayName": "邮箱查找器",
+					"description": "根据域名、名字和姓氏生成或检索最可能的电子邮件地址"
+				},
+				"emailVerifier": {
+					"displayName": "邮箱验证器",
+					"description": "验证邮箱地址的可送达性"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "域名",
+			"description": "要查找电子邮件地址的域名。例如“stripe.com”。"
+		},
+		"onlyEmails": {
+			"displayName": "仅限邮件",
+			"description": "是否仅返回找到的邮件"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"type": {
+					"displayName": "类型",
+					"options": {
+						"personal": {
+							"displayName": "个人"
+						},
+						"generic": {
+							"displayName": "通用"
+						}
+					}
+				},
+				"seniority": {
+					"displayName": "资历"
+				},
+				"department": {
+					"displayName": "部门"
+				}
+			}
+		},
+		"firstname": {
+			"displayName": "名字",
+			"description": "人员的名字。无需使用小写。"
+		},
+		"lastname": {
+			"displayName": "姓氏",
+			"description": "人员的姓氏。无需使用小写。"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "您要验证的电子邮件地址",
+			"placeholder": "name@email.com"
+		}
+	}
+}

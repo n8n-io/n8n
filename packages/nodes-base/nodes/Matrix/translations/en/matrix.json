@@ -1,0 +1,271 @@
+{
+	"header": {
+		"displayName": "Matrix",
+		"description": "Consume Matrix API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"account": {
+					"displayName": "Account"
+				},
+				"event": {
+					"displayName": "Event"
+				},
+				"media": {
+					"displayName": "Media"
+				},
+				"message": {
+					"displayName": "Message"
+				},
+				"room": {
+					"displayName": "Room"
+				},
+				"roomMember": {
+					"displayName": "Room Member"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"me": {
+					"displayName": "Me",
+					"description": "Get current user's account information"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get single event by ID"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Send media to a chat room"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "New chat room with defined settings"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many members"
+				},
+				"invite": {
+					"displayName": "Invite",
+					"description": "Invite a user to a room"
+				},
+				"join": {
+					"displayName": "Join",
+					"description": "Join a new room"
+				},
+				"kick": {
+					"displayName": "Kick",
+					"description": "Kick a user from a room"
+				},
+				"leave": {
+					"displayName": "Leave",
+					"description": "Leave a room"
+				}
+			}
+		},
+		"roomId": {
+			"displayName": "Room Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+			"placeholder": "!123abc:matrix.org"
+		},
+		"eventId": {
+			"displayName": "Event ID",
+			"description": "The room related to the event",
+			"placeholder": "$1234abcd:matrix.org"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"mediaType": {
+			"displayName": "Media Type",
+			"description": "Type of file being uploaded",
+			"placeholder": "mxc://matrix.org/uploaded-media-uri",
+			"options": {
+				"file": {
+					"displayName": "File",
+					"description": "General file"
+				},
+				"image": {
+					"displayName": "Image",
+					"description": "Image media type"
+				},
+				"audio": {
+					"displayName": "Audio",
+					"description": "Audio media type"
+				},
+				"video": {
+					"displayName": "Video",
+					"description": "Video media type"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"fileName": {
+					"displayName": "File Name",
+					"description": "Name of the file being uploaded"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "The text to send",
+			"placeholder": "Hello from n8n!"
+		},
+		"messageType": {
+			"displayName": "Message Type",
+			"description": "The type of message to send",
+			"options": {
+				"m.emote": {
+					"displayName": "Emote",
+					"description": "Perform an action (similar to /me in IRC)"
+				},
+				"m.notice": {
+					"displayName": "Notice",
+					"description": "Send a notice"
+				},
+				"m.text": {
+					"displayName": "Text",
+					"description": "Send a text message"
+				}
+			}
+		},
+		"messageFormat": {
+			"displayName": "Message Format",
+			"description": "The format of the message's body",
+			"options": {
+				"plain": {
+					"displayName": "Plain Text",
+					"description": "Text only"
+				},
+				"org.matrix.custom.html": {
+					"displayName": "HTML",
+					"description": "HTML-formatted text"
+				}
+			}
+		},
+		"fallbackText": {
+			"displayName": "Fallback Text",
+			"description": "A plain text message to display in case the HTML cannot be rendered by the Matrix client"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"otherOptions": {
+			"displayName": "Other Options",
+			"placeholder": "Add option",
+			"options": {
+				"filter": {
+					"displayName": "Filter",
+					"description": "A JSON RoomEventFilter to filter returned events with. More information can be found on this <a href=\"https://matrix.org/docs/spec/client_server/r0.6.0\">page</a>.",
+					"placeholder": "{\"contains_url\":true,\"types\":[\"m.room.message\", \"m.sticker\"]}"
+				}
+			}
+		},
+		"roomName": {
+			"displayName": "Room Name",
+			"placeholder": "My new room"
+		},
+		"preset": {
+			"displayName": "Preset",
+			"placeholder": "My new room",
+			"options": {
+				"private_chat": {
+					"displayName": "Private Chat"
+				},
+				"public_chat": {
+					"displayName": "Public Chat",
+					"description": "Open and public chat"
+				}
+			}
+		},
+		"roomAlias": {
+			"displayName": "Room Alias",
+			"placeholder": "coolest-room-around"
+		},
+		"roomIdOrAlias": {
+			"displayName": "Room ID or Alias"
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "The fully qualified user ID",
+			"placeholder": "@cheeky_monkey:matrix.org"
+		},
+		"reason": {
+			"displayName": "Reason",
+			"description": "Reason for kick",
+			"placeholder": "Telling unfunny jokes"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"description": "Filtering options",
+			"placeholder": "Add filter",
+			"options": {
+				"notMembership": {
+					"displayName": "Exclude Membership",
+					"description": "Excludes members whose membership is other than selected (uses OR filter with membership)",
+					"options": {
+						"": {
+							"displayName": "Any",
+							"description": "Any user membership"
+						},
+						"ban": {
+							"displayName": "Ban",
+							"description": "Users removed from the room"
+						},
+						"invite": {
+							"displayName": "Invite",
+							"description": "Users invited to join"
+						},
+						"join": {
+							"displayName": "Join",
+							"description": "Users currently in the room"
+						},
+						"leave": {
+							"displayName": "Leave",
+							"description": "Users who left"
+						}
+					}
+				},
+				"membership": {
+					"displayName": "Membership",
+					"description": "Only fetch users with selected membership status (uses OR filter with exclude membership)",
+					"options": {
+						"": {
+							"displayName": "Any",
+							"description": "Any user membership"
+						},
+						"ban": {
+							"displayName": "Ban",
+							"description": "Users removed from the room"
+						},
+						"invite": {
+							"displayName": "Invite",
+							"description": "Users invited to join"
+						},
+						"join": {
+							"displayName": "Join",
+							"description": "Users currently in the room"
+						},
+						"leave": {
+							"displayName": "Leave",
+							"description": "Users who left"
+						}
+					}
+				}
+			}
+		}
+	}
+}

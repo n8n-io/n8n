@@ -1,0 +1,68 @@
+{
+	"header": {
+		"displayName": "Read/Write Files from Disk",
+		"description": "Read or write files from the computer that runs n8n"
+	},
+	"nodeView": {
+		"info": {
+			"displayName": "Use this node to read and write files on the same computer running n8n. To handle files between different computers please use other nodes (e.g. FTP, HTTP Request, AWS)."
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"read": {
+					"displayName": "Read File(s) From Disk",
+					"description": "Retrieve one or more files from the computer that runs n8n"
+				},
+				"write": {
+					"displayName": "Write File to Disk",
+					"description": "Create a binary file on the computer that runs n8n"
+				}
+			}
+		},
+		"fileSelector": {
+			"displayName": "File(s) Selector",
+			"description": "Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.",
+			"placeholder": "e.g. /home/user/Pictures/**/*.png"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fileExtension": {
+					"displayName": "File Extension",
+					"description": "Extension of the file in the output binary",
+					"placeholder": "e.g. zip"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "Name of the file in the output binary",
+					"placeholder": "e.g. data.zip"
+				},
+				"mimeType": {
+					"displayName": "Mime Type",
+					"description": "Mime type of the file in the output binary",
+					"placeholder": "e.g. application/zip"
+				},
+				"dataPropertyName": {
+					"displayName": "Put Output File in Field",
+					"description": "By default 'data' is used",
+					"placeholder": "e.g. data"
+				},
+				"append": {
+					"displayName": "Append",
+					"description": "Whether to append to an existing file. While it's commonly used with text files, it's not limited to them, however, it wouldn't be applicable for file types that have a specific structure like most binary formats."
+				}
+			}
+		},
+		"fileName": {
+			"displayName": "File Path and Name",
+			"description": "Path and name of the file that should be written. Also include the file extension.",
+			"placeholder": "e.g. /data/example.jpg"
+		},
+		"dataPropertyName": {
+			"displayName": "Input Binary Field",
+			"placeholder": "e.g. data"
+		}
+	}
+}

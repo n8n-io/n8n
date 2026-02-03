@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "MCP Server Trigger",
+		"description": "Expose n8n tools as an MCP Server endpoint"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "The way to authenticate",
+			"options": {
+				"none": {
+					"displayName": "None"
+				},
+				"bearerAuth": {
+					"displayName": "Bearer Auth"
+				},
+				"headerAuth": {
+					"displayName": "Header Auth"
+				}
+			}
+		},
+		"path": {
+			"displayName": "Path",
+			"description": "The base path for this MCP server",
+			"placeholder": "webhook"
+		}
+	}
+}

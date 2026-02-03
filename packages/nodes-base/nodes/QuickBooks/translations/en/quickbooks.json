@@ -1,0 +1,1797 @@
+{
+	"header": {
+		"displayName": "QuickBooks Online",
+		"description": "Consume the QuickBooks Online API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"bill": {
+					"displayName": "Bill"
+				},
+				"customer": {
+					"displayName": "Customer"
+				},
+				"employee": {
+					"displayName": "Employee"
+				},
+				"estimate": {
+					"displayName": "Estimate"
+				},
+				"invoice": {
+					"displayName": "Invoice"
+				},
+				"item": {
+					"displayName": "Item"
+				},
+				"payment": {
+					"displayName": "Payment"
+				},
+				"purchase": {
+					"displayName": "Purchase"
+				},
+				"transaction": {
+					"displayName": "Transaction"
+				},
+				"vendor": {
+					"displayName": "Vendor"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"update": {
+					"displayName": "Update"
+				},
+				"send": {
+					"displayName": "Send"
+				},
+				"void": {
+					"displayName": "Void"
+				},
+				"getReport": {
+					"displayName": "Get Report"
+				}
+			}
+		},
+		"VendorRef": {
+			"displayName": "For Vendor Name or ID",
+			"description": "The ID of the vendor who the bill is for. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"Line": {
+			"displayName": "Line",
+			"description": "Individual line item of a transaction",
+			"placeholder": "Add Line Item Property",
+			"multipleValueButtonText": "Add Line Item Property",
+			"options": {
+				"accountId": {
+					"displayName": "Account ID"
+				},
+				"Amount": {
+					"displayName": "Amount",
+					"description": "Monetary amount of the line item"
+				},
+				"Description": {
+					"displayName": "Description",
+					"description": "Textual description of the line item"
+				},
+				"DetailType": {
+					"displayName": "Detail Type",
+					"options": {
+						"AccountBasedExpenseLineDetail": {
+							"displayName": "Account-Based Expense Line Detail"
+						},
+						"ItemBasedExpenseLineDetail": {
+							"displayName": "Item-Based Expense Line Detail"
+						},
+						"SalesItemLineDetail": {
+							"displayName": "Sales Item Line Detail"
+						}
+					}
+				},
+				"itemId": {
+					"displayName": "Item Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"LineNum": {
+					"displayName": "Position",
+					"description": "Position of the line item relative to others"
+				},
+				"TaxCodeRef": {
+					"displayName": "Tax Code Ref Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"Qty": {
+					"displayName": "Quantity",
+					"description": "Number of units of the line item"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"APAccountRef": {
+					"displayName": "Accounts Payable Account",
+					"description": "Accounts Payable account to which the bill will be credited",
+					"placeholder": "Add APA Fields",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"APAccountRef": {
+							"displayName": "Accounts Payable Account",
+							"placeholder": "Add APA Fields"
+						}
+					}
+				},
+				"Balance": {
+					"displayName": "Balance",
+					"description": "The balance reflecting any payments made against the transaction"
+				},
+				"DueDate": {
+					"displayName": "Due Date",
+					"description": "Date when the payment of the transaction is due"
+				},
+				"SalesTermRef": {
+					"displayName": "Sales Term",
+					"description": "Sales term associated with the transaction",
+					"placeholder": "Add Sales Term Fields",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"SalesTermRef": {
+							"displayName": "Sales Term",
+							"placeholder": "Add Sales Term Fields"
+						}
+					}
+				},
+				"TotalAmt": {
+					"displayName": "Total Amount",
+					"description": "Total amount of the transaction"
+				},
+				"TxnDate": {
+					"displayName": "Transaction Date",
+					"description": "Date when the transaction occurred"
+				},
+				"Active": {
+					"displayName": "Active",
+					"description": "Whether the employee is currently enabled for use by QuickBooks"
+				},
+				"BalanceWithJobs": {
+					"displayName": "Balance With Jobs",
+					"description": "Cumulative open balance amount for the customer (or job) and all its sub-jobs"
+				},
+				"BillAddr": {
+					"displayName": "Billing Address",
+					"placeholder": "Add Billing Address Fields",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"City": {
+									"displayName": "City"
+								},
+								"Line1": {
+									"displayName": "Line 1"
+								},
+								"PostalCode": {
+									"displayName": "Postal Code"
+								},
+								"Lat": {
+									"displayName": "Latitude"
+								},
+								"Long": {
+									"displayName": "Longitude"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "Country Subdivision Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"City": {
+									"displayName": "City"
+								},
+								"Line1": {
+									"displayName": "Line 1"
+								},
+								"PostalCode": {
+									"displayName": "Postal Code"
+								},
+								"Lat": {
+									"displayName": "Latitude"
+								},
+								"Long": {
+									"displayName": "Longitude"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "Country Subdivision Code"
+								}
+							}
+						},
+						"BillAddr": {
+							"displayName": "Billing Address",
+							"placeholder": "Add Billing Address Fields"
+						}
+					}
+				},
+				"BillWithParent": {
+					"displayName": "Bill With Parent",
+					"description": "Whether to bill this customer together with its parent"
+				},
+				"CompanyName": {
+					"displayName": "Company Name"
+				},
+				"FamilyName": {
+					"displayName": "Family Name"
+				},
+				"FullyQualifiedName": {
+					"displayName": "Fully Qualified Name"
+				},
+				"GivenName": {
+					"displayName": "Given Name"
+				},
+				"PreferredDeliveryMethod": {
+					"displayName": "Preferred Delivery Method",
+					"options": {
+						"Print": {
+							"displayName": "Print"
+						},
+						"Email": {
+							"displayName": "Email"
+						},
+						"None": {
+							"displayName": "None"
+						}
+					}
+				},
+				"PrimaryEmailAddr": {
+					"displayName": "Primary Email Address"
+				},
+				"PrimaryPhone": {
+					"displayName": "Primary Phone"
+				},
+				"PrintOnCheckName": {
+					"displayName": "Print-On-Check Name",
+					"description": "Name of the vendor as printed on a check"
+				},
+				"Taxable": {
+					"displayName": "Taxable",
+					"description": "Whether transactions for this customer are taxable"
+				},
+				"BillableTime": {
+					"displayName": "Billable Time"
+				},
+				"DisplayName": {
+					"displayName": "Display Name"
+				},
+				"SSN": {
+					"displayName": "Social Security Number"
+				},
+				"ApplyTaxAfterDiscount": {
+					"displayName": "Apply Tax After Discount"
+				},
+				"BillEmail": {
+					"displayName": "Billing Email",
+					"description": "E-mail address to which the invoice will be sent"
+				},
+				"CustomFields": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Fields",
+					"multipleValueButtonText": "Add Custom Fields",
+					"options": {
+						"Field": {
+							"displayName": "Field",
+							"options": {
+								"DefinitionId": {
+									"displayName": "Field Definition Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"StringValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						}
+					},
+					"values": {
+						"Field": {
+							"displayName": "Field",
+							"options": {
+								"DefinitionId": {
+									"displayName": "Field Definition Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"StringValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						},
+						"CustomFields": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Fields"
+						}
+					}
+				},
+				"CustomerMemo": {
+					"displayName": "Customer Memo",
+					"description": "User-entered message to the customer. This message is visible to end user on their transactions."
+				},
+				"DocNumber": {
+					"displayName": "Document Number",
+					"description": "Reference number for the transaction"
+				},
+				"EmailStatus": {
+					"displayName": "Email Status",
+					"options": {
+						"NotSet": {
+							"displayName": "Not Set"
+						},
+						"NeedToSend": {
+							"displayName": "Need To Send"
+						},
+						"EmailSent": {
+							"displayName": "Email Sent"
+						}
+					}
+				},
+				"PrintStatus": {
+					"displayName": "Print Status",
+					"options": {
+						"NotSet": {
+							"displayName": "Not Set"
+						},
+						"NeedToPrint": {
+							"displayName": "Need To Print"
+						},
+						"PrintComplete": {
+							"displayName": "PrintComplete"
+						}
+					}
+				},
+				"ShipAddr": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Shippping Address Fields",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"City": {
+									"displayName": "City"
+								},
+								"Line1": {
+									"displayName": "Line 1"
+								},
+								"PostalCode": {
+									"displayName": "Postal Code"
+								},
+								"Lat": {
+									"displayName": "Latitude"
+								},
+								"Long": {
+									"displayName": "Longitude"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "Country Subdivision Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"City": {
+									"displayName": "City"
+								},
+								"Line1": {
+									"displayName": "Line 1"
+								},
+								"PostalCode": {
+									"displayName": "Postal Code"
+								},
+								"Lat": {
+									"displayName": "Latitude"
+								},
+								"Long": {
+									"displayName": "Longitude"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "Country Subdivision Code"
+								}
+							}
+						},
+						"ShipAddr": {
+							"displayName": "Shipping Address",
+							"placeholder": "Add Shippping Address Fields"
+						}
+					}
+				},
+				"TotalTax": {
+					"displayName": "Total Tax",
+					"description": "Total amount of tax incurred"
+				},
+				"AcctNum": {
+					"displayName": "Account Number"
+				},
+				"Vendor1099": {
+					"displayName": "Vendor 1099",
+					"description": "Whether the vendor is an independent contractor, given a 1099-MISC form at the end of the year"
+				}
+			}
+		},
+		"billId": {
+			"displayName": "Bill ID",
+			"description": "The ID of the bill to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"query": {
+					"displayName": "Query",
+					"description": "The condition for selecting vendors. See the <a href=\"https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries\">guide</a> for supported syntax.",
+					"placeholder": "WHERE Metadata.LastUpdatedTime > '2021-01-01'"
+				},
+				"appaid": {
+					"displayName": "Accounts Payable Paid",
+					"options": {
+						"All": {
+							"displayName": "All"
+						},
+						"Paid": {
+							"displayName": "Paid"
+						},
+						"Unpaid": {
+							"displayName": "Unpaid"
+						}
+					}
+				},
+				"arpaid": {
+					"displayName": "Accounts Receivable Paid",
+					"options": {
+						"All": {
+							"displayName": "All"
+						},
+						"Paid": {
+							"displayName": "Paid"
+						},
+						"Unpaid": {
+							"displayName": "Unpaid"
+						}
+					}
+				},
+				"cleared": {
+					"displayName": "Cleared Status",
+					"options": {
+						"Cleared": {
+							"displayName": "Cleared"
+						},
+						"Uncleared": {
+							"displayName": "Uncleared"
+						},
+						"Reconciled": {
+							"displayName": "Reconciled"
+						},
+						"Deposited": {
+							"displayName": "Deposited"
+						}
+					}
+				},
+				"columns": {
+					"displayName": "Columns",
+					"description": "Columns to return"
+				},
+				"customer": {
+					"displayName": "Customer Names or IDs",
+					"description": "Customer to filter results by. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"dateRangeCustom": {
+					"displayName": "Date Range (Custom)",
+					"placeholder": "Add Date Range",
+					"options": {
+						"dateRangeCustomProperties": {
+							"displayName": "Date Range Properties",
+							"options": {
+								"start_date": {
+									"displayName": "Start Date",
+									"description": "Start date of the date range to filter results by"
+								},
+								"end_date": {
+									"displayName": "End Date",
+									"description": "End date of the date range to filter results by"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRangeCustomProperties": {
+							"displayName": "Date Range Properties",
+							"options": {
+								"start_date": {
+									"displayName": "Start Date",
+									"description": "Start date of the date range to filter results by"
+								},
+								"end_date": {
+									"displayName": "End Date",
+									"description": "End date of the date range to filter results by"
+								}
+							}
+						},
+						"dateRangeCustom": {
+							"displayName": "Date Range (Custom)",
+							"placeholder": "Add Date Range"
+						}
+					}
+				},
+				"date_macro": {
+					"displayName": "Date Range (Predefined)",
+					"description": "Predefined date range to filter results by",
+					"options": {
+						"Today": {
+							"displayName": "Today"
+						},
+						"Yesterday": {
+							"displayName": "Yesterday"
+						},
+						"This Week": {
+							"displayName": "This Week"
+						},
+						"Last Week": {
+							"displayName": "Last Week"
+						},
+						"This Week-to-Date": {
+							"displayName": "This Week-to-Date"
+						},
+						"Last Week-to-Date": {
+							"displayName": "Last Week-to-Date"
+						},
+						"Next Week": {
+							"displayName": "Next Week"
+						},
+						"Next 4 Weeks": {
+							"displayName": "Next 4 Weeks"
+						},
+						"This Month": {
+							"displayName": "This Month"
+						},
+						"Last Month": {
+							"displayName": "Last Month"
+						},
+						"This Month-to-Date": {
+							"displayName": "This Month-to-Date"
+						},
+						"Last Month-to-Date": {
+							"displayName": "Last Month-to-Date"
+						},
+						"Next Month": {
+							"displayName": "Next Month"
+						},
+						"This Fiscal Quarter": {
+							"displayName": "This Fiscal Quarter"
+						},
+						"Last Fiscal Quarter": {
+							"displayName": "Last Fiscal Quarter"
+						},
+						"This Fiscal Quarter-to-Date": {
+							"displayName": "This Fiscal Quarter-to-Date"
+						},
+						"Last Fiscal Quarter-to-Date": {
+							"displayName": "Last Fiscal Quarter-to-Date"
+						},
+						"Next Fiscal Quarter": {
+							"displayName": "Next Fiscal Quarter"
+						},
+						"This Fiscal Year": {
+							"displayName": "This Fiscal Year"
+						},
+						"Last Fiscal Year": {
+							"displayName": "Last Fiscal Year"
+						},
+						"This Fiscal Year-to-Date": {
+							"displayName": "This Fiscal Year-to-Date"
+						},
+						"Last Fiscal Year-to-Date": {
+							"displayName": "Last Fiscal Year-to-Date"
+						},
+						"Next Fiscal Year": {
+							"displayName": "Next Fiscal Year"
+						}
+					}
+				},
+				"dateRangeCreationCustom": {
+					"displayName": "Date Range for Creation Date (Custom)",
+					"placeholder": "Add Creation Date Range",
+					"options": {
+						"dateRangeCreationCustomProperties": {
+							"displayName": "Creation Date Range Properties",
+							"options": {
+								"start_createdate": {
+									"displayName": "Start Creation Date",
+									"description": "Start date of the account creation date range to filter results by"
+								},
+								"end_createdate": {
+									"displayName": "End Creation Date",
+									"description": "End date of the account creation date range to filter results by"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRangeCreationCustomProperties": {
+							"displayName": "Creation Date Range Properties",
+							"options": {
+								"start_createdate": {
+									"displayName": "Start Creation Date",
+									"description": "Start date of the account creation date range to filter results by"
+								},
+								"end_createdate": {
+									"displayName": "End Creation Date",
+									"description": "End date of the account creation date range to filter results by"
+								}
+							}
+						},
+						"dateRangeCreationCustom": {
+							"displayName": "Date Range for Creation Date (Custom)",
+							"placeholder": "Add Creation Date Range"
+						}
+					}
+				},
+				"createdate_macro": {
+					"displayName": "Date Range for Creation Date (Predefined)",
+					"description": "Predefined report account creation date range",
+					"options": {
+						"Today": {
+							"displayName": "Today"
+						},
+						"Yesterday": {
+							"displayName": "Yesterday"
+						},
+						"This Week": {
+							"displayName": "This Week"
+						},
+						"Last Week": {
+							"displayName": "Last Week"
+						},
+						"This Week-to-Date": {
+							"displayName": "This Week-to-Date"
+						},
+						"Last Week-to-Date": {
+							"displayName": "Last Week-to-Date"
+						},
+						"Next Week": {
+							"displayName": "Next Week"
+						},
+						"Next 4 Weeks": {
+							"displayName": "Next 4 Weeks"
+						},
+						"This Month": {
+							"displayName": "This Month"
+						},
+						"Last Month": {
+							"displayName": "Last Month"
+						},
+						"This Month-to-Date": {
+							"displayName": "This Month-to-Date"
+						},
+						"Last Month-to-Date": {
+							"displayName": "Last Month-to-Date"
+						},
+						"Next Month": {
+							"displayName": "Next Month"
+						},
+						"This Fiscal Quarter": {
+							"displayName": "This Fiscal Quarter"
+						},
+						"Last Fiscal Quarter": {
+							"displayName": "Last Fiscal Quarter"
+						},
+						"This Fiscal Quarter-to-Date": {
+							"displayName": "This Fiscal Quarter-to-Date"
+						},
+						"Last Fiscal Quarter-to-Date": {
+							"displayName": "Last Fiscal Quarter-to-Date"
+						},
+						"Next Fiscal Quarter": {
+							"displayName": "Next Fiscal Quarter"
+						},
+						"This Fiscal Year": {
+							"displayName": "This Fiscal Year"
+						},
+						"Last Fiscal Year": {
+							"displayName": "Last Fiscal Year"
+						},
+						"This Fiscal Year-to-Date": {
+							"displayName": "This Fiscal Year-to-Date"
+						},
+						"Last Fiscal Year-to-Date": {
+							"displayName": "Last Fiscal Year-to-Date"
+						},
+						"Next Fiscal Year": {
+							"displayName": "Next Fiscal Year"
+						}
+					}
+				},
+				"dateRangeDueCustom": {
+					"displayName": "Date Range for Due Date (Custom)",
+					"placeholder": "Add Due Date Range",
+					"options": {
+						"dateRangeDueCustomProperties": {
+							"displayName": "Due Date Range Properties",
+							"options": {
+								"start_duedate": {
+									"displayName": "Start Due Date",
+									"description": "Start date of the due date range to filter results by"
+								},
+								"end_duedate": {
+									"displayName": "End Due Date",
+									"description": "End date of the due date range to filter results by"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRangeDueCustomProperties": {
+							"displayName": "Due Date Range Properties",
+							"options": {
+								"start_duedate": {
+									"displayName": "Start Due Date",
+									"description": "Start date of the due date range to filter results by"
+								},
+								"end_duedate": {
+									"displayName": "End Due Date",
+									"description": "End date of the due date range to filter results by"
+								}
+							}
+						},
+						"dateRangeDueCustom": {
+							"displayName": "Date Range for Due Date (Custom)",
+							"placeholder": "Add Due Date Range"
+						}
+					}
+				},
+				"duedate_macro": {
+					"displayName": "Date Range for Due Date (Predefined)",
+					"description": "Predefined due date range to filter results by",
+					"options": {
+						"Today": {
+							"displayName": "Today"
+						},
+						"Yesterday": {
+							"displayName": "Yesterday"
+						},
+						"This Week": {
+							"displayName": "This Week"
+						},
+						"Last Week": {
+							"displayName": "Last Week"
+						},
+						"This Week-to-Date": {
+							"displayName": "This Week-to-Date"
+						},
+						"Last Week-to-Date": {
+							"displayName": "Last Week-to-Date"
+						},
+						"Next Week": {
+							"displayName": "Next Week"
+						},
+						"Next 4 Weeks": {
+							"displayName": "Next 4 Weeks"
+						},
+						"This Month": {
+							"displayName": "This Month"
+						},
+						"Last Month": {
+							"displayName": "Last Month"
+						},
+						"This Month-to-Date": {
+							"displayName": "This Month-to-Date"
+						},
+						"Last Month-to-Date": {
+							"displayName": "Last Month-to-Date"
+						},
+						"Next Month": {
+							"displayName": "Next Month"
+						},
+						"This Fiscal Quarter": {
+							"displayName": "This Fiscal Quarter"
+						},
+						"Last Fiscal Quarter": {
+							"displayName": "Last Fiscal Quarter"
+						},
+						"This Fiscal Quarter-to-Date": {
+							"displayName": "This Fiscal Quarter-to-Date"
+						},
+						"Last Fiscal Quarter-to-Date": {
+							"displayName": "Last Fiscal Quarter-to-Date"
+						},
+						"Next Fiscal Quarter": {
+							"displayName": "Next Fiscal Quarter"
+						},
+						"This Fiscal Year": {
+							"displayName": "This Fiscal Year"
+						},
+						"Last Fiscal Year": {
+							"displayName": "Last Fiscal Year"
+						},
+						"This Fiscal Year-to-Date": {
+							"displayName": "This Fiscal Year-to-Date"
+						},
+						"Last Fiscal Year-to-Date": {
+							"displayName": "Last Fiscal Year-to-Date"
+						},
+						"Next Fiscal Year": {
+							"displayName": "Next Fiscal Year"
+						}
+					}
+				},
+				"dateRangeModificationCustom": {
+					"displayName": "Date Range for Modification Date (Custom)",
+					"placeholder": "Add Modification Date Range",
+					"options": {
+						"dateRangeModificationCustomProperties": {
+							"displayName": "Modification Date Range Properties",
+							"options": {
+								"start_moddate": {
+									"displayName": "Start Modification Date",
+									"description": "Start date of the account modification date range to filter results by"
+								},
+								"end_moddate": {
+									"displayName": "End Modification Date",
+									"description": "End date of the account modification date range to filter results by"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRangeModificationCustomProperties": {
+							"displayName": "Modification Date Range Properties",
+							"options": {
+								"start_moddate": {
+									"displayName": "Start Modification Date",
+									"description": "Start date of the account modification date range to filter results by"
+								},
+								"end_moddate": {
+									"displayName": "End Modification Date",
+									"description": "End date of the account modification date range to filter results by"
+								}
+							}
+						},
+						"dateRangeModificationCustom": {
+							"displayName": "Date Range for Modification Date (Custom)",
+							"placeholder": "Add Modification Date Range"
+						}
+					}
+				},
+				"moddate_macro": {
+					"displayName": "Date Range for Modification Date (Predefined)",
+					"description": "Predefined account modifiction date range to filter results by",
+					"options": {
+						"Today": {
+							"displayName": "Today"
+						},
+						"Yesterday": {
+							"displayName": "Yesterday"
+						},
+						"This Week": {
+							"displayName": "This Week"
+						},
+						"Last Week": {
+							"displayName": "Last Week"
+						},
+						"This Week-to-Date": {
+							"displayName": "This Week-to-Date"
+						},
+						"Last Week-to-Date": {
+							"displayName": "Last Week-to-Date"
+						},
+						"Next Week": {
+							"displayName": "Next Week"
+						},
+						"Next 4 Weeks": {
+							"displayName": "Next 4 Weeks"
+						},
+						"This Month": {
+							"displayName": "This Month"
+						},
+						"Last Month": {
+							"displayName": "Last Month"
+						},
+						"This Month-to-Date": {
+							"displayName": "This Month-to-Date"
+						},
+						"Last Month-to-Date": {
+							"displayName": "Last Month-to-Date"
+						},
+						"Next Month": {
+							"displayName": "Next Month"
+						},
+						"This Fiscal Quarter": {
+							"displayName": "This Fiscal Quarter"
+						},
+						"Last Fiscal Quarter": {
+							"displayName": "Last Fiscal Quarter"
+						},
+						"This Fiscal Quarter-to-Date": {
+							"displayName": "This Fiscal Quarter-to-Date"
+						},
+						"Last Fiscal Quarter-to-Date": {
+							"displayName": "Last Fiscal Quarter-to-Date"
+						},
+						"Next Fiscal Quarter": {
+							"displayName": "Next Fiscal Quarter"
+						},
+						"This Fiscal Year": {
+							"displayName": "This Fiscal Year"
+						},
+						"Last Fiscal Year": {
+							"displayName": "Last Fiscal Year"
+						},
+						"This Fiscal Year-to-Date": {
+							"displayName": "This Fiscal Year-to-Date"
+						},
+						"Last Fiscal Year-to-Date": {
+							"displayName": "Last Fiscal Year-to-Date"
+						},
+						"Next Fiscal Year": {
+							"displayName": "Next Fiscal Year"
+						}
+					}
+				},
+				"department": {
+					"displayName": "Department Names or IDs",
+					"description": "Department to filter results by. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"docnum": {
+					"displayName": "Document Number",
+					"description": "Transaction document number to filter results by"
+				},
+				"group_by": {
+					"displayName": "Group By",
+					"description": "Transaction field to group results by",
+					"options": {
+						"Account": {
+							"displayName": "Account"
+						},
+						"Customer": {
+							"displayName": "Customer"
+						},
+						"Day": {
+							"displayName": "Day"
+						},
+						"Employee": {
+							"displayName": "Employee"
+						},
+						"Location": {
+							"displayName": "Location"
+						},
+						"Month": {
+							"displayName": "Month"
+						},
+						"Name": {
+							"displayName": "Name"
+						},
+						"None": {
+							"displayName": "None"
+						},
+						"Payment Method": {
+							"displayName": "Payment Method"
+						},
+						"Quarter": {
+							"displayName": "Quarter"
+						},
+						"Transaction Type": {
+							"displayName": "Transaction Type"
+						},
+						"Vendor": {
+							"displayName": "Vendor"
+						},
+						"Week": {
+							"displayName": "Week"
+						},
+						"Year": {
+							"displayName": "Year"
+						}
+					}
+				},
+				"memo": {
+					"displayName": "Memo Names or IDs",
+					"description": "Memo to filter results by. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"payment_Method": {
+					"displayName": "Payment Method",
+					"description": "Payment method to filter results by",
+					"options": {
+						"American Express": {
+							"displayName": "American Express"
+						},
+						"Cash": {
+							"displayName": "Cash"
+						},
+						"Check": {
+							"displayName": "Check"
+						},
+						"Dinners Club": {
+							"displayName": "Dinners Club"
+						},
+						"Discover": {
+							"displayName": "Discover"
+						},
+						"Master Card": {
+							"displayName": "Master Card"
+						},
+						"Visa": {
+							"displayName": "Visa"
+						}
+					}
+				},
+				"printed": {
+					"displayName": "Printed Status",
+					"description": "Printed state to filter results by",
+					"options": {
+						"Printed": {
+							"displayName": "Printed"
+						},
+						"To_be_printed": {
+							"displayName": "To Be Printed"
+						}
+					}
+				},
+				"qzurl": {
+					"displayName": "Quick Zoom URL",
+					"description": "Whether Quick Zoom URL information should be generated"
+				},
+				"sort_by": {
+					"displayName": "Sort By",
+					"description": "Column to sort results by",
+					"options": {
+						"account_name": {
+							"displayName": "Account Name"
+						},
+						"create_by": {
+							"displayName": "Created By"
+						},
+						"create_date": {
+							"displayName": "Create Date"
+						},
+						"cust_msg": {
+							"displayName": "Customer Message"
+						},
+						"dept_name": {
+							"displayName": "Department Name"
+						},
+						"due_date": {
+							"displayName": "Due Date"
+						},
+						"doc_num": {
+							"displayName": "Document Number"
+						},
+						"inv_date": {
+							"displayName": "Invoice Date"
+						},
+						"is_ap_paid": {
+							"displayName": "Is Account Payable Paid"
+						},
+						"is_cleared": {
+							"displayName": "Is Cleared"
+						},
+						"last_mod_by": {
+							"displayName": "Last Modified By"
+						},
+						"memo": {
+							"displayName": "Memo"
+						},
+						"name": {
+							"displayName": "Name"
+						},
+						"other_account": {
+							"displayName": "Other Account"
+						},
+						"pmt_mthod": {
+							"displayName": "Payment Method"
+						},
+						"is_no_post": {
+							"displayName": "Posting"
+						},
+						"printed": {
+							"displayName": "Printed Status"
+						},
+						"sales_cust1": {
+							"displayName": "Sales Customer 1"
+						},
+						"sales_cust2": {
+							"displayName": "Sales Customer 2"
+						},
+						"sales_cust3": {
+							"displayName": "Sales Customer 3"
+						},
+						"term_name": {
+							"displayName": "Term Name"
+						},
+						"tracking_num": {
+							"displayName": "Tracking Number"
+						},
+						"tx_date": {
+							"displayName": "Transaction Date"
+						},
+						"txn_type": {
+							"displayName": "Transaction Type"
+						}
+					}
+				},
+				"sort_order": {
+					"displayName": "Sort Order",
+					"options": {
+						"Ascend": {
+							"displayName": "Ascend"
+						},
+						"Descend": {
+							"displayName": "Descend"
+						}
+					}
+				},
+				"source_account_type": {
+					"displayName": "Source Account Type",
+					"description": "Account type to filter results by",
+					"options": {
+						"AccountsPayable": {
+							"displayName": "Accounts Payable"
+						},
+						"AccountsReceivable": {
+							"displayName": "Accounts Receivable"
+						},
+						"Bank": {
+							"displayName": "Bank"
+						},
+						"CostOfGoodsSold": {
+							"displayName": "Cost Of Goods Sold"
+						},
+						"CreditCard": {
+							"displayName": "Credit Card"
+						},
+						"Equity": {
+							"displayName": "Equity"
+						},
+						"Expense": {
+							"displayName": "Expense"
+						},
+						"FixedAsset": {
+							"displayName": "Fixed Asset"
+						},
+						"Income": {
+							"displayName": "Income"
+						},
+						"LongTermLiability": {
+							"displayName": "Long Term Liability"
+						},
+						"NonPosting": {
+							"displayName": "Non Posting"
+						},
+						"OtherAsset": {
+							"displayName": "Other Asset"
+						},
+						"OtherCurrentAsset": {
+							"displayName": "Other Current Asset"
+						},
+						"OtherCurrentLiability": {
+							"displayName": "Other Current Liability"
+						},
+						"OtherExpense": {
+							"displayName": "Other Expense"
+						},
+						"OtherIncome": {
+							"displayName": "Other Income"
+						}
+					}
+				},
+				"term": {
+					"displayName": "Term Names or IDs",
+					"description": "Term to filter results by. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"bothamount": {
+					"displayName": "Transaction Amount",
+					"description": "Monetary amount to filter results by"
+				},
+				"transaction_type": {
+					"displayName": "Transaction Type",
+					"description": "Transaction type to filter results by",
+					"options": {
+						"Bill": {
+							"displayName": "Bill"
+						},
+						"BillPaymentCheck": {
+							"displayName": "Bill Payment Check"
+						},
+						"BillPaymentCreditCard": {
+							"displayName": "Bill Payment Credit Card"
+						},
+						"BillableCharge": {
+							"displayName": "Billable Charge"
+						},
+						"CashPurchase": {
+							"displayName": "Cash Purchase"
+						},
+						"Charge": {
+							"displayName": "Charge"
+						},
+						"Check": {
+							"displayName": "Check"
+						},
+						"Credit": {
+							"displayName": "Credit"
+						},
+						"CreditCardCharge": {
+							"displayName": "Credit Card Charge"
+						},
+						"CreditCardCredit": {
+							"displayName": "Credit Card Credit"
+						},
+						"CreditMemo": {
+							"displayName": "Credit Memo"
+						},
+						"CreditRefund": {
+							"displayName": "Credit Refund"
+						},
+						"Deposit": {
+							"displayName": "Deposit"
+						},
+						"Estimate": {
+							"displayName": "Estimate"
+						},
+						"GlobalTaxAdjustment": {
+							"displayName": "Global Tax Adjustment"
+						},
+						"GlobalTaxPayment": {
+							"displayName": "Global Tax Payment"
+						},
+						"InventoryQuantityAdjustment": {
+							"displayName": "Inventory Quantity Adjustment"
+						},
+						"Invoice": {
+							"displayName": "Invoice"
+						},
+						"JournalEntry": {
+							"displayName": "Journal Entry"
+						},
+						"PurchaseOrder": {
+							"displayName": "Purchase Order"
+						},
+						"ReceivePayment": {
+							"displayName": "Receive Payment"
+						},
+						"SalesReceipt": {
+							"displayName": "Sales Receipt"
+						},
+						"Service Tax Defer": {
+							"displayName": "Service  Tax  Defer"
+						},
+						"Service Tax Gross Adjustment": {
+							"displayName": "Service  Tax  Gross  Adjustment"
+						},
+						"Service Tax Partial Utilisation": {
+							"displayName": "Service  Tax  Partial  Utilisation"
+						},
+						"Service Tax Refund": {
+							"displayName": "Service  Tax  Refund"
+						},
+						"Service Tax Reversal": {
+							"displayName": "Service  Tax  Reversal"
+						},
+						"Statement": {
+							"displayName": "Statement"
+						},
+						"TimeActivity": {
+							"displayName": "Time Activity"
+						},
+						"Transfer": {
+							"displayName": "Transfer"
+						},
+						"VendorCredit": {
+							"displayName": "Vendor Credit"
+						}
+					}
+				},
+				"vendor": {
+					"displayName": "Vendor Names or IDs",
+					"description": "Vendor to filter results by. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"APAccountRef": {
+					"displayName": "Accounts Payable Account",
+					"description": "Accounts Payable account to which the bill will be credited",
+					"placeholder": "Add APA Fields",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"APAccountRef": {
+							"displayName": "Accounts Payable Account",
+							"placeholder": "Add APA Fields"
+						}
+					}
+				},
+				"DueDate": {
+					"displayName": "Due Date",
+					"description": "Date when the payment of the transaction is due"
+				},
+				"SalesTermRef": {
+					"displayName": "Sales Term",
+					"description": "Sales term associated with the transaction",
+					"placeholder": "Add Sales Term Fields",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"SalesTermRef": {
+							"displayName": "Sales Term",
+							"placeholder": "Add Sales Term Fields"
+						}
+					}
+				},
+				"TxnDate": {
+					"displayName": "Transaction Date",
+					"description": "Date when the transaction occurred"
+				},
+				"Active": {
+					"displayName": "Active",
+					"description": "Whether the employee is currently enabled for use by QuickBooks"
+				},
+				"Balance": {
+					"displayName": "Balance",
+					"description": "The balance reflecting any payments made against the transaction"
+				},
+				"BalanceWithJobs": {
+					"displayName": "Balance With Jobs",
+					"description": "Cumulative open balance amount for the customer (or job) and all its sub-jobs"
+				},
+				"BillAddr": {
+					"displayName": "Billing Address",
+					"placeholder": "Add Billing Address Fields",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"City": {
+									"displayName": "City"
+								},
+								"Line1": {
+									"displayName": "Line 1"
+								},
+								"PostalCode": {
+									"displayName": "Postal Code"
+								},
+								"Lat": {
+									"displayName": "Latitude"
+								},
+								"Long": {
+									"displayName": "Longitude"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "Country Subdivision Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"City": {
+									"displayName": "City"
+								},
+								"Line1": {
+									"displayName": "Line 1"
+								},
+								"PostalCode": {
+									"displayName": "Postal Code"
+								},
+								"Lat": {
+									"displayName": "Latitude"
+								},
+								"Long": {
+									"displayName": "Longitude"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "Country Subdivision Code"
+								}
+							}
+						},
+						"BillAddr": {
+							"displayName": "Billing Address",
+							"placeholder": "Add Billing Address Fields"
+						}
+					}
+				},
+				"BillWithParent": {
+					"displayName": "Bill With Parent",
+					"description": "Whether to bill this customer together with its parent"
+				},
+				"CompanyName": {
+					"displayName": "Company Name"
+				},
+				"FamilyName": {
+					"displayName": "Family Name"
+				},
+				"FullyQualifiedName": {
+					"displayName": "Fully Qualified Name"
+				},
+				"GivenName": {
+					"displayName": "Given Name"
+				},
+				"PreferredDeliveryMethod": {
+					"displayName": "Preferred Delivery Method",
+					"options": {
+						"Print": {
+							"displayName": "Print"
+						},
+						"Email": {
+							"displayName": "Email"
+						},
+						"None": {
+							"displayName": "None"
+						}
+					}
+				},
+				"PrimaryEmailAddr": {
+					"displayName": "Primary Email Address"
+				},
+				"PrimaryPhone": {
+					"displayName": "Primary Phone"
+				},
+				"PrintOnCheckName": {
+					"displayName": "Print-On-Check Name",
+					"description": "Name of the vendor as printed on a check"
+				},
+				"Taxable": {
+					"displayName": "Taxable",
+					"description": "Whether transactions for this customer are taxable"
+				},
+				"BillableTime": {
+					"displayName": "Billable Time"
+				},
+				"DisplayName": {
+					"displayName": "Display Name"
+				},
+				"SSN": {
+					"displayName": "Social Security Number"
+				},
+				"ApplyTaxAfterDiscount": {
+					"displayName": "Apply Tax After Discount"
+				},
+				"BillEmail": {
+					"displayName": "Billing Email",
+					"description": "E-mail address to which the invoice will be sent"
+				},
+				"CustomFields": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Fields",
+					"multipleValueButtonText": "Add Custom Fields",
+					"options": {
+						"Field": {
+							"displayName": "Field",
+							"options": {
+								"DefinitionId": {
+									"displayName": "Field Definition Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"StringValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						}
+					},
+					"values": {
+						"Field": {
+							"displayName": "Field",
+							"options": {
+								"DefinitionId": {
+									"displayName": "Field Definition Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"StringValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						},
+						"CustomFields": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Fields"
+						}
+					}
+				},
+				"CustomerMemo": {
+					"displayName": "Customer Memo",
+					"description": "User-entered message to the customer. This message is visible to end user on their transactions."
+				},
+				"DocNumber": {
+					"displayName": "Document Number",
+					"description": "Reference number for the transaction"
+				},
+				"EmailStatus": {
+					"displayName": "Email Status",
+					"options": {
+						"NotSet": {
+							"displayName": "Not Set"
+						},
+						"NeedToSend": {
+							"displayName": "Need To Send"
+						},
+						"EmailSent": {
+							"displayName": "Email Sent"
+						}
+					}
+				},
+				"PrintStatus": {
+					"displayName": "Print Status",
+					"options": {
+						"NotSet": {
+							"displayName": "Not Set"
+						},
+						"NeedToPrint": {
+							"displayName": "Need To Print"
+						},
+						"PrintComplete": {
+							"displayName": "PrintComplete"
+						}
+					}
+				},
+				"ShipAddr": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Shippping Address Fields",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"City": {
+									"displayName": "City"
+								},
+								"Line1": {
+									"displayName": "Line 1"
+								},
+								"PostalCode": {
+									"displayName": "Postal Code"
+								},
+								"Lat": {
+									"displayName": "Latitude"
+								},
+								"Long": {
+									"displayName": "Longitude"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "Country Subdivision Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"City": {
+									"displayName": "City"
+								},
+								"Line1": {
+									"displayName": "Line 1"
+								},
+								"PostalCode": {
+									"displayName": "Postal Code"
+								},
+								"Lat": {
+									"displayName": "Latitude"
+								},
+								"Long": {
+									"displayName": "Longitude"
+								},
+								"CountrySubDivisionCode": {
+									"displayName": "Country Subdivision Code"
+								}
+							}
+						},
+						"ShipAddr": {
+							"displayName": "Shipping Address",
+							"placeholder": "Add Shippping Address Fields"
+						}
+					}
+				},
+				"AcctNum": {
+					"displayName": "Account Number"
+				},
+				"Vendor1099": {
+					"displayName": "Vendor 1099",
+					"description": "Whether the vendor is an independent contractor, given a 1099-MISC form at the end of the year"
+				}
+			}
+		},
+		"displayName": {
+			"displayName": "Display Name",
+			"description": "The display name of the vendor to create"
+		},
+		"customerId": {
+			"displayName": "Customer ID",
+			"description": "The ID of the customer to update"
+		},
+		"FamilyName": {
+			"displayName": "Family Name"
+		},
+		"GivenName": {
+			"displayName": "Given Name"
+		},
+		"employeeId": {
+			"displayName": "Employee ID",
+			"description": "The ID of the employee to update"
+		},
+		"CustomerRef": {
+			"displayName": "For Customer Name or ID",
+			"description": "The ID of the customer who the payment is for. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"estimateId": {
+			"displayName": "Estimate ID",
+			"description": "The ID of the estimate to update"
+		},
+		"download": {
+			"displayName": "Download",
+			"description": "Whether to download estimate as PDF file"
+		},
+		"binaryProperty": {
+			"displayName": "Put Output File in Field"
+		},
+		"fileName": {
+			"displayName": "File Name",
+			"description": "Name of the file that will be downloaded",
+			"placeholder": "data.pdf"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email of the recipient of the payment",
+			"placeholder": "name@email.com"
+		},
+		"invoiceId": {
+			"displayName": "Invoice ID",
+			"description": "The ID of the invoice to update"
+		},
+		"itemId": {
+			"displayName": "Item ID",
+			"description": "The ID of the item to retrieve"
+		},
+		"TotalAmt": {
+			"displayName": "Total Amount",
+			"description": "Total amount of the transaction"
+		},
+		"paymentId": {
+			"displayName": "Payment ID",
+			"description": "The ID of the payment to update"
+		},
+		"purchaseId": {
+			"displayName": "Purchase ID",
+			"description": "The ID of the purchase to retrieve"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"vendorId": {
+			"displayName": "Vendor ID",
+			"description": "The ID of the vendor to update"
+		}
+	}
+}

@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "Help Scout 触发器",
+		"description": "当 Help Scout 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件"
+		}
+	}
+}

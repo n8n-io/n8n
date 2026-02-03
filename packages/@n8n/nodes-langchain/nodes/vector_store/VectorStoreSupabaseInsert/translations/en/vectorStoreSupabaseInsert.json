@@ -1,0 +1,21 @@
+{
+	"header": {
+		"displayName": "Supabase: Insert",
+		"description": "Insert data into Supabase Vector Store index [https://supabase.com/docs/guides/ai/langchain]"
+	},
+	"nodeView": {
+		"setupNotice": {
+			"displayName": "Please refer to the <a href=\"https://supabase.com/docs/guides/ai/langchain\" target=\"_blank\">Supabase documentation</a> for more information on how to setup your database as a Vector Store."
+		},
+		"tableName": {
+			"displayName": "Table Name"
+		},
+		"queryName": {
+			"displayName": "Query Name",
+			"description": "Name of the query to use for matching documents"
+		},
+		"notice": {
+			"displayName": "Specify the document to load in the document loader sub-node"
+		}
+	}
+}

@@ -1,0 +1,34 @@
+{
+	"header": {
+		"displayName": "Gumroad Trigger",
+		"description": "Handle Gumroad events via webhooks"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"description": "The resource is gonna fire the event",
+			"options": {
+				"cancellation": {
+					"displayName": "Cancellation",
+					"description": "When subscribed to this resource, you will be notified of cancellations of the user's subscribers"
+				},
+				"dispute": {
+					"displayName": "Dispute",
+					"description": "When subscribed to this resource, you will be notified of the disputes raised against user's sales"
+				},
+				"dispute_won": {
+					"displayName": "Dispute Won",
+					"description": "When subscribed to this resource, you will be notified of the sale disputes won"
+				},
+				"refund": {
+					"displayName": "Refund",
+					"description": "When subscribed to this resource, you will be notified of refunds to the user's sales"
+				},
+				"sale": {
+					"displayName": "Sale",
+					"description": "When subscribed to this resource, you will be notified of the user's sales"
+				}
+			}
+		}
+	}
+}

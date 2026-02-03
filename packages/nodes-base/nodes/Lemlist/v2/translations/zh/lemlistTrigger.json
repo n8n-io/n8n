@@ -1,0 +1,171 @@
+{
+	"header": {
+		"displayName": "Lemlist触发器",
+		"description": "通过Webhook处理Lemlist事件"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"*": {
+					"displayName": "任何时候任何事件被触发（通配符事件）"
+				},
+				"contacted": {
+					"displayName": "已联系"
+				},
+				"hooked": {
+					"displayName": "已连接"
+				},
+				"attracted": {
+					"displayName": "已吸引"
+				},
+				"warmed": {
+					"displayName": "已预热"
+				},
+				"interested": {
+					"displayName": "感兴趣"
+				},
+				"skipped": {
+					"displayName": "已跳过"
+				},
+				"notInterested": {
+					"displayName": "不感兴趣"
+				},
+				"emailsSent": {
+					"displayName": "已发送邮件"
+				},
+				"emailsOpened": {
+					"displayName": "已打开邮件"
+				},
+				"emailsClicked": {
+					"displayName": "邮件点击"
+				},
+				"emailsReplied": {
+					"displayName": "已回复邮件"
+				},
+				"emailsBounced": {
+					"displayName": "邮件退回"
+				},
+				"emailsSendFailed": {
+					"displayName": "邮件发送失败"
+				},
+				"emailsFailed": {
+					"displayName": "邮件发送失败"
+				},
+				"emailsUnsubscribed": {
+					"displayName": "邮件退订"
+				},
+				"emailsInterested": {
+					"displayName": "感兴趣的邮件"
+				},
+				"emailsNotInterested": {
+					"displayName": "不感兴趣的邮件"
+				},
+				"opportunitiesDone": {
+					"displayName": "机会已完成"
+				},
+				"aircallCreated": {
+					"displayName": "Aircall 已创建"
+				},
+				"aircallEnded": {
+					"displayName": "Aircall通话结束"
+				},
+				"aircallDone": {
+					"displayName": "Aircall 已完成"
+				},
+				"aircallInterested": {
+					"displayName": "Aircall 感兴趣"
+				},
+				"aircallNotInterested": {
+					"displayName": "Aircall 不感兴趣"
+				},
+				"apiDone": {
+					"displayName": "API完成"
+				},
+				"apiInterested": {
+					"displayName": "API 感兴趣"
+				},
+				"apiNotInterested": {
+					"displayName": "API不感兴趣"
+				},
+				"apiFailed": {
+					"displayName": "API 失败"
+				},
+				"linkedinVisitDone": {
+					"displayName": "LinkedIn访问完成"
+				},
+				"linkedinVisitFailed": {
+					"displayName": "LinkedIn 访问失败"
+				},
+				"linkedinInviteDone": {
+					"displayName": "LinkedIn 邀请完成"
+				},
+				"linkedinInviteFailed": {
+					"displayName": "LinkedIn 邀请发送失败"
+				},
+				"linkedinInviteAccepted": {
+					"displayName": "LinkedIn 邀请已接受"
+				},
+				"linkedinReplied": {
+					"displayName": "LinkedIn 已回复"
+				},
+				"linkedinSent": {
+					"displayName": "LinkedIn 已发送"
+				},
+				"linkedinVoiceNoteDone": {
+					"displayName": "LinkedIn语音笔记完成"
+				},
+				"linkedinVoiceNoteFailed": {
+					"displayName": "LinkedIn语音笔记发送失败"
+				},
+				"linkedinInterested": {
+					"displayName": "LinkedIn 感兴趣"
+				},
+				"linkedinNotInterested": {
+					"displayName": "LinkedIn 不感兴趣"
+				},
+				"linkedinSendFailed": {
+					"displayName": "LinkedIn 发送失败"
+				},
+				"manualInterested": {
+					"displayName": "手动感兴趣"
+				},
+				"manualNotInterested": {
+					"displayName": "手动不感兴趣"
+				},
+				"paused": {
+					"displayName": "已暂停"
+				},
+				"resumed": {
+					"displayName": "已恢复"
+				},
+				"customDomainErrors": {
+					"displayName": "自定义域名错误"
+				},
+				"connectionIssue": {
+					"displayName": "连接问题"
+				},
+				"sendLimitReached": {
+					"displayName": "发送限制已达"
+				},
+				"lemwarmPaused": {
+					"displayName": "Lemwarm 已暂停"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"campaignId": {
+					"displayName": "活动名称或ID",
+					"description": "我们将仅为此campaignId调用此钩子。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"isFirst": {
+					"displayName": "是否首次",
+					"description": "是否仅在此活动首次发生时调用此钩子"
+				}
+			}
+		}
+	}
+}

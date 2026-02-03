@@ -1,0 +1,234 @@
+{
+	"header": {
+		"displayName": "SeaTable",
+		"description": "Consume the SeaTable API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"row": {
+					"displayName": "Row"
+				},
+				"base": {
+					"displayName": "Base"
+				},
+				"link": {
+					"displayName": "Link"
+				},
+				"asset": {
+					"displayName": "Asset"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new row"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a link between two rows from a link column"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get the content of a row"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "List all links of a specific row"
+				},
+				"lock": {
+					"displayName": "Lock",
+					"description": "Lock a row to prevent further changes"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search one or multiple rows"
+				},
+				"unlock": {
+					"displayName": "Unlock",
+					"description": "Remove the lock from a row"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update the content of a row"
+				},
+				"snapshot": {
+					"displayName": "Snapshot",
+					"description": "Create a snapshot of the base"
+				},
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "Get the complete metadata of the base"
+				},
+				"collaborator": {
+					"displayName": "Collaborator",
+					"description": "Get the username from the email or name of a collaborator"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Create a link between two rows in a link column"
+				},
+				"getPublicURL": {
+					"displayName": "Public URL",
+					"description": "Get the public URL from asset path"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Add a file/image to an existing row"
+				}
+			}
+		},
+		"tableName": {
+			"displayName": "Table Name",
+			"description": "Choose from the list, or specify a name using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>",
+			"placeholder": "Select a table"
+		},
+		"rowId": {
+			"displayName": "Row ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"fieldsToSend": {
+			"displayName": "Data to Send",
+			"description": "Whether to insert the input data this node receives in the new row",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties match destination column names"
+				},
+				"defineBelow": {
+					"displayName": "Define Below for Each Column",
+					"description": "Set the value for each destination column"
+				}
+			}
+		},
+		"apply_default": {
+			"displayName": "Apply Column Default Values",
+			"description": "Whether to use the column default values to populate new rows during creation (only available for normal backend)"
+		},
+		"notice": {
+			"displayName": "Hint: Link, files, images or digital signatures have to be added separately."
+		},
+		"inputsToIgnore": {
+			"displayName": "Inputs to Ignore",
+			"description": "List of input properties to avoid sending, separated by commas. Leave empty to send all properties.",
+			"placeholder": "Enter properties..."
+		},
+		"columnsUi": {
+			"displayName": "Columns to Send",
+			"description": "Add destination column with its value. Provide the value in this way:Date: YYYY-MM-DD or YYYY-MM-DD hh:mmDuration: time in secondsCheckbox: true, on or 1Multi-Select: comma-separated list.",
+			"placeholder": "Add Column",
+			"multipleValueButtonText": "Add Column to Send",
+			"options": {
+				"columnValues": {
+					"displayName": "Column",
+					"options": {
+						"columnName": {
+							"displayName": "Column Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"columnValue": {
+							"displayName": "Column Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"columnValues": {
+					"displayName": "Column",
+					"options": {
+						"columnName": {
+							"displayName": "Column Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"columnValue": {
+							"displayName": "Column Value"
+						}
+					}
+				},
+				"columnsUi": {
+					"displayName": "Columns to Send",
+					"placeholder": "Add Column"
+				}
+			}
+		},
+		"bigdata": {
+			"displayName": "Save to \"Big Data\" Backend",
+			"description": "Whether write to Big Data backend (true) or not (false). True requires the activation of the Big Data backend in the base."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"simple": {
+					"displayName": "Simplify",
+					"description": "Whether to return a simplified version of the response instead of the raw data"
+				},
+				"convert": {
+					"displayName": "Return Column Names",
+					"description": "Whether to return the column keys (false) or the column names (true)"
+				},
+				"insensitive": {
+					"displayName": "Case Insensitive Search",
+					"description": "Whether the search ignores case sensitivity (true). Otherwise, it distinguishes between uppercase and lowercase characters."
+				},
+				"wildcard": {
+					"displayName": "Activate Wildcard Search",
+					"description": "Whether the search only results perfect matches (true). Otherwise, it finds a row even if the search value is part of a string (false)."
+				},
+				"replace": {
+					"displayName": "Replace Existing File",
+					"description": "Whether to replace the existing asset with the same name (true). Otherwise, a new version with a different name (numeral in parentheses) will be uploaded (false)."
+				},
+				"append": {
+					"displayName": "Append to Column",
+					"description": "Whether to keep existing files/images in the column and append the new asset (true). Otherwise, the existing files/images are removed from the column (false)."
+				}
+			}
+		},
+		"viewName": {
+			"displayName": "View Name",
+			"description": "The name of SeaTable view to access, or specify by using an expression. Provide it in the way \"col.name:::col.type\"."
+		},
+		"searchColumn": {
+			"displayName": "Column Name or ID",
+			"description": "Select the column to be searched. Not all column types are supported for search. Choose from the list, or specify a name using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>."
+		},
+		"searchTerm": {
+			"displayName": "Search Term",
+			"description": "What to look for?"
+		},
+		"searchString": {
+			"displayName": "Name or email of the collaborator",
+			"description": "SeaTable identifies users with a unique username like 244b43hr6fy54bb4afa2c2cb7369d244@auth.local. Get this username from an email or the name of a collaborator.",
+			"placeholder": "Enter the name or the email or the collaborator"
+		},
+		"linkColumn": {
+			"displayName": "Link Column",
+			"description": "Choose from the list of specify the Link Column by using an expression. You have to provide it in the way \"column_name:::link_id:::other_table_id\"."
+		},
+		"linkColumnSourceId": {
+			"displayName": "Row ID From the Source Table",
+			"description": "Provide the row ID of table you selected"
+		},
+		"linkColumnTargetId": {
+			"displayName": "Row ID From the Target Table",
+			"description": "Provide the row ID of table you want to link"
+		},
+		"uploadColumn": {
+			"displayName": "Column Name",
+			"description": "Choose from the list, or specify the name using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"dataPropertyName": {
+			"displayName": "Property Name",
+			"description": "Name of the binary property which contains the data for the file to be written"
+		},
+		"assetPath": {
+			"displayName": "Asset Path",
+			"placeholder": "/images/2023-09/logo.png"
+		}
+	}
+}

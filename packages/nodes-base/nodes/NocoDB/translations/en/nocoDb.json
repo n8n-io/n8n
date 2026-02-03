@@ -1,0 +1,272 @@
+{
+	"header": {
+		"displayName": "NocoDB",
+		"description": "Read, update, write and delete data from NocoDB"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"nocoDbApiToken": {
+					"displayName": "API Token"
+				},
+				"nocoDb": {
+					"displayName": "User Token"
+				}
+			}
+		},
+		"version": {
+			"displayName": "API Version",
+			"options": {
+				"1": {
+					"displayName": "Before v0.90.0"
+				},
+				"2": {
+					"displayName": "v0.90.0 Onwards"
+				},
+				"3": {
+					"displayName": "v0.200.0 Onwards"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"row": {
+					"displayName": "Row"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a row"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a row"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a row"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many rows"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a row"
+				}
+			}
+		},
+		"workspaceId": {
+			"displayName": "Workspace Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"projectId": {
+			"displayName": "Project Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"table": {
+			"displayName": "Table",
+			"description": "The name of the table"
+		},
+		"primaryKey": {
+			"displayName": "Primary Key Type",
+			"options": {
+				"id": {
+					"displayName": "Default",
+					"description": "Default, added when table was created from UI by those options: Create new table / Import from Excel / Import from CSV"
+				},
+				"ncRecordId": {
+					"displayName": "Imported From Airtable",
+					"description": "Select if table was imported from Airtable"
+				},
+				"custom": {
+					"displayName": "Custom",
+					"description": "When connecting to existing external database as existing primary key field is retained as is, enter the name of the primary key field below"
+				}
+			}
+		},
+		"customPrimaryKey": {
+			"displayName": "Field Name"
+		},
+		"id": {
+			"displayName": "Row ID Value",
+			"description": "The value of the ID field"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"downloadAttachments": {
+			"displayName": "Download Attachments",
+			"description": "Whether the attachment fields define in 'Download Fields' will be downloaded"
+		},
+		"downloadFieldNames": {
+			"displayName": "Download Fields",
+			"description": "Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"viewId": {
+					"displayName": "View ID",
+					"description": "The select fields of the returned rows",
+					"placeholder": "View ID"
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "The select fields of the returned rows",
+					"placeholder": "Name"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The sorting rules for the returned rows",
+					"placeholder": "Add Sort Rule",
+					"multipleValueButtonText": "Add Sort Rule",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"field": {
+									"displayName": "Field",
+									"description": "Name of the field to sort on"
+								},
+								"direction": {
+									"displayName": "Direction",
+									"description": "The sort direction",
+									"options": {
+										"asc": {
+											"displayName": "ASC",
+											"description": "Sort in ascending order (small -> large)"
+										},
+										"desc": {
+											"displayName": "DESC",
+											"description": "Sort in descending order (large -> small)"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"field": {
+									"displayName": "Field",
+									"description": "Name of the field to sort on"
+								},
+								"direction": {
+									"displayName": "Direction",
+									"description": "The sort direction",
+									"options": {
+										"asc": {
+											"displayName": "ASC",
+											"description": "Sort in ascending order (small -> large)"
+										},
+										"desc": {
+											"displayName": "DESC",
+											"description": "Sort in descending order (large -> small)"
+										}
+									}
+								}
+							}
+						},
+						"sort": {
+							"displayName": "Sort",
+							"placeholder": "Add Sort Rule"
+						}
+					}
+				},
+				"where": {
+					"displayName": "Filter By Formula",
+					"description": "A formula used to filter rows",
+					"placeholder": "(name,like,example%)~or(name,eq,test)"
+				}
+			}
+		},
+		"dataToSend": {
+			"displayName": "Data to Send",
+			"description": "Whether to insert the input data this node receives in the new row",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties match destination column names"
+				},
+				"defineBelow": {
+					"displayName": "Define Below for Each Column",
+					"description": "Set the value for each destination column"
+				}
+			}
+		},
+		"info": {
+			"displayName": "This operation requires the primary key to be included for each row."
+		},
+		"inputsToIgnore": {
+			"displayName": "Inputs to Ignore",
+			"description": "List of input properties to avoid sending, separated by commas. Leave empty to send all properties.",
+			"placeholder": "Enter properties..."
+		},
+		"fieldsUi": {
+			"displayName": "Fields to Send",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field to Send",
+			"options": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name"
+						},
+						"binaryData": {
+							"displayName": "Is Binary File",
+							"description": "Whether the field data to set is binary and should be taken from a binary property"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						},
+						"binaryProperty": {
+							"displayName": "Take Input From Field",
+							"description": "The field containing the binary file data to be uploaded"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name"
+						},
+						"binaryData": {
+							"displayName": "Is Binary File",
+							"description": "Whether the field data to set is binary and should be taken from a binary property"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						},
+						"binaryProperty": {
+							"displayName": "Take Input From Field",
+							"description": "The field containing the binary file data to be uploaded"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "Fields to Send",
+					"placeholder": "Add Field"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,1610 @@
+{
+	"header": {
+		"displayName": "Freshservice",
+		"description": "使用Freshservice API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"agent": {
+					"displayName": "代理"
+				},
+				"agentGroup": {
+					"displayName": "代理组"
+				},
+				"agentRole": {
+					"displayName": "代理角色"
+				},
+				"announcement": {
+					"displayName": "公告"
+				},
+				"assetType": {
+					"displayName": "资产类型"
+				},
+				"change": {
+					"displayName": "更改"
+				},
+				"department": {
+					"displayName": "部门"
+				},
+				"location": {
+					"displayName": "位置"
+				},
+				"problem": {
+					"displayName": "问题"
+				},
+				"product": {
+					"displayName": "产品"
+				},
+				"release": {
+					"displayName": "发布"
+				},
+				"requester": {
+					"displayName": "请求者"
+				},
+				"requesterGroup": {
+					"displayName": "请求者组"
+				},
+				"software": {
+					"displayName": "软件"
+				},
+				"ticket": {
+					"displayName": "工单"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建工单"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除工单"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取工单"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个工单"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新工单"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com",
+			"description": "工单创建者的邮箱地址"
+		},
+		"firstName": {
+			"displayName": "名字"
+		},
+		"roles": {
+			"displayName": "角色",
+			"description": "分配给代理的角色",
+			"placeholder": "添加角色",
+			"multipleValueButtonText": "添加角色",
+			"options": {
+				"roleProperties": {
+					"displayName": "角色属性",
+					"options": {
+						"role": {
+							"displayName": "角色名称或ID",
+							"description": "分配给代理的角色名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"assignment_scope": {
+							"displayName": "范围",
+							"description": "代理可使用角色授予权限的范围",
+							"options": {
+								"entire_helpdesk": {
+									"displayName": "整个帮助台"
+								},
+								"member_groups": {
+									"displayName": "成员分组"
+								},
+								"specified_groups": {
+									"displayName": "指定分组"
+								},
+								"assigned_items": {
+									"displayName": "已分配项目"
+								}
+							}
+						},
+						"groups": {
+							"displayName": "组名称或ID",
+							"description": "角色授予的权限所应用的组。仅当范围为指定组时需要 - 否则忽略。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						}
+					}
+				}
+			},
+			"values": {
+				"roleProperties": {
+					"displayName": "角色属性",
+					"options": {
+						"role": {
+							"displayName": "角色名称或ID",
+							"description": "分配给代理的角色名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"assignment_scope": {
+							"displayName": "范围",
+							"description": "代理可使用角色授予权限的范围",
+							"options": {
+								"entire_helpdesk": {
+									"displayName": "整个帮助台"
+								},
+								"member_groups": {
+									"displayName": "成员分组"
+								},
+								"specified_groups": {
+									"displayName": "指定分组"
+								},
+								"assigned_items": {
+									"displayName": "已分配项目"
+								}
+							}
+						},
+						"groups": {
+							"displayName": "组名称或ID",
+							"description": "角色授予的权限所应用的组。仅当范围为指定组时需要 - 否则忽略。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						}
+					}
+				},
+				"roles": {
+					"displayName": "角色",
+					"placeholder": "添加角色"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"placeholder": "添加地址字段",
+					"options": {
+						"addressFields": {
+							"displayName": "地址详情",
+							"options": {
+								"line1": {
+									"displayName": "第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zipcode": {
+									"displayName": "邮政编码"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "地址详情",
+							"options": {
+								"line1": {
+									"displayName": "第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zipcode": {
+									"displayName": "邮政编码"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加地址字段"
+						}
+					}
+				},
+				"background_information": {
+					"displayName": "背景信息"
+				},
+				"department_ids": {
+					"displayName": "部门名称或ID",
+					"description": "与请求者关联的部门ID（以逗号分隔）。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"job_title": {
+					"displayName": "职位名称"
+				},
+				"language": {
+					"displayName": "语言",
+					"options": {
+						"en": {
+							"displayName": "英文"
+						},
+						"ar": {
+							"displayName": "阿拉伯语"
+						},
+						"ca": {
+							"displayName": "加泰罗尼亚语"
+						},
+						"cs": {
+							"displayName": "捷克语"
+						},
+						"cy-GB": {
+							"displayName": "威尔士语"
+						},
+						"da": {
+							"displayName": "丹麦语"
+						},
+						"de": {
+							"displayName": "德语"
+						},
+						"es": {
+							"displayName": "西班牙语"
+						},
+						"es-LA": {
+							"displayName": "西班牙语（拉丁美洲）"
+						},
+						"et": {
+							"displayName": "爱沙尼亚语"
+						},
+						"fi": {
+							"displayName": "芬兰语"
+						},
+						"fr": {
+							"displayName": "法语"
+						},
+						"he": {
+							"displayName": "希伯来语"
+						},
+						"hu": {
+							"displayName": "匈牙利语"
+						},
+						"id": {
+							"displayName": "印尼语"
+						},
+						"it": {
+							"displayName": "意大利语"
+						},
+						"ja-JP": {
+							"displayName": "日语"
+						},
+						"ko": {
+							"displayName": "韩语"
+						},
+						"LV": {
+							"displayName": "拉脱维亚语"
+						},
+						"nb-NO": {
+							"displayName": "挪威语"
+						},
+						"nl": {
+							"displayName": "荷兰语"
+						},
+						"pl": {
+							"displayName": "波兰语"
+						},
+						"pt": {
+							"displayName": "葡萄牙语"
+						},
+						"pt-BR": {
+							"displayName": "葡萄牙语（巴西）"
+						},
+						"pt-PT": {
+							"displayName": "葡萄牙语（葡萄牙）"
+						},
+						"ru-RU": {
+							"displayName": "俄语"
+						},
+						"sk": {
+							"displayName": "斯洛伐克语"
+						},
+						"sk-SK": {
+							"displayName": "斯洛伐克语"
+						},
+						"sl": {
+							"displayName": "斯洛文尼亚语"
+						},
+						"sv-SE": {
+							"displayName": "瑞典语"
+						},
+						"th": {
+							"displayName": "泰语"
+						},
+						"tr": {
+							"displayName": "土耳其语"
+						},
+						"UK": {
+							"displayName": "乌克兰语"
+						},
+						"vi": {
+							"displayName": "越南语"
+						},
+						"zh-CN": {
+							"displayName": "简体中文"
+						},
+						"zh-TW": {
+							"displayName": "繁體中文"
+						}
+					}
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"location_id": {
+					"displayName": "位置名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"member_of": {
+					"displayName": "组名称或ID",
+					"description": "代理所属群组的逗号分隔ID。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"mobile_phone_number": {
+					"displayName": "手机"
+				},
+				"observer_of": {
+					"displayName": "群组名称/ID观察者",
+					"description": "代理作为观察者的群组ID，以逗号分隔。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"scoreboard_level_id": {
+					"displayName": "计分板等级ID",
+					"description": "Arcade中智能体等级ID",
+					"options": {
+						"1": {
+							"displayName": "入门"
+						},
+						"2": {
+							"displayName": "中级"
+						},
+						"3": {
+							"displayName": "专业版"
+						},
+						"4": {
+							"displayName": "专家"
+						},
+						"5": {
+							"displayName": "主节点"
+						},
+						"6": {
+							"displayName": "Guru"
+						}
+					}
+				},
+				"time_format": {
+					"displayName": "时间格式",
+					"options": {
+						"12h": {
+							"displayName": "12小时制"
+						},
+						"24h": {
+							"displayName": "24小时制"
+						}
+					}
+				},
+				"work_phone_number": {
+					"displayName": "工作电话"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "支持HTML"
+				},
+				"escalate_to": {
+					"displayName": "升级至代理名称或ID",
+					"description": "如果此群组中的工单未分配，则向其发送升级邮件的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"members": {
+					"displayName": "成员名称或ID",
+					"description": "此群组成员的代理ID，以逗号分隔。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"observers": {
+					"displayName": "观察者名称或ID",
+					"description": "作为此群组观察者的代理ID，以逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"unassigned_for": {
+					"displayName": "未分配",
+					"description": "如果工单在群组中保持未分配状态，超过此时间后将发送升级邮件",
+					"options": {
+						"1d": {
+							"displayName": "1天"
+						},
+						"1h": {
+							"displayName": "1小时"
+						},
+						"12h": {
+							"displayName": "12小时"
+						},
+						"2d": {
+							"displayName": "2天"
+						},
+						"2h": {
+							"displayName": "2小时"
+						},
+						"3d": {
+							"displayName": "3天"
+						},
+						"30m": {
+							"displayName": "30分钟"
+						},
+						"8h": {
+							"displayName": "8小时"
+						}
+					}
+				},
+				"additional_emails": {
+					"displayName": "附加邮箱",
+					"description": "需要接收公告的附加邮箱地址，以逗号分隔"
+				},
+				"departments": {
+					"displayName": "部门名称或ID",
+					"description": "可查看此公告的部门ID（逗号分隔）。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"visible_from": {
+					"displayName": "可见范围",
+					"description": "公告生效时间戳"
+				},
+				"visible_till": {
+					"displayName": "可见截止时间",
+					"description": "公告生效的时间戳截止时间"
+				},
+				"parent_asset_type_id": {
+					"displayName": "父资产类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"agent_id": {
+					"displayName": "代理名称或ID",
+					"description": "问题分配给的代理ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"change_type": {
+					"displayName": "更改类型",
+					"options": {
+						"1": {
+							"displayName": "次要"
+						},
+						"2": {
+							"displayName": "标准"
+						},
+						"3": {
+							"displayName": "主要"
+						},
+						"4": {
+							"displayName": "紧急"
+						}
+					}
+				},
+				"department_id": {
+					"displayName": "部门名称或ID",
+					"description": "此工单所属部门的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"group_id": {
+					"displayName": "组名或ID",
+					"description": "工单被分配到的组ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"impact": {
+					"displayName": "影响",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						},
+						"4": {
+							"displayName": "紧急"
+						}
+					}
+				},
+				"risk": {
+					"displayName": "风险",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						},
+						"4": {
+							"displayName": "非常高"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"1": {
+							"displayName": "打开"
+						},
+						"2": {
+							"displayName": "变更已请求"
+						},
+						"3": {
+							"displayName": "已关闭"
+						},
+						"4": {
+							"displayName": "待发布"
+						},
+						"5": {
+							"displayName": "待审核"
+						},
+						"6": {
+							"displayName": "已关闭"
+						},
+						"In Production": {
+							"displayName": "生产中"
+						},
+						"In Pipeline": {
+							"displayName": "在流水线中"
+						},
+						"Retired": {
+							"displayName": "已停用"
+						},
+						"disabled": {
+							"displayName": "已禁用"
+						},
+						"ignored": {
+							"displayName": "已忽略"
+						},
+						"needs review": {
+							"displayName": "需要审核"
+						},
+						"restricted": {
+							"displayName": "受限"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "主题"
+				},
+				"domains": {
+					"displayName": "域名",
+					"description": "与该部门关联的逗号分隔邮箱域名"
+				},
+				"manufacturer": {
+					"displayName": "制造商"
+				},
+				"mode_of_procurement": {
+					"displayName": "采购模式",
+					"options": {
+						"Buy": {
+							"displayName": "购买"
+						},
+						"Lease": {
+							"displayName": "租用"
+						},
+						"Both": {
+							"displayName": "两者"
+						}
+					}
+				},
+				"secondary_emails": {
+					"displayName": "次要邮箱",
+					"description": "与请求者关联的逗号分隔次要邮箱"
+				},
+				"notes": {
+					"displayName": "备注"
+				},
+				"cc_emails": {
+					"displayName": "抄送邮箱",
+					"description": "要在工单邮件的抄送（CC）字段中添加的逗号分隔的电子邮件地址"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "工单创建者姓名"
+				},
+				"requester_id": {
+					"displayName": "请求方名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				}
+			}
+		},
+		"agentId": {
+			"displayName": "代理ID",
+			"description": "要更新的代理ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"department_id": {
+					"displayName": "部门名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "名字"
+				},
+				"job_title": {
+					"displayName": "职位名称"
+				},
+				"language": {
+					"displayName": "语言",
+					"options": {
+						"en": {
+							"displayName": "英文"
+						},
+						"ar": {
+							"displayName": "阿拉伯语"
+						},
+						"ca": {
+							"displayName": "加泰罗尼亚语"
+						},
+						"cs": {
+							"displayName": "捷克语"
+						},
+						"cy-GB": {
+							"displayName": "威尔士语"
+						},
+						"da": {
+							"displayName": "丹麦语"
+						},
+						"de": {
+							"displayName": "德语"
+						},
+						"es": {
+							"displayName": "西班牙语"
+						},
+						"es-LA": {
+							"displayName": "西班牙语（拉丁美洲）"
+						},
+						"et": {
+							"displayName": "爱沙尼亚语"
+						},
+						"fi": {
+							"displayName": "芬兰语"
+						},
+						"fr": {
+							"displayName": "法语"
+						},
+						"he": {
+							"displayName": "希伯来语"
+						},
+						"hu": {
+							"displayName": "匈牙利语"
+						},
+						"id": {
+							"displayName": "印尼语"
+						},
+						"it": {
+							"displayName": "意大利语"
+						},
+						"ja-JP": {
+							"displayName": "日语"
+						},
+						"ko": {
+							"displayName": "韩语"
+						},
+						"LV": {
+							"displayName": "拉脱维亚语"
+						},
+						"nb-NO": {
+							"displayName": "挪威语"
+						},
+						"nl": {
+							"displayName": "荷兰语"
+						},
+						"pl": {
+							"displayName": "波兰语"
+						},
+						"pt": {
+							"displayName": "葡萄牙语"
+						},
+						"pt-BR": {
+							"displayName": "葡萄牙语（巴西）"
+						},
+						"pt-PT": {
+							"displayName": "葡萄牙语（葡萄牙）"
+						},
+						"ru-RU": {
+							"displayName": "俄语"
+						},
+						"sk": {
+							"displayName": "斯洛伐克语"
+						},
+						"sk-SK": {
+							"displayName": "斯洛伐克语"
+						},
+						"sl": {
+							"displayName": "斯洛文尼亚语"
+						},
+						"sv-SE": {
+							"displayName": "瑞典语"
+						},
+						"th": {
+							"displayName": "泰语"
+						},
+						"tr": {
+							"displayName": "土耳其语"
+						},
+						"UK": {
+							"displayName": "乌克兰语"
+						},
+						"vi": {
+							"displayName": "越南语"
+						},
+						"zh-CN": {
+							"displayName": "简体中文"
+						},
+						"zh-TW": {
+							"displayName": "繁體中文"
+						}
+					}
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"location_id": {
+					"displayName": "位置名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"mobile_phone_number": {
+					"displayName": "手机号码"
+				},
+				"work_phone_number": {
+					"displayName": "工作电话号码"
+				},
+				"filter": {
+					"displayName": "预定义筛选器",
+					"options": {
+						"closed": {
+							"displayName": "已关闭"
+						},
+						"my_open": {
+							"displayName": "我的公开"
+						},
+						"release_requested": {
+							"displayName": "发布请求已提交"
+						},
+						"requester_id": {
+							"displayName": "请求者ID"
+						},
+						"unassigned": {
+							"displayName": "未分配"
+						}
+					}
+				},
+				"sort_by": {
+					"displayName": "排序顺序",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "降序"
+						}
+					}
+				},
+				"updated_since": {
+					"displayName": "更新于"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "部门名称"
+				},
+				"primary_email": {
+					"displayName": "主邮箱"
+				},
+				"agent_id": {
+					"displayName": "代理名称或ID",
+					"description": "工单已分配给的客服ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"group_id": {
+					"displayName": "组名或ID",
+					"description": "工单已分配到的组ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"impact": {
+					"displayName": "影响",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						},
+						"4": {
+							"displayName": "紧急"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"2": {
+							"displayName": "打开"
+						},
+						"3": {
+							"displayName": "待处理"
+						},
+						"4": {
+							"displayName": "已解析"
+						},
+						"5": {
+							"displayName": "已关闭"
+						}
+					}
+				},
+				"created_at": {
+					"displayName": "创建于",
+					"description": "工单创建日期"
+				},
+				"due_by": {
+					"displayName": "截止时间",
+					"description": "工单预定解决日期"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"placeholder": "添加地址字段",
+					"options": {
+						"addressFields": {
+							"displayName": "地址详情",
+							"options": {
+								"line1": {
+									"displayName": "第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zipcode": {
+									"displayName": "邮政编码"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "地址详情",
+							"options": {
+								"line1": {
+									"displayName": "第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zipcode": {
+									"displayName": "邮政编码"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加地址字段"
+						}
+					}
+				},
+				"background_information": {
+					"displayName": "背景信息"
+				},
+				"department_ids": {
+					"displayName": "部门名称或ID",
+					"description": "与请求者关联的部门ID（以逗号分隔）。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com",
+					"description": "工单创建者的邮箱地址"
+				},
+				"first_name": {
+					"displayName": "名字"
+				},
+				"job_title": {
+					"displayName": "职位名称"
+				},
+				"language": {
+					"displayName": "语言",
+					"options": {
+						"en": {
+							"displayName": "英文"
+						},
+						"ar": {
+							"displayName": "阿拉伯语"
+						},
+						"ca": {
+							"displayName": "加泰罗尼亚语"
+						},
+						"cs": {
+							"displayName": "捷克语"
+						},
+						"cy-GB": {
+							"displayName": "威尔士语"
+						},
+						"da": {
+							"displayName": "丹麦语"
+						},
+						"de": {
+							"displayName": "德语"
+						},
+						"es": {
+							"displayName": "西班牙语"
+						},
+						"es-LA": {
+							"displayName": "西班牙语（拉丁美洲）"
+						},
+						"et": {
+							"displayName": "爱沙尼亚语"
+						},
+						"fi": {
+							"displayName": "芬兰语"
+						},
+						"fr": {
+							"displayName": "法语"
+						},
+						"he": {
+							"displayName": "希伯来语"
+						},
+						"hu": {
+							"displayName": "匈牙利语"
+						},
+						"id": {
+							"displayName": "印尼语"
+						},
+						"it": {
+							"displayName": "意大利语"
+						},
+						"ja-JP": {
+							"displayName": "日语"
+						},
+						"ko": {
+							"displayName": "韩语"
+						},
+						"LV": {
+							"displayName": "拉脱维亚语"
+						},
+						"nb-NO": {
+							"displayName": "挪威语"
+						},
+						"nl": {
+							"displayName": "荷兰语"
+						},
+						"pl": {
+							"displayName": "波兰语"
+						},
+						"pt": {
+							"displayName": "葡萄牙语"
+						},
+						"pt-BR": {
+							"displayName": "葡萄牙语（巴西）"
+						},
+						"pt-PT": {
+							"displayName": "葡萄牙语（葡萄牙）"
+						},
+						"ru-RU": {
+							"displayName": "俄语"
+						},
+						"sk": {
+							"displayName": "斯洛伐克语"
+						},
+						"sk-SK": {
+							"displayName": "斯洛伐克语"
+						},
+						"sl": {
+							"displayName": "斯洛文尼亚语"
+						},
+						"sv-SE": {
+							"displayName": "瑞典语"
+						},
+						"th": {
+							"displayName": "泰语"
+						},
+						"tr": {
+							"displayName": "土耳其语"
+						},
+						"UK": {
+							"displayName": "乌克兰语"
+						},
+						"vi": {
+							"displayName": "越南语"
+						},
+						"zh-CN": {
+							"displayName": "简体中文"
+						},
+						"zh-TW": {
+							"displayName": "繁體中文"
+						}
+					}
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"location_id": {
+					"displayName": "位置名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"member_of": {
+					"displayName": "组名称或ID",
+					"description": "代理所属群组的逗号分隔ID。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"mobile_phone_number": {
+					"displayName": "手机"
+				},
+				"observer_of": {
+					"displayName": "群组名称/ID观察者",
+					"description": "代理作为观察者的群组ID，以逗号分隔。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"scoreboard_level_id": {
+					"displayName": "计分板等级ID",
+					"description": "Arcade中智能体等级ID",
+					"options": {
+						"1": {
+							"displayName": "入门"
+						},
+						"2": {
+							"displayName": "中级"
+						},
+						"3": {
+							"displayName": "专业版"
+						},
+						"4": {
+							"displayName": "专家"
+						},
+						"5": {
+							"displayName": "主节点"
+						},
+						"6": {
+							"displayName": "Guru"
+						}
+					}
+				},
+				"time_format": {
+					"displayName": "时间格式",
+					"options": {
+						"12h": {
+							"displayName": "12小时制"
+						},
+						"24h": {
+							"displayName": "24小时制"
+						}
+					}
+				},
+				"work_phone_number": {
+					"displayName": "工作电话"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "支持HTML"
+				},
+				"escalate_to": {
+					"displayName": "升级至代理名称或ID",
+					"description": "如果此群组中的工单未分配，则向其发送升级邮件的代理ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"members": {
+					"displayName": "成员名称或ID",
+					"description": "此群组成员的代理ID，以逗号分隔。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "工单创建者姓名"
+				},
+				"observers": {
+					"displayName": "观察者名称或ID",
+					"description": "此群组观察者的逗号分隔代理用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"unassigned_for": {
+					"displayName": "未分配",
+					"description": "如果工单在群组中保持未分配状态，超过此时间后将发送升级邮件",
+					"options": {
+						"1d": {
+							"displayName": "1天"
+						},
+						"1h": {
+							"displayName": "1小时"
+						},
+						"12h": {
+							"displayName": "12小时"
+						},
+						"2d": {
+							"displayName": "2天"
+						},
+						"2h": {
+							"displayName": "2小时"
+						},
+						"3d": {
+							"displayName": "3天"
+						},
+						"30m": {
+							"displayName": "30分钟"
+						},
+						"8h": {
+							"displayName": "8小时"
+						}
+					}
+				},
+				"additional_emails": {
+					"displayName": "附加邮箱",
+					"description": "需要接收公告的附加邮箱地址，以逗号分隔"
+				},
+				"body_html": {
+					"displayName": "正文",
+					"description": "支持HTML"
+				},
+				"departments": {
+					"displayName": "部门名称或ID",
+					"description": "可查看此公告的部门ID（逗号分隔）。从列表中选择或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"visibility": {
+					"displayName": "可见性",
+					"options": {
+						"agents_only": {
+							"displayName": "仅限代理"
+						},
+						"grouped_visibility": {
+							"displayName": "代理与群组"
+						},
+						"everyone": {
+							"displayName": "所有人"
+						}
+					}
+				},
+				"agent_id": {
+					"displayName": "代理名称或ID",
+					"description": "问题分配给的代理ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"change_type": {
+					"displayName": "更改类型",
+					"options": {
+						"1": {
+							"displayName": "次要"
+						},
+						"2": {
+							"displayName": "标准"
+						},
+						"3": {
+							"displayName": "主要"
+						},
+						"4": {
+							"displayName": "紧急"
+						}
+					}
+				},
+				"department_id": {
+					"displayName": "部门名称或ID",
+					"description": "此工单已分配部门的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"group_id": {
+					"displayName": "组名或ID",
+					"description": "工单被分配到的组ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"impact": {
+					"displayName": "影响",
+					"description": "变更影响",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						},
+						"4": {
+							"displayName": "紧急"
+						}
+					},
+					"description": "工单优先级"
+				},
+				"requester_id": {
+					"displayName": "请求方名称或ID",
+					"description": "问题发起者的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"risk": {
+					"displayName": "风险",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						},
+						"4": {
+							"displayName": "非常高"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"1": {
+							"displayName": "打开"
+						},
+						"2": {
+							"displayName": "打开"
+						},
+						"3": {
+							"displayName": "待处理"
+						},
+						"4": {
+							"displayName": "已解析"
+						},
+						"5": {
+							"displayName": "已关闭"
+						},
+						"6": {
+							"displayName": "已关闭"
+						},
+						"In Production": {
+							"displayName": "生产中"
+						},
+						"In Pipeline": {
+							"displayName": "在流水线中"
+						},
+						"Retired": {
+							"displayName": "已停用"
+						},
+						"disabled": {
+							"displayName": "已禁用"
+						},
+						"ignored": {
+							"displayName": "已忽略"
+						},
+						"needs review": {
+							"displayName": "需要审核"
+						},
+						"restricted": {
+							"displayName": "受限"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "主题"
+				},
+				"domains": {
+					"displayName": "域名",
+					"description": "与该部门关联的逗号分隔邮箱域名"
+				},
+				"due_by": {
+					"displayName": "截止时间",
+					"description": "问题预计解决日期"
+				},
+				"asset_type_id": {
+					"displayName": "资产类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"manufacturer": {
+					"displayName": "制造商"
+				},
+				"mode_of_procurement": {
+					"displayName": "采购模式",
+					"options": {
+						"Buy": {
+							"displayName": "购买"
+						},
+						"Lease": {
+							"displayName": "租用"
+						},
+						"Both": {
+							"displayName": "两者"
+						}
+					}
+				},
+				"release_type": {
+					"displayName": "发布类型",
+					"options": {
+						"1": {
+							"displayName": "次要"
+						},
+						"2": {
+							"displayName": "标准"
+						},
+						"3": {
+							"displayName": "主要"
+						},
+						"4": {
+							"displayName": "紧急"
+						}
+					}
+				},
+				"primary_email": {
+					"displayName": "主邮箱"
+				},
+				"secondary_emails": {
+					"displayName": "次要邮箱",
+					"description": "与请求者关联的逗号分隔次要邮箱"
+				},
+				"application_type": {
+					"displayName": "应用类型",
+					"description": "软件类型",
+					"options": {
+						"desktop": {
+							"displayName": "桌面版"
+						},
+						"mobile": {
+							"displayName": "移动端"
+						},
+						"saas": {
+							"displayName": "SaaS"
+						}
+					}
+				},
+				"notes": {
+					"displayName": "备注"
+				},
+				"phone": {
+					"displayName": "电话"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "位置名称"
+		},
+		"agentGroupId": {
+			"displayName": "代理组ID",
+			"description": "要更新的代理组ID"
+		},
+		"agentRoleId": {
+			"displayName": "代理角色ID",
+			"description": "要检索的代理角色ID"
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"bodyHtml": {
+			"displayName": "正文",
+			"description": "支持HTML"
+		},
+		"visibility": {
+			"displayName": "可见性",
+			"options": {
+				"agents_only": {
+					"displayName": "仅限代理"
+				},
+				"grouped_visibility": {
+					"displayName": "代理与群组"
+				},
+				"everyone": {
+					"displayName": "所有人"
+				}
+			}
+		},
+		"visibleFrom": {
+			"displayName": "可见范围",
+			"description": "公告生效时间戳"
+		},
+		"announcementId": {
+			"displayName": "公告ID",
+			"description": "要更新的公告ID"
+		},
+		"assetTypeId": {
+			"displayName": "资产类型名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"requesterId": {
+			"displayName": "请求者ID",
+			"description": "要更新的请求者ID"
+		},
+		"subject": {
+			"displayName": "主题"
+		},
+		"plannedStartDate": {
+			"displayName": "计划开始日期"
+		},
+		"plannedEndDate": {
+			"displayName": "计划结束日期"
+		},
+		"changeId": {
+			"displayName": "更改ID",
+			"description": "要更新的更改ID"
+		},
+		"departmentId": {
+			"displayName": "部门ID",
+			"description": "要更新的部门ID"
+		},
+		"locationId": {
+			"displayName": "位置ID",
+			"description": "要更新的位置ID"
+		},
+		"dueBy": {
+			"displayName": "截止日期",
+			"description": "问题需要解决的日期"
+		},
+		"problemId": {
+			"displayName": "问题ID",
+			"description": "要更新的问题ID"
+		},
+		"productId": {
+			"displayName": "产品ID",
+			"description": "要更新的产品ID"
+		},
+		"releaseType": {
+			"displayName": "发布类型",
+			"options": {
+				"1": {
+					"displayName": "次要"
+				},
+				"2": {
+					"displayName": "标准"
+				},
+				"3": {
+					"displayName": "主要"
+				},
+				"4": {
+					"displayName": "紧急"
+				}
+			}
+		},
+		"priority": {
+			"displayName": "优先级",
+			"options": {
+				"1": {
+					"displayName": "低"
+				},
+				"2": {
+					"displayName": "中等"
+				},
+				"3": {
+					"displayName": "高"
+				},
+				"4": {
+					"displayName": "紧急"
+				}
+			}
+		},
+		"status": {
+			"displayName": "状态",
+			"options": {
+				"1": {
+					"displayName": "打开"
+				},
+				"2": {
+					"displayName": "打开"
+				},
+				"3": {
+					"displayName": "待处理"
+				},
+				"4": {
+					"displayName": "已解析"
+				},
+				"5": {
+					"displayName": "已关闭"
+				}
+			}
+		},
+		"releaseId": {
+			"displayName": "发布ID",
+			"description": "要更新的发布ID"
+		},
+		"primaryEmail": {
+			"displayName": "主邮箱"
+		},
+		"requesterGroupId": {
+			"displayName": "请求者组ID",
+			"description": "要更新的请求者组ID"
+		},
+		"applicationType": {
+			"displayName": "应用类型",
+			"options": {
+				"desktop": {
+					"displayName": "桌面版"
+				},
+				"mobile": {
+					"displayName": "移动端"
+				},
+				"saas": {
+					"displayName": "SaaS"
+				}
+			}
+		},
+		"softwareId": {
+			"displayName": "软件ID",
+			"description": "要更新的软件应用程序ID"
+		},
+		"description": {
+			"displayName": "描述",
+			"description": "支持HTML"
+		},
+		"ticketId": {
+			"displayName": "工单ID",
+			"description": "要更新的工单ID"
+		}
+	}
+}

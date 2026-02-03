@@ -1,0 +1,139 @@
+{
+	"header": {
+		"displayName": "日期与时间",
+		"description": "允许您操作日期和时间值"
+	},
+	"nodeView": {
+		"noticeDateTime": {
+			"displayName": "更强大的日期功能可在<a href='https://docs.n8n.io/code/cookbook/luxon/' target='_blank'>表达式</a>中使用，</br>例如<code>{{ $now.plus(1, 'week') }}</code>"
+		},
+		"action": {
+			"displayName": "操作",
+			"options": {
+				"calculate": {
+					"displayName": "计算日期",
+					"description": "为日期添加或减去时间"
+				},
+				"format": {
+					"displayName": "格式化日期",
+					"description": "将日期转换为不同格式"
+				}
+			}
+		},
+		"value": {
+			"displayName": "日期值",
+			"description": "要从中添加/减去时间的日期字符串或时间戳"
+		},
+		"dataPropertyName": {
+			"displayName": "属性名称",
+			"description": "输出属性名称，用于写入转换后的日期"
+		},
+		"custom": {
+			"displayName": "自定义格式",
+			"description": "应选择预定义格式还是输入自定义格式"
+		},
+		"toFormat": {
+			"displayName": "格式化",
+			"description": "要转换的日期格式",
+			"placeholder": "YYYY-MM-DD",
+			"options": {
+				"MM/DD/YYYY": {
+					"displayName": "月/日/年",
+					"description": "示例：1986年9月4日"
+				},
+				"YYYY/MM/DD": {
+					"displayName": "YYYY/MM/DD",
+					"description": "示例：1986/04/09"
+				},
+				"MMMM DD YYYY": {
+					"displayName": "MMMM DD YYYY",
+					"description": "示例: 四月 09 1986"
+				},
+				"MM-DD-YYYY": {
+					"displayName": "月-日-年",
+					"description": "示例：09-04-1986"
+				},
+				"YYYY-MM-DD": {
+					"displayName": "YYYY-MM-DD",
+					"description": "示例：1986-04-09"
+				},
+				"X": {
+					"displayName": "Unix时间戳",
+					"description": "示例: 513388800.879"
+				},
+				"x": {
+					"displayName": "Unix毫秒时间戳",
+					"description": "示例：513388800"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fromFormat": {
+					"displayName": "来源格式",
+					"description": "用于将值解析为日期的格式。如果无法识别，请指定值的<a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/#faqs\">格式</a>。"
+				},
+				"fromTimezone": {
+					"displayName": "源时区名称或ID",
+					"description": "要转换的源时区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"toTimezone": {
+					"displayName": "目标时区名称或ID",
+					"description": "要转换到的时区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"add": {
+					"displayName": "添加",
+					"description": "为日期值添加时间"
+				},
+				"subtract": {
+					"displayName": "减法",
+					"description": "从日期值中减去时间"
+				}
+			}
+		},
+		"duration": {
+			"displayName": "持续时间",
+			"description": "例如，如果您想为日期值添加10天，请输入“10”然后选择“天”。"
+		},
+		"timeUnit": {
+			"displayName": "时间单位",
+			"description": "上方持续时间参数的时间单位",
+			"options": {
+				"quarters": {
+					"displayName": "季度"
+				},
+				"years": {
+					"displayName": "年"
+				},
+				"months": {
+					"displayName": "月"
+				},
+				"weeks": {
+					"displayName": "周"
+				},
+				"days": {
+					"displayName": "天"
+				},
+				"hours": {
+					"displayName": "小时"
+				},
+				"minutes": {
+					"displayName": "分钟"
+				},
+				"seconds": {
+					"displayName": "秒"
+				},
+				"milliseconds": {
+					"displayName": "毫秒"
+				}
+			}
+		}
+	}
+}

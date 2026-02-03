@@ -1,0 +1,95 @@
+{
+	"header": {
+		"displayName": "本地文件触发器",
+		"description": "在文件系统变更时触发工作流"
+	},
+	"nodeView": {
+		"triggerOn": {
+			"displayName": "触发于",
+			"options": {
+				"file": {
+					"displayName": "特定文件的变更"
+				},
+				"folder": {
+					"displayName": "特定文件夹的变更"
+				}
+			}
+		},
+		"path": {
+			"displayName": "监控文件夹",
+			"placeholder": "/data/invoices"
+		},
+		"events": {
+			"displayName": "监听",
+			"description": "要监听的事件"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"awaitWriteFinish": {
+					"displayName": "等待写入完成",
+					"description": "是否等待文件完全写入，避免读取到部分内容"
+				},
+				"followSymlinks": {
+					"displayName": "包含链接文件/文件夹",
+					"description": "是否同时监视链接的文件/文件夹（包括符号链接、MacOS上的别名和Windows上的快捷方式）。否则仅监视链接本身。"
+				},
+				"ignored": {
+					"displayName": "忽略",
+					"description": "要忽略的文件或路径。测试的是完整路径，而不仅仅是文件名。支持 <a href=\"https://github.com/micromatch/anymatch\">Anymatch</a> 语法。正则表达式模式在 macOS 上可能无效。要基于子字符串匹配忽略文件，请在'忽略模式'选项中选择'包含'。",
+					"placeholder": "**/*.txt 或 ignore-me/subfolder"
+				},
+				"ignoreInitial": {
+					"displayName": "忽略现有文件/文件夹",
+					"description": "是否忽略现有文件/文件夹以避免触发事件"
+				},
+				"depth": {
+					"displayName": "最大文件夹深度",
+					"description": "监控文件夹结构变化的深度",
+					"options": {
+						"0": {
+							"displayName": "仅限顶层文件夹"
+						},
+						"1": {
+							"displayName": "向下1级"
+						},
+						"2": {
+							"displayName": "向下2级"
+						},
+						"3": {
+							"displayName": "向下3级"
+						},
+						"4": {
+							"displayName": "向下4级"
+						},
+						"5": {
+							"displayName": "5级向下"
+						},
+						"-1": {
+							"displayName": "无限制"
+						}
+					}
+				},
+				"usePolling": {
+					"displayName": "使用轮询",
+					"description": "是否使用轮询进行监视。通常对于通过网络成功监视文件是必要的。"
+				},
+				"ignoreMode": {
+					"displayName": "忽略模式",
+					"description": "是否通过正则匹配（Anymatch模式）或检查路径是否包含指定值来忽略文件",
+					"options": {
+						"match": {
+							"displayName": "匹配",
+							"description": "使用正则表达式忽略文件（例如：**/*.txt），macOS 不支持"
+						},
+						"contain": {
+							"displayName": "包含",
+							"description": "如果文件路径包含指定值则忽略"
+						}
+					}
+				}
+			}
+		}
+	}
+}

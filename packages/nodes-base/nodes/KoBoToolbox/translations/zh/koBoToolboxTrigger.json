@@ -1,0 +1,75 @@
+{
+	"header": {
+		"displayName": "KoBoToolbox触发器",
+		"description": "处理KoBoToolbox提交"
+	},
+	"nodeView": {
+		"formId": {
+			"displayName": "表单名称或ID",
+			"description": "表单ID（例如 aSAvYreNzVEkrWg5Gdcvg）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"triggerOn": {
+			"displayName": "触发于",
+			"options": {
+				"formSubmission": {
+					"displayName": "表单提交时"
+				}
+			}
+		},
+		"formatOptions": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"download": {
+					"displayName": "下载附件",
+					"description": "是否下载提交的附件"
+				},
+				"binaryNamingScheme": {
+					"displayName": "附件命名方案",
+					"options": {
+						"sequence": {
+							"displayName": "序列（例如 attachment_N）"
+						},
+						"question": {
+							"displayName": "使用原始表单问题ID"
+						}
+					}
+				},
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "附件前缀",
+					"description": "用于写入附件的二进制属性名称前缀。将添加从0开始的索引。例如，如果名称为“attachment_”，则第一个附件将保存到“attachment_0”"
+				},
+				"version": {
+					"displayName": "文件大小",
+					"description": "要检索的附件大小（如果存在多个版本）",
+					"options": {
+						"download_url": {
+							"displayName": "[0]原文"
+						},
+						"download_small_url": {
+							"displayName": "小"
+						},
+						"download_medium_url": {
+							"displayName": "中等"
+						},
+						"download_large_url": {
+							"displayName": "大型"
+						}
+					}
+				},
+				"selectMask": {
+					"displayName": "多选掩码",
+					"description": "应视为多选字段（即解析为数组）的字段通配符选择器列表，以逗号分隔。"
+				},
+				"numberMask": {
+					"displayName": "数字掩码",
+					"description": "应视为数字的字段的通配符选择器列表（逗号分隔）"
+				},
+				"reformat": {
+					"displayName": "重新格式化",
+					"description": "是否对提交数据应用一些重新格式化，例如解析GeoJSON坐标"
+				}
+			}
+		}
+	}
+}

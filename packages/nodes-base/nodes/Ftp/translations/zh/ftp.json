@@ -1,0 +1,106 @@
+{
+	"header": {
+		"displayName": "FTP",
+		"description": "通过FTP或SFTP传输文件"
+	},
+	"nodeView": {
+		"protocol": {
+			"displayName": "协议",
+			"description": "文件传输协议",
+			"options": {
+				"ftp": {
+					"displayName": "FTP"
+				},
+				"sftp": {
+					"displayName": "SFTP"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文件/文件夹"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "列出文件夹内容"
+				},
+				"rename": {
+					"displayName": "重命名",
+					"description": "将旧路径重命名/移动到新路径"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传文件"
+				}
+			}
+		},
+		"path": {
+			"displayName": "路径",
+			"description": "要列出内容的目录路径",
+			"placeholder": "例如：/public/folder"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"folder": {
+					"displayName": "文件夹",
+					"description": "是否可以删除文件夹"
+				},
+				"recursive": {
+					"displayName": "递归",
+					"description": "是否删除目标目录中的所有文件和目录"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "连接超时时间（毫秒）"
+				},
+				"enableConcurrentReads": {
+					"displayName": "启用并发读取",
+					"description": "是否启用并发读取以下载文件"
+				},
+				"maxConcurrentReads": {
+					"displayName": "最大并发读取数"
+				},
+				"chunkSize": {
+					"displayName": "分块大小",
+					"description": "每个要下载的分块大小（单位：KB），并非所有服务器都支持此功能"
+				},
+				"createDirectories": {
+					"displayName": "创建目录",
+					"description": "重命名现有文件或文件夹时是否递归创建目标目录"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"oldPath": {
+			"displayName": "旧路径",
+			"placeholder": "例如 /public/documents/old-file.txt"
+		},
+		"newPath": {
+			"displayName": "新路径",
+			"placeholder": "例如 /public/documents/new-file.txt"
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "要上传文件的文本内容"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "要上传文件的文本内容"
+		},
+		"recursive": {
+			"displayName": "递归",
+			"description": "是否返回SFTP服务器内递归找到的所有目录/对象"
+		}
+	}
+}

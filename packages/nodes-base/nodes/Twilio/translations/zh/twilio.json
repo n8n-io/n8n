@@ -1,0 +1,63 @@
+{
+	"header": {
+		"displayName": "Twilio",
+		"description": "发送短信和WhatsApp消息或拨打电话"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"call": {
+					"displayName": "调用"
+				},
+				"sms": {
+					"displayName": "短信"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "发送短信/彩信/WhatsApp消息"
+				},
+				"make": {
+					"displayName": "创建"
+				}
+			}
+		},
+		"from": {
+			"displayName": "可自定义的发件人名称。长度应在3到11个字符之间，仅允许使用字母数字字符。",
+			"description": "发送消息的号码",
+			"placeholder": "[0]+14155238886"
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"description": "发送消息的目标号码",
+			"placeholder": "+14155238886"
+		},
+		"toWhatsapp": {
+			"displayName": "发送到WhatsApp",
+			"description": "是否将消息发送到WhatsApp"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息"
+		},
+		"twiml": {
+			"displayName": "使用TwiML",
+			"description": "是否在消息中使用<a href=\"https://www.twilio.com/docs/voice/twiml\">Twilio标记语言</a>"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"statusCallback": {
+					"displayName": "状态回调",
+					"description": "状态回调允许您接收与Twilio管理的REST资源相关的事件：房间、录制和组合"
+				}
+			}
+		}
+	}
+}

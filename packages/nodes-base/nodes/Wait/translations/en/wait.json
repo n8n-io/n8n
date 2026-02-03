@@ -1,0 +1,683 @@
+{
+	"header": {
+		"displayName": "Wait",
+		"description": "Wait before continue with execution"
+	},
+	"nodeView": {
+		"resume": {
+			"displayName": "Resume",
+			"description": "Determines the waiting mode to use before the workflow continues",
+			"options": {
+				"timeInterval": {
+					"displayName": "After Time Interval",
+					"description": "Waits for a certain amount of time"
+				},
+				"specificTime": {
+					"displayName": "At Specified Time",
+					"description": "Waits until a specific date and time to continue"
+				},
+				"webhook": {
+					"displayName": "On Webhook Call",
+					"description": "Waits for a webhook call before continuing"
+				},
+				"form": {
+					"displayName": "On Form Submitted",
+					"description": "Waits for a form submission before continuing"
+				}
+			}
+		},
+		"incomingAuthentication": {
+			"displayName": "Authentication",
+			"description": "If and how incoming resume-webhook-requests to $execution.resumeUrl should be authenticated for additional security",
+			"options": {
+				"basicAuth": {
+					"displayName": "Basic Auth"
+				},
+				"none": {
+					"displayName": "None"
+				},
+				"headerAuth": {
+					"displayName": "Header Auth"
+				},
+				"jwtAuth": {
+					"displayName": "JWT Auth"
+				}
+			}
+		},
+		"dateTime": {
+			"displayName": "Date and Time",
+			"description": "The date and time to wait for before continuing"
+		},
+		"amount": {
+			"displayName": "Wait Amount",
+			"description": "The time to wait"
+		},
+		"unit": {
+			"displayName": "Wait Unit",
+			"description": "The time unit of the Wait Amount value",
+			"options": {
+				"seconds": {
+					"displayName": "Seconds"
+				},
+				"minutes": {
+					"displayName": "Minutes"
+				},
+				"hours": {
+					"displayName": "Hours"
+				},
+				"days": {
+					"displayName": "Days"
+				}
+			}
+		},
+		"webhookNotice": {
+			"displayName": "The webhook URL will be generated at run time. It can be referenced with the <strong>$execution.resumeUrl</strong> variable. Send it somewhere before getting to this node. <a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait\" target=\"_blank\">More info</a>"
+		},
+		"formNotice": {
+			"displayName": "The form url will be generated at run time. It can be referenced with the <strong>$execution.resumeFormUrl</strong> variable. Send it somewhere before getting to this node. <a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait\" target=\"_blank\">More info</a>"
+		},
+		"formTitle": {
+			"displayName": "Form Title",
+			"description": "Shown at the top of the form",
+			"placeholder": "e.g. Contact us"
+		},
+		"formDescription": {
+			"displayName": "Form Description",
+			"description": "Shown underneath the Form Title. Can be used to prompt the user on how to complete the form. Accepts HTML. Does not accept <code>&lt;script&gt;</code>, <code>&lt;style&gt;</code> or <code>&lt;input&gt;</code> tags.",
+			"placeholder": "e.g. We'll get back to you soon"
+		},
+		"formFields": {
+			"displayName": "Form Elements",
+			"placeholder": "Add Form Element",
+			"multipleValueButtonText": "Add Form Element",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "Form Elements",
+					"placeholder": "Add Form Element"
+				}
+			}
+		},
+		"responseMode": {
+			"displayName": "Respond",
+			"description": "When and how to respond to the webhook",
+			"options": {
+				"onReceived": {
+					"displayName": "Immediately",
+					"description": "As soon as this node executes"
+				},
+				"lastNode": {
+					"displayName": "When Last Node Finishes",
+					"description": "Returns data of the last-executed node"
+				},
+				"responseNode": {
+					"displayName": "Using 'Respond to Webhook' Node",
+					"description": "Response defined in that node"
+				}
+			}
+		},
+		"httpMethod": {
+			"displayName": "HTTP Method",
+			"description": "The HTTP method of the Webhook call",
+			"options": {
+				"DELETE": {
+					"displayName": "DELETE"
+				},
+				"GET": {
+					"displayName": "GET"
+				},
+				"HEAD": {
+					"displayName": "HEAD"
+				},
+				"PATCH": {
+					"displayName": "PATCH"
+				},
+				"POST": {
+					"displayName": "POST"
+				},
+				"PUT": {
+					"displayName": "PUT"
+				}
+			}
+		},
+		"responseCode": {
+			"displayName": "Response Code",
+			"description": "The HTTP Response code to return"
+		},
+		"responseData": {
+			"displayName": "Response Data",
+			"description": "What data should be returned. If it should return all items as an array or only the first item as object.",
+			"options": {
+				"allEntries": {
+					"displayName": "All Entries",
+					"description": "Returns all the entries of the last node. Always returns an array."
+				},
+				"firstEntryJson": {
+					"displayName": "First Entry JSON",
+					"description": "Returns the JSON data of the first entry of the last node. Always returns a JSON object."
+				},
+				"firstEntryBinary": {
+					"displayName": "First Entry Binary",
+					"description": "Returns the binary data of the first entry of the last node. Always returns a binary file."
+				},
+				"noData": {
+					"displayName": "No Response Body",
+					"description": "Returns without a body"
+				}
+			}
+		},
+		"responseBinaryPropertyName": {
+			"displayName": "Property Name",
+			"description": "Name of the binary property to return"
+		},
+		"limitWaitTime": {
+			"displayName": "Limit Wait Time",
+			"description": "Whether to limit the time this node should wait for a user response before execution resumes"
+		},
+		"limitType": {
+			"displayName": "Limit Type",
+			"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+			"options": {
+				"afterTimeInterval": {
+					"displayName": "After Time Interval",
+					"description": "Waits for a certain amount of time"
+				},
+				"atSpecifiedTime": {
+					"displayName": "At Specified Time",
+					"description": "Waits until the set date and time to continue"
+				}
+			}
+		},
+		"resumeAmount": {
+			"displayName": "Amount",
+			"description": "The time to wait"
+		},
+		"resumeUnit": {
+			"displayName": "Unit",
+			"description": "Unit of the interval value",
+			"options": {
+				"seconds": {
+					"displayName": "Seconds"
+				},
+				"minutes": {
+					"displayName": "Minutes"
+				},
+				"hours": {
+					"displayName": "Hours"
+				},
+				"days": {
+					"displayName": "Days"
+				}
+			}
+		},
+		"maxDateAndTime": {
+			"displayName": "Max Date and Time",
+			"description": "Continue execution after the specified date and time"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"binaryData": {
+					"displayName": "Binary File",
+					"description": "Whether the webhook will receive binary data"
+				},
+				"binaryPropertyName": {
+					"displayName": "Field Name for Binary Data",
+					"description": "The name of the output field to put any binary file data in. Only relevant if binary data is received."
+				},
+				"ignoreBots": {
+					"displayName": "Ignore Bots",
+					"description": "Whether to ignore requests from bots like link previewers and web crawlers"
+				},
+				"ipWhitelist": {
+					"displayName": "IP(s) Whitelist",
+					"description": "Comma-separated list of allowed IP addresses. Leave empty to allow all IPs.",
+					"placeholder": "e.g. 127.0.0.1"
+				},
+				"noResponseBody": {
+					"displayName": "No Response Body",
+					"description": "Whether to send any body in the response"
+				},
+				"rawBody": {
+					"displayName": "Raw Body",
+					"description": "Whether to return the raw body"
+				},
+				"responseData": {
+					"displayName": "Response Data",
+					"description": "Custom response data to send",
+					"placeholder": "success"
+				},
+				"responseContentType": {
+					"displayName": "Response Content-Type",
+					"description": "Set a custom content-type to return if another one as the \"application/json\" should be returned",
+					"placeholder": "application/xml"
+				},
+				"responseHeaders": {
+					"displayName": "Response Headers",
+					"description": "Add headers to the webhook response",
+					"placeholder": "Add Response Header",
+					"multipleValueButtonText": "Add Response Header",
+					"options": {
+						"entries": {
+							"displayName": "Entries",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the header"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the header"
+								}
+							}
+						}
+					},
+					"values": {
+						"entries": {
+							"displayName": "Entries",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the header"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the header"
+								}
+							}
+						},
+						"responseHeaders": {
+							"displayName": "Response Headers",
+							"placeholder": "Add Response Header"
+						}
+					}
+				},
+				"responsePropertyName": {
+					"displayName": "Property Name",
+					"description": "Name of the property to return the data of instead of the whole JSON"
+				},
+				"webhookSuffix": {
+					"displayName": "Webhook Suffix",
+					"description": "This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes.",
+					"placeholder": "webhook"
+				},
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the link “Form automated with n8n” at the bottom of the form"
+				},
+				"respondWithOptions": {
+					"displayName": "Form Response",
+					"placeholder": "Add option",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"respondWith": {
+									"displayName": "Respond With",
+									"options": {
+										"text": {
+											"displayName": "Form Submitted Text",
+											"description": "Show a response text to the user"
+										},
+										"redirect": {
+											"displayName": "Redirect URL",
+											"description": "Redirect the user to a URL"
+										}
+									}
+								},
+								"formSubmittedText": {
+									"displayName": "Text to Show",
+									"description": "The text displayed to users after they fill the form. Leave it empty if don't want to show any additional text."
+								},
+								"redirectUrl": {
+									"displayName": "URL to Redirect to",
+									"description": "The URL to redirect users to after they fill the form. Must be a valid URL.",
+									"placeholder": "e.g. http://www.n8n.io"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"respondWith": {
+									"displayName": "Respond With",
+									"options": {
+										"text": {
+											"displayName": "Form Submitted Text",
+											"description": "Show a response text to the user"
+										},
+										"redirect": {
+											"displayName": "Redirect URL",
+											"description": "Redirect the user to a URL"
+										}
+									}
+								},
+								"formSubmittedText": {
+									"displayName": "Text to Show",
+									"description": "The text displayed to users after they fill the form. Leave it empty if don't want to show any additional text."
+								},
+								"redirectUrl": {
+									"displayName": "URL to Redirect to",
+									"description": "The URL to redirect users to after they fill the form. Must be a valid URL.",
+									"placeholder": "e.g. http://www.n8n.io"
+								}
+							}
+						},
+						"respondWithOptions": {
+							"displayName": "Form Response",
+							"placeholder": "Add option"
+						}
+					}
+				}
+			}
+		}
+	}
+}

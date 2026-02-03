@@ -1,0 +1,148 @@
+{
+	"header": {
+		"displayName": "中等",
+		"description": "使用Medium API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"post": {
+					"displayName": "发布"
+				},
+				"publication": {
+					"displayName": "发布"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建帖子"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个出版物"
+				}
+			}
+		},
+		"publication": {
+			"displayName": "发布",
+			"description": "无论您是为某个发布渠道进行发布"
+		},
+		"publicationId": {
+			"displayName": "出版物名称或ID",
+			"description": "出版物ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "帖子标题。最大长度：100个字符。",
+			"placeholder": "我的开源贡献"
+		},
+		"contentFormat": {
+			"displayName": "内容格式",
+			"description": "要发布内容的格式",
+			"options": {
+				"html": {
+					"displayName": "HTML"
+				},
+				"markdown": {
+					"displayName": "Markdown"
+				}
+			}
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "帖子正文，使用有效的语义化HTML片段或Markdown格式",
+			"placeholder": "我的开源贡献"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"canonicalUrl": {
+					"displayName": "规范网址",
+					"description": "原始发布地址（若内容最初发布于其他地方）"
+				},
+				"license": {
+					"displayName": "许可证",
+					"description": "帖子的许可证",
+					"options": {
+						"all-rights-reserved": {
+							"displayName": "保留所有权利"
+						},
+						"cc-40-by": {
+							"displayName": "署名-4.0-国际"
+						},
+						"cc-40-by-nc": {
+							"displayName": "cc-40-by-nc"
+						},
+						"cc-40-by-nc-nd": {
+							"displayName": "cc-40-by-nc-nd"
+						},
+						"cc-40-by-nc-sa": {
+							"displayName": "cc-40-by-nc-sa"
+						},
+						"cc-40-by-nd": {
+							"displayName": "署名-非商业性使用-禁止演绎 4.0"
+						},
+						"cc-40-by-sa": {
+							"displayName": "cc-40-by-sa"
+						},
+						"cc-40-zero": {
+							"displayName": "cc-40-零"
+						},
+						"public-domain": {
+							"displayName": "公共领域"
+						}
+					}
+				},
+				"notifyFollowers": {
+					"displayName": "通知关注者",
+					"description": "是否通知关注者该用户已发布内容"
+				},
+				"publishStatus": {
+					"displayName": "发布状态",
+					"description": "帖子的状态",
+					"options": {
+						"public": {
+							"displayName": "公开"
+						},
+						"draft": {
+							"displayName": "草稿"
+						},
+						"unlisted": {
+							"displayName": "未列出"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "用于帖子分类的逗号分隔字符串标签。最大允许标签数：5。最大标签长度：25个字符。",
+					"placeholder": "开源,mlh,奖学金"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

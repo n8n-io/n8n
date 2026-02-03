@@ -1,0 +1,83 @@
+{
+	"header": {
+		"displayName": "Cloudflare",
+		"description": "Consume Cloudflare API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"zoneCertificate": {
+					"displayName": "Zone Certificate"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a certificate"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a certificate"
+				},
+				"getMany": {
+					"displayName": "Get Many",
+					"description": "Get many certificates"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a certificate"
+				}
+			}
+		},
+		"zoneId": {
+			"displayName": "Zone Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"certificate": {
+			"displayName": "Certificate Content",
+			"description": "The zone's leaf certificate"
+		},
+		"privateKey": {
+			"displayName": "Private Key"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"status": {
+					"displayName": "Status",
+					"description": "Status of the zone's custom SSL",
+					"options": {
+						"active": {
+							"displayName": "Active"
+						},
+						"expired": {
+							"displayName": "Expired"
+						},
+						"deleted": {
+							"displayName": "Deleted"
+						},
+						"pending": {
+							"displayName": "Pending"
+						}
+					}
+				}
+			}
+		},
+		"certificateId": {
+			"displayName": "Certificate ID"
+		}
+	}
+}

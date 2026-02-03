@@ -1,0 +1,348 @@
+{
+	"header": {
+		"displayName": "OpenAI 聊天模型",
+		"description": "用于AI链的高级用法"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "通过\"基础URL\"覆盖使用非OpenAI模型时，并非所有模型都兼容聊天功能或支持其他特性，如工具调用或JSON响应格式"
+		},
+		"model": {
+			"displayName": "模型",
+			"description": "The model. Choose from the list, or specify an ID."
+		},
+		"responsesApiEnabled": {
+			"displayName": "使用响应API",
+			"description": "是否使用响应API来生成响应。<a href=\"https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/#use-responses-api\">了解更多</a>。"
+		},
+		"builtInTools": {
+			"displayName": "内置工具",
+			"placeholder": "添加内置工具",
+			"options": {
+				"webSearch": {
+					"displayName": "网络搜索",
+					"options": {
+						"searchContextSize": {
+							"displayName": "搜索上下文大小",
+							"description": "搜索上下文窗口空间使用量的高级指导",
+							"options": {
+								"low": {
+									"displayName": "低"
+								},
+								"medium": {
+									"displayName": "中等"
+								},
+								"high": {
+									"displayName": "高"
+								}
+							}
+						},
+						"allowedDomains": {
+							"displayName": "允许搜索的域名",
+							"description": "逗号分隔的域名列表，仅会搜索此列表中的域名。",
+							"placeholder": "例如：google.com, wikipedia.org"
+						},
+						"country": {
+							"displayName": "国家",
+							"placeholder": "例如：美国、英国"
+						},
+						"city": {
+							"displayName": "城市",
+							"placeholder": "例如：纽约、伦敦"
+						},
+						"region": {
+							"displayName": "区域",
+							"placeholder": "例如：纽约、伦敦"
+						}
+					}
+				},
+				"fileSearch": {
+					"displayName": "文件搜索",
+					"options": {
+						"vectorStoreIds": {
+							"displayName": "向量存储ID",
+							"description": "用于文件搜索的向量存储ID。向量存储通过OpenAI仪表板管理。<a href=\"https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/#built-in-tools\">了解更多</a>。"
+						},
+						"filters": {
+							"displayName": "筛选器"
+						},
+						"maxResults": {
+							"displayName": "最大结果数"
+						}
+					}
+				},
+				"codeInterpreter": {
+					"displayName": "代码解释器",
+					"description": "是否允许模型在沙盒环境中执行代码"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"baseURL": {
+					"displayName": "基础URL",
+					"description": "覆盖API的默认基础URL"
+				},
+				"frequencyPenalty": {
+					"displayName": "频率惩罚",
+					"description": "正值会根据新词元在文本中已有的出现频率进行惩罚，降低模型逐字重复相同内容的可能性。"
+				},
+				"maxTokens": {
+					"displayName": "最大令牌数",
+					"description": "完成生成的最大令牌数。大多数模型的上下文长度为2048个令牌（最新模型除外，支持32,768个）。"
+				},
+				"responseFormat": {
+					"displayName": "响应格式",
+					"options": {
+						"text": {
+							"displayName": "文本",
+							"description": "常规文本响应"
+						},
+						"json_object": {
+							"displayName": "JSON",
+							"description": "启用JSON模式，确保模型生成的消息是有效的JSON格式"
+						}
+					}
+				},
+				"textFormat": {
+					"displayName": "响应格式",
+					"options": {
+						"textOptions": {
+							"displayName": "文本",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"text": {
+											"displayName": "文本"
+										},
+										"json_schema": {
+											"displayName": "JSON 模式（推荐）"
+										},
+										"json_object": {
+											"displayName": "JSON对象"
+										}
+									}
+								},
+								"verbosity": {
+									"displayName": "详细程度",
+									"options": {
+										"low": {
+											"displayName": "低"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"high": {
+											"displayName": "高"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "响应格式的名称。必须为a-z、A-Z、0-9字符，或包含下划线和短横线，最大长度为64个字符。"
+								},
+								"requiredNotice": {
+									"displayName": "使用“严格”模式时，架构中的所有属性都必须设置为“必需”。"
+								},
+								"schema": {
+									"displayName": "架构",
+									"description": "响应格式的架构"
+								},
+								"description": {
+									"displayName": "描述",
+									"description": "响应格式的描述"
+								},
+								"strict": {
+									"displayName": "严格",
+									"description": "是否要求AI始终生成符合所提供JSON Schema的响应"
+								}
+							}
+						}
+					},
+					"values": {
+						"textOptions": {
+							"displayName": "文本",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"text": {
+											"displayName": "文本"
+										},
+										"json_schema": {
+											"displayName": "JSON 模式（推荐）"
+										},
+										"json_object": {
+											"displayName": "JSON对象"
+										}
+									}
+								},
+								"verbosity": {
+									"displayName": "详细程度",
+									"options": {
+										"low": {
+											"displayName": "低"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"high": {
+											"displayName": "高"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "响应格式的名称。必须为a-z、A-Z、0-9字符，或包含下划线和短横线，最大长度为64个字符。"
+								},
+								"requiredNotice": {
+									"displayName": "使用“严格”模式时，架构中的所有属性都必须设置为“必需”。"
+								},
+								"schema": {
+									"displayName": "架构",
+									"description": "响应格式的架构"
+								},
+								"description": {
+									"displayName": "描述",
+									"description": "响应格式的描述"
+								},
+								"strict": {
+									"displayName": "严格",
+									"description": "是否要求AI始终生成符合所提供JSON Schema的响应"
+								}
+							}
+						},
+						"textFormat": {
+							"displayName": "响应格式"
+						}
+					}
+				},
+				"presencePenalty": {
+					"displayName": "存在惩罚",
+					"description": "正值会根据新标记是否已在现有文本中出现来惩罚它们，从而增加模型谈论新话题的可能性"
+				},
+				"temperature": {
+					"displayName": "采样温度",
+					"description": "控制随机性：降低温度会使生成结果更少随机性。当温度趋近于零时，模型会变得确定且重复。"
+				},
+				"reasoningEffort": {
+					"displayName": "推理强度",
+					"description": "控制使用的推理令牌数量。设为“低”将优先考虑速度和节省令牌使用，设为“高”将优先考虑更完整的推理，但会生成更多令牌且响应速度较慢。",
+					"options": {
+						"low": {
+							"displayName": "低",
+							"description": "优先考虑速度和节省令牌用量"
+						},
+						"medium": {
+							"displayName": "中等",
+							"description": "速度与推理准确性之间的平衡"
+						},
+						"high": {
+							"displayName": "高",
+							"description": "倾向于更完整的推理，代价是生成更多令牌和响应变慢"
+						}
+					}
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "请求允许执行的最长时间（毫秒）"
+				},
+				"maxRetries": {
+					"displayName": "最大重试次数",
+					"description": "尝试的最大重试次数"
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "通过核心采样控制多样性：0.5表示考虑所有似然加权选项的一半。我们通常建议调整此参数或温度，但不要同时调整两者。"
+				},
+				"conversationId": {
+					"displayName": "[0]对话ID",
+					"description": "[1]此响应所属的对话。此响应完成后，其输入项和输出项将自动添加到此对话中。"
+				},
+				"promptCacheKey": {
+					"displayName": "提示词缓存键",
+					"description": "由OpenAI用于缓存相似请求的响应，以优化您的缓存命中率"
+				},
+				"safetyIdentifier": {
+					"displayName": "安全标识符",
+					"description": "一个稳定的标识符，用于帮助检测可能违反OpenAI使用政策的应用程序用户。ID应为唯一标识每个用户的字符串。"
+				},
+				"serviceTier": {
+					"displayName": "服务层级",
+					"description": "请求所使用的服务层级",
+					"options": {
+						"auto": {
+							"displayName": "自动"
+						},
+						"flex": {
+							"displayName": "弹性"
+						},
+						"default": {
+							"displayName": "默认"
+						},
+						"priority": {
+							"displayName": "优先级"
+						}
+					}
+				},
+				"metadata": {
+					"displayName": "元数据",
+					"description": "一组最多16个键值对，可附加到对象上。这有助于以结构化格式存储对象的附加信息，并通过API或仪表板查询对象。键是字符串，最大长度为64个字符。值也是字符串，最大长度为512个字符。"
+				},
+				"topLogprobs": {
+					"displayName": "顶部对数概率",
+					"description": "一个介于0到20之间的整数，指定在每个标记位置返回的最可能标记数量，每个标记都附带相关的对数概率"
+				},
+				"promptConfig": {
+					"displayName": "提示词",
+					"description": "配置通过OpenAI仪表板设置的可复用提示词模板。<a href=\"https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts\">了解更多</a>。",
+					"options": {
+						"promptOptions": {
+							"displayName": "提示词",
+							"options": {
+								"promptId": {
+									"displayName": "提示ID",
+									"description": "要使用的提示模板的唯一标识符"
+								},
+								"version": {
+									"displayName": "版本",
+									"description": "提示模板的可选版本"
+								},
+								"variables": {
+									"displayName": "变量",
+									"description": "要替换到提示模板中的变量"
+								}
+							}
+						}
+					},
+					"values": {
+						"promptOptions": {
+							"displayName": "提示词",
+							"options": {
+								"promptId": {
+									"displayName": "提示ID",
+									"description": "要使用的提示模板的唯一标识符"
+								},
+								"version": {
+									"displayName": "版本",
+									"description": "提示模板的可选版本"
+								},
+								"variables": {
+									"displayName": "变量",
+									"description": "要替换到提示模板中的变量"
+								}
+							}
+						},
+						"promptConfig": {
+							"displayName": "提示词"
+						}
+					}
+				}
+			}
+		}
+	}
+}

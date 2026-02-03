@@ -1,0 +1,168 @@
+{
+	"header": {
+		"displayName": "Emelia",
+		"description": "Consume the Emelia API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"campaign": {
+					"displayName": "Campaign"
+				},
+				"contactList": {
+					"displayName": "Contact List"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"addContact": {
+					"displayName": "Add Contact"
+				},
+				"create": {
+					"displayName": "Create"
+				},
+				"duplicate": {
+					"displayName": "Duplicate"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"pause": {
+					"displayName": "Pause"
+				},
+				"start": {
+					"displayName": "Start"
+				},
+				"add": {
+					"displayName": "Add"
+				}
+			}
+		},
+		"campaignId": {
+			"displayName": "Campaign Name or ID",
+			"description": "The ID of the campaign to duplicate. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"contactEmail": {
+			"displayName": "Contact Email",
+			"description": "The email of the contact to add to the contact list"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Filter by custom fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldName": {
+									"displayName": "Field Name",
+									"description": "The name of the field to add custom field to"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldName": {
+									"displayName": "Field Name",
+									"description": "The name of the field to add custom field to"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "First name of the contact to add"
+				},
+				"lastContacted": {
+					"displayName": "Last Contacted",
+					"description": "Last contacted date of the contact to add"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "Last name of the contact to add"
+				},
+				"lastOpen": {
+					"displayName": "Last Open",
+					"description": "Last opened date of the contact to add"
+				},
+				"lastReplied": {
+					"displayName": "Last Replied",
+					"description": "Last replied date of the contact to add"
+				},
+				"mailsSent": {
+					"displayName": "Mails Sent",
+					"description": "Number of emails sent to the contact to add"
+				},
+				"phoneNumber": {
+					"displayName": "Phone Number",
+					"description": "Phone number of the contact to add"
+				}
+			}
+		},
+		"campaignName": {
+			"displayName": "New Campaign Name",
+			"description": "The name of the new campaign to create"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"copyContacts": {
+					"displayName": "Copy Contacts",
+					"description": "Whether to copy all the contacts from the original campaign"
+				},
+				"copyProvider": {
+					"displayName": "Copy Email Provider",
+					"description": "Whether to set the same email provider than the original campaign"
+				},
+				"copyMails": {
+					"displayName": "Copy Email Sequence",
+					"description": "Whether to copy all the steps of the email sequence from the original campaign"
+				},
+				"copySettings": {
+					"displayName": "Copy Global Settings",
+					"description": "Whether to copy all the general settings from the original campaign"
+				}
+			}
+		},
+		"contactListId": {
+			"displayName": "Contact List Name or ID",
+			"description": "The ID of the contact list to add the contact to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

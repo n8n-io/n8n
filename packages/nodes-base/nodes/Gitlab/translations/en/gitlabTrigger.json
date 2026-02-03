@@ -1,0 +1,33 @@
+{
+	"header": {
+		"displayName": "GitLab Trigger",
+		"description": "Starts the workflow when GitLab events occur"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"owner": {
+			"displayName": "Repository Owner",
+			"description": "Owner of the repository",
+			"placeholder": "n8n-io"
+		},
+		"repository": {
+			"displayName": "Repository Name",
+			"description": "The name of the repository",
+			"placeholder": "n8n"
+		},
+		"events": {
+			"displayName": "Events",
+			"description": "The events to listen to"
+		}
+	}
+}

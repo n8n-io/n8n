@@ -1,0 +1,334 @@
+{
+	"header": {
+		"displayName": "If",
+		"description": "Route items to different branches (true/false)"
+	},
+	"nodeView": {
+		"conditions": {
+			"displayName": "Conditions",
+			"description": "The type of values to compare",
+			"placeholder": "Add Condition",
+			"multipleValueButtonText": "Add Condition",
+			"options": {
+				"boolean": {
+					"displayName": "Boolean",
+					"options": {
+						"value1": {
+							"displayName": "Value 1",
+							"description": "The value to compare with the second one"
+						},
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"equal": {
+									"displayName": "Equal"
+								},
+								"notEqual": {
+									"displayName": "Not Equal"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "Value 2",
+							"description": "The value to compare with the first one"
+						}
+					}
+				},
+				"dateTime": {
+					"displayName": "Date & Time",
+					"options": {
+						"value1": {
+							"displayName": "Value 1",
+							"description": "The value to compare with the second one"
+						},
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"after": {
+									"displayName": "Occurred After"
+								},
+								"before": {
+									"displayName": "Occurred Before"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "Value 2",
+							"description": "The value to compare with the first one"
+						}
+					}
+				},
+				"number": {
+					"displayName": "Number",
+					"options": {
+						"value1": {
+							"displayName": "Value 1",
+							"description": "The value to compare with the second one"
+						},
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"smaller": {
+									"displayName": "Smaller"
+								},
+								"smallerEqual": {
+									"displayName": "Smaller or Equal"
+								},
+								"equal": {
+									"displayName": "Equal"
+								},
+								"notEqual": {
+									"displayName": "Not Equal"
+								},
+								"larger": {
+									"displayName": "Larger"
+								},
+								"largerEqual": {
+									"displayName": "Larger or Equal"
+								},
+								"isEmpty": {
+									"displayName": "Is Empty"
+								},
+								"isNotEmpty": {
+									"displayName": "Is Not Empty"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "Value 2",
+							"description": "The value to compare with the first one"
+						}
+					}
+				},
+				"string": {
+					"displayName": "String",
+					"options": {
+						"value1": {
+							"displayName": "Value 1",
+							"description": "The value to compare with the second one"
+						},
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"contains": {
+									"displayName": "Contains"
+								},
+								"notContains": {
+									"displayName": "Not Contains"
+								},
+								"endsWith": {
+									"displayName": "Ends With"
+								},
+								"notEndsWith": {
+									"displayName": "Not Ends With"
+								},
+								"equal": {
+									"displayName": "Equal"
+								},
+								"notEqual": {
+									"displayName": "Not Equal"
+								},
+								"regex": {
+									"displayName": "Regex Match"
+								},
+								"notRegex": {
+									"displayName": "Regex Not Match"
+								},
+								"startsWith": {
+									"displayName": "Starts With"
+								},
+								"notStartsWith": {
+									"displayName": "Not Starts With"
+								},
+								"isEmpty": {
+									"displayName": "Is Empty"
+								},
+								"isNotEmpty": {
+									"displayName": "Is Not Empty"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "Regex",
+							"description": "The regex which has to match",
+							"placeholder": "/text/i"
+						}
+					}
+				}
+			},
+			"values": {
+				"boolean": {
+					"displayName": "Boolean",
+					"options": {
+						"value1": {
+							"displayName": "Value 1",
+							"description": "The value to compare with the second one"
+						},
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"equal": {
+									"displayName": "Equal"
+								},
+								"notEqual": {
+									"displayName": "Not Equal"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "Value 2",
+							"description": "The value to compare with the first one"
+						}
+					}
+				},
+				"dateTime": {
+					"displayName": "Date & Time",
+					"options": {
+						"value1": {
+							"displayName": "Value 1",
+							"description": "The value to compare with the second one"
+						},
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"after": {
+									"displayName": "Occurred After"
+								},
+								"before": {
+									"displayName": "Occurred Before"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "Value 2",
+							"description": "The value to compare with the first one"
+						}
+					}
+				},
+				"number": {
+					"displayName": "Number",
+					"options": {
+						"value1": {
+							"displayName": "Value 1",
+							"description": "The value to compare with the second one"
+						},
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"smaller": {
+									"displayName": "Smaller"
+								},
+								"smallerEqual": {
+									"displayName": "Smaller or Equal"
+								},
+								"equal": {
+									"displayName": "Equal"
+								},
+								"notEqual": {
+									"displayName": "Not Equal"
+								},
+								"larger": {
+									"displayName": "Larger"
+								},
+								"largerEqual": {
+									"displayName": "Larger or Equal"
+								},
+								"isEmpty": {
+									"displayName": "Is Empty"
+								},
+								"isNotEmpty": {
+									"displayName": "Is Not Empty"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "Value 2",
+							"description": "The value to compare with the first one"
+						}
+					}
+				},
+				"string": {
+					"displayName": "String",
+					"options": {
+						"value1": {
+							"displayName": "Value 1",
+							"description": "The value to compare with the second one"
+						},
+						"operation": {
+							"displayName": "Operation",
+							"description": "Operation to decide where the data should be mapped to",
+							"options": {
+								"contains": {
+									"displayName": "Contains"
+								},
+								"notContains": {
+									"displayName": "Not Contains"
+								},
+								"endsWith": {
+									"displayName": "Ends With"
+								},
+								"notEndsWith": {
+									"displayName": "Not Ends With"
+								},
+								"equal": {
+									"displayName": "Equal"
+								},
+								"notEqual": {
+									"displayName": "Not Equal"
+								},
+								"regex": {
+									"displayName": "Regex Match"
+								},
+								"notRegex": {
+									"displayName": "Regex Not Match"
+								},
+								"startsWith": {
+									"displayName": "Starts With"
+								},
+								"notStartsWith": {
+									"displayName": "Not Starts With"
+								},
+								"isEmpty": {
+									"displayName": "Is Empty"
+								},
+								"isNotEmpty": {
+									"displayName": "Is Not Empty"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "Regex",
+							"description": "The regex which has to match",
+							"placeholder": "/text/i"
+						}
+					}
+				},
+				"conditions": {
+					"displayName": "Conditions",
+					"placeholder": "Add Condition"
+				}
+			}
+		},
+		"combineOperation": {
+			"displayName": "Combine",
+			"description": "If multiple rules got set this settings decides if it is true as soon as ANY condition matches or only if ALL get meet",
+			"options": {
+				"all": {
+					"displayName": "ALL",
+					"description": "Only if all conditions are met it goes into \"true\" branch"
+				},
+				"any": {
+					"displayName": "ANY",
+					"description": "If any of the conditions is met it goes into \"true\" branch"
+				}
+			}
+		}
+	}
+}

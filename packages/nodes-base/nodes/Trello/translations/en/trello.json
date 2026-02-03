@@ -1,0 +1,600 @@
+{
+	"header": {
+		"displayName": "Trello",
+		"description": "Create, change and delete boards and cards"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"attachment": {
+					"displayName": "Attachment"
+				},
+				"board": {
+					"displayName": "Board"
+				},
+				"boardMember": {
+					"displayName": "Board Member"
+				},
+				"card": {
+					"displayName": "Card"
+				},
+				"cardComment": {
+					"displayName": "Card Comment"
+				},
+				"checklist": {
+					"displayName": "Checklist"
+				},
+				"label": {
+					"displayName": "Label"
+				},
+				"list": {
+					"displayName": "List"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new list"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a label"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get the data of a list"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many lists"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a list"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add member to board using member ID"
+				},
+				"invite": {
+					"displayName": "Invite",
+					"description": "Invite a new member to a board via email"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove member from board using member ID"
+				},
+				"createCheckItem": {
+					"displayName": "Create Checklist Item",
+					"description": "Create a checklist item"
+				},
+				"deleteCheckItem": {
+					"displayName": "Delete Checklist Item",
+					"description": "Delete a checklist item"
+				},
+				"getCheckItem": {
+					"displayName": "Get Checklist Items",
+					"description": "Get a specific checklist on a card"
+				},
+				"completedCheckItems": {
+					"displayName": "Get Completed Checklist Items",
+					"description": "Get the completed checklist items on a card"
+				},
+				"updateCheckItem": {
+					"displayName": "Update Checklist Item",
+					"description": "Update an item in a checklist on a card"
+				},
+				"addLabel": {
+					"displayName": "Add to Card",
+					"description": "Add a label to a card"
+				},
+				"removeLabel": {
+					"displayName": "Remove From Card",
+					"description": "Remove a label from a card"
+				},
+				"archive": {
+					"displayName": "Archive",
+					"description": "Archive/Unarchive a list"
+				},
+				"getCards": {
+					"displayName": "Get Cards",
+					"description": "Get all the cards in a list"
+				}
+			}
+		},
+		"cardId": {
+			"displayName": "Card ID",
+			"description": "The ID of the card"
+		},
+		"url": {
+			"displayName": "Source URL",
+			"description": "The URL of the attachment to add"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"mimeType": {
+					"displayName": "MIME Type",
+					"description": "The MIME type of the attachment to add",
+					"placeholder": "image/png"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The new name for the checklist item"
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields to return. Either \"all\" or a comma-separated list of fields."
+				},
+				"prefs_cardAging": {
+					"displayName": "Aging",
+					"description": "Determines the type of card aging that should take place on the board if card aging is enabled",
+					"options": {
+						"pirate": {
+							"displayName": "Pirate"
+						},
+						"regular": {
+							"displayName": "Regular"
+						}
+					}
+				},
+				"prefs_background": {
+					"displayName": "Background",
+					"description": "The ID of a custom background or one of: blue, orange, green, red, purple, pink, lime, sky, grey"
+				},
+				"prefs_comments": {
+					"displayName": "Comments",
+					"description": "Who can comment on cards on this board",
+					"options": {
+						"disabled": {
+							"displayName": "Disabled"
+						},
+						"members": {
+							"displayName": "Members"
+						},
+						"observers": {
+							"displayName": "Observers"
+						},
+						"org": {
+							"displayName": "Organization"
+						},
+						"public": {
+							"displayName": "Public"
+						}
+					}
+				},
+				"prefs_cardCovers": {
+					"displayName": "Covers",
+					"description": "Whether card covers are enabled"
+				},
+				"prefs_invitations": {
+					"displayName": "Invitations",
+					"description": "Determines what types of members can invite users to join",
+					"options": {
+						"admins": {
+							"displayName": "Admins"
+						},
+						"members": {
+							"displayName": "Members"
+						}
+					}
+				},
+				"keepFromSource": {
+					"displayName": "Keep From Source",
+					"description": "If using idCardSource you can specify which properties to copy over. all or comma-separated list of: attachments, checklists, comments, due, labels, members, stickers."
+				},
+				"defaultLabels": {
+					"displayName": "Labels",
+					"description": "Whether to use the default set of labels"
+				},
+				"defaultLists": {
+					"displayName": "Lists",
+					"description": "Whether to add the default set of lists to a board(To Do, Doing, Done).It is ignored if idBoardSource is provided"
+				},
+				"idOrganization": {
+					"displayName": "Organization ID",
+					"description": "The ID or name of the team the board should belong to"
+				},
+				"prefs_permissionLevel": {
+					"displayName": "Permission Level",
+					"description": "The permissions level of the board",
+					"options": {
+						"org": {
+							"displayName": "Organization"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"public": {
+							"displayName": "Public"
+						}
+					}
+				},
+				"powerUps": {
+					"displayName": "Power Ups",
+					"description": "The Power-Ups that should be enabled on the new board",
+					"options": {
+						"all": {
+							"displayName": "All"
+						},
+						"calendar": {
+							"displayName": "Calendar"
+						},
+						"cardAging": {
+							"displayName": "Card Aging"
+						},
+						"recap": {
+							"displayName": "Recap"
+						},
+						"voting": {
+							"displayName": "Voting"
+						}
+					}
+				},
+				"prefs_selfJoin": {
+					"displayName": "Self Join",
+					"description": "Whether users can join the boards themselves or whether they have to be invited"
+				},
+				"idBoardSource": {
+					"displayName": "Source IDs",
+					"description": "The ID of a board to copy into the new board"
+				},
+				"prefs_voting": {
+					"displayName": "Voting",
+					"description": "Who can vote on this board",
+					"options": {
+						"disabled": {
+							"displayName": "Disabled"
+						},
+						"members": {
+							"displayName": "Members"
+						},
+						"observers": {
+							"displayName": "Observers"
+						},
+						"org": {
+							"displayName": "Organization"
+						},
+						"public": {
+							"displayName": "Public"
+						}
+					}
+				},
+				"pluginData": {
+					"displayName": "Plugin Data",
+					"description": "Whether to include pluginData on the card with the response"
+				},
+				"allowBillableGuest": {
+					"displayName": "Allow Billable Guest",
+					"description": "Whether to allow organization admins to add multi-board guests onto a board"
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Determines the type of membership the user being added should have",
+					"options": {
+						"normal": {
+							"displayName": "Normal",
+							"description": "Invite as normal member"
+						},
+						"admin": {
+							"displayName": "Admin",
+							"description": "Invite as admin"
+						},
+						"observer": {
+							"displayName": "Observer",
+							"description": "Invite as observer (Trello premium feature)"
+						}
+					}
+				},
+				"fullName": {
+					"displayName": "Full Name",
+					"description": "The full name of the user to add as a member of the board. Must have a length of at least 1 and cannot begin nor end with a space."
+				},
+				"due": {
+					"displayName": "Due Date",
+					"description": "A due date for the card"
+				},
+				"dueComplete": {
+					"displayName": "Due Complete",
+					"description": "Whether the card is completed"
+				},
+				"pos": {
+					"displayName": "Position",
+					"description": "The position of the new list. top, bottom, or a positive float."
+				},
+				"idMembers": {
+					"displayName": "Member IDs",
+					"description": "Comma-separated list of member IDs to add to the card"
+				},
+				"idLabels": {
+					"displayName": "Label IDs",
+					"description": "Comma-separated list of label IDs to add to the card"
+				},
+				"urlSource": {
+					"displayName": "URL Source",
+					"description": "A source URL to attach to card"
+				},
+				"idCardSource": {
+					"displayName": "Source ID",
+					"description": "The ID of a card to copy into the new card"
+				},
+				"board": {
+					"displayName": "Board",
+					"description": "Whether to return the board object the card is on"
+				},
+				"board_fields": {
+					"displayName": "Board Fields",
+					"description": "Fields to return. Either \"all\" or a comma-separated list: name, desc, descData, closed, idOrganization, pinned, url, prefs."
+				},
+				"customFieldItems": {
+					"displayName": "Custom Field Items",
+					"description": "Whether to include the customFieldItems"
+				},
+				"members": {
+					"displayName": "Members",
+					"description": "Whether to return member objects for members on the card"
+				},
+				"member_fields": {
+					"displayName": "Member Fields",
+					"description": "Fields to return. Either \"all\" or a comma-separated list: avatarHash, fullName, initials, username."
+				},
+				"stickers": {
+					"displayName": "Stickers",
+					"description": "Whether to include sticker models with the response"
+				},
+				"sticker_fields": {
+					"displayName": "Sticker Fields",
+					"description": "Fields to return. Either \"all\" or a comma-separated list of sticker fields."
+				},
+				"idChecklistSource": {
+					"displayName": "ID Of Checklist Source",
+					"description": "The ID of a source checklist to copy into the new one"
+				},
+				"checked": {
+					"displayName": "Checked",
+					"description": "Whether the check item is already checked when created"
+				},
+				"state": {
+					"displayName": "State",
+					"options": {
+						"complete": {
+							"displayName": "Complete"
+						},
+						"incomplete": {
+							"displayName": "Incomplete"
+						}
+					}
+				},
+				"checklistId": {
+					"displayName": "Checklist ID",
+					"description": "The ID of the checklist this item is in"
+				},
+				"idListSource": {
+					"displayName": "List Source",
+					"description": "ID of the list to copy into the new list"
+				}
+			}
+		},
+		"id": {
+			"displayName": "List ID",
+			"description": "The ID of the list to update"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the list",
+			"placeholder": "My list"
+		},
+		"description": {
+			"displayName": "Description",
+			"description": "The description of the card"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"closed": {
+					"displayName": "Closed",
+					"description": "Whether the list is closed"
+				},
+				"desc": {
+					"displayName": "Description",
+					"description": "New description of the board"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "New name of the list"
+				},
+				"idOrganization": {
+					"displayName": "Organization ID",
+					"description": "The ID of the team the board should be moved to"
+				},
+				"subscribed": {
+					"displayName": "Subscribed",
+					"description": "Whether the acting user is subscribed to the list"
+				},
+				"idAttachmentCover": {
+					"displayName": "Attachment Cover",
+					"description": "The ID of the image attachment the card should use as its cover, or null for none"
+				},
+				"idBoard": {
+					"displayName": "Board ID",
+					"description": "ID of a board the list should be moved to"
+				},
+				"due": {
+					"displayName": "Due Date",
+					"description": "A due date for the card"
+				},
+				"dueComplete": {
+					"displayName": "Due Complete",
+					"description": "Whether the card is completed"
+				},
+				"idLabels": {
+					"displayName": "Label IDs",
+					"description": "Comma-separated list of label IDs to set on card"
+				},
+				"idList": {
+					"displayName": "List ID",
+					"description": "The ID of the list the card should be in"
+				},
+				"idMembers": {
+					"displayName": "Member IDs",
+					"description": "Comma-separated list of member IDs to set on card"
+				},
+				"pos": {
+					"displayName": "Position",
+					"description": "The position of the list. top, bottom, or a positive float."
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "The color for the label",
+					"options": {
+						"black": {
+							"displayName": "Black"
+						},
+						"blue": {
+							"displayName": "Blue"
+						},
+						"green": {
+							"displayName": "Green"
+						},
+						"lime": {
+							"displayName": "Lime"
+						},
+						"null": {
+							"displayName": "Null"
+						},
+						"orange": {
+							"displayName": "Orange"
+						},
+						"pink": {
+							"displayName": "Pink"
+						},
+						"purple": {
+							"displayName": "Purple"
+						},
+						"red": {
+							"displayName": "Red"
+						},
+						"sky": {
+							"displayName": "Sky"
+						},
+						"yellow": {
+							"displayName": "Yellow"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"idMember": {
+			"displayName": "Member ID",
+			"description": "The ID of the member to remove from the board"
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "Determines the type of membership the user being added should have",
+			"options": {
+				"normal": {
+					"displayName": "Normal",
+					"description": "Invite as normal member"
+				},
+				"admin": {
+					"displayName": "Admin",
+					"description": "Invite as admin"
+				},
+				"observer": {
+					"displayName": "Observer",
+					"description": "Invite as observer (Trello premium feature)"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The ID of the board to update",
+			"placeholder": "name@email.com"
+		},
+		"listId": {
+			"displayName": "List ID",
+			"description": "The ID of the list to create card in"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "Text of the comment"
+		},
+		"commentId": {
+			"displayName": "Comment ID",
+			"description": "The ID of the comment to delete"
+		},
+		"checklistId": {
+			"displayName": "Checklist ID",
+			"description": "The ID of the checklist to update"
+		},
+		"checkItemId": {
+			"displayName": "CheckItem ID",
+			"description": "The ID of the checklist item to update"
+		},
+		"boardId": {
+			"displayName": "Board",
+			"description": "The ID of the board"
+		},
+		"color": {
+			"displayName": "Color",
+			"description": "The color for the label",
+			"options": {
+				"black": {
+					"displayName": "Black"
+				},
+				"blue": {
+					"displayName": "Blue"
+				},
+				"green": {
+					"displayName": "Green"
+				},
+				"lime": {
+					"displayName": "Lime"
+				},
+				"null": {
+					"displayName": "Null"
+				},
+				"orange": {
+					"displayName": "Orange"
+				},
+				"pink": {
+					"displayName": "Pink"
+				},
+				"purple": {
+					"displayName": "Purple"
+				},
+				"red": {
+					"displayName": "Red"
+				},
+				"sky": {
+					"displayName": "Sky"
+				},
+				"yellow": {
+					"displayName": "Yellow"
+				}
+			}
+		},
+		"archive": {
+			"displayName": "Archive",
+			"description": "Whether the list should be archived or unarchived"
+		},
+		"idBoard": {
+			"displayName": "Board ID",
+			"description": "The ID of the board the list should be created in"
+		}
+	}
+}

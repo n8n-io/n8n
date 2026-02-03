@@ -1,0 +1,85 @@
+{
+	"header": {
+		"displayName": "Postgres Trigger",
+		"description": "Listens to Postgres messages"
+	},
+	"nodeView": {
+		"triggerMode": {
+			"displayName": "Listen For",
+			"options": {
+				"createTrigger": {
+					"displayName": "Table Row Change Events",
+					"description": "Insert, update or delete"
+				},
+				"listenTrigger": {
+					"displayName": "Advanced",
+					"description": "Listen to existing Postgres channel"
+				}
+			}
+		},
+		"schema": {
+			"displayName": "Schema Name"
+		},
+		"tableName": {
+			"displayName": "Table Name"
+		},
+		"channelName": {
+			"displayName": "Channel Name",
+			"description": "Name of the channel to listen to",
+			"placeholder": "e.g. n8n_channel"
+		},
+		"firesOn": {
+			"displayName": "Event to listen for",
+			"options": {
+				"INSERT": {
+					"displayName": "Insert"
+				},
+				"UPDATE": {
+					"displayName": "Update"
+				},
+				"DELETE": {
+					"displayName": "Delete"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"channelName": {
+					"displayName": "Channel Name",
+					"description": "Name of the channel to listen to",
+					"placeholder": "e.g. n8n_channel"
+				},
+				"functionName": {
+					"displayName": "Function Name",
+					"description": "Name of the function to create",
+					"placeholder": "e.g. n8n_trigger_function()"
+				},
+				"replaceIfExists": {
+					"displayName": "Replace if Exists",
+					"description": "Whether to replace an existing function and trigger with the same name"
+				},
+				"triggerName": {
+					"displayName": "Trigger Name",
+					"description": "Name of the trigger to create",
+					"placeholder": "e.g. n8n_trigger"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"connectionTimeout": {
+					"displayName": "Connection Timeout",
+					"description": "Number of seconds reserved for connecting to the database"
+				},
+				"delayClosingIdleConnection": {
+					"displayName": "Delay Closing Idle Connection",
+					"description": "Number of seconds to wait before idle connection would be eligible for closing"
+				}
+			}
+		}
+	}
+}

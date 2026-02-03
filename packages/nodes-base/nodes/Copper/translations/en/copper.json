@@ -1,0 +1,1294 @@
+{
+	"header": {
+		"displayName": "Copper",
+		"description": "Consume the Copper API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"company": {
+					"displayName": "Company"
+				},
+				"customerSource": {
+					"displayName": "Customer Source"
+				},
+				"lead": {
+					"displayName": "Lead"
+				},
+				"opportunity": {
+					"displayName": "Opportunity"
+				},
+				"person": {
+					"displayName": "Person"
+				},
+				"project": {
+					"displayName": "Project"
+				},
+				"task": {
+					"displayName": "Task"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the project to create"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Add Address Fields",
+					"options": {
+						"addressFields": {
+							"displayName": "Address Fields",
+							"options": {
+								"street": {
+									"displayName": "Street"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"postal_code": {
+									"displayName": "Postal Code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "ISO 3166 alpha-2 country code"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "Address Fields",
+							"options": {
+								"street": {
+									"displayName": "Street"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"postal_code": {
+									"displayName": "Postal Code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "ISO 3166 alpha-2 country code"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Address Fields"
+						}
+					}
+				},
+				"details": {
+					"displayName": "Details",
+					"description": "Description of the task to create"
+				},
+				"email_domain": {
+					"displayName": "Email Domain"
+				},
+				"phone_numbers": {
+					"displayName": "Phone Numbers",
+					"placeholder": "Add Phone Number",
+					"multipleValueButtonText": "Add Phone Number",
+					"options": {
+						"phoneFields": {
+							"displayName": "Phone Fields",
+							"options": {
+								"number": {
+									"displayName": "Number"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneFields": {
+							"displayName": "Phone Fields",
+							"options": {
+								"number": {
+									"displayName": "Number"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						},
+						"phone_numbers": {
+							"displayName": "Phone Numbers",
+							"placeholder": "Add Phone Number"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "Add Email",
+					"options": {
+						"emailFields": {
+							"displayName": "Email Fields",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailFields": {
+							"displayName": "Email Fields",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "Add Email"
+						}
+					}
+				},
+				"emails": {
+					"displayName": "Emails",
+					"placeholder": "Add Email",
+					"multipleValueButtonText": "Add Email",
+					"options": {
+						"emailFields": {
+							"displayName": "Email Fields",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailFields": {
+							"displayName": "Email Fields",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						},
+						"emails": {
+							"displayName": "Emails",
+							"placeholder": "Add Email"
+						}
+					}
+				},
+				"assignee_id": {
+					"displayName": "Assignee ID",
+					"description": "ID of the user who will own the task to create"
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"Completed": {
+							"displayName": "Completed"
+						},
+						"Open": {
+							"displayName": "Open"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "Priority",
+					"options": {
+						"High": {
+							"displayName": "High"
+						},
+						"None": {
+							"displayName": "None"
+						}
+					}
+				}
+			}
+		},
+		"companyId": {
+			"displayName": "Company ID",
+			"description": "ID of the company to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filterFields": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"country": {
+					"displayName": "Country",
+					"description": "Name of the country to filter by",
+					"options": {
+						"AF": {
+							"displayName": "Afghanistan"
+						},
+						"AX": {
+							"displayName": "Åland Islands"
+						},
+						"AL": {
+							"displayName": "Albania"
+						},
+						"DZ": {
+							"displayName": "Algeria"
+						},
+						"AS": {
+							"displayName": "American Samoa"
+						},
+						"AD": {
+							"displayName": "Andorra"
+						},
+						"AO": {
+							"displayName": "Angola"
+						},
+						"AI": {
+							"displayName": "Anguilla"
+						},
+						"AQ": {
+							"displayName": "Antarctica"
+						},
+						"AG": {
+							"displayName": "Antigua and Barbuda"
+						},
+						"AR": {
+							"displayName": "Argentina"
+						},
+						"AM": {
+							"displayName": "Armenia"
+						},
+						"AW": {
+							"displayName": "Aruba"
+						},
+						"AU": {
+							"displayName": "Australia"
+						},
+						"AT": {
+							"displayName": "Austria"
+						},
+						"AZ": {
+							"displayName": "Azerbaijan"
+						},
+						"BS": {
+							"displayName": "Bahamas (the)"
+						},
+						"BH": {
+							"displayName": "Bahrain"
+						},
+						"BD": {
+							"displayName": "Bangladesh"
+						},
+						"BB": {
+							"displayName": "Barbados"
+						},
+						"BY": {
+							"displayName": "Belarus"
+						},
+						"BE": {
+							"displayName": "Belgium"
+						},
+						"BZ": {
+							"displayName": "Belize"
+						},
+						"BJ": {
+							"displayName": "Benin"
+						},
+						"BM": {
+							"displayName": "Bermuda"
+						},
+						"BT": {
+							"displayName": "Bhutan"
+						},
+						"BO": {
+							"displayName": "Bolivia (Plurinational State of)"
+						},
+						"BQ": {
+							"displayName": "Bonaire, Sint Eustatius and Saba"
+						},
+						"BA": {
+							"displayName": "Bosnia and Herzegovina"
+						},
+						"BW": {
+							"displayName": "Botswana"
+						},
+						"BV": {
+							"displayName": "Bouvet Island"
+						},
+						"BR": {
+							"displayName": "Brazil"
+						},
+						"IO": {
+							"displayName": "British Indian Ocean Territory (the)"
+						},
+						"BN": {
+							"displayName": "Brunei Darussalam"
+						},
+						"BG": {
+							"displayName": "Bulgaria"
+						},
+						"BF": {
+							"displayName": "Burkina Faso"
+						},
+						"BI": {
+							"displayName": "Burundi"
+						},
+						"CV": {
+							"displayName": "Cabo Verde"
+						},
+						"KH": {
+							"displayName": "Cambodia"
+						},
+						"CM": {
+							"displayName": "Cameroon"
+						},
+						"CA": {
+							"displayName": "Canada"
+						},
+						"KY": {
+							"displayName": "Cayman Islands (the)"
+						},
+						"CF": {
+							"displayName": "Central African Republic (the)"
+						},
+						"TD": {
+							"displayName": "Chad"
+						},
+						"CL": {
+							"displayName": "Chile"
+						},
+						"CN": {
+							"displayName": "China"
+						},
+						"CX": {
+							"displayName": "Christmas Island"
+						},
+						"CC": {
+							"displayName": "Cocos (Keeling) Islands (the)"
+						},
+						"CO": {
+							"displayName": "Colombia"
+						},
+						"KM": {
+							"displayName": "Comoros (the)"
+						},
+						"CD": {
+							"displayName": "Congo (the Democratic Republic of the)"
+						},
+						"CG": {
+							"displayName": "Congo (the)"
+						},
+						"CK": {
+							"displayName": "Cook Islands (the)"
+						},
+						"CR": {
+							"displayName": "Costa Rica"
+						},
+						"CI": {
+							"displayName": "Côte d'Ivoire"
+						},
+						"HR": {
+							"displayName": "Croatia"
+						},
+						"CU": {
+							"displayName": "Cuba"
+						},
+						"CW": {
+							"displayName": "Curaçao"
+						},
+						"CY": {
+							"displayName": "Cyprus"
+						},
+						"CZ": {
+							"displayName": "Czechia"
+						},
+						"DK": {
+							"displayName": "Denmark"
+						},
+						"DJ": {
+							"displayName": "Djibouti"
+						},
+						"DM": {
+							"displayName": "Dominica"
+						},
+						"DO": {
+							"displayName": "Dominican Republic (the)"
+						},
+						"EC": {
+							"displayName": "Ecuador"
+						},
+						"EG": {
+							"displayName": "Egypt"
+						},
+						"SV": {
+							"displayName": "El Salvador"
+						},
+						"GQ": {
+							"displayName": "Equatorial Guinea"
+						},
+						"ER": {
+							"displayName": "Eritrea"
+						},
+						"EE": {
+							"displayName": "Estonia"
+						},
+						"ET": {
+							"displayName": "Ethiopia"
+						},
+						"FK": {
+							"displayName": "Falkland Islands (the) [Malvinas]"
+						},
+						"FO": {
+							"displayName": "Faroe Islands (the)"
+						},
+						"FJ": {
+							"displayName": "Fiji"
+						},
+						"FI": {
+							"displayName": "Finland"
+						},
+						"FR": {
+							"displayName": "France"
+						},
+						"GF": {
+							"displayName": "French Guiana"
+						},
+						"PF": {
+							"displayName": "French Polynesia"
+						},
+						"TF": {
+							"displayName": "French Southern Territories (the)"
+						},
+						"GA": {
+							"displayName": "Gabon"
+						},
+						"GM": {
+							"displayName": "Gambia (the)"
+						},
+						"GE": {
+							"displayName": "Georgia"
+						},
+						"DE": {
+							"displayName": "Germany"
+						},
+						"GH": {
+							"displayName": "Ghana"
+						},
+						"GI": {
+							"displayName": "Gibraltar"
+						},
+						"GR": {
+							"displayName": "Greece"
+						},
+						"GL": {
+							"displayName": "Greenland"
+						},
+						"GD": {
+							"displayName": "Grenada"
+						},
+						"GP": {
+							"displayName": "Guadeloupe"
+						},
+						"GU": {
+							"displayName": "Guam"
+						},
+						"GT": {
+							"displayName": "Guatemala"
+						},
+						"GG": {
+							"displayName": "Guernsey"
+						},
+						"GN": {
+							"displayName": "Guinea"
+						},
+						"GW": {
+							"displayName": "Guinea-Bissau"
+						},
+						"GY": {
+							"displayName": "Guyana"
+						},
+						"HT": {
+							"displayName": "Haiti"
+						},
+						"HM": {
+							"displayName": "Heard Island and McDonald Islands"
+						},
+						"VA": {
+							"displayName": "Holy See (the)"
+						},
+						"HN": {
+							"displayName": "Honduras"
+						},
+						"HK": {
+							"displayName": "Hong Kong"
+						},
+						"HU": {
+							"displayName": "Hungary"
+						},
+						"IS": {
+							"displayName": "Iceland"
+						},
+						"IN": {
+							"displayName": "India"
+						},
+						"ID": {
+							"displayName": "Indonesia"
+						},
+						"IR": {
+							"displayName": "Iran (Islamic Republic of)"
+						},
+						"IQ": {
+							"displayName": "Iraq"
+						},
+						"IE": {
+							"displayName": "Ireland"
+						},
+						"IM": {
+							"displayName": "Isle of Man"
+						},
+						"IL": {
+							"displayName": "Israel"
+						},
+						"IT": {
+							"displayName": "Italy"
+						},
+						"JM": {
+							"displayName": "Jamaica"
+						},
+						"JP": {
+							"displayName": "Japan"
+						},
+						"JE": {
+							"displayName": "Jersey"
+						},
+						"JO": {
+							"displayName": "Jordan"
+						},
+						"KZ": {
+							"displayName": "Kazakhstan"
+						},
+						"KE": {
+							"displayName": "Kenya"
+						},
+						"KI": {
+							"displayName": "Kiribati"
+						},
+						"KP": {
+							"displayName": "Korea (the Democratic People's Republic of)"
+						},
+						"KR": {
+							"displayName": "Korea (the Republic of)"
+						},
+						"KW": {
+							"displayName": "Kuwait"
+						},
+						"KG": {
+							"displayName": "Kyrgyzstan"
+						},
+						"LA": {
+							"displayName": "Lao People's Democratic Republic (the)"
+						},
+						"LV": {
+							"displayName": "Latvia"
+						},
+						"LB": {
+							"displayName": "Lebanon"
+						},
+						"LS": {
+							"displayName": "Lesotho"
+						},
+						"LR": {
+							"displayName": "Liberia"
+						},
+						"LY": {
+							"displayName": "Libya"
+						},
+						"LI": {
+							"displayName": "Liechtenstein"
+						},
+						"LT": {
+							"displayName": "Lithuania"
+						},
+						"LU": {
+							"displayName": "Luxembourg"
+						},
+						"MO": {
+							"displayName": "Macao"
+						},
+						"MK": {
+							"displayName": "Macedonia (the former Yugoslav Republic of)"
+						},
+						"MG": {
+							"displayName": "Madagascar"
+						},
+						"MW": {
+							"displayName": "Malawi"
+						},
+						"MY": {
+							"displayName": "Malaysia"
+						},
+						"MV": {
+							"displayName": "Maldives"
+						},
+						"ML": {
+							"displayName": "Mali"
+						},
+						"MT": {
+							"displayName": "Malta"
+						},
+						"MH": {
+							"displayName": "Marshall Islands (the)"
+						},
+						"MQ": {
+							"displayName": "Martinique"
+						},
+						"MR": {
+							"displayName": "Mauritania"
+						},
+						"MU": {
+							"displayName": "Mauritius"
+						},
+						"YT": {
+							"displayName": "Mayotte"
+						},
+						"MX": {
+							"displayName": "Mexico"
+						},
+						"FM": {
+							"displayName": "Micronesia (Federated States of)"
+						},
+						"MD": {
+							"displayName": "Moldova (the Republic of)"
+						},
+						"MC": {
+							"displayName": "Monaco"
+						},
+						"MN": {
+							"displayName": "Mongolia"
+						},
+						"ME": {
+							"displayName": "Montenegro"
+						},
+						"MS": {
+							"displayName": "Montserrat"
+						},
+						"MA": {
+							"displayName": "Morocco"
+						},
+						"MZ": {
+							"displayName": "Mozambique"
+						},
+						"MM": {
+							"displayName": "Myanmar"
+						},
+						"NA": {
+							"displayName": "Namibia"
+						},
+						"NR": {
+							"displayName": "Nauru"
+						},
+						"NP": {
+							"displayName": "Nepal"
+						},
+						"NL": {
+							"displayName": "Netherlands (the)"
+						},
+						"NC": {
+							"displayName": "New Caledonia"
+						},
+						"NZ": {
+							"displayName": "New Zealand"
+						},
+						"NI": {
+							"displayName": "Nicaragua"
+						},
+						"NE": {
+							"displayName": "Niger (the)"
+						},
+						"NG": {
+							"displayName": "Nigeria"
+						},
+						"NU": {
+							"displayName": "Niue"
+						},
+						"NF": {
+							"displayName": "Norfolk Island"
+						},
+						"MP": {
+							"displayName": "Northern Mariana Islands (the)"
+						},
+						"NO": {
+							"displayName": "Norway"
+						},
+						"OM": {
+							"displayName": "Oman"
+						},
+						"PK": {
+							"displayName": "Pakistan"
+						},
+						"PW": {
+							"displayName": "Palau"
+						},
+						"PS": {
+							"displayName": "Palestine, State of"
+						},
+						"PA": {
+							"displayName": "Panama"
+						},
+						"PG": {
+							"displayName": "Papua New Guinea"
+						},
+						"PY": {
+							"displayName": "Paraguay"
+						},
+						"PE": {
+							"displayName": "Peru"
+						},
+						"PH": {
+							"displayName": "Philippines (the)"
+						},
+						"PN": {
+							"displayName": "Pitcairn"
+						},
+						"PL": {
+							"displayName": "Poland"
+						},
+						"PT": {
+							"displayName": "Portugal"
+						},
+						"PR": {
+							"displayName": "Puerto Rico"
+						},
+						"QA": {
+							"displayName": "Qatar"
+						},
+						"RE": {
+							"displayName": "Réunion"
+						},
+						"RO": {
+							"displayName": "Romania"
+						},
+						"RU": {
+							"displayName": "Russian Federation (the)"
+						},
+						"RW": {
+							"displayName": "Rwanda"
+						},
+						"BL": {
+							"displayName": "Saint Barthélemy"
+						},
+						"SH": {
+							"displayName": "Saint Helena, Ascension and Tristan da Cunha"
+						},
+						"KN": {
+							"displayName": "Saint Kitts and Nevis"
+						},
+						"LC": {
+							"displayName": "Saint Lucia"
+						},
+						"MF": {
+							"displayName": "Saint Martin (French part)"
+						},
+						"PM": {
+							"displayName": "Saint Pierre and Miquelon"
+						},
+						"VC": {
+							"displayName": "Saint Vincent and the Grenadines"
+						},
+						"WS": {
+							"displayName": "Samoa"
+						},
+						"SM": {
+							"displayName": "San Marino"
+						},
+						"ST": {
+							"displayName": "Sao Tome and Principe"
+						},
+						"SA": {
+							"displayName": "Saudi Arabia"
+						},
+						"SN": {
+							"displayName": "Senegal"
+						},
+						"RS": {
+							"displayName": "Serbia"
+						},
+						"SC": {
+							"displayName": "Seychelles"
+						},
+						"SL": {
+							"displayName": "Sierra Leone"
+						},
+						"SG": {
+							"displayName": "Singapore"
+						},
+						"SX": {
+							"displayName": "Sint Maarten (Dutch part)"
+						},
+						"SK": {
+							"displayName": "Slovakia"
+						},
+						"SI": {
+							"displayName": "Slovenia"
+						},
+						"SB": {
+							"displayName": "Solomon Islands"
+						},
+						"SO": {
+							"displayName": "Somalia"
+						},
+						"ZA": {
+							"displayName": "South Africa"
+						},
+						"GS": {
+							"displayName": "South Georgia and the South Sandwich Islands"
+						},
+						"SS": {
+							"displayName": "South Sudan"
+						},
+						"ES": {
+							"displayName": "Spain"
+						},
+						"LK": {
+							"displayName": "Sri Lanka"
+						},
+						"SD": {
+							"displayName": "Sudan (the)"
+						},
+						"SR": {
+							"displayName": "Suriname"
+						},
+						"SJ": {
+							"displayName": "Svalbard and Jan Mayen"
+						},
+						"SZ": {
+							"displayName": "Swaziland"
+						},
+						"SE": {
+							"displayName": "Sweden"
+						},
+						"CH": {
+							"displayName": "Switzerland"
+						},
+						"SY": {
+							"displayName": "Syrian Arab Republic"
+						},
+						"TW": {
+							"displayName": "Taiwan (Province of China)"
+						},
+						"TJ": {
+							"displayName": "Tajikistan"
+						},
+						"TZ": {
+							"displayName": "Tanzania, United Republic of"
+						},
+						"TH": {
+							"displayName": "Thailand"
+						},
+						"TL": {
+							"displayName": "Timor-Leste"
+						},
+						"TG": {
+							"displayName": "Togo"
+						},
+						"TK": {
+							"displayName": "Tokelau"
+						},
+						"TO": {
+							"displayName": "Tonga"
+						},
+						"TT": {
+							"displayName": "Trinidad and Tobago"
+						},
+						"TN": {
+							"displayName": "Tunisia"
+						},
+						"TR": {
+							"displayName": "Turkey"
+						},
+						"TM": {
+							"displayName": "Turkmenistan"
+						},
+						"TC": {
+							"displayName": "Turks and Caicos Islands (the)"
+						},
+						"TV": {
+							"displayName": "Tuvalu"
+						},
+						"UG": {
+							"displayName": "Uganda"
+						},
+						"UA": {
+							"displayName": "Ukraine"
+						},
+						"AE": {
+							"displayName": "United Arab Emirates (the)"
+						},
+						"GB": {
+							"displayName": "United Kingdom of Great Britain and Northern Ireland (the)"
+						},
+						"UM": {
+							"displayName": "United States Minor Outlying Islands (the)"
+						},
+						"US": {
+							"displayName": "United States of America (the)"
+						},
+						"UY": {
+							"displayName": "Uruguay"
+						},
+						"UZ": {
+							"displayName": "Uzbekistan"
+						},
+						"VU": {
+							"displayName": "Vanuatu"
+						},
+						"VE": {
+							"displayName": "Venezuela (Bolivarian Republic of)"
+						},
+						"VN": {
+							"displayName": "Viet Nam"
+						},
+						"VG": {
+							"displayName": "Virgin Islands (British)"
+						},
+						"VI": {
+							"displayName": "Virgin Islands (U.S.)"
+						},
+						"WF": {
+							"displayName": "Wallis and Futuna"
+						},
+						"EH": {
+							"displayName": "Western Sahara*"
+						},
+						"YE": {
+							"displayName": "Yemen"
+						},
+						"ZM": {
+							"displayName": "Zambia"
+						},
+						"ZW": {
+							"displayName": "Zimbabwe"
+						}
+					}
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the project to filter by"
+				},
+				"company_ids": {
+					"displayName": "Company IDs",
+					"description": "Comma-separated IDs of the primary companies to filter by"
+				},
+				"customer_source_ids": {
+					"displayName": "Customer Source IDs",
+					"description": "Comma-separated IDs of the customer sources to filter by"
+				},
+				"assignee_ids": {
+					"displayName": "Assignee IDs",
+					"description": "Comma-separated IDs of assignee IDs to filter by"
+				},
+				"project_ids": {
+					"displayName": "Project IDs",
+					"description": "Comma-separated IDs of project IDs to filter by"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Add Address Fields",
+					"options": {
+						"addressFields": {
+							"displayName": "Address Fields",
+							"options": {
+								"street": {
+									"displayName": "Street"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"postal_code": {
+									"displayName": "Postal Code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "ISO 3166 alpha-2 country code"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "Address Fields",
+							"options": {
+								"street": {
+									"displayName": "Street"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"postal_code": {
+									"displayName": "Postal Code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "ISO 3166 alpha-2 country code"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Address Fields"
+						}
+					}
+				},
+				"details": {
+					"displayName": "Details",
+					"description": "Description to set for the task"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name to set for the task"
+				},
+				"phone_numbers": {
+					"displayName": "Phone Numbers",
+					"placeholder": "Add Phone Number",
+					"multipleValueButtonText": "Add Phone Number",
+					"options": {
+						"phoneFields": {
+							"displayName": "Phone Fields",
+							"options": {
+								"number": {
+									"displayName": "Number"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneFields": {
+							"displayName": "Phone Fields",
+							"options": {
+								"number": {
+									"displayName": "Number"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						},
+						"phone_numbers": {
+							"displayName": "Phone Numbers",
+							"placeholder": "Add Phone Number"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "Add Email",
+					"options": {
+						"emailFields": {
+							"displayName": "Email Fields",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailFields": {
+							"displayName": "Email Fields",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "Add Email"
+						}
+					}
+				},
+				"customer_source_id": {
+					"displayName": "Customer Source ID",
+					"description": "ID of the primary company associated with this opportunity"
+				},
+				"primary_contact_id": {
+					"displayName": "Primary Contact ID",
+					"description": "ID of the customer source that generated this opportunity"
+				},
+				"email_domain": {
+					"displayName": "Email Domain"
+				},
+				"emails": {
+					"displayName": "Emails",
+					"placeholder": "Add Email",
+					"multipleValueButtonText": "Add Email",
+					"options": {
+						"emailFields": {
+							"displayName": "Email Fields",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailFields": {
+							"displayName": "Email Fields",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "Category"
+								}
+							}
+						},
+						"emails": {
+							"displayName": "Emails",
+							"placeholder": "Add Email"
+						}
+					}
+				},
+				"assignee_id": {
+					"displayName": "Assignee ID",
+					"description": "ID of the user who will own the task"
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"Completed": {
+							"displayName": "Completed"
+						},
+						"Open": {
+							"displayName": "Open"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "Priority",
+					"options": {
+						"High": {
+							"displayName": "High"
+						},
+						"None": {
+							"displayName": "None"
+						}
+					}
+				}
+			}
+		},
+		"leadId": {
+			"displayName": "Lead ID",
+			"description": "ID of the lead to update"
+		},
+		"customerSourceId": {
+			"displayName": "Customer Source ID",
+			"description": "ID of the customer source that generated this opportunity"
+		},
+		"primaryContactId": {
+			"displayName": "Primary Contact ID",
+			"description": "ID of the primary company associated with this opportunity"
+		},
+		"opportunityId": {
+			"displayName": "Opportunity ID",
+			"description": "ID of the opportunity to update"
+		},
+		"personId": {
+			"displayName": "Person ID",
+			"description": "ID of the person to update"
+		},
+		"projectId": {
+			"displayName": "Project ID",
+			"description": "ID of the project to update"
+		},
+		"taskId": {
+			"displayName": "Task ID",
+			"description": "ID of the task to update"
+		}
+	}
+}

@@ -1,0 +1,87 @@
+{
+	"header": {
+		"displayName": "MCP客户端",
+		"description": "独立MCP客户端"
+	},
+	"nodeView": {
+		"serverTransport": {
+			"displayName": "服务器传输",
+			"description": "您的端点使用的传输方式",
+			"options": {
+				"httpStreamable": {
+					"displayName": "HTTP流式传输"
+				},
+				"sse": {
+					"displayName": "服务器发送事件（已弃用）"
+				}
+			}
+		},
+		"endpointUrl": {
+			"displayName": "MCP端点URL",
+			"description": "要连接的MCP服务器URL",
+			"placeholder": "例如 https://my-mcp-server.ai/mcp"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "端点认证方式",
+			"options": {
+				"bearerAuth": {
+					"displayName": "Bearer 认证"
+				},
+				"headerAuth": {
+					"displayName": "Header 认证"
+				},
+				"mcpOAuth2Api": {
+					"displayName": "MCP OAuth2"
+				},
+				"multipleHeadersAuth": {
+					"displayName": "多标头认证"
+				},
+				"none": {
+					"displayName": "无"
+				}
+			}
+		},
+		"credentials": {
+			"displayName": "凭据"
+		},
+		"tool": {
+			"displayName": "工具",
+			"description": "要使用的工具"
+		},
+		"inputMode": {
+			"displayName": "输入模式",
+			"options": {
+				"manual": {
+					"displayName": "手动",
+					"description": "手动指定每个工具参数的输入数据"
+				},
+				"json": {
+					"displayName": "JSON",
+					"description": "将输入数据指定为JSON对象"
+				}
+			}
+		},
+		"parameters": {
+			"displayName": "参数"
+		},
+		"jsonInput": {
+			"displayName": "JSON"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"convertToBinary": {
+					"displayName": "转换为二进制",
+					"description": "是否将图像和音频转换为二进制数据。如果为false，图像和音频将作为base64编码字符串返回。"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待工具调用完成的毫秒时间"
+				}
+			}
+		}
+	}
+}

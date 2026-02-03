@@ -1,0 +1,194 @@
+{
+	"header": {
+		"displayName": "Quick Base",
+		"description": "Integrate with the Quick Base RESTful API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"field": {
+					"displayName": "Field"
+				},
+				"file": {
+					"displayName": "File"
+				},
+				"record": {
+					"displayName": "Record"
+				},
+				"report": {
+					"displayName": "Report"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many records"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a record"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a file"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a record"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new record, or update the current one if it already exists (upsert)"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a record"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a report"
+				},
+				"run": {
+					"displayName": "Run",
+					"description": "Run a report"
+				}
+			}
+		},
+		"tableId": {
+			"displayName": "Table ID",
+			"description": "The table identifier"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"includeFieldPerms": {
+					"displayName": "Include Field Perms",
+					"description": "Whether to get back the custom permissions for the field(s)"
+				},
+				"fields": {
+					"displayName": "Field Names or IDs",
+					"description": "Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"useFieldIDs": {
+					"displayName": "Use Field IDs",
+					"description": "Whether to use Field IDs instead of Field Names in Columns"
+				},
+				"select": {
+					"displayName": "Select",
+					"description": "An array of field IDs for the fields that should be returned in the response. If empty, the default columns on the table will be returned. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"sortByUi": {
+					"displayName": "Sort By",
+					"description": "By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any. Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.",
+					"placeholder": "Add Sort By",
+					"multipleValueButtonText": "Add Sort By",
+					"options": {
+						"sortByValues": {
+							"displayName": "Sort By",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The unique identifier of a field in a table. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"order": {
+									"displayName": "Order",
+									"options": {
+										"ASC": {
+											"displayName": "ASC"
+										},
+										"DESC": {
+											"displayName": "DESC"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"sortByValues": {
+							"displayName": "Sort By",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The unique identifier of a field in a table. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"order": {
+									"displayName": "Order",
+									"options": {
+										"ASC": {
+											"displayName": "ASC"
+										},
+										"DESC": {
+											"displayName": "DESC"
+										}
+									}
+								}
+							}
+						},
+						"sortByUi": {
+							"displayName": "Sort By",
+							"placeholder": "Add Sort By"
+						}
+					}
+				},
+				"where": {
+					"displayName": "Where",
+					"description": "The filter, using the <a href=\"https://help.quickbase.com/api-guide/componentsquery.html\">Quick Base query language</a>, which determines the records to return"
+				}
+			}
+		},
+		"recordId": {
+			"displayName": "Record ID",
+			"description": "The unique identifier of the record"
+		},
+		"fieldId": {
+			"displayName": "Field ID",
+			"description": "The unique identifier of the field"
+		},
+		"versionNumber": {
+			"displayName": "Version Number",
+			"description": "The file attachment version number"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"columns": {
+			"displayName": "Columns",
+			"description": "Comma-separated list of the properties which should used as columns for the new rows",
+			"placeholder": "id,name,description"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"where": {
+			"displayName": "Where",
+			"description": "The filter to delete records. To delete all records specify a filter that will include all records, for example {3.GT.0} where 3 is the ID of the Record ID field."
+		},
+		"updateKey": {
+			"displayName": "Update Key",
+			"description": "Update can use the key field on the table, or any other supported unique field"
+		},
+		"mergeFieldId": {
+			"displayName": "Merge Field Name or ID",
+			"description": "<p>You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"reportId": {
+			"displayName": "Report ID",
+			"description": "The identifier of the report, unique to the table"
+		}
+	}
+}

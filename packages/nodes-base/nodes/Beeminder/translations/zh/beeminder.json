@@ -1,0 +1,340 @@
+{
+	"header": {
+		"displayName": "Beeminder",
+		"description": "使用Beeminder API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiToken": {
+					"displayName": "API令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"charge": {
+					"displayName": "收费"
+				},
+				"datapoint": {
+					"displayName": "数据点"
+				},
+				"goal": {
+					"displayName": "目标"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新目标"
+				},
+				"createAll": {
+					"displayName": "创建全部",
+					"description": "批量创建数据点"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除数据点"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户信息"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个目标"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新目标"
+				},
+				"getArchived": {
+					"displayName": "获取已归档",
+					"description": "获取已归档目标"
+				},
+				"refresh": {
+					"displayName": "刷新",
+					"description": "刷新目标数据"
+				},
+				"shortCircuit": {
+					"displayName": "短路",
+					"description": "短路承诺"
+				},
+				"stepDown": {
+					"displayName": "降低",
+					"description": "降低质押"
+				},
+				"cancelStepDown": {
+					"displayName": "取消降级步骤"
+				},
+				"uncle": {
+					"displayName": "叔叔",
+					"description": "偏离目标并收取承诺金额"
+				}
+			}
+		},
+		"goalName": {
+			"displayName": "目标名称或ID",
+			"description": "目标名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"amount": {
+			"displayName": "金额",
+			"description": "以美元计费的金额"
+		},
+		"datapoints": {
+			"displayName": "数据点",
+			"description": "要创建的数据点对象数组。每个对象应包含值，并可选择性地包含时间戳、注释等。",
+			"placeholder": "[{\"value\": 1, \"comment\": \"第一个数据点\"}, {\"value\": 2, \"comment\": \"第二个数据点\"}]"
+		},
+		"slug": {
+			"displayName": "目标标识符",
+			"description": "目标的唯一标识符"
+		},
+		"title": {
+			"displayName": "目标标题",
+			"description": "目标的人类可读标题"
+		},
+		"goal_type": {
+			"displayName": "目标类型",
+			"description": "目标类型。<a href=\"https://api.beeminder.com/#attributes-2\">更多信息请参见此处</a>。",
+			"options": {
+				"hustler": {
+					"displayName": "实干家"
+				},
+				"biker": {
+					"displayName": "骑手"
+				},
+				"fatloser": {
+					"displayName": "胖失败者"
+				},
+				"gainer": {
+					"displayName": "增益器"
+				},
+				"inboxer": {
+					"displayName": "收件箱"
+				},
+				"drinker": {
+					"displayName": "Drinker"
+				},
+				"custom": {
+					"displayName": "自定义"
+				}
+			}
+		},
+		"gunits": {
+			"displayName": "目标单位",
+			"description": "目标的单位（例如：“小时”、“页数”、“磅”）"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "要发送的数据点数值"
+		},
+		"datapointId": {
+			"displayName": "数据点ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"comment": {
+					"displayName": "评论"
+				},
+				"timestamp": {
+					"displayName": "时间戳",
+					"description": "如果未传入时间戳，则默认为“当前时间”；如果数据点正在更新而非创建，则使用现有时间戳"
+				},
+				"requestid": {
+					"displayName": "请求ID",
+					"description": "用于唯一标识数据点的字符串"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "费用说明"
+				},
+				"dryrun": {
+					"displayName": "试运行",
+					"description": "是否在不实际创建目标的情况下测试端点"
+				},
+				"goaldate": {
+					"displayName": "目标日期",
+					"description": "目标的目标日期"
+				},
+				"goalval": {
+					"displayName": "目标值",
+					"description": "目标的目标值"
+				},
+				"rate": {
+					"displayName": "速率",
+					"description": "进度速率（每日单位数）"
+				},
+				"initval": {
+					"displayName": "初始值",
+					"description": "今日日期的初始值"
+				},
+				"secret": {
+					"displayName": "密钥",
+					"description": "目标是否为机密"
+				},
+				"datapublic": {
+					"displayName": "数据公开",
+					"description": "数据是否公开"
+				},
+				"datasource": {
+					"displayName": "数据源",
+					"description": "目标的数据源",
+					"options": {
+						"api": {
+							"displayName": "API"
+						},
+						"ifttt": {
+							"displayName": "IFTTT"
+						},
+						"zapier": {
+							"displayName": "Zapier"
+						},
+						"manual": {
+							"displayName": "手动"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "目标的一组字母数字标签。将替换现有标签。",
+					"placeholder": "[\"tag1\", \"tag2\"]"
+				},
+				"datapoints": {
+					"displayName": "包含数据点",
+					"description": "是否在响应中包含数据点"
+				},
+				"emaciated": {
+					"displayName": "瘦弱的",
+					"description": "是否包含名为road、roadall和fullroad的目标属性将从目标对象中剥离"
+				},
+				"associations": {
+					"displayName": "关联关系",
+					"description": "是否在响应中包含关联关系"
+				},
+				"diff_since": {
+					"displayName": "自上次差异",
+					"description": "仅返回自该时间戳以来创建或更新的目标和数据点"
+				},
+				"skinny": {
+					"displayName": "精简模式",
+					"description": "是否返回最小化用户数据"
+				},
+				"datapoints_count": {
+					"displayName": "数据点数量",
+					"description": "要包含的数据点数量"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"title": {
+					"displayName": "标题",
+					"description": "目标的人类可读标题"
+				},
+				"yaxis": {
+					"displayName": "Y轴",
+					"description": "目标图表的Y轴标签"
+				},
+				"tmin": {
+					"displayName": "Tmin",
+					"description": "目标的最小日期，格式为 yyyy-mm-dd",
+					"placeholder": "yyyy-mm-dd"
+				},
+				"tmax": {
+					"displayName": "目标最大日期",
+					"description": "目标的最大日期，格式为 yyyy-mm-dd",
+					"placeholder": "yyyy-mm-dd"
+				},
+				"secret": {
+					"displayName": "密钥",
+					"description": "目标是否为机密"
+				},
+				"datapublic": {
+					"displayName": "数据公开",
+					"description": "数据是否公开"
+				},
+				"roadall": {
+					"displayName": "路线总览",
+					"description": "定义亮红线的数组的数组。每个子数组包含[日期, 值, 比率]，其中恰好有一个字段为null。",
+					"placeholder": "[['2023-01-01', 0, null], [null, 100, 1]]"
+				},
+				"datasource": {
+					"displayName": "数据源",
+					"description": "目标的数据源。使用空字符串表示手动输入。",
+					"options": {
+						"api": {
+							"displayName": "API"
+						},
+						"ifttt": {
+							"displayName": "IFTTT"
+						},
+						"zapier": {
+							"displayName": "Zapier"
+						},
+						"": {
+							"displayName": "手动"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "目标的一组字母数字标签。将替换现有标签。",
+					"placeholder": "[\"tag1\", \"tag2\"]"
+				},
+				"value": {
+					"displayName": "值",
+					"description": "要发送的数据点值"
+				},
+				"comment": {
+					"displayName": "评论"
+				},
+				"timestamp": {
+					"displayName": "时间戳",
+					"description": "如果未传入时间戳，则默认为“当前时间”；如果数据点正在更新而非创建，则使用现有时间戳"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"sort": {
+					"displayName": "排序",
+					"description": "排序依据属性"
+				},
+				"page": {
+					"displayName": "页面",
+					"description": "用于分页结果，从1开始计数，即第1页为首页"
+				},
+				"per": {
+					"displayName": "每页数量",
+					"description": "每页显示的结果数量。默认值为25。若无页码参数则忽略。必须为非负数。"
+				}
+			}
+		}
+	}
+}

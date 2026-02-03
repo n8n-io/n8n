@@ -1,0 +1,211 @@
+{
+	"header": {
+		"displayName": "One Simple API",
+		"description": "A toolbox of no-code utilities"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"information": {
+					"displayName": "Information"
+				},
+				"socialProfile": {
+					"displayName": "Social Profile"
+				},
+				"utility": {
+					"displayName": "Utility"
+				},
+				"website": {
+					"displayName": "Website"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"pdf": {
+					"displayName": "Generate PDF",
+					"description": "Generate a PDF from a webpage"
+				},
+				"seo": {
+					"displayName": "Get SEO Data",
+					"description": "Get SEO information from website"
+				},
+				"screenshot": {
+					"displayName": "Take Screenshot",
+					"description": "Create a screenshot from a webpage"
+				},
+				"instagramProfile": {
+					"displayName": "Instagram",
+					"description": "Get details about an Instagram profile"
+				},
+				"spotifyArtistProfile": {
+					"displayName": "Spotify",
+					"description": "Get details about a Spotify Artist"
+				},
+				"exchangeRate": {
+					"displayName": "Exchange Rate",
+					"description": "Convert a value between currencies"
+				},
+				"imageMetadata": {
+					"displayName": "Image Metadata",
+					"description": "Retrieve image metadata from a URL"
+				},
+				"expandURL": {
+					"displayName": "Expand URL",
+					"description": "Expand a shortened URL"
+				},
+				"qrCode": {
+					"displayName": "Generate QR Code",
+					"description": "Generate a QR Code"
+				},
+				"validateEmail": {
+					"displayName": "Validate Email",
+					"description": "Validate an email address"
+				}
+			}
+		},
+		"link": {
+			"displayName": "URL",
+			"description": "URL to unshorten"
+		},
+		"download": {
+			"displayName": "Download Screenshot?",
+			"description": "Whether to download the screenshot or return a link to it"
+		},
+		"output": {
+			"displayName": "Put Output In Field",
+			"description": "The name of the output field to put the binary file data in"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"page": {
+					"displayName": "Page Size",
+					"options": {
+						"A0": {
+							"displayName": "A0"
+						},
+						"A1": {
+							"displayName": "A1"
+						},
+						"A2": {
+							"displayName": "A2"
+						},
+						"A3": {
+							"displayName": "A3"
+						},
+						"A4": {
+							"displayName": "A4"
+						},
+						"A5": {
+							"displayName": "A5"
+						},
+						"A6": {
+							"displayName": "A6"
+						},
+						"Ledger": {
+							"displayName": "Ledger"
+						},
+						"Legal": {
+							"displayName": "Legal"
+						},
+						"Letter": {
+							"displayName": "Letter"
+						},
+						"Tabloid": {
+							"displayName": "Tabloid"
+						}
+					}
+				},
+				"force": {
+					"displayName": "Force Refresh",
+					"description": "Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it's necessary."
+				},
+				"size": {
+					"displayName": "Size",
+					"description": "The QR Code size",
+					"options": {
+						"Small": {
+							"displayName": "Small"
+						},
+						"Medium": {
+							"displayName": "Medium"
+						},
+						"Large": {
+							"displayName": "Large"
+						}
+					}
+				},
+				"format": {
+					"displayName": "Format",
+					"description": "The QR Code format",
+					"options": {
+						"PNG": {
+							"displayName": "PNG"
+						},
+						"SVG": {
+							"displayName": "SVG"
+						}
+					}
+				},
+				"screen": {
+					"displayName": "Screen Size",
+					"options": {
+						"phone": {
+							"displayName": "Phone"
+						},
+						"phone-landscape": {
+							"displayName": "Phone Landscape"
+						},
+						"retina": {
+							"displayName": "Retina"
+						},
+						"tablet": {
+							"displayName": "Tablet"
+						},
+						"tablet-landscape": {
+							"displayName": "Tablet Landscape"
+						}
+					}
+				},
+				"fullpage": {
+					"displayName": "Full Page",
+					"description": "The API takes a screenshot of the viewable area for the desired screen size. If you need a screenshot of the whole length of the page, use this option."
+				},
+				"headers": {
+					"displayName": "Include Headers?"
+				}
+			}
+		},
+		"message": {
+			"displayName": "QR Content",
+			"description": "The text that should be turned into a QR code - like a website URL"
+		},
+		"profileName": {
+			"displayName": "Profile Name",
+			"description": "Profile name to get details of"
+		},
+		"artistName": {
+			"displayName": "Artist Name",
+			"description": "Artist name to get details for"
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "Value to convert"
+		},
+		"fromCurrency": {
+			"displayName": "From Currency",
+			"placeholder": "USD"
+		},
+		"toCurrency": {
+			"displayName": "To Currency",
+			"placeholder": "EUR"
+		},
+		"emailAddress": {
+			"displayName": "Email Address"
+		}
+	}
+}

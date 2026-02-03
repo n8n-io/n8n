@@ -1,0 +1,32 @@
+{
+	"header": {
+		"displayName": "Mailjet 触发器",
+		"description": "通过 Webhook 处理 Mailjet 事件"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "事件",
+			"description": "确定Webhook触发的资源事件",
+			"options": {
+				"blocked": {
+					"displayName": "邮件被阻止"
+				},
+				"bounce": {
+					"displayName": "邮件退回"
+				},
+				"open": {
+					"displayName": "邮件.打开"
+				},
+				"sent": {
+					"displayName": "邮件已发送"
+				},
+				"spam": {
+					"displayName": "邮件.垃圾邮件"
+				},
+				"unsub": {
+					"displayName": "邮件.取消订阅"
+				}
+			}
+		}
+	}
+}

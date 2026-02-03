@@ -1,0 +1,315 @@
+{
+	"header": {
+		"displayName": "Zendesk触发器",
+		"description": "通过Webhook处理Zendesk事件"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiToken": {
+					"displayName": "API令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"service": {
+			"displayName": "服务",
+			"options": {
+				"support": {
+					"displayName": "支持"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fields": {
+					"displayName": "字段名称或ID",
+					"description": "要返回其值的字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"conditions": {
+			"displayName": "条件",
+			"description": "要设置的条件",
+			"placeholder": "添加条件",
+			"multipleValueButtonText": "添加条件",
+			"options": {
+				"all": {
+					"displayName": "全部",
+					"options": {
+						"resource": {
+							"displayName": "资源",
+							"options": {
+								"ticket": {
+									"displayName": "工单"
+								}
+							}
+						},
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"assignee": {
+									"displayName": "分配对象"
+								},
+								"group": {
+									"displayName": "分组"
+								},
+								"priority": {
+									"displayName": "优先级"
+								},
+								"status": {
+									"displayName": "状态"
+								},
+								"type": {
+									"displayName": "类型"
+								}
+							}
+						},
+						"operation": {
+							"displayName": "操作",
+							"options": {
+								"changed": {
+									"displayName": "已更改"
+								},
+								"value_previous": {
+									"displayName": "变更自"
+								},
+								"value": {
+									"displayName": "已更改为"
+								},
+								"is": {
+									"displayName": "是"
+								},
+								"is_not": {
+									"displayName": "不是"
+								},
+								"not_changed": {
+									"displayName": "未更改"
+								},
+								"not_value_previous": {
+									"displayName": "未更改自"
+								},
+								"not_value": {
+									"displayName": "未更改"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				},
+				"any": {
+					"displayName": "任意",
+					"options": {
+						"resource": {
+							"displayName": "资源",
+							"options": {
+								"ticket": {
+									"displayName": "工单"
+								}
+							}
+						},
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"assignee": {
+									"displayName": "分配对象"
+								},
+								"group": {
+									"displayName": "分组"
+								},
+								"priority": {
+									"displayName": "优先级"
+								},
+								"status": {
+									"displayName": "状态"
+								},
+								"type": {
+									"displayName": "类型"
+								}
+							}
+						},
+						"operation": {
+							"displayName": "操作",
+							"options": {
+								"changed": {
+									"displayName": "已更改"
+								},
+								"value_previous": {
+									"displayName": "变更自"
+								},
+								"value": {
+									"displayName": "已更改为"
+								},
+								"is": {
+									"displayName": "是"
+								},
+								"is_not": {
+									"displayName": "不是"
+								},
+								"not_changed": {
+									"displayName": "未更改"
+								},
+								"not_value_previous": {
+									"displayName": "未更改自"
+								},
+								"not_value": {
+									"displayName": "未更改"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				}
+			},
+			"values": {
+				"all": {
+					"displayName": "全部",
+					"options": {
+						"resource": {
+							"displayName": "资源",
+							"options": {
+								"ticket": {
+									"displayName": "工单"
+								}
+							}
+						},
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"assignee": {
+									"displayName": "分配对象"
+								},
+								"group": {
+									"displayName": "分组"
+								},
+								"priority": {
+									"displayName": "优先级"
+								},
+								"status": {
+									"displayName": "状态"
+								},
+								"type": {
+									"displayName": "类型"
+								}
+							}
+						},
+						"operation": {
+							"displayName": "操作",
+							"options": {
+								"changed": {
+									"displayName": "已更改"
+								},
+								"value_previous": {
+									"displayName": "变更自"
+								},
+								"value": {
+									"displayName": "已更改为"
+								},
+								"is": {
+									"displayName": "是"
+								},
+								"is_not": {
+									"displayName": "不是"
+								},
+								"not_changed": {
+									"displayName": "未更改"
+								},
+								"not_value_previous": {
+									"displayName": "未更改自"
+								},
+								"not_value": {
+									"displayName": "未更改"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				},
+				"any": {
+					"displayName": "任意",
+					"options": {
+						"resource": {
+							"displayName": "资源",
+							"options": {
+								"ticket": {
+									"displayName": "工单"
+								}
+							}
+						},
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"assignee": {
+									"displayName": "分配对象"
+								},
+								"group": {
+									"displayName": "分组"
+								},
+								"priority": {
+									"displayName": "优先级"
+								},
+								"status": {
+									"displayName": "状态"
+								},
+								"type": {
+									"displayName": "类型"
+								}
+							}
+						},
+						"operation": {
+							"displayName": "操作",
+							"options": {
+								"changed": {
+									"displayName": "已更改"
+								},
+								"value_previous": {
+									"displayName": "变更自"
+								},
+								"value": {
+									"displayName": "已更改为"
+								},
+								"is": {
+									"displayName": "是"
+								},
+								"is_not": {
+									"displayName": "不是"
+								},
+								"not_changed": {
+									"displayName": "未更改"
+								},
+								"not_value_previous": {
+									"displayName": "未更改自"
+								},
+								"not_value": {
+									"displayName": "未更改"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				},
+				"conditions": {
+					"displayName": "条件",
+					"placeholder": "添加条件"
+				}
+			}
+		}
+	}
+}

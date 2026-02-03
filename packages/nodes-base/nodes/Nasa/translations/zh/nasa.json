@@ -1,0 +1,165 @@
+{
+	"header": {
+		"displayName": "NASA",
+		"description": "从NASA API检索数据"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"asteroidNeoBrowse": {
+					"displayName": "小行星近地天体浏览"
+				},
+				"asteroidNeoFeed": {
+					"displayName": "小行星近地天体数据流"
+				},
+				"asteroidNeoLookup": {
+					"displayName": "小行星近地天体查询"
+				},
+				"astronomyPictureOfTheDay": {
+					"displayName": "每日天文图"
+				},
+				"donkiCoronalMassEjection": {
+					"displayName": "DONKI 日冕物质抛射"
+				},
+				"donkiHighSpeedStream": {
+					"displayName": "DONKI 高速流"
+				},
+				"donkiInterplanetaryShock": {
+					"displayName": "DONKI 行星际激波"
+				},
+				"donkiMagnetopauseCrossing": {
+					"displayName": "DONKI磁层顶穿越"
+				},
+				"donkiNotifications": {
+					"displayName": "DONKI 通知"
+				},
+				"donkiRadiationBeltEnhancement": {
+					"displayName": "DONKI 辐射带增强"
+				},
+				"donkiSolarEnergeticParticle": {
+					"displayName": "DONKI 太阳高能粒子"
+				},
+				"donkiSolarFlare": {
+					"displayName": "DONKI 太阳耀斑"
+				},
+				"donkiWsaEnlilSimulation": {
+					"displayName": "DONKI WSA+Enlil模拟"
+				},
+				"earthAssets": {
+					"displayName": "地球资产"
+				},
+				"earthImagery": {
+					"displayName": "地球影像"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取两行轨道根数数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "浏览整体小行星数据集"
+				}
+			}
+		},
+		"asteroidId": {
+			"displayName": "小行星ID",
+			"description": "要返回的小行星ID",
+			"placeholder": "3542519"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"includeCloseApproachData": {
+					"displayName": "包含近距离接近数据",
+					"description": "是否在小行星查询中包含所有近距离接近数据"
+				},
+				"date": {
+					"displayName": "日期",
+					"placeholder": "YYYY-MM-DD",
+					"description": "图像日期"
+				},
+				"startDate": {
+					"displayName": "开始日期",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"endDate": {
+					"displayName": "结束日期",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "地磁暴的位置",
+					"options": {
+						"ALL": {
+							"displayName": "全部"
+						},
+						"earth": {
+							"displayName": "地球"
+						},
+						"MESSENGER": {
+							"displayName": "Messenger"
+						},
+						"STEREO A": {
+							"displayName": "立体声 A"
+						},
+						"STEREO B": {
+							"displayName": "立体声 B"
+						}
+					}
+				},
+				"catalog": {
+					"displayName": "目录",
+					"description": "地磁暴目录",
+					"options": {
+						"ALL": {
+							"displayName": "全部"
+						},
+						"SWRC_CATALOG": {
+							"displayName": "SWRC目录"
+						},
+						"WINSLOW_MESSENGER_ICME_CATALOG": {
+							"displayName": "温斯洛信使ICME目录"
+						}
+					}
+				},
+				"dim": {
+					"displayName": "度数",
+					"description": "图像的宽度和高度（以度为单位）",
+					"placeholder": "0.025"
+				}
+			}
+		},
+		"download": {
+			"displayName": "下载图片",
+			"description": "默认只返回图片URL。设为true时将下载图片。"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		},
+		"lat": {
+			"displayName": "纬度",
+			"description": "图像拍摄地点的纬度",
+			"placeholder": "47.751076"
+		},
+		"lon": {
+			"displayName": "经度",
+			"description": "图像位置的经度",
+			"placeholder": "-120.740135"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

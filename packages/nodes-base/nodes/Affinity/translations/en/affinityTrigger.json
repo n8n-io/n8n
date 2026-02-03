@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "Affinity Trigger",
+		"description": "Handle Affinity events via webhooks"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events",
+			"description": "Webhook events that will be enabled for that endpoint"
+		}
+	}
+}

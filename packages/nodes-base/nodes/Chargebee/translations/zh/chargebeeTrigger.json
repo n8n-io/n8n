@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "Chargebee 触发器",
+		"description": "当 Chargebee 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件"
+		}
+	}
+}

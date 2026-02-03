@@ -1,0 +1,274 @@
+{
+	"header": {
+		"displayName": "加密",
+		"description": "提供加密工具"
+	},
+	"nodeView": {
+		"action": {
+			"displayName": "操作",
+			"options": {
+				"generate": {
+					"displayName": "生成",
+					"description": "生成随机字符串"
+				},
+				"hash": {
+					"displayName": "哈希",
+					"description": "以指定格式对文本或文件进行哈希处理"
+				},
+				"hmac": {
+					"displayName": "Hmac",
+					"description": "使用指定格式对文本或文件进行Hmac处理"
+				},
+				"sign": {
+					"displayName": "签名",
+					"description": "使用私钥对字符串进行签名"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "要使用的哈希类型",
+			"options": {
+				"MD5": {
+					"displayName": "MD5"
+				},
+				"SHA256": {
+					"displayName": "SHA256"
+				},
+				"SHA3-256": {
+					"displayName": "SHA3-256"
+				},
+				"SHA3-384": {
+					"displayName": "SHA3-384"
+				},
+				"SHA3-512": {
+					"displayName": "SHA3-512"
+				},
+				"SHA384": {
+					"displayName": "SHA384"
+				},
+				"SHA512": {
+					"displayName": "SHA512"
+				}
+			}
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "是否应从二进制字段中获取待哈希处理的数据"
+		},
+		"binaryPropertyName": {
+			"displayName": "二进制属性名称",
+			"description": "包含输入数据的二进制属性名称"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "需要签名的值"
+		},
+		"dataPropertyName": {
+			"displayName": "属性名称",
+			"description": "要写入随机字符串的属性名称"
+		},
+		"encoding": {
+			"displayName": "编码",
+			"options": {
+				"base64": {
+					"displayName": "BASE64"
+				},
+				"hex": {
+					"displayName": "十六进制"
+				}
+			}
+		},
+		"secret": {
+			"displayName": "密钥"
+		},
+		"algorithm": {
+			"displayName": "算法名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+			"options": {
+				"RSA-MD5": {
+					"displayName": "RSA-MD5"
+				},
+				"RSA-RIPEMD160": {
+					"displayName": "RSA-RIPEMD160"
+				},
+				"RSA-SHA1": {
+					"displayName": "RSA-SHA1"
+				},
+				"RSA-SHA1-2": {
+					"displayName": "RSA-SHA1-2"
+				},
+				"RSA-SHA224": {
+					"displayName": "RSA-SHA224"
+				},
+				"RSA-SHA256": {
+					"displayName": "RSA-SHA256"
+				},
+				"RSA-SHA3-224": {
+					"displayName": "RSA-SHA3-224"
+				},
+				"RSA-SHA3-256": {
+					"displayName": "RSA-SHA3-256"
+				},
+				"RSA-SHA3-384": {
+					"displayName": "RSA-SHA3-384"
+				},
+				"RSA-SHA3-512": {
+					"displayName": "RSA-SHA3-512"
+				},
+				"RSA-SHA384": {
+					"displayName": "RSA-SHA384"
+				},
+				"RSA-SHA512": {
+					"displayName": "RSA-SHA512"
+				},
+				"RSA-SHA512/224": {
+					"displayName": "RSA-SHA512/224"
+				},
+				"RSA-SHA512/256": {
+					"displayName": "RSA-SHA512/256"
+				},
+				"RSA-SM3": {
+					"displayName": "RSA-SM3"
+				},
+				"blake2b512": {
+					"displayName": "blake2b512"
+				},
+				"blake2s256": {
+					"displayName": "blake2s256"
+				},
+				"id-rsassa-pkcs1-v1_5-with-sha3-224": {
+					"displayName": "id-rsassa-pkcs1-v1_5-with-sha3-224"
+				},
+				"id-rsassa-pkcs1-v1_5-with-sha3-256": {
+					"displayName": "id-rsassa-pkcs1-v1_5-with-sha3-256"
+				},
+				"id-rsassa-pkcs1-v1_5-with-sha3-384": {
+					"displayName": "id-rsassa-pkcs1-v1_5-使用-sha3-384"
+				},
+				"id-rsassa-pkcs1-v1_5-with-sha3-512": {
+					"displayName": "id-rsassa-pkcs1-v1_5-带-sha3-512"
+				},
+				"md5": {
+					"displayName": "md5"
+				},
+				"md5-sha1": {
+					"displayName": "md5-sha1"
+				},
+				"md5WithRSAEncryption": {
+					"displayName": "md5WithRSA加密"
+				},
+				"ripemd": {
+					"displayName": "ripemd"
+				},
+				"ripemd160": {
+					"displayName": "ripemd160"
+				},
+				"ripemd160WithRSA": {
+					"displayName": "RSA与RIPEMD160"
+				},
+				"rmd160": {
+					"displayName": "rmd160"
+				},
+				"sha1": {
+					"displayName": "sha1"
+				},
+				"sha1WithRSAEncryption": {
+					"displayName": "sha1WithRSA加密"
+				},
+				"sha224": {
+					"displayName": "sha224"
+				},
+				"sha224WithRSAEncryption": {
+					"displayName": "sha224WithRSA加密"
+				},
+				"sha256": {
+					"displayName": "sha256"
+				},
+				"sha256WithRSAEncryption": {
+					"displayName": "sha256WithRSA加密"
+				},
+				"sha3-224": {
+					"displayName": "sha3-224"
+				},
+				"sha3-256": {
+					"displayName": "sha3-256"
+				},
+				"sha3-384": {
+					"displayName": "sha3-384"
+				},
+				"sha3-512": {
+					"displayName": "sha3-512"
+				},
+				"sha384": {
+					"displayName": "sha384"
+				},
+				"sha384WithRSAEncryption": {
+					"displayName": "SHA384与RSA加密"
+				},
+				"sha512": {
+					"displayName": "sha512"
+				},
+				"sha512-224": {
+					"displayName": "sha512-224"
+				},
+				"sha512-224WithRSAEncryption": {
+					"displayName": "sha512-224WithRSA加密"
+				},
+				"sha512-256": {
+					"displayName": "sha512-256"
+				},
+				"sha512-256WithRSAEncryption": {
+					"displayName": "sha512-256WithRSAEncryption"
+				},
+				"sha512WithRSAEncryption": {
+					"displayName": "sha512WithRSAEncryption"
+				},
+				"shake128": {
+					"displayName": "shake128"
+				},
+				"shake256": {
+					"displayName": "SHA3-256"
+				},
+				"sm3": {
+					"displayName": "SM3"
+				},
+				"sm3WithRSAEncryption": {
+					"displayName": "SM3与RSA加密"
+				},
+				"ssl3-md5": {
+					"displayName": "ssl3-md5"
+				},
+				"ssl3-sha1": {
+					"displayName": "ssl3-sha1"
+				}
+			}
+		},
+		"privateKey": {
+			"displayName": "私钥",
+			"description": "用于签署字符串的私钥"
+		},
+		"encodingType": {
+			"displayName": "类型",
+			"description": "用于生成字符串的编码方式",
+			"options": {
+				"ascii": {
+					"displayName": "ASCII"
+				},
+				"base64": {
+					"displayName": "BASE64"
+				},
+				"hex": {
+					"displayName": "十六进制"
+				},
+				"uuid": {
+					"displayName": "UUID"
+				}
+			}
+		},
+		"stringLength": {
+			"displayName": "长度",
+			"description": "生成字符串的长度"
+		}
+	}
+}

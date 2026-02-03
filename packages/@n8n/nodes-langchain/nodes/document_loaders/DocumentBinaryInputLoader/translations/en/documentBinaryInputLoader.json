@@ -1,0 +1,101 @@
+{
+	"header": {
+		"displayName": "Binary Input Loader",
+		"description": "Use binary data from a previous step in the workflow"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a vector store. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>Insert one</a>"
+		},
+		"loader": {
+			"displayName": "Loader Type",
+			"options": {
+				"csvLoader": {
+					"displayName": "CSV Loader",
+					"description": "Load CSV files"
+				},
+				"docxLoader": {
+					"displayName": "Docx Loader",
+					"description": "Load Docx documents"
+				},
+				"epubLoader": {
+					"displayName": "EPub Loader",
+					"description": "Load EPub files"
+				},
+				"jsonLoader": {
+					"displayName": "JSON Loader",
+					"description": "Load JSON files"
+				},
+				"pdfLoader": {
+					"displayName": "PDF Loader",
+					"description": "Load PDF documents"
+				},
+				"textLoader": {
+					"displayName": "Text Loader",
+					"description": "Load plain text files"
+				}
+			}
+		},
+		"binaryDataKey": {
+			"displayName": "Binary Data Key",
+			"description": "Name of the binary property from which to read the file buffer"
+		},
+		"splitPages": {
+			"displayName": "Split Pages"
+		},
+		"column": {
+			"displayName": "Column",
+			"description": "Column to extract from CSV"
+		},
+		"separator": {
+			"displayName": "Separator",
+			"description": "Separator to use for CSV"
+		},
+		"pointers": {
+			"displayName": "Pointers",
+			"description": "Pointers to extract from JSON, e.g. \"/text\" or \"/text, /meta/title\""
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "Metadata to add to each document. Could be used for filtering during retrieval",
+					"placeholder": "Add property",
+					"multipleValueButtonText": "Add property",
+					"options": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "Metadata",
+							"placeholder": "Add property"
+						}
+					}
+				}
+			}
+		}
+	}
+}

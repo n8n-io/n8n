@@ -1,0 +1,24 @@
+{
+	"header": {
+		"displayName": "自动修复输出解析器",
+		"description": "已弃用，请使用结构化输出解析器"
+	},
+	"nodeView": {
+		"info": {
+			"displayName": "此节点包装了另一个输出解析器。如果第一个解析失败，它会调用LLM来修复格式"
+		},
+		"notice": {
+			"displayName": "此节点必须连接到AI链。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"prompt": {
+					"displayName": "重试提示",
+					"description": "用于修复输出的提示模板。使用占位符：\"{instructions}\" 表示解析规则，\"{completion}\" 表示失败的尝试，\"{error}\" 表示验证错误消息。"
+				}
+			}
+		}
+	}
+}

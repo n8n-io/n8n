@@ -1,0 +1,27 @@
+{
+	"header": {
+		"displayName": "Customer Datastore (n8n training)",
+		"description": "Dummy node used for n8n training"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getOnePerson": {
+					"displayName": "Get One Person"
+				},
+				"getAllPeople": {
+					"displayName": "Get All People"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		}
+	}
+}

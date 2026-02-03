@@ -1,0 +1,60 @@
+{
+	"header": {
+		"displayName": "问答链",
+		"description": "回答关于检索文档的问题"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "通过<a href=\"/templates/1960\" target=\"_blank\">示例</a>了解此节点如何工作，节省时间"
+		},
+		"query": {
+			"displayName": "查询"
+		},
+		"promptType": {
+			"displayName": "提示词来源（用户消息）",
+			"options": {
+				"auto": {
+					"displayName": "已连接的聊天触发器节点",
+					"description": "查找名为'chatInput'的输入字段，该字段来自直接连接的聊天触发器"
+				},
+				"guardrails": {
+					"displayName": "已连接的护栏节点",
+					"description": "查找来自直接连接的护栏节点的名为'guardrailsInput'的输入字段"
+				},
+				"define": {
+					"displayName": "定义如下",
+					"description": "使用表达式引用先前节点中的数据或输入静态文本"
+				}
+			}
+		},
+		"text": {
+			"displayName": "例如：你好，我能如何帮助你？",
+			"placeholder": "例如：你好，我能如何帮助你？"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"systemPromptTemplate": {
+					"displayName": "系统提示词模板",
+					"description": "用于系统提示的模板字符串。这应包含变量 `{context}` 用于提供的上下文。对于文本补全模型，您还应包含变量 `{input}` 用于用户的查询。"
+				},
+				"batching": {
+					"displayName": "批量处理",
+					"description": "用于速率限制的批量处理选项",
+					"placeholder": "添加批量处理选项",
+					"options": {
+						"batchSize": {
+							"displayName": "批次大小",
+							"description": "并行处理的项目数量。这对速率限制很有用，但可能会影响日志输出顺序。"
+						},
+						"delayBetweenBatches": {
+							"displayName": "批次间延迟",
+							"description": "批次之间的延迟时间（毫秒）。适用于速率限制场景。"
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,192 @@
+{
+	"header": {
+		"displayName": "Summarize",
+		"description": "Sum, count, max, etc. across items"
+	},
+	"nodeView": {
+		"fieldsToSummarize": {
+			"displayName": "Fields to Summarize",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field",
+			"options": {
+				"values": {
+					"displayName": "values",
+					"values": {
+						"aggregation": {
+							"displayName": "Aggregation",
+							"description": "How to combine the values of the field you want to summarize",
+							"options": {
+								"append": {
+									"displayName": "Append"
+								},
+								"average": {
+									"displayName": "Average"
+								},
+								"concatenate": {
+									"displayName": "Concatenate"
+								},
+								"count": {
+									"displayName": "Count"
+								},
+								"countUnique": {
+									"displayName": "Count Unique"
+								},
+								"max": {
+									"displayName": "Max"
+								},
+								"min": {
+									"displayName": "Min"
+								},
+								"sum": {
+									"displayName": "Sum"
+								}
+							}
+						},
+						"field": {
+							"displayName": "Field",
+							"description": "The name of an input field that you want to summarize; null, undefined, empty strings would be ignored",
+							"placeholder": "e.g. cost"
+						},
+						"includeEmpty": {
+							"displayName": "Include Empty Values"
+						},
+						"separateBy": {
+							"displayName": "Separator",
+							"options": {
+								",": {
+									"displayName": "Comma"
+								},
+								", ": {
+									"displayName": "Comma and Space"
+								},
+								"\n": {
+									"displayName": "New Line"
+								},
+								"": {
+									"displayName": "None"
+								},
+								" ": {
+									"displayName": "Space"
+								},
+								"other": {
+									"displayName": "Other"
+								}
+							}
+						},
+						"customSeparator": {
+							"displayName": "Custom Separator"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "values",
+					"values": {
+						"aggregation": {
+							"displayName": "Aggregation",
+							"description": "How to combine the values of the field you want to summarize",
+							"options": {
+								"append": {
+									"displayName": "Append"
+								},
+								"average": {
+									"displayName": "Average"
+								},
+								"concatenate": {
+									"displayName": "Concatenate"
+								},
+								"count": {
+									"displayName": "Count"
+								},
+								"countUnique": {
+									"displayName": "Count Unique"
+								},
+								"max": {
+									"displayName": "Max"
+								},
+								"min": {
+									"displayName": "Min"
+								},
+								"sum": {
+									"displayName": "Sum"
+								}
+							}
+						},
+						"field": {
+							"displayName": "Field",
+							"description": "The name of an input field that you want to summarize; null, undefined, empty strings would be ignored",
+							"placeholder": "e.g. cost"
+						},
+						"includeEmpty": {
+							"displayName": "Include Empty Values"
+						},
+						"separateBy": {
+							"displayName": "Separator",
+							"options": {
+								",": {
+									"displayName": "Comma"
+								},
+								", ": {
+									"displayName": "Comma and Space"
+								},
+								"\n": {
+									"displayName": "New Line"
+								},
+								"": {
+									"displayName": "None"
+								},
+								" ": {
+									"displayName": "Space"
+								},
+								"other": {
+									"displayName": "Other"
+								}
+							}
+						},
+						"customSeparator": {
+							"displayName": "Custom Separator"
+						}
+					}
+				},
+				"fieldsToSummarize": {
+					"displayName": "Fields to Summarize",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"fieldsToSplitBy": {
+			"displayName": "Fields to Group By",
+			"description": "The name of the input fields that you want to split the summary by",
+			"placeholder": "e.g. country, city"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"continueIfFieldNotFound": {
+					"displayName": "Continue if Field Not Found",
+					"description": "Whether to continue if field to summarize can't be found in any items and return single empty item, otherwise an error would be thrown"
+				},
+				"disableDotNotation": {
+					"displayName": "Disable Dot Notation",
+					"description": "Whether to disallow referencing child fields using `parent.child` in the field name"
+				},
+				"outputFormat": {
+					"displayName": "Output Format",
+					"options": {
+						"separateItems": {
+							"displayName": "Each Split in a Separate Item"
+						},
+						"singleItem": {
+							"displayName": "All Splits in a Single Item"
+						}
+					}
+				},
+				"skipEmptySplitFields": {
+					"displayName": "Ignore items without valid fields to group by"
+				}
+			}
+		}
+	}
+}

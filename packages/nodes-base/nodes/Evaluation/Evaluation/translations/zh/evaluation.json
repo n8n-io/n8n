@@ -1,0 +1,207 @@
+{
+	"header": {
+		"displayName": "评估",
+		"description": "运行评估"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"setInputs": {
+					"displayName": "设置输入"
+				},
+				"setOutputs": {
+					"displayName": "设置输出"
+				},
+				"setMetrics": {
+					"displayName": "设置指标"
+				},
+				"checkIfEvaluating": {
+					"displayName": "检查是否正在评估"
+				}
+			}
+		},
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "从哪里获取测试数据集",
+			"options": {
+				"dataTable": {
+					"displayName": "数据表",
+					"description": "从本地数据表加载测试数据集"
+				},
+				"googleSheets": {
+					"displayName": "Google Sheets",
+					"description": "从Google Sheets文档加载测试数据集"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"serviceAccount": {
+					"displayName": "服务账号"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				}
+			}
+		},
+		"setInputsNotice": {
+			"displayName": "用于将数据集中的列添加到评估结果中。您在此处添加的任何内容都将显示在“评估”选项卡中，而不会显示在Google表格或数据表中。"
+		},
+		"inputs": {
+			"displayName": "输入参数",
+			"placeholder": "添加输入",
+			"multipleValueButtonText": "添加输入",
+			"options": {
+				"values": {
+					"displayName": "筛选器",
+					"values": {
+						"inputName": {
+							"displayName": "名称"
+						},
+						"inputValue": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "筛选器",
+					"values": {
+						"inputName": {
+							"displayName": "名称"
+						},
+						"inputValue": {
+							"displayName": "值"
+						}
+					}
+				},
+				"inputs": {
+					"displayName": "输入项",
+					"placeholder": "添加输入项"
+				}
+			}
+		},
+		"credentials": {
+			"displayName": "凭据"
+		},
+		"documentId": {
+			"displayName": "包含数据集的文件"
+		},
+		"sheetName": {
+			"displayName": "包含数据集的表格"
+		},
+		"dataTableId": {
+			"displayName": "数据表"
+		},
+		"outputs": {
+			"displayName": "输出",
+			"placeholder": "添加输出",
+			"multipleValueButtonText": "添加输出",
+			"options": {
+				"values": {
+					"displayName": "筛选器",
+					"values": {
+						"outputName": {
+							"displayName": "名称"
+						},
+						"outputValue": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "筛选器",
+					"values": {
+						"outputName": {
+							"displayName": "名称"
+						},
+						"outputValue": {
+							"displayName": "值"
+						}
+					}
+				},
+				"outputs": {
+					"displayName": "输出",
+					"placeholder": "添加输出"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "如果执行从评估触发器开始，则路由到‘评估’分支。否则路由到‘正常’分支。"
+		},
+		"metric": {
+			"displayName": "指标",
+			"options": {
+				"correctness": {
+					"displayName": "Correctness (AI-based)",
+					"description": "Whether the answer’s meaning is consistent with a reference answer. Uses a scale of 1 (worst) to 5 (best)."
+				},
+				"helpfulness": {
+					"displayName": "帮助性（基于AI）",
+					"description": "回答是否针对查询。使用1（最差）到5（最佳）的评分标准。"
+				},
+				"stringSimilarity": {
+					"displayName": "String Similarity",
+					"description": "How close the answer is to a reference answer, measured character-by-character (edit distance). Returns a score between 0 and 1."
+				},
+				"categorization": {
+					"displayName": "分类",
+					"description": "答案是否与参考答案完全一致。是则返回1，否则返回0。"
+				},
+				"toolsUsed": {
+					"displayName": "使用的工具",
+					"description": "是否使用了工具。返回一个介于0到1之间的分数。"
+				},
+				"customMetrics": {
+					"displayName": "自定义指标",
+					"description": "定义您自己的指标"
+				}
+			}
+		},
+		"expectedAnswer": {
+			"displayName": "Expected Answer",
+			"description": "The expected output defined in your evaluation dataset, used as ground truth"
+		},
+		"actualAnswer": {
+			"displayName": "响应",
+			"description": "由AI（例如工作流中的代理或LLM）生成的响应"
+		},
+		"userQuery": {
+			"displayName": "用户查询",
+			"description": "用户提交的原始输入或问题"
+		},
+		"expectedTools": {
+			"displayName": "预期工具",
+			"description": "输入您期望AI调用的工具名称（用逗号分隔）",
+			"placeholder": "获取事件, 发送邮件, 搜索数据库"
+		},
+		"intermediateSteps": {
+			"displayName": "智能体中间步骤"
+		},
+		"prompt": {
+			"displayName": "提示",
+			"description": "用于指导模型根据预期答案对实际答案的有用性进行评分的指令"
+		},
+		"metrics": {
+			"displayName": "返回的指标"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"metricName": {
+					"displayName": "指标名称",
+					"description": "如需为指标设置自定义名称，请设置此参数"
+				},
+				"inputPrompt": {
+					"displayName": "输入提示"
+				}
+			}
+		}
+	}
+}

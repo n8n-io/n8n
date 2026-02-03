@@ -1,0 +1,57 @@
+{
+	"header": {
+		"displayName": "OpenAI Model",
+		"description": "For advanced usage with an AI chain"
+	},
+	"nodeView": {
+		"deprecated": {
+			"displayName": "This node is using OpenAI completions which are now deprecated. Please use the OpenAI Chat Model node instead."
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will generate the completion. <a href=\"https://beta.openai.com/docs/models/overview\">Learn more</a>."
+		},
+		"notice": {
+			"displayName": "When using non OpenAI models via Base URL override, not all models might be chat-compatible or support other features, like tools calling or JSON response format."
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"baseURL": {
+					"displayName": "Base URL",
+					"description": "Override the default base URL for the API"
+				},
+				"frequencyPenalty": {
+					"displayName": "Frequency Penalty",
+					"description": "Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim"
+				},
+				"maxTokens": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768)."
+				},
+				"presencePenalty": {
+					"displayName": "Presence Penalty",
+					"description": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics"
+				},
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive."
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Maximum amount of time a request is allowed to take in milliseconds"
+				},
+				"maxRetries": {
+					"displayName": "Max Retries",
+					"description": "Maximum number of retries to attempt"
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both."
+				}
+			}
+		}
+	}
+}

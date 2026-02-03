@@ -1,0 +1,83 @@
+{
+	"header": {
+		"displayName": "Execute Sub-workflow",
+		"description": "Execute another workflow"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation"
+		},
+		"outdatedVersionWarning": {
+			"displayName": "This node is out of date. Please upgrade by removing it and adding a new one"
+		},
+		"source": {
+			"displayName": "Source",
+			"description": "Where to get the workflow to execute from",
+			"options": {
+				"database": {
+					"displayName": "Database",
+					"description": "Load the workflow from the database by ID"
+				},
+				"localFile": {
+					"displayName": "Local File",
+					"description": "Load the workflow from a locally saved file"
+				},
+				"parameter": {
+					"displayName": "Define Below",
+					"description": "Pass the JSON code of a workflow"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "Load the workflow from an URL"
+				}
+			}
+		},
+		"workflowId": {
+			"displayName": "Workflow",
+			"description": "Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>."
+		},
+		"workflowPath": {
+			"displayName": "Workflow Path",
+			"description": "The path to local JSON workflow file to execute",
+			"placeholder": "/data/workflow.json"
+		},
+		"workflowJson": {
+			"displayName": "Workflow JSON",
+			"description": "The workflow JSON code to execute"
+		},
+		"workflowUrl": {
+			"displayName": "Workflow URL",
+			"description": "The URL from which to load the workflow from",
+			"placeholder": "https://example.com/workflow.json"
+		},
+		"executeWorkflowNotice": {
+			"displayName": "Any data you pass into this node will be output by the Execute Workflow Trigger. <a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/\" target=\"_blank\">More info</a>"
+		},
+		"workflowInputs": {
+			"displayName": "Workflow Inputs"
+		},
+		"mode": {
+			"displayName": "Mode",
+			"options": {
+				"once": {
+					"displayName": "Run once with all items",
+					"description": "Pass all items into a single execution of the sub-workflow"
+				},
+				"each": {
+					"displayName": "Run once for each item",
+					"description": "Call the sub-workflow individually for each item"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"waitForSubWorkflow": {
+					"displayName": "Wait For Sub-Workflow Completion",
+					"description": "Whether the main workflow should wait for the sub-workflow to complete its execution before proceeding"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,630 @@
+{
+	"header": {
+		"displayName": "转换为文件",
+		"description": "将JSON数据转换为二进制数据"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"csv": {
+					"displayName": "转换为CSV",
+					"description": "将输入数据转换为CSV文件"
+				},
+				"html": {
+					"displayName": "转换为HTML",
+					"description": "将输入数据转换为HTML文件中的表格"
+				},
+				"iCal": {
+					"displayName": "转换为ICS",
+					"description": "将每个输入项转换为ICS事件文件"
+				},
+				"toJson": {
+					"displayName": "转换为JSON",
+					"description": "将输入数据转换为单个或多个JSON文件"
+				},
+				"ods": {
+					"displayName": "转换为ODS",
+					"description": "将输入数据转换为ODS文件"
+				},
+				"rtf": {
+					"displayName": "转换为RTF",
+					"description": "将输入数据转换为RTF文件中的表格"
+				},
+				"toText": {
+					"displayName": "转换为文本文件",
+					"description": "将输入数据字符串转换为文件"
+				},
+				"xls": {
+					"displayName": "转换为XLS",
+					"description": "将输入数据转换为Excel文件"
+				},
+				"xlsx": {
+					"displayName": "转换为XLSX",
+					"description": "将输入数据转换为Excel文件"
+				},
+				"toBinary": {
+					"displayName": "将Base64字符串移至文件",
+					"description": "将Base64编码的字符串转换回原始文件格式"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段",
+			"placeholder": "例如 数据",
+			"description": "输出中iCalendar文件可用的字段"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"compression": {
+					"displayName": "压缩",
+					"description": "是否减小输出文件大小"
+				},
+				"delimiter": {
+					"displayName": "分隔符",
+					"description": "用于分隔字段的字符"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "输出文件的名称",
+					"placeholder": "例如：myFile.json"
+				},
+				"headerRow": {
+					"displayName": "标题行",
+					"description": "文件首行是否包含标题名称"
+				},
+				"sheetName": {
+					"displayName": "工作表名称",
+					"description": "要在电子表格中创建的工作表名称",
+					"placeholder": "例如：mySheet"
+				},
+				"addBOM": {
+					"displayName": "添加字节顺序标记(BOM)",
+					"description": "是否在文本文件开头添加特殊标记。此标记有助于某些程序正确读取文件。"
+				},
+				"dataIsBase64": {
+					"displayName": "数据为Base64格式",
+					"description": "数据是否已进行base64编码"
+				},
+				"encoding": {
+					"displayName": "编码",
+					"description": "选择用于编码数据的字符集",
+					"options": {
+						"armscii8": {
+							"displayName": "armscii8"
+						},
+						"ascii": {
+							"displayName": "ascii"
+						},
+						"base64": {
+							"displayName": "base64"
+						},
+						"big5hkscs": {
+							"displayName": "big5hkscs"
+						},
+						"binary": {
+							"displayName": "二进制"
+						},
+						"cesu8": {
+							"displayName": "cesu8"
+						},
+						"cp1046": {
+							"displayName": "cp1046"
+						},
+						"cp1124": {
+							"displayName": "代码页1124"
+						},
+						"cp1125": {
+							"displayName": "cp1125"
+						},
+						"cp1129": {
+							"displayName": "复制1129"
+						},
+						"cp1133": {
+							"displayName": "cp1133"
+						},
+						"cp1161": {
+							"displayName": "cp1161"
+						},
+						"cp1162": {
+							"displayName": "cp1162"
+						},
+						"cp1163": {
+							"displayName": "cp1163"
+						},
+						"cp437": {
+							"displayName": "cp437"
+						},
+						"cp720": {
+							"displayName": "cp720"
+						},
+						"cp737": {
+							"displayName": "cp737"
+						},
+						"cp775": {
+							"displayName": "cp775"
+						},
+						"cp808": {
+							"displayName": "cp808"
+						},
+						"cp850": {
+							"displayName": "cp850"
+						},
+						"cp852": {
+							"displayName": "代码页852"
+						},
+						"cp855": {
+							"displayName": "cp855"
+						},
+						"cp856": {
+							"displayName": "cp856"
+						},
+						"cp857": {
+							"displayName": "cp857"
+						},
+						"cp858": {
+							"displayName": "代码页858"
+						},
+						"cp860": {
+							"displayName": "cp860"
+						},
+						"cp861": {
+							"displayName": "cp861"
+						},
+						"cp862": {
+							"displayName": "cp862"
+						},
+						"cp863": {
+							"displayName": "cp863"
+						},
+						"cp864": {
+							"displayName": "cp864"
+						},
+						"cp865": {
+							"displayName": "cp865"
+						},
+						"cp866": {
+							"displayName": "cp866"
+						},
+						"cp869": {
+							"displayName": "cp869"
+						},
+						"cp922": {
+							"displayName": "cp922"
+						},
+						"cp936": {
+							"displayName": "cp936"
+						},
+						"cp949": {
+							"displayName": "CP949"
+						},
+						"cp950": {
+							"displayName": "cp950"
+						},
+						"eucjp": {
+							"displayName": "eucjp"
+						},
+						"gb18030": {
+							"displayName": "gb18030"
+						},
+						"gbk": {
+							"displayName": "GBK"
+						},
+						"georgianacademy": {
+							"displayName": "格鲁吉亚学院"
+						},
+						"georgianps": {
+							"displayName": "格鲁吉亚语"
+						},
+						"hex": {
+							"displayName": "十六进制"
+						},
+						"hproman8": {
+							"displayName": "hproman8"
+						},
+						"iso646cn": {
+							"displayName": "iso646cn"
+						},
+						"iso646jp": {
+							"displayName": "iso646jp"
+						},
+						"iso88591": {
+							"displayName": "iso88591"
+						},
+						"iso885910": {
+							"displayName": "iso885910"
+						},
+						"iso885911": {
+							"displayName": "iso885911"
+						},
+						"iso885913": {
+							"displayName": "iso885913"
+						},
+						"iso885914": {
+							"displayName": "iso885914"
+						},
+						"iso885915": {
+							"displayName": "iso885915"
+						},
+						"iso885916": {
+							"displayName": "iso885916"
+						},
+						"iso88592": {
+							"displayName": "iso88592"
+						},
+						"iso88593": {
+							"displayName": "iso88593"
+						},
+						"iso88594": {
+							"displayName": "iso88594"
+						},
+						"iso88595": {
+							"displayName": "iso88595"
+						},
+						"iso88596": {
+							"displayName": "iso88596"
+						},
+						"iso88597": {
+							"displayName": "iso88597"
+						},
+						"iso88598": {
+							"displayName": "iso88598"
+						},
+						"iso88599": {
+							"displayName": "iso88599"
+						},
+						"koi8r": {
+							"displayName": "koi8r"
+						},
+						"koi8ru": {
+							"displayName": "koi8ru"
+						},
+						"koi8t": {
+							"displayName": "koi8t"
+						},
+						"koi8u": {
+							"displayName": "koi8u"
+						},
+						"maccenteuro": {
+							"displayName": "maccenteuro"
+						},
+						"maccroatian": {
+							"displayName": "克罗地亚语"
+						},
+						"maccyrillic": {
+							"displayName": "Mac西里尔编码"
+						},
+						"macgreek": {
+							"displayName": "macgreek"
+						},
+						"maciceland": {
+							"displayName": "maciceland"
+						},
+						"macintosh": {
+							"displayName": "Macintosh"
+						},
+						"macroman": {
+							"displayName": "宏管理"
+						},
+						"macromania": {
+							"displayName": "macromania"
+						},
+						"macthai": {
+							"displayName": "macthai"
+						},
+						"macturkish": {
+							"displayName": "macturkish"
+						},
+						"macukraine": {
+							"displayName": "macukraine"
+						},
+						"mik": {
+							"displayName": "mik"
+						},
+						"pt154": {
+							"displayName": "pt154"
+						},
+						"rk1048": {
+							"displayName": "rk1048"
+						},
+						"shiftjis": {
+							"displayName": "Shift_JIS"
+						},
+						"tcvn": {
+							"displayName": "TCVN"
+						},
+						"tis620": {
+							"displayName": "tis620"
+						},
+						"ucs2": {
+							"displayName": "UCS2"
+						},
+						"utf16": {
+							"displayName": "utf16"
+						},
+						"utf16be": {
+							"displayName": "utf16be"
+						},
+						"utf32": {
+							"displayName": "utf32"
+						},
+						"utf32be": {
+							"displayName": "UTF-32BE"
+						},
+						"utf32le": {
+							"displayName": "utf32le"
+						},
+						"utf7": {
+							"displayName": "utf7"
+						},
+						"utf7imap": {
+							"displayName": "utf7imap"
+						},
+						"utf8": {
+							"displayName": "utf8"
+						},
+						"viscii": {
+							"displayName": "VISCII"
+						},
+						"windows1250": {
+							"displayName": "Windows 1250"
+						},
+						"windows1251": {
+							"displayName": "Windows-1251"
+						},
+						"windows1252": {
+							"displayName": "Windows 1252"
+						},
+						"windows1253": {
+							"displayName": "windows1253"
+						},
+						"windows1254": {
+							"displayName": "Windows 1254"
+						},
+						"windows1255": {
+							"displayName": "Windows 1255"
+						},
+						"windows1256": {
+							"displayName": "Windows 1256"
+						},
+						"windows1257": {
+							"displayName": "Windows 1257"
+						},
+						"windows1258": {
+							"displayName": "Windows 1258"
+						},
+						"windows874": {
+							"displayName": "Windows874"
+						}
+					}
+				},
+				"mimeType": {
+					"displayName": "MIME类型",
+					"description": "输出文件的MIME类型。<a href=\"https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types\" target=\"_blank\">常见MIME类型</a>。",
+					"placeholder": "例如 text/plain"
+				},
+				"format": {
+					"displayName": "格式",
+					"description": "是否格式化JSON数据以便于阅读"
+				}
+			}
+		},
+		"sourceProperty": {
+			"displayName": "文本输入字段",
+			"description": "包含要转换为文件的字符串的输入字段名称。使用点表示法访问深层字段（例如 'level1.level2.currentKey'）。",
+			"placeholder": "例如 data"
+		},
+		"mode": {
+			"displayName": "模式",
+			"options": {
+				"once": {
+					"displayName": "所有项目合并到一个文件"
+				},
+				"each": {
+					"displayName": "每个项目到单独文件"
+				}
+			}
+		},
+		"title": {
+			"displayName": "事件标题",
+			"placeholder": "例如：新事件"
+		},
+		"start": {
+			"displayName": "开始",
+			"description": "事件开始的日期和时间。（对于全天事件，时间将被忽略。）"
+		},
+		"end": {
+			"displayName": "结束",
+			"description": "事件结束的日期和时间。（对于全天事件，时间将被忽略。）"
+		},
+		"allDay": {
+			"displayName": "全天",
+			"description": "事件是否持续全天"
+		},
+		"additionalFields": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"attendeesUi": {
+					"displayName": "参会者",
+					"placeholder": "添加参会者",
+					"multipleValueButtonText": "添加参会者",
+					"options": {
+						"attendeeValues": {
+							"displayName": "参会者",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "例如 name@email.com"
+								},
+								"rsvp": {
+									"displayName": "RSVP",
+									"description": "参与者是否需要确认出席"
+								}
+							}
+						}
+					},
+					"values": {
+						"attendeeValues": {
+							"displayName": "参会者",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "例如 name@email.com"
+								},
+								"rsvp": {
+									"displayName": "RSVP",
+									"description": "参与者是否需要确认出席"
+								}
+							}
+						},
+						"attendeesUi": {
+							"displayName": "参会者",
+							"placeholder": "添加参会者"
+						}
+					}
+				},
+				"busyStatus": {
+					"displayName": "忙碌状态",
+					"description": "用于指定Microsoft应用程序（如Outlook）的忙碌状态",
+					"options": {
+						"BUSY": {
+							"displayName": "忙碌中"
+						},
+						"TENTATIVE": {
+							"displayName": "暂定"
+						}
+					}
+				},
+				"calName": {
+					"displayName": "日历名称",
+					"description": "指定日历（非事件）名称。由 Apple iCal 和 Microsoft Outlook 使用。<a href=\"https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d\">更多信息</a>。"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "要生成的文件名。默认名称为event.ics。",
+					"placeholder": "例如：event.ics"
+				},
+				"geolocationUi": {
+					"displayName": "地理位置",
+					"placeholder": "添加地理位置",
+					"options": {
+						"geolocationValues": {
+							"displayName": "地理位置",
+							"options": {
+								"lat": {
+									"displayName": "纬度"
+								},
+								"lon": {
+									"displayName": "经度"
+								}
+							}
+						}
+					},
+					"values": {
+						"geolocationValues": {
+							"displayName": "地理位置",
+							"options": {
+								"lat": {
+									"displayName": "纬度"
+								},
+								"lon": {
+									"displayName": "经度"
+								}
+							}
+						},
+						"geolocationUi": {
+							"displayName": "地理位置",
+							"placeholder": "添加地理位置"
+						}
+					}
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "预定场地"
+				},
+				"recurrenceRule": {
+					"displayName": "重复规则",
+					"description": "定义事件重复模式的规则（RRULE）。（<a href=\"https://icalendar.org/rrule-tool.html\">规则生成器</a>）"
+				},
+				"organizerUi": {
+					"displayName": "组织者",
+					"placeholder": "添加组织者",
+					"options": {
+						"organizerValues": {
+							"displayName": "组织者",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "例如 name@email.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"organizerValues": {
+							"displayName": "组织者",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "例如 name@email.com"
+								}
+							}
+						},
+						"organizerUi": {
+							"displayName": "组织者",
+							"placeholder": "添加组织者"
+						}
+					}
+				},
+				"sequence": {
+					"displayName": "序列",
+					"description": "发送事件更新时（使用相同uid），定义修订序列号"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"CONFIRMED": {
+							"displayName": "已确认"
+						},
+						"CANCELLED": {
+							"displayName": "已取消"
+						},
+						"TENTATIVE": {
+							"displayName": "暂定"
+						}
+					}
+				},
+				"uid": {
+					"displayName": "UID",
+					"description": "事件的全局唯一标识符（若此处未指定将自动生成）。应确保全局唯一性。"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "事件关联的URL"
+				},
+				"useWorkflowTimezone": {
+					"displayName": "使用工作流时区",
+					"description": "是否使用节点设置中的工作流时区而非UTC"
+				}
+			}
+		}
+	}
+}

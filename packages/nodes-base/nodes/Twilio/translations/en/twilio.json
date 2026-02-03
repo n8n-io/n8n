@@ -1,0 +1,63 @@
+{
+	"header": {
+		"displayName": "Twilio",
+		"description": "Send SMS and WhatsApp messages or make phone calls"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"call": {
+					"displayName": "Call"
+				},
+				"sms": {
+					"displayName": "SMS"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"send": {
+					"displayName": "Send",
+					"description": "Send SMS/MMS/WhatsApp message"
+				},
+				"make": {
+					"displayName": "Make"
+				}
+			}
+		},
+		"from": {
+			"displayName": "From",
+			"description": "The number from which to send the message",
+			"placeholder": "+14155238886"
+		},
+		"to": {
+			"displayName": "To",
+			"description": "The number to which to send the message",
+			"placeholder": "+14155238886"
+		},
+		"toWhatsapp": {
+			"displayName": "To Whatsapp",
+			"description": "Whether the message should be sent to WhatsApp"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The message to send"
+		},
+		"twiml": {
+			"displayName": "Use TwiML",
+			"description": "Whether to use the <a href=\"https://www.twilio.com/docs/voice/twiml\">Twilio Markup Language</a> in the message"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"statusCallback": {
+					"displayName": "Status Callback",
+					"description": "Status Callbacks allow you to receive events related to the REST resources managed by Twilio: Rooms, Recordings and Compositions"
+				}
+			}
+		}
+	}
+}

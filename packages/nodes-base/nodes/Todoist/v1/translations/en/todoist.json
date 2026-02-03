@@ -1,0 +1,198 @@
+{
+	"header": {
+		"displayName": "Todoist",
+		"description": "Consume Todoist API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiKey": {
+					"displayName": "API Key"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"task": {
+					"displayName": "Task",
+					"description": "Task resource"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"close": {
+					"displayName": "Close",
+					"description": "Close a task"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new task"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a task"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a task"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many tasks"
+				},
+				"move": {
+					"displayName": "Move",
+					"description": "Move a task"
+				},
+				"reopen": {
+					"displayName": "Reopen",
+					"description": "Reopen a task"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a task"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "Task ID"
+		},
+		"project": {
+			"displayName": "Project Name or ID",
+			"description": "The project you want to operate on. Choose from the list, or specify an ID."
+		},
+		"section": {
+			"displayName": "Section Name or ID",
+			"description": "Section to which you want move the task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"labels": {
+			"displayName": "Label Names or IDs",
+			"description": "Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"content": {
+			"displayName": "Content",
+			"description": "Task content"
+		},
+		"commands": {
+			"displayName": "Sync Commands",
+			"description": "Sync body"
+		},
+		"options": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add option",
+			"options": {
+				"description": {
+					"displayName": "Description",
+					"description": "A description for the task"
+				},
+				"dueDateTime": {
+					"displayName": "Due Date Time",
+					"description": "Specific date and time in RFC3339 format in UTC"
+				},
+				"dueLang": {
+					"displayName": "Due String Locale",
+					"description": "2-letter code specifying language in case due_string is not written in English"
+				},
+				"dueString": {
+					"displayName": "Due String",
+					"description": "Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time."
+				},
+				"parentId": {
+					"displayName": "Parent Name or ID",
+					"description": "The parent task you want to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"priority": {
+					"displayName": "Priority",
+					"description": "Task priority from 1 (normal) to 4 (urgent)"
+				},
+				"section": {
+					"displayName": "Section Name or ID",
+					"description": "The section you want to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add option",
+			"options": {
+				"filter": {
+					"displayName": "Filter",
+					"description": "Filter by any <a href=\"https://get.todoist.help/hc/en-us/articles/205248842\">supported filter.</a>"
+				},
+				"ids": {
+					"displayName": "IDs",
+					"description": "A list of the task IDs to retrieve, this should be a comma-separated list"
+				},
+				"labelId": {
+					"displayName": "Label Name or ID",
+					"description": "Filter tasks by label. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"lang": {
+					"displayName": "Lang",
+					"description": "IETF language tag defining what language filter is written in, if differs from default English"
+				},
+				"parentId": {
+					"displayName": "Parent Name or ID",
+					"description": "Filter tasks by parent task ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"projectId": {
+					"displayName": "Project Name or ID",
+					"description": "Filter tasks by project ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"sectionId": {
+					"displayName": "Section Name or ID",
+					"description": "Filter tasks by section ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"content": {
+					"displayName": "Content",
+					"description": "Task content"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "A description for the task"
+				},
+				"dueDateTime": {
+					"displayName": "Due Date Time",
+					"description": "Specific date and time in RFC3339 format in UTC"
+				},
+				"dueLang": {
+					"displayName": "Due String Locale",
+					"description": "2-letter code specifying language in case due_string is not written in English"
+				},
+				"dueString": {
+					"displayName": "Due String",
+					"description": "Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time."
+				},
+				"labels": {
+					"displayName": "Label Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"priority": {
+					"displayName": "Priority",
+					"description": "Task priority from 1 (normal) to 4 (urgent)"
+				}
+			}
+		}
+	}
+}

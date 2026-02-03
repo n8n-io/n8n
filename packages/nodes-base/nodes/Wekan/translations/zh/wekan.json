@@ -1,0 +1,357 @@
+{
+	"header": {
+		"displayName": "Wekan",
+		"description": "使用 Wekan API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"board": {
+					"displayName": "看板"
+				},
+				"card": {
+					"displayName": "卡片"
+				},
+				"cardComment": {
+					"displayName": "卡片评论"
+				},
+				"checklist": {
+					"displayName": "检查清单"
+				},
+				"checklistItem": {
+					"displayName": "清单项"
+				},
+				"list": {
+					"displayName": "列表"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新列表"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除列表"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取列表数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个看板列表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新检查清单项"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "列表标题",
+			"placeholder": "我的列表"
+		},
+		"owner": {
+			"displayName": "所有者名称或ID",
+			"description": "Wekan中的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"isActive": {
+					"displayName": "激活状态",
+					"description": "是否将看板设为活跃状态"
+				},
+				"isAdmin": {
+					"displayName": "管理员",
+					"description": "是否将所有者设为看板管理员"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "画布的颜色",
+					"options": {
+						"belize": {
+							"displayName": "伯利兹"
+						},
+						"midnight": {
+							"displayName": "午夜"
+						},
+						"nephritis": {
+							"displayName": "肾炎"
+						},
+						"pomegranate": {
+							"displayName": "石榴"
+						},
+						"pumpkin": {
+							"displayName": "南瓜"
+						},
+						"wisteria": {
+							"displayName": "紫藤"
+						}
+					}
+				},
+				"isCommentOnly": {
+					"displayName": "仅评论",
+					"description": "是否启用评论"
+				},
+				"isNoComments": {
+					"displayName": "无评论",
+					"description": "是否禁用评论"
+				},
+				"permission": {
+					"displayName": "权限",
+					"description": "设置看板权限",
+					"options": {
+						"private": {
+							"displayName": "私有"
+						},
+						"public": {
+							"displayName": "公开"
+						}
+					}
+				},
+				"isWorker": {
+					"displayName": "工作进程",
+					"description": "是否仅移动卡片、将卡片分配给自己并添加评论"
+				},
+				"assignees": {
+					"displayName": "分配人名称或ID",
+					"description": "卡片关联的新受理人ID列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "卡片的新描述"
+				},
+				"members": {
+					"displayName": "成员名称或ID",
+					"description": "附加到卡片的新成员ID列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"boardId": {
+			"displayName": "看板名称或ID",
+			"description": "列表所在看板的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"IdUser": {
+			"displayName": "用户名或ID",
+			"description": "关联看板的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"listId": {
+			"displayName": "列表ID",
+			"description": "要获取的列表ID"
+		},
+		"swimlaneId": {
+			"displayName": "泳道名称或ID",
+			"description": "卡片所属泳道的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"authorId": {
+			"displayName": "作者姓名或ID",
+			"description": "发布评论的用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"cardId": {
+			"displayName": "卡片名称或ID",
+			"description": "checklistItem所属卡片的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"fromObject": {
+			"displayName": "从对象",
+			"options": {
+				"list": {
+					"displayName": "列表"
+				},
+				"swimlane": {
+					"displayName": "泳道"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"authorId": {
+					"displayName": "作者名称或ID",
+					"description": "更新卡片所有者。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"assignees": {
+					"displayName": "分配人名称或ID",
+					"description": "卡片关联的新受理人ID列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "卡片的新颜色",
+					"options": {
+						"black": {
+							"displayName": "黑色"
+						},
+						"blue": {
+							"displayName": "蓝色"
+						},
+						"crimson": {
+							"displayName": "深红"
+						},
+						"darkgreen": {
+							"displayName": "深绿色"
+						},
+						"gold": {
+							"displayName": "黄金"
+						},
+						"gray": {
+							"displayName": "灰色"
+						},
+						"green": {
+							"displayName": "绿色"
+						},
+						"indigo": {
+							"displayName": "靛蓝"
+						},
+						"lime": {
+							"displayName": "Lime"
+						},
+						"magenta": {
+							"displayName": "洋红色"
+						},
+						"mistyrose": {
+							"displayName": "雾玫瑰色"
+						},
+						"navy": {
+							"displayName": "海军"
+						},
+						"orange": {
+							"displayName": "橙色"
+						},
+						"paleturquoise": {
+							"displayName": "浅绿松石色"
+						},
+						"peachpuff": {
+							"displayName": "桃色"
+						},
+						"pink": {
+							"displayName": "粉色"
+						},
+						"plum": {
+							"displayName": "Plum"
+						},
+						"purple": {
+							"displayName": "紫色"
+						},
+						"red": {
+							"displayName": "红色"
+						},
+						"saddlebrown": {
+							"displayName": "鞍棕色"
+						},
+						"silver": {
+							"displayName": "Silver"
+						},
+						"sky": {
+							"displayName": "Sky"
+						},
+						"slateblue": {
+							"displayName": "板岩蓝"
+						},
+						"white": {
+							"displayName": "白色"
+						},
+						"yellow": {
+							"displayName": "黄色"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "卡片的新描述"
+				},
+				"dueAt": {
+					"displayName": "截止时间",
+					"description": "卡片的新截止时间字段"
+				},
+				"endAt": {
+					"displayName": "结束时间",
+					"description": "卡片的新截止日期字段"
+				},
+				"labelIds": {
+					"displayName": "标签ID",
+					"description": "附加到卡片的标签ID"
+				},
+				"listId": {
+					"displayName": "列表名称或ID",
+					"description": "卡片的新列表ID（移动操作）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"members": {
+					"displayName": "成员名称或ID",
+					"description": "附加到卡片的新成员ID列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"isOverTime": {
+					"displayName": "加班",
+					"description": "卡片的新加班字段"
+				},
+				"parentId": {
+					"displayName": "父级名称或ID",
+					"description": "卡片所属的父级。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"receivedAt": {
+					"displayName": "接收时间",
+					"description": "卡片的新接收时间字段"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "卡片内部使用的排序值"
+				},
+				"spentTime": {
+					"displayName": "花费时间",
+					"description": "卡片的新花费时间字段"
+				},
+				"startAt": {
+					"displayName": "开始时间",
+					"description": "卡片的新开始时间字段"
+				},
+				"swimlaneId": {
+					"displayName": "泳道名称或ID",
+					"description": "卡片的新泳道ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "待办事项项的新标题"
+				},
+				"isFinished": {
+					"displayName": "已完成",
+					"description": "该项是否被选中"
+				}
+			}
+		},
+		"comment": {
+			"displayName": "评论",
+			"description": "评论文本"
+		},
+		"commentId": {
+			"displayName": "评论ID",
+			"description": "要获取的评论ID"
+		},
+		"items": {
+			"displayName": "项目",
+			"description": "要添加到检查清单的项目"
+		},
+		"checklistId": {
+			"displayName": "清单名称或ID",
+			"description": "卡片所属清单项的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"checklistItemId": {
+			"displayName": "检查项名称或ID",
+			"description": "要更新的检查项ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

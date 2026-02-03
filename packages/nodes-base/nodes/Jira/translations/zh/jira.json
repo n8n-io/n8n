@@ -1,0 +1,510 @@
+{
+	"header": {
+		"displayName": "Jira Software",
+		"description": "使用 Jira Software API"
+	},
+	"nodeView": {
+		"jiraVersion": {
+			"displayName": "Jira版本",
+			"options": {
+				"cloud": {
+					"displayName": "云端"
+				},
+				"server": {
+					"displayName": "服务器（自托管）"
+				},
+				"serverPat": {
+					"displayName": "服务器端（自托管）"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"issue": {
+					"displayName": "问题",
+					"description": "创建一个问题，或者在Jira中启用了创建子任务选项时，创建一个子任务"
+				},
+				"issueAttachment": {
+					"displayName": "问题附件",
+					"description": "添加、移除和获取问题附件"
+				},
+				"issueComment": {
+					"displayName": "问题评论",
+					"description": "获取、创建、更新和删除问题评论"
+				},
+				"user": {
+					"displayName": "用户",
+					"description": "获取、创建和删除用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"changelog": {
+					"displayName": "更新日志",
+					"description": "获取问题更新日志"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新用户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多条评论"
+				},
+				"notify": {
+					"displayName": "通知",
+					"description": "为问题创建电子邮件通知并添加到邮件队列"
+				},
+				"transitions": {
+					"displayName": "状态",
+					"description": "根据问题状态，返回用户可执行的所有转换或单个转换"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新评论"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "为议题添加评论"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "移除评论"
+				}
+			}
+		},
+		"project": {
+			"displayName": "项目"
+		},
+		"issueType": {
+			"displayName": "问题类型"
+		},
+		"summary": {
+			"displayName": "摘要"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assignee": {
+					"displayName": "分配对象"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"componentIds": {
+					"displayName": "组件名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"labels": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"serverLabels": {
+					"displayName": "标签"
+				},
+				"parentIssueKey": {
+					"displayName": "父级问题键"
+				},
+				"priority": {
+					"displayName": "优先级"
+				},
+				"reporter": {
+					"displayName": "报告器"
+				},
+				"updateHistory": {
+					"displayName": "更新历史",
+					"description": "创建问题所在的项目是否已添加到用户的最近查看项目列表中，如Jira中“项目”下所示。这也会填充JQL问题搜索的lastViewed字段。"
+				},
+				"expand": {
+					"displayName": "展开",
+					"description": "包含更多用户信息"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要返回的问题字段列表。此参数接受逗号分隔的列表，用于检索字段子集。允许值：<code>*all</code> 返回所有字段。<code>*navigable</code> 返回可导航字段。任何问题字段，前缀加负号以排除。"
+				},
+				"fieldsByKey": {
+					"displayName": "按键名字段",
+					"description": "是否通过键名而非ID引用字段中的字段。当字段由连接应用添加且字段键名可能与其ID不同时，此参数非常有用。"
+				},
+				"properties": {
+					"displayName": "属性",
+					"description": "要返回的问题属性列表。此参数接受逗号分隔的列表。允许的值：<code>*all</code> 返回所有问题属性。任何问题属性键，前缀减号表示排除。示例：<code>*all</code> 返回所有属性。<code>*all</code>,-prop1 返回除 prop1 外的所有属性。<code>prop1,prop2</code> 返回 prop1 和 prop2 属性。此参数可多次指定。例如：properties=prop1,prop2& properties=prop3。"
+				},
+				"htmlBody": {
+					"displayName": "HTML正文",
+					"description": "问题通知邮件的HTML正文"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "问题电子邮件通知的主题。如果未指定，则主题将设置为问题键和摘要。"
+				},
+				"textBody": {
+					"displayName": "文本主体",
+					"description": "问题电子邮件通知的主题。如果未指定，则主题将设置为问题键和摘要。"
+				},
+				"transitionId": {
+					"displayName": "转换ID",
+					"description": "转换的ID"
+				},
+				"skipRemoteOnlyCondition": {
+					"displayName": "跳过仅远程条件",
+					"description": "响应中是否包含带有'对用户隐藏条件'的转换"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "用户密码。如果未设置密码，将生成随机密码。"
+				},
+				"notification": {
+					"displayName": "通知",
+					"description": "是否向用户发送电子邮件确认，告知他们已被添加到Jira"
+				}
+			}
+		},
+		"issueKey": {
+			"displayName": "问题键",
+			"description": "问题评论键"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assignee": {
+					"displayName": "分配对象"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"issueType": {
+					"displayName": "问题类型",
+					"description": "问题类型"
+				},
+				"labels": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"serverLabels": {
+					"displayName": "标签"
+				},
+				"parentIssueKey": {
+					"displayName": "父级问题键"
+				},
+				"priority": {
+					"displayName": "优先级"
+				},
+				"reporter": {
+					"displayName": "报告器"
+				},
+				"summary": {
+					"displayName": "摘要"
+				},
+				"statusId": {
+					"displayName": "状态"
+				}
+			}
+		},
+		"deleteSubtasks": {
+			"displayName": "删除子任务"
+		},
+		"simplifyOutput": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"expand": {
+					"displayName": "展开",
+					"description": "使用expand参数可在响应中包含评论的附加信息。此参数接受Rendered Body选项，该选项返回以HTML格式渲染的评论正文。",
+					"options": {
+						"renderedBody": {
+							"displayName": "渲染后的正文"
+						}
+					}
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要为每个问题返回的字段列表，用于获取字段子集。此参数接受逗号分隔的列表。展开选项包括：<code>*all</code> 返回所有字段。<code>*navigable</code> 返回可导航字段。任何问题字段，前缀为减号表示排除。"
+				},
+				"fieldsByKey": {
+					"displayName": "按键名字段",
+					"description": "是否通过键名而非ID引用字段中的字段。当字段由连接应用添加且字段键名可能与其ID不同时，此参数非常有用。"
+				},
+				"jql": {
+					"displayName": "JQL",
+					"description": "JQL表达式"
+				},
+				"wikiMarkup": {
+					"displayName": "使用Wiki标记",
+					"description": "是否为此评论启用Wiki格式解析。默认为false。"
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"description": "按创建日期排序评论",
+					"options": {
+						"+created": {
+							"displayName": "创建时间升序"
+						},
+						"-created": {
+							"displayName": "创建时间降序"
+						}
+					}
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"notificationRecipientsUi": {
+			"displayName": "通知接收人",
+			"description": "问题邮件通知的接收人",
+			"placeholder": "添加接收人",
+			"options": {
+				"notificationRecipientsValues": {
+					"displayName": "收件人",
+					"options": {
+						"reporter": {
+							"displayName": "报告器",
+							"description": "是否应将通知发送给问题报告者"
+						},
+						"assignee": {
+							"displayName": "分配对象",
+							"description": "是否应将通知发送给问题分配者"
+						},
+						"watchers": {
+							"displayName": "监视器",
+							"description": "是否应将通知发送给问题分配者"
+						},
+						"voters": {
+							"displayName": "投票者",
+							"description": "是否应将通知发送给议题的投票者"
+						},
+						"users": {
+							"displayName": "用户名称或ID",
+							"description": "接收通知的用户列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"groups": {
+							"displayName": "组名称或ID",
+							"description": "接收通知的群组列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						}
+					}
+				}
+			},
+			"values": {
+				"notificationRecipientsValues": {
+					"displayName": "收件人",
+					"options": {
+						"reporter": {
+							"displayName": "报告器",
+							"description": "是否应将通知发送给问题报告者"
+						},
+						"assignee": {
+							"displayName": "分配对象",
+							"description": "是否应将通知发送给问题分配者"
+						},
+						"watchers": {
+							"displayName": "监视器",
+							"description": "是否应将通知发送给问题分配者"
+						},
+						"voters": {
+							"displayName": "投票者",
+							"description": "是否应将通知发送给议题的投票者"
+						},
+						"users": {
+							"displayName": "用户名称或ID",
+							"description": "接收通知的用户列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"groups": {
+							"displayName": "组名称或ID",
+							"description": "接收通知的群组列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						}
+					}
+				},
+				"notificationRecipientsUi": {
+					"displayName": "通知接收者",
+					"placeholder": "添加接收者"
+				}
+			}
+		},
+		"notificationRecipientsJson": {
+			"displayName": "通知接收人",
+			"description": "问题邮件通知的接收人"
+		},
+		"notificationRecipientsRestrictionsUi": {
+			"displayName": "通知接收人限制",
+			"description": "将通知限制为具有指定权限的用户",
+			"placeholder": "添加接收人限制",
+			"options": {
+				"notificationRecipientsRestrictionsValues": {
+					"displayName": "收件人限制",
+					"options": {
+						"users": {
+							"displayName": "用户名称或ID",
+							"description": "接收通知的用户列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"groups": {
+							"displayName": "组名称或ID",
+							"description": "接收通知的群组列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						}
+					}
+				}
+			},
+			"values": {
+				"notificationRecipientsRestrictionsValues": {
+					"displayName": "收件人限制",
+					"options": {
+						"users": {
+							"displayName": "用户名称或ID",
+							"description": "接收通知的用户列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"groups": {
+							"displayName": "组名称或ID",
+							"description": "接收通知的群组列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						}
+					}
+				},
+				"notificationRecipientsRestrictionsUi": {
+					"displayName": "通知接收人限制",
+					"placeholder": "添加接收人限制"
+				}
+			}
+		},
+		"notificationRecipientsRestrictionsJson": {
+			"displayName": "通知接收者限制",
+			"description": "仅向具有指定权限的用户发送通知"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"attachmentId": {
+			"displayName": "附件ID",
+			"description": "附件的ID"
+		},
+		"download": {
+			"displayName": "下载"
+		},
+		"binaryProperty": {
+			"displayName": "将输出文件放入字段"
+		},
+		"comment": {
+			"displayName": "评论",
+			"description": "评论内容"
+		},
+		"commentJson": {
+			"displayName": "文档格式 (JSON)",
+			"description": "Atlassian 文档格式 (ADF)。在线构建器可在此处找到 <a href=\"https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/\">here</a>。"
+		},
+		"commentId": {
+			"displayName": "评论ID",
+			"description": "评论的ID"
+		},
+		"username": {
+			"displayName": "用户名"
+		},
+		"emailAddress": {
+			"displayName": "邮箱地址"
+		},
+		"displayName": {
+			"displayName": "显示名称"
+		},
+		"accountId": {
+			"displayName": "账户ID",
+			"description": "要检索的用户的账户ID"
+		}
+	}
+}

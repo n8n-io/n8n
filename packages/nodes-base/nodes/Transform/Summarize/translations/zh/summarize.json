@@ -1,0 +1,192 @@
+{
+	"header": {
+		"displayName": "汇总",
+		"description": "跨项目求和、计数、取最大值等"
+	},
+	"nodeView": {
+		"fieldsToSummarize": {
+			"displayName": "要汇总的字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"aggregation": {
+							"displayName": "聚合",
+							"description": "如何合并要汇总字段的值",
+							"options": {
+								"append": {
+									"displayName": "追加"
+								},
+								"average": {
+									"displayName": "平均值"
+								},
+								"concatenate": {
+									"displayName": "连接"
+								},
+								"count": {
+									"displayName": "计数"
+								},
+								"countUnique": {
+									"displayName": "统计唯一值"
+								},
+								"max": {
+									"displayName": "最大值"
+								},
+								"min": {
+									"displayName": "最小"
+								},
+								"sum": {
+									"displayName": "求和"
+								}
+							}
+						},
+						"field": {
+							"displayName": "字段",
+							"description": "要汇总的输入字段名称；null、undefined、空字符串将被忽略",
+							"placeholder": "例如：cost"
+						},
+						"includeEmpty": {
+							"displayName": "包含空值"
+						},
+						"separateBy": {
+							"displayName": "分隔符",
+							"options": {
+								",": {
+									"displayName": "逗号"
+								},
+								", ": {
+									"displayName": "逗号和空格"
+								},
+								"\n": {
+									"displayName": "新行"
+								},
+								"": {
+									"displayName": "无"
+								},
+								" ": {
+									"displayName": "空间"
+								},
+								"other": {
+									"displayName": "其他"
+								}
+							}
+						},
+						"customSeparator": {
+							"displayName": "自定义分隔符"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"aggregation": {
+							"displayName": "聚合",
+							"description": "如何合并要汇总字段的值",
+							"options": {
+								"append": {
+									"displayName": "追加"
+								},
+								"average": {
+									"displayName": "平均值"
+								},
+								"concatenate": {
+									"displayName": "连接"
+								},
+								"count": {
+									"displayName": "计数"
+								},
+								"countUnique": {
+									"displayName": "统计唯一值"
+								},
+								"max": {
+									"displayName": "最大值"
+								},
+								"min": {
+									"displayName": "最小"
+								},
+								"sum": {
+									"displayName": "求和"
+								}
+							}
+						},
+						"field": {
+							"displayName": "字段",
+							"description": "要汇总的输入字段名称；null、undefined、空字符串将被忽略",
+							"placeholder": "例如：cost"
+						},
+						"includeEmpty": {
+							"displayName": "包含空值"
+						},
+						"separateBy": {
+							"displayName": "分隔符",
+							"options": {
+								",": {
+									"displayName": "逗号"
+								},
+								", ": {
+									"displayName": "逗号和空格"
+								},
+								"\n": {
+									"displayName": "新行"
+								},
+								"": {
+									"displayName": "无"
+								},
+								" ": {
+									"displayName": "空间"
+								},
+								"other": {
+									"displayName": "其他"
+								}
+							}
+						},
+						"customSeparator": {
+							"displayName": "自定义分隔符"
+						}
+					}
+				},
+				"fieldsToSummarize": {
+					"displayName": "要汇总的字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"fieldsToSplitBy": {
+			"displayName": "分组依据字段",
+			"description": "您希望按哪些输入字段拆分汇总",
+			"placeholder": "例如：国家, 城市"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"continueIfFieldNotFound": {
+					"displayName": "字段未找到时继续执行",
+					"description": "是否在汇总字段未找到时继续执行并返回空项，否则将抛出错误"
+				},
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				},
+				"outputFormat": {
+					"displayName": "输出格式",
+					"options": {
+						"separateItems": {
+							"displayName": "每个拆分项单独处理"
+						},
+						"singleItem": {
+							"displayName": "所有分割项合并为单个条目"
+						}
+					}
+				},
+				"skipEmptySplitFields": {
+					"displayName": "忽略没有有效分组字段的项"
+				}
+			}
+		}
+	}
+}

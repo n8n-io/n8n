@@ -1,0 +1,255 @@
+{
+	"header": {
+		"displayName": "Airtable Trigger",
+		"description": "Starts the workflow when Airtable events occur"
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "Poll Times",
+			"description": "Time at which polling should occur",
+			"placeholder": "Add Poll Time",
+			"multipleValueButtonText": "Add Poll Time",
+			"options": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "Poll Times",
+					"placeholder": "Add Poll Time"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"airtableApi": {
+					"displayName": "API Key"
+				},
+				"airtableTokenApi": {
+					"displayName": "Access Token"
+				},
+				"airtableOAuth2Api": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"baseId": {
+			"displayName": "Base",
+			"description": "The Airtable Base in which to operate on"
+		},
+		"tableId": {
+			"displayName": "Table"
+		},
+		"triggerField": {
+			"displayName": "Trigger Field",
+			"description": "A Created Time or Last Modified Time field that will be used to sort records. If you do not have a Created Time or Last Modified Time field in your schema, please create one, because without this field trigger will not work correctly."
+		},
+		"downloadAttachments": {
+			"displayName": "Download Attachments",
+			"description": "Whether the attachment fields define in 'Download Fields' will be downloaded"
+		},
+		"downloadFieldNames": {
+			"displayName": "Download Fields",
+			"description": "Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields to be included in the response. Multiple ones can be set separated by comma. Example: <code>name, id</code>. By default just the trigger field will be included."
+				},
+				"formula": {
+					"displayName": "Formula",
+					"description": "Formulas may involve functions, numeric operations, logical operations, and text operations that operate on fields. More info <a href=\"https://support.airtable.com/hc/en-us/articles/203255215-Formula-Field-Reference\">here</a>."
+				},
+				"viewId": {
+					"displayName": "View ID",
+					"description": "The name or ID of a view in the table. If set, only the records in that view will be returned."
+				}
+			}
+		}
+	}
+}

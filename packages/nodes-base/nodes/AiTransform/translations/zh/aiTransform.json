@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "AI转换",
+		"description": "基于纯英文指令修改数据"
+	},
+	"nodeView": {
+		"instructions": {
+			"displayName": "说明",
+			"description": "提供您希望如何转换数据的说明，然后点击“生成代码”。使用点符号来引用嵌套字段（例如 address.street）。",
+			"placeholder": "示例：将 'firstname' 和 'lastname' 合并到字段 'details.name' 中，并按 'email' 排序"
+		},
+		"codeGeneratedForPrompt": {
+			"displayName": "为提示生成的代码"
+		},
+		"jsCode": {
+			"displayName": "生成的JavaScript"
+		}
+	}
+}

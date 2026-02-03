@@ -1,0 +1,154 @@
+{
+	"header": {
+		"displayName": "Sendy",
+		"description": "Consume Sendy API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"campaign": {
+					"displayName": "Campaign"
+				},
+				"subscriber": {
+					"displayName": "Subscriber"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a campaign"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add a subscriber to a list"
+				},
+				"count": {
+					"displayName": "Count",
+					"description": "Count subscribers"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a subscriber from a list"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Unsubscribe user from a list"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Get the status of subscriber"
+				}
+			}
+		},
+		"fromName": {
+			"displayName": "From Name",
+			"description": "The 'From name' of your campaign"
+		},
+		"fromEmail": {
+			"displayName": "From Email",
+			"description": "The 'From email' of your campaign"
+		},
+		"replyTo": {
+			"displayName": "Reply To",
+			"description": "The 'Reply to' of your campaign"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The 'Title' of your campaign"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "The 'Subject' of your campaign"
+		},
+		"htmlText": {
+			"displayName": "HTML Text",
+			"description": "The 'HTML version' of your campaign"
+		},
+		"sendCampaign": {
+			"displayName": "Send Campaign",
+			"description": "Whether to send the campaign as well and not just create a draft. Default is false."
+		},
+		"brandId": {
+			"displayName": "Brand ID"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"excludeListIds": {
+					"displayName": "Exclude List IDs",
+					"description": "Lists to exclude from your campaign. List IDs should be single or comma-separated."
+				},
+				"excludeSegmentIds": {
+					"displayName": "Exclude Segment IDs",
+					"description": "Segments to exclude from your campaign. Segment IDs should be single or comma-separated."
+				},
+				"listIds": {
+					"displayName": "List IDs",
+					"description": "List IDs should be single or comma-separated"
+				},
+				"plainText": {
+					"displayName": "Plain Text",
+					"description": "The 'Plain text version' of your campaign"
+				},
+				"queryString": {
+					"displayName": "Querystring",
+					"description": "Google Analytics tags"
+				},
+				"segmentIds": {
+					"displayName": "Segment IDs",
+					"description": "Segment IDs should be single or comma-separated"
+				},
+				"trackClicks": {
+					"displayName": "Track Clicks",
+					"description": "Whether to disable clicks tracking. Default is true."
+				},
+				"trackOpens": {
+					"displayName": "Track Opens",
+					"description": "Whether to disable opens tracking. Default is true."
+				},
+				"country": {
+					"displayName": "Country",
+					"description": "User's 2 letter country code"
+				},
+				"gdpr": {
+					"displayName": "GDPR",
+					"description": "Whether you're signing up EU users in a GDPR compliant manner"
+				},
+				"hp": {
+					"displayName": "Honeypot",
+					"description": "Include this 'honeypot' field to prevent spambots from signing up via this API call. When spambots fills in this field, this API call will exit, preventing them from signing up fake addresses to your form. This parameter is only supported in Sendy 3.0 onwards."
+				},
+				"ipaddress": {
+					"displayName": "IP Address",
+					"description": "User's IP address"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "User's name"
+				},
+				"referrer": {
+					"displayName": "Referrer",
+					"description": "The URL where the user signed up from"
+				},
+				"silent": {
+					"displayName": "Silent",
+					"description": "Set to \"true\" if your list is 'Double opt-in' but you want to bypass that and signup the user to the list as 'Single Opt-in instead' (optional)"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email address of the subscriber",
+			"placeholder": "name@email.com"
+		},
+		"listId": {
+			"displayName": "List ID",
+			"description": "The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID."
+		}
+	}
+}

@@ -1,0 +1,78 @@
+{
+	"header": {
+		"displayName": "Anthropic Chat Model",
+		"description": "Language Model Anthropic"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model. Choose from the list, or specify an ID. <a href=\"https://docs.anthropic.com/claude/docs/models-overview\">Learn more</a>.",
+			"options": {
+				"claude-3-5-sonnet-20241022": {
+					"displayName": "Claude 3.5 Sonnet(20241022)"
+				},
+				"claude-3-opus-20240229": {
+					"displayName": "Claude 3 Opus(20240229)"
+				},
+				"claude-3-5-sonnet-20240620": {
+					"displayName": "Claude 3.5 Sonnet(20240620)"
+				},
+				"claude-3-sonnet-20240229": {
+					"displayName": "Claude 3 Sonnet(20240229)"
+				},
+				"claude-3-5-haiku-20241022": {
+					"displayName": "Claude 3.5 Haiku(20241022)"
+				},
+				"claude-3-haiku-20240307": {
+					"displayName": "Claude 3 Haiku(20240307)"
+				},
+				"claude-2": {
+					"displayName": "LEGACY: Claude 2"
+				},
+				"claude-2.1": {
+					"displayName": "LEGACY: Claude 2.1"
+				},
+				"claude-instant-1.2": {
+					"displayName": "LEGACY: Claude Instant 1.2"
+				},
+				"claude-instant-1": {
+					"displayName": "LEGACY: Claude Instant 1"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"maxTokensToSample": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion"
+				},
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive."
+				},
+				"topK": {
+					"displayName": "Top K",
+					"description": "Used to remove \"long tail\" low probability responses. Defaults to -1, which disables it."
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both."
+				},
+				"thinking": {
+					"displayName": "Enable Thinking",
+					"description": "Whether to enable thinking mode for the model"
+				},
+				"thinkingBudget": {
+					"displayName": "Thinking Budget (Tokens)",
+					"description": "The maximum number of tokens to use for thinking"
+				}
+			}
+		}
+	}
+}

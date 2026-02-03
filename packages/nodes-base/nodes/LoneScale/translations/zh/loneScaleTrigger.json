@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "LoneScale触发器",
+		"description": "触发LoneScale工作流"
+	},
+	"nodeView": {
+		"workflow": {
+			"displayName": "工作流名称",
+			"description": "选择一个工作流。从列表中选择"
+		}
+	}
+}

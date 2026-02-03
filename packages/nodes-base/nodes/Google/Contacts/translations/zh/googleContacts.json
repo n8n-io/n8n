@@ -1,0 +1,1204 @@
+{
+	"header": {
+		"displayName": "Google 联系人",
+		"description": "使用 Google 联系人 API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建联系人"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除联系人"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取联系人"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个联系人"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新联系人"
+				}
+			}
+		},
+		"familyName": {
+			"displayName": "姓氏"
+		},
+		"givenName": {
+			"displayName": "名字"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addressesUi": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"options": {
+						"addressesValues": {
+							"displayName": "地址",
+							"options": {
+								"streetAddress": {
+									"displayName": "街道地址"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"countryCode": {
+									"displayName": "国家/地区代码"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"addressesValues": {
+							"displayName": "地址",
+							"options": {
+								"streetAddress": {
+									"displayName": "街道地址"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"countryCode": {
+									"displayName": "国家/地区代码"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								}
+							}
+						},
+						"addressesUi": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "生日"
+				},
+				"companyUi": {
+					"displayName": "公司",
+					"placeholder": "添加公司",
+					"multipleValueButtonText": "添加公司",
+					"options": {
+						"companyValues": {
+							"displayName": "公司",
+							"options": {
+								"current": {
+									"displayName": "当前"
+								},
+								"domain": {
+									"displayName": "域名"
+								},
+								"name": {
+									"displayName": "名称"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						}
+					},
+					"values": {
+						"companyValues": {
+							"displayName": "公司",
+							"options": {
+								"current": {
+									"displayName": "当前"
+								},
+								"domain": {
+									"displayName": "域名"
+								},
+								"name": {
+									"displayName": "名称"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						},
+						"companyUi": {
+							"displayName": "公司",
+							"placeholder": "添加公司"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "最终用户指定的用户自定义数据键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "最终用户指定的用户自定义数据键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"emailsUi": {
+					"displayName": "邮件",
+					"placeholder": "添加邮箱",
+					"multipleValueButtonText": "添加邮箱",
+					"options": {
+						"emailsValues": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电子邮件地址的类型。类型可以是自定义或以下预定义值之一。",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "邮箱地址"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailsValues": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电子邮件地址的类型。类型可以是自定义或以下预定义值之一。",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "邮箱地址"
+								}
+							}
+						},
+						"emailsUi": {
+							"displayName": "邮件",
+							"placeholder": "添加邮箱"
+						}
+					}
+				},
+				"eventsUi": {
+					"displayName": "事件",
+					"description": "与人员相关的事件",
+					"placeholder": "添加事件",
+					"multipleValueButtonText": "添加事件",
+					"options": {
+						"eventsValues": {
+							"displayName": "事件",
+							"options": {
+								"date": {
+									"displayName": "日期",
+									"description": "事件日期"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "事件的类型。类型可以是自定义的，也可以是以下预定义值之一。",
+									"options": {
+										"anniversary": {
+											"displayName": "周年纪念"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"eventsValues": {
+							"displayName": "事件",
+							"options": {
+								"date": {
+									"displayName": "日期",
+									"description": "事件日期"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "事件的类型。类型可以是自定义的，也可以是以下预定义值之一。",
+									"options": {
+										"anniversary": {
+											"displayName": "周年纪念"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								}
+							}
+						},
+						"eventsUi": {
+							"displayName": "事件",
+							"placeholder": "添加事件"
+						}
+					}
+				},
+				"fileAs": {
+					"displayName": "文件命名",
+					"description": "用于在列表中排序此人的名称"
+				},
+				"group": {
+					"displayName": "组名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"honorificPrefix": {
+					"displayName": "尊称前缀"
+				},
+				"honorificSuffix": {
+					"displayName": "尊称后缀"
+				},
+				"middleName": {
+					"displayName": "中间名"
+				},
+				"biographies": {
+					"displayName": "备注"
+				},
+				"phoneUi": {
+					"displayName": "电话",
+					"placeholder": "添加电话",
+					"multipleValueButtonText": "添加电话",
+					"options": {
+						"phoneValues": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"googleVoice": {
+											"displayName": "Google Voice"
+										},
+										"home": {
+											"displayName": "首页"
+										},
+										"homeFax": {
+											"displayName": "家庭传真"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"otherFax": {
+											"displayName": "其他传真"
+										},
+										"pager": {
+											"displayName": "分页器"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"workFax": {
+											"displayName": "工作传真"
+										},
+										"workMobile": {
+											"displayName": "工作手机"
+										},
+										"workPager": {
+											"displayName": "工作传呼机"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "电话号码"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneValues": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"googleVoice": {
+											"displayName": "Google Voice"
+										},
+										"home": {
+											"displayName": "首页"
+										},
+										"homeFax": {
+											"displayName": "家庭传真"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"otherFax": {
+											"displayName": "其他传真"
+										},
+										"pager": {
+											"displayName": "分页器"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"workFax": {
+											"displayName": "工作传真"
+										},
+										"workMobile": {
+											"displayName": "工作手机"
+										},
+										"workPager": {
+											"displayName": "工作传呼机"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "电话号码"
+								}
+							}
+						},
+						"phoneUi": {
+							"displayName": "电话",
+							"placeholder": "添加电话"
+						}
+					}
+				},
+				"relationsUi": {
+					"displayName": "关系",
+					"placeholder": "添加关系",
+					"multipleValueButtonText": "添加关系",
+					"options": {
+						"relationsValues": {
+							"displayName": "关系",
+							"options": {
+								"person": {
+									"displayName": "人员",
+									"description": "此关系所指的另一方姓名"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "此人与另一人的关系。类型可以是自定义或以下预定义值之一。",
+									"options": {
+										"assistant": {
+											"displayName": "助手"
+										},
+										"brother": {
+											"displayName": "兄弟"
+										},
+										"child": {
+											"displayName": "子节点"
+										},
+										"domesticPartner": {
+											"displayName": "国内合作伙伴"
+										},
+										"father": {
+											"displayName": "父节点"
+										},
+										"friend": {
+											"displayName": "朋友"
+										},
+										"manager": {
+											"displayName": "管理员"
+										},
+										"mother": {
+											"displayName": "母节点"
+										},
+										"parent": {
+											"displayName": "父级"
+										},
+										"referredBy": {
+											"displayName": "推荐人"
+										},
+										"relative": {
+											"displayName": "相对"
+										},
+										"sister": {
+											"displayName": "姐妹"
+										},
+										"spouse": {
+											"displayName": "配偶"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"relationsValues": {
+							"displayName": "关系",
+							"options": {
+								"person": {
+									"displayName": "人员",
+									"description": "此关系所指的另一方姓名"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "此人与另一人的关系。类型可以是自定义或以下预定义值之一。",
+									"options": {
+										"assistant": {
+											"displayName": "助手"
+										},
+										"brother": {
+											"displayName": "兄弟"
+										},
+										"child": {
+											"displayName": "子节点"
+										},
+										"domesticPartner": {
+											"displayName": "国内合作伙伴"
+										},
+										"father": {
+											"displayName": "父节点"
+										},
+										"friend": {
+											"displayName": "朋友"
+										},
+										"manager": {
+											"displayName": "管理员"
+										},
+										"mother": {
+											"displayName": "母节点"
+										},
+										"parent": {
+											"displayName": "父级"
+										},
+										"referredBy": {
+											"displayName": "推荐人"
+										},
+										"relative": {
+											"displayName": "相对"
+										},
+										"sister": {
+											"displayName": "姐妹"
+										},
+										"spouse": {
+											"displayName": "配偶"
+										}
+									}
+								}
+							}
+						},
+						"relationsUi": {
+							"displayName": "关系",
+							"placeholder": "添加关系"
+						}
+					}
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID"
+		},
+		"fields": {
+			"displayName": "字段",
+			"description": "用于限制返回每个人物哪些字段的字段掩码。多个字段可通过逗号分隔来指定。"
+		},
+		"rawData": {
+			"displayName": "原始数据",
+			"description": "是否按照从API接收到的原始格式返回数据"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"useQuery": {
+			"displayName": "使用查询",
+			"description": "是否使用查询来筛选结果"
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "请求的纯文本查询。该查询用于匹配人员字段的前缀短语。例如，名为“foo name”的人员匹配“f”、“fo”、“foo”、“foo n”、“nam”等查询，但不匹配“oo n”。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"sortOrder": {
+					"displayName": "排序顺序",
+					"description": "结果中返回的联系人顺序",
+					"options": {
+						"LAST_MODIFIED_ASCENDING": {
+							"displayName": "最后修改时间升序",
+							"description": "按人员修改时间排序；较早的条目在前"
+						},
+						"LAST_MODIFIED_DESCENDING": {
+							"displayName": "最后修改时间降序",
+							"description": "按人员修改时间排序；较新的条目在前"
+						},
+						"FIRST_NAME_ASCENDING": {
+							"displayName": "名字升序",
+							"description": "按名字对人排序"
+						},
+						"LAST_NAME_ASCENDING": {
+							"displayName": "姓氏升序",
+							"description": "按姓氏排序人员"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"etag": {
+					"displayName": "Etag",
+					"description": "人员中的etag字段用于确保联系人自上次读取后未发生更改"
+				},
+				"familyName": {
+					"displayName": "姓氏"
+				},
+				"givenName": {
+					"displayName": "名字"
+				},
+				"addressesUi": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"options": {
+						"addressesValues": {
+							"displayName": "地址",
+							"options": {
+								"streetAddress": {
+									"displayName": "街道地址"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"countryCode": {
+									"displayName": "国家/地区代码"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"addressesValues": {
+							"displayName": "地址",
+							"options": {
+								"streetAddress": {
+									"displayName": "街道地址"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"countryCode": {
+									"displayName": "国家/地区代码"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								}
+							}
+						},
+						"addressesUi": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "生日"
+				},
+				"companyUi": {
+					"displayName": "公司",
+					"placeholder": "添加公司",
+					"multipleValueButtonText": "添加公司",
+					"options": {
+						"companyValues": {
+							"displayName": "公司",
+							"options": {
+								"current": {
+									"displayName": "当前"
+								},
+								"domain": {
+									"displayName": "域名"
+								},
+								"name": {
+									"displayName": "名称"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						}
+					},
+					"values": {
+						"companyValues": {
+							"displayName": "公司",
+							"options": {
+								"current": {
+									"displayName": "当前"
+								},
+								"domain": {
+									"displayName": "域名"
+								},
+								"name": {
+									"displayName": "名称"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						},
+						"companyUi": {
+							"displayName": "公司",
+							"placeholder": "添加公司"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "最终用户指定的用户自定义数据键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "最终用户指定的用户自定义数据键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"emailsUi": {
+					"displayName": "邮件",
+					"placeholder": "添加邮箱",
+					"multipleValueButtonText": "添加邮箱",
+					"options": {
+						"emailsValues": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电子邮件地址的类型。类型可以是自定义或以下预定义值之一。",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "邮箱地址"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailsValues": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电子邮件地址的类型。类型可以是自定义或以下预定义值之一。",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "邮箱地址"
+								}
+							}
+						},
+						"emailsUi": {
+							"displayName": "邮件",
+							"placeholder": "添加邮箱"
+						}
+					}
+				},
+				"eventsUi": {
+					"displayName": "事件",
+					"description": "与人员相关的事件",
+					"placeholder": "添加事件",
+					"multipleValueButtonText": "添加事件",
+					"options": {
+						"eventsValues": {
+							"displayName": "事件",
+							"options": {
+								"date": {
+									"displayName": "日期",
+									"description": "事件日期"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "事件的类型。类型可以是自定义的，也可以是以下预定义值之一。",
+									"options": {
+										"anniversary": {
+											"displayName": "周年纪念"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"eventsValues": {
+							"displayName": "事件",
+							"options": {
+								"date": {
+									"displayName": "日期",
+									"description": "事件日期"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "事件的类型。类型可以是自定义的，也可以是以下预定义值之一。",
+									"options": {
+										"anniversary": {
+											"displayName": "周年纪念"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								}
+							}
+						},
+						"eventsUi": {
+							"displayName": "事件",
+							"placeholder": "添加事件"
+						}
+					}
+				},
+				"fileAs": {
+					"displayName": "文件命名",
+					"description": "用于在列表中排序此人的名称"
+				},
+				"group": {
+					"displayName": "组名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"honorificPrefix": {
+					"displayName": "尊称前缀"
+				},
+				"honorificSuffix": {
+					"displayName": "尊称后缀"
+				},
+				"middleName": {
+					"displayName": "中间名"
+				},
+				"biographies": {
+					"displayName": "备注"
+				},
+				"phoneUi": {
+					"displayName": "电话",
+					"placeholder": "添加电话",
+					"multipleValueButtonText": "添加电话",
+					"options": {
+						"phoneValues": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"googleVoice": {
+											"displayName": "Google Voice"
+										},
+										"home": {
+											"displayName": "首页"
+										},
+										"homeFax": {
+											"displayName": "家庭传真"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"otherFax": {
+											"displayName": "其他传真"
+										},
+										"pager": {
+											"displayName": "分页器"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"workFax": {
+											"displayName": "工作传真"
+										},
+										"workMobile": {
+											"displayName": "工作手机"
+										},
+										"workPager": {
+											"displayName": "工作传呼机"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "电话号码"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneValues": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"googleVoice": {
+											"displayName": "Google Voice"
+										},
+										"home": {
+											"displayName": "首页"
+										},
+										"homeFax": {
+											"displayName": "家庭传真"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"otherFax": {
+											"displayName": "其他传真"
+										},
+										"pager": {
+											"displayName": "分页器"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"workFax": {
+											"displayName": "工作传真"
+										},
+										"workMobile": {
+											"displayName": "工作手机"
+										},
+										"workPager": {
+											"displayName": "工作传呼机"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "电话号码"
+								}
+							}
+						},
+						"phoneUi": {
+							"displayName": "电话",
+							"placeholder": "添加电话"
+						}
+					}
+				},
+				"relationsUi": {
+					"displayName": "关系",
+					"placeholder": "添加关系",
+					"multipleValueButtonText": "添加关系",
+					"options": {
+						"relationsValues": {
+							"displayName": "关系",
+							"options": {
+								"person": {
+									"displayName": "人员",
+									"description": "此关系所指的另一方姓名"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "此人与另一人的关系。类型可以是自定义或以下预定义值之一。",
+									"options": {
+										"assistant": {
+											"displayName": "助手"
+										},
+										"brother": {
+											"displayName": "兄弟"
+										},
+										"child": {
+											"displayName": "子节点"
+										},
+										"domesticPartner": {
+											"displayName": "国内合作伙伴"
+										},
+										"father": {
+											"displayName": "父节点"
+										},
+										"friend": {
+											"displayName": "朋友"
+										},
+										"manager": {
+											"displayName": "管理员"
+										},
+										"mother": {
+											"displayName": "母节点"
+										},
+										"parent": {
+											"displayName": "父级"
+										},
+										"referredBy": {
+											"displayName": "推荐人"
+										},
+										"relative": {
+											"displayName": "相对"
+										},
+										"sister": {
+											"displayName": "姐妹"
+										},
+										"spouse": {
+											"displayName": "配偶"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"relationsValues": {
+							"displayName": "关系",
+							"options": {
+								"person": {
+									"displayName": "人员",
+									"description": "此关系所指的另一方姓名"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "此人与另一人的关系。类型可以是自定义或以下预定义值之一。",
+									"options": {
+										"assistant": {
+											"displayName": "助手"
+										},
+										"brother": {
+											"displayName": "兄弟"
+										},
+										"child": {
+											"displayName": "子节点"
+										},
+										"domesticPartner": {
+											"displayName": "国内合作伙伴"
+										},
+										"father": {
+											"displayName": "父节点"
+										},
+										"friend": {
+											"displayName": "朋友"
+										},
+										"manager": {
+											"displayName": "管理员"
+										},
+										"mother": {
+											"displayName": "母节点"
+										},
+										"parent": {
+											"displayName": "父级"
+										},
+										"referredBy": {
+											"displayName": "推荐人"
+										},
+										"relative": {
+											"displayName": "相对"
+										},
+										"sister": {
+											"displayName": "姐妹"
+										},
+										"spouse": {
+											"displayName": "配偶"
+										}
+									}
+								}
+							}
+						},
+						"relationsUi": {
+							"displayName": "关系",
+							"placeholder": "添加关系"
+						}
+					}
+				}
+			}
+		}
+	}
+}

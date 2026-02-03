@@ -1,0 +1,41 @@
+{
+	"header": {
+		"displayName": "Simulate",
+		"description": "Simulate a node"
+	},
+	"nodeView": {
+		"icon": {
+			"displayName": "Icon to Display on Canvas",
+			"description": "Select a type of node to show corresponding icon"
+		},
+		"subtitle": {
+			"displayName": "Subtitle",
+			"placeholder": "e.g. 'record: read'"
+		},
+		"output": {
+			"displayName": "Output",
+			"options": {
+				"all": {
+					"displayName": "Returns all input items"
+				},
+				"specify": {
+					"displayName": "Specify how many of input items to return"
+				},
+				"custom": {
+					"displayName": "Specify output as JSON"
+				}
+			}
+		},
+		"numberOfItems": {
+			"displayName": "Number of Items",
+			"description": "Number input of items to return, if greater then input length all items will be returned"
+		},
+		"jsonOutput": {
+			"displayName": "JSON"
+		},
+		"executionDuration": {
+			"displayName": "Execution Duration (MS)",
+			"description": "Execution duration in milliseconds"
+		}
+	}
+}

@@ -1,0 +1,47 @@
+{
+	"header": {
+		"displayName": "摘要链",
+		"description": "将文本转换为简洁摘要"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "通过这个节点的<a href=\"/templates/1951\" target=\"_blank\">示例</a>了解其工作原理，节省时间"
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "要运行的摘要类型",
+			"options": {
+				"map_reduce": {
+					"displayName": "映射归约（推荐）",
+					"description": "先单独总结每个文档（或片段），再总结这些摘要"
+				},
+				"refine": {
+					"displayName": "优化",
+					"description": "总结第一个文档（或片段）。然后根据下一个文档（或片段）更新该摘要，并重复此过程。"
+				},
+				"stuff": {
+					"displayName": "内容",
+					"description": "一次性传递所有文档（或文档块）。适用于小型数据集。"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"combineMapPrompt": {
+					"displayName": "最终组合提示"
+				},
+				"prompt": {
+					"displayName": "提示词"
+				},
+				"refinePrompt": {
+					"displayName": "后续（优化）提示"
+				},
+				"refineQuestionPrompt": {
+					"displayName": "初始提示"
+				}
+			}
+		}
+	}
+}

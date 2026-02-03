@@ -1,0 +1,127 @@
+{
+	"header": {
+		"displayName": "Line",
+		"description": "Consume Line API"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "End of service: LINE Notify will be discontinued from April 1st 2025, You can find more information <a href=\"https://notify-bot.line.me/closing-announce\" target=\"_blank\">here</a>"
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"notification": {
+					"displayName": "Notification"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"send": {
+					"displayName": "Send",
+					"description": "Sends notifications to users or groups"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"imageUi": {
+					"displayName": "Image",
+					"placeholder": "Add Image",
+					"options": {
+						"imageValue": {
+							"displayName": "Image",
+							"options": {
+								"binaryData": {
+									"displayName": "Binary File"
+								},
+								"imageFullsize": {
+									"displayName": "Image Full Size",
+									"description": "HTTP/HTTPS URL. Maximum size of 2048×2048px JPEG."
+								},
+								"imageThumbnail": {
+									"displayName": "Image Thumbnail",
+									"description": "HTTP/HTTPS URL. Maximum size of 240×240px JPEG."
+								},
+								"binaryProperty": {
+									"displayName": "Input Binary Field"
+								}
+							}
+						}
+					},
+					"values": {
+						"imageValue": {
+							"displayName": "Image",
+							"options": {
+								"binaryData": {
+									"displayName": "Binary File"
+								},
+								"imageFullsize": {
+									"displayName": "Image Full Size",
+									"description": "HTTP/HTTPS URL. Maximum size of 2048×2048px JPEG."
+								},
+								"imageThumbnail": {
+									"displayName": "Image Thumbnail",
+									"description": "HTTP/HTTPS URL. Maximum size of 240×240px JPEG."
+								},
+								"binaryProperty": {
+									"displayName": "Input Binary Field"
+								}
+							}
+						},
+						"imageUi": {
+							"displayName": "Image",
+							"placeholder": "Add Image"
+						}
+					}
+				},
+				"notificationDisabled": {
+					"displayName": "Notification Disabled",
+					"description": "<p>true: The user doesn't receive a push notification when the message is sent.</p><p>false: The user receives a push notification when the message is sent</p>"
+				},
+				"stickerUi": {
+					"displayName": "Sticker",
+					"placeholder": "Add Sticker",
+					"options": {
+						"stickerValue": {
+							"displayName": "Sticker",
+							"options": {
+								"stickerId": {
+									"displayName": "Sticker ID"
+								},
+								"stickerPackageId": {
+									"displayName": "Sticker Package ID",
+									"description": "Package ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"stickerValue": {
+							"displayName": "Sticker",
+							"options": {
+								"stickerId": {
+									"displayName": "Sticker ID"
+								},
+								"stickerPackageId": {
+									"displayName": "Sticker Package ID",
+									"description": "Package ID"
+								}
+							}
+						},
+						"stickerUi": {
+							"displayName": "Sticker",
+							"placeholder": "Add Sticker"
+						}
+					}
+				}
+			}
+		}
+	}
+}

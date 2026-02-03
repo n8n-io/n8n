@@ -1,0 +1,92 @@
+{
+	"header": {
+		"displayName": "AWS Certificate Manager",
+		"description": "Sends data to AWS Certificate Manager"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"certificate": {
+					"displayName": "Certificate"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a certificate"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a certificate"
+				},
+				"getMany": {
+					"displayName": "Get Many",
+					"description": "Get many certificates"
+				},
+				"getMetadata": {
+					"displayName": "Get Metadata",
+					"description": "Get certificate metadata"
+				},
+				"renew": {
+					"displayName": "Renew",
+					"description": "Renew a certificate"
+				}
+			}
+		},
+		"certificateArn": {
+			"displayName": "Certificate ARN",
+			"description": "String that contains the ARN of the ACM certificate to be renewed. This must be of the form: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012."
+		},
+		"bucketName": {
+			"displayName": "Bucket Name"
+		},
+		"certificateKey": {
+			"displayName": "Certificate Key"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"certificateStatuses": {
+					"displayName": "Certificate Statuses",
+					"description": "Filter the certificate list by status value"
+				},
+				"extendedKeyUsage": {
+					"displayName": "Extended Key Usage",
+					"description": "Specify one or more ExtendedKeyUsage extension values"
+				},
+				"keyTypes": {
+					"displayName": "Key Types",
+					"description": "Specify one or more algorithms that can be used to generate key pairs"
+				},
+				"keyUsage": {
+					"displayName": "Key Usage",
+					"description": "Specify one or more KeyUsage extension values"
+				}
+			}
+		}
+	}
+}

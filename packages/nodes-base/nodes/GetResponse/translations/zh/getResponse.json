@@ -1,0 +1,333 @@
+{
+	"header": {
+		"displayName": "GetResponse",
+		"description": "使用 GetResponse API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiKey": {
+					"displayName": "API密钥"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新联系人"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除联系人"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取联系人"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个联系人"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新联系人属性"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"campaignId": {
+			"displayName": "活动名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "最终用户指定的用户自定义数据键。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "最终用户指定的用户自定义数据键。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"dayOfCycle": {
+					"displayName": "周期天数",
+					"description": "联系人处于自动回复周期中的天数。null 表示联系人不在周期中。"
+				},
+				"ipAddress": {
+					"displayName": "IP地址",
+					"description": "联系人的IP地址。接受IPv4和IPv6格式。"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"scoring": {
+					"displayName": "评分",
+					"description": "联系人评分，传递 null 可从联系人移除评分"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "特定联系人的唯一标识符"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"ipAddress": {
+					"displayName": "IP地址",
+					"description": "这使得可以传递联系人取消订阅的IP地址。仅在已发送messageId时使用。"
+				},
+				"messageId": {
+					"displayName": "消息ID",
+					"description": "消息（如新闻简报、自动回复或RSS新闻简报）的ID。传入此参数时，该方法将模拟退订流程，如同联系人点击了指定消息中的退订链接。"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "应返回的字段列表。ID始终会返回。字段间应以逗号分隔。"
+				},
+				"campaignId": {
+					"displayName": "活动ID",
+					"description": "按活动ID搜索联系人"
+				},
+				"changeOnFrom": {
+					"displayName": "更改时间从",
+					"description": "搜索从此日期起编辑的联系人"
+				},
+				"changeOnTo": {
+					"displayName": "更改开启状态为",
+					"description": "搜索在此日期之前编辑的联系人"
+				},
+				"createdOnFrom": {
+					"displayName": "创建时间从",
+					"description": "从此日期开始统计数据"
+				},
+				"createdOnTo": {
+					"displayName": "创建于（至）",
+					"description": "从此日期开始统计数据"
+				},
+				"exactMatch": {
+					"displayName": "精确匹配",
+					"description": "是否根据查询字符串中提供的邮箱和姓名精确值来搜索联系人。若不启用此标志，将通过标准的'like'模糊匹配进行比较，有时可能会较慢。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "按姓名搜索联系人"
+				},
+				"origin": {
+					"displayName": "来源",
+					"description": "按来源搜索联系人",
+					"options": {
+						"api": {
+							"displayName": "API"
+						},
+						"copy": {
+							"displayName": "复制"
+						},
+						"email": {
+							"displayName": "电子邮件"
+						},
+						"forward": {
+							"displayName": "转发"
+						},
+						"import": {
+							"displayName": "导入"
+						},
+						"iphone": {
+							"displayName": "iPhone"
+						},
+						"landing_page": {
+							"displayName": "着陆页"
+						},
+						"leads": {
+							"displayName": "潜在客户"
+						},
+						"panel": {
+							"displayName": "面板"
+						},
+						"sale": {
+							"displayName": "销售"
+						},
+						"survey": {
+							"displayName": "调查"
+						},
+						"webinar": {
+							"displayName": "网络研讨会"
+						},
+						"www": {
+							"displayName": "WWW"
+						}
+					}
+				},
+				"sortBy": {
+					"displayName": "排序方式",
+					"options": {
+						"campaignId": {
+							"displayName": "活动ID"
+						},
+						"changedOn": {
+							"displayName": "修改于"
+						},
+						"createdOn": {
+							"displayName": "创建于"
+						},
+						"email": {
+							"displayName": "电子邮件"
+						}
+					}
+				},
+				"sortOrder": {
+					"displayName": "排序顺序",
+					"options": {
+						"ASC": {
+							"displayName": "升序"
+						},
+						"DESC": {
+							"displayName": "描述"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"campaignId": {
+					"displayName": "活动名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "最终用户指定的用户自定义数据键。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "最终用户指定的用户自定义数据键。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"dayOfCycle": {
+					"displayName": "周期天数",
+					"description": "联系人处于自动回复周期中的天数。null 表示联系人不在周期中。"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"ipAddress": {
+					"displayName": "IP地址",
+					"description": "联系人的IP地址。接受IPv4和IPv6格式。"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"scoring": {
+					"displayName": "评分",
+					"description": "联系人评分，传递 null 可从联系人移除评分"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				}
+			}
+		}
+	}
+}

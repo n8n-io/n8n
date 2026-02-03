@@ -1,0 +1,129 @@
+{
+	"header": {
+		"displayName": "Bannerbear",
+		"description": "Consume Bannerbear API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"image": {
+					"displayName": "Image"
+				},
+				"template": {
+					"displayName": "Template"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create an image"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a template"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many templates"
+				}
+			}
+		},
+		"templateId": {
+			"displayName": "Template ID",
+			"description": "Unique identifier for the template"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "Metadata that you need to store e.g. ID of a record in your DB"
+				},
+				"waitForImage": {
+					"displayName": "Wait for Image",
+					"description": "Whether to wait for the image to be proccesed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting \"Wait Max Tries\"."
+				},
+				"waitForImageMaxTries": {
+					"displayName": "Wait Max Tries",
+					"description": "How often it should check if the image is available before it fails"
+				},
+				"webhookUrl": {
+					"displayName": "Webhook URL",
+					"description": "A URL to POST the Image object to upon rendering completed"
+				}
+			}
+		},
+		"modificationsUi": {
+			"displayName": "Modifications",
+			"placeholder": "Add Modification",
+			"multipleValueButtonText": "Add Modification",
+			"options": {
+				"modificationsValues": {
+					"displayName": "Modification",
+					"options": {
+						"name": {
+							"displayName": "Name or ID",
+							"description": "The name of the item you want to change. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"text": {
+							"displayName": "Text",
+							"description": "Replacement text you want to use"
+						},
+						"color": {
+							"displayName": "Color",
+							"description": "Color hex of object"
+						},
+						"background": {
+							"displayName": "Background",
+							"description": "Color hex of text background"
+						},
+						"imageUrl": {
+							"displayName": "Image URL",
+							"description": "Replacement image URL you want to use (must be publicly viewable)"
+						}
+					}
+				}
+			},
+			"values": {
+				"modificationsValues": {
+					"displayName": "Modification",
+					"options": {
+						"name": {
+							"displayName": "Name or ID",
+							"description": "The name of the item you want to change. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"text": {
+							"displayName": "Text",
+							"description": "Replacement text you want to use"
+						},
+						"color": {
+							"displayName": "Color",
+							"description": "Color hex of object"
+						},
+						"background": {
+							"displayName": "Background",
+							"description": "Color hex of text background"
+						},
+						"imageUrl": {
+							"displayName": "Image URL",
+							"description": "Replacement image URL you want to use (must be publicly viewable)"
+						}
+					}
+				},
+				"modificationsUi": {
+					"displayName": "Modifications",
+					"placeholder": "Add Modification"
+				}
+			}
+		},
+		"imageId": {
+			"displayName": "Image ID",
+			"description": "Unique identifier for the image"
+		}
+	}
+}

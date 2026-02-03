@@ -1,0 +1,236 @@
+{
+	"header": {
+		"displayName": "Ollama",
+		"description": "Interact with Ollama AI models"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"image": {
+					"displayName": "Image"
+				},
+				"text": {
+					"displayName": "Text"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"analyze": {
+					"displayName": "Analyze Image",
+					"description": "Take in images and answer questions about them"
+				},
+				"message": {
+					"displayName": "Message a Model",
+					"description": "Send a message to Ollama model"
+				}
+			}
+		},
+		"modelId": {
+			"displayName": "Model"
+		},
+		"text": {
+			"displayName": "Text Input",
+			"placeholder": "e.g. What's in this image?"
+		},
+		"inputType": {
+			"displayName": "Input Type",
+			"options": {
+				"binary": {
+					"displayName": "Binary File(s)"
+				},
+				"url": {
+					"displayName": "Image URL(s)"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Data Field Name(s)",
+			"description": "Name of the binary field(s) which contains the image(s), separate multiple field names with commas",
+			"placeholder": "e.g. data"
+		},
+		"imageUrls": {
+			"displayName": "URL(s)",
+			"description": "URL(s) of the image(s) to analyze, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/image.png"
+		},
+		"simplify": {
+			"displayName": "Simplify Output",
+			"description": "Whether to simplify the response or not"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"system": {
+					"displayName": "System Message",
+					"description": "System message to set the context for the conversation",
+					"placeholder": "e.g. You are a helpful assistant."
+				},
+				"temperature": {
+					"displayName": "Temperature",
+					"description": "Controls randomness in responses. Lower values make output more focused."
+				},
+				"top_p": {
+					"displayName": "Output Randomness (Top P)",
+					"description": "The maximum cumulative probability of tokens to consider when sampling"
+				},
+				"top_k": {
+					"displayName": "Top K",
+					"description": "Controls diversity by limiting the number of top tokens to consider"
+				},
+				"num_predict": {
+					"displayName": "Max Tokens",
+					"description": "Maximum number of tokens to generate in the completion"
+				},
+				"frequency_penalty": {
+					"displayName": "Frequency Penalty",
+					"description": "Adjusts the penalty for tokens that have already appeared in the generated text. Higher values discourage repetition."
+				},
+				"presence_penalty": {
+					"displayName": "Presence Penalty",
+					"description": "Adjusts the penalty for tokens based on their presence in the generated text so far. Positive values penalize tokens that have already appeared, encouraging diversity."
+				},
+				"repeat_penalty": {
+					"displayName": "Repetition Penalty",
+					"description": "Sets how strongly to penalize repetitions. A higher value (e.g., 1.5) will penalize repetitions more strongly, while a lower value (e.g., 0.9) will be more lenient."
+				},
+				"num_ctx": {
+					"displayName": "Context Length",
+					"description": "Sets the size of the context window used to generate the next token"
+				},
+				"repeat_last_n": {
+					"displayName": "Repeat Last N",
+					"description": "Sets how far back for the model to look back to prevent repetition. (0 = disabled, -1 = num_ctx)."
+				},
+				"min_p": {
+					"displayName": "Min P",
+					"description": "Alternative to the top_p, and aims to ensure a balance of quality and variety. The parameter p represents the minimum probability for a token to be considered, relative to the probability of the most likely token."
+				},
+				"seed": {
+					"displayName": "Seed",
+					"description": "Sets the random number seed to use for generation. Setting this to a specific number will make the model generate the same text for the same prompt."
+				},
+				"stop": {
+					"displayName": "Stop Sequences",
+					"description": "Sets the stop sequences to use. When this pattern is encountered the LLM will stop generating text and return. Separate multiple patterns with commas"
+				},
+				"keep_alive": {
+					"displayName": "Keep Alive",
+					"description": "Specifies the duration to keep the loaded model in memory after use. Format: 1h30m (1 hour 30 minutes)."
+				},
+				"low_vram": {
+					"displayName": "Low VRAM Mode",
+					"description": "Whether to activate low VRAM mode, which reduces memory usage at the cost of slower generation speed. Useful for GPUs with limited memory."
+				},
+				"main_gpu": {
+					"displayName": "Main GPU ID",
+					"description": "Specifies the ID of the GPU to use for the main computation. Only change this if you have multiple GPUs."
+				},
+				"num_batch": {
+					"displayName": "Context Batch Size",
+					"description": "Sets the batch size for prompt processing. Larger batch sizes may improve generation speed but increase memory usage."
+				},
+				"num_gpu": {
+					"displayName": "Number of GPUs",
+					"description": "Specifies the number of GPUs to use for parallel processing. Set to -1 for auto-detection."
+				},
+				"num_thread": {
+					"displayName": "Number of CPU Threads",
+					"description": "Specifies the number of CPU threads to use for processing. Set to 0 for auto-detection."
+				},
+				"penalize_newline": {
+					"displayName": "Penalize Newlines",
+					"description": "Whether the model will be less likely to generate newline characters, encouraging longer continuous sequences of text"
+				},
+				"use_mlock": {
+					"displayName": "Use Memory Locking",
+					"description": "Whether to lock the model in memory to prevent swapping. This can improve performance but requires sufficient available memory."
+				},
+				"use_mmap": {
+					"displayName": "Use Memory Mapping",
+					"description": "Whether to use memory mapping for loading the model. This can reduce memory usage but may impact performance."
+				},
+				"vocab_only": {
+					"displayName": "Load Vocabulary Only",
+					"description": "Whether to only load the model vocabulary without the weights. Useful for quickly testing tokenization."
+				},
+				"format": {
+					"displayName": "Output Format",
+					"description": "Specifies the format of the API response",
+					"options": {
+						"": {
+							"displayName": "Default"
+						},
+						"json": {
+							"displayName": "JSON"
+						}
+					}
+				}
+			}
+		},
+		"messages": {
+			"displayName": "Messages",
+			"placeholder": "Add Message",
+			"multipleValueButtonText": "Add Message",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"content": {
+							"displayName": "Content",
+							"description": "The content of the message to be sent",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "The role of this message in the conversation",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Message from the user"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Response from the assistant (for conversation history)"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"content": {
+							"displayName": "Content",
+							"description": "The content of the message to be sent",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "The role of this message in the conversation",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Message from the user"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Response from the assistant (for conversation history)"
+								}
+							}
+						}
+					}
+				},
+				"messages": {
+					"displayName": "Messages",
+					"placeholder": "Add Message"
+				}
+			}
+		}
+	}
+}

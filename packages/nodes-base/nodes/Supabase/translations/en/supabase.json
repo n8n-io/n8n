@@ -1,0 +1,296 @@
+{
+	"header": {
+		"displayName": "Supabase",
+		"description": "Add, get, delete and update data in a table"
+	},
+	"nodeView": {
+		"useCustomSchema": {
+			"displayName": "Use Custom Schema",
+			"description": "Whether to use a database schema different from the default \"public\" schema (requires schema exposure in the <a href=\"https://supabase.com/docs/guides/api/using-custom-schemas?queryGroups=language&language=curl#exposing-custom-schemas\">Supabase API</a>)"
+		},
+		"schema": {
+			"displayName": "Schema",
+			"description": "Name of database schema to use for table"
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"row": {
+					"displayName": "Row"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new row"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a row"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a row"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many rows"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a row"
+				}
+			}
+		},
+		"tableId": {
+			"displayName": "Table Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"filterType": {
+			"displayName": "Filter",
+			"options": {
+				"manual": {
+					"displayName": "Build Manually"
+				},
+				"string": {
+					"displayName": "String"
+				},
+				"none": {
+					"displayName": "None"
+				}
+			}
+		},
+		"matchType": {
+			"displayName": "Must Match",
+			"options": {
+				"anyFilter": {
+					"displayName": "Any Filter"
+				},
+				"allFilters": {
+					"displayName": "All Filters"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "Filters",
+			"description": "Filter to decide which rows get retrieved",
+			"placeholder": "Add Condition",
+			"multipleValueButtonText": "Add Condition",
+			"options": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"keyName": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"condition": {
+							"displayName": "Condition",
+							"options": {
+								"eq": {
+									"displayName": "Equals"
+								},
+								"fullText": {
+									"displayName": "Full-Text"
+								},
+								"gt": {
+									"displayName": "Greater Than"
+								},
+								"gte": {
+									"displayName": "Greater Than or Equal"
+								},
+								"ilike": {
+									"displayName": "ILIKE operator",
+									"description": "Use * in place of %"
+								},
+								"is": {
+									"displayName": "Is",
+									"description": "Checking for exact equality (null,true,false,unknown)"
+								},
+								"lt": {
+									"displayName": "Less Than"
+								},
+								"lte": {
+									"displayName": "Less Than or Equal"
+								},
+								"like": {
+									"displayName": "LIKE operator",
+									"description": "Use * in place of %"
+								},
+								"neq": {
+									"displayName": "Not Equals"
+								}
+							}
+						},
+						"searchFunction": {
+							"displayName": "Search Function",
+							"options": {
+								"fts": {
+									"displayName": "to_tsquery"
+								},
+								"plfts": {
+									"displayName": "plainto_tsquery"
+								},
+								"phfts": {
+									"displayName": "phraseto_tsquery"
+								},
+								"wfts": {
+									"displayName": "websearch_to_tsquery"
+								}
+							}
+						},
+						"keyValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"keyName": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"condition": {
+							"displayName": "Condition",
+							"options": {
+								"eq": {
+									"displayName": "Equals"
+								},
+								"fullText": {
+									"displayName": "Full-Text"
+								},
+								"gt": {
+									"displayName": "Greater Than"
+								},
+								"gte": {
+									"displayName": "Greater Than or Equal"
+								},
+								"ilike": {
+									"displayName": "ILIKE operator",
+									"description": "Use * in place of %"
+								},
+								"is": {
+									"displayName": "Is",
+									"description": "Checking for exact equality (null,true,false,unknown)"
+								},
+								"lt": {
+									"displayName": "Less Than"
+								},
+								"lte": {
+									"displayName": "Less Than or Equal"
+								},
+								"like": {
+									"displayName": "LIKE operator",
+									"description": "Use * in place of %"
+								},
+								"neq": {
+									"displayName": "Not Equals"
+								}
+							}
+						},
+						"searchFunction": {
+							"displayName": "Search Function",
+							"options": {
+								"fts": {
+									"displayName": "to_tsquery"
+								},
+								"plfts": {
+									"displayName": "plainto_tsquery"
+								},
+								"phfts": {
+									"displayName": "phraseto_tsquery"
+								},
+								"wfts": {
+									"displayName": "websearch_to_tsquery"
+								}
+							}
+						},
+						"keyValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "Filters",
+					"placeholder": "Add Condition"
+				}
+			}
+		},
+		"jsonNotice": {
+			"displayName": "See <a href=\"https://postgrest.org/en/stable/references/api/tables_views.html#horizontal-filtering\" target=\"_blank\">PostgREST guide</a> to creating filters"
+		},
+		"filterString": {
+			"displayName": "Filters (String)",
+			"placeholder": "name=eq.jhon"
+		},
+		"dataToSend": {
+			"displayName": "Data to Send",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties match destination column names"
+				},
+				"defineBelow": {
+					"displayName": "Define Below for Each Column",
+					"description": "Set the value for each destination column"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "Inputs to Ignore",
+			"description": "List of input properties to avoid sending, separated by commas. Leave empty to send all properties.",
+			"placeholder": "Enter properties..."
+		},
+		"fieldsUi": {
+			"displayName": "Fields to Send",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field to Send",
+			"options": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "Fields to Send",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		}
+	}
+}

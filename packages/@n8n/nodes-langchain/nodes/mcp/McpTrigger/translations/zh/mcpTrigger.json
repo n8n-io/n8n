@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "MCP服务器触发器",
+		"description": "将n8n工具作为MCP服务器端点公开"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "身份验证方式",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"bearerAuth": {
+					"displayName": "Bearer 认证"
+				},
+				"headerAuth": {
+					"displayName": "Header 认证"
+				}
+			}
+		},
+		"path": {
+			"displayName": "路径",
+			"description": "此MCP服务器的基础路径",
+			"placeholder": "webhook"
+		}
+	}
+}

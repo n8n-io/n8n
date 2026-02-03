@@ -1,0 +1,176 @@
+{
+	"header": {
+		"displayName": "Iterable",
+		"description": "使用 Iterable API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"event": {
+					"displayName": "事件"
+				},
+				"user": {
+					"displayName": "用户"
+				},
+				"userList": {
+					"displayName": "用户列表"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"track": {
+					"displayName": "追踪",
+					"description": "记录用户执行的操作"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新用户，若已存在则更新当前用户（upsert）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "添加用户到列表"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从列表中移除用户"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要跟踪的事件名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"campaignId": {
+					"displayName": "活动ID",
+					"description": "取消订阅营销活动属性"
+				},
+				"createdAt": {
+					"displayName": "创建时间",
+					"description": "时间事件发生"
+				},
+				"dataFieldsUi": {
+					"displayName": "数据字段",
+					"placeholder": "添加数据字段",
+					"multipleValueButtonText": "添加数据字段",
+					"options": {
+						"dataFieldValues": {
+							"displayName": "数据字段",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "最终用户指定的用户自定义数据键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						}
+					},
+					"values": {
+						"dataFieldValues": {
+							"displayName": "数据字段",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "最终用户指定的用户自定义数据键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "最终用户指定的用户自定义数据值"
+								}
+							}
+						},
+						"dataFieldsUi": {
+							"displayName": "数据字段",
+							"placeholder": "添加数据字段"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "必须传入电子邮件或用户ID以识别用户。如果两者都传入，电子邮件优先。",
+					"placeholder": "name@email.com"
+				},
+				"id": {
+					"displayName": "ID",
+					"description": "可选事件ID。如果存在具有该ID的事件，将更新该事件。如未指定，将自动生成并返回新ID。"
+				},
+				"templateId": {
+					"displayName": "模板ID"
+				},
+				"userId": {
+					"displayName": "用户ID",
+					"description": "传入updateUser调用的userId"
+				},
+				"mergeNestedObjects": {
+					"displayName": "合并嵌套对象",
+					"description": "是否合并顶层对象而非覆盖（默认：false），例如：如果用户配置文件的数据为：{mySettings:{mobile:true}}，而变更联系字段的数据为：{mySettings:{email:true}}，则最终配置文件为：{mySettings:{mobile:true,email:true}}"
+				},
+				"channelUnsubscribe": {
+					"displayName": "频道退订",
+					"description": "是否从列表关联频道退订邮件 - 本质上是全局退订"
+				}
+			}
+		},
+		"identifier": {
+			"displayName": "标识符",
+			"description": "要使用的标识符",
+			"options": {
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"userId": {
+					"displayName": "用户ID"
+				}
+			}
+		},
+		"value": {
+			"displayName": "数值"
+		},
+		"preferUserId": {
+			"displayName": "不存在则创建",
+			"description": "当标识符不存在时是否创建新用户"
+		},
+		"by": {
+			"displayName": "按",
+			"description": "要使用的标识符",
+			"options": {
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"userId": {
+					"displayName": "用户ID"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "特定用户的唯一标识符"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "特定用户的电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"listId": {
+			"displayName": "列表名称或ID",
+			"description": "要使用的标识符。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

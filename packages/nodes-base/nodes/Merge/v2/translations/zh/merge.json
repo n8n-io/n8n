@@ -1,0 +1,256 @@
+{
+	"header": {
+		"displayName": "合并",
+		"description": "当多个流的数据都可用时，合并它们的数据"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "模式",
+			"description": "分支数据应如何合并",
+			"options": {
+				"append": {
+					"displayName": "追加",
+					"description": "先处理输入1的所有项目，再处理输入2的所有项目"
+				},
+				"combine": {
+					"displayName": "合并",
+					"description": "合并匹配项"
+				},
+				"chooseBranch": {
+					"displayName": "选择分支",
+					"description": "输出输入数据，不做修改"
+				}
+			}
+		},
+		"combinationMode": {
+			"displayName": "组合模式",
+			"options": {
+				"mergeByFields": {
+					"displayName": "按字段合并",
+					"description": "合并具有相同字段值的项目"
+				},
+				"mergeByPosition": {
+					"displayName": "按位置合并",
+					"description": "根据顺序组合项目"
+				},
+				"multiplex": {
+					"displayName": "多路复用",
+					"description": "所有可能的项目组合（交叉连接）"
+				}
+			}
+		},
+		"mergeByFields": {
+			"displayName": "匹配字段",
+			"placeholder": "添加匹配字段",
+			"multipleValueButtonText": "添加匹配字段",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field1": {
+							"displayName": "输入1字段",
+							"placeholder": "例如 id"
+						},
+						"field2": {
+							"displayName": "输入2字段",
+							"placeholder": "例如 id"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field1": {
+							"displayName": "输入1字段",
+							"placeholder": "例如 id"
+						},
+						"field2": {
+							"displayName": "输入2字段",
+							"placeholder": "例如 id"
+						}
+					}
+				},
+				"mergeByFields": {
+					"displayName": "匹配字段",
+					"placeholder": "添加匹配字段"
+				}
+			}
+		},
+		"joinMode": {
+			"displayName": "输出类型",
+			"options": {
+				"keepMatches": {
+					"displayName": "保留匹配项",
+					"description": "匹配的项，合并在一起（内连接）"
+				},
+				"keepNonMatches": {
+					"displayName": "保留不匹配项",
+					"description": "不匹配的项目"
+				},
+				"keepEverything": {
+					"displayName": "保留所有项",
+					"description": "匹配项合并，加上不匹配项（外连接）"
+				},
+				"enrichInput1": {
+					"displayName": "丰富输入1",
+					"description": "输入1的全部数据，并加入输入2的数据（左连接）"
+				},
+				"enrichInput2": {
+					"displayName": "丰富输入2",
+					"description": "所有输入2的数据，并加入来自输入1的数据（右连接）"
+				}
+			}
+		},
+		"outputDataFrom": {
+			"displayName": "来自节点的输出数据",
+			"options": {
+				"both": {
+					"displayName": "两个输入拼接在一起"
+				},
+				"input1": {
+					"displayName": "输入 1"
+				},
+				"input2": {
+					"displayName": "输入2"
+				}
+			}
+		},
+		"chooseBranchMode": {
+			"displayName": "输出类型",
+			"options": {
+				"waitForBoth": {
+					"displayName": "等待两个输入到达"
+				}
+			}
+		},
+		"output": {
+			"displayName": "输出",
+			"options": {
+				"input1": {
+					"displayName": "输入1数据"
+				},
+				"input2": {
+					"displayName": "输入2数据"
+				},
+				"empty": {
+					"displayName": "一个单独的、空的项"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"clashHandling": {
+					"displayName": "冲突处理",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"resolveClash": {
+									"displayName": "字段值冲突时",
+									"options": {
+										"addSuffix": {
+											"displayName": "始终在字段名称中添加输入编号"
+										},
+										"preferInput1": {
+											"displayName": "首选输入1版本"
+										},
+										"preferInput2": {
+											"displayName": "首选输入2版本"
+										}
+									}
+								},
+								"mergeMode": {
+									"displayName": "合并嵌套字段",
+									"options": {
+										"deepMerge": {
+											"displayName": "深度合并",
+											"description": "在每个嵌套级别合并"
+										},
+										"shallowMerge": {
+											"displayName": "浅层合并",
+											"description": "仅合并顶层（所有嵌套字段将来自同一输入）"
+										}
+									}
+								},
+								"overrideEmpty": {
+									"displayName": "最小化空字段",
+									"description": "当字段为空且另一版本不为空时，是否覆盖字段的首选输入版本。此处'空'指未定义、null或空字符串。"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"resolveClash": {
+									"displayName": "字段值冲突时",
+									"options": {
+										"addSuffix": {
+											"displayName": "始终在字段名称中添加输入编号"
+										},
+										"preferInput1": {
+											"displayName": "首选输入1版本"
+										},
+										"preferInput2": {
+											"displayName": "首选输入2版本"
+										}
+									}
+								},
+								"mergeMode": {
+									"displayName": "合并嵌套字段",
+									"options": {
+										"deepMerge": {
+											"displayName": "深度合并",
+											"description": "在每个嵌套级别合并"
+										},
+										"shallowMerge": {
+											"displayName": "浅层合并",
+											"description": "仅合并顶层（所有嵌套字段将来自同一输入）"
+										}
+									}
+								},
+								"overrideEmpty": {
+									"displayName": "最小化空字段",
+									"description": "当字段为空且另一版本不为空时，是否覆盖字段的首选输入版本。此处'空'指未定义、null或空字符串。"
+								}
+							}
+						},
+						"clashHandling": {
+							"displayName": "冲突处理"
+						}
+					}
+				},
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				},
+				"fuzzyCompare": {
+					"displayName": "模糊比较",
+					"description": "比较字段时是否容忍小的类型差异。例如，数字3和字符串'3'被视为相同。"
+				},
+				"includeUnpaired": {
+					"displayName": "包含任何未配对的项",
+					"description": "如果输入1和输入2中的项目数量不同，是否包含末尾没有匹配项的项"
+				},
+				"multipleMatches": {
+					"displayName": "多个匹配项",
+					"options": {
+						"all": {
+							"displayName": "包含所有匹配项",
+							"description": "若有多个匹配项则输出多项"
+						},
+						"first": {
+							"displayName": "仅包含首个匹配项",
+							"description": "每个匹配仅输出单个项目"
+						}
+					}
+				}
+			}
+		}
+	}
+}

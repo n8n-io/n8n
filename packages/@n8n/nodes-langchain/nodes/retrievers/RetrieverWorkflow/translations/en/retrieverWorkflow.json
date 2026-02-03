@@ -1,0 +1,157 @@
+{
+	"header": {
+		"displayName": "Workflow Retriever",
+		"description": "Use an n8n Workflow as Retriever"
+	},
+	"nodeView": {
+		"executeNotice": {
+			"displayName": "The workflow will receive \"query\" as input and the output of the last node will be returned and converted to Documents"
+		},
+		"source": {
+			"displayName": "Source",
+			"description": "Where to get the workflow to execute from",
+			"options": {
+				"database": {
+					"displayName": "Database",
+					"description": "Load the workflow from the database by ID"
+				},
+				"parameter": {
+					"displayName": "Parameter",
+					"description": "Load the workflow from a parameter"
+				}
+			}
+		},
+		"workflowId": {
+			"displayName": "Workflow",
+			"description": "The workflow to execute"
+		},
+		"workflowJson": {
+			"displayName": "Workflow JSON",
+			"description": "The workflow JSON code to execute"
+		},
+		"fields": {
+			"displayName": "Workflow Values",
+			"description": "Set the values which should be made available in the workflow",
+			"placeholder": "Add Value",
+			"multipleValueButtonText": "Add Value",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name.",
+							"placeholder": "e.g. fieldName"
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "The field value type",
+							"options": {
+								"stringValue": {
+									"displayName": "String"
+								},
+								"numberValue": {
+									"displayName": "Number"
+								},
+								"booleanValue": {
+									"displayName": "Boolean"
+								},
+								"arrayValue": {
+									"displayName": "Array"
+								},
+								"objectValue": {
+									"displayName": "Object"
+								}
+							}
+						},
+						"stringValue": {
+							"displayName": "Value"
+						},
+						"numberValue": {
+							"displayName": "Value"
+						},
+						"booleanValue": {
+							"displayName": "Value",
+							"options": {
+								"true": {
+									"displayName": "True"
+								},
+								"false": {
+									"displayName": "False"
+								}
+							}
+						},
+						"arrayValue": {
+							"displayName": "Value",
+							"placeholder": "e.g. [ arrayItem1, arrayItem2, arrayItem3 ]"
+						},
+						"objectValue": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name.",
+							"placeholder": "e.g. fieldName"
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "The field value type",
+							"options": {
+								"stringValue": {
+									"displayName": "String"
+								},
+								"numberValue": {
+									"displayName": "Number"
+								},
+								"booleanValue": {
+									"displayName": "Boolean"
+								},
+								"arrayValue": {
+									"displayName": "Array"
+								},
+								"objectValue": {
+									"displayName": "Object"
+								}
+							}
+						},
+						"stringValue": {
+							"displayName": "Value"
+						},
+						"numberValue": {
+							"displayName": "Value"
+						},
+						"booleanValue": {
+							"displayName": "Value",
+							"options": {
+								"true": {
+									"displayName": "True"
+								},
+								"false": {
+									"displayName": "False"
+								}
+							}
+						},
+						"arrayValue": {
+							"displayName": "Value",
+							"placeholder": "e.g. [ arrayItem1, arrayItem2, arrayItem3 ]"
+						},
+						"objectValue": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"fields": {
+					"displayName": "Workflow Values",
+					"placeholder": "Add Value"
+				}
+			}
+		}
+	}
+}

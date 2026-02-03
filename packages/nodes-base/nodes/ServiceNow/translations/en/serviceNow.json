@@ -1,0 +1,619 @@
+{
+	"header": {
+		"displayName": "ServiceNow",
+		"description": "Consume ServiceNow API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "Authentication method to use",
+			"options": {
+				"basicAuth": {
+					"displayName": "Basic Auth"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"attachment": {
+					"displayName": "Attachment"
+				},
+				"businessService": {
+					"displayName": "Business Service"
+				},
+				"configurationItems": {
+					"displayName": "Configuration Item"
+				},
+				"department": {
+					"displayName": "Department"
+				},
+				"dictionary": {
+					"displayName": "Dictionary"
+				},
+				"incident": {
+					"displayName": "Incident"
+				},
+				"tableRecord": {
+					"displayName": "Table Record"
+				},
+				"user": {
+					"displayName": "User"
+				},
+				"userGroup": {
+					"displayName": "User Group"
+				},
+				"userRole": {
+					"displayName": "User Role"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload an attachment to a specific table record"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an attachment"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get an attachment"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many attachments on a table"
+				},
+				"create": {
+					"displayName": "Create"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"tableName": {
+			"displayName": "Table Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"id": {
+			"displayName": "User ID",
+			"description": "Unique identifier of the user"
+		},
+		"inputDataFieldName": {
+			"displayName": "Input Data Field Name",
+			"description": "Name of the binary property that contains the data to upload"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"file_name": {
+					"displayName": "File Name for the Attachment",
+					"description": "Name to give the attachment"
+				},
+				"queryFilter": {
+					"displayName": "Filter",
+					"description": "An encoded query string used to filter the results",
+					"placeholder": "<col_name><operator><value>"
+				},
+				"sysparm_exclude_reference_link": {
+					"displayName": "Exclude Reference Link",
+					"description": "Whether to exclude Table API links for reference fields"
+				},
+				"sysparm_fields": {
+					"displayName": "Field Names or IDs",
+					"description": "A list of fields to return. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"sysparm_query": {
+					"displayName": "Filter",
+					"description": "An encoded query string used to filter the results. <a href=\"https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters\">More info</a>."
+				},
+				"sysparm_display_value": {
+					"displayName": "Return Values",
+					"description": "Choose which values to return",
+					"options": {
+						"false": {
+							"displayName": "Actual Values"
+						},
+						"all": {
+							"displayName": "Both"
+						},
+						"true": {
+							"displayName": "Display Values"
+						}
+					}
+				}
+			}
+		},
+		"attachmentId": {
+			"displayName": "Attachment ID",
+			"description": "Sys_id value of the attachment to delete"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"download": {
+			"displayName": "Download Attachments"
+		},
+		"outputField": {
+			"displayName": "Output Field",
+			"description": "Field name where downloaded data will be placed"
+		},
+		"short_description": {
+			"displayName": "Short Description",
+			"description": "Short description of the user"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assigned_to": {
+					"displayName": "Assignee Name or ID",
+					"description": "Which user is the incident assigned to. Requires the selection of an assignment group. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"assignment_group": {
+					"displayName": "Assignment Group Name or ID",
+					"description": "The assignment group of the incident. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"business_service": {
+					"displayName": "Business Service Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"caller_id": {
+					"displayName": "Caller ID",
+					"description": "The unique identifier of the caller of the incident"
+				},
+				"category": {
+					"displayName": "Category Name or ID",
+					"description": "The category of the incident. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"close_notes": {
+					"displayName": "Close Notes",
+					"description": "The close notes for the incident"
+				},
+				"cmdb_ci": {
+					"displayName": "Configuration Item Names or IDs",
+					"description": "Configuration Items, 'cmdb_ci' in metadata. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"contact_type": {
+					"displayName": "Contact Type",
+					"options": {
+						"email": {
+							"displayName": "Email"
+						},
+						"phone": {
+							"displayName": "Phone"
+						},
+						"self-service": {
+							"displayName": "Self Service"
+						},
+						"walk-in": {
+							"displayName": "Walk In"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The description of the incident"
+				},
+				"impact": {
+					"displayName": "Impact",
+					"description": "The impact of the incident",
+					"options": {
+						"1": {
+							"displayName": "High"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "Low"
+						}
+					}
+				},
+				"close_code": {
+					"displayName": "Resolution Code Name or ID",
+					"description": "The resolution code of the incident, 'close_code' in metadata. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"state": {
+					"displayName": "State",
+					"description": "State for the user"
+				},
+				"subcategory": {
+					"displayName": "Subcategory Name or ID",
+					"description": "The subcategory of the incident. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"urgency": {
+					"displayName": "Urgency",
+					"description": "The urgency of the incident",
+					"options": {
+						"1": {
+							"displayName": "High"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "Low"
+						}
+					}
+				},
+				"active": {
+					"displayName": "Active",
+					"description": "Whether to activate the user"
+				},
+				"building": {
+					"displayName": "Building",
+					"description": "The Building address"
+				},
+				"city": {
+					"displayName": "City",
+					"description": "City of the user"
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "The name of the company for the user"
+				},
+				"country": {
+					"displayName": "Country",
+					"description": "Country of the user"
+				},
+				"department": {
+					"displayName": "Department",
+					"description": "Department of the user"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The email address associated with the user",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "First Name",
+					"description": "The first name of the user"
+				},
+				"gender": {
+					"displayName": "Gender",
+					"description": "The gender of the user"
+				},
+				"home_phone": {
+					"displayName": "Home Phone",
+					"description": "Home phone of the user"
+				},
+				"last_name": {
+					"displayName": "Last Name",
+					"description": "The last name of the user"
+				},
+				"location": {
+					"displayName": "Location",
+					"description": "Location of the user"
+				},
+				"manager": {
+					"displayName": "Manager",
+					"description": "Manager of the user"
+				},
+				"middle_name": {
+					"displayName": "Middle Name",
+					"description": "The middle name of the user"
+				},
+				"mobile_phone": {
+					"displayName": "Mobile Phone",
+					"description": "Mobile phone number of the user"
+				},
+				"user_password": {
+					"displayName": "Password",
+					"description": "The user's password"
+				},
+				"password_needs_reset": {
+					"displayName": "Password Needs Reset",
+					"description": "Whether to require a password reset when the user logs in"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "The main phone number of the user"
+				},
+				"roles": {
+					"displayName": "Role Names or IDs",
+					"description": "Roles of the user. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"source": {
+					"displayName": "Source"
+				},
+				"street": {
+					"displayName": "Street",
+					"description": "Street information for the user separated by comma"
+				},
+				"user_name": {
+					"displayName": "Username",
+					"description": "A username associated with the user (e.g. user_name.123)"
+				},
+				"zip": {
+					"displayName": "Zip Code",
+					"description": "Zip code for the user"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assigned_to": {
+					"displayName": "Assigned To Name or ID",
+					"description": "Which user is the incident assigned to. Requires the selection of an assignment group. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"assignment_group": {
+					"displayName": "Assignment Group Name or ID",
+					"description": "The assignment group of the incident. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"business_service": {
+					"displayName": "Business Service Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"caller_id": {
+					"displayName": "Caller ID",
+					"description": "The unique identifier of the caller of the incident"
+				},
+				"category": {
+					"displayName": "Category Name or ID",
+					"description": "The category of the incident. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"close_notes": {
+					"displayName": "Close Notes",
+					"description": "The close notes for the incident"
+				},
+				"cmdb_ci": {
+					"displayName": "Configuration Item Names or IDs",
+					"description": "Configuration Items, 'cmdb_ci' in metadata. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"contact_type": {
+					"displayName": "Contact Type",
+					"options": {
+						"email": {
+							"displayName": "Email"
+						},
+						"phone": {
+							"displayName": "Phone"
+						},
+						"self-service": {
+							"displayName": "Self Service"
+						},
+						"walk-in": {
+							"displayName": "Walk In"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The description of the incident"
+				},
+				"impact": {
+					"displayName": "Impact",
+					"description": "The impact of the incident",
+					"options": {
+						"1": {
+							"displayName": "High"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "Low"
+						}
+					}
+				},
+				"close_code": {
+					"displayName": "Resolution Code Name or ID",
+					"description": "The resolution code of the incident. 'close_code' in metadata. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"hold_reason": {
+					"displayName": "On Hold Reason Name or ID",
+					"description": "The on hold reason for the incident. It applies if the state is <code>On Hold</code>. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"state": {
+					"displayName": "State",
+					"description": "State for the user"
+				},
+				"subcategory": {
+					"displayName": "Subcategory Name or ID",
+					"description": "The subcategory of the incident. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"urgency": {
+					"displayName": "Urgency",
+					"description": "The urgency of the incident",
+					"options": {
+						"1": {
+							"displayName": "High"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "Low"
+						}
+					}
+				},
+				"work_notes": {
+					"displayName": "Work Notes",
+					"description": "Work notes for the incident"
+				},
+				"active": {
+					"displayName": "Active",
+					"description": "Whether to activate the user"
+				},
+				"building": {
+					"displayName": "Building",
+					"description": "The Building address"
+				},
+				"city": {
+					"displayName": "City",
+					"description": "City of the user"
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "The name of the company for the user"
+				},
+				"country": {
+					"displayName": "Country",
+					"description": "Country of the user"
+				},
+				"department": {
+					"displayName": "Department",
+					"description": "Department of the user"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The email address associated with the user",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "First Name",
+					"description": "The first name of the user"
+				},
+				"gender": {
+					"displayName": "Gender",
+					"description": "The gender of the user"
+				},
+				"home_phone": {
+					"displayName": "Home Phone",
+					"description": "Home phone of the user"
+				},
+				"last_name": {
+					"displayName": "Last Name",
+					"description": "The last name of the user"
+				},
+				"location": {
+					"displayName": "Location",
+					"description": "Location of the user"
+				},
+				"manager": {
+					"displayName": "Manager",
+					"description": "Manager of the user"
+				},
+				"middle_name": {
+					"displayName": "Middle Name",
+					"description": "The middle name of the user"
+				},
+				"mobile_phone": {
+					"displayName": "Mobile Phone",
+					"description": "Mobile phone number of the user"
+				},
+				"user_password": {
+					"displayName": "Password",
+					"description": "The user's password"
+				},
+				"password_needs_reset": {
+					"displayName": "Password Needs Reset",
+					"description": "Whether to require a password reset when the user logs in"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "The main phone number of the user"
+				},
+				"roles": {
+					"displayName": "Role Names or IDs",
+					"description": "Roles of the user. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"source": {
+					"displayName": "Source"
+				},
+				"street": {
+					"displayName": "Street",
+					"description": "Street information for the user separated by comma"
+				},
+				"user_name": {
+					"displayName": "Username",
+					"description": "A username associated with the user (e.g. user_name.123)"
+				},
+				"zip": {
+					"displayName": "Zip Code",
+					"description": "Zip code for the user"
+				}
+			}
+		},
+		"dataToSend": {
+			"displayName": "Data to Send",
+			"options": {
+				"mapInput": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input names match destination field names"
+				},
+				"columns": {
+					"displayName": "Define Below for Each Column",
+					"description": "Set the value for each destination column"
+				},
+				"nothing": {
+					"displayName": "Nothing",
+					"description": "Don't send any column data"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "Inputs to Ignore",
+			"description": "List of input properties to avoid sending, separated by commas. Leave empty to send all inputs."
+		},
+		"fieldsToSend": {
+			"displayName": "Fields to Send",
+			"placeholder": "Add field to send",
+			"multipleValueButtonText": "Add field to send",
+			"options": {
+				"field": {
+					"displayName": "Field",
+					"options": {
+						"column": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"value": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"field": {
+					"displayName": "Field",
+					"options": {
+						"column": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"value": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"fieldsToSend": {
+					"displayName": "Fields to Send",
+					"placeholder": "Add field to send"
+				}
+			}
+		},
+		"getOption": {
+			"displayName": "Retrieve Identifier",
+			"description": "Unique identifier of the user",
+			"options": {
+				"id": {
+					"displayName": "ID"
+				},
+				"user_name": {
+					"displayName": "Username"
+				}
+			}
+		},
+		"user_name": {
+			"displayName": "Username",
+			"description": "Unique identifier of the user"
+		}
+	}
+}

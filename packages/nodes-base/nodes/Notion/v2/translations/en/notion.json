@@ -1,0 +1,3174 @@
+{
+	"header": {
+		"displayName": "Notion",
+		"description": "Consume Notion API"
+	},
+	"nodeView": {
+		"notionNotice": {
+			"displayName": "In Notion, make sure to <a href=\"https://www.notion.so/help/add-and-manage-connections-with-the-api\" target=\"_blank\">add your connection</a> to the pages you want to access."
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"block": {
+					"displayName": "Block"
+				},
+				"database": {
+					"displayName": "Database"
+				},
+				"databasePage": {
+					"displayName": "Database Page"
+				},
+				"page": {
+					"displayName": "Page"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"append": {
+					"displayName": "Append After",
+					"description": "Append a block"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many users"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a user"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Text search of pages"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a page"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update pages in a database"
+				},
+				"archive": {
+					"displayName": "Archive",
+					"description": "Archive a page"
+				}
+			}
+		},
+		"blockId": {
+			"displayName": "Block",
+			"description": "The Notion Block to get all children from, when using 'By URL' mode make sure to use the URL of the block itself, you can find it in block parameters in Notion under 'Copy link to block'"
+		},
+		"blockUi": {
+			"displayName": "Blocks",
+			"placeholder": "Add Block",
+			"multipleValueButtonText": "Add Block",
+			"options": {
+				"blockValues": {
+					"displayName": "Block",
+					"options": {
+						"type": {
+							"displayName": "Type Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"richText": {
+							"displayName": "Rich Text"
+						},
+						"textContent": {
+							"displayName": "Text"
+						},
+						"text": {
+							"displayName": "Text",
+							"description": "Rich text in the block",
+							"placeholder": "Add Text",
+							"multipleValueButtonText": "Add Text",
+							"options": {
+								"text": {
+									"displayName": "Text",
+									"options": {
+										"textType": {
+											"displayName": "Type",
+											"options": {
+												"equation": {
+													"displayName": "Equation"
+												},
+												"mention": {
+													"displayName": "Mention"
+												},
+												"text": {
+													"displayName": "Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "Text content. This field contains the actual content of your text and is probably the field you'll use most often."
+										},
+										"isLink": {
+											"displayName": "Is Link"
+										},
+										"textLink": {
+											"displayName": "Text Link",
+											"description": "The URL that this link points to"
+										},
+										"mentionType": {
+											"displayName": "Type",
+											"description": "An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.",
+											"options": {
+												"database": {
+													"displayName": "Database"
+												},
+												"date": {
+													"displayName": "Date"
+												},
+												"page": {
+													"displayName": "Page"
+												},
+												"user": {
+													"displayName": "User"
+												}
+											}
+										},
+										"user": {
+											"displayName": "User Name or ID",
+											"description": "The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+										},
+										"page": {
+											"displayName": "Page ID",
+											"description": "The ID of the page being mentioned"
+										},
+										"database": {
+											"displayName": "Database",
+											"description": "The Notion Database being mentioned"
+										},
+										"range": {
+											"displayName": "Range",
+											"description": "Whether or not you want to define a date range"
+										},
+										"date": {
+											"displayName": "Date",
+											"description": "An ISO 8601 format date, with optional time"
+										},
+										"dateStart": {
+											"displayName": "Date Start",
+											"description": "An ISO 8601 format date, with optional time"
+										},
+										"dateEnd": {
+											"displayName": "Date End",
+											"description": "An ISO 8601 formatted date, with optional time. Represents the end of a date range."
+										},
+										"expression": {
+											"displayName": "Expression"
+										},
+										"annotationUi": {
+											"displayName": "Annotations",
+											"description": "All annotations that apply to this rich text",
+											"placeholder": "Add Annotation",
+											"options": {
+												"bold": {
+													"displayName": "Bold",
+													"description": "Whether the text is bolded"
+												},
+												"italic": {
+													"displayName": "Italic",
+													"description": "Whether the text is italicized"
+												},
+												"strikethrough": {
+													"displayName": "Strikethrough",
+													"description": "Whether the text is struck through"
+												},
+												"underline": {
+													"displayName": "Underline",
+													"description": "Whether the text is underlined"
+												},
+												"code": {
+													"displayName": "Code",
+													"description": "Whether the text is code style"
+												},
+												"color": {
+													"displayName": "Color",
+													"description": "Color of the text",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"gray": {
+															"displayName": "Gray"
+														},
+														"brown": {
+															"displayName": "Brown"
+														},
+														"orange": {
+															"displayName": "Orange"
+														},
+														"yellow": {
+															"displayName": "Yellow"
+														},
+														"green": {
+															"displayName": "Green"
+														},
+														"blue": {
+															"displayName": "Blue"
+														},
+														"purple": {
+															"displayName": "Purple"
+														},
+														"pink": {
+															"displayName": "Pink"
+														},
+														"red": {
+															"displayName": "Red"
+														},
+														"gray_background": {
+															"displayName": "Gray Background"
+														},
+														"brown_background": {
+															"displayName": "Brown Background"
+														},
+														"orange_background": {
+															"displayName": "Orange Background"
+														},
+														"yellow_background": {
+															"displayName": "Yellow Background"
+														},
+														"green_background": {
+															"displayName": "Green Background"
+														},
+														"blue_background": {
+															"displayName": "Blue Background"
+														},
+														"purple_background": {
+															"displayName": "Purple Background"
+														},
+														"pink_background": {
+															"displayName": "Pink Background"
+														},
+														"red_background": {
+															"displayName": "Red Background"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"text": {
+									"displayName": "Text",
+									"placeholder": "Add Text"
+								}
+							}
+						},
+						"checked": {
+							"displayName": "Checked",
+							"description": "Whether the to_do is checked or not"
+						},
+						"title": {
+							"displayName": "Title",
+							"description": "Plain text of page title"
+						},
+						"url": {
+							"displayName": "Image URL",
+							"description": "Image file reference"
+						}
+					}
+				}
+			},
+			"values": {
+				"blockValues": {
+					"displayName": "Block",
+					"options": {
+						"type": {
+							"displayName": "Type Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"richText": {
+							"displayName": "Rich Text"
+						},
+						"textContent": {
+							"displayName": "Text"
+						},
+						"text": {
+							"displayName": "Text",
+							"description": "Rich text in the block",
+							"placeholder": "Add Text",
+							"multipleValueButtonText": "Add Text",
+							"options": {
+								"text": {
+									"displayName": "Text",
+									"options": {
+										"textType": {
+											"displayName": "Type",
+											"options": {
+												"equation": {
+													"displayName": "Equation"
+												},
+												"mention": {
+													"displayName": "Mention"
+												},
+												"text": {
+													"displayName": "Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "Text content. This field contains the actual content of your text and is probably the field you'll use most often."
+										},
+										"isLink": {
+											"displayName": "Is Link"
+										},
+										"textLink": {
+											"displayName": "Text Link",
+											"description": "The URL that this link points to"
+										},
+										"mentionType": {
+											"displayName": "Type",
+											"description": "An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.",
+											"options": {
+												"database": {
+													"displayName": "Database"
+												},
+												"date": {
+													"displayName": "Date"
+												},
+												"page": {
+													"displayName": "Page"
+												},
+												"user": {
+													"displayName": "User"
+												}
+											}
+										},
+										"user": {
+											"displayName": "User Name or ID",
+											"description": "The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+										},
+										"page": {
+											"displayName": "Page ID",
+											"description": "The ID of the page being mentioned"
+										},
+										"database": {
+											"displayName": "Database",
+											"description": "The Notion Database being mentioned"
+										},
+										"range": {
+											"displayName": "Range",
+											"description": "Whether or not you want to define a date range"
+										},
+										"date": {
+											"displayName": "Date",
+											"description": "An ISO 8601 format date, with optional time"
+										},
+										"dateStart": {
+											"displayName": "Date Start",
+											"description": "An ISO 8601 format date, with optional time"
+										},
+										"dateEnd": {
+											"displayName": "Date End",
+											"description": "An ISO 8601 formatted date, with optional time. Represents the end of a date range."
+										},
+										"expression": {
+											"displayName": "Expression"
+										},
+										"annotationUi": {
+											"displayName": "Annotations",
+											"description": "All annotations that apply to this rich text",
+											"placeholder": "Add Annotation",
+											"options": {
+												"bold": {
+													"displayName": "Bold",
+													"description": "Whether the text is bolded"
+												},
+												"italic": {
+													"displayName": "Italic",
+													"description": "Whether the text is italicized"
+												},
+												"strikethrough": {
+													"displayName": "Strikethrough",
+													"description": "Whether the text is struck through"
+												},
+												"underline": {
+													"displayName": "Underline",
+													"description": "Whether the text is underlined"
+												},
+												"code": {
+													"displayName": "Code",
+													"description": "Whether the text is code style"
+												},
+												"color": {
+													"displayName": "Color",
+													"description": "Color of the text",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"gray": {
+															"displayName": "Gray"
+														},
+														"brown": {
+															"displayName": "Brown"
+														},
+														"orange": {
+															"displayName": "Orange"
+														},
+														"yellow": {
+															"displayName": "Yellow"
+														},
+														"green": {
+															"displayName": "Green"
+														},
+														"blue": {
+															"displayName": "Blue"
+														},
+														"purple": {
+															"displayName": "Purple"
+														},
+														"pink": {
+															"displayName": "Pink"
+														},
+														"red": {
+															"displayName": "Red"
+														},
+														"gray_background": {
+															"displayName": "Gray Background"
+														},
+														"brown_background": {
+															"displayName": "Brown Background"
+														},
+														"orange_background": {
+															"displayName": "Orange Background"
+														},
+														"yellow_background": {
+															"displayName": "Yellow Background"
+														},
+														"green_background": {
+															"displayName": "Green Background"
+														},
+														"blue_background": {
+															"displayName": "Blue Background"
+														},
+														"purple_background": {
+															"displayName": "Purple Background"
+														},
+														"pink_background": {
+															"displayName": "Pink Background"
+														},
+														"red_background": {
+															"displayName": "Red Background"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"text": {
+									"displayName": "Text",
+									"placeholder": "Add Text"
+								}
+							}
+						},
+						"checked": {
+							"displayName": "Checked",
+							"description": "Whether the to_do is checked or not"
+						},
+						"title": {
+							"displayName": "Title",
+							"description": "Plain text of page title"
+						},
+						"url": {
+							"displayName": "Image URL",
+							"description": "Image file reference"
+						}
+					}
+				},
+				"blockUi": {
+					"displayName": "Blocks",
+					"placeholder": "Add Block"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"fetchNestedBlocks": {
+			"displayName": "Also Fetch Nested Blocks"
+		},
+		"simplifyOutput": {
+			"displayName": "Simplify Output"
+		},
+		"databaseId": {
+			"displayName": "Database",
+			"description": "The Notion Database to operate on"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"text": {
+			"displayName": "Search Text",
+			"description": "The text to search for"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"sort": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort",
+					"options": {
+						"sortValue": {
+							"displayName": "Sort",
+							"options": {
+								"direction": {
+									"displayName": "Direction",
+									"description": "The direction to sort",
+									"options": {
+										"ascending": {
+											"displayName": "Ascending"
+										},
+										"descending": {
+											"displayName": "Descending"
+										}
+									}
+								},
+								"timestamp": {
+									"displayName": "Timestamp",
+									"description": "The name of the timestamp to sort against",
+									"options": {
+										"last_edited_time": {
+											"displayName": "Last Edited Time"
+										}
+									}
+								},
+								"key": {
+									"displayName": "Property Name",
+									"description": "The name of the property to filter by",
+									"options": {
+										"created_time": {
+											"displayName": "Created Time"
+										},
+										"last_edited_time": {
+											"displayName": "Last Edited Time"
+										}
+									}
+								},
+								"type": {
+									"displayName": "Type"
+								}
+							}
+						}
+					},
+					"values": {
+						"sortValue": {
+							"displayName": "Sort",
+							"options": {
+								"direction": {
+									"displayName": "Direction",
+									"description": "The direction to sort",
+									"options": {
+										"ascending": {
+											"displayName": "Ascending"
+										},
+										"descending": {
+											"displayName": "Descending"
+										}
+									}
+								},
+								"timestamp": {
+									"displayName": "Timestamp",
+									"description": "The name of the timestamp to sort against",
+									"options": {
+										"last_edited_time": {
+											"displayName": "Last Edited Time"
+										}
+									}
+								},
+								"key": {
+									"displayName": "Property Name",
+									"description": "The name of the property to filter by",
+									"options": {
+										"created_time": {
+											"displayName": "Created Time"
+										},
+										"last_edited_time": {
+											"displayName": "Last Edited Time"
+										}
+									}
+								},
+								"type": {
+									"displayName": "Type"
+								}
+							}
+						},
+						"sort": {
+							"displayName": "Sort",
+							"placeholder": "Add Sort"
+						}
+					},
+					"multipleValueButtonText": "Add Sort"
+				},
+				"iconType": {
+					"displayName": "Icon Type",
+					"description": "The icon type for the page, Either a URL or an Emoji",
+					"options": {
+						"emoji": {
+							"displayName": "Emoji",
+							"description": "Use an Emoji for the icon"
+						},
+						"file": {
+							"displayName": "File",
+							"description": "Use a file for the icon"
+						}
+					}
+				},
+				"icon": {
+					"displayName": "Icon",
+					"description": "Emoji or File URL to use as the icon"
+				},
+				"downloadFiles": {
+					"displayName": "Download Files",
+					"description": "Whether to download a file if a database's field contains it"
+				},
+				"filter": {
+					"displayName": "Filters",
+					"placeholder": "Add Filter",
+					"options": {
+						"singleCondition": {
+							"displayName": "Single Condition",
+							"options": {
+								"key": {
+									"displayName": "Property Name or ID",
+									"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"type": {
+									"displayName": "Type"
+								},
+								"condition": {
+									"displayName": "Condition",
+									"description": "The value of the property to filter by",
+									"options": {
+										"equals": {
+											"displayName": "Equals"
+										},
+										"before": {
+											"displayName": "Before"
+										},
+										"after": {
+											"displayName": "After"
+										},
+										"on_or_before": {
+											"displayName": "On Or Before"
+										},
+										"is_empty": {
+											"displayName": "Is Empty"
+										},
+										"is_not_empty": {
+											"displayName": "Is Not Empty"
+										},
+										"on_or_after": {
+											"displayName": "On Or After"
+										},
+										"past_week": {
+											"displayName": "Past Week"
+										},
+										"past_month": {
+											"displayName": "Past Month"
+										},
+										"past_year": {
+											"displayName": "Past Year"
+										},
+										"next_week": {
+											"displayName": "Next Week"
+										},
+										"next_month": {
+											"displayName": "Next Month"
+										},
+										"next_year": {
+											"displayName": "Next Year"
+										}
+									}
+								},
+								"returnType": {
+									"displayName": "Return Type",
+									"description": "The formula return type",
+									"options": {
+										"text": {
+											"displayName": "Text"
+										},
+										"checkbox": {
+											"displayName": "Checkbox"
+										},
+										"number": {
+											"displayName": "Number"
+										},
+										"date": {
+											"displayName": "Date"
+										}
+									}
+								},
+								"titleValue": {
+									"displayName": "Title"
+								},
+								"richTextValue": {
+									"displayName": "Text"
+								},
+								"phoneNumberValue": {
+									"displayName": "Phone Number",
+									"description": "Phone number. No structure is enforced."
+								},
+								"multiSelectValue": {
+									"displayName": "Option Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"selectValue": {
+									"displayName": "Option Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"statusValue": {
+									"displayName": "Status Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"emailValue": {
+									"displayName": "Email"
+								},
+								"urlValue": {
+									"displayName": "URL"
+								},
+								"peopleValue": {
+									"displayName": "User Name or ID",
+									"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"createdByValue": {
+									"displayName": "User Name or ID",
+									"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"lastEditedByValue": {
+									"displayName": "User Name or ID",
+									"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"relationValue": {
+									"displayName": "Relation ID"
+								},
+								"checkboxValue": {
+									"displayName": "Boolean",
+									"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+								},
+								"numberValue": {
+									"displayName": "Number",
+									"description": "Number value"
+								},
+								"date": {
+									"displayName": "Date",
+									"description": "An ISO 8601 format date, with optional time"
+								},
+								"createdTimeValue": {
+									"displayName": "Created Time",
+									"description": "An ISO 8601 format date, with optional time"
+								},
+								"lastEditedTime": {
+									"displayName": "Last Edited Time",
+									"description": "An ISO 8601 format date, with optional time"
+								},
+								"textValue": {
+									"displayName": "Text"
+								},
+								"dateValue": {
+									"displayName": "Date",
+									"description": "An ISO 8601 format date, with optional time"
+								}
+							}
+						},
+						"multipleCondition": {
+							"displayName": "Multiple Condition",
+							"options": {
+								"condition": {
+									"displayName": "Condition",
+									"placeholder": "Add Condition",
+									"multipleValueButtonText": "Add Condition",
+									"options": {
+										"or": {
+											"displayName": "OR",
+											"options": {
+												"key": {
+													"displayName": "Property Name or ID",
+													"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"type": {
+													"displayName": "Type"
+												},
+												"condition": {
+													"displayName": "Condition",
+													"description": "The value of the property to filter by",
+													"options": {
+														"equals": {
+															"displayName": "Equals"
+														},
+														"before": {
+															"displayName": "Before"
+														},
+														"after": {
+															"displayName": "After"
+														},
+														"on_or_before": {
+															"displayName": "On Or Before"
+														},
+														"is_empty": {
+															"displayName": "Is Empty"
+														},
+														"is_not_empty": {
+															"displayName": "Is Not Empty"
+														},
+														"on_or_after": {
+															"displayName": "On Or After"
+														},
+														"past_week": {
+															"displayName": "Past Week"
+														},
+														"past_month": {
+															"displayName": "Past Month"
+														},
+														"past_year": {
+															"displayName": "Past Year"
+														},
+														"next_week": {
+															"displayName": "Next Week"
+														},
+														"next_month": {
+															"displayName": "Next Month"
+														},
+														"next_year": {
+															"displayName": "Next Year"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "Return Type",
+													"description": "The formula return type",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"checkbox": {
+															"displayName": "Checkbox"
+														},
+														"number": {
+															"displayName": "Number"
+														},
+														"date": {
+															"displayName": "Date"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "Title"
+												},
+												"richTextValue": {
+													"displayName": "Text"
+												},
+												"phoneNumberValue": {
+													"displayName": "Phone Number",
+													"description": "Phone number. No structure is enforced."
+												},
+												"multiSelectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"selectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"statusValue": {
+													"displayName": "Status Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"emailValue": {
+													"displayName": "Email"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"createdByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"lastEditedByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"relationValue": {
+													"displayName": "Relation ID"
+												},
+												"checkboxValue": {
+													"displayName": "Boolean",
+													"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+												},
+												"numberValue": {
+													"displayName": "Number",
+													"description": "Number value"
+												},
+												"date": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"createdTimeValue": {
+													"displayName": "Created Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"lastEditedTime": {
+													"displayName": "Last Edited Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"textValue": {
+													"displayName": "Text"
+												},
+												"dateValue": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												}
+											}
+										},
+										"and": {
+											"displayName": "AND",
+											"options": {
+												"key": {
+													"displayName": "Property Name or ID",
+													"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"type": {
+													"displayName": "Type"
+												},
+												"condition": {
+													"displayName": "Condition",
+													"description": "The value of the property to filter by",
+													"options": {
+														"equals": {
+															"displayName": "Equals"
+														},
+														"before": {
+															"displayName": "Before"
+														},
+														"after": {
+															"displayName": "After"
+														},
+														"on_or_before": {
+															"displayName": "On Or Before"
+														},
+														"is_empty": {
+															"displayName": "Is Empty"
+														},
+														"is_not_empty": {
+															"displayName": "Is Not Empty"
+														},
+														"on_or_after": {
+															"displayName": "On Or After"
+														},
+														"past_week": {
+															"displayName": "Past Week"
+														},
+														"past_month": {
+															"displayName": "Past Month"
+														},
+														"past_year": {
+															"displayName": "Past Year"
+														},
+														"next_week": {
+															"displayName": "Next Week"
+														},
+														"next_month": {
+															"displayName": "Next Month"
+														},
+														"next_year": {
+															"displayName": "Next Year"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "Return Type",
+													"description": "The formula return type",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"checkbox": {
+															"displayName": "Checkbox"
+														},
+														"number": {
+															"displayName": "Number"
+														},
+														"date": {
+															"displayName": "Date"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "Title"
+												},
+												"richTextValue": {
+													"displayName": "Text"
+												},
+												"phoneNumberValue": {
+													"displayName": "Phone Number",
+													"description": "Phone number. No structure is enforced."
+												},
+												"multiSelectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"selectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"statusValue": {
+													"displayName": "Status Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"emailValue": {
+													"displayName": "Email"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"createdByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"lastEditedByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"relationValue": {
+													"displayName": "Relation ID"
+												},
+												"checkboxValue": {
+													"displayName": "Boolean",
+													"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+												},
+												"numberValue": {
+													"displayName": "Number",
+													"description": "Number value"
+												},
+												"date": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"createdTimeValue": {
+													"displayName": "Created Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"lastEditedTime": {
+													"displayName": "Last Edited Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"textValue": {
+													"displayName": "Text"
+												},
+												"dateValue": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												}
+											}
+										}
+									},
+									"values": {
+										"or": {
+											"displayName": "OR",
+											"options": {
+												"key": {
+													"displayName": "Property Name or ID",
+													"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"type": {
+													"displayName": "Type"
+												},
+												"condition": {
+													"displayName": "Condition",
+													"description": "The value of the property to filter by",
+													"options": {
+														"equals": {
+															"displayName": "Equals"
+														},
+														"before": {
+															"displayName": "Before"
+														},
+														"after": {
+															"displayName": "After"
+														},
+														"on_or_before": {
+															"displayName": "On Or Before"
+														},
+														"is_empty": {
+															"displayName": "Is Empty"
+														},
+														"is_not_empty": {
+															"displayName": "Is Not Empty"
+														},
+														"on_or_after": {
+															"displayName": "On Or After"
+														},
+														"past_week": {
+															"displayName": "Past Week"
+														},
+														"past_month": {
+															"displayName": "Past Month"
+														},
+														"past_year": {
+															"displayName": "Past Year"
+														},
+														"next_week": {
+															"displayName": "Next Week"
+														},
+														"next_month": {
+															"displayName": "Next Month"
+														},
+														"next_year": {
+															"displayName": "Next Year"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "Return Type",
+													"description": "The formula return type",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"checkbox": {
+															"displayName": "Checkbox"
+														},
+														"number": {
+															"displayName": "Number"
+														},
+														"date": {
+															"displayName": "Date"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "Title"
+												},
+												"richTextValue": {
+													"displayName": "Text"
+												},
+												"phoneNumberValue": {
+													"displayName": "Phone Number",
+													"description": "Phone number. No structure is enforced."
+												},
+												"multiSelectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"selectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"statusValue": {
+													"displayName": "Status Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"emailValue": {
+													"displayName": "Email"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"createdByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"lastEditedByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"relationValue": {
+													"displayName": "Relation ID"
+												},
+												"checkboxValue": {
+													"displayName": "Boolean",
+													"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+												},
+												"numberValue": {
+													"displayName": "Number",
+													"description": "Number value"
+												},
+												"date": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"createdTimeValue": {
+													"displayName": "Created Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"lastEditedTime": {
+													"displayName": "Last Edited Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"textValue": {
+													"displayName": "Text"
+												},
+												"dateValue": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												}
+											}
+										},
+										"and": {
+											"displayName": "AND",
+											"options": {
+												"key": {
+													"displayName": "Property Name or ID",
+													"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"type": {
+													"displayName": "Type"
+												},
+												"condition": {
+													"displayName": "Condition",
+													"description": "The value of the property to filter by",
+													"options": {
+														"equals": {
+															"displayName": "Equals"
+														},
+														"before": {
+															"displayName": "Before"
+														},
+														"after": {
+															"displayName": "After"
+														},
+														"on_or_before": {
+															"displayName": "On Or Before"
+														},
+														"is_empty": {
+															"displayName": "Is Empty"
+														},
+														"is_not_empty": {
+															"displayName": "Is Not Empty"
+														},
+														"on_or_after": {
+															"displayName": "On Or After"
+														},
+														"past_week": {
+															"displayName": "Past Week"
+														},
+														"past_month": {
+															"displayName": "Past Month"
+														},
+														"past_year": {
+															"displayName": "Past Year"
+														},
+														"next_week": {
+															"displayName": "Next Week"
+														},
+														"next_month": {
+															"displayName": "Next Month"
+														},
+														"next_year": {
+															"displayName": "Next Year"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "Return Type",
+													"description": "The formula return type",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"checkbox": {
+															"displayName": "Checkbox"
+														},
+														"number": {
+															"displayName": "Number"
+														},
+														"date": {
+															"displayName": "Date"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "Title"
+												},
+												"richTextValue": {
+													"displayName": "Text"
+												},
+												"phoneNumberValue": {
+													"displayName": "Phone Number",
+													"description": "Phone number. No structure is enforced."
+												},
+												"multiSelectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"selectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"statusValue": {
+													"displayName": "Status Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"emailValue": {
+													"displayName": "Email"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"createdByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"lastEditedByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"relationValue": {
+													"displayName": "Relation ID"
+												},
+												"checkboxValue": {
+													"displayName": "Boolean",
+													"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+												},
+												"numberValue": {
+													"displayName": "Number",
+													"description": "Number value"
+												},
+												"date": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"createdTimeValue": {
+													"displayName": "Created Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"lastEditedTime": {
+													"displayName": "Last Edited Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"textValue": {
+													"displayName": "Text"
+												},
+												"dateValue": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "Condition",
+											"placeholder": "Add Condition"
+										}
+									}
+								}
+							}
+						},
+						"filters": {
+							"displayName": "Filter",
+							"options": {
+								"property": {
+									"displayName": "Property",
+									"description": "The name of the property to filter by",
+									"options": {
+										"object": {
+											"displayName": "Object"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value of the property to filter by",
+									"options": {
+										"database": {
+											"displayName": "Database"
+										},
+										"page": {
+											"displayName": "Page"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"singleCondition": {
+							"displayName": "Single Condition",
+							"options": {
+								"key": {
+									"displayName": "Property Name or ID",
+									"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"type": {
+									"displayName": "Type"
+								},
+								"condition": {
+									"displayName": "Condition",
+									"description": "The value of the property to filter by",
+									"options": {
+										"equals": {
+											"displayName": "Equals"
+										},
+										"before": {
+											"displayName": "Before"
+										},
+										"after": {
+											"displayName": "After"
+										},
+										"on_or_before": {
+											"displayName": "On Or Before"
+										},
+										"is_empty": {
+											"displayName": "Is Empty"
+										},
+										"is_not_empty": {
+											"displayName": "Is Not Empty"
+										},
+										"on_or_after": {
+											"displayName": "On Or After"
+										},
+										"past_week": {
+											"displayName": "Past Week"
+										},
+										"past_month": {
+											"displayName": "Past Month"
+										},
+										"past_year": {
+											"displayName": "Past Year"
+										},
+										"next_week": {
+											"displayName": "Next Week"
+										},
+										"next_month": {
+											"displayName": "Next Month"
+										},
+										"next_year": {
+											"displayName": "Next Year"
+										}
+									}
+								},
+								"returnType": {
+									"displayName": "Return Type",
+									"description": "The formula return type",
+									"options": {
+										"text": {
+											"displayName": "Text"
+										},
+										"checkbox": {
+											"displayName": "Checkbox"
+										},
+										"number": {
+											"displayName": "Number"
+										},
+										"date": {
+											"displayName": "Date"
+										}
+									}
+								},
+								"titleValue": {
+									"displayName": "Title"
+								},
+								"richTextValue": {
+									"displayName": "Text"
+								},
+								"phoneNumberValue": {
+									"displayName": "Phone Number",
+									"description": "Phone number. No structure is enforced."
+								},
+								"multiSelectValue": {
+									"displayName": "Option Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"selectValue": {
+									"displayName": "Option Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"statusValue": {
+									"displayName": "Status Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"emailValue": {
+									"displayName": "Email"
+								},
+								"urlValue": {
+									"displayName": "URL"
+								},
+								"peopleValue": {
+									"displayName": "User Name or ID",
+									"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"createdByValue": {
+									"displayName": "User Name or ID",
+									"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"lastEditedByValue": {
+									"displayName": "User Name or ID",
+									"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"relationValue": {
+									"displayName": "Relation ID"
+								},
+								"checkboxValue": {
+									"displayName": "Boolean",
+									"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+								},
+								"numberValue": {
+									"displayName": "Number",
+									"description": "Number value"
+								},
+								"date": {
+									"displayName": "Date",
+									"description": "An ISO 8601 format date, with optional time"
+								},
+								"createdTimeValue": {
+									"displayName": "Created Time",
+									"description": "An ISO 8601 format date, with optional time"
+								},
+								"lastEditedTime": {
+									"displayName": "Last Edited Time",
+									"description": "An ISO 8601 format date, with optional time"
+								},
+								"textValue": {
+									"displayName": "Text"
+								},
+								"dateValue": {
+									"displayName": "Date",
+									"description": "An ISO 8601 format date, with optional time"
+								}
+							}
+						},
+						"multipleCondition": {
+							"displayName": "Multiple Condition",
+							"options": {
+								"condition": {
+									"displayName": "Condition",
+									"placeholder": "Add Condition",
+									"multipleValueButtonText": "Add Condition",
+									"options": {
+										"or": {
+											"displayName": "OR",
+											"options": {
+												"key": {
+													"displayName": "Property Name or ID",
+													"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"type": {
+													"displayName": "Type"
+												},
+												"condition": {
+													"displayName": "Condition",
+													"description": "The value of the property to filter by",
+													"options": {
+														"equals": {
+															"displayName": "Equals"
+														},
+														"before": {
+															"displayName": "Before"
+														},
+														"after": {
+															"displayName": "After"
+														},
+														"on_or_before": {
+															"displayName": "On Or Before"
+														},
+														"is_empty": {
+															"displayName": "Is Empty"
+														},
+														"is_not_empty": {
+															"displayName": "Is Not Empty"
+														},
+														"on_or_after": {
+															"displayName": "On Or After"
+														},
+														"past_week": {
+															"displayName": "Past Week"
+														},
+														"past_month": {
+															"displayName": "Past Month"
+														},
+														"past_year": {
+															"displayName": "Past Year"
+														},
+														"next_week": {
+															"displayName": "Next Week"
+														},
+														"next_month": {
+															"displayName": "Next Month"
+														},
+														"next_year": {
+															"displayName": "Next Year"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "Return Type",
+													"description": "The formula return type",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"checkbox": {
+															"displayName": "Checkbox"
+														},
+														"number": {
+															"displayName": "Number"
+														},
+														"date": {
+															"displayName": "Date"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "Title"
+												},
+												"richTextValue": {
+													"displayName": "Text"
+												},
+												"phoneNumberValue": {
+													"displayName": "Phone Number",
+													"description": "Phone number. No structure is enforced."
+												},
+												"multiSelectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"selectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"statusValue": {
+													"displayName": "Status Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"emailValue": {
+													"displayName": "Email"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"createdByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"lastEditedByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"relationValue": {
+													"displayName": "Relation ID"
+												},
+												"checkboxValue": {
+													"displayName": "Boolean",
+													"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+												},
+												"numberValue": {
+													"displayName": "Number",
+													"description": "Number value"
+												},
+												"date": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"createdTimeValue": {
+													"displayName": "Created Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"lastEditedTime": {
+													"displayName": "Last Edited Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"textValue": {
+													"displayName": "Text"
+												},
+												"dateValue": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												}
+											}
+										},
+										"and": {
+											"displayName": "AND",
+											"options": {
+												"key": {
+													"displayName": "Property Name or ID",
+													"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"type": {
+													"displayName": "Type"
+												},
+												"condition": {
+													"displayName": "Condition",
+													"description": "The value of the property to filter by",
+													"options": {
+														"equals": {
+															"displayName": "Equals"
+														},
+														"before": {
+															"displayName": "Before"
+														},
+														"after": {
+															"displayName": "After"
+														},
+														"on_or_before": {
+															"displayName": "On Or Before"
+														},
+														"is_empty": {
+															"displayName": "Is Empty"
+														},
+														"is_not_empty": {
+															"displayName": "Is Not Empty"
+														},
+														"on_or_after": {
+															"displayName": "On Or After"
+														},
+														"past_week": {
+															"displayName": "Past Week"
+														},
+														"past_month": {
+															"displayName": "Past Month"
+														},
+														"past_year": {
+															"displayName": "Past Year"
+														},
+														"next_week": {
+															"displayName": "Next Week"
+														},
+														"next_month": {
+															"displayName": "Next Month"
+														},
+														"next_year": {
+															"displayName": "Next Year"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "Return Type",
+													"description": "The formula return type",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"checkbox": {
+															"displayName": "Checkbox"
+														},
+														"number": {
+															"displayName": "Number"
+														},
+														"date": {
+															"displayName": "Date"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "Title"
+												},
+												"richTextValue": {
+													"displayName": "Text"
+												},
+												"phoneNumberValue": {
+													"displayName": "Phone Number",
+													"description": "Phone number. No structure is enforced."
+												},
+												"multiSelectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"selectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"statusValue": {
+													"displayName": "Status Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"emailValue": {
+													"displayName": "Email"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"createdByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"lastEditedByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"relationValue": {
+													"displayName": "Relation ID"
+												},
+												"checkboxValue": {
+													"displayName": "Boolean",
+													"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+												},
+												"numberValue": {
+													"displayName": "Number",
+													"description": "Number value"
+												},
+												"date": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"createdTimeValue": {
+													"displayName": "Created Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"lastEditedTime": {
+													"displayName": "Last Edited Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"textValue": {
+													"displayName": "Text"
+												},
+												"dateValue": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												}
+											}
+										}
+									},
+									"values": {
+										"or": {
+											"displayName": "OR",
+											"options": {
+												"key": {
+													"displayName": "Property Name or ID",
+													"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"type": {
+													"displayName": "Type"
+												},
+												"condition": {
+													"displayName": "Condition",
+													"description": "The value of the property to filter by",
+													"options": {
+														"equals": {
+															"displayName": "Equals"
+														},
+														"before": {
+															"displayName": "Before"
+														},
+														"after": {
+															"displayName": "After"
+														},
+														"on_or_before": {
+															"displayName": "On Or Before"
+														},
+														"is_empty": {
+															"displayName": "Is Empty"
+														},
+														"is_not_empty": {
+															"displayName": "Is Not Empty"
+														},
+														"on_or_after": {
+															"displayName": "On Or After"
+														},
+														"past_week": {
+															"displayName": "Past Week"
+														},
+														"past_month": {
+															"displayName": "Past Month"
+														},
+														"past_year": {
+															"displayName": "Past Year"
+														},
+														"next_week": {
+															"displayName": "Next Week"
+														},
+														"next_month": {
+															"displayName": "Next Month"
+														},
+														"next_year": {
+															"displayName": "Next Year"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "Return Type",
+													"description": "The formula return type",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"checkbox": {
+															"displayName": "Checkbox"
+														},
+														"number": {
+															"displayName": "Number"
+														},
+														"date": {
+															"displayName": "Date"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "Title"
+												},
+												"richTextValue": {
+													"displayName": "Text"
+												},
+												"phoneNumberValue": {
+													"displayName": "Phone Number",
+													"description": "Phone number. No structure is enforced."
+												},
+												"multiSelectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"selectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"statusValue": {
+													"displayName": "Status Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"emailValue": {
+													"displayName": "Email"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"createdByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"lastEditedByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"relationValue": {
+													"displayName": "Relation ID"
+												},
+												"checkboxValue": {
+													"displayName": "Boolean",
+													"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+												},
+												"numberValue": {
+													"displayName": "Number",
+													"description": "Number value"
+												},
+												"date": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"createdTimeValue": {
+													"displayName": "Created Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"lastEditedTime": {
+													"displayName": "Last Edited Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"textValue": {
+													"displayName": "Text"
+												},
+												"dateValue": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												}
+											}
+										},
+										"and": {
+											"displayName": "AND",
+											"options": {
+												"key": {
+													"displayName": "Property Name or ID",
+													"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"type": {
+													"displayName": "Type"
+												},
+												"condition": {
+													"displayName": "Condition",
+													"description": "The value of the property to filter by",
+													"options": {
+														"equals": {
+															"displayName": "Equals"
+														},
+														"before": {
+															"displayName": "Before"
+														},
+														"after": {
+															"displayName": "After"
+														},
+														"on_or_before": {
+															"displayName": "On Or Before"
+														},
+														"is_empty": {
+															"displayName": "Is Empty"
+														},
+														"is_not_empty": {
+															"displayName": "Is Not Empty"
+														},
+														"on_or_after": {
+															"displayName": "On Or After"
+														},
+														"past_week": {
+															"displayName": "Past Week"
+														},
+														"past_month": {
+															"displayName": "Past Month"
+														},
+														"past_year": {
+															"displayName": "Past Year"
+														},
+														"next_week": {
+															"displayName": "Next Week"
+														},
+														"next_month": {
+															"displayName": "Next Month"
+														},
+														"next_year": {
+															"displayName": "Next Year"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "Return Type",
+													"description": "The formula return type",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"checkbox": {
+															"displayName": "Checkbox"
+														},
+														"number": {
+															"displayName": "Number"
+														},
+														"date": {
+															"displayName": "Date"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "Title"
+												},
+												"richTextValue": {
+													"displayName": "Text"
+												},
+												"phoneNumberValue": {
+													"displayName": "Phone Number",
+													"description": "Phone number. No structure is enforced."
+												},
+												"multiSelectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"selectValue": {
+													"displayName": "Option Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"statusValue": {
+													"displayName": "Status Name or ID",
+													"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+												},
+												"emailValue": {
+													"displayName": "Email"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"createdByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"lastEditedByValue": {
+													"displayName": "User Name or ID",
+													"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"relationValue": {
+													"displayName": "Relation ID"
+												},
+												"checkboxValue": {
+													"displayName": "Boolean",
+													"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+												},
+												"numberValue": {
+													"displayName": "Number",
+													"description": "Number value"
+												},
+												"date": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"createdTimeValue": {
+													"displayName": "Created Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"lastEditedTime": {
+													"displayName": "Last Edited Time",
+													"description": "An ISO 8601 format date, with optional time"
+												},
+												"textValue": {
+													"displayName": "Text"
+												},
+												"dateValue": {
+													"displayName": "Date",
+													"description": "An ISO 8601 format date, with optional time"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "Condition",
+											"placeholder": "Add Condition"
+										}
+									}
+								}
+							}
+						},
+						"filter": {
+							"displayName": "Filters",
+							"placeholder": "Add Filter"
+						},
+						"filters": {
+							"displayName": "Filter",
+							"options": {
+								"property": {
+									"displayName": "Property",
+									"description": "The name of the property to filter by",
+									"options": {
+										"object": {
+											"displayName": "Object"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value of the property to filter by",
+									"options": {
+										"database": {
+											"displayName": "Database"
+										},
+										"page": {
+											"displayName": "Page"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Page title. Appears at the top of the page and can be found via Quick Find."
+		},
+		"propertiesUi": {
+			"displayName": "Properties",
+			"placeholder": "Add Property",
+			"multipleValueButtonText": "Add Property",
+			"options": {
+				"propertyValues": {
+					"displayName": "Property",
+					"options": {
+						"key": {
+							"displayName": "Key Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"type": {
+							"displayName": "Type"
+						},
+						"title": {
+							"displayName": "Title"
+						},
+						"richText": {
+							"displayName": "Rich Text"
+						},
+						"textContent": {
+							"displayName": "Text"
+						},
+						"text": {
+							"displayName": "Text",
+							"description": "Rich text in the block",
+							"placeholder": "Add Text",
+							"multipleValueButtonText": "Add Text",
+							"options": {
+								"text": {
+									"displayName": "Text",
+									"options": {
+										"textType": {
+											"displayName": "Type",
+											"options": {
+												"equation": {
+													"displayName": "Equation"
+												},
+												"mention": {
+													"displayName": "Mention"
+												},
+												"text": {
+													"displayName": "Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "Text content. This field contains the actual content of your text and is probably the field you'll use most often."
+										},
+										"isLink": {
+											"displayName": "Is Link"
+										},
+										"textLink": {
+											"displayName": "Text Link",
+											"description": "The URL that this link points to"
+										},
+										"mentionType": {
+											"displayName": "Type",
+											"description": "An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.",
+											"options": {
+												"database": {
+													"displayName": "Database"
+												},
+												"date": {
+													"displayName": "Date"
+												},
+												"page": {
+													"displayName": "Page"
+												},
+												"user": {
+													"displayName": "User"
+												}
+											}
+										},
+										"user": {
+											"displayName": "User Name or ID",
+											"description": "The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+										},
+										"page": {
+											"displayName": "Page ID",
+											"description": "The ID of the page being mentioned"
+										},
+										"database": {
+											"displayName": "Database",
+											"description": "The Notion Database being mentioned"
+										},
+										"range": {
+											"displayName": "Range",
+											"description": "Whether or not you want to define a date range"
+										},
+										"date": {
+											"displayName": "Date",
+											"description": "An ISO 8601 format date, with optional time"
+										},
+										"dateStart": {
+											"displayName": "Date Start",
+											"description": "An ISO 8601 format date, with optional time"
+										},
+										"dateEnd": {
+											"displayName": "Date End",
+											"description": "An ISO 8601 formatted date, with optional time. Represents the end of a date range."
+										},
+										"expression": {
+											"displayName": "Expression"
+										},
+										"annotationUi": {
+											"displayName": "Annotations",
+											"description": "All annotations that apply to this rich text",
+											"placeholder": "Add Annotation",
+											"options": {
+												"bold": {
+													"displayName": "Bold",
+													"description": "Whether the text is bolded"
+												},
+												"italic": {
+													"displayName": "Italic",
+													"description": "Whether the text is italicized"
+												},
+												"strikethrough": {
+													"displayName": "Strikethrough",
+													"description": "Whether the text is struck through"
+												},
+												"underline": {
+													"displayName": "Underline",
+													"description": "Whether the text is underlined"
+												},
+												"code": {
+													"displayName": "Code",
+													"description": "Whether the text is code style"
+												},
+												"color": {
+													"displayName": "Color",
+													"description": "Color of the text",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"gray": {
+															"displayName": "Gray"
+														},
+														"brown": {
+															"displayName": "Brown"
+														},
+														"orange": {
+															"displayName": "Orange"
+														},
+														"yellow": {
+															"displayName": "Yellow"
+														},
+														"green": {
+															"displayName": "Green"
+														},
+														"blue": {
+															"displayName": "Blue"
+														},
+														"purple": {
+															"displayName": "Purple"
+														},
+														"pink": {
+															"displayName": "Pink"
+														},
+														"red": {
+															"displayName": "Red"
+														},
+														"gray_background": {
+															"displayName": "Gray Background"
+														},
+														"brown_background": {
+															"displayName": "Brown Background"
+														},
+														"orange_background": {
+															"displayName": "Orange Background"
+														},
+														"yellow_background": {
+															"displayName": "Yellow Background"
+														},
+														"green_background": {
+															"displayName": "Green Background"
+														},
+														"blue_background": {
+															"displayName": "Blue Background"
+														},
+														"purple_background": {
+															"displayName": "Purple Background"
+														},
+														"pink_background": {
+															"displayName": "Pink Background"
+														},
+														"red_background": {
+															"displayName": "Red Background"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"text": {
+									"displayName": "Text",
+									"placeholder": "Add Text"
+								}
+							}
+						},
+						"phoneValue": {
+							"displayName": "Phone Number",
+							"description": "Phone number. No structure is enforced."
+						},
+						"multiSelectValue": {
+							"displayName": "Option Names or IDs",
+							"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"selectValue": {
+							"displayName": "Option Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"statusValue": {
+							"displayName": "Status Name or ID",
+							"description": "Name of the option you want to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"emailValue": {
+							"displayName": "Email",
+							"description": "Email address"
+						},
+						"ignoreIfEmpty": {
+							"displayName": "Ignore If Empty"
+						},
+						"urlValue": {
+							"displayName": "URL",
+							"description": "Web address"
+						},
+						"peopleValue": {
+							"displayName": "User Names or IDs",
+							"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"relationValue": {
+							"displayName": "Relation IDs",
+							"description": "List of databases that belong to another database. Multiples can be defined separated by comma."
+						},
+						"checkboxValue": {
+							"displayName": "Checked",
+							"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked."
+						},
+						"numberValue": {
+							"displayName": "Number",
+							"description": "Number value"
+						},
+						"range": {
+							"displayName": "Range",
+							"description": "Whether or not you want to define a date range"
+						},
+						"includeTime": {
+							"displayName": "Include Time",
+							"description": "Whether or not to include the time in the date"
+						},
+						"date": {
+							"displayName": "Date",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"dateStart": {
+							"displayName": "Date Start",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"dateEnd": {
+							"displayName": "Date End",
+							"description": "An ISO 8601 formatted date, with optional time. Represents the end of a date range."
+						},
+						"timezone": {
+							"displayName": "Timezone Name or ID",
+							"description": "Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"fileUrls": {
+							"displayName": "File URLs",
+							"placeholder": "Add File",
+							"multipleValueButtonText": "Add File",
+							"options": {
+								"fileUrl": {
+									"displayName": "File",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"url": {
+											"displayName": "File URL",
+											"description": "Link to externally hosted file"
+										}
+									}
+								}
+							},
+							"values": {
+								"fileUrl": {
+									"displayName": "File",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"url": {
+											"displayName": "File URL",
+											"description": "Link to externally hosted file"
+										}
+									}
+								},
+								"fileUrls": {
+									"displayName": "File URLs",
+									"placeholder": "Add File"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"propertyValues": {
+					"displayName": "Property",
+					"options": {
+						"key": {
+							"displayName": "Key Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"type": {
+							"displayName": "Type"
+						},
+						"title": {
+							"displayName": "Title"
+						},
+						"richText": {
+							"displayName": "Rich Text"
+						},
+						"textContent": {
+							"displayName": "Text"
+						},
+						"text": {
+							"displayName": "Text",
+							"description": "Rich text in the block",
+							"placeholder": "Add Text",
+							"multipleValueButtonText": "Add Text",
+							"options": {
+								"text": {
+									"displayName": "Text",
+									"options": {
+										"textType": {
+											"displayName": "Type",
+											"options": {
+												"equation": {
+													"displayName": "Equation"
+												},
+												"mention": {
+													"displayName": "Mention"
+												},
+												"text": {
+													"displayName": "Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "Text content. This field contains the actual content of your text and is probably the field you'll use most often."
+										},
+										"isLink": {
+											"displayName": "Is Link"
+										},
+										"textLink": {
+											"displayName": "Text Link",
+											"description": "The URL that this link points to"
+										},
+										"mentionType": {
+											"displayName": "Type",
+											"description": "An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.",
+											"options": {
+												"database": {
+													"displayName": "Database"
+												},
+												"date": {
+													"displayName": "Date"
+												},
+												"page": {
+													"displayName": "Page"
+												},
+												"user": {
+													"displayName": "User"
+												}
+											}
+										},
+										"user": {
+											"displayName": "User Name or ID",
+											"description": "The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+										},
+										"page": {
+											"displayName": "Page ID",
+											"description": "The ID of the page being mentioned"
+										},
+										"database": {
+											"displayName": "Database",
+											"description": "The Notion Database being mentioned"
+										},
+										"range": {
+											"displayName": "Range",
+											"description": "Whether or not you want to define a date range"
+										},
+										"date": {
+											"displayName": "Date",
+											"description": "An ISO 8601 format date, with optional time"
+										},
+										"dateStart": {
+											"displayName": "Date Start",
+											"description": "An ISO 8601 format date, with optional time"
+										},
+										"dateEnd": {
+											"displayName": "Date End",
+											"description": "An ISO 8601 formatted date, with optional time. Represents the end of a date range."
+										},
+										"expression": {
+											"displayName": "Expression"
+										},
+										"annotationUi": {
+											"displayName": "Annotations",
+											"description": "All annotations that apply to this rich text",
+											"placeholder": "Add Annotation",
+											"options": {
+												"bold": {
+													"displayName": "Bold",
+													"description": "Whether the text is bolded"
+												},
+												"italic": {
+													"displayName": "Italic",
+													"description": "Whether the text is italicized"
+												},
+												"strikethrough": {
+													"displayName": "Strikethrough",
+													"description": "Whether the text is struck through"
+												},
+												"underline": {
+													"displayName": "Underline",
+													"description": "Whether the text is underlined"
+												},
+												"code": {
+													"displayName": "Code",
+													"description": "Whether the text is code style"
+												},
+												"color": {
+													"displayName": "Color",
+													"description": "Color of the text",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"gray": {
+															"displayName": "Gray"
+														},
+														"brown": {
+															"displayName": "Brown"
+														},
+														"orange": {
+															"displayName": "Orange"
+														},
+														"yellow": {
+															"displayName": "Yellow"
+														},
+														"green": {
+															"displayName": "Green"
+														},
+														"blue": {
+															"displayName": "Blue"
+														},
+														"purple": {
+															"displayName": "Purple"
+														},
+														"pink": {
+															"displayName": "Pink"
+														},
+														"red": {
+															"displayName": "Red"
+														},
+														"gray_background": {
+															"displayName": "Gray Background"
+														},
+														"brown_background": {
+															"displayName": "Brown Background"
+														},
+														"orange_background": {
+															"displayName": "Orange Background"
+														},
+														"yellow_background": {
+															"displayName": "Yellow Background"
+														},
+														"green_background": {
+															"displayName": "Green Background"
+														},
+														"blue_background": {
+															"displayName": "Blue Background"
+														},
+														"purple_background": {
+															"displayName": "Purple Background"
+														},
+														"pink_background": {
+															"displayName": "Pink Background"
+														},
+														"red_background": {
+															"displayName": "Red Background"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"text": {
+									"displayName": "Text",
+									"placeholder": "Add Text"
+								}
+							}
+						},
+						"phoneValue": {
+							"displayName": "Phone Number",
+							"description": "Phone number. No structure is enforced."
+						},
+						"multiSelectValue": {
+							"displayName": "Option Names or IDs",
+							"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"selectValue": {
+							"displayName": "Option Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"statusValue": {
+							"displayName": "Status Name or ID",
+							"description": "Name of the option you want to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"emailValue": {
+							"displayName": "Email",
+							"description": "Email address"
+						},
+						"ignoreIfEmpty": {
+							"displayName": "Ignore If Empty"
+						},
+						"urlValue": {
+							"displayName": "URL",
+							"description": "Web address"
+						},
+						"peopleValue": {
+							"displayName": "User Names or IDs",
+							"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"relationValue": {
+							"displayName": "Relation IDs",
+							"description": "List of databases that belong to another database. Multiples can be defined separated by comma."
+						},
+						"checkboxValue": {
+							"displayName": "Checked",
+							"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked."
+						},
+						"numberValue": {
+							"displayName": "Number",
+							"description": "Number value"
+						},
+						"range": {
+							"displayName": "Range",
+							"description": "Whether or not you want to define a date range"
+						},
+						"includeTime": {
+							"displayName": "Include Time",
+							"description": "Whether or not to include the time in the date"
+						},
+						"date": {
+							"displayName": "Date",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"dateStart": {
+							"displayName": "Date Start",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"dateEnd": {
+							"displayName": "Date End",
+							"description": "An ISO 8601 formatted date, with optional time. Represents the end of a date range."
+						},
+						"timezone": {
+							"displayName": "Timezone Name or ID",
+							"description": "Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"fileUrls": {
+							"displayName": "File URLs",
+							"placeholder": "Add File",
+							"multipleValueButtonText": "Add File",
+							"options": {
+								"fileUrl": {
+									"displayName": "File",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"url": {
+											"displayName": "File URL",
+											"description": "Link to externally hosted file"
+										}
+									}
+								}
+							},
+							"values": {
+								"fileUrl": {
+									"displayName": "File",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"url": {
+											"displayName": "File URL",
+											"description": "Link to externally hosted file"
+										}
+									}
+								},
+								"fileUrls": {
+									"displayName": "File URLs",
+									"placeholder": "Add File"
+								}
+							}
+						}
+					}
+				},
+				"propertiesUi": {
+					"displayName": "Properties",
+					"placeholder": "Add Property"
+				}
+			}
+		},
+		"pageId": {
+			"displayName": "Page Link or ID",
+			"description": "The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)"
+		},
+		"filterType": {
+			"displayName": "Filter",
+			"options": {
+				"none": {
+					"displayName": "None"
+				},
+				"manual": {
+					"displayName": "Build Manually"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"matchType": {
+			"displayName": "Must Match",
+			"options": {
+				"anyFilter": {
+					"displayName": "Any filter"
+				},
+				"allFilters": {
+					"displayName": "All Filters"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Condition",
+			"multipleValueButtonText": "Add Condition",
+			"options": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"key": {
+							"displayName": "Property Name or ID",
+							"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"type": {
+							"displayName": "Type"
+						},
+						"condition": {
+							"displayName": "Condition",
+							"description": "The value of the property to filter by",
+							"options": {
+								"equals": {
+									"displayName": "Equals"
+								},
+								"before": {
+									"displayName": "Before"
+								},
+								"after": {
+									"displayName": "After"
+								},
+								"on_or_before": {
+									"displayName": "On Or Before"
+								},
+								"is_empty": {
+									"displayName": "Is Empty"
+								},
+								"is_not_empty": {
+									"displayName": "Is Not Empty"
+								},
+								"on_or_after": {
+									"displayName": "On Or After"
+								},
+								"past_week": {
+									"displayName": "Past Week"
+								},
+								"past_month": {
+									"displayName": "Past Month"
+								},
+								"past_year": {
+									"displayName": "Past Year"
+								},
+								"next_week": {
+									"displayName": "Next Week"
+								},
+								"next_month": {
+									"displayName": "Next Month"
+								},
+								"next_year": {
+									"displayName": "Next Year"
+								}
+							}
+						},
+						"returnType": {
+							"displayName": "Return Type",
+							"description": "The formula return type",
+							"options": {
+								"text": {
+									"displayName": "Text"
+								},
+								"checkbox": {
+									"displayName": "Checkbox"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"date": {
+									"displayName": "Date"
+								}
+							}
+						},
+						"titleValue": {
+							"displayName": "Title"
+						},
+						"richTextValue": {
+							"displayName": "Text"
+						},
+						"phoneNumberValue": {
+							"displayName": "Phone Number",
+							"description": "Phone number. No structure is enforced."
+						},
+						"multiSelectValue": {
+							"displayName": "Option Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"selectValue": {
+							"displayName": "Option Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"statusValue": {
+							"displayName": "Status Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"emailValue": {
+							"displayName": "Email"
+						},
+						"urlValue": {
+							"displayName": "URL"
+						},
+						"peopleValue": {
+							"displayName": "User Name or ID",
+							"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"createdByValue": {
+							"displayName": "User Name or ID",
+							"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"lastEditedByValue": {
+							"displayName": "User Name or ID",
+							"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"relationValue": {
+							"displayName": "Relation ID"
+						},
+						"checkboxValue": {
+							"displayName": "Boolean",
+							"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+						},
+						"numberValue": {
+							"displayName": "Number",
+							"description": "Number value"
+						},
+						"date": {
+							"displayName": "Date",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"createdTimeValue": {
+							"displayName": "Created Time",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"lastEditedTime": {
+							"displayName": "Last Edited Time",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"textValue": {
+							"displayName": "Text"
+						},
+						"dateValue": {
+							"displayName": "Date",
+							"description": "An ISO 8601 format date, with optional time"
+						}
+					}
+				}
+			},
+			"values": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"key": {
+							"displayName": "Property Name or ID",
+							"description": "The name of the property to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"type": {
+							"displayName": "Type"
+						},
+						"condition": {
+							"displayName": "Condition",
+							"description": "The value of the property to filter by",
+							"options": {
+								"equals": {
+									"displayName": "Equals"
+								},
+								"before": {
+									"displayName": "Before"
+								},
+								"after": {
+									"displayName": "After"
+								},
+								"on_or_before": {
+									"displayName": "On Or Before"
+								},
+								"is_empty": {
+									"displayName": "Is Empty"
+								},
+								"is_not_empty": {
+									"displayName": "Is Not Empty"
+								},
+								"on_or_after": {
+									"displayName": "On Or After"
+								},
+								"past_week": {
+									"displayName": "Past Week"
+								},
+								"past_month": {
+									"displayName": "Past Month"
+								},
+								"past_year": {
+									"displayName": "Past Year"
+								},
+								"next_week": {
+									"displayName": "Next Week"
+								},
+								"next_month": {
+									"displayName": "Next Month"
+								},
+								"next_year": {
+									"displayName": "Next Year"
+								}
+							}
+						},
+						"returnType": {
+							"displayName": "Return Type",
+							"description": "The formula return type",
+							"options": {
+								"text": {
+									"displayName": "Text"
+								},
+								"checkbox": {
+									"displayName": "Checkbox"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"date": {
+									"displayName": "Date"
+								}
+							}
+						},
+						"titleValue": {
+							"displayName": "Title"
+						},
+						"richTextValue": {
+							"displayName": "Text"
+						},
+						"phoneNumberValue": {
+							"displayName": "Phone Number",
+							"description": "Phone number. No structure is enforced."
+						},
+						"multiSelectValue": {
+							"displayName": "Option Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"selectValue": {
+							"displayName": "Option Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"statusValue": {
+							"displayName": "Status Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"emailValue": {
+							"displayName": "Email"
+						},
+						"urlValue": {
+							"displayName": "URL"
+						},
+						"peopleValue": {
+							"displayName": "User Name or ID",
+							"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"createdByValue": {
+							"displayName": "User Name or ID",
+							"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"lastEditedByValue": {
+							"displayName": "User Name or ID",
+							"description": "List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"relationValue": {
+							"displayName": "Relation ID"
+						},
+						"checkboxValue": {
+							"displayName": "Boolean",
+							"description": "Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked"
+						},
+						"numberValue": {
+							"displayName": "Number",
+							"description": "Number value"
+						},
+						"date": {
+							"displayName": "Date",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"createdTimeValue": {
+							"displayName": "Created Time",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"lastEditedTime": {
+							"displayName": "Last Edited Time",
+							"description": "An ISO 8601 format date, with optional time"
+						},
+						"textValue": {
+							"displayName": "Text"
+						},
+						"dateValue": {
+							"displayName": "Date",
+							"description": "An ISO 8601 format date, with optional time"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "Filters",
+					"placeholder": "Add Condition"
+				}
+			}
+		},
+		"jsonNotice": {
+			"displayName": "See <a href=\"https://developers.notion.com/reference/post-database-query#post-database-query-filter\" target=\"_blank\">Notion guide</a> to creating filters"
+		},
+		"filterJson": {
+			"displayName": "Filters (JSON)"
+		},
+		"userId": {
+			"displayName": "User ID"
+		}
+	}
+}

@@ -1,0 +1,243 @@
+{
+	"header": {
+		"displayName": "AWS SES",
+		"description": "Sends data to AWS SES"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"customVerificationEmail": {
+					"displayName": "Custom Verification Email"
+				},
+				"email": {
+					"displayName": "Email"
+				},
+				"template": {
+					"displayName": "Template"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a template"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a template"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a template"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many templates"
+				},
+				"send": {
+					"displayName": "Send",
+					"description": "Add an email address to the list of identities"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a template"
+				},
+				"sendTemplate": {
+					"displayName": "Send Template"
+				}
+			}
+		},
+		"fromEmailAddress": {
+			"displayName": "From Email",
+			"description": "The email address that the custom verification email is sent from"
+		},
+		"templateName": {
+			"displayName": "Template Name",
+			"description": "The name of the template"
+		},
+		"templateContent": {
+			"displayName": "Template Content",
+			"description": "The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML"
+		},
+		"templateSubject": {
+			"displayName": "Template Subject",
+			"description": "The subject line of the custom verification email"
+		},
+		"successRedirectionURL": {
+			"displayName": "Success Redirection URL",
+			"description": "The URL that the recipient of the verification email is sent to if his or her address is successfully verified"
+		},
+		"failureRedirectionURL": {
+			"displayName": "Failure Redirection URL",
+			"description": "The URL that the recipient of the verification email is sent to if his or her address is not successfully verified"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email address to verify",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"configurationSetName": {
+					"displayName": "Configuration Set Name",
+					"description": "Name of the configuration set to use when you send an email using send"
+				},
+				"bccAddresses": {
+					"displayName": "Bcc Addresses",
+					"description": "Bcc Recipients of the email"
+				},
+				"ccAddresses": {
+					"displayName": "Cc Addresses",
+					"description": "Cc recipients of the email"
+				},
+				"replyToAddresses": {
+					"displayName": "Reply To Addresses",
+					"description": "Reply-to email address(es) for the message",
+					"placeholder": "Add Reply Address"
+				},
+				"returnPath": {
+					"displayName": "Return Path",
+					"description": "Email address that bounces and complaints will be forwarded to when feedback forwarding is enabled"
+				},
+				"returnPathArn": {
+					"displayName": "Return Path ARN",
+					"description": "This parameter is used only for sending authorization"
+				},
+				"sourceArn": {
+					"displayName": "Source ARN",
+					"description": "This parameter is used only for sending authorization"
+				},
+				"textPart": {
+					"displayName": "Text Part",
+					"description": "The email body that will be visible to recipients whose email clients do not display HTML"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"failureRedirectionURL": {
+					"displayName": "Failure Redirection URL",
+					"description": "The URL that the recipient of the verification email is sent to if his or her address is not successfully verified"
+				},
+				"fromEmailAddress": {
+					"displayName": "From Email",
+					"description": "The email address that the custom verification email is sent from"
+				},
+				"successRedirectionURL": {
+					"displayName": "Success Redirection URL",
+					"description": "The URL that the recipient of the verification email is sent to if his or her address is successfully verified"
+				},
+				"templateContent": {
+					"displayName": "Template Content",
+					"description": "The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML"
+				},
+				"templateSubject": {
+					"displayName": "Template Subject",
+					"description": "The subject line of the custom verification email"
+				},
+				"textPart": {
+					"displayName": "Text Part",
+					"description": "The email body that will be visible to recipients whose email clients do not display HTML"
+				},
+				"subjectPart": {
+					"displayName": "Subject Part",
+					"description": "The subject line of the email"
+				},
+				"htmlPart": {
+					"displayName": "Html Part",
+					"description": "The HTML body of the email"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"isBodyHtml": {
+			"displayName": "Is Body HTML",
+			"description": "Whether body is HTML or simple text"
+		},
+		"subject": {
+			"displayName": "Subject"
+		},
+		"body": {
+			"displayName": "Body",
+			"description": "The message to be sent"
+		},
+		"fromEmail": {
+			"displayName": "From Email",
+			"description": "Email address of the sender",
+			"placeholder": "admin@example.com"
+		},
+		"toAddresses": {
+			"displayName": "To Addresses",
+			"description": "Email addresses of the recipients",
+			"placeholder": "info@example.com"
+		},
+		"templateDataUi": {
+			"displayName": "Template Data",
+			"placeholder": "Add Data",
+			"multipleValueButtonText": "Add Data",
+			"options": {
+				"templateDataValues": {
+					"displayName": "Data",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"templateDataValues": {
+					"displayName": "Data",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"templateDataUi": {
+					"displayName": "Template Data",
+					"placeholder": "Add Data"
+				}
+			}
+		},
+		"subjectPart": {
+			"displayName": "Subject Part",
+			"description": "The subject line of the email"
+		},
+		"htmlPart": {
+			"displayName": "Html Part",
+			"description": "The HTML body of the email"
+		}
+	}
+}

@@ -1,0 +1,193 @@
+{
+	"header": {
+		"displayName": "ERPNext",
+		"description": "使用ERPNext API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"document": {
+					"displayName": "文档"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建文档"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文档"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索文档"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个文档"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新文档"
+				}
+			}
+		},
+		"docType": {
+			"displayName": "文档类型名称或ID",
+			"description": "您要更新的文档类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "客户"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"fields": {
+					"displayName": "字段名称或ID",
+					"description": "要返回的字段列表，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+					"placeholder": "name,country"
+				},
+				"filters": {
+					"displayName": "筛选器",
+					"description": "自定义属性",
+					"placeholder": "添加筛选器",
+					"multipleValueButtonText": "添加筛选器",
+					"options": {
+						"customProperty": {
+							"displayName": "属性",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"operator": {
+									"displayName": "操作员",
+									"options": {
+										"equalsGreater": {
+											"displayName": "等于，或大于"
+										},
+										"equalsLess": {
+											"displayName": "等于，或小于"
+										},
+										"is": {
+											"displayName": "是"
+										},
+										"greater": {
+											"displayName": "大于"
+										},
+										"less": {
+											"displayName": "小于"
+										},
+										"isNot": {
+											"displayName": "IS NOT"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "运算符条件的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customProperty": {
+							"displayName": "属性",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"operator": {
+									"displayName": "操作员",
+									"options": {
+										"equalsGreater": {
+											"displayName": "等于，或大于"
+										},
+										"equalsLess": {
+											"displayName": "等于，或小于"
+										},
+										"is": {
+											"displayName": "是"
+										},
+										"greater": {
+											"displayName": "大于"
+										},
+										"less": {
+											"displayName": "小于"
+										},
+										"isNot": {
+											"displayName": "IS NOT"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "运算符条件的值"
+								}
+							}
+						},
+						"filters": {
+							"displayName": "筛选器",
+							"placeholder": "添加筛选器"
+						}
+					}
+				}
+			}
+		},
+		"properties": {
+			"displayName": "属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"customProperty": {
+					"displayName": "属性",
+					"options": {
+						"field": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"customProperty": {
+					"displayName": "属性",
+					"options": {
+						"field": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"properties": {
+					"displayName": "属性",
+					"placeholder": "添加属性"
+				}
+			},
+			"description": "请求正文属性"
+		},
+		"documentName": {
+			"displayName": "文档名称",
+			"description": "您想要获取的文档名称（ID）"
+		}
+	}
+}

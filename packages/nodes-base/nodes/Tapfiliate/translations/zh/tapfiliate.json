@@ -1,0 +1,247 @@
+{
+	"header": {
+		"displayName": "Tapfiliate",
+		"description": "使用 Tapfiliate API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"affiliate": {
+					"displayName": "联盟营销"
+				},
+				"affiliateMetadata": {
+					"displayName": "联盟营销元数据"
+				},
+				"programAffiliate": {
+					"displayName": "程序联盟"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建联盟会员"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一个联盟会员"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取项目中的联盟会员"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取项目中的多个联盟会员"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "将联盟会员添加到计划"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从联盟链接中移除元数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新联盟会员的元数据"
+				},
+				"approve": {
+					"displayName": "批准",
+					"description": "批准联盟会员加入计划"
+				},
+				"disapprove": {
+					"displayName": "拒绝",
+					"description": "拒绝一个联盟成员"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "联盟会员的邮箱",
+			"placeholder": "name@email.com"
+		},
+		"firstname": {
+			"displayName": "名字",
+			"description": "联盟会员的名字"
+		},
+		"lastname": {
+			"displayName": "姓氏",
+			"description": "该会员的姓氏"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addressUi": {
+					"displayName": "地址",
+					"placeholder": "地址",
+					"options": {
+						"addressValues": {
+							"displayName": "地址",
+							"options": {
+								"address": {
+									"displayName": "第1行"
+								},
+								"address_two": {
+									"displayName": "第2行"
+								},
+								"postal_code": {
+									"displayName": "邮政编码"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"country": {
+									"displayName": "国家/地区代码",
+									"description": "国家的ISO_3166-1代码。<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1\">代码</a>。"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressValues": {
+							"displayName": "地址",
+							"options": {
+								"address": {
+									"displayName": "第1行"
+								},
+								"address_two": {
+									"displayName": "第2行"
+								},
+								"postal_code": {
+									"displayName": "邮政编码"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"country": {
+									"displayName": "国家/地区代码",
+									"description": "国家的ISO_3166-1代码。<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1\">代码</a>。"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "地址",
+							"placeholder": "地址"
+						}
+					}
+				},
+				"companyName": {
+					"displayName": "公司名称",
+					"description": "联盟成员的公司数据"
+				},
+				"approved": {
+					"displayName": "已批准",
+					"description": "可选审批状态"
+				},
+				"coupon": {
+					"displayName": "优惠券",
+					"description": "此联盟的可选优惠券"
+				}
+			}
+		},
+		"affiliateId": {
+			"displayName": "联盟ID",
+			"description": "联盟的ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"affiliate_group_id": {
+					"displayName": "联盟群组ID",
+					"description": "获取特定联盟群组的联盟成员"
+				},
+				"click_id": {
+					"displayName": "点击ID"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "检索特定父级联属的子级"
+				},
+				"referral_code": {
+					"displayName": "推荐码",
+					"description": "联盟会员的推荐码。这对应其推荐链接中 ref= 的值。"
+				},
+				"source_id": {
+					"displayName": "源ID"
+				}
+			}
+		},
+		"metadataUi": {
+			"displayName": "元数据",
+			"description": "元数据",
+			"placeholder": "添加元数据",
+			"multipleValueButtonText": "添加元数据",
+			"options": {
+				"metadataValues": {
+					"displayName": "元数据",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要添加的元数据键名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为元数据键设置的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"metadataValues": {
+					"displayName": "元数据",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要添加的元数据键名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为元数据键设置的值"
+						}
+					}
+				},
+				"metadataUi": {
+					"displayName": "元数据",
+					"placeholder": "添加元数据"
+				}
+			}
+		},
+		"key": {
+			"displayName": "键",
+			"description": "要更新的元数据键名称"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "为元数据键设置的值"
+		},
+		"programId": {
+			"displayName": "程序名称或ID",
+			"description": "要添加联盟会员的程序ID。在平台上查看程序时，此ID可在URL中找到。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

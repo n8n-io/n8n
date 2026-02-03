@@ -1,0 +1,49 @@
+{
+	"header": {
+		"displayName": "Mindee",
+		"description": "Consume Mindee API"
+	},
+	"nodeView": {
+		"apiVersion": {
+			"displayName": "API Version",
+			"description": "Which Mindee API Version to use",
+			"options": {
+				"1": {
+					"displayName": "1"
+				},
+				"3": {
+					"displayName": "3"
+				},
+				"4": {
+					"displayName": "4"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"invoice": {
+					"displayName": "Invoice"
+				},
+				"receipt": {
+					"displayName": "Receipt"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"predict": {
+					"displayName": "Predict"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"rawData": {
+			"displayName": "RAW Data",
+			"description": "Whether to return the data exactly in the way it got received from the API"
+		}
+	}
+}

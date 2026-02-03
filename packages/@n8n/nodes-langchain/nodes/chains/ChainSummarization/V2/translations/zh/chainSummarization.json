@@ -1,0 +1,157 @@
+{
+	"header": {
+		"displayName": "摘要链",
+		"description": "将文本转换为简洁摘要"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "通过这个节点的<a href=\"/templates/1951\" target=\"_blank\">示例</a>了解其工作原理，节省时间"
+		},
+		"operationMode": {
+			"displayName": "待汇总数据",
+			"description": "如何将数据传入汇总链",
+			"options": {
+				"nodeInputJson": {
+					"displayName": "使用节点输入（JSON）",
+					"description": "汇总从上一个节点传入此节点的JSON数据"
+				},
+				"nodeInputBinary": {
+					"displayName": "使用节点输入（二进制）",
+					"description": "汇总从前一个节点传入此节点的二进制数据"
+				},
+				"documentLoader": {
+					"displayName": "使用文档加载器",
+					"description": "使用具有更多配置选项的加载器子节点"
+				}
+			}
+		},
+		"chunkingMode": {
+			"displayName": "分块策略",
+			"description": "分块拆分策略",
+			"options": {
+				"simple": {
+					"displayName": "简单（在下方定义）"
+				},
+				"advanced": {
+					"displayName": "高级",
+					"description": "使用具有更多配置选项的分割器子节点"
+				}
+			}
+		},
+		"chunkSize": {
+			"displayName": "每块字符数",
+			"description": "控制最终文档块的最大大小（按字符数计）"
+		},
+		"chunkOverlap": {
+			"displayName": "块重叠（字符数）",
+			"description": "指定块之间应有多少字符重叠"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"binaryDataKey": {
+					"displayName": "输入数据字段名称",
+					"description": "代理或链输入中包含待处理二进制文件的字段名称"
+				},
+				"summarizationMethodAndPrompts": {
+					"displayName": "摘要方法与提示",
+					"placeholder": "添加选项",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"summarizationMethod": {
+									"displayName": "摘要方法",
+									"description": "要运行的摘要类型",
+									"options": {
+										"map_reduce": {
+											"displayName": "映射归约（推荐）",
+											"description": "先单独总结每个文档（或片段），再总结这些摘要"
+										},
+										"refine": {
+											"displayName": "优化",
+											"description": "总结第一个文档（或片段）。然后根据下一个文档（或片段）更新该摘要，并重复此过程。"
+										},
+										"stuff": {
+											"displayName": "内容",
+											"description": "一次性传递所有文档（或文档块）。适用于小型数据集。"
+										}
+									}
+								},
+								"combineMapPrompt": {
+									"displayName": "个人总结提示"
+								},
+								"prompt": {
+									"displayName": "提示词"
+								},
+								"refinePrompt": {
+									"displayName": "后续（优化）提示"
+								},
+								"refineQuestionPrompt": {
+									"displayName": "初始提示"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"summarizationMethod": {
+									"displayName": "摘要方法",
+									"description": "要运行的摘要类型",
+									"options": {
+										"map_reduce": {
+											"displayName": "映射归约（推荐）",
+											"description": "先单独总结每个文档（或片段），再总结这些摘要"
+										},
+										"refine": {
+											"displayName": "优化",
+											"description": "总结第一个文档（或片段）。然后根据下一个文档（或片段）更新该摘要，并重复此过程。"
+										},
+										"stuff": {
+											"displayName": "内容",
+											"description": "一次性传递所有文档（或文档块）。适用于小型数据集。"
+										}
+									}
+								},
+								"combineMapPrompt": {
+									"displayName": "个人总结提示"
+								},
+								"prompt": {
+									"displayName": "提示词"
+								},
+								"refinePrompt": {
+									"displayName": "后续（优化）提示"
+								},
+								"refineQuestionPrompt": {
+									"displayName": "初始提示"
+								}
+							}
+						},
+						"summarizationMethodAndPrompts": {
+							"displayName": "摘要方法与提示",
+							"placeholder": "添加选项"
+						}
+					}
+				},
+				"batching": {
+					"displayName": "批量处理",
+					"description": "用于速率限制的批量处理选项",
+					"placeholder": "添加批量处理选项",
+					"options": {
+						"batchSize": {
+							"displayName": "批次大小",
+							"description": "并行处理的项目数量。这对速率限制很有用，但可能会影响日志输出顺序。"
+						},
+						"delayBetweenBatches": {
+							"displayName": "批次间延迟",
+							"description": "批次之间的延迟时间（毫秒）。适用于速率限制场景。"
+						}
+					}
+				}
+			}
+		}
+	}
+}

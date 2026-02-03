@@ -1,0 +1,30 @@
+{
+	"header": {
+		"displayName": "间隔触发器",
+		"description": "按指定间隔触发工作流"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此工作流将在您发布后按照此处定义的计划运行。<br><br>如需测试，您也可以手动触发：返回画布并点击“执行工作流”"
+		},
+		"interval": {
+			"displayName": "间隔",
+			"description": "间隔值"
+		},
+		"unit": {
+			"displayName": "单位",
+			"description": "间隔值的单位",
+			"options": {
+				"seconds": {
+					"displayName": "秒"
+				},
+				"minutes": {
+					"displayName": "分钟"
+				},
+				"hours": {
+					"displayName": "小时"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,359 @@
+{
+	"header": {
+		"displayName": "Google Sheets Trigger",
+		"description": "Starts the workflow when Google Sheets events occur"
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "Poll Times",
+			"description": "Time at which polling should occur",
+			"placeholder": "Add Poll Time",
+			"multipleValueButtonText": "Add Poll Time",
+			"options": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "Poll Times",
+					"placeholder": "Add Poll Time"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "Authentication"
+		},
+		"documentId": {
+			"displayName": "Document"
+		},
+		"sheetName": {
+			"displayName": "Sheet"
+		},
+		"event": {
+			"displayName": "Trigger On",
+			"description": "It will be triggered also by newly created columns (if the 'Columns to Watch' option is not set)",
+			"options": {
+				"rowAdded": {
+					"displayName": "Row Added"
+				},
+				"rowUpdate": {
+					"displayName": "Row Updated"
+				},
+				"anyUpdate": {
+					"displayName": "Row Added or Updated"
+				}
+			}
+		},
+		"includeInOutput": {
+			"displayName": "Include in Output",
+			"description": "This option will be effective only when automatically executing the workflow",
+			"options": {
+				"new": {
+					"displayName": "New Version"
+				},
+				"old": {
+					"displayName": "Old Version"
+				},
+				"both": {
+					"displayName": "Both Versions"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"columnsToWatch": {
+					"displayName": "Columns to Watch",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"dataLocationOnSheet": {
+					"displayName": "Data Location on Sheet",
+					"placeholder": "Select Range",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"rangeDefinition": {
+									"displayName": "Range Definition",
+									"options": {
+										"specifyRangeA1": {
+											"displayName": "Specify Range (A1 Notation)",
+											"description": "Manually specify the data range"
+										},
+										"specifyRange": {
+											"displayName": "Specify Range (Rows)",
+											"description": "Manually specify the data range"
+										}
+									}
+								},
+								"headerRow": {
+									"displayName": "Header Row",
+									"description": "Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive."
+								},
+								"firstDataRow": {
+									"displayName": "First Data Row",
+									"description": "Index of the first row which contains the actual data and not the keys. Starts with 1."
+								},
+								"range": {
+									"displayName": "Range",
+									"description": "The table range to read from or to append data to. See the Google <a href=\"https://developers.google.com/sheets/api/guides/values#writing\">documentation</a> for the details.",
+									"placeholder": "A:Z"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"rangeDefinition": {
+									"displayName": "Range Definition",
+									"options": {
+										"specifyRangeA1": {
+											"displayName": "Specify Range (A1 Notation)",
+											"description": "Manually specify the data range"
+										},
+										"specifyRange": {
+											"displayName": "Specify Range (Rows)",
+											"description": "Manually specify the data range"
+										}
+									}
+								},
+								"headerRow": {
+									"displayName": "Header Row",
+									"description": "Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive."
+								},
+								"firstDataRow": {
+									"displayName": "First Data Row",
+									"description": "Index of the first row which contains the actual data and not the keys. Starts with 1."
+								},
+								"range": {
+									"displayName": "Range",
+									"description": "The table range to read from or to append data to. See the Google <a href=\"https://developers.google.com/sheets/api/guides/values#writing\">documentation</a> for the details.",
+									"placeholder": "A:Z"
+								}
+							}
+						},
+						"dataLocationOnSheet": {
+							"displayName": "Data Location on Sheet",
+							"placeholder": "Select Range"
+						}
+					}
+				},
+				"valueRender": {
+					"displayName": "Value Render",
+					"description": "Determines how values will be rendered in the output. <a href=\"https://developers.google.com/sheets/api/reference/rest/v4/ValueRenderOption\" target=\"_blank\">More info</a>.",
+					"options": {
+						"UNFORMATTED_VALUE": {
+							"displayName": "Unformatted",
+							"description": "Values will be calculated, but not formatted in the reply"
+						},
+						"FORMATTED_VALUE": {
+							"displayName": "Formatted",
+							"description": "Values will be formatted and calculated according to the cell's formatting (based on the spreadsheet's locale)"
+						},
+						"FORMULA": {
+							"displayName": "Formula",
+							"description": "Values will not be calculated. The reply will include the formulas."
+						}
+					}
+				},
+				"dateTimeRenderOption": {
+					"displayName": "DateTime Render",
+					"description": "Determines how dates should be rendered in the output.  <a href=\"https://developers.google.com/sheets/api/reference/rest/v4/DateTimeRenderOption\" target=\"_blank\">More info</a>.",
+					"options": {
+						"SERIAL_NUMBER": {
+							"displayName": "Serial Number",
+							"description": "Fields will be returned as doubles in \"serial number\" format (as popularized by Lotus 1-2-3)"
+						},
+						"FORMATTED_STRING": {
+							"displayName": "Formatted String",
+							"description": "Fields will be rendered as strings in their given number format (which depends on the spreadsheet locale)"
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,324 @@
+{
+	"header": {
+		"displayName": "Intercom",
+		"description": "使用Intercom API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"company": {
+					"displayName": "公司",
+					"description": "公司功能允许您使用您的产品来代表商业组织"
+				},
+				"lead": {
+					"displayName": "潜在客户",
+					"description": "潜在客户可用于表示您应用程序的未登录用户"
+				},
+				"user": {
+					"displayName": "用户",
+					"description": "用户资源是与Intercom交互的主要方式"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新公司"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取公司数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多家公司的数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新公司"
+				},
+				"users": {
+					"displayName": "用户",
+					"description": "列出公司用户"
+				}
+			}
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "代表潜在客户的Intercom定义ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"company_id": {
+					"displayName": "公司ID",
+					"description": "代表用户的公司ID"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "潜在客户的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"segment_id": {
+					"displayName": "细分ID",
+					"description": "代表潜在客户的区段"
+				},
+				"tag_id": {
+					"displayName": "标签ID",
+					"description": "代表潜在客户的标签"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "潜在客户的电话号码"
+				}
+			}
+		},
+		"selectBy": {
+			"displayName": "按以下条件选择",
+			"description": "使用哪个属性来查询公司",
+			"options": {
+				"id": {
+					"displayName": "ID",
+					"description": "Intercom定义的公司ID"
+				},
+				"userId": {
+					"displayName": "用户ID",
+					"description": "为线索自动生成的标识符"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "代表潜在客户的电子邮件"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "代表潜在客户的电话"
+				},
+				"companyId": {
+					"displayName": "公司ID",
+					"description": "您为公司提供的 company_id"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "公司名称"
+				}
+			}
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "按值查看"
+		},
+		"updateBy": {
+			"displayName": "更新者",
+			"description": "用于查询潜在客户的属性",
+			"options": {
+				"id": {
+					"displayName": "ID",
+					"description": "代表潜在客户的Intercom定义ID"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用户的电子邮件地址"
+				},
+				"userId": {
+					"displayName": "用户ID",
+					"description": "为线索自动生成的标识符"
+				}
+			}
+		},
+		"identifierType": {
+			"displayName": "标识符类型",
+			"description": "唯一字符串标识符",
+			"options": {
+				"userId": {
+					"displayName": "用户ID",
+					"description": "用户的唯一字符串标识符。如果未提供电子邮件，则在创建时必须提供。"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用户的电子邮件地址。如果未提供user_id，则在创建时必须填写。"
+				}
+			}
+		},
+		"idValue": {
+			"displayName": "值",
+			"description": "唯一字符串标识符值"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"avatar": {
+					"displayName": "头像",
+					"description": "头像图片URL。注意：图片URL必须是https。"
+				},
+				"companies": {
+					"displayName": "公司名称或ID",
+					"description": "标识此用户所属的公司。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用户的电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "用户姓名"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "用户的电话号码"
+				},
+				"sessionCount": {
+					"displayName": "会话次数",
+					"description": "用户已记录的会话数量"
+				},
+				"userId": {
+					"displayName": "用户ID",
+					"description": "用户的电子邮件"
+				},
+				"unsubscribedFromEmails": {
+					"displayName": "已取消订阅邮件",
+					"description": "潜在客户是否已取消邮件订阅"
+				},
+				"updateLastRequestAt": {
+					"displayName": "更新最后请求时间",
+					"description": "是否指示Intercom将用户的last_request_at值更新为当前UTC时间的API服务时间。如果未发送，默认值为false。"
+				},
+				"utmCampaign": {
+					"displayName": "UTM推广活动",
+					"description": "标识特定的产品推广或战略活动"
+				},
+				"utmContent": {
+					"displayName": "UTM内容",
+					"description": "标识用户点击了哪个具体内容来到网站"
+				},
+				"utmMedium": {
+					"displayName": "UTM媒介",
+					"description": "标识所使用的链接类型"
+				},
+				"utmSource": {
+					"displayName": "UTM来源",
+					"description": "头像图片URL。注意：图片URL必须是https。"
+				},
+				"utmTerm": {
+					"displayName": "UTM 参数",
+					"description": "标识搜索词"
+				},
+				"industry": {
+					"displayName": "行业",
+					"description": "该公司所处的行业"
+				},
+				"monthlySpend": {
+					"displayName": "月度支出",
+					"description": "用户的电话号码"
+				},
+				"plan": {
+					"displayName": "方案",
+					"description": "您为公司关联的方案名称"
+				},
+				"size": {
+					"displayName": "规模",
+					"description": "该公司员工数量"
+				},
+				"website": {
+					"displayName": "网站",
+					"description": "该公司的网站URL。请注意，此处指定的值不会进行验证。接受任何字符串。"
+				}
+			}
+		},
+		"customAttributesJson": {
+			"displayName": "自定义属性",
+			"description": "一个键/值对的哈希表，用于表示您想要归因于用户的自定义数据"
+		},
+		"customAttributesUi": {
+			"displayName": "自定义属性",
+			"description": "表示要归属于用户的自定义数据的键/值对哈希",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"customAttributesValues": {
+					"displayName": "属性",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"customAttributesValues": {
+					"displayName": "属性",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"customAttributesUi": {
+					"displayName": "自定义属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"deleteBy": {
+			"displayName": "按条件删除",
+			"options": {
+				"id": {
+					"displayName": "ID",
+					"description": "代表潜在客户的Intercom定义ID"
+				},
+				"userId": {
+					"displayName": "用户ID",
+					"description": "为线索自动生成的标识符"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "用户的电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"listBy": {
+			"displayName": "列表查询",
+			"options": {
+				"id": {
+					"displayName": "ID",
+					"description": "Intercom定义的公司ID"
+				},
+				"companyId": {
+					"displayName": "公司ID",
+					"description": "您为公司提供的 company_id"
+				}
+			}
+		},
+		"companyId": {
+			"displayName": "公司ID",
+			"description": "您为公司定义的公司ID"
+		}
+	}
+}

@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "MCP客户端工具",
+		"description": "连接MCP服务器的工具"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"sseEndpoint": {
+			"displayName": "SSE端点",
+			"description": "您的MCP服务器的SSE端点",
+			"placeholder": "例如 https://my-mcp-server.ai/sse"
+		},
+		"endpointUrl": {
+			"displayName": "端点",
+			"description": "您的MCP服务器端点",
+			"placeholder": "例如 https://my-mcp-server.ai/mcp"
+		},
+		"serverTransport": {
+			"displayName": "服务器传输",
+			"description": "您的端点使用的传输方式",
+			"options": {
+				"httpStreamable": {
+					"displayName": "HTTP流式传输"
+				},
+				"sse": {
+					"displayName": "服务器发送事件（已弃用）"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "端点认证方式",
+			"options": {
+				"bearerAuth": {
+					"displayName": "Bearer 认证"
+				},
+				"headerAuth": {
+					"displayName": "Header 认证"
+				},
+				"none": {
+					"displayName": "无"
+				},
+				"mcpOAuth2Api": {
+					"displayName": "MCP OAuth2"
+				},
+				"multipleHeadersAuth": {
+					"displayName": "多标头认证"
+				}
+			}
+		},
+		"credentials": {
+			"displayName": "凭据"
+		},
+		"include": {
+			"displayName": "要包含的工具",
+			"description": "如何选择要暴露给AI代理的工具",
+			"options": {
+				"all": {
+					"displayName": "全部",
+					"description": "同时包含输入中所有未更改的字段"
+				},
+				"selected": {
+					"displayName": "已选择",
+					"description": "同时包含参数“要包含的工具”中列出的工具"
+				},
+				"except": {
+					"displayName": "全部排除",
+					"description": "排除参数\"要排除的工具\"中列出的工具"
+				}
+			}
+		},
+		"includeTools": {
+			"displayName": "要包含的工具",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"excludeTools": {
+			"displayName": "排除工具",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待工具调用完成的毫秒时间"
+				}
+			}
+		}
+	}
+}

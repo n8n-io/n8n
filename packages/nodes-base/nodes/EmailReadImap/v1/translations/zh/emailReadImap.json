@@ -1,0 +1,67 @@
+{
+	"header": {
+		"displayName": "邮件触发器 (IMAP)",
+		"description": "当收到新邮件时触发工作流"
+	},
+	"nodeView": {
+		"mailbox": {
+			"displayName": "邮箱名称"
+		},
+		"postProcessAction": {
+			"displayName": "操作",
+			"description": "收到邮件后的处理方式。如果选择“无操作”，邮件将被多次处理。",
+			"options": {
+				"read": {
+					"displayName": "标记为已读"
+				},
+				"nothing": {
+					"displayName": "无返回结果"
+				}
+			}
+		},
+		"downloadAttachments": {
+			"displayName": "下载附件",
+			"description": "是否应下载电子邮件的附件。仅在需要时设置，因为这会增加处理负担。"
+		},
+		"format": {
+			"displayName": "格式",
+			"description": "返回消息的格式",
+			"options": {
+				"raw": {
+					"displayName": "返回完整的电子邮件消息数据，其中正文内容以base64url编码字符串的形式存储在raw字段中；payload字段未被使用",
+					"description": "返回完整的电子邮件消息数据，其中原始字段中的正文内容以base64url编码字符串表示；不使用payload字段"
+				},
+				"resolved": {
+					"displayName": "已解析",
+					"description": "返回完整的电子邮件，包含所有已解析的数据以及保存为二进制数据的附件"
+				},
+				"simple": {
+					"displayName": "简单",
+					"description": "返回完整电子邮件；如果您希望收集内联附件，请勿使用此选项"
+				}
+			}
+		},
+		"dataPropertyAttachmentsPrefixName": {
+			"displayName": "属性前缀名称",
+			"description": "用于存储附件的二进制属性名称前缀。将添加从0开始的索引。例如，如果名称是“attachment_”，则第一个附件将保存为“attachment_0”"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"customEmailConfig": {
+					"displayName": "自定义邮件规则",
+					"description": "自定义邮件获取规则。详情请参阅<a href=\"https://github.com/mscdex/node-imap\">node-imap</a>的搜索函数。"
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "即使无法进行SSL证书验证也连接"
+				},
+				"forceReconnect": {
+					"displayName": "强制重新连接",
+					"description": "设置强制重新连接的间隔时间（以分钟为单位）"
+				}
+			}
+		}
+	}
+}

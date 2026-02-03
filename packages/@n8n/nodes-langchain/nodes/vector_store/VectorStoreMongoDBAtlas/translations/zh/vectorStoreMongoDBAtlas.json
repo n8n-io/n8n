@@ -1,0 +1,148 @@
+{
+	"header": {
+		"displayName": "MongoDB Atlas 向量存储",
+		"description": "在 MongoDB Atlas 向量存储中处理数据"
+	},
+	"nodeView": {
+		"ragStarterCallout": {
+			"displayName": "提示：通过我们的示例体验n8n中的向量存储"
+		},
+		"mode": {
+			"displayName": "操作模式",
+			"options": {
+				"load": {
+					"displayName": "获取多个",
+					"description": "从向量存储中获取多个与查询相关的排序文档"
+				},
+				"insert": {
+					"displayName": "插入文档",
+					"description": "将文档插入向量存储"
+				},
+				"retrieve": {
+					"displayName": "检索文档（作为链/工具的向量存储）",
+					"description": "从向量存储中检索文档，用作AI节点的向量存储"
+				},
+				"retrieve-as-tool": {
+					"displayName": "检索文档（作为AI代理工具）",
+					"description": "从向量存储检索文档，用作AI节点的工具"
+				},
+				"update": {
+					"displayName": "更新文档",
+					"description": "按ID更新向量存储中的文档"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "此节点必须连接到向量存储检索器。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_retriever'>插入一个</a>"
+		},
+		"toolName": {
+			"displayName": "名称",
+			"description": "向量存储名称",
+			"placeholder": "例如：公司知识库"
+		},
+		"toolDescription": {
+			"displayName": "描述",
+			"description": "向LLM解释此工具的功能，一个良好、具体的描述能让LLM更频繁地生成预期结果",
+			"placeholder": "例如：在MongoDB Atlas向量存储中处理您的数据"
+		},
+		"mongoCollection": {
+			"displayName": "MongoDB 集合"
+		},
+		"embedding": {
+			"displayName": "嵌入",
+			"description": "包含嵌入数组的字段"
+		},
+		"metadata_field": {
+			"displayName": "元数据字段",
+			"description": "原始数据的文本字段"
+		},
+		"vectorIndexName": {
+			"displayName": "向量索引名称",
+			"description": "向量索引的名称"
+		},
+		"embeddingBatchSize": {
+			"displayName": "嵌入批处理大小",
+			"description": "单批次嵌入的文档数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"clearNamespace": {
+					"displayName": "清空命名空间",
+					"description": "是否在插入新数据前清空命名空间中的文档"
+				},
+				"namespace": {
+					"displayName": "命名空间",
+					"description": "文档的逻辑分区。使用 metadata.namespace 字段进行筛选。"
+				},
+				"metadata": {
+					"displayName": "元数据过滤器",
+					"description": "用于筛选文档的元数据",
+					"placeholder": "添加筛选字段",
+					"multipleValueButtonText": "添加筛选字段",
+					"options": {
+						"metadataValues": {
+							"displayName": "要设置的字段",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "要设置的字段",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "元数据过滤器",
+							"placeholder": "添加筛选字段"
+						}
+					}
+				},
+				"preFilter": {
+					"displayName": "前置过滤器",
+					"description": "MongoDB Atlas 向量搜索前置过滤器",
+					"placeholder": "{ \"key\": \"value\" }"
+				},
+				"postFilterPipeline": {
+					"displayName": "后置过滤管道",
+					"description": "MongoDB聚合管道（JSON格式）",
+					"placeholder": "[{ \"$match\": { \"$gt\": \"1950-01-01\" }, ... }]"
+				}
+			}
+		},
+		"prompt": {
+			"displayName": "提示",
+			"description": "使用相似度排序从向量存储中检索匹配文档的搜索提示"
+		},
+		"topK": {
+			"displayName": "限制",
+			"description": "从向量存储中获取的顶部结果数量"
+		},
+		"includeDocumentMetadata": {
+			"displayName": "包含元数据",
+			"description": "是否包含文档元数据"
+		},
+		"useReranker": {
+			"displayName": "重新排序结果",
+			"description": "是否重新排序结果"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "嵌入条目的ID"
+		}
+	}
+}

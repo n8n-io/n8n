@@ -1,0 +1,87 @@
+{
+	"header": {
+		"displayName": "MCP Client",
+		"description": "Standalone MCP Client"
+	},
+	"nodeView": {
+		"serverTransport": {
+			"displayName": "Server Transport",
+			"description": "The transport used by your endpoint",
+			"options": {
+				"httpStreamable": {
+					"displayName": "HTTP Streamable"
+				},
+				"sse": {
+					"displayName": "Server Sent Events (Deprecated)"
+				}
+			}
+		},
+		"endpointUrl": {
+			"displayName": "MCP Endpoint URL",
+			"description": "The URL of the MCP server to connect to",
+			"placeholder": "e.g. https://my-mcp-server.ai/mcp"
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "The way to authenticate with your endpoint",
+			"options": {
+				"bearerAuth": {
+					"displayName": "Bearer Auth"
+				},
+				"headerAuth": {
+					"displayName": "Header Auth"
+				},
+				"mcpOAuth2Api": {
+					"displayName": "MCP OAuth2"
+				},
+				"multipleHeadersAuth": {
+					"displayName": "Multiple Headers Auth"
+				},
+				"none": {
+					"displayName": "None"
+				}
+			}
+		},
+		"credentials": {
+			"displayName": "Credentials"
+		},
+		"tool": {
+			"displayName": "Tool",
+			"description": "The tool to use"
+		},
+		"inputMode": {
+			"displayName": "Input Mode",
+			"options": {
+				"manual": {
+					"displayName": "Manual",
+					"description": "Manually specify the input data for each tool parameter"
+				},
+				"json": {
+					"displayName": "JSON",
+					"description": "Specify the input data as a JSON object"
+				}
+			}
+		},
+		"parameters": {
+			"displayName": "Parameters"
+		},
+		"jsonInput": {
+			"displayName": "JSON"
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"convertToBinary": {
+					"displayName": "Convert to Binary",
+					"description": "Whether to convert images and audio to binary data. If false, images and audio will be returned as base64 encoded strings."
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for tool calls to finish"
+				}
+			}
+		}
+	}
+}

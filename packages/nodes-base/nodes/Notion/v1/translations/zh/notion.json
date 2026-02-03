@@ -1,0 +1,3174 @@
+{
+	"header": {
+		"displayName": "Notion",
+		"description": "使用Notion API"
+	},
+	"nodeView": {
+		"notionNotice": {
+			"displayName": "在Notion中，请确保<a href=\"https://www.notion.so/help/add-and-manage-connections-with-the-api\" target=\"_blank\">添加连接</a>到您想要访问的页面。"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"block": {
+					"displayName": "块"
+				},
+				"database": {
+					"displayName": "数据库"
+				},
+				"databasePage": {
+					"displayName": "数据库页面"
+				},
+				"page": {
+					"displayName": "页面"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"append": {
+					"displayName": "追加到之后",
+					"description": "追加一个块"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "页面文本搜索"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建页面"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新数据库中的页面"
+				},
+				"archive": {
+					"displayName": "归档",
+					"description": "归档页面"
+				}
+			}
+		},
+		"blockId": {
+			"displayName": "块",
+			"description": "要获取所有子块的Notion块，使用'按URL'模式时请确保使用块本身的URL，您可以在Notion的块参数中找到它，位于'复制块链接'下"
+		},
+		"blockUi": {
+			"displayName": "区块",
+			"placeholder": "添加区块",
+			"multipleValueButtonText": "添加区块",
+			"options": {
+				"blockValues": {
+					"displayName": "块",
+					"options": {
+						"type": {
+							"displayName": "输入名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"richText": {
+							"displayName": "富文本"
+						},
+						"textContent": {
+							"displayName": "文本"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "区块中的富文本",
+							"placeholder": "添加文本",
+							"multipleValueButtonText": "添加文本",
+							"options": {
+								"text": {
+									"displayName": "文本",
+									"options": {
+										"textType": {
+											"displayName": "类型",
+											"options": {
+												"equation": {
+													"displayName": "公式"
+												},
+												"mention": {
+													"displayName": "提及"
+												},
+												"text": {
+													"displayName": "文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "文本内容。此字段包含文本的实际内容，可能是您最常使用的字段。"
+										},
+										"isLink": {
+											"displayName": "是否为链接"
+										},
+										"textLink": {
+											"displayName": "文本链接",
+											"description": "此链接指向的URL"
+										},
+										"mentionType": {
+											"displayName": "类型",
+											"description": "用户、页面、数据库或日期的内联提及。在应用中，通过输入@后跟用户、页面、数据库名称或日期来创建。",
+											"options": {
+												"database": {
+													"displayName": "数据库"
+												},
+												"date": {
+													"displayName": "日期"
+												},
+												"page": {
+													"displayName": "页面"
+												},
+												"user": {
+													"displayName": "用户"
+												}
+											}
+										},
+										"user": {
+											"displayName": "用户名或ID",
+											"description": "被提及用户的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+										},
+										"page": {
+											"displayName": "页面ID",
+											"description": "被提及页面的ID"
+										},
+										"database": {
+											"displayName": "数据库",
+											"description": "提到的Notion数据库"
+										},
+										"range": {
+											"displayName": "范围",
+											"description": "是否要定义日期范围"
+										},
+										"date": {
+											"displayName": "日期",
+											"description": "ISO 8601格式的日期，可选包含时间"
+										},
+										"dateStart": {
+											"displayName": "开始日期",
+											"description": "ISO 8601格式的日期，可选包含时间"
+										},
+										"dateEnd": {
+											"displayName": "结束日期",
+											"description": "ISO 8601格式的日期，可包含时间。表示日期范围的结束。"
+										},
+										"expression": {
+											"displayName": "表达式"
+										},
+										"annotationUi": {
+											"displayName": "注释",
+											"description": "适用于此富文本的所有批注",
+											"placeholder": "添加批注",
+											"options": {
+												"bold": {
+													"displayName": "粗体",
+													"description": "文本是否为粗体"
+												},
+												"italic": {
+													"displayName": "斜体",
+													"description": "文本是否为斜体"
+												},
+												"strikethrough": {
+													"displayName": "删除线",
+													"description": "文本是否被划掉"
+												},
+												"underline": {
+													"displayName": "下划线",
+													"description": "文本是否带有下划线"
+												},
+												"code": {
+													"displayName": "代码",
+													"description": "文本是否为代码风格"
+												},
+												"color": {
+													"displayName": "颜色",
+													"description": "文本颜色",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"gray": {
+															"displayName": "灰色"
+														},
+														"brown": {
+															"displayName": "棕色"
+														},
+														"orange": {
+															"displayName": "橙色"
+														},
+														"yellow": {
+															"displayName": "黄色"
+														},
+														"green": {
+															"displayName": "绿色"
+														},
+														"blue": {
+															"displayName": "蓝色"
+														},
+														"purple": {
+															"displayName": "紫色"
+														},
+														"pink": {
+															"displayName": "粉色"
+														},
+														"red": {
+															"displayName": "红色"
+														},
+														"gray_background": {
+															"displayName": "灰色背景"
+														},
+														"brown_background": {
+															"displayName": "棕色背景"
+														},
+														"orange_background": {
+															"displayName": "橙色背景"
+														},
+														"yellow_background": {
+															"displayName": "黄色背景"
+														},
+														"green_background": {
+															"displayName": "绿色背景"
+														},
+														"blue_background": {
+															"displayName": "蓝色背景"
+														},
+														"purple_background": {
+															"displayName": "紫色背景"
+														},
+														"pink_background": {
+															"displayName": "粉色背景"
+														},
+														"red_background": {
+															"displayName": "红色背景"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"text": {
+									"displayName": "文本",
+									"placeholder": "添加文本"
+								}
+							}
+						},
+						"checked": {
+							"displayName": "已选中",
+							"description": "待办事项是否已勾选"
+						},
+						"title": {
+							"displayName": "标题",
+							"description": "Plain text of page title"
+						},
+						"url": {
+							"displayName": "图片URL",
+							"description": "图像文件引用"
+						}
+					}
+				}
+			},
+			"values": {
+				"blockValues": {
+					"displayName": "块",
+					"options": {
+						"type": {
+							"displayName": "输入名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"richText": {
+							"displayName": "富文本"
+						},
+						"textContent": {
+							"displayName": "文本"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "区块中的富文本",
+							"placeholder": "添加文本",
+							"multipleValueButtonText": "添加文本",
+							"options": {
+								"text": {
+									"displayName": "文本",
+									"options": {
+										"textType": {
+											"displayName": "类型",
+											"options": {
+												"equation": {
+													"displayName": "公式"
+												},
+												"mention": {
+													"displayName": "提及"
+												},
+												"text": {
+													"displayName": "文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "文本内容。此字段包含文本的实际内容，可能是您最常使用的字段。"
+										},
+										"isLink": {
+											"displayName": "是否为链接"
+										},
+										"textLink": {
+											"displayName": "文本链接",
+											"description": "此链接指向的URL"
+										},
+										"mentionType": {
+											"displayName": "类型",
+											"description": "用户、页面、数据库或日期的内联提及。在应用中，通过输入@后跟用户、页面、数据库名称或日期来创建。",
+											"options": {
+												"database": {
+													"displayName": "数据库"
+												},
+												"date": {
+													"displayName": "日期"
+												},
+												"page": {
+													"displayName": "页面"
+												},
+												"user": {
+													"displayName": "用户"
+												}
+											}
+										},
+										"user": {
+											"displayName": "用户名或ID",
+											"description": "被提及用户的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+										},
+										"page": {
+											"displayName": "页面ID",
+											"description": "被提及页面的ID"
+										},
+										"database": {
+											"displayName": "数据库",
+											"description": "提到的Notion数据库"
+										},
+										"range": {
+											"displayName": "范围",
+											"description": "是否要定义日期范围"
+										},
+										"date": {
+											"displayName": "日期",
+											"description": "ISO 8601格式的日期，可选包含时间"
+										},
+										"dateStart": {
+											"displayName": "开始日期",
+											"description": "ISO 8601格式的日期，可选包含时间"
+										},
+										"dateEnd": {
+											"displayName": "结束日期",
+											"description": "ISO 8601格式的日期，可包含时间。表示日期范围的结束。"
+										},
+										"expression": {
+											"displayName": "表达式"
+										},
+										"annotationUi": {
+											"displayName": "注释",
+											"description": "适用于此富文本的所有批注",
+											"placeholder": "添加批注",
+											"options": {
+												"bold": {
+													"displayName": "粗体",
+													"description": "文本是否为粗体"
+												},
+												"italic": {
+													"displayName": "斜体",
+													"description": "文本是否为斜体"
+												},
+												"strikethrough": {
+													"displayName": "删除线",
+													"description": "文本是否被划掉"
+												},
+												"underline": {
+													"displayName": "下划线",
+													"description": "文本是否带有下划线"
+												},
+												"code": {
+													"displayName": "代码",
+													"description": "文本是否为代码风格"
+												},
+												"color": {
+													"displayName": "颜色",
+													"description": "文本颜色",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"gray": {
+															"displayName": "灰色"
+														},
+														"brown": {
+															"displayName": "棕色"
+														},
+														"orange": {
+															"displayName": "橙色"
+														},
+														"yellow": {
+															"displayName": "黄色"
+														},
+														"green": {
+															"displayName": "绿色"
+														},
+														"blue": {
+															"displayName": "蓝色"
+														},
+														"purple": {
+															"displayName": "紫色"
+														},
+														"pink": {
+															"displayName": "粉色"
+														},
+														"red": {
+															"displayName": "红色"
+														},
+														"gray_background": {
+															"displayName": "灰色背景"
+														},
+														"brown_background": {
+															"displayName": "棕色背景"
+														},
+														"orange_background": {
+															"displayName": "橙色背景"
+														},
+														"yellow_background": {
+															"displayName": "黄色背景"
+														},
+														"green_background": {
+															"displayName": "绿色背景"
+														},
+														"blue_background": {
+															"displayName": "蓝色背景"
+														},
+														"purple_background": {
+															"displayName": "紫色背景"
+														},
+														"pink_background": {
+															"displayName": "粉色背景"
+														},
+														"red_background": {
+															"displayName": "红色背景"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"text": {
+									"displayName": "文本",
+									"placeholder": "添加文本"
+								}
+							}
+						},
+						"checked": {
+							"displayName": "已选中",
+							"description": "待办事项是否已勾选"
+						},
+						"title": {
+							"displayName": "标题",
+							"description": "Plain text of page title"
+						},
+						"url": {
+							"displayName": "图片URL",
+							"description": "图像文件引用"
+						}
+					}
+				},
+				"blockUi": {
+					"displayName": "区块",
+					"placeholder": "添加区块"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"fetchNestedBlocks": {
+			"displayName": "同时获取嵌套区块"
+		},
+		"simplifyOutput": {
+			"displayName": "简化输出"
+		},
+		"databaseId": {
+			"displayName": "数据库",
+			"description": "要操作的Notion数据库"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"text": {
+			"displayName": "搜索文本",
+			"description": "要搜索的文本"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"sort": {
+					"displayName": "排序",
+					"placeholder": "添加排序",
+					"options": {
+						"sortValue": {
+							"displayName": "排序",
+							"options": {
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向",
+									"options": {
+										"ascending": {
+											"displayName": "升序"
+										},
+										"descending": {
+											"displayName": "降序"
+										}
+									}
+								},
+								"timestamp": {
+									"displayName": "时间戳",
+									"description": "用于排序的时间戳名称",
+									"options": {
+										"last_edited_time": {
+											"displayName": "最后编辑时间"
+										}
+									}
+								},
+								"key": {
+									"displayName": "属性名称",
+									"description": "用于筛选的属性名称",
+									"options": {
+										"created_time": {
+											"displayName": "创建时间"
+										},
+										"last_edited_time": {
+											"displayName": "最后编辑时间"
+										}
+									}
+								},
+								"type": {
+									"displayName": "类型"
+								}
+							}
+						}
+					},
+					"values": {
+						"sortValue": {
+							"displayName": "排序",
+							"options": {
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向",
+									"options": {
+										"ascending": {
+											"displayName": "升序"
+										},
+										"descending": {
+											"displayName": "降序"
+										}
+									}
+								},
+								"timestamp": {
+									"displayName": "时间戳",
+									"description": "用于排序的时间戳名称",
+									"options": {
+										"last_edited_time": {
+											"displayName": "最后编辑时间"
+										}
+									}
+								},
+								"key": {
+									"displayName": "属性名称",
+									"description": "用于筛选的属性名称",
+									"options": {
+										"created_time": {
+											"displayName": "创建时间"
+										},
+										"last_edited_time": {
+											"displayName": "最后编辑时间"
+										}
+									}
+								},
+								"type": {
+									"displayName": "类型"
+								}
+							}
+						},
+						"sort": {
+							"displayName": "排序",
+							"placeholder": "添加排序"
+						}
+					},
+					"multipleValueButtonText": "添加排序"
+				},
+				"iconType": {
+					"displayName": "图标类型",
+					"description": "页面图标类型，可以是URL或表情符号",
+					"options": {
+						"emoji": {
+							"displayName": "表情符号",
+							"description": "使用表情符号作为图标"
+						},
+						"file": {
+							"displayName": "文件",
+							"description": "使用文件作为图标"
+						}
+					}
+				},
+				"icon": {
+					"displayName": "图标",
+					"description": "用作图标的Emoji或文件URL"
+				},
+				"downloadFiles": {
+					"displayName": "下载文件",
+					"description": "当数据库字段包含文件时是否下载"
+				},
+				"filter": {
+					"displayName": "筛选器",
+					"placeholder": "添加筛选器",
+					"options": {
+						"singleCondition": {
+							"displayName": "单一条件",
+							"options": {
+								"key": {
+									"displayName": "属性名称或ID",
+									"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"type": {
+									"displayName": "类型"
+								},
+								"condition": {
+									"displayName": "条件",
+									"description": "用于筛选的属性值",
+									"options": {
+										"equals": {
+											"displayName": "等于"
+										},
+										"before": {
+											"displayName": "之前"
+										},
+										"after": {
+											"displayName": "之后"
+										},
+										"on_or_before": {
+											"displayName": "在或之前"
+										},
+										"is_empty": {
+											"displayName": "为空"
+										},
+										"is_not_empty": {
+											"displayName": "不为空"
+										},
+										"on_or_after": {
+											"displayName": "在或之后"
+										},
+										"past_week": {
+											"displayName": "过去一周"
+										},
+										"past_month": {
+											"displayName": "过去一个月"
+										},
+										"past_year": {
+											"displayName": "过去一年"
+										},
+										"next_week": {
+											"displayName": "下周"
+										},
+										"next_month": {
+											"displayName": "下个月"
+										},
+										"next_year": {
+											"displayName": "明年"
+										}
+									}
+								},
+								"returnType": {
+									"displayName": "返回类型",
+									"description": "公式返回类型",
+									"options": {
+										"text": {
+											"displayName": "文本"
+										},
+										"checkbox": {
+											"displayName": "复选框"
+										},
+										"number": {
+											"displayName": "数字"
+										},
+										"date": {
+											"displayName": "日期"
+										}
+									}
+								},
+								"titleValue": {
+									"displayName": "标题"
+								},
+								"richTextValue": {
+									"displayName": "文本"
+								},
+								"phoneNumberValue": {
+									"displayName": "电话号码",
+									"description": "电话号码。无固定格式要求。"
+								},
+								"multiSelectValue": {
+									"displayName": "选项名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"selectValue": {
+									"displayName": "选项名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"statusValue": {
+									"displayName": "状态名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"emailValue": {
+									"displayName": "电子邮件"
+								},
+								"urlValue": {
+									"displayName": "URL"
+								},
+								"peopleValue": {
+									"displayName": "用户名或ID",
+									"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"createdByValue": {
+									"displayName": "用户名或ID",
+									"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"lastEditedByValue": {
+									"displayName": "用户名或ID",
+									"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"relationValue": {
+									"displayName": "关系ID"
+								},
+								"checkboxValue": {
+									"displayName": "布尔值",
+									"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+								},
+								"numberValue": {
+									"displayName": "数字",
+									"description": "数值"
+								},
+								"date": {
+									"displayName": "日期",
+									"description": "ISO 8601格式的日期，可选包含时间"
+								},
+								"createdTimeValue": {
+									"displayName": "创建时间",
+									"description": "ISO 8601格式的日期，可选包含时间"
+								},
+								"lastEditedTime": {
+									"displayName": "最后编辑时间",
+									"description": "ISO 8601格式的日期，可选包含时间"
+								},
+								"textValue": {
+									"displayName": "文本"
+								},
+								"dateValue": {
+									"displayName": "日期",
+									"description": "ISO 8601格式的日期，可选包含时间"
+								}
+							}
+						},
+						"multipleCondition": {
+							"displayName": "多重条件",
+							"options": {
+								"condition": {
+									"displayName": "条件",
+									"placeholder": "添加条件",
+									"multipleValueButtonText": "添加条件",
+									"options": {
+										"or": {
+											"displayName": "或",
+											"options": {
+												"key": {
+													"displayName": "属性名称或ID",
+													"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"type": {
+													"displayName": "类型"
+												},
+												"condition": {
+													"displayName": "条件",
+													"description": "用于筛选的属性值",
+													"options": {
+														"equals": {
+															"displayName": "等于"
+														},
+														"before": {
+															"displayName": "之前"
+														},
+														"after": {
+															"displayName": "之后"
+														},
+														"on_or_before": {
+															"displayName": "在或之前"
+														},
+														"is_empty": {
+															"displayName": "为空"
+														},
+														"is_not_empty": {
+															"displayName": "不为空"
+														},
+														"on_or_after": {
+															"displayName": "在或之后"
+														},
+														"past_week": {
+															"displayName": "过去一周"
+														},
+														"past_month": {
+															"displayName": "过去一个月"
+														},
+														"past_year": {
+															"displayName": "过去一年"
+														},
+														"next_week": {
+															"displayName": "下周"
+														},
+														"next_month": {
+															"displayName": "下个月"
+														},
+														"next_year": {
+															"displayName": "明年"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "返回类型",
+													"description": "公式返回类型",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"checkbox": {
+															"displayName": "复选框"
+														},
+														"number": {
+															"displayName": "数字"
+														},
+														"date": {
+															"displayName": "日期"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "标题"
+												},
+												"richTextValue": {
+													"displayName": "文本"
+												},
+												"phoneNumberValue": {
+													"displayName": "电话号码",
+													"description": "电话号码。无固定格式要求。"
+												},
+												"multiSelectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"selectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"statusValue": {
+													"displayName": "状态名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"emailValue": {
+													"displayName": "电子邮件"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"createdByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"lastEditedByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"relationValue": {
+													"displayName": "关系ID"
+												},
+												"checkboxValue": {
+													"displayName": "布尔值",
+													"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+												},
+												"numberValue": {
+													"displayName": "数字",
+													"description": "数值"
+												},
+												"date": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"createdTimeValue": {
+													"displayName": "创建时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"lastEditedTime": {
+													"displayName": "最后编辑时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"textValue": {
+													"displayName": "文本"
+												},
+												"dateValue": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												}
+											}
+										},
+										"and": {
+											"displayName": "与",
+											"options": {
+												"key": {
+													"displayName": "属性名称或ID",
+													"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"type": {
+													"displayName": "类型"
+												},
+												"condition": {
+													"displayName": "条件",
+													"description": "用于筛选的属性值",
+													"options": {
+														"equals": {
+															"displayName": "等于"
+														},
+														"before": {
+															"displayName": "之前"
+														},
+														"after": {
+															"displayName": "之后"
+														},
+														"on_or_before": {
+															"displayName": "在或之前"
+														},
+														"is_empty": {
+															"displayName": "为空"
+														},
+														"is_not_empty": {
+															"displayName": "不为空"
+														},
+														"on_or_after": {
+															"displayName": "在或之后"
+														},
+														"past_week": {
+															"displayName": "过去一周"
+														},
+														"past_month": {
+															"displayName": "过去一个月"
+														},
+														"past_year": {
+															"displayName": "过去一年"
+														},
+														"next_week": {
+															"displayName": "下周"
+														},
+														"next_month": {
+															"displayName": "下个月"
+														},
+														"next_year": {
+															"displayName": "明年"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "返回类型",
+													"description": "公式返回类型",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"checkbox": {
+															"displayName": "复选框"
+														},
+														"number": {
+															"displayName": "数字"
+														},
+														"date": {
+															"displayName": "日期"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "标题"
+												},
+												"richTextValue": {
+													"displayName": "文本"
+												},
+												"phoneNumberValue": {
+													"displayName": "电话号码",
+													"description": "电话号码。无固定格式要求。"
+												},
+												"multiSelectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"selectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"statusValue": {
+													"displayName": "状态名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"emailValue": {
+													"displayName": "电子邮件"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"createdByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"lastEditedByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"relationValue": {
+													"displayName": "关系ID"
+												},
+												"checkboxValue": {
+													"displayName": "布尔值",
+													"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+												},
+												"numberValue": {
+													"displayName": "数字",
+													"description": "数值"
+												},
+												"date": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"createdTimeValue": {
+													"displayName": "创建时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"lastEditedTime": {
+													"displayName": "最后编辑时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"textValue": {
+													"displayName": "文本"
+												},
+												"dateValue": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												}
+											}
+										}
+									},
+									"values": {
+										"or": {
+											"displayName": "或",
+											"options": {
+												"key": {
+													"displayName": "属性名称或ID",
+													"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"type": {
+													"displayName": "类型"
+												},
+												"condition": {
+													"displayName": "条件",
+													"description": "用于筛选的属性值",
+													"options": {
+														"equals": {
+															"displayName": "等于"
+														},
+														"before": {
+															"displayName": "之前"
+														},
+														"after": {
+															"displayName": "之后"
+														},
+														"on_or_before": {
+															"displayName": "在或之前"
+														},
+														"is_empty": {
+															"displayName": "为空"
+														},
+														"is_not_empty": {
+															"displayName": "不为空"
+														},
+														"on_or_after": {
+															"displayName": "在或之后"
+														},
+														"past_week": {
+															"displayName": "过去一周"
+														},
+														"past_month": {
+															"displayName": "过去一个月"
+														},
+														"past_year": {
+															"displayName": "过去一年"
+														},
+														"next_week": {
+															"displayName": "下周"
+														},
+														"next_month": {
+															"displayName": "下个月"
+														},
+														"next_year": {
+															"displayName": "明年"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "返回类型",
+													"description": "公式返回类型",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"checkbox": {
+															"displayName": "复选框"
+														},
+														"number": {
+															"displayName": "数字"
+														},
+														"date": {
+															"displayName": "日期"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "标题"
+												},
+												"richTextValue": {
+													"displayName": "文本"
+												},
+												"phoneNumberValue": {
+													"displayName": "电话号码",
+													"description": "电话号码。无固定格式要求。"
+												},
+												"multiSelectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"selectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"statusValue": {
+													"displayName": "状态名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"emailValue": {
+													"displayName": "电子邮件"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"createdByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"lastEditedByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"relationValue": {
+													"displayName": "关系ID"
+												},
+												"checkboxValue": {
+													"displayName": "布尔值",
+													"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+												},
+												"numberValue": {
+													"displayName": "数字",
+													"description": "数值"
+												},
+												"date": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"createdTimeValue": {
+													"displayName": "创建时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"lastEditedTime": {
+													"displayName": "最后编辑时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"textValue": {
+													"displayName": "文本"
+												},
+												"dateValue": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												}
+											}
+										},
+										"and": {
+											"displayName": "与",
+											"options": {
+												"key": {
+													"displayName": "属性名称或ID",
+													"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"type": {
+													"displayName": "类型"
+												},
+												"condition": {
+													"displayName": "条件",
+													"description": "用于筛选的属性值",
+													"options": {
+														"equals": {
+															"displayName": "等于"
+														},
+														"before": {
+															"displayName": "之前"
+														},
+														"after": {
+															"displayName": "之后"
+														},
+														"on_or_before": {
+															"displayName": "在或之前"
+														},
+														"is_empty": {
+															"displayName": "为空"
+														},
+														"is_not_empty": {
+															"displayName": "不为空"
+														},
+														"on_or_after": {
+															"displayName": "在或之后"
+														},
+														"past_week": {
+															"displayName": "过去一周"
+														},
+														"past_month": {
+															"displayName": "过去一个月"
+														},
+														"past_year": {
+															"displayName": "过去一年"
+														},
+														"next_week": {
+															"displayName": "下周"
+														},
+														"next_month": {
+															"displayName": "下个月"
+														},
+														"next_year": {
+															"displayName": "明年"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "返回类型",
+													"description": "公式返回类型",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"checkbox": {
+															"displayName": "复选框"
+														},
+														"number": {
+															"displayName": "数字"
+														},
+														"date": {
+															"displayName": "日期"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "标题"
+												},
+												"richTextValue": {
+													"displayName": "文本"
+												},
+												"phoneNumberValue": {
+													"displayName": "电话号码",
+													"description": "电话号码。无固定格式要求。"
+												},
+												"multiSelectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"selectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"statusValue": {
+													"displayName": "状态名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"emailValue": {
+													"displayName": "电子邮件"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"createdByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"lastEditedByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"relationValue": {
+													"displayName": "关系ID"
+												},
+												"checkboxValue": {
+													"displayName": "布尔值",
+													"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+												},
+												"numberValue": {
+													"displayName": "数字",
+													"description": "数值"
+												},
+												"date": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"createdTimeValue": {
+													"displayName": "创建时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"lastEditedTime": {
+													"displayName": "最后编辑时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"textValue": {
+													"displayName": "文本"
+												},
+												"dateValue": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "条件",
+											"placeholder": "添加条件"
+										}
+									}
+								}
+							}
+						},
+						"filters": {
+							"displayName": "筛选器",
+							"options": {
+								"property": {
+									"displayName": "属性",
+									"description": "用于筛选的属性名称",
+									"options": {
+										"object": {
+											"displayName": "对象"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "用于筛选的属性值",
+									"options": {
+										"database": {
+											"displayName": "数据库"
+										},
+										"page": {
+											"displayName": "页面"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"singleCondition": {
+							"displayName": "单一条件",
+							"options": {
+								"key": {
+									"displayName": "属性名称或ID",
+									"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"type": {
+									"displayName": "类型"
+								},
+								"condition": {
+									"displayName": "条件",
+									"description": "用于筛选的属性值",
+									"options": {
+										"equals": {
+											"displayName": "等于"
+										},
+										"before": {
+											"displayName": "之前"
+										},
+										"after": {
+											"displayName": "之后"
+										},
+										"on_or_before": {
+											"displayName": "在或之前"
+										},
+										"is_empty": {
+											"displayName": "为空"
+										},
+										"is_not_empty": {
+											"displayName": "不为空"
+										},
+										"on_or_after": {
+											"displayName": "在或之后"
+										},
+										"past_week": {
+											"displayName": "过去一周"
+										},
+										"past_month": {
+											"displayName": "过去一个月"
+										},
+										"past_year": {
+											"displayName": "过去一年"
+										},
+										"next_week": {
+											"displayName": "下周"
+										},
+										"next_month": {
+											"displayName": "下个月"
+										},
+										"next_year": {
+											"displayName": "明年"
+										}
+									}
+								},
+								"returnType": {
+									"displayName": "返回类型",
+									"description": "公式返回类型",
+									"options": {
+										"text": {
+											"displayName": "文本"
+										},
+										"checkbox": {
+											"displayName": "复选框"
+										},
+										"number": {
+											"displayName": "数字"
+										},
+										"date": {
+											"displayName": "日期"
+										}
+									}
+								},
+								"titleValue": {
+									"displayName": "标题"
+								},
+								"richTextValue": {
+									"displayName": "文本"
+								},
+								"phoneNumberValue": {
+									"displayName": "电话号码",
+									"description": "电话号码。无固定格式要求。"
+								},
+								"multiSelectValue": {
+									"displayName": "选项名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"selectValue": {
+									"displayName": "选项名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"statusValue": {
+									"displayName": "状态名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"emailValue": {
+									"displayName": "电子邮件"
+								},
+								"urlValue": {
+									"displayName": "URL"
+								},
+								"peopleValue": {
+									"displayName": "用户名或ID",
+									"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"createdByValue": {
+									"displayName": "用户名或ID",
+									"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"lastEditedByValue": {
+									"displayName": "用户名或ID",
+									"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"relationValue": {
+									"displayName": "关系ID"
+								},
+								"checkboxValue": {
+									"displayName": "布尔值",
+									"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+								},
+								"numberValue": {
+									"displayName": "数字",
+									"description": "数值"
+								},
+								"date": {
+									"displayName": "日期",
+									"description": "ISO 8601格式的日期，可选包含时间"
+								},
+								"createdTimeValue": {
+									"displayName": "创建时间",
+									"description": "ISO 8601格式的日期，可选包含时间"
+								},
+								"lastEditedTime": {
+									"displayName": "最后编辑时间",
+									"description": "ISO 8601格式的日期，可选包含时间"
+								},
+								"textValue": {
+									"displayName": "文本"
+								},
+								"dateValue": {
+									"displayName": "日期",
+									"description": "ISO 8601格式的日期，可选包含时间"
+								}
+							}
+						},
+						"multipleCondition": {
+							"displayName": "多重条件",
+							"options": {
+								"condition": {
+									"displayName": "条件",
+									"placeholder": "添加条件",
+									"multipleValueButtonText": "添加条件",
+									"options": {
+										"or": {
+											"displayName": "或",
+											"options": {
+												"key": {
+													"displayName": "属性名称或ID",
+													"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"type": {
+													"displayName": "类型"
+												},
+												"condition": {
+													"displayName": "条件",
+													"description": "用于筛选的属性值",
+													"options": {
+														"equals": {
+															"displayName": "等于"
+														},
+														"before": {
+															"displayName": "之前"
+														},
+														"after": {
+															"displayName": "之后"
+														},
+														"on_or_before": {
+															"displayName": "在或之前"
+														},
+														"is_empty": {
+															"displayName": "为空"
+														},
+														"is_not_empty": {
+															"displayName": "不为空"
+														},
+														"on_or_after": {
+															"displayName": "在或之后"
+														},
+														"past_week": {
+															"displayName": "过去一周"
+														},
+														"past_month": {
+															"displayName": "过去一个月"
+														},
+														"past_year": {
+															"displayName": "过去一年"
+														},
+														"next_week": {
+															"displayName": "下周"
+														},
+														"next_month": {
+															"displayName": "下个月"
+														},
+														"next_year": {
+															"displayName": "明年"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "返回类型",
+													"description": "公式返回类型",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"checkbox": {
+															"displayName": "复选框"
+														},
+														"number": {
+															"displayName": "数字"
+														},
+														"date": {
+															"displayName": "日期"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "标题"
+												},
+												"richTextValue": {
+													"displayName": "文本"
+												},
+												"phoneNumberValue": {
+													"displayName": "电话号码",
+													"description": "电话号码。无固定格式要求。"
+												},
+												"multiSelectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"selectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"statusValue": {
+													"displayName": "状态名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"emailValue": {
+													"displayName": "电子邮件"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"createdByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"lastEditedByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"relationValue": {
+													"displayName": "关系ID"
+												},
+												"checkboxValue": {
+													"displayName": "布尔值",
+													"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+												},
+												"numberValue": {
+													"displayName": "数字",
+													"description": "数值"
+												},
+												"date": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"createdTimeValue": {
+													"displayName": "创建时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"lastEditedTime": {
+													"displayName": "最后编辑时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"textValue": {
+													"displayName": "文本"
+												},
+												"dateValue": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												}
+											}
+										},
+										"and": {
+											"displayName": "与",
+											"options": {
+												"key": {
+													"displayName": "属性名称或ID",
+													"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"type": {
+													"displayName": "类型"
+												},
+												"condition": {
+													"displayName": "条件",
+													"description": "用于筛选的属性值",
+													"options": {
+														"equals": {
+															"displayName": "等于"
+														},
+														"before": {
+															"displayName": "之前"
+														},
+														"after": {
+															"displayName": "之后"
+														},
+														"on_or_before": {
+															"displayName": "在或之前"
+														},
+														"is_empty": {
+															"displayName": "为空"
+														},
+														"is_not_empty": {
+															"displayName": "不为空"
+														},
+														"on_or_after": {
+															"displayName": "在或之后"
+														},
+														"past_week": {
+															"displayName": "过去一周"
+														},
+														"past_month": {
+															"displayName": "过去一个月"
+														},
+														"past_year": {
+															"displayName": "过去一年"
+														},
+														"next_week": {
+															"displayName": "下周"
+														},
+														"next_month": {
+															"displayName": "下个月"
+														},
+														"next_year": {
+															"displayName": "明年"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "返回类型",
+													"description": "公式返回类型",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"checkbox": {
+															"displayName": "复选框"
+														},
+														"number": {
+															"displayName": "数字"
+														},
+														"date": {
+															"displayName": "日期"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "标题"
+												},
+												"richTextValue": {
+													"displayName": "文本"
+												},
+												"phoneNumberValue": {
+													"displayName": "电话号码",
+													"description": "电话号码。无固定格式要求。"
+												},
+												"multiSelectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"selectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"statusValue": {
+													"displayName": "状态名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"emailValue": {
+													"displayName": "电子邮件"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"createdByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"lastEditedByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"relationValue": {
+													"displayName": "关系ID"
+												},
+												"checkboxValue": {
+													"displayName": "布尔值",
+													"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+												},
+												"numberValue": {
+													"displayName": "数字",
+													"description": "数值"
+												},
+												"date": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"createdTimeValue": {
+													"displayName": "创建时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"lastEditedTime": {
+													"displayName": "最后编辑时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"textValue": {
+													"displayName": "文本"
+												},
+												"dateValue": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												}
+											}
+										}
+									},
+									"values": {
+										"or": {
+											"displayName": "或",
+											"options": {
+												"key": {
+													"displayName": "属性名称或ID",
+													"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"type": {
+													"displayName": "类型"
+												},
+												"condition": {
+													"displayName": "条件",
+													"description": "用于筛选的属性值",
+													"options": {
+														"equals": {
+															"displayName": "等于"
+														},
+														"before": {
+															"displayName": "之前"
+														},
+														"after": {
+															"displayName": "之后"
+														},
+														"on_or_before": {
+															"displayName": "在或之前"
+														},
+														"is_empty": {
+															"displayName": "为空"
+														},
+														"is_not_empty": {
+															"displayName": "不为空"
+														},
+														"on_or_after": {
+															"displayName": "在或之后"
+														},
+														"past_week": {
+															"displayName": "过去一周"
+														},
+														"past_month": {
+															"displayName": "过去一个月"
+														},
+														"past_year": {
+															"displayName": "过去一年"
+														},
+														"next_week": {
+															"displayName": "下周"
+														},
+														"next_month": {
+															"displayName": "下个月"
+														},
+														"next_year": {
+															"displayName": "明年"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "返回类型",
+													"description": "公式返回类型",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"checkbox": {
+															"displayName": "复选框"
+														},
+														"number": {
+															"displayName": "数字"
+														},
+														"date": {
+															"displayName": "日期"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "标题"
+												},
+												"richTextValue": {
+													"displayName": "文本"
+												},
+												"phoneNumberValue": {
+													"displayName": "电话号码",
+													"description": "电话号码。无固定格式要求。"
+												},
+												"multiSelectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"selectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"statusValue": {
+													"displayName": "状态名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"emailValue": {
+													"displayName": "电子邮件"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"createdByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"lastEditedByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"relationValue": {
+													"displayName": "关系ID"
+												},
+												"checkboxValue": {
+													"displayName": "布尔值",
+													"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+												},
+												"numberValue": {
+													"displayName": "数字",
+													"description": "数值"
+												},
+												"date": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"createdTimeValue": {
+													"displayName": "创建时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"lastEditedTime": {
+													"displayName": "最后编辑时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"textValue": {
+													"displayName": "文本"
+												},
+												"dateValue": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												}
+											}
+										},
+										"and": {
+											"displayName": "与",
+											"options": {
+												"key": {
+													"displayName": "属性名称或ID",
+													"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"type": {
+													"displayName": "类型"
+												},
+												"condition": {
+													"displayName": "条件",
+													"description": "用于筛选的属性值",
+													"options": {
+														"equals": {
+															"displayName": "等于"
+														},
+														"before": {
+															"displayName": "之前"
+														},
+														"after": {
+															"displayName": "之后"
+														},
+														"on_or_before": {
+															"displayName": "在或之前"
+														},
+														"is_empty": {
+															"displayName": "为空"
+														},
+														"is_not_empty": {
+															"displayName": "不为空"
+														},
+														"on_or_after": {
+															"displayName": "在或之后"
+														},
+														"past_week": {
+															"displayName": "过去一周"
+														},
+														"past_month": {
+															"displayName": "过去一个月"
+														},
+														"past_year": {
+															"displayName": "过去一年"
+														},
+														"next_week": {
+															"displayName": "下周"
+														},
+														"next_month": {
+															"displayName": "下个月"
+														},
+														"next_year": {
+															"displayName": "明年"
+														}
+													}
+												},
+												"returnType": {
+													"displayName": "返回类型",
+													"description": "公式返回类型",
+													"options": {
+														"text": {
+															"displayName": "文本"
+														},
+														"checkbox": {
+															"displayName": "复选框"
+														},
+														"number": {
+															"displayName": "数字"
+														},
+														"date": {
+															"displayName": "日期"
+														}
+													}
+												},
+												"titleValue": {
+													"displayName": "标题"
+												},
+												"richTextValue": {
+													"displayName": "文本"
+												},
+												"phoneNumberValue": {
+													"displayName": "电话号码",
+													"description": "电话号码。无固定格式要求。"
+												},
+												"multiSelectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"selectValue": {
+													"displayName": "选项名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"statusValue": {
+													"displayName": "状态名称或ID",
+													"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+												},
+												"emailValue": {
+													"displayName": "电子邮件"
+												},
+												"urlValue": {
+													"displayName": "URL"
+												},
+												"peopleValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"createdByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"lastEditedByValue": {
+													"displayName": "用户名或ID",
+													"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+												},
+												"relationValue": {
+													"displayName": "关系ID"
+												},
+												"checkboxValue": {
+													"displayName": "布尔值",
+													"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+												},
+												"numberValue": {
+													"displayName": "数字",
+													"description": "数值"
+												},
+												"date": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"createdTimeValue": {
+													"displayName": "创建时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"lastEditedTime": {
+													"displayName": "最后编辑时间",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												},
+												"textValue": {
+													"displayName": "文本"
+												},
+												"dateValue": {
+													"displayName": "日期",
+													"description": "ISO 8601格式的日期，可选包含时间"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "条件",
+											"placeholder": "添加条件"
+										}
+									}
+								}
+							}
+						},
+						"filter": {
+							"displayName": "筛选器",
+							"placeholder": "添加筛选器"
+						},
+						"filters": {
+							"displayName": "筛选器",
+							"options": {
+								"property": {
+									"displayName": "属性",
+									"description": "用于筛选的属性名称",
+									"options": {
+										"object": {
+											"displayName": "对象"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "用于筛选的属性值",
+									"options": {
+										"database": {
+											"displayName": "数据库"
+										},
+										"page": {
+											"displayName": "页面"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "页面标题。显示在页面顶部，可通过快速查找定位。"
+		},
+		"propertiesUi": {
+			"displayName": "属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"propertyValues": {
+					"displayName": "属性",
+					"options": {
+						"key": {
+							"displayName": "键名或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"type": {
+							"displayName": "类型"
+						},
+						"title": {
+							"displayName": "标题"
+						},
+						"richText": {
+							"displayName": "富文本"
+						},
+						"textContent": {
+							"displayName": "文本"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "区块中的富文本",
+							"placeholder": "添加文本",
+							"multipleValueButtonText": "添加文本",
+							"options": {
+								"text": {
+									"displayName": "文本",
+									"options": {
+										"textType": {
+											"displayName": "类型",
+											"options": {
+												"equation": {
+													"displayName": "公式"
+												},
+												"mention": {
+													"displayName": "提及"
+												},
+												"text": {
+													"displayName": "文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "文本内容。此字段包含文本的实际内容，可能是您最常使用的字段。"
+										},
+										"isLink": {
+											"displayName": "是否为链接"
+										},
+										"textLink": {
+											"displayName": "文本链接",
+											"description": "此链接指向的URL"
+										},
+										"mentionType": {
+											"displayName": "类型",
+											"description": "用户、页面、数据库或日期的内联提及。在应用中，通过输入@后跟用户、页面、数据库名称或日期来创建。",
+											"options": {
+												"database": {
+													"displayName": "数据库"
+												},
+												"date": {
+													"displayName": "日期"
+												},
+												"page": {
+													"displayName": "页面"
+												},
+												"user": {
+													"displayName": "用户"
+												}
+											}
+										},
+										"user": {
+											"displayName": "用户名或ID",
+											"description": "被提及用户的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+										},
+										"page": {
+											"displayName": "页面ID",
+											"description": "被提及页面的ID"
+										},
+										"database": {
+											"displayName": "数据库",
+											"description": "提到的Notion数据库"
+										},
+										"range": {
+											"displayName": "范围",
+											"description": "是否要定义日期范围"
+										},
+										"date": {
+											"displayName": "日期",
+											"description": "ISO 8601格式的日期，可选包含时间"
+										},
+										"dateStart": {
+											"displayName": "开始日期",
+											"description": "ISO 8601格式的日期，可选包含时间"
+										},
+										"dateEnd": {
+											"displayName": "结束日期",
+											"description": "ISO 8601格式的日期，可包含时间。表示日期范围的结束。"
+										},
+										"expression": {
+											"displayName": "表达式"
+										},
+										"annotationUi": {
+											"displayName": "注释",
+											"description": "适用于此富文本的所有批注",
+											"placeholder": "添加批注",
+											"options": {
+												"bold": {
+													"displayName": "粗体",
+													"description": "文本是否为粗体"
+												},
+												"italic": {
+													"displayName": "斜体",
+													"description": "文本是否为斜体"
+												},
+												"strikethrough": {
+													"displayName": "删除线",
+													"description": "文本是否被划掉"
+												},
+												"underline": {
+													"displayName": "下划线",
+													"description": "文本是否带有下划线"
+												},
+												"code": {
+													"displayName": "代码",
+													"description": "文本是否为代码风格"
+												},
+												"color": {
+													"displayName": "颜色",
+													"description": "文本颜色",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"gray": {
+															"displayName": "灰色"
+														},
+														"brown": {
+															"displayName": "棕色"
+														},
+														"orange": {
+															"displayName": "橙色"
+														},
+														"yellow": {
+															"displayName": "黄色"
+														},
+														"green": {
+															"displayName": "绿色"
+														},
+														"blue": {
+															"displayName": "蓝色"
+														},
+														"purple": {
+															"displayName": "紫色"
+														},
+														"pink": {
+															"displayName": "粉色"
+														},
+														"red": {
+															"displayName": "红色"
+														},
+														"gray_background": {
+															"displayName": "灰色背景"
+														},
+														"brown_background": {
+															"displayName": "棕色背景"
+														},
+														"orange_background": {
+															"displayName": "橙色背景"
+														},
+														"yellow_background": {
+															"displayName": "黄色背景"
+														},
+														"green_background": {
+															"displayName": "绿色背景"
+														},
+														"blue_background": {
+															"displayName": "蓝色背景"
+														},
+														"purple_background": {
+															"displayName": "紫色背景"
+														},
+														"pink_background": {
+															"displayName": "粉色背景"
+														},
+														"red_background": {
+															"displayName": "红色背景"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"text": {
+									"displayName": "文本",
+									"placeholder": "添加文本"
+								}
+							}
+						},
+						"phoneValue": {
+							"displayName": "电话号码",
+							"description": "电话号码。无固定格式要求。"
+						},
+						"multiSelectValue": {
+							"displayName": "选项名称或ID",
+							"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+						},
+						"selectValue": {
+							"displayName": "选项名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"statusValue": {
+							"displayName": "状态名称或ID",
+							"description": "要设置的选项名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"emailValue": {
+							"displayName": "电子邮件",
+							"description": "邮箱地址"
+						},
+						"ignoreIfEmpty": {
+							"displayName": "如果为空则忽略"
+						},
+						"urlValue": {
+							"displayName": "URL",
+							"description": "网址"
+						},
+						"peopleValue": {
+							"displayName": "用户名称或ID",
+							"description": "用户列表。多个用户可用逗号分隔定义。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"relationValue": {
+							"displayName": "关联ID",
+							"description": "属于其他数据库的数据库列表。可定义多个，用逗号分隔。"
+						},
+						"checkboxValue": {
+							"displayName": "已选中",
+							"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中。"
+						},
+						"numberValue": {
+							"displayName": "数字",
+							"description": "数值"
+						},
+						"range": {
+							"displayName": "范围",
+							"description": "是否要定义日期范围"
+						},
+						"includeTime": {
+							"displayName": "包含时间",
+							"description": "是否在日期中包含时间"
+						},
+						"date": {
+							"displayName": "日期",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"dateStart": {
+							"displayName": "开始日期",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"dateEnd": {
+							"displayName": "结束日期",
+							"description": "ISO 8601格式的日期，可包含时间。表示日期范围的结束。"
+						},
+						"timezone": {
+							"displayName": "时区名称或ID",
+							"description": "使用的时区。默认使用n8n时区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"fileUrls": {
+							"displayName": "文件URL",
+							"placeholder": "添加文件",
+							"multipleValueButtonText": "添加文件",
+							"options": {
+								"fileUrl": {
+									"displayName": "文件",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"url": {
+											"displayName": "文件URL",
+											"description": "链接到外部托管文件"
+										}
+									}
+								}
+							},
+							"values": {
+								"fileUrl": {
+									"displayName": "文件",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"url": {
+											"displayName": "文件URL",
+											"description": "链接到外部托管文件"
+										}
+									}
+								},
+								"fileUrls": {
+									"displayName": "文件URL",
+									"placeholder": "添加文件"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"propertyValues": {
+					"displayName": "属性",
+					"options": {
+						"key": {
+							"displayName": "键名或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"type": {
+							"displayName": "类型"
+						},
+						"title": {
+							"displayName": "标题"
+						},
+						"richText": {
+							"displayName": "富文本"
+						},
+						"textContent": {
+							"displayName": "文本"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "区块中的富文本",
+							"placeholder": "添加文本",
+							"multipleValueButtonText": "添加文本",
+							"options": {
+								"text": {
+									"displayName": "文本",
+									"options": {
+										"textType": {
+											"displayName": "类型",
+											"options": {
+												"equation": {
+													"displayName": "公式"
+												},
+												"mention": {
+													"displayName": "提及"
+												},
+												"text": {
+													"displayName": "文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "文本内容。此字段包含文本的实际内容，可能是您最常使用的字段。"
+										},
+										"isLink": {
+											"displayName": "是否为链接"
+										},
+										"textLink": {
+											"displayName": "文本链接",
+											"description": "此链接指向的URL"
+										},
+										"mentionType": {
+											"displayName": "类型",
+											"description": "用户、页面、数据库或日期的内联提及。在应用中，通过输入@后跟用户、页面、数据库名称或日期来创建。",
+											"options": {
+												"database": {
+													"displayName": "数据库"
+												},
+												"date": {
+													"displayName": "日期"
+												},
+												"page": {
+													"displayName": "页面"
+												},
+												"user": {
+													"displayName": "用户"
+												}
+											}
+										},
+										"user": {
+											"displayName": "用户名或ID",
+											"description": "被提及用户的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+										},
+										"page": {
+											"displayName": "页面ID",
+											"description": "被提及页面的ID"
+										},
+										"database": {
+											"displayName": "数据库",
+											"description": "提到的Notion数据库"
+										},
+										"range": {
+											"displayName": "范围",
+											"description": "是否要定义日期范围"
+										},
+										"date": {
+											"displayName": "日期",
+											"description": "ISO 8601格式的日期，可选包含时间"
+										},
+										"dateStart": {
+											"displayName": "开始日期",
+											"description": "ISO 8601格式的日期，可选包含时间"
+										},
+										"dateEnd": {
+											"displayName": "结束日期",
+											"description": "ISO 8601格式的日期，可包含时间。表示日期范围的结束。"
+										},
+										"expression": {
+											"displayName": "表达式"
+										},
+										"annotationUi": {
+											"displayName": "注释",
+											"description": "适用于此富文本的所有批注",
+											"placeholder": "添加批注",
+											"options": {
+												"bold": {
+													"displayName": "粗体",
+													"description": "文本是否为粗体"
+												},
+												"italic": {
+													"displayName": "斜体",
+													"description": "文本是否为斜体"
+												},
+												"strikethrough": {
+													"displayName": "删除线",
+													"description": "文本是否被划掉"
+												},
+												"underline": {
+													"displayName": "下划线",
+													"description": "文本是否带有下划线"
+												},
+												"code": {
+													"displayName": "代码",
+													"description": "文本是否为代码风格"
+												},
+												"color": {
+													"displayName": "颜色",
+													"description": "文本颜色",
+													"options": {
+														"default": {
+															"displayName": "默认"
+														},
+														"gray": {
+															"displayName": "灰色"
+														},
+														"brown": {
+															"displayName": "棕色"
+														},
+														"orange": {
+															"displayName": "橙色"
+														},
+														"yellow": {
+															"displayName": "黄色"
+														},
+														"green": {
+															"displayName": "绿色"
+														},
+														"blue": {
+															"displayName": "蓝色"
+														},
+														"purple": {
+															"displayName": "紫色"
+														},
+														"pink": {
+															"displayName": "粉色"
+														},
+														"red": {
+															"displayName": "红色"
+														},
+														"gray_background": {
+															"displayName": "灰色背景"
+														},
+														"brown_background": {
+															"displayName": "棕色背景"
+														},
+														"orange_background": {
+															"displayName": "橙色背景"
+														},
+														"yellow_background": {
+															"displayName": "黄色背景"
+														},
+														"green_background": {
+															"displayName": "绿色背景"
+														},
+														"blue_background": {
+															"displayName": "蓝色背景"
+														},
+														"purple_background": {
+															"displayName": "紫色背景"
+														},
+														"pink_background": {
+															"displayName": "粉色背景"
+														},
+														"red_background": {
+															"displayName": "红色背景"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"text": {
+									"displayName": "文本",
+									"placeholder": "添加文本"
+								}
+							}
+						},
+						"phoneValue": {
+							"displayName": "电话号码",
+							"description": "电话号码。无固定格式要求。"
+						},
+						"multiSelectValue": {
+							"displayName": "选项名称或ID",
+							"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+						},
+						"selectValue": {
+							"displayName": "选项名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"statusValue": {
+							"displayName": "状态名称或ID",
+							"description": "要设置的选项名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"emailValue": {
+							"displayName": "电子邮件",
+							"description": "邮箱地址"
+						},
+						"ignoreIfEmpty": {
+							"displayName": "如果为空则忽略"
+						},
+						"urlValue": {
+							"displayName": "URL",
+							"description": "网址"
+						},
+						"peopleValue": {
+							"displayName": "用户名称或ID",
+							"description": "用户列表。多个用户可用逗号分隔定义。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"relationValue": {
+							"displayName": "关联ID",
+							"description": "属于其他数据库的数据库列表。可定义多个，用逗号分隔。"
+						},
+						"checkboxValue": {
+							"displayName": "已选中",
+							"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中。"
+						},
+						"numberValue": {
+							"displayName": "数字",
+							"description": "数值"
+						},
+						"range": {
+							"displayName": "范围",
+							"description": "是否要定义日期范围"
+						},
+						"includeTime": {
+							"displayName": "包含时间",
+							"description": "是否在日期中包含时间"
+						},
+						"date": {
+							"displayName": "日期",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"dateStart": {
+							"displayName": "开始日期",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"dateEnd": {
+							"displayName": "结束日期",
+							"description": "ISO 8601格式的日期，可包含时间。表示日期范围的结束。"
+						},
+						"timezone": {
+							"displayName": "时区名称或ID",
+							"description": "使用的时区。默认使用n8n时区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"fileUrls": {
+							"displayName": "文件URL",
+							"placeholder": "添加文件",
+							"multipleValueButtonText": "添加文件",
+							"options": {
+								"fileUrl": {
+									"displayName": "文件",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"url": {
+											"displayName": "文件URL",
+											"description": "链接到外部托管文件"
+										}
+									}
+								}
+							},
+							"values": {
+								"fileUrl": {
+									"displayName": "文件",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"url": {
+											"displayName": "文件URL",
+											"description": "链接到外部托管文件"
+										}
+									}
+								},
+								"fileUrls": {
+									"displayName": "文件URL",
+									"placeholder": "添加文件"
+								}
+							}
+						}
+					}
+				},
+				"propertiesUi": {
+					"displayName": "属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"pageId": {
+			"displayName": "页面链接或ID",
+			"description": "来自Notion“复制链接”功能的页面URL（或仅URL中包含的ID）"
+		},
+		"filterType": {
+			"displayName": "筛选",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"manual": {
+					"displayName": "手动构建"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"matchType": {
+			"displayName": "必须匹配",
+			"options": {
+				"anyFilter": {
+					"displayName": "任意筛选器"
+				},
+				"allFilters": {
+					"displayName": "所有筛选器"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加条件",
+			"multipleValueButtonText": "添加条件",
+			"options": {
+				"conditions": {
+					"displayName": "条件",
+					"options": {
+						"key": {
+							"displayName": "属性名称或ID",
+							"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"type": {
+							"displayName": "类型"
+						},
+						"condition": {
+							"displayName": "条件",
+							"description": "用于筛选的属性值",
+							"options": {
+								"equals": {
+									"displayName": "等于"
+								},
+								"before": {
+									"displayName": "之前"
+								},
+								"after": {
+									"displayName": "之后"
+								},
+								"on_or_before": {
+									"displayName": "在或之前"
+								},
+								"is_empty": {
+									"displayName": "为空"
+								},
+								"is_not_empty": {
+									"displayName": "不为空"
+								},
+								"on_or_after": {
+									"displayName": "在或之后"
+								},
+								"past_week": {
+									"displayName": "过去一周"
+								},
+								"past_month": {
+									"displayName": "过去一个月"
+								},
+								"past_year": {
+									"displayName": "过去一年"
+								},
+								"next_week": {
+									"displayName": "下周"
+								},
+								"next_month": {
+									"displayName": "下个月"
+								},
+								"next_year": {
+									"displayName": "明年"
+								}
+							}
+						},
+						"returnType": {
+							"displayName": "返回类型",
+							"description": "公式返回类型",
+							"options": {
+								"text": {
+									"displayName": "文本"
+								},
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"date": {
+									"displayName": "日期"
+								}
+							}
+						},
+						"titleValue": {
+							"displayName": "标题"
+						},
+						"richTextValue": {
+							"displayName": "文本"
+						},
+						"phoneNumberValue": {
+							"displayName": "电话号码",
+							"description": "电话号码。无固定格式要求。"
+						},
+						"multiSelectValue": {
+							"displayName": "选项名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"selectValue": {
+							"displayName": "选项名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"statusValue": {
+							"displayName": "状态名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"emailValue": {
+							"displayName": "电子邮件"
+						},
+						"urlValue": {
+							"displayName": "URL"
+						},
+						"peopleValue": {
+							"displayName": "用户名或ID",
+							"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"createdByValue": {
+							"displayName": "用户名或ID",
+							"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"lastEditedByValue": {
+							"displayName": "用户名或ID",
+							"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"relationValue": {
+							"displayName": "关系ID"
+						},
+						"checkboxValue": {
+							"displayName": "布尔值",
+							"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+						},
+						"numberValue": {
+							"displayName": "数字",
+							"description": "数值"
+						},
+						"date": {
+							"displayName": "日期",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"createdTimeValue": {
+							"displayName": "创建时间",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"lastEditedTime": {
+							"displayName": "最后编辑时间",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"textValue": {
+							"displayName": "文本"
+						},
+						"dateValue": {
+							"displayName": "日期",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						}
+					}
+				}
+			},
+			"values": {
+				"conditions": {
+					"displayName": "条件",
+					"options": {
+						"key": {
+							"displayName": "属性名称或ID",
+							"description": "用于筛选的属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"type": {
+							"displayName": "类型"
+						},
+						"condition": {
+							"displayName": "条件",
+							"description": "用于筛选的属性值",
+							"options": {
+								"equals": {
+									"displayName": "等于"
+								},
+								"before": {
+									"displayName": "之前"
+								},
+								"after": {
+									"displayName": "之后"
+								},
+								"on_or_before": {
+									"displayName": "在或之前"
+								},
+								"is_empty": {
+									"displayName": "为空"
+								},
+								"is_not_empty": {
+									"displayName": "不为空"
+								},
+								"on_or_after": {
+									"displayName": "在或之后"
+								},
+								"past_week": {
+									"displayName": "过去一周"
+								},
+								"past_month": {
+									"displayName": "过去一个月"
+								},
+								"past_year": {
+									"displayName": "过去一年"
+								},
+								"next_week": {
+									"displayName": "下周"
+								},
+								"next_month": {
+									"displayName": "下个月"
+								},
+								"next_year": {
+									"displayName": "明年"
+								}
+							}
+						},
+						"returnType": {
+							"displayName": "返回类型",
+							"description": "公式返回类型",
+							"options": {
+								"text": {
+									"displayName": "文本"
+								},
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"date": {
+									"displayName": "日期"
+								}
+							}
+						},
+						"titleValue": {
+							"displayName": "标题"
+						},
+						"richTextValue": {
+							"displayName": "文本"
+						},
+						"phoneNumberValue": {
+							"displayName": "电话号码",
+							"description": "电话号码。无固定格式要求。"
+						},
+						"multiSelectValue": {
+							"displayName": "选项名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"selectValue": {
+							"displayName": "选项名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"statusValue": {
+							"displayName": "状态名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"emailValue": {
+							"displayName": "电子邮件"
+						},
+						"urlValue": {
+							"displayName": "URL"
+						},
+						"peopleValue": {
+							"displayName": "用户名或ID",
+							"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"createdByValue": {
+							"displayName": "用户名或ID",
+							"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"lastEditedByValue": {
+							"displayName": "用户名或ID",
+							"description": "用户列表。可定义多个用户，用逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"relationValue": {
+							"displayName": "关系ID"
+						},
+						"checkboxValue": {
+							"displayName": "布尔值",
+							"description": "复选框是否被选中。<code>true</code> 表示已选中。<code>false</code> 表示未选中"
+						},
+						"numberValue": {
+							"displayName": "数字",
+							"description": "数值"
+						},
+						"date": {
+							"displayName": "日期",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"createdTimeValue": {
+							"displayName": "创建时间",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"lastEditedTime": {
+							"displayName": "最后编辑时间",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						},
+						"textValue": {
+							"displayName": "文本"
+						},
+						"dateValue": {
+							"displayName": "日期",
+							"description": "ISO 8601格式的日期，可选包含时间"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "筛选器",
+					"placeholder": "添加条件"
+				}
+			}
+		},
+		"jsonNotice": {
+			"displayName": "查看<a href=\"https://developers.notion.com/reference/post-database-query#post-database-query-filter\" target=\"_blank\">Notion指南</a>以创建筛选器"
+		},
+		"filterJson": {
+			"displayName": "过滤器 (JSON)"
+		},
+		"userId": {
+			"displayName": "用户ID"
+		}
+	}
+}

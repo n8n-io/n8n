@@ -1,0 +1,165 @@
+{
+	"header": {
+		"displayName": "NASA",
+		"description": "Retrieve data from the NASA API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"asteroidNeoBrowse": {
+					"displayName": "Asteroid Neo-Browse"
+				},
+				"asteroidNeoFeed": {
+					"displayName": "Asteroid Neo-Feed"
+				},
+				"asteroidNeoLookup": {
+					"displayName": "Asteroid Neo-Lookup"
+				},
+				"astronomyPictureOfTheDay": {
+					"displayName": "Astronomy Picture of the Day"
+				},
+				"donkiCoronalMassEjection": {
+					"displayName": "DONKI Coronal Mass Ejection"
+				},
+				"donkiHighSpeedStream": {
+					"displayName": "DONKI High Speed Stream"
+				},
+				"donkiInterplanetaryShock": {
+					"displayName": "DONKI Interplanetary Shock"
+				},
+				"donkiMagnetopauseCrossing": {
+					"displayName": "DONKI Magnetopause Crossing"
+				},
+				"donkiNotifications": {
+					"displayName": "DONKI Notification"
+				},
+				"donkiRadiationBeltEnhancement": {
+					"displayName": "DONKI Radiation Belt Enhancement"
+				},
+				"donkiSolarEnergeticParticle": {
+					"displayName": "DONKI Solar Energetic Particle"
+				},
+				"donkiSolarFlare": {
+					"displayName": "DONKI Solar Flare"
+				},
+				"donkiWsaEnlilSimulation": {
+					"displayName": "DONKI WSA+EnlilSimulation"
+				},
+				"earthAssets": {
+					"displayName": "Earth Asset"
+				},
+				"earthImagery": {
+					"displayName": "Earth Imagery"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve Two-Line Element Set data"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Browse the overall asteroid dataset"
+				}
+			}
+		},
+		"asteroidId": {
+			"displayName": "Asteroid ID",
+			"description": "The ID of the asteroid to be returned",
+			"placeholder": "3542519"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add field",
+			"options": {
+				"includeCloseApproachData": {
+					"displayName": "Include Close Approach Data",
+					"description": "Whether to include all the close approach data in the asteroid lookup"
+				},
+				"date": {
+					"displayName": "Date",
+					"placeholder": "YYYY-MM-DD",
+					"description": "Date of the image"
+				},
+				"startDate": {
+					"displayName": "Start Date",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"endDate": {
+					"displayName": "End Date",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"location": {
+					"displayName": "Location",
+					"description": "The location of the geomagnetic storm",
+					"options": {
+						"ALL": {
+							"displayName": "All"
+						},
+						"earth": {
+							"displayName": "Earth"
+						},
+						"MESSENGER": {
+							"displayName": "Messenger"
+						},
+						"STEREO A": {
+							"displayName": "Stereo A"
+						},
+						"STEREO B": {
+							"displayName": "Stereo B"
+						}
+					}
+				},
+				"catalog": {
+					"displayName": "Catalog",
+					"description": "The catalog of the geomagnetic storm",
+					"options": {
+						"ALL": {
+							"displayName": "All"
+						},
+						"SWRC_CATALOG": {
+							"displayName": "SWRC Catalog"
+						},
+						"WINSLOW_MESSENGER_ICME_CATALOG": {
+							"displayName": "Winslow Messenger ICME Catalog"
+						}
+					}
+				},
+				"dim": {
+					"displayName": "Degrees",
+					"description": "Width and height of the image in degrees",
+					"placeholder": "0.025"
+				}
+			}
+		},
+		"download": {
+			"displayName": "Download Image",
+			"description": "By default just the URL of the image is returned. When set to true the image will be downloaded."
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field"
+		},
+		"lat": {
+			"displayName": "Latitude",
+			"description": "Latitude for the location of the image",
+			"placeholder": "47.751076"
+		},
+		"lon": {
+			"displayName": "Longitude",
+			"description": "Longitude for the location of the image",
+			"placeholder": "-120.740135"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		}
+	}
+}

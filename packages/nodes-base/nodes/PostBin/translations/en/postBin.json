@@ -1,0 +1,112 @@
+{
+	"header": {
+		"displayName": "PostBin",
+		"description": "Consume PostBin API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"bin": {
+					"displayName": "Bin"
+				},
+				"request": {
+					"displayName": "Request"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create bin"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a request"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a bin"
+				},
+				"removeFirst": {
+					"displayName": "Remove First",
+					"description": "Remove the first request from bin"
+				},
+				"send": {
+					"displayName": "Send",
+					"description": "Send a test request to the bin"
+				}
+			}
+		},
+		"binId": {
+			"displayName": "Bin ID",
+			"description": "Unique identifier for each bin"
+		},
+		"binContent": {
+			"displayName": "Bin Content"
+		},
+		"requestId": {
+			"displayName": "Request ID",
+			"description": "Unique identifier for each request"
+		},
+		"requestOptions": {
+			"displayName": "Request Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batching": {
+					"displayName": "Batching",
+					"placeholder": "Add Batching",
+					"options": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						},
+						"batching": {
+							"displayName": "Batching",
+							"placeholder": "Add Batching"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to accept the response even if SSL certificate validation is not possible"
+				},
+				"proxy": {
+					"displayName": "Proxy",
+					"description": "HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128",
+					"placeholder": "e.g. http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for the server to send response headers (and start the response body) before aborting the request"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,250 @@
+{
+	"header": {
+		"displayName": "Gmail",
+		"description": "使用Gmail API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				},
+				"serviceAccount": {
+					"displayName": "服务账号"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"draft": {
+					"displayName": "草稿"
+				},
+				"label": {
+					"displayName": "标签"
+				},
+				"message": {
+					"displayName": "消息"
+				},
+				"messageLabel": {
+					"displayName": "消息标签"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"reply": {
+					"displayName": "回复"
+				},
+				"send": {
+					"displayName": "发送"
+				},
+				"add": {
+					"displayName": "添加"
+				},
+				"remove": {
+					"displayName": "移除"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "消息ID",
+			"placeholder": "172ce2c4a72cc243"
+		},
+		"subject": {
+			"displayName": "主题",
+			"placeholder": "你好世界！"
+		},
+		"includeHtml": {
+			"displayName": "HTML",
+			"description": "消息是否也应包含为HTML格式"
+		},
+		"htmlMessage": {
+			"displayName": "HTML消息",
+			"description": "HTML消息正文"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "纯文本消息正文",
+			"placeholder": "你好，世界！"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"toList": {
+					"displayName": "收件人邮箱",
+					"description": "收件人的电子邮件地址",
+					"placeholder": "info@example.com"
+				},
+				"ccList": {
+					"displayName": "抄送邮箱",
+					"description": "抄送收件人的电子邮件地址",
+					"placeholder": "info@example.com"
+				},
+				"bccList": {
+					"displayName": "密送邮箱",
+					"description": "密件抄送收件人的电子邮件地址",
+					"placeholder": "info@example.com"
+				},
+				"attachmentsUi": {
+					"displayName": "附件",
+					"description": "要添加到消息中的受支持附件数组",
+					"placeholder": "添加附件",
+					"multipleValueButtonText": "添加附件",
+					"options": {
+						"attachmentsBinary": {
+							"displayName": "附件二进制",
+							"options": {
+								"property": {
+									"displayName": "附件字段名称（在输入中）",
+									"description": "添加来自输入节点的字段名称。多个属性可以用逗号分隔设置。"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachmentsBinary": {
+							"displayName": "附件二进制",
+							"options": {
+								"property": {
+									"displayName": "附件字段名称（在输入中）",
+									"description": "添加来自输入节点的字段名称。多个属性可以用逗号分隔设置。"
+								}
+							}
+						},
+						"attachmentsUi": {
+							"displayName": "附件",
+							"placeholder": "添加附件"
+						}
+					}
+				},
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "附件前缀",
+					"description": "用于写入附件的二进制属性名称前缀。将添加从0开始的索引。例如，如果名称是\"attachment_\"，则第一个附件将保存为\"attachment_0\"。"
+				},
+				"format": {
+					"displayName": "格式",
+					"description": "返回消息的格式",
+					"options": {
+						"full": {
+							"displayName": "完整",
+							"description": "返回完整的电子邮件消息数据，其中正文内容已解析到payload字段中"
+						},
+						"metadata": {
+							"displayName": "元数据",
+							"description": "仅返回邮件消息ID、标签和邮件头"
+						},
+						"minimal": {
+							"displayName": "最小化",
+							"description": "仅返回邮件消息ID和标签；不返回邮件标头、正文或有效载荷"
+						},
+						"raw": {
+							"displayName": "返回完整的电子邮件消息数据，其中正文内容以base64url编码字符串的形式存储在raw字段中；payload字段未被使用",
+							"description": "返回完整的电子邮件消息数据，其中原始字段中的正文内容以base64url编码字符串表示；不使用payload字段"
+						},
+						"resolved": {
+							"displayName": "已解析",
+							"description": "返回完整的电子邮件，包含所有已解析的数据以及保存为二进制数据的附件"
+						},
+						"ids": {
+							"displayName": "ID",
+							"description": "仅返回邮件的ID"
+						}
+					}
+				},
+				"includeSpamTrash": {
+					"displayName": "包含垃圾邮件和已删除邮件",
+					"description": "是否在结果中包含来自垃圾邮件和已删除邮件的消息"
+				},
+				"senderName": {
+					"displayName": "覆盖发件人名称",
+					"description": "在收件人收件箱中显示的名称。格式必须为：“显示名称 &#60;name@gmail.com&#62;”。电子邮件地址必须与API登录用户的电子邮件地址匹配。",
+					"placeholder": "名称 <test@gmail.com>"
+				},
+				"labelIds": {
+					"displayName": "标签名称或ID",
+					"description": "仅返回匹配所有指定标签ID的消息。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"q": {
+					"displayName": "查询",
+					"description": "Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, \"from:someuser@example.com rfc822msgid:&lt;somemsgid@example.com&gt; is:unread\". Parameter cannot be used when accessing the api using the gmail.metadata scope."
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "标签名称",
+			"placeholder": "发票"
+		},
+		"labelId": {
+			"displayName": "标签ID",
+			"description": "标签的ID"
+		},
+		"labelListVisibility": {
+			"displayName": "标签列表可见性",
+			"description": "标签在Gmail网页界面标签列表中的可见性",
+			"options": {
+				"labelHide": {
+					"displayName": "隐藏"
+				},
+				"labelShow": {
+					"displayName": "显示"
+				},
+				"labelShowIfUnread": {
+					"displayName": "显示未读"
+				}
+			}
+		},
+		"messageListVisibility": {
+			"displayName": "邮件列表可见性",
+			"description": "在Gmail网页界面中，带有此标签的邮件在邮件列表中的可见性",
+			"options": {
+				"hide": {
+					"displayName": "隐藏"
+				},
+				"show": {
+					"displayName": "显示"
+				}
+			}
+		},
+		"threadId": {
+			"displayName": "线程ID",
+			"placeholder": "172ce2c4a72cc243"
+		},
+		"toList": {
+			"displayName": "收件人邮箱",
+			"description": "收件人的电子邮件地址",
+			"placeholder": "info@example.com"
+		},
+		"labelIds": {
+			"displayName": "标签名称或ID",
+			"description": "标签的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

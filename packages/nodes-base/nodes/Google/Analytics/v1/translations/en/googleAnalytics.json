@@ -1,0 +1,334 @@
+{
+	"header": {
+		"displayName": "Google Analytics",
+		"description": "Use the Google Analytics API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"report": {
+					"displayName": "Report"
+				},
+				"userActivity": {
+					"displayName": "User Activity"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Return the analytics data"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Return user activity data"
+				}
+			}
+		},
+		"viewId": {
+			"displayName": "View Name or ID",
+			"description": "The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "123456"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"dateRangesUi": {
+					"displayName": "Date Ranges",
+					"description": "Date ranges in the request",
+					"placeholder": "Add Date Range",
+					"options": {
+						"dateRanges": {
+							"displayName": "Date Range",
+							"options": {
+								"startDate": {
+									"displayName": "Start Date"
+								},
+								"endDate": {
+									"displayName": "End Date"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRanges": {
+							"displayName": "Date Range",
+							"options": {
+								"startDate": {
+									"displayName": "Start Date"
+								},
+								"endDate": {
+									"displayName": "End Date"
+								}
+							}
+						},
+						"dateRangesUi": {
+							"displayName": "Date Ranges",
+							"placeholder": "Add Date Range"
+						}
+					}
+				},
+				"dimensionUi": {
+					"displayName": "Dimensions",
+					"description": "Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, \"Paris\" or \"New York\", from which a session originates.",
+					"placeholder": "Add Dimension",
+					"multipleValueButtonText": "Add Dimension",
+					"options": {
+						"dimensionValues": {
+							"displayName": "Dimension",
+							"options": {
+								"name": {
+									"displayName": "Name or ID",
+									"description": "Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								}
+							}
+						}
+					},
+					"values": {
+						"dimensionValues": {
+							"displayName": "Dimension",
+							"options": {
+								"name": {
+									"displayName": "Name or ID",
+									"description": "Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								}
+							}
+						},
+						"dimensionUi": {
+							"displayName": "Dimensions",
+							"placeholder": "Add Dimension"
+						}
+					}
+				},
+				"dimensionFiltersUi": {
+					"displayName": "Dimension Filters",
+					"description": "Dimension Filters in the request",
+					"placeholder": "Add Dimension Filter",
+					"multipleValueButtonText": "Add Dimension Filter",
+					"options": {
+						"filterValues": {
+							"displayName": "Filters",
+							"options": {
+								"dimensionName": {
+									"displayName": "Dimension Name or ID",
+									"description": "Name of the dimension to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"operator": {
+									"displayName": "Operator",
+									"description": "Operator to use in combination with value",
+									"options": {
+										"BEGINS_WITH": {
+											"displayName": "Begins With"
+										},
+										"ENDS_WITH": {
+											"displayName": "Ends With"
+										},
+										"NUMERIC_EQUAL": {
+											"displayName": "Equal (Number)"
+										},
+										"EXACT": {
+											"displayName": "Exact"
+										},
+										"NUMERIC_GREATER_THAN": {
+											"displayName": "Greater Than (Number)"
+										},
+										"NUMERIC_LESS_THAN": {
+											"displayName": "Less Than (Number)"
+										},
+										"PARTIAL": {
+											"displayName": "Partial"
+										},
+										"REGEXP": {
+											"displayName": "Regular Expression"
+										}
+									}
+								},
+								"expressions": {
+									"displayName": "Value",
+									"description": "String or <a href=\"https://support.google.com/analytics/answer/1034324?hl=en\">regular expression</a> to match against",
+									"placeholder": "ga:newUsers"
+								}
+							}
+						}
+					},
+					"values": {
+						"filterValues": {
+							"displayName": "Filters",
+							"options": {
+								"dimensionName": {
+									"displayName": "Dimension Name or ID",
+									"description": "Name of the dimension to filter by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"operator": {
+									"displayName": "Operator",
+									"description": "Operator to use in combination with value",
+									"options": {
+										"BEGINS_WITH": {
+											"displayName": "Begins With"
+										},
+										"ENDS_WITH": {
+											"displayName": "Ends With"
+										},
+										"NUMERIC_EQUAL": {
+											"displayName": "Equal (Number)"
+										},
+										"EXACT": {
+											"displayName": "Exact"
+										},
+										"NUMERIC_GREATER_THAN": {
+											"displayName": "Greater Than (Number)"
+										},
+										"NUMERIC_LESS_THAN": {
+											"displayName": "Less Than (Number)"
+										},
+										"PARTIAL": {
+											"displayName": "Partial"
+										},
+										"REGEXP": {
+											"displayName": "Regular Expression"
+										}
+									}
+								},
+								"expressions": {
+									"displayName": "Value",
+									"description": "String or <a href=\"https://support.google.com/analytics/answer/1034324?hl=en\">regular expression</a> to match against",
+									"placeholder": "ga:newUsers"
+								}
+							}
+						},
+						"dimensionFiltersUi": {
+							"displayName": "Dimension Filters",
+							"placeholder": "Add Dimension Filter"
+						}
+					}
+				},
+				"hideTotals": {
+					"displayName": "Hide Totals",
+					"description": "Whether to hide the total of all metrics for all the matching rows, for every date range"
+				},
+				"hideValueRanges": {
+					"displayName": "Hide Value Ranges",
+					"description": "Whether to hide the minimum and maximum across all matching rows"
+				},
+				"includeEmptyRows": {
+					"displayName": "Include Empty Rows",
+					"description": "Whether the response exclude rows if all the retrieved metrics are equal to zero"
+				},
+				"metricsUi": {
+					"displayName": "Metrics",
+					"description": "Metrics in the request",
+					"placeholder": "Add Metrics",
+					"multipleValueButtonText": "Add Metrics",
+					"options": {
+						"metricValues": {
+							"displayName": "Metric",
+							"options": {
+								"alias": {
+									"displayName": "Alias",
+									"description": "An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting."
+								},
+								"expression": {
+									"displayName": "Expression",
+									"description": "<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>."
+								},
+								"formattingType": {
+									"displayName": "Formatting Type",
+									"description": "Specifies how the metric expression should be formatted",
+									"options": {
+										"CURRENCY": {
+											"displayName": "Currency"
+										},
+										"FLOAT": {
+											"displayName": "Float"
+										},
+										"INTEGER": {
+											"displayName": "Integer"
+										},
+										"PERCENT": {
+											"displayName": "Percent"
+										},
+										"TIME": {
+											"displayName": "Time"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"metricValues": {
+							"displayName": "Metric",
+							"options": {
+								"alias": {
+									"displayName": "Alias",
+									"description": "An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting."
+								},
+								"expression": {
+									"displayName": "Expression",
+									"description": "<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>."
+								},
+								"formattingType": {
+									"displayName": "Formatting Type",
+									"description": "Specifies how the metric expression should be formatted",
+									"options": {
+										"CURRENCY": {
+											"displayName": "Currency"
+										},
+										"FLOAT": {
+											"displayName": "Float"
+										},
+										"INTEGER": {
+											"displayName": "Integer"
+										},
+										"PERCENT": {
+											"displayName": "Percent"
+										},
+										"TIME": {
+											"displayName": "Time"
+										}
+									}
+								}
+							}
+						},
+						"metricsUi": {
+							"displayName": "Metrics",
+							"placeholder": "Add Metrics"
+						}
+					}
+				},
+				"useResourceQuotas": {
+					"displayName": "Use Resource Quotas",
+					"description": "Whether to enable resource based quotas"
+				},
+				"activityTypes": {
+					"displayName": "Activity Types",
+					"description": "Type of activites requested"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "ID of a user",
+			"placeholder": "123456"
+		}
+	}
+}

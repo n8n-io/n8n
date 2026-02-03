@@ -1,0 +1,57 @@
+{
+	"header": {
+		"displayName": "JSON Input Loader",
+		"description": "Use JSON data from a previous step in the workflow"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a vector store. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>Insert one</a>"
+		},
+		"pointers": {
+			"displayName": "Pointers",
+			"description": "Pointers to extract from JSON, e.g. \"/text\" or \"/text, /meta/title\""
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "Metadata to add to each document. Could be used for filtering during retrieval",
+					"placeholder": "Add property",
+					"multipleValueButtonText": "Add property",
+					"options": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "Metadata",
+							"placeholder": "Add property"
+						}
+					}
+				}
+			}
+		}
+	}
+}

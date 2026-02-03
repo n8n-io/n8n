@@ -1,0 +1,44 @@
+{
+	"header": {
+		"displayName": "Slack Trigger",
+		"description": "Handle Slack events via webhooks"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication"
+		},
+		"notice": {
+			"displayName": "This will use one execution for every event in any channel your bot is in, use with caution"
+		},
+		"trigger": {
+			"displayName": "Trigger On"
+		},
+		"watchWorkspace": {
+			"displayName": "Watch Whole Workspace",
+			"description": "Whether to watch for the event in the whole workspace, rather than a specific channel"
+		},
+		"channelId": {
+			"displayName": "Channel to Watch",
+			"description": "The Slack channel to listen to events from. Applies to events: Bot/App mention, File Shared, New Message Posted on Channel, Reaction Added.",
+			"placeholder": "Select a channel..."
+		},
+		"downloadFiles": {
+			"displayName": "Download Files",
+			"description": "Whether to download the files and add it to the output"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"resolveIds": {
+					"displayName": "Resolve IDs",
+					"description": "Whether to resolve the IDs to their respective names and return them"
+				},
+				"userIds": {
+					"displayName": "Usernames or IDs to Ignore",
+					"description": "A comma-separated string of encoded user IDs. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		}
+	}
+}

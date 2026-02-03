@@ -1,0 +1,24 @@
+{
+	"header": {
+		"displayName": "WhatsApp 触发器",
+		"description": "通过 Webhook 处理 WhatsApp 事件"
+	},
+	"nodeView": {
+		"whatsAppNotice": {
+			"displayName": "由于Facebook API限制，每个Facebook应用只能使用一个WhatsApp触发器"
+		},
+		"updates": {
+			"displayName": "触发条件"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"messageStatusUpdates": {
+					"displayName": "接收消息状态更新",
+					"description": "当消息状态发生变化时（例如从“已发送”变为“已送达”，或从“已送达”变为“已读”），WhatsApp会向触发器发送通知。为避免单个WhatsApp消息触发多次执行，您可以将触发器设置为仅在选定的消息状态更新时执行。"
+				}
+			}
+		}
+	}
+}

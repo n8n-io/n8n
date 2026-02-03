@@ -1,0 +1,317 @@
+{
+	"header": {
+		"displayName": "Markdown",
+		"description": "在Markdown和HTML之间转换数据"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "模式",
+			"options": {
+				"markdownToHtml": {
+					"displayName": "Markdown转HTML",
+					"description": "将数据从Markdown转换为HTML"
+				},
+				"htmlToMarkdown": {
+					"displayName": "HTML转Markdown",
+					"description": "将数据从HTML转换为Markdown"
+				}
+			}
+		},
+		"html": {
+			"displayName": "HTML",
+			"description": "待转换为Markdown的HTML"
+		},
+		"markdown": {
+			"displayName": "Markdown",
+			"description": "要转换为HTML的Markdown"
+		},
+		"destinationKey": {
+			"displayName": "目标键",
+			"description": "用于存放输出的字段。使用点号指定嵌套字段，例如“level1.level2.newKey”。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"bulletMarker": {
+					"displayName": "项目符号标记",
+					"description": "指定项目符号标记，默认 *"
+				},
+				"codeFence": {
+					"displayName": "代码块围栏",
+					"description": "指定代码块围栏，默认 ```"
+				},
+				"emDelimiter": {
+					"displayName": "强调分隔符",
+					"description": "指定强调分隔符，默认是 _"
+				},
+				"globalEscape": {
+					"displayName": "全局转义模式",
+					"description": "设置此项将覆盖默认转义设置，您可能希望改用textReplace选项",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"pattern": {
+									"displayName": "模式",
+									"description": "正则表达式模式"
+								},
+								"replacement": {
+									"displayName": "替换",
+									"description": "字符串替换"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"pattern": {
+									"displayName": "模式",
+									"description": "正则表达式模式"
+								},
+								"replacement": {
+									"displayName": "替换",
+									"description": "字符串替换"
+								}
+							}
+						},
+						"globalEscape": {
+							"displayName": "全局转义模式"
+						}
+					}
+				},
+				"ignore": {
+					"displayName": "忽略的元素",
+					"description": "提供的元素将被忽略（忽略内部文本，不解析子元素）",
+					"placeholder": "例如：h1, p ..."
+				},
+				"keepDataImages": {
+					"displayName": "保留数据URI图像",
+					"description": "是否保留包含数据URI的图像（注意：每个图像最大可达1MB），例如 &lt;img src=\"data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/\"&gt;"
+				},
+				"lineStartEscape": {
+					"displayName": "行起始转义模式",
+					"description": "设置此项将覆盖默认转义设置，您可能希望改用textReplace选项",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"pattern": {
+									"displayName": "模式",
+									"description": "正则表达式模式"
+								},
+								"replacement": {
+									"displayName": "替换",
+									"description": "字符串替换"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"pattern": {
+									"displayName": "模式",
+									"description": "正则表达式模式"
+								},
+								"replacement": {
+									"displayName": "替换",
+									"description": "字符串替换"
+								}
+							}
+						},
+						"lineStartEscape": {
+							"displayName": "行起始转义模式"
+						}
+					}
+				},
+				"maxConsecutiveNewlines": {
+					"displayName": "最大连续换行数",
+					"description": "指定允许的最大连续换行数"
+				},
+				"useLinkReferenceDefinitions": {
+					"displayName": "将URL置于底部",
+					"description": "是否将URL置于底部并使用链接引用定义格式化链接"
+				},
+				"strongDelimiter": {
+					"displayName": "强分隔符",
+					"description": "指定强分隔符，默认为 **"
+				},
+				"codeBlockStyle": {
+					"displayName": "代码块样式",
+					"description": "指定代码块样式，默认为\"fence\"",
+					"options": {
+						"fence": {
+							"displayName": "围栏"
+						},
+						"indented": {
+							"displayName": "缩进"
+						}
+					}
+				},
+				"textReplace": {
+					"displayName": "文本替换模式",
+					"description": "用户自定义文本替换模式（替换从节点获取的匹配文本）",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"pattern": {
+									"displayName": "模式",
+									"description": "正则表达式模式"
+								},
+								"replacement": {
+									"displayName": "替换",
+									"description": "字符串替换"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"pattern": {
+									"displayName": "模式",
+									"description": "正则表达式模式"
+								},
+								"replacement": {
+									"displayName": "替换",
+									"description": "字符串替换"
+								}
+							}
+						},
+						"textReplace": {
+							"displayName": "文本替换模式"
+						}
+					}
+				},
+				"blockElements": {
+					"displayName": "视为块级元素",
+					"description": "提供的元素将被视为块级元素（用空行包围）",
+					"placeholder": "例如：p、div……"
+				},
+				"openLinksInNewWindow": {
+					"displayName": "为链接添加空白目标",
+					"description": "是否在新窗口中打开所有链接（通过为<a>标签添加target=\"_blank\"属性）"
+				},
+				"simplifiedAutoLink": {
+					"displayName": "自动链接到URL",
+					"description": "是否启用自动链接到URL"
+				},
+				"backslashEscapesHTMLTags": {
+					"displayName": "反斜杠转义HTML标签",
+					"description": "是否支持HTML标签转义，例如：&lt;div&gt;foo&lt;/div&gt;"
+				},
+				"completeHTMLDocument": {
+					"displayName": "完整HTML文档",
+					"description": "是否输出完整的HTML文档，包含&lt;html&gt;、&lt;head&gt;和&lt;body&gt;标签，而非HTML片段"
+				},
+				"customizedHeaderId": {
+					"displayName": "自定义标题ID",
+					"description": "是否将花括号内的文本用作标题ID"
+				},
+				"emoji": {
+					"displayName": "表情符号支持",
+					"description": "是否启用表情符号支持。例如：这是一个:smile:表情符号。有关可用表情符号的更多信息，请参阅 https://github.com/showdownjs/showdown/wiki/Emojis。"
+				},
+				"encodeEmails": {
+					"displayName": "编码电子邮件",
+					"description": "是否通过使用字符实体启用电子邮件地址编码，将ASCII电子邮件地址转换为其等效的十进制实体"
+				},
+				"excludeTrailingPunctuationFromURLs": {
+					"displayName": "是否从自动链接URL中排除尾部标点",
+					"description": "是否从自动链接URL中排除尾部标点。排除的标点包括：. ! ? ( )。仅在simplifiedAutoLink选项设为true时生效。"
+				},
+				"ghCodeBlocks": {
+					"displayName": "GitHub 代码块",
+					"description": "是否启用 GFM 代码块样式支持"
+				},
+				"ghCompatibleHeaderId": {
+					"displayName": "GitHub兼容的标题ID",
+					"description": "是否生成兼容GitHub风格的标题ID（空格替换为连字符，并移除一系列非字母数字字符）"
+				},
+				"ghMentionsLink": {
+					"displayName": "GitHub提及链接",
+					"description": "是否更改@提及生成的链接。Showdown将用{u}替换用户名。仅在启用ghMentions选项时适用。"
+				},
+				"ghMentions": {
+					"displayName": "GitHub 提及",
+					"description": "是否启用 GitHub @提及功能，该功能会链接到被提及的用户名"
+				},
+				"tasklists": {
+					"displayName": "GitHub任务列表",
+					"description": "是否启用GFM任务列表支持"
+				},
+				"headerLevelStart": {
+					"displayName": "标题起始级别",
+					"description": "是否设置标题起始级别"
+				},
+				"requireSpaceBeforeHeadingText": {
+					"displayName": "标题前强制空格",
+					"description": "是否强制要求在#和标题文本之间添加空格"
+				},
+				"literalMidWordAsterisks": {
+					"displayName": "中间词星号",
+					"description": "是否阻止showdown将单词中间的星号解释为<em>和<strong>标签，而是将其视为字面星号"
+				},
+				"literalMidWordUnderscores": {
+					"displayName": "单词中间下划线",
+					"description": "是否阻止 showdown 将单词中间的下划线解释为 <em> 和 <strong> 标签，而是将其视为字面下划线"
+				},
+				"noHeaderId": {
+					"displayName": "无标题ID",
+					"description": "是否禁用自动生成标题ID"
+				},
+				"parseImgDimensions": {
+					"displayName": "解析图像尺寸",
+					"description": "是否启用从Markdown语法中设置图像尺寸的支持"
+				},
+				"prefixHeaderId": {
+					"displayName": "标题ID前缀",
+					"description": "为生成的标题ID添加前缀"
+				},
+				"rawHeaderId": {
+					"displayName": "原始标题ID",
+					"description": "是否仅从生成的标题ID（包括前缀）中移除空格、单引号(')和双引号(\")，并用连字符(-)替换"
+				},
+				"rawPrefixHeaderId": {
+					"displayName": "原始前缀标头ID",
+					"description": "是否阻止 showdown 修改前缀"
+				},
+				"simpleLineBreaks": {
+					"displayName": "简单换行",
+					"description": "是否像GitHub一样将换行符解析为&lt;br&gt;，而无需在行尾添加两个空格"
+				},
+				"smartIndentationFix": {
+					"displayName": "智能缩进修复",
+					"description": "是否智能修复与缩进代码中ES6模板字符串相关的缩进问题"
+				},
+				"disableForced4SpacesIndentedSublists": {
+					"displayName": "缩进子列表",
+					"description": "是否禁用子列表需要缩进4个空格才能嵌套的要求，实际上恢复到旧行为，即2或3个空格就足够"
+				},
+				"splitAdjacentBlockquotes": {
+					"displayName": "分割相邻引用块",
+					"description": "是否分割相邻的引用块"
+				},
+				"strikethrough": {
+					"displayName": "删除线",
+					"description": "是否启用删除线语法支持"
+				},
+				"tablesHeaderId": {
+					"displayName": "表格标题ID",
+					"description": "是否向表格标题标签添加ID属性"
+				},
+				"tables": {
+					"displayName": "表格支持",
+					"description": "是否启用表格语法支持"
+				}
+			}
+		}
+	}
+}

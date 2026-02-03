@@ -1,0 +1,225 @@
+{
+	"header": {
+		"displayName": "Monday.com",
+		"description": "Consume Monday.com API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"board": {
+					"displayName": "Board"
+				},
+				"boardColumn": {
+					"displayName": "Board Column"
+				},
+				"boardGroup": {
+					"displayName": "Board Group"
+				},
+				"boardItem": {
+					"displayName": "Board Item"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"archive": {
+					"displayName": "Archive",
+					"description": "Archive a board"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create an item in a board's group"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get an item"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many items"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an item"
+				},
+				"addUpdate": {
+					"displayName": "Add Update",
+					"description": "Add an update to an item"
+				},
+				"changeColumnValue": {
+					"displayName": "Change Column Value",
+					"description": "Change a column value for a board item"
+				},
+				"changeMultipleColumnValues": {
+					"displayName": "Change Multiple Column Values",
+					"description": "Change multiple column values for a board item"
+				},
+				"getByColumnValue": {
+					"displayName": "Get By Column Value",
+					"description": "Get items by column value"
+				},
+				"move": {
+					"displayName": "Move",
+					"description": "Move item to group"
+				}
+			}
+		},
+		"boardId": {
+			"displayName": "Board Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The new item's name"
+		},
+		"kind": {
+			"displayName": "Kind",
+			"description": "The board's kind (public / private / share)",
+			"options": {
+				"share": {
+					"displayName": "Share"
+				},
+				"public": {
+					"displayName": "Public"
+				},
+				"private": {
+					"displayName": "Private"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"templateId": {
+					"displayName": "Template ID",
+					"description": "Optional board template ID"
+				},
+				"defaults": {
+					"displayName": "Defauls",
+					"description": "The new column's defaults"
+				},
+				"columnValues": {
+					"displayName": "Column Values",
+					"description": "The column values of the new item"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"title": {
+			"displayName": "Title"
+		},
+		"columnType": {
+			"displayName": "Column Type",
+			"options": {
+				"checkbox": {
+					"displayName": "Checkbox"
+				},
+				"country": {
+					"displayName": "Country"
+				},
+				"date": {
+					"displayName": "Date"
+				},
+				"dropdown": {
+					"displayName": "Dropdown"
+				},
+				"email": {
+					"displayName": "Email"
+				},
+				"hour": {
+					"displayName": "Hour"
+				},
+				"Link": {
+					"displayName": "Link"
+				},
+				"longText": {
+					"displayName": "Long Text"
+				},
+				"numbers": {
+					"displayName": "Numbers"
+				},
+				"people": {
+					"displayName": "People"
+				},
+				"person": {
+					"displayName": "Person"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"rating": {
+					"displayName": "Rating"
+				},
+				"status": {
+					"displayName": "Status"
+				},
+				"tags": {
+					"displayName": "Tags"
+				},
+				"team": {
+					"displayName": "Team"
+				},
+				"text": {
+					"displayName": "Text"
+				},
+				"timeline": {
+					"displayName": "Timeline"
+				},
+				"timezone": {
+					"displayName": "Timezone"
+				},
+				"week": {
+					"displayName": "Week"
+				},
+				"worldClock": {
+					"displayName": "World Clock"
+				}
+			}
+		},
+		"groupId": {
+			"displayName": "Group Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"itemId": {
+			"displayName": "Item ID",
+			"description": "The item's ID"
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "The column value in JSON format. Documentation can be found <a href=\"https://monday.com/developers/v2#mutations-section-columns-change-column-value\">here</a>."
+		},
+		"columnId": {
+			"displayName": "Column Name or ID",
+			"description": "The column's unique identifier. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"columnValues": {
+			"displayName": "Column Values",
+			"description": "The column fields and values in JSON format. Documentation can be found <a href=\"https://monday.com/developers/v2#mutations-section-columns-change-multiple-column-values\">here</a>."
+		},
+		"columnValue": {
+			"displayName": "Column Value",
+			"description": "The column value to search items by"
+		}
+	}
+}

@@ -1,0 +1,97 @@
+{
+	"header": {
+		"displayName": "Kafka触发器",
+		"description": "从Kafka主题消费消息"
+	},
+	"nodeView": {
+		"topic": {
+			"displayName": "主题",
+			"description": "要消费主题的队列名称",
+			"placeholder": "主题名称"
+		},
+		"groupId": {
+			"displayName": "群组ID",
+			"description": "消费者组ID",
+			"placeholder": "n8n-kafka"
+		},
+		"useSchemaRegistry": {
+			"displayName": "使用Schema注册表",
+			"description": "是否使用Confluent Schema注册表"
+		},
+		"schemaRegistryUrl": {
+			"displayName": "Schema Registry URL",
+			"description": "Schema Registry的URL",
+			"placeholder": "https://schema-registry-domain:8081"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"allowAutoTopicCreation": {
+					"displayName": "允许创建主题",
+					"description": "是否允许向之前不存在的主题发送消息"
+				},
+				"autoCommitThreshold": {
+					"displayName": "自动提交阈值",
+					"description": "消费者在处理完指定数量的消息后将提交偏移量"
+				},
+				"autoCommitInterval": {
+					"displayName": "自动提交间隔",
+					"description": "消费者将在给定时间间隔后提交偏移量，例如五秒"
+				},
+				"batchSize": {
+					"displayName": "批次大小",
+					"description": "每批次处理的消息数量，设置为1时启用逐条消息处理"
+				},
+				"fetchMaxBytes": {
+					"displayName": "获取最大字节数",
+					"description": "服务器应为获取请求返回的最大数据量。单位为字节。默认值为1MB。更高的值允许一次性获取更多消息。"
+				},
+				"fetchMinBytes": {
+					"displayName": "获取最小字节数",
+					"description": "服务器应为获取请求返回的最小数据量。单位为字节。服务器将等待最多fetchMaxWaitTime时间以累积此数据量。"
+				},
+				"heartbeatInterval": {
+					"displayName": "心跳间隔",
+					"description": "心跳用于确保消费者会话保持活动状态"
+				},
+				"maxInFlightRequests": {
+					"displayName": "最大请求数",
+					"description": "客户端在单个连接上发送的最大未确认请求数"
+				},
+				"fromBeginning": {
+					"displayName": "从起始位置读取消息",
+					"description": "是否从起始位置读取消息"
+				},
+				"jsonParseMessage": {
+					"displayName": "JSON解析消息",
+					"description": "是否尝试将消息解析为对象"
+				},
+				"parallelProcessing": {
+					"displayName": "并行处理",
+					"description": "是否并行处理消息或保持消息顺序处理"
+				},
+				"partitionsConsumedConcurrently": {
+					"displayName": "并行消费的分区数",
+					"description": "并行处理的Kafka分区数量。控制消费者同时处理的分区数量。"
+				},
+				"onlyMessage": {
+					"displayName": "仅返回消息",
+					"description": "是否仅返回消息属性"
+				},
+				"returnHeaders": {
+					"displayName": "返回头部信息",
+					"description": "是否返回从Kafka接收到的头部信息"
+				},
+				"rebalanceTimeout": {
+					"displayName": "重新平衡超时",
+					"description": "消费者加入群组所允许的最长时间"
+				},
+				"sessionTimeout": {
+					"displayName": "会话超时",
+					"description": "等待响应的超时时间（毫秒）"
+				}
+			}
+		}
+	}
+}

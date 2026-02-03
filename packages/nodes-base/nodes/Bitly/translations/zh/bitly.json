@@ -1,0 +1,142 @@
+{
+	"header": {
+		"displayName": "Bitly",
+		"description": "使用Bitly API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"link": {
+					"displayName": "链接"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建链接"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取链接"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新链接"
+				}
+			}
+		},
+		"longUrl": {
+			"displayName": "长URL",
+			"placeholder": "https://example.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"domain": {
+					"displayName": "域名"
+				},
+				"group": {
+					"displayName": "组名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"title": {
+					"displayName": "标题"
+				}
+			}
+		},
+		"deeplink": {
+			"displayName": "深度链接",
+			"placeholder": "添加深度链接",
+			"multipleValueButtonText": "添加深度链接",
+			"options": {
+				"deeplinkUi": {
+					"displayName": "深度链接",
+					"options": {
+						"appId": {
+							"displayName": "应用ID"
+						},
+						"appUriPath": {
+							"displayName": "应用URI路径"
+						},
+						"installType": {
+							"displayName": "安装类型"
+						},
+						"installUrl": {
+							"displayName": "安装URL"
+						}
+					}
+				}
+			},
+			"values": {
+				"deeplinkUi": {
+					"displayName": "深度链接",
+					"options": {
+						"appId": {
+							"displayName": "应用ID"
+						},
+						"appUriPath": {
+							"displayName": "应用URI路径"
+						},
+						"installType": {
+							"displayName": "安装类型"
+						},
+						"installUrl": {
+							"displayName": "安装URL"
+						}
+					}
+				},
+				"deeplink": {
+					"displayName": "深度链接",
+					"placeholder": "添加深度链接"
+				}
+			}
+		},
+		"id": {
+			"displayName": "Bitlink",
+			"placeholder": "bit.ly/22u3ypK"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"archived": {
+					"displayName": "已归档"
+				},
+				"group": {
+					"displayName": "组名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"longUrl": {
+					"displayName": "长URL"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"title": {
+					"displayName": "标题"
+				}
+			}
+		}
+	}
+}

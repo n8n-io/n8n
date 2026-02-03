@@ -1,0 +1,786 @@
+{
+	"header": {
+		"displayName": "Microsoft Entra ID",
+		"description": "Interact with Microsoft Entra ID API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"group": {
+					"displayName": "Group"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a user"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve data for a specific user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve a list of users"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a user"
+				},
+				"addGroup": {
+					"displayName": "Add to Group",
+					"description": "Add user to group"
+				},
+				"removeGroup": {
+					"displayName": "Remove from Group",
+					"description": "Remove user from group"
+				}
+			}
+		},
+		"groupType": {
+			"displayName": "Group Type",
+			"options": {
+				"Unified": {
+					"displayName": "Microsoft 365"
+				},
+				"": {
+					"displayName": "Security"
+				}
+			}
+		},
+		"displayName": {
+			"displayName": "Display Name",
+			"description": "The name to display in the address book for the user",
+			"placeholder": "e.g. Nathan Smith"
+		},
+		"mailNickname": {
+			"displayName": "Mail Nickname",
+			"description": "The mail alias for the user",
+			"placeholder": "e.g. NathanSmith"
+		},
+		"mailEnabled": {
+			"displayName": "Mail Enabled",
+			"description": "Whether the group is mail-enabled"
+		},
+		"membershipType": {
+			"displayName": "Membership Type",
+			"options": {
+				"": {
+					"displayName": "Assigned",
+					"description": "Lets you add specific users as members of a group and have unique permissions"
+				},
+				"DynamicMembership": {
+					"displayName": "Dynamic",
+					"description": "Lets you use rules to automatically add and remove users as members"
+				}
+			}
+		},
+		"securityEnabled": {
+			"displayName": "Security Enabled",
+			"description": "Whether the group is a security group"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"isAssignableToRole": {
+					"displayName": "Assignable to Role",
+					"description": "Whether Microsoft Entra roles can be assigned to the group"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description for the group"
+				},
+				"membershipRule": {
+					"displayName": "Membership Rule",
+					"description": "The <a href=\"https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership\">dynamic membership rules</a>",
+					"placeholder": "e.g. user.department -eq \"Marketing\""
+				},
+				"membershipRuleProcessingState": {
+					"displayName": "Membership Rule Processing State",
+					"description": "Indicates whether the dynamic membership processing is on or paused",
+					"options": {
+						"On": {
+							"displayName": "On"
+						},
+						"Paused": {
+							"displayName": "Paused"
+						}
+					}
+				},
+				"preferredDataLocation": {
+					"displayName": "Preferred Data Location",
+					"description": "A property set for the group that Office 365 services use to provision the corresponding data-at-rest resources (mailbox, OneDrive, groups sites, and so on)"
+				},
+				"uniqueName": {
+					"displayName": "Unique Name",
+					"description": "The unique identifier for the group, can only be updated if null, and is immutable once set"
+				},
+				"visibility": {
+					"displayName": "Visibility",
+					"description": "Specifies the visibility of the group",
+					"options": {
+						"Private": {
+							"displayName": "Private"
+						},
+						"Public": {
+							"displayName": "Public"
+						}
+					}
+				},
+				"aboutMe": {
+					"displayName": "About Me",
+					"description": "A freeform text entry field for the user to describe themselves"
+				},
+				"ageGroup": {
+					"displayName": "Age Group",
+					"description": "Sets the age group of the user",
+					"options": {
+						"Adult": {
+							"displayName": "Adult"
+						},
+						"Minor": {
+							"displayName": "Minor"
+						},
+						"NotAdult": {
+							"displayName": "Not Adult"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "Birthday",
+					"description": "The birthday of the user"
+				},
+				"businessPhones": {
+					"displayName": "Business Phone",
+					"description": "The telephone number for the user"
+				},
+				"city": {
+					"displayName": "City",
+					"description": "The city in which the user is located"
+				},
+				"companyName": {
+					"displayName": "Company Name",
+					"description": "The name of the company associated with the user"
+				},
+				"consentProvidedForMinor": {
+					"displayName": "Consent Provided",
+					"description": "Specifies if consent is provided for minors",
+					"options": {
+						"Denied": {
+							"displayName": "Denied"
+						},
+						"Granted": {
+							"displayName": "Granted"
+						},
+						"NotRequired": {
+							"displayName": "Not Required"
+						}
+					}
+				},
+				"country": {
+					"displayName": "Country",
+					"description": "The country/region of the user",
+					"placeholder": "e.g. US"
+				},
+				"department": {
+					"displayName": "Department",
+					"description": "The department name where the user works"
+				},
+				"employeeId": {
+					"displayName": "Employee ID",
+					"description": "Employee identifier assigned by the organization"
+				},
+				"employeeType": {
+					"displayName": "Employee Type",
+					"description": "Defines enterprise worker type",
+					"placeholder": "e.g. Contractor"
+				},
+				"employeeHireDate": {
+					"displayName": "Employee Hire Date",
+					"description": "The hire date of the user",
+					"placeholder": "e.g. 2014-01-01T00:00:00Z"
+				},
+				"employeeLeaveDateTime": {
+					"displayName": "Employee Leave Date",
+					"description": "The date and time when the user left or will leave the organization",
+					"placeholder": "e.g. 2014-01-01T00:00:00Z"
+				},
+				"employeeOrgData": {
+					"displayName": "Employee Organization Data",
+					"description": "Represents organization data (for example, division and costCenter) associated with a user",
+					"options": {
+						"employeeOrgValues": {
+							"displayName": "Employee Organization Data",
+							"options": {
+								"costCenter": {
+									"displayName": "Cost Center",
+									"description": "The cost center associated with the user"
+								},
+								"division": {
+									"displayName": "Division",
+									"description": "The name of the division in which the user works"
+								}
+							}
+						}
+					},
+					"values": {
+						"employeeOrgValues": {
+							"displayName": "Employee Organization Data",
+							"options": {
+								"costCenter": {
+									"displayName": "Cost Center",
+									"description": "The cost center associated with the user"
+								},
+								"division": {
+									"displayName": "Division",
+									"description": "The name of the division in which the user works"
+								}
+							}
+						},
+						"employeeOrgData": {
+							"displayName": "Employee Organization Data"
+						}
+					}
+				},
+				"givenName": {
+					"displayName": "First Name",
+					"description": "The given name (first name) of the user"
+				},
+				"forceChangePassword": {
+					"displayName": "Force Change Password",
+					"description": "Whether the user must change their password on the next sign-in",
+					"options": {
+						"forceChangePasswordNextSignIn": {
+							"displayName": "Next Sign In"
+						},
+						"forceChangePasswordNextSignInWithMfa": {
+							"displayName": "Next Sign In with MFA"
+						}
+					}
+				},
+				"interests": {
+					"displayName": "Interests",
+					"description": "A list for the user to describe their interests"
+				},
+				"jobTitle": {
+					"displayName": "Job Title",
+					"description": "The user's job title"
+				},
+				"surname": {
+					"displayName": "Last Name",
+					"description": "The user's last name (family name)"
+				},
+				"mail": {
+					"displayName": "Mail",
+					"description": "The SMTP address for the user",
+					"placeholder": "e.g. jeff@contoso.com"
+				},
+				"mobilePhone": {
+					"displayName": "Mobile Phone",
+					"description": "The primary cellular telephone number for the user"
+				},
+				"mySite": {
+					"displayName": "My Site",
+					"description": "The URL for the user's personal site"
+				},
+				"officeLocation": {
+					"displayName": "Office Location",
+					"description": "The office location for the user"
+				},
+				"onPremisesImmutableId": {
+					"displayName": "On Premises Immutable ID",
+					"description": "This property is used to associate an on-premises Active Directory user account to their Microsoft Entra user object"
+				},
+				"otherMails": {
+					"displayName": "Other Emails",
+					"description": "Additional email addresses for the user"
+				},
+				"passwordPolicies": {
+					"displayName": "Password Policies",
+					"description": "Specifies password policies"
+				},
+				"pastProjects": {
+					"displayName": "Past Projects",
+					"description": "A list of past projects the user has worked on"
+				},
+				"postalCode": {
+					"displayName": "Postal Code",
+					"description": "The postal code for the user's address"
+				},
+				"preferredLanguage": {
+					"displayName": "Preferred Language",
+					"description": "User's preferred language in ISO 639-1 code",
+					"placeholder": "e.g. en-US"
+				},
+				"responsibilities": {
+					"displayName": "Responsibilities",
+					"description": "A list of responsibilities the user has"
+				},
+				"schools": {
+					"displayName": "Schools Attended",
+					"description": "A list of schools the user attended"
+				},
+				"skills": {
+					"displayName": "Skills",
+					"description": "A list of skills the user possesses"
+				},
+				"state": {
+					"displayName": "State",
+					"description": "The state or province of the user's address"
+				},
+				"streetAddress": {
+					"displayName": "Street Address",
+					"description": "The street address of the user's place of business"
+				},
+				"usageLocation": {
+					"displayName": "Usage Location",
+					"description": "Two-letter country code where the user is located",
+					"placeholder": "e.g. US"
+				},
+				"userType": {
+					"displayName": "User Type",
+					"description": "Classifies the user type",
+					"options": {
+						"Guest": {
+							"displayName": "Guest"
+						},
+						"Member": {
+							"displayName": "Member"
+						}
+					}
+				}
+			}
+		},
+		"group": {
+			"displayName": "Group"
+		},
+		"output": {
+			"displayName": "Output",
+			"options": {
+				"simple": {
+					"displayName": "Simplified"
+				},
+				"raw": {
+					"displayName": "Raw"
+				},
+				"fields": {
+					"displayName": "Selected Fields"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "Fields",
+			"description": "The fields to add to the output"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"includeMembers": {
+					"displayName": "Include Members"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filter": {
+			"displayName": "Filter",
+			"description": "<a href=\"https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter\">Query parameter</a> to filter results by",
+			"placeholder": "e.g. startswith(displayName, 'a')"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"allowExternalSenders": {
+					"displayName": "Allow External Senders",
+					"description": "Whether people external to the organization can send messages to the group. Wait a few seconds before editing this field in a newly created group."
+				},
+				"autoSubscribeNewMembers": {
+					"displayName": "Auto Subscribe New Members",
+					"description": "Whether new members added to the group will be auto-subscribed to receive email notifications. Wait a few seconds before editing this field in a newly created group."
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description for the group"
+				},
+				"displayName": {
+					"displayName": "Display Name",
+					"description": "The name to display in the address book for the user"
+				},
+				"mailNickname": {
+					"displayName": "Mail Nickname",
+					"description": "The mail alias for the user",
+					"placeholder": "e.g. alias"
+				},
+				"membershipRule": {
+					"displayName": "Membership Rule",
+					"description": "The <a href=\"https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership\">dynamic membership rules</a>",
+					"placeholder": "e.g. user.department -eq \"Marketing\""
+				},
+				"membershipRuleProcessingState": {
+					"displayName": "Membership Rule Processing State",
+					"description": "Indicates whether the dynamic membership processing is on or paused",
+					"options": {
+						"On": {
+							"displayName": "On"
+						},
+						"Paused": {
+							"displayName": "Paused"
+						}
+					}
+				},
+				"preferredDataLocation": {
+					"displayName": "Preferred Data Location",
+					"description": "A property set for the group that Office 365 services use to provision the corresponding data-at-rest resources (mailbox, OneDrive, groups sites, and so on)"
+				},
+				"securityEnabled": {
+					"displayName": "Security Enabled",
+					"description": "Whether the group is a security group"
+				},
+				"uniqueName": {
+					"displayName": "Unique Name",
+					"description": "The unique identifier for the group, can only be updated if null, and is immutable once set"
+				},
+				"visibility": {
+					"displayName": "Visibility",
+					"description": "Specifies the visibility of the group",
+					"options": {
+						"Private": {
+							"displayName": "Private"
+						},
+						"Public": {
+							"displayName": "Public"
+						}
+					}
+				},
+				"aboutMe": {
+					"displayName": "About Me",
+					"description": "A freeform text entry field for the user to describe themselves"
+				},
+				"accountEnabled": {
+					"displayName": "Account Enabled",
+					"description": "Whether the account is enabled"
+				},
+				"ageGroup": {
+					"displayName": "Age Group",
+					"description": "Sets the age group of the user",
+					"options": {
+						"Adult": {
+							"displayName": "Adult"
+						},
+						"Minor": {
+							"displayName": "Minor"
+						},
+						"NotAdult": {
+							"displayName": "Not Adult"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "Birthday",
+					"description": "The birthday of the user"
+				},
+				"businessPhones": {
+					"displayName": "Business Phone",
+					"description": "The telephone number for the user"
+				},
+				"city": {
+					"displayName": "City",
+					"description": "The city in which the user is located"
+				},
+				"companyName": {
+					"displayName": "Company Name",
+					"description": "The name of the company associated with the user"
+				},
+				"consentProvidedForMinor": {
+					"displayName": "Consent Provided",
+					"description": "Specifies if consent is provided for minors",
+					"options": {
+						"Denied": {
+							"displayName": "Denied"
+						},
+						"Granted": {
+							"displayName": "Granted"
+						},
+						"NotRequired": {
+							"displayName": "Not Required"
+						}
+					}
+				},
+				"country": {
+					"displayName": "Country",
+					"description": "The country/region of the user",
+					"placeholder": "e.g. US"
+				},
+				"department": {
+					"displayName": "Department",
+					"description": "The department name where the user works"
+				},
+				"employeeId": {
+					"displayName": "Employee ID",
+					"description": "Employee identifier assigned by the organization"
+				},
+				"employeeType": {
+					"displayName": "Employee Type",
+					"description": "Defines enterprise worker type",
+					"placeholder": "e.g. Contractor"
+				},
+				"givenName": {
+					"displayName": "First Name",
+					"description": "The given name (first name) of the user"
+				},
+				"employeeHireDate": {
+					"displayName": "Employee Hire Date",
+					"description": "The hire date of the user",
+					"placeholder": "e.g. 2014-01-01T00:00:00Z"
+				},
+				"employeeLeaveDateTime": {
+					"displayName": "Employee Leave Date",
+					"description": "The date and time when the user left or will leave the organization",
+					"placeholder": "e.g. 2014-01-01T00:00:00Z"
+				},
+				"employeeOrgData": {
+					"displayName": "Employee Organization Data",
+					"description": "Represents organization data (for example, division and costCenter) associated with a user",
+					"options": {
+						"employeeOrgValues": {
+							"displayName": "Employee Organization Data",
+							"options": {
+								"costCenter": {
+									"displayName": "Cost Center",
+									"description": "The cost center associated with the user"
+								},
+								"division": {
+									"displayName": "Division",
+									"description": "The name of the division in which the user works"
+								}
+							}
+						}
+					},
+					"values": {
+						"employeeOrgValues": {
+							"displayName": "Employee Organization Data",
+							"options": {
+								"costCenter": {
+									"displayName": "Cost Center",
+									"description": "The cost center associated with the user"
+								},
+								"division": {
+									"displayName": "Division",
+									"description": "The name of the division in which the user works"
+								}
+							}
+						},
+						"employeeOrgData": {
+							"displayName": "Employee Organization Data"
+						}
+					}
+				},
+				"forceChangePassword": {
+					"displayName": "Force Change Password",
+					"description": "Whether the user must change their password on the next sign-in",
+					"options": {
+						"forceChangePasswordNextSignIn": {
+							"displayName": "Next Sign In"
+						},
+						"forceChangePasswordNextSignInWithMfa": {
+							"displayName": "Next Sign In with MFA"
+						}
+					}
+				},
+				"interests": {
+					"displayName": "Interests",
+					"description": "A list for the user to describe their interests"
+				},
+				"jobTitle": {
+					"displayName": "Job Title",
+					"description": "The user's job title"
+				},
+				"surname": {
+					"displayName": "Last Name",
+					"description": "The user's last name (family name)"
+				},
+				"mail": {
+					"displayName": "Mail",
+					"description": "The SMTP address for the user",
+					"placeholder": "e.g. jeff@contoso.com"
+				},
+				"mobilePhone": {
+					"displayName": "Mobile Phone",
+					"description": "The primary cellular telephone number for the user"
+				},
+				"mySite": {
+					"displayName": "My Site",
+					"description": "The URL for the user's personal site"
+				},
+				"officeLocation": {
+					"displayName": "Office Location",
+					"description": "The office location for the user"
+				},
+				"onPremisesImmutableId": {
+					"displayName": "On Premises Immutable ID",
+					"description": "This property is used to associate an on-premises Active Directory user account to their Microsoft Entra user object"
+				},
+				"otherMails": {
+					"displayName": "Other Emails",
+					"description": "Additional email addresses for the user"
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "The password for the user. The password must satisfy minimum requirements as specified by the passwordPolicies property."
+				},
+				"passwordPolicies": {
+					"displayName": "Password Policies",
+					"description": "Specifies password policies"
+				},
+				"pastProjects": {
+					"displayName": "Past Projects",
+					"description": "A list of past projects the user has worked on"
+				},
+				"postalCode": {
+					"displayName": "Postal Code",
+					"description": "The postal code for the user's address"
+				},
+				"preferredLanguage": {
+					"displayName": "Preferred Language",
+					"description": "User's preferred language in ISO 639-1 code",
+					"placeholder": "e.g. en-US"
+				},
+				"responsibilities": {
+					"displayName": "Responsibilities",
+					"description": "A list of responsibilities the user has"
+				},
+				"schools": {
+					"displayName": "Schools Attended",
+					"description": "A list of schools the user attended"
+				},
+				"skills": {
+					"displayName": "Skills",
+					"description": "A list of skills the user possesses"
+				},
+				"state": {
+					"displayName": "State",
+					"description": "The state or province of the user's address"
+				},
+				"streetAddress": {
+					"displayName": "Street Address",
+					"description": "The street address of the user's place of business"
+				},
+				"usageLocation": {
+					"displayName": "Usage Location",
+					"description": "Two-letter country code where the user is located",
+					"placeholder": "e.g. US"
+				},
+				"userPrincipalName": {
+					"displayName": "User Principal Name",
+					"description": "The user principal name (UPN)",
+					"placeholder": "e.g. AdeleV@contoso.com"
+				},
+				"userType": {
+					"displayName": "User Type",
+					"description": "Classifies the user type",
+					"options": {
+						"Guest": {
+							"displayName": "Guest"
+						},
+						"Member": {
+							"displayName": "Member"
+						}
+					}
+				}
+			}
+		},
+		"user": {
+			"displayName": "User to Update"
+		},
+		"accountEnabled": {
+			"displayName": "Account Enabled",
+			"description": "Whether the account is enabled"
+		},
+		"userPrincipalName": {
+			"displayName": "User Principal Name",
+			"description": "The user principal name (UPN)",
+			"placeholder": "e.g. NathanSmith@contoso.com"
+		},
+		"password": {
+			"displayName": "Password",
+			"description": "The password for the user"
+		},
+		"requestOptions": {
+			"displayName": "Request Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batching": {
+					"displayName": "Batching",
+					"placeholder": "Add Batching",
+					"options": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						},
+						"batching": {
+							"displayName": "Batching",
+							"placeholder": "Add Batching"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to accept the response even if SSL certificate validation is not possible"
+				},
+				"proxy": {
+					"displayName": "Proxy",
+					"description": "HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128",
+					"placeholder": "e.g. http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for the server to send response headers (and start the response body) before aborting the request"
+				}
+			}
+		}
+	}
+}

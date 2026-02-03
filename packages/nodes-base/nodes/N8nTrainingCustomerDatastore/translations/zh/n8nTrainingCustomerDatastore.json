@@ -1,0 +1,27 @@
+{
+	"header": {
+		"displayName": "客户数据存储（n8n培训）",
+		"description": "用于n8n培训的虚拟节点"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getOnePerson": {
+					"displayName": "获取单个人物"
+				},
+				"getAllPeople": {
+					"displayName": "获取所有人员"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

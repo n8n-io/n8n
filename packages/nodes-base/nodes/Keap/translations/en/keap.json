@@ -1,0 +1,1144 @@
+{
+	"header": {
+		"displayName": "Keap",
+		"description": "Consume Keap API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"company": {
+					"displayName": "Company"
+				},
+				"contact": {
+					"displayName": "Contact"
+				},
+				"contactNote": {
+					"displayName": "Contact Note"
+				},
+				"contactTag": {
+					"displayName": "Contact Tag"
+				},
+				"ecommerceOrder": {
+					"displayName": "Ecommerce Order"
+				},
+				"ecommerceProduct": {
+					"displayName": "Ecommerce Product"
+				},
+				"email": {
+					"displayName": "Email"
+				},
+				"file": {
+					"displayName": "File"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create an ecommerce product"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many files"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new contact, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a file"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get an ecommerce product"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a note"
+				},
+				"createRecord": {
+					"displayName": "Create Record",
+					"description": "Create a record of an email sent to a contact"
+				},
+				"send": {
+					"displayName": "Send",
+					"description": "Send Email"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a file"
+				}
+			}
+		},
+		"companyName": {
+			"displayName": "Company Name"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"emailAddress": {
+					"displayName": "Email"
+				},
+				"notes": {
+					"displayName": "Notes"
+				},
+				"optInReason": {
+					"displayName": "Opt In Reason"
+				},
+				"website": {
+					"displayName": "Website"
+				},
+				"anniversary": {
+					"displayName": "Anniversary"
+				},
+				"companyId": {
+					"displayName": "Company ID"
+				},
+				"contactType": {
+					"displayName": "Contact Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"familyName": {
+					"displayName": "Family Name"
+				},
+				"givenName": {
+					"displayName": "Given Name"
+				},
+				"ipAddress": {
+					"displayName": "IP Address"
+				},
+				"jobTitle": {
+					"displayName": "Job Title"
+				},
+				"leadSourceId": {
+					"displayName": "Lead Source ID"
+				},
+				"middleName": {
+					"displayName": "Middle Name"
+				},
+				"ownerId": {
+					"displayName": "Owner Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"preferredLocale": {
+					"displayName": "Preferred Locale",
+					"placeholder": "en"
+				},
+				"preferredName": {
+					"displayName": "Preferred Name"
+				},
+				"sourceType": {
+					"displayName": "Source Type",
+					"options": {
+						"API": {
+							"displayName": "API"
+						},
+						"IMPORT": {
+							"displayName": "Import"
+						},
+						"LANDINGPAGE": {
+							"displayName": "Landing Page"
+						},
+						"MANUAL": {
+							"displayName": "Manual"
+						},
+						"OTHER": {
+							"displayName": "Other"
+						},
+						"UNKNOWN": {
+							"displayName": "Unknown"
+						}
+					}
+				},
+				"spouseName": {
+					"displayName": "Spouse Name"
+				},
+				"timezone": {
+					"displayName": "Timezone Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"body": {
+					"displayName": "Body"
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"type": {
+					"displayName": "Type",
+					"options": {
+						"appointment": {
+							"displayName": "Appointment"
+						},
+						"call": {
+							"displayName": "Call"
+						},
+						"email": {
+							"displayName": "Email"
+						},
+						"fax": {
+							"displayName": "Fax"
+						},
+						"letter": {
+							"displayName": "Letter"
+						},
+						"other": {
+							"displayName": "Other"
+						}
+					}
+				},
+				"contactId": {
+					"displayName": "Contact ID"
+				},
+				"userId": {
+					"displayName": "User Name or ID",
+					"description": "The infusionsoft user to create the note on behalf of. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"leadAffiliateId": {
+					"displayName": "Lead Affiliate ID"
+				},
+				"promoCodes": {
+					"displayName": "Promo Codes",
+					"description": "Uses multiple strings separated by comma as promo codes. The corresponding discount will be applied to the order."
+				},
+				"salesAffiliateId": {
+					"displayName": "Sales Affiliate ID"
+				},
+				"active": {
+					"displayName": "Active"
+				},
+				"productDesc": {
+					"displayName": "Product Description"
+				},
+				"productPrice": {
+					"displayName": "Product Price"
+				},
+				"productShortDesc": {
+					"displayName": "Product Short Desc"
+				},
+				"sku": {
+					"displayName": "SKU"
+				},
+				"subscriptionOnly": {
+					"displayName": "Subscription Only"
+				},
+				"clickedDate": {
+					"displayName": "Clicked Date"
+				},
+				"headers": {
+					"displayName": "Headers"
+				},
+				"htmlContent": {
+					"displayName": "HTML Content",
+					"description": "The HTML-formatted content of the email, encoded in Base64"
+				},
+				"openedDate": {
+					"displayName": "Opened Date"
+				},
+				"originalProvider": {
+					"displayName": "Original Provider",
+					"description": "Provider that sent the email case insensitive, must be in list",
+					"options": {
+						"UNKNOWN": {
+							"displayName": "Unknown"
+						},
+						"INFUSIONSOFT": {
+							"displayName": "Infusionsoft"
+						},
+						"MICROSOFT": {
+							"displayName": "Microsoft"
+						},
+						"GOOGLE": {
+							"displayName": "Google"
+						}
+					}
+				},
+				"originalProviderId": {
+					"displayName": "Original Provider ID",
+					"description": "Provider ID that sent the email, must be unique when combined with provider. If omitted a UUID without dashes is autogenerated for the record."
+				},
+				"plainContent": {
+					"displayName": "Plain Content",
+					"description": "The plain-text content of the email, encoded in Base64"
+				},
+				"providerSourceId": {
+					"displayName": "Provider Source ID"
+				},
+				"receivedDate": {
+					"displayName": "Received Date"
+				},
+				"sentDate": {
+					"displayName": "Sent Date"
+				},
+				"sentFromReplyAddress": {
+					"displayName": "Sent From Reply Address"
+				},
+				"sentToBccAddresses": {
+					"displayName": "Sent To Bcc Addresses"
+				},
+				"sentToCCAddresses": {
+					"displayName": "Sent To CC Addresses"
+				},
+				"subject": {
+					"displayName": "Subject"
+				},
+				"addressField": {
+					"displayName": "Address Field",
+					"description": "Email field of each Contact record to address the email to, such as 'EmailAddress1', 'EmailAddress2', 'EmailAddress3', defaulting to the contact's primary email"
+				}
+			}
+		},
+		"addressesUi": {
+			"displayName": "Addresses",
+			"placeholder": "Add Address",
+			"options": {
+				"addressesValues": {
+					"displayName": "Address",
+					"options": {
+						"countryCode": {
+							"displayName": "Country Code Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"line1": {
+							"displayName": "Line 1"
+						},
+						"line2": {
+							"displayName": "Line 2"
+						},
+						"locality": {
+							"displayName": "Locality"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						},
+						"region": {
+							"displayName": "Region"
+						},
+						"zipCode": {
+							"displayName": "Zip Code"
+						},
+						"zipFour": {
+							"displayName": "Zip Four"
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"BILLING": {
+									"displayName": "Billing"
+								},
+								"SHIPPING": {
+									"displayName": "Shipping"
+								},
+								"OTHER": {
+									"displayName": "Other"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"addressesValues": {
+					"displayName": "Address",
+					"options": {
+						"countryCode": {
+							"displayName": "Country Code Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"line1": {
+							"displayName": "Line 1"
+						},
+						"line2": {
+							"displayName": "Line 2"
+						},
+						"locality": {
+							"displayName": "Locality"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						},
+						"region": {
+							"displayName": "Region"
+						},
+						"zipCode": {
+							"displayName": "Zip Code"
+						},
+						"zipFour": {
+							"displayName": "Zip Four"
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"BILLING": {
+									"displayName": "Billing"
+								},
+								"SHIPPING": {
+									"displayName": "Shipping"
+								},
+								"OTHER": {
+									"displayName": "Other"
+								}
+							}
+						}
+					}
+				},
+				"addressesUi": {
+					"displayName": "Addresses",
+					"placeholder": "Add Address"
+				}
+			},
+			"multipleValueButtonText": "Add Address"
+		},
+		"faxesUi": {
+			"displayName": "Faxes",
+			"placeholder": "Add Fax",
+			"options": {
+				"faxesValues": {
+					"displayName": "Fax",
+					"options": {
+						"type": {
+							"displayName": "Type"
+						},
+						"number": {
+							"displayName": "Number"
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"FAX1": {
+									"displayName": "Fax 1"
+								},
+								"FAX2": {
+									"displayName": "Fax 2"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"faxesValues": {
+					"displayName": "Fax",
+					"options": {
+						"type": {
+							"displayName": "Type"
+						},
+						"number": {
+							"displayName": "Number"
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"FAX1": {
+									"displayName": "Fax 1"
+								},
+								"FAX2": {
+									"displayName": "Fax 2"
+								}
+							}
+						}
+					}
+				},
+				"faxesUi": {
+					"displayName": "Faxes",
+					"placeholder": "Add Fax"
+				}
+			},
+			"multipleValueButtonText": "Add Fax"
+		},
+		"phonesUi": {
+			"displayName": "Phones",
+			"placeholder": "Add Phone",
+			"multipleValueButtonText": "Add Phone",
+			"options": {
+				"phonesValues": {
+					"displayName": "Phones",
+					"options": {
+						"type": {
+							"displayName": "Type"
+						},
+						"number": {
+							"displayName": "Number"
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"PHONE1": {
+									"displayName": "Phone 1"
+								},
+								"PHONE2": {
+									"displayName": "Phone 2"
+								},
+								"PHONE3": {
+									"displayName": "Phone 3"
+								},
+								"PHONE4": {
+									"displayName": "Phone 4"
+								},
+								"PHONE5": {
+									"displayName": "Phone 5"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"phonesValues": {
+					"displayName": "Phones",
+					"options": {
+						"type": {
+							"displayName": "Type"
+						},
+						"number": {
+							"displayName": "Number"
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"PHONE1": {
+									"displayName": "Phone 1"
+								},
+								"PHONE2": {
+									"displayName": "Phone 2"
+								},
+								"PHONE3": {
+									"displayName": "Phone 3"
+								},
+								"PHONE4": {
+									"displayName": "Phone 4"
+								},
+								"PHONE5": {
+									"displayName": "Phone 5"
+								}
+							}
+						}
+					}
+				},
+				"phonesUi": {
+					"displayName": "Phones",
+					"placeholder": "Add Phone"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"companyName": {
+					"displayName": "Company Name",
+					"description": "Company name to query on"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "Attribute to order items by",
+					"options": {
+						"datecreated": {
+							"displayName": "Date Created"
+						},
+						"id": {
+							"displayName": "ID"
+						},
+						"name": {
+							"displayName": "Name"
+						},
+						"date": {
+							"displayName": "Date"
+						},
+						"email": {
+							"displayName": "Email"
+						}
+					}
+				},
+				"orderDirection": {
+					"displayName": "Order Direction",
+					"options": {
+						"ascending": {
+							"displayName": "ASC"
+						},
+						"descending": {
+							"displayName": "DES"
+						}
+					}
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Comma-delimited list of Contact properties to include in the response. (Some fields such as lead_source_id, custom_fields, and job_title aren't included, by default.)."
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"givenName": {
+					"displayName": "Given Name"
+				},
+				"familyName": {
+					"displayName": "Family Name"
+				},
+				"since": {
+					"displayName": "Since",
+					"description": "Date to start searching from"
+				},
+				"until": {
+					"displayName": "Until",
+					"description": "Date to search to"
+				},
+				"paid": {
+					"displayName": "Paid"
+				},
+				"contactId": {
+					"displayName": "Contact ID"
+				},
+				"productId": {
+					"displayName": "Product ID"
+				}
+			}
+		},
+		"duplicateOption": {
+			"displayName": "Duplicate Option",
+			"description": "Performs duplicate checking by one of the following options: Email, EmailAndName. If a match is found using the option provided, the existing contact will be updated.",
+			"options": {
+				"email": {
+					"displayName": "Email"
+				},
+				"emailAndName": {
+					"displayName": "Email And Name"
+				}
+			}
+		},
+		"emailsUi": {
+			"displayName": "Emails",
+			"placeholder": "Add Email",
+			"multipleValueButtonText": "Add Email",
+			"options": {
+				"emailsValues": {
+					"displayName": "Email",
+					"options": {
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"EMAIL1": {
+									"displayName": "Email 1"
+								},
+								"EMAIL2": {
+									"displayName": "Email 2"
+								},
+								"EMAIL3": {
+									"displayName": "Email 3"
+								}
+							}
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						}
+					}
+				}
+			},
+			"values": {
+				"emailsValues": {
+					"displayName": "Email",
+					"options": {
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"EMAIL1": {
+									"displayName": "Email 1"
+								},
+								"EMAIL2": {
+									"displayName": "Email 2"
+								},
+								"EMAIL3": {
+									"displayName": "Email 3"
+								}
+							}
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"emailsUi": {
+					"displayName": "Emails",
+					"placeholder": "Add Email"
+				}
+			}
+		},
+		"socialAccountsUi": {
+			"displayName": "Social Accounts",
+			"placeholder": "Add Social Account",
+			"multipleValueButtonText": "Add Social Account",
+			"options": {
+				"socialAccountsValues": {
+					"displayName": "Social Account",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"Facebook": {
+									"displayName": "Facebook"
+								},
+								"Twitter": {
+									"displayName": "Twitter"
+								},
+								"LinkedIn": {
+									"displayName": "LinkedIn"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name"
+						}
+					}
+				}
+			},
+			"values": {
+				"socialAccountsValues": {
+					"displayName": "Social Account",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"Facebook": {
+									"displayName": "Facebook"
+								},
+								"Twitter": {
+									"displayName": "Twitter"
+								},
+								"LinkedIn": {
+									"displayName": "LinkedIn"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name"
+						}
+					}
+				},
+				"socialAccountsUi": {
+					"displayName": "Social Accounts",
+					"placeholder": "Add Social Account"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "Contact ID"
+		},
+		"userId": {
+			"displayName": "User Name or ID",
+			"description": "The infusionsoft user to send the email on behalf of. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"noteId": {
+			"displayName": "Note ID"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"contactId": {
+					"displayName": "Contact ID",
+					"description": "Filter based on Contact ID, if user has permission to see Contact files"
+				},
+				"userId": {
+					"displayName": "User Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"active": {
+					"displayName": "Active"
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"sinceSentDate": {
+					"displayName": "Since Sent Date",
+					"description": "Emails sent since the provided date, must be present if untilDate is provided"
+				},
+				"untilSentDate": {
+					"displayName": "Until Sent Date",
+					"description": "Email sent until the provided date"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Filter files based on name, with '*' preceding or following to indicate LIKE queries"
+				},
+				"permission": {
+					"displayName": "Permission",
+					"description": "Filter based on the permission of files",
+					"options": {
+						"user": {
+							"displayName": "User"
+						},
+						"company": {
+							"displayName": "Company"
+						},
+						"both": {
+							"displayName": "Both"
+						}
+					}
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Filter based on the type of file",
+					"options": {
+						"application": {
+							"displayName": "Application"
+						},
+						"attachment": {
+							"displayName": "Attachment"
+						},
+						"contact": {
+							"displayName": "Contact"
+						},
+						"digitalProduct": {
+							"displayName": "Digital Product"
+						},
+						"fax": {
+							"displayName": "Fax"
+						},
+						"funnel": {
+							"displayName": "Funnel"
+						},
+						"hidden": {
+							"displayName": "Hidden"
+						},
+						"image": {
+							"displayName": "Image"
+						},
+						"import": {
+							"displayName": "Import"
+						},
+						"logoThumnail": {
+							"displayName": "Logo Thumnail"
+						},
+						"reSampledImage": {
+							"displayName": "Re Sampled Image"
+						},
+						"styleCart": {
+							"displayName": "Style Cart"
+						},
+						"templateThumnail": {
+							"displayName": "Template Thumnail"
+						},
+						"ticket": {
+							"displayName": "Ticket"
+						},
+						"webform": {
+							"displayName": "Webform"
+						}
+					}
+				},
+				"viewable": {
+					"displayName": "Viewable",
+					"description": "Include public or private files in response",
+					"options": {
+						"public": {
+							"displayName": "Public"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"both": {
+							"displayName": "Both"
+						}
+					}
+				}
+			}
+		},
+		"tagIds": {
+			"displayName": "Tag IDs",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"orderDate": {
+			"displayName": "Order Date"
+		},
+		"orderTitle": {
+			"displayName": "Order Title"
+		},
+		"orderType": {
+			"displayName": "Order Type",
+			"options": {
+				"offline": {
+					"displayName": "Offline"
+				},
+				"online": {
+					"displayName": "Online"
+				}
+			}
+		},
+		"addressUi": {
+			"displayName": "Shipping Address",
+			"placeholder": "Add Address",
+			"options": {
+				"addressValues": {
+					"displayName": "Address",
+					"options": {
+						"company": {
+							"displayName": "Company"
+						},
+						"countryCode": {
+							"displayName": "Country Code Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"firstName": {
+							"displayName": "First Name"
+						},
+						"middleName": {
+							"displayName": "Middle Name"
+						},
+						"lastName": {
+							"displayName": "Last Name"
+						},
+						"line1": {
+							"displayName": "Line 1"
+						},
+						"line2": {
+							"displayName": "Line 2"
+						},
+						"locality": {
+							"displayName": "Locality"
+						},
+						"region": {
+							"displayName": "Region"
+						},
+						"zipCode": {
+							"displayName": "Zip Code"
+						},
+						"zipFour": {
+							"displayName": "Zip Four"
+						},
+						"phone": {
+							"displayName": "Phone"
+						}
+					}
+				}
+			},
+			"values": {
+				"addressValues": {
+					"displayName": "Address",
+					"options": {
+						"company": {
+							"displayName": "Company"
+						},
+						"countryCode": {
+							"displayName": "Country Code Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"firstName": {
+							"displayName": "First Name"
+						},
+						"middleName": {
+							"displayName": "Middle Name"
+						},
+						"lastName": {
+							"displayName": "Last Name"
+						},
+						"line1": {
+							"displayName": "Line 1"
+						},
+						"line2": {
+							"displayName": "Line 2"
+						},
+						"locality": {
+							"displayName": "Locality"
+						},
+						"region": {
+							"displayName": "Region"
+						},
+						"zipCode": {
+							"displayName": "Zip Code"
+						},
+						"zipFour": {
+							"displayName": "Zip Four"
+						},
+						"phone": {
+							"displayName": "Phone"
+						}
+					}
+				},
+				"addressUi": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Address"
+				}
+			}
+		},
+		"orderItemsUi": {
+			"displayName": "Order Items",
+			"placeholder": "Add Order Item",
+			"multipleValueButtonText": "Add Order Item",
+			"options": {
+				"orderItemsValues": {
+					"displayName": "Order Item",
+					"options": {
+						"description": {
+							"displayName": "Description"
+						},
+						"price": {
+							"displayName": "Price",
+							"description": "Overridable price of the product, if not specified, the default will be used"
+						},
+						"product ID": {
+							"displayName": "Product ID"
+						},
+						"quantity": {
+							"displayName": "Quantity"
+						}
+					}
+				}
+			},
+			"values": {
+				"orderItemsValues": {
+					"displayName": "Order Item",
+					"options": {
+						"description": {
+							"displayName": "Description"
+						},
+						"price": {
+							"displayName": "Price",
+							"description": "Overridable price of the product, if not specified, the default will be used"
+						},
+						"product ID": {
+							"displayName": "Product ID"
+						},
+						"quantity": {
+							"displayName": "Quantity"
+						}
+					}
+				},
+				"orderItemsUi": {
+					"displayName": "Order Items",
+					"placeholder": "Add Order Item"
+				}
+			}
+		},
+		"orderId": {
+			"displayName": "Order ID"
+		},
+		"productName": {
+			"displayName": "Product Name"
+		},
+		"productId": {
+			"displayName": "Product ID"
+		},
+		"sentToAddress": {
+			"displayName": "Sent To Address"
+		},
+		"sentFromAddress": {
+			"displayName": "Sent From Address"
+		},
+		"contactIds": {
+			"displayName": "Contact IDs",
+			"description": "Contact IDs to receive the email. Multiple can be added seperated by comma."
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "The subject line of the email"
+		},
+		"attachmentsUi": {
+			"displayName": "Attachments",
+			"description": "Attachments to be sent with each copy of the email, maximum of 10 with size of 1MB each",
+			"placeholder": "Add Attachments",
+			"multipleValueButtonText": "Add Attachments",
+			"options": {
+				"attachmentsValues": {
+					"displayName": "Attachments Values",
+					"options": {
+						"fileData": {
+							"displayName": "File Data",
+							"description": "The content of the attachment, encoded in Base64"
+						},
+						"fileName": {
+							"displayName": "File Name",
+							"description": "The filename of the attached file, including extension"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "Attachments Binary",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"description": "Name of the binary properties which contain data which should be added to email as attachment"
+						}
+					}
+				}
+			},
+			"values": {
+				"attachmentsValues": {
+					"displayName": "Attachments Values",
+					"options": {
+						"fileData": {
+							"displayName": "File Data",
+							"description": "The content of the attachment, encoded in Base64"
+						},
+						"fileName": {
+							"displayName": "File Name",
+							"description": "The filename of the attached file, including extension"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "Attachments Binary",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"description": "Name of the binary properties which contain data which should be added to email as attachment"
+						}
+					}
+				},
+				"attachmentsUi": {
+					"displayName": "Attachments",
+					"placeholder": "Add Attachments"
+				}
+			}
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the data to upload should be taken from binary field"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"fileAssociation": {
+			"displayName": "File Association",
+			"options": {
+				"company": {
+					"displayName": "Company"
+				},
+				"contact": {
+					"displayName": "Contact"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"fileName": {
+			"displayName": "File Name",
+			"description": "The filename of the attached file, including extension"
+		},
+		"fileData": {
+			"displayName": "File Data",
+			"description": "The content of the attachment, encoded in Base64"
+		},
+		"isPublic": {
+			"displayName": "Is Public"
+		},
+		"fileId": {
+			"displayName": "File ID"
+		}
+	}
+}

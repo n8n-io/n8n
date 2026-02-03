@@ -1,0 +1,48 @@
+{
+	"header": {
+		"displayName": "Acuity Scheduling 触发器",
+		"description": "通过 Webhook 处理 Acuity Scheduling 事件"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiKey": {
+					"displayName": "API密钥"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"appointment.canceled": {
+					"displayName": "预约已取消",
+					"description": "当预约被取消时调用"
+				},
+				"appointment.changed": {
+					"displayName": "预约已更改",
+					"description": "当预约以任何方式更改时调用"
+				},
+				"appointment.rescheduled": {
+					"displayName": "预约已重新安排",
+					"description": "当预约被重新安排到新时间时调用"
+				},
+				"appointment.scheduled": {
+					"displayName": "预约已安排",
+					"description": "在预约初次预订时调用一次"
+				},
+				"order.completed": {
+					"displayName": "订单完成",
+					"description": "当订单完成时调用"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，Webhook数据仅包含对象的ID。如果启用此选项，系统将自动解析数据。"
+		}
+	}
+}

@@ -1,0 +1,105 @@
+{
+	"header": {
+		"displayName": "切换",
+		"description": "根据定义的表达式或规则路由项目"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "模式",
+			"description": "数据应如何路由",
+			"options": {
+				"rules": {
+					"displayName": "规则",
+					"description": "为每个输出构建匹配规则"
+				},
+				"expression": {
+					"displayName": "表达式",
+					"description": "编写一个表达式来返回输出索引"
+				}
+			}
+		},
+		"numberOutputs": {
+			"displayName": "输出数量",
+			"description": "创建多少个输出"
+		},
+		"output": {
+			"displayName": "输出索引",
+			"description": "将输入项发送到的输出索引。使用表达式计算应将哪个输入项路由到哪个输出。表达式必须返回一个数字。"
+		},
+		"rules": {
+			"displayName": "路由规则",
+			"placeholder": "添加路由规则",
+			"multipleValueButtonText": "添加路由规则",
+			"options": {
+				"values": {
+					"displayName": "路由规则",
+					"values": {
+						"conditions": {
+							"displayName": "条件",
+							"placeholder": "添加条件"
+						},
+						"renameOutput": {
+							"displayName": "重命名输出"
+						},
+						"outputKey": {
+							"displayName": "输出名称",
+							"description": "如果规则匹配，数据将发送到的输出标签"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "路由规则",
+					"values": {
+						"conditions": {
+							"displayName": "条件",
+							"placeholder": "添加条件"
+						},
+						"renameOutput": {
+							"displayName": "重命名输出"
+						},
+						"outputKey": {
+							"displayName": "输出名称",
+							"description": "如果规则匹配，数据将发送到的输出标签"
+						}
+					}
+				},
+				"rules": {
+					"displayName": "路由规则",
+					"placeholder": "添加路由规则"
+				}
+			}
+		},
+		"looseTypeValidation": {
+			"displayName": "在需要时转换类型",
+			"description": "如果表达式的类型与比较类型不匹配，n8n会尝试将表达式转换为所需类型。例如，对于布尔值，<code>\"false\"</code>或<code>0</code>将被转换为<code>false</code>"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fallbackOutput": {
+					"displayName": "备用输出",
+					"description": "若无规则匹配，项目将发送至此输出，默认情况下将被忽略"
+				},
+				"ignoreCase": {
+					"displayName": "忽略大小写",
+					"description": "评估条件时是否忽略字母大小写"
+				},
+				"looseTypeValidation": {
+					"displayName": "在需要时转换类型",
+					"description": "如果表达式的类型与比较类型不匹配，n8n会尝试将表达式转换为所需类型。例如，对于布尔值，<code>\"false\"</code>或<code>0</code>将被转换为<code>false</code>。"
+				},
+				"renameFallbackOutput": {
+					"displayName": "重命名备用输出",
+					"placeholder": "例如：备用"
+				},
+				"allMatchingOutputs": {
+					"displayName": "将数据发送到所有匹配的输出",
+					"description": "是否将数据发送到所有符合条件的输出（而不仅仅是第一个）"
+				}
+			}
+		}
+	}
+}

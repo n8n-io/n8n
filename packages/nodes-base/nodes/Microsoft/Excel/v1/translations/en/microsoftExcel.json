@@ -1,0 +1,145 @@
+{
+	"header": {
+		"displayName": "Microsoft Excel",
+		"description": "Consume Microsoft Excel API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"table": {
+					"displayName": "Table",
+					"description": "Represents an Excel table"
+				},
+				"workbook": {
+					"displayName": "Workbook",
+					"description": "Workbook is the top level object which contains related workbook objects such as worksheets, tables, ranges, etc"
+				},
+				"worksheet": {
+					"displayName": "Worksheet",
+					"description": "An Excel worksheet is a grid of cells. It can contain data, tables, charts, etc."
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"addWorksheet": {
+					"displayName": "Add Worksheet",
+					"description": "Adds a new worksheet to the workbook"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many worksheets"
+				},
+				"getContent": {
+					"displayName": "Get Content",
+					"description": "Get worksheet content"
+				},
+				"addRow": {
+					"displayName": "Add Row",
+					"description": "Adds rows to the end of the table"
+				},
+				"getColumns": {
+					"displayName": "Get Columns",
+					"description": "Retrieve a list of tablecolumns"
+				},
+				"getRows": {
+					"displayName": "Get Rows",
+					"description": "Retrieve a list of tablerows"
+				},
+				"lookup": {
+					"displayName": "Lookup",
+					"description": "Looks for a specific column value and then returns the matching row"
+				}
+			}
+		},
+		"workbook": {
+			"displayName": "Workbook Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the worksheet to be added. If specified, name should be unqiue. If not specified, Excel determines the name of the new worksheet."
+				},
+				"index": {
+					"displayName": "Index",
+					"description": "Specifies the relative position of the new row. If not defined, the addition happens at the end. Any rows below the inserted row are shifted downwards. Zero-indexed"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields the response will containt. Multiple can be added separated by ,."
+				}
+			}
+		},
+		"worksheet": {
+			"displayName": "Worksheet Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"range": {
+			"displayName": "Range",
+			"description": "The address or the name of the range. If not specified, the entire worksheet range is returned."
+		},
+		"rawData": {
+			"displayName": "RAW Data",
+			"description": "Whether the data should be returned RAW instead of parsed into keys according to their header"
+		},
+		"dataProperty": {
+			"displayName": "Data Property",
+			"description": "The name of the property into which to write the RAW data"
+		},
+		"dataStartRow": {
+			"displayName": "Data Start Row",
+			"description": "Index of the first row which contains the actual data and not the keys. Starts with 0."
+		},
+		"keyRow": {
+			"displayName": "Key Row",
+			"description": "Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitve."
+		},
+		"table": {
+			"displayName": "Table Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"lookupColumn": {
+			"displayName": "Lookup Column",
+			"description": "The name of the column in which to look for value",
+			"placeholder": "Email"
+		},
+		"lookupValue": {
+			"displayName": "Lookup Value",
+			"description": "The value to look for in column",
+			"placeholder": "frank@example.com"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"returnAllMatches": {
+					"displayName": "Return All Matches",
+					"description": "By default only the first result gets returned. If options gets set all found matches get returned."
+				}
+			}
+		}
+	}
+}

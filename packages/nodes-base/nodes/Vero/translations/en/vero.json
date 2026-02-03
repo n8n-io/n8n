@@ -1,0 +1,180 @@
+{
+	"header": {
+		"displayName": "Vero",
+		"description": "Consume Vero API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"user": {
+					"displayName": "User",
+					"description": "Create, update and manage the subscription status of your users"
+				},
+				"event": {
+					"displayName": "Event",
+					"description": "Track events based on actions your customers take in real time"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"addTags": {
+					"displayName": "Add Tags",
+					"description": "Adds a tag to a users profile"
+				},
+				"alias": {
+					"displayName": "Alias",
+					"description": "Change a users identifier"
+				},
+				"create": {
+					"displayName": "Create or Update",
+					"description": "Create or update a user profile"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user"
+				},
+				"resubscribe": {
+					"displayName": "Re-Subscribe",
+					"description": "Resubscribe a user"
+				},
+				"removeTags": {
+					"displayName": "Remove Tags",
+					"description": "Removes a tag from a users profile"
+				},
+				"unsubscribe": {
+					"displayName": "Unsubscribe",
+					"description": "Unsubscribe a user"
+				},
+				"track": {
+					"displayName": "Track",
+					"description": "Track an event for a specific customer"
+				}
+			}
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "The unique identifier of the customer"
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"email": {
+					"displayName": "Email",
+					"description": "The table to create the row in",
+					"placeholder": "name@email.com"
+				}
+			}
+		},
+		"dataAttributesUi": {
+			"displayName": "Data",
+			"description": "Key value pairs that represent any properties you want to track with this event",
+			"placeholder": "Add Data",
+			"multipleValueButtonText": "Add Data",
+			"options": {
+				"dataAttributesValues": {
+					"displayName": "Data",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Name of the property to set"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the property to set"
+						}
+					}
+				}
+			},
+			"values": {
+				"dataAttributesValues": {
+					"displayName": "Data",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Name of the property to set"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the property to set"
+						}
+					}
+				},
+				"dataAttributesUi": {
+					"displayName": "Data",
+					"placeholder": "Add Data"
+				}
+			}
+		},
+		"dataAttributesJson": {
+			"displayName": "Data",
+			"description": "Key value pairs that represent the custom user properties you want to update"
+		},
+		"newId": {
+			"displayName": "New ID",
+			"description": "The new unique identifier of the user"
+		},
+		"tags": {
+			"displayName": "Tags",
+			"description": "Tags to remove separated by \",\""
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "name@email.com"
+		},
+		"eventName": {
+			"displayName": "Event Name",
+			"description": "The name of the event tracked"
+		},
+		"extraAttributesUi": {
+			"displayName": "Extra",
+			"description": "Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below.",
+			"placeholder": "Add Extra",
+			"multipleValueButtonText": "Add Extra",
+			"options": {
+				"extraAttributesValues": {
+					"displayName": "Extra",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Name of the property to set"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the property to set"
+						}
+					}
+				}
+			},
+			"values": {
+				"extraAttributesValues": {
+					"displayName": "Extra",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Name of the property to set"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the property to set"
+						}
+					}
+				},
+				"extraAttributesUi": {
+					"displayName": "Extra",
+					"placeholder": "Add Extra"
+				}
+			}
+		},
+		"extraAttributesJson": {
+			"displayName": "Extra",
+			"description": "Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below."
+		}
+	}
+}

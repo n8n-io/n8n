@@ -1,0 +1,631 @@
+{
+	"header": {
+		"displayName": "Zammad",
+		"description": "使用Zammad API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"basicAuth": {
+					"displayName": "基础认证"
+				},
+				"tokenAuth": {
+					"displayName": "令牌认证"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"group": {
+					"displayName": "分组"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"ticket": {
+					"displayName": "工单"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个用户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户"
+				},
+				"getSelf": {
+					"displayName": "获取自身信息",
+					"description": "获取当前登录用户"
+				}
+			}
+		},
+		"name": {
+			"displayName": "组织名称"
+		},
+		"id": {
+			"displayName": "用户ID",
+			"description": "要检索的用户。使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"active": {
+					"displayName": "激活状态",
+					"description": "组织是否处于活动状态"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldPairs": {
+							"displayName": "自定义字段",
+							"options": {
+								"name": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的自定义字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要在自定义字段上设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldPairs": {
+							"displayName": "自定义字段",
+							"options": {
+								"name": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的自定义字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要在自定义字段上设置的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "关于组织的说明"
+				},
+				"shared": {
+					"displayName": "共享",
+					"description": "该组织是否与其他实例共享"
+				},
+				"domain": {
+					"displayName": "域名",
+					"description": "与组织关联的域名"
+				},
+				"domain_assignment": {
+					"displayName": "域名分配",
+					"description": "是否根据用户邮箱域名进行分配"
+				},
+				"vip": {
+					"displayName": "VIP",
+					"description": "用户是否为非常重要的人物"
+				},
+				"addressUi": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"options": {
+						"addressDetails": {
+							"displayName": "地址详情",
+							"options": {
+								"city": {
+									"displayName": "城市",
+									"placeholder": "柏林"
+								},
+								"country": {
+									"displayName": "国家",
+									"placeholder": "德国"
+								},
+								"address": {
+									"displayName": "街道和门牌号",
+									"placeholder": "Borsigstr. 27"
+								},
+								"zip": {
+									"displayName": "邮政编码",
+									"placeholder": "10115"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressDetails": {
+							"displayName": "地址详情",
+							"options": {
+								"city": {
+									"displayName": "城市",
+									"placeholder": "柏林"
+								},
+								"country": {
+									"displayName": "国家",
+									"placeholder": "德国"
+								},
+								"address": {
+									"displayName": "街道和门牌号",
+									"placeholder": "Borsigstr. 27"
+								},
+								"zip": {
+									"displayName": "邮政编码",
+									"placeholder": "10115"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"department": {
+					"displayName": "部门",
+					"placeholder": "财务"
+				},
+				"email": {
+					"displayName": "邮箱地址",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "传真",
+					"placeholder": "[0]+49 30 901820"
+				},
+				"organization": {
+					"displayName": "组织名称或ID",
+					"description": "要分配给用户的组织名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"phone": {
+					"displayName": "电话（座机）",
+					"placeholder": "[0]+49 30 901820"
+				},
+				"mobile": {
+					"displayName": "电话（手机）",
+					"placeholder": "+49 1522 3433333"
+				},
+				"verified": {
+					"displayName": "已验证",
+					"description": "用户是否已验证"
+				},
+				"web": {
+					"displayName": "网站",
+					"placeholder": "https://n8n.io"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"active": {
+					"displayName": "激活状态",
+					"description": "组织是否处于活动状态"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldPairs": {
+							"displayName": "自定义字段",
+							"options": {
+								"name": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的自定义字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要在自定义字段上设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldPairs": {
+							"displayName": "自定义字段",
+							"options": {
+								"name": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的自定义字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要在自定义字段上设置的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"name": {
+					"displayName": "分组名称"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "关于组织的说明"
+				},
+				"shared": {
+					"displayName": "共享",
+					"description": "该组织是否与其他实例共享"
+				},
+				"domain": {
+					"displayName": "域名",
+					"description": "与组织关联的域名"
+				},
+				"domain_assignment": {
+					"displayName": "域名分配",
+					"description": "是否根据用户邮箱域名进行分配"
+				},
+				"vip": {
+					"displayName": "VIP",
+					"description": "用户是否为非常重要的人物"
+				},
+				"addressUi": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"options": {
+						"addressDetails": {
+							"displayName": "地址详情",
+							"options": {
+								"city": {
+									"displayName": "城市",
+									"placeholder": "柏林"
+								},
+								"country": {
+									"displayName": "国家",
+									"placeholder": "德国"
+								},
+								"address": {
+									"displayName": "街道和门牌号",
+									"placeholder": "Borsigstr. 27"
+								},
+								"zip": {
+									"displayName": "邮政编码",
+									"placeholder": "10115"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressDetails": {
+							"displayName": "地址详情",
+							"options": {
+								"city": {
+									"displayName": "城市",
+									"placeholder": "柏林"
+								},
+								"country": {
+									"displayName": "国家",
+									"placeholder": "德国"
+								},
+								"address": {
+									"displayName": "街道和门牌号",
+									"placeholder": "Borsigstr. 27"
+								},
+								"zip": {
+									"displayName": "邮政编码",
+									"placeholder": "10115"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"department": {
+					"displayName": "部门",
+					"placeholder": "财务"
+				},
+				"email": {
+					"displayName": "邮箱地址",
+					"placeholder": "hello@n8n.io"
+				},
+				"fax": {
+					"displayName": "传真",
+					"placeholder": "[0]+49 30 901820"
+				},
+				"firstname": {
+					"displayName": "名字",
+					"placeholder": "约翰"
+				},
+				"lastname": {
+					"displayName": "姓氏",
+					"placeholder": "史密斯"
+				},
+				"organization": {
+					"displayName": "组织名称或ID",
+					"description": "要分配给用户的组织名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"phone": {
+					"displayName": "电话（座机）",
+					"placeholder": "[0]+49 30 901820"
+				},
+				"mobile": {
+					"displayName": "电话（手机）",
+					"placeholder": "+49 1522 3433333"
+				},
+				"verified": {
+					"displayName": "已验证",
+					"description": "用户是否已验证"
+				},
+				"web": {
+					"displayName": "网站",
+					"placeholder": "https://n8n.io"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "要创建的工单标题"
+		},
+		"group": {
+			"displayName": "组名称或ID",
+			"description": "将拥有待创建工单的组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "一线帮助台"
+		},
+		"customer": {
+			"displayName": "客户邮箱名称或ID",
+			"description": "工单关联客户的邮箱地址。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "hello@n8n.io"
+		},
+		"article": {
+			"displayName": "文章",
+			"placeholder": "添加文章",
+			"options": {
+				"articleDetails": {
+					"displayName": "文章详情",
+					"options": {
+						"subject": {
+							"displayName": "主题"
+						},
+						"body": {
+							"displayName": "正文"
+						},
+						"visibility": {
+							"displayName": "可见性",
+							"options": {
+								"external": {
+									"displayName": "外部",
+									"description": "对客户可见"
+								},
+								"internal": {
+									"displayName": "内部",
+									"description": "对帮助台可见"
+								}
+							}
+						},
+						"sender": {
+							"displayName": "发送方",
+							"options": {
+								"Agent": {
+									"displayName": "代理"
+								},
+								"Customer": {
+									"displayName": "客户"
+								},
+								"System": {
+									"displayName": "系统",
+									"description": "Zammad中仅显示主题"
+								}
+							}
+						},
+						"type": {
+							"displayName": "文章类型",
+							"options": {
+								"chat": {
+									"displayName": "聊天"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"fax": {
+									"displayName": "传真"
+								},
+								"note": {
+									"displayName": "备注"
+								},
+								"phone": {
+									"displayName": "电话"
+								},
+								"sms": {
+									"displayName": "短信"
+								}
+							}
+						},
+						"reply_to": {
+							"displayName": "回复至"
+						}
+					}
+				}
+			},
+			"values": {
+				"articleDetails": {
+					"displayName": "文章详情",
+					"options": {
+						"subject": {
+							"displayName": "主题"
+						},
+						"body": {
+							"displayName": "正文"
+						},
+						"visibility": {
+							"displayName": "可见性",
+							"options": {
+								"external": {
+									"displayName": "外部",
+									"description": "对客户可见"
+								},
+								"internal": {
+									"displayName": "内部",
+									"description": "对帮助台可见"
+								}
+							}
+						},
+						"sender": {
+							"displayName": "发送方",
+							"options": {
+								"Agent": {
+									"displayName": "代理"
+								},
+								"Customer": {
+									"displayName": "客户"
+								},
+								"System": {
+									"displayName": "系统",
+									"description": "Zammad中仅显示主题"
+								}
+							}
+						},
+						"type": {
+							"displayName": "文章类型",
+							"options": {
+								"chat": {
+									"displayName": "聊天"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"fax": {
+									"displayName": "传真"
+								},
+								"note": {
+									"displayName": "备注"
+								},
+								"phone": {
+									"displayName": "电话"
+								},
+								"sms": {
+									"displayName": "短信"
+								}
+							}
+						},
+						"reply_to": {
+							"displayName": "回复至"
+						}
+					}
+				},
+				"article": {
+					"displayName": "文章",
+					"placeholder": "添加文章"
+				}
+			}
+		},
+		"firstname": {
+			"displayName": "名字",
+			"placeholder": "John"
+		},
+		"lastname": {
+			"displayName": "姓氏",
+			"placeholder": "史密斯"
+		},
+		"query": {
+			"displayName": "查询"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"query": {
+					"displayName": "查询",
+					"description": "用于筛选结果的查询",
+					"placeholder": "user.firstname:john"
+				},
+				"sortUi": {
+					"displayName": "排序",
+					"placeholder": "添加排序选项",
+					"options": {
+						"sortDetails": {
+							"displayName": "排序选项",
+							"options": {
+								"sort_by": {
+									"displayName": "排序键名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"order_by": {
+									"displayName": "排序顺序",
+									"options": {
+										"asc": {
+											"displayName": "升序"
+										},
+										"desc": {
+											"displayName": "降序"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"sortDetails": {
+							"displayName": "排序选项",
+							"options": {
+								"sort_by": {
+									"displayName": "排序键名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"order_by": {
+									"displayName": "排序顺序",
+									"options": {
+										"asc": {
+											"displayName": "升序"
+										},
+										"desc": {
+											"displayName": "降序"
+										}
+									}
+								}
+							}
+						},
+						"sortUi": {
+							"displayName": "排序",
+							"placeholder": "添加排序选项"
+						}
+					}
+				}
+			}
+		}
+	}
+}

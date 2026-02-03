@@ -1,0 +1,69 @@
+{
+	"header": {
+		"displayName": "Hacker新闻",
+		"description": "使用Hacker新闻API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"all": {
+					"displayName": "全部"
+				},
+				"article": {
+					"displayName": "文章"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个项目"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取Hacker News用户"
+				}
+			}
+		},
+		"articleId": {
+			"displayName": "文章ID",
+			"description": "要返回的Hacker News文章ID"
+		},
+		"username": {
+			"displayName": "用户名",
+			"description": "要返回的Hacker News用户"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"includeComments": {
+					"displayName": "包含评论",
+					"description": "是否包含Hacker News文章中的所有评论"
+				},
+				"keyword": {
+					"displayName": "关键词",
+					"description": "用于筛选查询结果的关键词"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "用于筛选查询结果的标签"
+				}
+			}
+		}
+	}
+}

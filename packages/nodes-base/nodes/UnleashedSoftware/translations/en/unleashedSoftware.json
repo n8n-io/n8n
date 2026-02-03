@@ -1,0 +1,102 @@
+{
+	"header": {
+		"displayName": "Unleashed Software",
+		"description": "Consume Unleashed Software API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"salesOrder": {
+					"displayName": "Sales Order"
+				},
+				"stockOnHand": {
+					"displayName": "Stock On Hand"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many stocks on hand"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a stock on hand"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"customerId": {
+					"displayName": "Customer ID",
+					"description": "Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs.",
+					"placeholder": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+				},
+				"customerCode": {
+					"displayName": "Customer Code",
+					"description": "Returns orders that start with the specific customer code"
+				},
+				"endDate": {
+					"displayName": "End Date",
+					"description": "Returns orders with order date before the specified date. UTC."
+				},
+				"modifiedSince": {
+					"displayName": "Modified Since",
+					"description": "Returns stock on hand values modified after a specific date"
+				},
+				"orderNumber": {
+					"displayName": "Order Number",
+					"description": "Returns a single order with the specified order number. If set, it overrides all other filters."
+				},
+				"orderStatus": {
+					"displayName": "Order Status",
+					"description": "Returns orders with the specified status. If no orderStatus filter is specified, then we exclude \"Deleted\" by default."
+				},
+				"startDate": {
+					"displayName": "Start Date",
+					"description": "Returns orders with order date after the specified date. UTC."
+				},
+				"asAtDate": {
+					"displayName": "As at Date",
+					"description": "Returns the stock on hand for a specific date"
+				},
+				"IsAssembled": {
+					"displayName": "Is Assembled",
+					"description": "Whether the AvailableQty will also include the quantity that can be assembled"
+				},
+				"orderBy": {
+					"displayName": "Order By",
+					"description": "Orders the list by a specific column, by default the list is ordered by productCode"
+				},
+				"productId": {
+					"displayName": "Product ID",
+					"description": "Returns products with the specific Product Guid. You can enter multiple product IDs separated by commas."
+				},
+				"warehouseCode": {
+					"displayName": "Warehouse Code",
+					"description": "Returns stock on hand for a specific warehouse code"
+				},
+				"warehouseName": {
+					"displayName": "Warehouse Name",
+					"description": "Returns stock on hand for a specific warehouse name"
+				}
+			}
+		},
+		"productId": {
+			"displayName": "Product ID"
+		}
+	}
+}

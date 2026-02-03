@@ -1,0 +1,42 @@
+{
+	"header": {
+		"displayName": "SearXNG",
+		"description": "在SearXNG中搜索"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"numResults": {
+					"displayName": "结果数量"
+				},
+				"pageNumber": {
+					"displayName": "搜索页码"
+				},
+				"language": {
+					"displayName": "语言",
+					"description": "Defines the language to use. It's a two-letter language code. (e.g., `en` for English, `es` for Spanish, or `fr` for French). Head to <a href=\"https://docs.searxng.org/user/search-syntax.html#select-language\">SearXNG search syntax page</a> for more info."
+				},
+				"safesearch": {
+					"displayName": "安全搜索",
+					"description": "筛选支持安全搜索的引擎的搜索结果",
+					"options": {
+						"0": {
+							"displayName": "无"
+						},
+						"1": {
+							"displayName": "中等"
+						},
+						"2": {
+							"displayName": "严格"
+						}
+					}
+				}
+			}
+		}
+	}
+}

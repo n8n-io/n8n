@@ -1,0 +1,477 @@
+{
+	"header": {
+		"displayName": "Odoo",
+		"description": "调用Odoo API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				},
+				"custom": {
+					"displayName": "自定义资源"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"opportunity": {
+					"displayName": "商机"
+				}
+			}
+		},
+		"customResource": {
+			"displayName": "自定义资源名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新笔记"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除笔记"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取笔记"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个笔记"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新笔记"
+				}
+			}
+		},
+		"fieldsToCreateOrUpdate": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"fields": {
+					"displayName": "字段记录：",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"fieldValue": {
+							"displayName": "新值"
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "字段记录：",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"fieldValue": {
+							"displayName": "新值"
+						}
+					}
+				},
+				"fieldsToCreateOrUpdate": {
+					"displayName": "更新字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"customResourceId": {
+			"displayName": "自定义资源ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"fieldsList": {
+					"displayName": "要包含的字段",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				}
+			}
+		},
+		"filterRequest": {
+			"displayName": "过滤器",
+			"description": "通过应用过滤器筛选请求",
+			"placeholder": "添加条件",
+			"multipleValueButtonText": "添加过滤器",
+			"options": {
+				"filter": {
+					"displayName": "筛选器",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"operator": {
+							"displayName": "操作员",
+							"description": "指定运算符",
+							"options": {
+								"notEqual": {
+									"displayName": "[0]!="
+								},
+								"lesserThen": {
+									"displayName": "<"
+								},
+								"lesserOrEqual": {
+									"displayName": "工作流"
+								},
+								"equal": {
+									"displayName": "[0]="
+								},
+								"greaterThen": {
+									"displayName": "[0]>"
+								},
+								"greaterOrEqual": {
+									"displayName": "大于或等于"
+								},
+								"childOf": {
+									"displayName": "子节点"
+								},
+								"in": {
+									"displayName": "在"
+								},
+								"like": {
+									"displayName": "点赞"
+								},
+								"notIn": {
+									"displayName": "不在"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "指定比较值"
+						}
+					}
+				}
+			},
+			"values": {
+				"filter": {
+					"displayName": "筛选器",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"operator": {
+							"displayName": "操作员",
+							"description": "指定运算符",
+							"options": {
+								"notEqual": {
+									"displayName": "[0]!="
+								},
+								"lesserThen": {
+									"displayName": "<"
+								},
+								"lesserOrEqual": {
+									"displayName": "工作流"
+								},
+								"equal": {
+									"displayName": "[0]="
+								},
+								"greaterThen": {
+									"displayName": "[0]>"
+								},
+								"greaterOrEqual": {
+									"displayName": "大于或等于"
+								},
+								"childOf": {
+									"displayName": "子节点"
+								},
+								"in": {
+									"displayName": "在"
+								},
+								"like": {
+									"displayName": "点赞"
+								},
+								"notIn": {
+									"displayName": "不在"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "指定比较值"
+						}
+					}
+				},
+				"filterRequest": {
+					"displayName": "筛选器",
+					"placeholder": "添加条件"
+				}
+			}
+		},
+		"opportunityName": {
+			"displayName": "名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"email_from": {
+					"displayName": "电子邮件"
+				},
+				"expected_revenue": {
+					"displayName": "预期收入"
+				},
+				"description": {
+					"displayName": "内部备注"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"1": {
+							"displayName": "1"
+						},
+						"2": {
+							"displayName": "2"
+						},
+						"3": {
+							"displayName": "3"
+						}
+					}
+				},
+				"probability": {
+					"displayName": "概率"
+				},
+				"address": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"options": {
+						"value": {
+							"displayName": "地址",
+							"options": {
+								"city": {
+									"displayName": "城市"
+								},
+								"country_id": {
+									"displayName": "国家名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"state_id": {
+									"displayName": "状态名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"street": {
+									"displayName": "街道"
+								},
+								"street2": {
+									"displayName": "街道地址 2"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "地址",
+							"options": {
+								"city": {
+									"displayName": "城市"
+								},
+								"country_id": {
+									"displayName": "国家名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"state_id": {
+									"displayName": "状态名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"street": {
+									"displayName": "街道"
+								},
+								"street2": {
+									"displayName": "街道地址 2"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"comment": {
+					"displayName": "内部备注"
+				},
+				"function": {
+					"displayName": "职位"
+				},
+				"mobile": {
+					"displayName": "移动端"
+				},
+				"vat": {
+					"displayName": "税号"
+				},
+				"website": {
+					"displayName": "网站"
+				}
+			}
+		},
+		"opportunityId": {
+			"displayName": "商机ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"email_from": {
+					"displayName": "电子邮件"
+				},
+				"expected_revenue": {
+					"displayName": "预期收入"
+				},
+				"description": {
+					"displayName": "内部备注"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"1": {
+							"displayName": "1"
+						},
+						"2": {
+							"displayName": "2"
+						},
+						"3": {
+							"displayName": "3"
+						}
+					}
+				},
+				"probability": {
+					"displayName": "概率"
+				},
+				"address": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"options": {
+						"value": {
+							"displayName": "地址",
+							"options": {
+								"city": {
+									"displayName": "城市"
+								},
+								"country_id": {
+									"displayName": "国家名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"state_id": {
+									"displayName": "状态名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"street": {
+									"displayName": "街道"
+								},
+								"street2": {
+									"displayName": "街道地址 2"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "地址",
+							"options": {
+								"city": {
+									"displayName": "城市"
+								},
+								"country_id": {
+									"displayName": "国家名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"state_id": {
+									"displayName": "状态名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"street": {
+									"displayName": "街道"
+								},
+								"street2": {
+									"displayName": "街道地址 2"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"comment": {
+					"displayName": "内部备注"
+				},
+				"function": {
+					"displayName": "职位"
+				},
+				"mobile": {
+					"displayName": "移动端"
+				},
+				"vat": {
+					"displayName": "税号"
+				},
+				"website": {
+					"displayName": "网站"
+				}
+			}
+		},
+		"contactName": {
+			"displayName": "名称"
+		},
+		"contactId": {
+			"displayName": "联系人ID"
+		},
+		"memo": {
+			"displayName": "备忘录"
+		},
+		"noteId": {
+			"displayName": "笔记ID"
+		}
+	}
+}

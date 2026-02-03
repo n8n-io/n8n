@@ -1,0 +1,26 @@
+{
+	"header": {
+		"displayName": "Brevo触发器",
+		"description": "当Brevo事件发生时启动工作流"
+	},
+	"nodeView": {
+		"type": {
+			"displayName": "资源",
+			"options": {
+				"inbound": {
+					"displayName": "入站"
+				},
+				"marketing": {
+					"displayName": "营销"
+				},
+				"transactional": {
+					"displayName": "事务性"
+				}
+			}
+		},
+		"events": {
+			"displayName": "触发开启",
+			"placeholder": "添加事件"
+		}
+	}
+}

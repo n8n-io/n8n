@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "Postmark Trigger",
+		"description": "Starts the workflow when Postmark events occur"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events",
+			"description": "Webhook events that will be enabled for that endpoint"
+		},
+		"firstOpen": {
+			"displayName": "First Open",
+			"description": "Only fires on first open for event \"Open\""
+		},
+		"includeContent": {
+			"displayName": "Include Content",
+			"description": "Whether to include message content for events \"Bounce\" and \"Spam Complaint\""
+		}
+	}
+}

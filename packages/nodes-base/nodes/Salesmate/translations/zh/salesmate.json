@@ -1,0 +1,756 @@
+{
+	"header": {
+		"displayName": "Salesmate",
+		"description": "使用Salesmate API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"activity": {
+					"displayName": "活动"
+				},
+				"company": {
+					"displayName": "公司"
+				},
+				"deal": {
+					"displayName": "交易"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建交易"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除交易"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取交易"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个交易"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新交易"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称"
+		},
+		"owner": {
+			"displayName": "所有者名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"rawData": {
+			"displayName": "原始数据",
+			"description": "数据是否应包含字段详情"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"website": {
+					"displayName": "网站"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"otherPhone": {
+					"displayName": "其他电话"
+				},
+				"facebookHandle": {
+					"displayName": "Facebook 账号"
+				},
+				"googlePlusHandle": {
+					"displayName": "Google Plus 用户名"
+				},
+				"linkedInHandle": {
+					"displayName": "LinkedIn 用户名"
+				},
+				"skypeId": {
+					"displayName": "Skype ID"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter 用户名"
+				},
+				"currency": {
+					"displayName": "货币"
+				},
+				"billingAddressLine1": {
+					"displayName": "账单地址行1"
+				},
+				"billingAddressLine2": {
+					"displayName": "账单地址第二行"
+				},
+				"billingCity": {
+					"displayName": "账单城市"
+				},
+				"billingZipCode": {
+					"displayName": "账单邮政编码"
+				},
+				"billingState": {
+					"displayName": "账单国家"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "此字段包含与交易相关的详细信息"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "此字段包含与交易关联的标签"
+				},
+				"dueDate": {
+					"displayName": "截止日期",
+					"description": "活动的到期日期"
+				},
+				"duration": {
+					"displayName": "持续时间",
+					"description": "活动的时间长度"
+				},
+				"isCalendarInvite": {
+					"displayName": "是否为日历邀请",
+					"description": "是否发送日历邀请"
+				},
+				"isCompleted": {
+					"displayName": "是否完成",
+					"description": "该活动是否已完成"
+				},
+				"primaryCompany": {
+					"displayName": "主要公司名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"source": {
+					"displayName": "源",
+					"options": {
+						"Ads": {
+							"displayName": "广告"
+						},
+						"Referrals": {
+							"displayName": "推荐"
+						},
+						"Website": {
+							"displayName": "网站"
+						},
+						"Word of mouth": {
+							"displayName": "口碑传播"
+						}
+					}
+				},
+				"estimatedCloseDate": {
+					"displayName": "预计关闭日期"
+				},
+				"dealValue": {
+					"displayName": "交易金额"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"High": {
+							"displayName": "高"
+						},
+						"Medium": {
+							"displayName": "中等"
+						},
+						"Low": {
+							"displayName": "低"
+						}
+					}
+				}
+			}
+		},
+		"id": {
+			"displayName": "交易ID",
+			"description": "若有多笔交易，请用逗号分隔添加"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称"
+				},
+				"owner": {
+					"displayName": "所有者姓名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"website": {
+					"displayName": "网站"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"otherPhone": {
+					"displayName": "其他电话"
+				},
+				"facebookHandle": {
+					"displayName": "Facebook 账号"
+				},
+				"googlePlusHandle": {
+					"displayName": "Google Plus 用户名"
+				},
+				"linkedInHandle": {
+					"displayName": "LinkedIn 用户名"
+				},
+				"skypeId": {
+					"displayName": "Skype ID"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter 用户名"
+				},
+				"currency": {
+					"displayName": "货币"
+				},
+				"billingAddressLine1": {
+					"displayName": "账单地址行1"
+				},
+				"billingAddressLine2": {
+					"displayName": "账单地址第二行"
+				},
+				"billingCity": {
+					"displayName": "账单城市"
+				},
+				"billingZipCode": {
+					"displayName": "账单邮政编码"
+				},
+				"billingState": {
+					"displayName": "账单国家"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "此字段包含与交易相关的详细信息"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "此字段包含与交易关联的标签"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"type": {
+					"displayName": "类型"
+				},
+				"dueDate": {
+					"displayName": "截止日期",
+					"description": "活动的到期日期"
+				},
+				"duration": {
+					"displayName": "持续时间",
+					"description": "活动的时间长度"
+				},
+				"isCalendarInvite": {
+					"displayName": "是否为日历邀请",
+					"description": "是否发送日历邀请"
+				},
+				"isCompleted": {
+					"displayName": "是否完成",
+					"description": "该活动是否已完成"
+				},
+				"primaryContact": {
+					"displayName": "主要联系人姓名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"pipeline": {
+					"displayName": "工作流",
+					"options": {
+						"Sales": {
+							"displayName": "销售"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"Open": {
+							"displayName": "打开"
+						},
+						"Close": {
+							"displayName": "关闭"
+						},
+						"Lost": {
+							"displayName": "丢失"
+						}
+					}
+				},
+				"stage": {
+					"displayName": "阶段",
+					"options": {
+						"Contacted": {
+							"displayName": "已联系"
+						},
+						"In Negotiation": {
+							"displayName": "协商中"
+						},
+						"New (Untouched)": {
+							"displayName": "新建（未修改）"
+						},
+						"Proposal Presented": {
+							"displayName": "提案已提交"
+						},
+						"Qualified": {
+							"displayName": "已认证"
+						}
+					}
+				},
+				"primaryCompany": {
+					"displayName": "主要公司名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"source": {
+					"displayName": "源",
+					"options": {
+						"Ads": {
+							"displayName": "广告"
+						},
+						"Referrals": {
+							"displayName": "推荐"
+						},
+						"Website": {
+							"displayName": "网站"
+						},
+						"Word of mouth": {
+							"displayName": "口碑传播"
+						}
+					}
+				},
+				"estimatedCloseDate": {
+					"displayName": "预计关闭日期"
+				},
+				"dealValue": {
+					"displayName": "交易金额"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"High": {
+							"displayName": "高"
+						},
+						"Medium": {
+							"displayName": "中等"
+						},
+						"Low": {
+							"displayName": "低"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "要返回的字段列表（逗号分隔）"
+				},
+				"sortBy": {
+					"displayName": "排序方式",
+					"description": "排序依据字段"
+				},
+				"sortOrder": {
+					"displayName": "排序顺序",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				}
+			}
+		},
+		"filtersJson": {
+			"displayName": "过滤器"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"filtersUi": {
+					"displayName": "筛选器",
+					"options": {
+						"operator": {
+							"displayName": "操作员",
+							"options": {
+								"AND": {
+									"displayName": "与"
+								},
+								"OR": {
+									"displayName": "或"
+								}
+							}
+						},
+						"conditions": {
+							"displayName": "条件",
+							"placeholder": "添加条件",
+							"multipleValueButtonText": "添加条件",
+							"options": {
+								"conditionsUi": {
+									"displayName": "条件",
+									"options": {
+										"field": {
+											"displayName": "字段",
+											"options": {
+												"name": {
+													"displayName": "名称"
+												},
+												"email": {
+													"displayName": "电子邮件"
+												},
+												"phone": {
+													"displayName": "电话"
+												},
+												"title": {
+													"displayName": "标题"
+												},
+												"tags": {
+													"displayName": "标签"
+												},
+												"lastCommunicationMode": {
+													"displayName": "上次通信模式"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "条件",
+											"description": "要设置的属性值",
+											"options": {
+												"EQUALS": {
+													"displayName": "等于"
+												},
+												"NOT_EQUALS": {
+													"displayName": "不等于"
+												},
+												"Contains": {
+													"displayName": "包含"
+												},
+												"DOES_NOT_CONTAINS": {
+													"displayName": "不包含"
+												},
+												"EMPTY": {
+													"displayName": "空"
+												},
+												"NOT_EMPTY": {
+													"displayName": "非空"
+												},
+												"STARTS_WITH": {
+													"displayName": "以...开头"
+												},
+												"ENDS_WITH": {
+													"displayName": "以...结尾"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								}
+							},
+							"values": {
+								"conditionsUi": {
+									"displayName": "条件",
+									"options": {
+										"field": {
+											"displayName": "字段",
+											"options": {
+												"name": {
+													"displayName": "名称"
+												},
+												"email": {
+													"displayName": "电子邮件"
+												},
+												"phone": {
+													"displayName": "电话"
+												},
+												"title": {
+													"displayName": "标题"
+												},
+												"tags": {
+													"displayName": "标签"
+												},
+												"lastCommunicationMode": {
+													"displayName": "上次通信模式"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "条件",
+											"description": "要设置的属性值",
+											"options": {
+												"EQUALS": {
+													"displayName": "等于"
+												},
+												"NOT_EQUALS": {
+													"displayName": "不等于"
+												},
+												"Contains": {
+													"displayName": "包含"
+												},
+												"DOES_NOT_CONTAINS": {
+													"displayName": "不包含"
+												},
+												"EMPTY": {
+													"displayName": "空"
+												},
+												"NOT_EMPTY": {
+													"displayName": "非空"
+												},
+												"STARTS_WITH": {
+													"displayName": "以...开头"
+												},
+												"ENDS_WITH": {
+													"displayName": "以...结尾"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								},
+								"conditions": {
+									"displayName": "条件",
+									"placeholder": "添加条件"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"filtersUi": {
+					"displayName": "筛选器",
+					"options": {
+						"operator": {
+							"displayName": "操作员",
+							"options": {
+								"AND": {
+									"displayName": "与"
+								},
+								"OR": {
+									"displayName": "或"
+								}
+							}
+						},
+						"conditions": {
+							"displayName": "条件",
+							"placeholder": "添加条件",
+							"multipleValueButtonText": "添加条件",
+							"options": {
+								"conditionsUi": {
+									"displayName": "条件",
+									"options": {
+										"field": {
+											"displayName": "字段",
+											"options": {
+												"name": {
+													"displayName": "名称"
+												},
+												"email": {
+													"displayName": "电子邮件"
+												},
+												"phone": {
+													"displayName": "电话"
+												},
+												"title": {
+													"displayName": "标题"
+												},
+												"tags": {
+													"displayName": "标签"
+												},
+												"lastCommunicationMode": {
+													"displayName": "上次通信模式"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "条件",
+											"description": "要设置的属性值",
+											"options": {
+												"EQUALS": {
+													"displayName": "等于"
+												},
+												"NOT_EQUALS": {
+													"displayName": "不等于"
+												},
+												"Contains": {
+													"displayName": "包含"
+												},
+												"DOES_NOT_CONTAINS": {
+													"displayName": "不包含"
+												},
+												"EMPTY": {
+													"displayName": "空"
+												},
+												"NOT_EMPTY": {
+													"displayName": "非空"
+												},
+												"STARTS_WITH": {
+													"displayName": "以...开头"
+												},
+												"ENDS_WITH": {
+													"displayName": "以...结尾"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								}
+							},
+							"values": {
+								"conditionsUi": {
+									"displayName": "条件",
+									"options": {
+										"field": {
+											"displayName": "字段",
+											"options": {
+												"name": {
+													"displayName": "名称"
+												},
+												"email": {
+													"displayName": "电子邮件"
+												},
+												"phone": {
+													"displayName": "电话"
+												},
+												"title": {
+													"displayName": "标题"
+												},
+												"tags": {
+													"displayName": "标签"
+												},
+												"lastCommunicationMode": {
+													"displayName": "上次通信模式"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "条件",
+											"description": "要设置的属性值",
+											"options": {
+												"EQUALS": {
+													"displayName": "等于"
+												},
+												"NOT_EQUALS": {
+													"displayName": "不等于"
+												},
+												"Contains": {
+													"displayName": "包含"
+												},
+												"DOES_NOT_CONTAINS": {
+													"displayName": "不包含"
+												},
+												"EMPTY": {
+													"displayName": "空"
+												},
+												"NOT_EMPTY": {
+													"displayName": "非空"
+												},
+												"STARTS_WITH": {
+													"displayName": "以...开头"
+												},
+												"ENDS_WITH": {
+													"displayName": "以...结尾"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								},
+								"conditions": {
+									"displayName": "条件",
+									"placeholder": "添加条件"
+								}
+							}
+						}
+					}
+				},
+				"filters": {
+					"displayName": "筛选器",
+					"placeholder": "添加筛选器"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "此字段显示活动类型，例如通话、会议等"
+		},
+		"primaryContact": {
+			"displayName": "主要联系人姓名或ID",
+			"description": "交易的主要联系人。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"pipeline": {
+			"displayName": "工作流",
+			"options": {
+				"Sales": {
+					"displayName": "销售"
+				}
+			}
+		},
+		"status": {
+			"displayName": "状态",
+			"options": {
+				"Open": {
+					"displayName": "打开"
+				},
+				"Close": {
+					"displayName": "关闭"
+				},
+				"Lost": {
+					"displayName": "丢失"
+				}
+			}
+		},
+		"stage": {
+			"displayName": "阶段",
+			"options": {
+				"New (Untouched)": {
+					"displayName": "新建（未修改）"
+				},
+				"Contacted": {
+					"displayName": "已联系"
+				},
+				"Qualified": {
+					"displayName": "已认证"
+				},
+				"In Negotiation": {
+					"displayName": "协商中"
+				},
+				"Proposal Presented": {
+					"displayName": "提案已提交"
+				}
+			}
+		},
+		"currency": {
+			"displayName": "货币"
+		}
+	}
+}

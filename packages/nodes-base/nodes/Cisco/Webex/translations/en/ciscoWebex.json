@@ -1,0 +1,1723 @@
+{
+	"header": {
+		"displayName": "Webex by Cisco",
+		"description": "Consume the Cisco Webex API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"meeting": {
+					"displayName": "Meeting"
+				},
+				"message": {
+					"displayName": "Message"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Meeting title. The title can be a maximum of 128 characters long."
+		},
+		"start": {
+			"displayName": "Start",
+			"description": "Date and time for the start of the meeting. Acceptable <a href=\"https://datatracker.ietf.org/doc/html/rfc2445\"> format</a>."
+		},
+		"end": {
+			"displayName": "End",
+			"description": "Date and time for the end of the meeting. Acceptable <a href=\"https://datatracker.ietf.org/doc/html/rfc2445\"> format</a>."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"agenda": {
+					"displayName": "Agenda",
+					"description": "Meeting agenda. The agenda can be a maximum of 1300 characters long."
+				},
+				"allowAnyUserToBeCoHost": {
+					"displayName": "Allow Any User To Be Co-Host",
+					"description": "Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting"
+				},
+				"allowAuthenticatedDevices": {
+					"displayName": "Allow Authenticated Devices",
+					"description": "Whether or not to allow authenticated video devices in the meeting's organization to start or join the meeting without a prompt"
+				},
+				"allowFirstUserToBeCoHost": {
+					"displayName": "Allow First User To Be Co-Host",
+					"description": "Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host"
+				},
+				"autoAcceptRequest": {
+					"displayName": "Auto Accept Request",
+					"description": "Whether or not meeting registration request is accepted automatically"
+				},
+				"enableConnectAudioBeforeHost": {
+					"displayName": "Enable Connect Audio Before Host",
+					"description": "Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting"
+				},
+				"enabledAutoRecordMeeting": {
+					"displayName": "Enabled Auto Record Meeting",
+					"description": "Whether or not meeting is recorded automatically"
+				},
+				"enabledJoinBeforeHost": {
+					"displayName": "Enabled Join Before Host",
+					"description": "Whether or not to allow any attendee to join the meeting before the host joins the meeting"
+				},
+				"excludePassword": {
+					"displayName": "Exclude Password",
+					"description": "Whether or not to exclude password from the meeting email invitation"
+				},
+				"hostEmail": {
+					"displayName": "Host Email",
+					"description": "Email address for the meeting host. Can only be set if you're an admin."
+				},
+				"integrationTags": {
+					"displayName": "Integration Tags",
+					"description": "External keys created by an integration application in its own domain. They could be Zendesk ticket IDs, Jira IDs, Salesforce Opportunity IDs, etc."
+				},
+				"inviteesUi": {
+					"displayName": "Invitees",
+					"placeholder": "Add Invitee",
+					"multipleValueButtonText": "Add Invitee",
+					"options": {
+						"inviteeValues": {
+							"displayName": "Invitee",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"description": "Email address of meeting invitee",
+									"placeholder": "name@email.com"
+								},
+								"displayName": {
+									"displayName": "Display Name",
+									"description": "Display name of meeting invitee"
+								},
+								"coHost": {
+									"displayName": "Co-Host",
+									"description": "Whether or not invitee is allowed to be a co-host for the meeting"
+								}
+							}
+						}
+					},
+					"values": {
+						"inviteeValues": {
+							"displayName": "Invitee",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"description": "Email address of meeting invitee",
+									"placeholder": "name@email.com"
+								},
+								"displayName": {
+									"displayName": "Display Name",
+									"description": "Display name of meeting invitee"
+								},
+								"coHost": {
+									"displayName": "Co-Host",
+									"description": "Whether or not invitee is allowed to be a co-host for the meeting"
+								}
+							}
+						},
+						"inviteesUi": {
+							"displayName": "Invitees",
+							"placeholder": "Add Invitee"
+						}
+					}
+				},
+				"joinBeforeHostMinutes": {
+					"displayName": "Join Before Host Minutes",
+					"description": "The number of minutes an attendee can join the meeting before the meeting start time and the host joins",
+					"options": {
+						"0": {
+							"displayName": "0"
+						},
+						"5": {
+							"displayName": "5"
+						},
+						"10": {
+							"displayName": "10"
+						},
+						"15": {
+							"displayName": "15"
+						}
+					}
+				},
+				"publicMeeting": {
+					"displayName": "Public Meeting",
+					"description": "Whether or not to allow the meeting to be listed on the public calendar"
+				},
+				"recurrence": {
+					"displayName": "Recurrence",
+					"description": "Rule for how the meeting should recur. Acceptable <a href=\"https://datatracker.ietf.org/doc/html/rfc2445\"> format</a>."
+				},
+				"requireRegistrationInfo": {
+					"displayName": "Required Registration Info",
+					"description": "Data required for meeting registration"
+				},
+				"reminderTime": {
+					"displayName": "Reminder Time",
+					"description": "The number of minutes before the meeting begins, for sending an email reminder to the host"
+				},
+				"sendEmail": {
+					"displayName": "Send Email",
+					"description": "Whether or not to send emails to host and invitees"
+				},
+				"siteUrl": {
+					"displayName": "Site URL",
+					"description": "URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user's preferred site. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"attachmentsUi": {
+					"displayName": "Attachments",
+					"placeholder": "Add Attachment",
+					"multipleValueButtonText": "Add Attachment",
+					"options": {
+						"attachmentValues": {
+							"displayName": "Attachment",
+							"options": {
+								"elementsUi": {
+									"displayName": "Elements",
+									"placeholder": "Add Element",
+									"multipleValueButtonText": "Add Element",
+									"options": {
+										"elementValues": {
+											"displayName": "Element",
+											"options": {
+												"type": {
+													"displayName": "Type",
+													"options": {
+														"textBlock": {
+															"displayName": "Text Block"
+														},
+														"inputText": {
+															"displayName": "Input Text"
+														}
+													}
+												},
+												"text": {
+													"displayName": "Text",
+													"description": "Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures)."
+												},
+												"color": {
+													"displayName": "Color",
+													"description": "Color of the TextBlock element",
+													"options": {
+														"accent": {
+															"displayName": "Accent"
+														},
+														"attention": {
+															"displayName": "Attention"
+														},
+														"dark": {
+															"displayName": "Dark"
+														},
+														"default": {
+															"displayName": "Default"
+														},
+														"good": {
+															"displayName": "Good"
+														},
+														"light": {
+															"displayName": "Light"
+														},
+														"warning": {
+															"displayName": "Warning"
+														}
+													}
+												},
+												"fontType": {
+													"displayName": "Font Type",
+													"description": "Type of font to use for rendering",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"monospace": {
+															"displayName": "Monospace"
+														}
+													}
+												},
+												"horizontalAlignment": {
+													"displayName": "Horizontal Alignment",
+													"description": "Controls the horizontal text alignment",
+													"options": {
+														"left": {
+															"displayName": "Left"
+														},
+														"center": {
+															"displayName": "Center"
+														},
+														"right": {
+															"displayName": "Right"
+														}
+													}
+												},
+												"isSubtle": {
+													"displayName": "Is Subtle",
+													"description": "Whether to display text slightly toned down to appear less prominent"
+												},
+												"maxLines": {
+													"displayName": "Max Lines",
+													"description": "Specifies the maximum number of lines to display"
+												},
+												"size": {
+													"displayName": "Size",
+													"description": "Controls size of text",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"extraLarge": {
+															"displayName": "Extra Large"
+														},
+														"large": {
+															"displayName": "Large"
+														},
+														"medium": {
+															"displayName": "Medium"
+														},
+														"small": {
+															"displayName": "Small"
+														}
+													}
+												},
+												"weight": {
+													"displayName": "Weight",
+													"description": "Controls the weight of TextBlock elements",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"lighter": {
+															"displayName": "Lighter"
+														},
+														"bolder": {
+															"displayName": "Bolder"
+														}
+													}
+												},
+												"wrap": {
+													"displayName": "Wrap",
+													"description": "Whether to allow text to wrap. Otherwise, text is clipped."
+												},
+												"height": {
+													"displayName": "Height",
+													"description": "Specifies the height of the element",
+													"options": {
+														"auto": {
+															"displayName": "Auto"
+														},
+														"stretch": {
+															"displayName": "Stretch"
+														}
+													}
+												},
+												"separator": {
+													"displayName": "Separator",
+													"description": "Whether to draw a separating line at the top of the element"
+												},
+												"spacing": {
+													"displayName": "Spacing",
+													"description": "Controls the amount of spacing between this element and the preceding element",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"extraLarge": {
+															"displayName": "Extra Large"
+														},
+														"large": {
+															"displayName": "Large"
+														},
+														"medium": {
+															"displayName": "Medium"
+														},
+														"none": {
+															"displayName": "None"
+														},
+														"padding": {
+															"displayName": "Padding"
+														},
+														"small": {
+															"displayName": "Small"
+														}
+													}
+												},
+												"id": {
+													"displayName": "ID",
+													"description": "Unique identifier for the value. Used to identify collected input when the Submit action is performed."
+												},
+												"isVisible": {
+													"displayName": "Is Visible",
+													"description": "Whether this item will be removed from the visual trees"
+												},
+												"isMultiline": {
+													"displayName": "Is Multiline",
+													"description": "Whether to allow multiple lines of input"
+												},
+												"maxLength": {
+													"displayName": "Max Length",
+													"description": "Hint of maximum length characters to collect (may be ignored by some clients)"
+												},
+												"placeholder": {
+													"displayName": "Placeholder",
+													"description": "Description of the input desired. Displayed when no text has been input."
+												},
+												"regex": {
+													"displayName": "Regex",
+													"description": "Regular expression indicating the required format of this text input"
+												},
+												"style": {
+													"displayName": "Style",
+													"description": "Style hint for text input",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"tel": {
+															"displayName": "Tel"
+														},
+														"url": {
+															"displayName": "URL"
+														},
+														"email": {
+															"displayName": "Email"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value",
+													"description": "The initial value for this field"
+												}
+											}
+										}
+									},
+									"values": {
+										"elementValues": {
+											"displayName": "Element",
+											"options": {
+												"type": {
+													"displayName": "Type",
+													"options": {
+														"textBlock": {
+															"displayName": "Text Block"
+														},
+														"inputText": {
+															"displayName": "Input Text"
+														}
+													}
+												},
+												"text": {
+													"displayName": "Text",
+													"description": "Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures)."
+												},
+												"color": {
+													"displayName": "Color",
+													"description": "Color of the TextBlock element",
+													"options": {
+														"accent": {
+															"displayName": "Accent"
+														},
+														"attention": {
+															"displayName": "Attention"
+														},
+														"dark": {
+															"displayName": "Dark"
+														},
+														"default": {
+															"displayName": "Default"
+														},
+														"good": {
+															"displayName": "Good"
+														},
+														"light": {
+															"displayName": "Light"
+														},
+														"warning": {
+															"displayName": "Warning"
+														}
+													}
+												},
+												"fontType": {
+													"displayName": "Font Type",
+													"description": "Type of font to use for rendering",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"monospace": {
+															"displayName": "Monospace"
+														}
+													}
+												},
+												"horizontalAlignment": {
+													"displayName": "Horizontal Alignment",
+													"description": "Controls the horizontal text alignment",
+													"options": {
+														"left": {
+															"displayName": "Left"
+														},
+														"center": {
+															"displayName": "Center"
+														},
+														"right": {
+															"displayName": "Right"
+														}
+													}
+												},
+												"isSubtle": {
+													"displayName": "Is Subtle",
+													"description": "Whether to display text slightly toned down to appear less prominent"
+												},
+												"maxLines": {
+													"displayName": "Max Lines",
+													"description": "Specifies the maximum number of lines to display"
+												},
+												"size": {
+													"displayName": "Size",
+													"description": "Controls size of text",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"extraLarge": {
+															"displayName": "Extra Large"
+														},
+														"large": {
+															"displayName": "Large"
+														},
+														"medium": {
+															"displayName": "Medium"
+														},
+														"small": {
+															"displayName": "Small"
+														}
+													}
+												},
+												"weight": {
+													"displayName": "Weight",
+													"description": "Controls the weight of TextBlock elements",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"lighter": {
+															"displayName": "Lighter"
+														},
+														"bolder": {
+															"displayName": "Bolder"
+														}
+													}
+												},
+												"wrap": {
+													"displayName": "Wrap",
+													"description": "Whether to allow text to wrap. Otherwise, text is clipped."
+												},
+												"height": {
+													"displayName": "Height",
+													"description": "Specifies the height of the element",
+													"options": {
+														"auto": {
+															"displayName": "Auto"
+														},
+														"stretch": {
+															"displayName": "Stretch"
+														}
+													}
+												},
+												"separator": {
+													"displayName": "Separator",
+													"description": "Whether to draw a separating line at the top of the element"
+												},
+												"spacing": {
+													"displayName": "Spacing",
+													"description": "Controls the amount of spacing between this element and the preceding element",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"extraLarge": {
+															"displayName": "Extra Large"
+														},
+														"large": {
+															"displayName": "Large"
+														},
+														"medium": {
+															"displayName": "Medium"
+														},
+														"none": {
+															"displayName": "None"
+														},
+														"padding": {
+															"displayName": "Padding"
+														},
+														"small": {
+															"displayName": "Small"
+														}
+													}
+												},
+												"id": {
+													"displayName": "ID",
+													"description": "Unique identifier for the value. Used to identify collected input when the Submit action is performed."
+												},
+												"isVisible": {
+													"displayName": "Is Visible",
+													"description": "Whether this item will be removed from the visual trees"
+												},
+												"isMultiline": {
+													"displayName": "Is Multiline",
+													"description": "Whether to allow multiple lines of input"
+												},
+												"maxLength": {
+													"displayName": "Max Length",
+													"description": "Hint of maximum length characters to collect (may be ignored by some clients)"
+												},
+												"placeholder": {
+													"displayName": "Placeholder",
+													"description": "Description of the input desired. Displayed when no text has been input."
+												},
+												"regex": {
+													"displayName": "Regex",
+													"description": "Regular expression indicating the required format of this text input"
+												},
+												"style": {
+													"displayName": "Style",
+													"description": "Style hint for text input",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"tel": {
+															"displayName": "Tel"
+														},
+														"url": {
+															"displayName": "URL"
+														},
+														"email": {
+															"displayName": "Email"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value",
+													"description": "The initial value for this field"
+												}
+											}
+										},
+										"elementsUi": {
+											"displayName": "Elements",
+											"placeholder": "Add Element"
+										}
+									}
+								},
+								"actionsUi": {
+									"displayName": "Actions",
+									"placeholder": "Add Action",
+									"multipleValueButtonText": "Add Action",
+									"options": {
+										"actionValues": {
+											"displayName": "Action",
+											"options": {
+												"type": {
+													"displayName": "Type",
+													"options": {
+														"execute": {
+															"displayName": "Execute"
+														},
+														"openUrl": {
+															"displayName": "Open URL"
+														},
+														"submit": {
+															"displayName": "Submit"
+														}
+													}
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "The URL to open"
+												},
+												"data": {
+													"displayName": "Data",
+													"description": "Any extra data to pass along. These are essentially ‘hidden’ properties."
+												},
+												"verb": {
+													"displayName": "Verb",
+													"description": "The card author-defined verb associated with this action"
+												},
+												"title": {
+													"displayName": "Title",
+													"description": "Label for button or link that represents this action"
+												},
+												"iconUrl": {
+													"displayName": "Icon URL",
+													"description": "Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+."
+												},
+												"style": {
+													"displayName": "Style",
+													"description": "Controls the style of an Action, which influences how the action is displayed, spoken, etc",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"positive": {
+															"displayName": "Positive"
+														},
+														"destructive": {
+															"displayName": "Destructive"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"actionValues": {
+											"displayName": "Action",
+											"options": {
+												"type": {
+													"displayName": "Type",
+													"options": {
+														"execute": {
+															"displayName": "Execute"
+														},
+														"openUrl": {
+															"displayName": "Open URL"
+														},
+														"submit": {
+															"displayName": "Submit"
+														}
+													}
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "The URL to open"
+												},
+												"data": {
+													"displayName": "Data",
+													"description": "Any extra data to pass along. These are essentially ‘hidden’ properties."
+												},
+												"verb": {
+													"displayName": "Verb",
+													"description": "The card author-defined verb associated with this action"
+												},
+												"title": {
+													"displayName": "Title",
+													"description": "Label for button or link that represents this action"
+												},
+												"iconUrl": {
+													"displayName": "Icon URL",
+													"description": "Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+."
+												},
+												"style": {
+													"displayName": "Style",
+													"description": "Controls the style of an Action, which influences how the action is displayed, spoken, etc",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"positive": {
+															"displayName": "Positive"
+														},
+														"destructive": {
+															"displayName": "Destructive"
+														}
+													}
+												}
+											}
+										},
+										"actionsUi": {
+											"displayName": "Actions",
+											"placeholder": "Add Action"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"attachmentValues": {
+							"displayName": "Attachment",
+							"options": {
+								"elementsUi": {
+									"displayName": "Elements",
+									"placeholder": "Add Element",
+									"multipleValueButtonText": "Add Element",
+									"options": {
+										"elementValues": {
+											"displayName": "Element",
+											"options": {
+												"type": {
+													"displayName": "Type",
+													"options": {
+														"textBlock": {
+															"displayName": "Text Block"
+														},
+														"inputText": {
+															"displayName": "Input Text"
+														}
+													}
+												},
+												"text": {
+													"displayName": "Text",
+													"description": "Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures)."
+												},
+												"color": {
+													"displayName": "Color",
+													"description": "Color of the TextBlock element",
+													"options": {
+														"accent": {
+															"displayName": "Accent"
+														},
+														"attention": {
+															"displayName": "Attention"
+														},
+														"dark": {
+															"displayName": "Dark"
+														},
+														"default": {
+															"displayName": "Default"
+														},
+														"good": {
+															"displayName": "Good"
+														},
+														"light": {
+															"displayName": "Light"
+														},
+														"warning": {
+															"displayName": "Warning"
+														}
+													}
+												},
+												"fontType": {
+													"displayName": "Font Type",
+													"description": "Type of font to use for rendering",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"monospace": {
+															"displayName": "Monospace"
+														}
+													}
+												},
+												"horizontalAlignment": {
+													"displayName": "Horizontal Alignment",
+													"description": "Controls the horizontal text alignment",
+													"options": {
+														"left": {
+															"displayName": "Left"
+														},
+														"center": {
+															"displayName": "Center"
+														},
+														"right": {
+															"displayName": "Right"
+														}
+													}
+												},
+												"isSubtle": {
+													"displayName": "Is Subtle",
+													"description": "Whether to display text slightly toned down to appear less prominent"
+												},
+												"maxLines": {
+													"displayName": "Max Lines",
+													"description": "Specifies the maximum number of lines to display"
+												},
+												"size": {
+													"displayName": "Size",
+													"description": "Controls size of text",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"extraLarge": {
+															"displayName": "Extra Large"
+														},
+														"large": {
+															"displayName": "Large"
+														},
+														"medium": {
+															"displayName": "Medium"
+														},
+														"small": {
+															"displayName": "Small"
+														}
+													}
+												},
+												"weight": {
+													"displayName": "Weight",
+													"description": "Controls the weight of TextBlock elements",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"lighter": {
+															"displayName": "Lighter"
+														},
+														"bolder": {
+															"displayName": "Bolder"
+														}
+													}
+												},
+												"wrap": {
+													"displayName": "Wrap",
+													"description": "Whether to allow text to wrap. Otherwise, text is clipped."
+												},
+												"height": {
+													"displayName": "Height",
+													"description": "Specifies the height of the element",
+													"options": {
+														"auto": {
+															"displayName": "Auto"
+														},
+														"stretch": {
+															"displayName": "Stretch"
+														}
+													}
+												},
+												"separator": {
+													"displayName": "Separator",
+													"description": "Whether to draw a separating line at the top of the element"
+												},
+												"spacing": {
+													"displayName": "Spacing",
+													"description": "Controls the amount of spacing between this element and the preceding element",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"extraLarge": {
+															"displayName": "Extra Large"
+														},
+														"large": {
+															"displayName": "Large"
+														},
+														"medium": {
+															"displayName": "Medium"
+														},
+														"none": {
+															"displayName": "None"
+														},
+														"padding": {
+															"displayName": "Padding"
+														},
+														"small": {
+															"displayName": "Small"
+														}
+													}
+												},
+												"id": {
+													"displayName": "ID",
+													"description": "Unique identifier for the value. Used to identify collected input when the Submit action is performed."
+												},
+												"isVisible": {
+													"displayName": "Is Visible",
+													"description": "Whether this item will be removed from the visual trees"
+												},
+												"isMultiline": {
+													"displayName": "Is Multiline",
+													"description": "Whether to allow multiple lines of input"
+												},
+												"maxLength": {
+													"displayName": "Max Length",
+													"description": "Hint of maximum length characters to collect (may be ignored by some clients)"
+												},
+												"placeholder": {
+													"displayName": "Placeholder",
+													"description": "Description of the input desired. Displayed when no text has been input."
+												},
+												"regex": {
+													"displayName": "Regex",
+													"description": "Regular expression indicating the required format of this text input"
+												},
+												"style": {
+													"displayName": "Style",
+													"description": "Style hint for text input",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"tel": {
+															"displayName": "Tel"
+														},
+														"url": {
+															"displayName": "URL"
+														},
+														"email": {
+															"displayName": "Email"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value",
+													"description": "The initial value for this field"
+												}
+											}
+										}
+									},
+									"values": {
+										"elementValues": {
+											"displayName": "Element",
+											"options": {
+												"type": {
+													"displayName": "Type",
+													"options": {
+														"textBlock": {
+															"displayName": "Text Block"
+														},
+														"inputText": {
+															"displayName": "Input Text"
+														}
+													}
+												},
+												"text": {
+													"displayName": "Text",
+													"description": "Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures)."
+												},
+												"color": {
+													"displayName": "Color",
+													"description": "Color of the TextBlock element",
+													"options": {
+														"accent": {
+															"displayName": "Accent"
+														},
+														"attention": {
+															"displayName": "Attention"
+														},
+														"dark": {
+															"displayName": "Dark"
+														},
+														"default": {
+															"displayName": "Default"
+														},
+														"good": {
+															"displayName": "Good"
+														},
+														"light": {
+															"displayName": "Light"
+														},
+														"warning": {
+															"displayName": "Warning"
+														}
+													}
+												},
+												"fontType": {
+													"displayName": "Font Type",
+													"description": "Type of font to use for rendering",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"monospace": {
+															"displayName": "Monospace"
+														}
+													}
+												},
+												"horizontalAlignment": {
+													"displayName": "Horizontal Alignment",
+													"description": "Controls the horizontal text alignment",
+													"options": {
+														"left": {
+															"displayName": "Left"
+														},
+														"center": {
+															"displayName": "Center"
+														},
+														"right": {
+															"displayName": "Right"
+														}
+													}
+												},
+												"isSubtle": {
+													"displayName": "Is Subtle",
+													"description": "Whether to display text slightly toned down to appear less prominent"
+												},
+												"maxLines": {
+													"displayName": "Max Lines",
+													"description": "Specifies the maximum number of lines to display"
+												},
+												"size": {
+													"displayName": "Size",
+													"description": "Controls size of text",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"extraLarge": {
+															"displayName": "Extra Large"
+														},
+														"large": {
+															"displayName": "Large"
+														},
+														"medium": {
+															"displayName": "Medium"
+														},
+														"small": {
+															"displayName": "Small"
+														}
+													}
+												},
+												"weight": {
+													"displayName": "Weight",
+													"description": "Controls the weight of TextBlock elements",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"lighter": {
+															"displayName": "Lighter"
+														},
+														"bolder": {
+															"displayName": "Bolder"
+														}
+													}
+												},
+												"wrap": {
+													"displayName": "Wrap",
+													"description": "Whether to allow text to wrap. Otherwise, text is clipped."
+												},
+												"height": {
+													"displayName": "Height",
+													"description": "Specifies the height of the element",
+													"options": {
+														"auto": {
+															"displayName": "Auto"
+														},
+														"stretch": {
+															"displayName": "Stretch"
+														}
+													}
+												},
+												"separator": {
+													"displayName": "Separator",
+													"description": "Whether to draw a separating line at the top of the element"
+												},
+												"spacing": {
+													"displayName": "Spacing",
+													"description": "Controls the amount of spacing between this element and the preceding element",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"extraLarge": {
+															"displayName": "Extra Large"
+														},
+														"large": {
+															"displayName": "Large"
+														},
+														"medium": {
+															"displayName": "Medium"
+														},
+														"none": {
+															"displayName": "None"
+														},
+														"padding": {
+															"displayName": "Padding"
+														},
+														"small": {
+															"displayName": "Small"
+														}
+													}
+												},
+												"id": {
+													"displayName": "ID",
+													"description": "Unique identifier for the value. Used to identify collected input when the Submit action is performed."
+												},
+												"isVisible": {
+													"displayName": "Is Visible",
+													"description": "Whether this item will be removed from the visual trees"
+												},
+												"isMultiline": {
+													"displayName": "Is Multiline",
+													"description": "Whether to allow multiple lines of input"
+												},
+												"maxLength": {
+													"displayName": "Max Length",
+													"description": "Hint of maximum length characters to collect (may be ignored by some clients)"
+												},
+												"placeholder": {
+													"displayName": "Placeholder",
+													"description": "Description of the input desired. Displayed when no text has been input."
+												},
+												"regex": {
+													"displayName": "Regex",
+													"description": "Regular expression indicating the required format of this text input"
+												},
+												"style": {
+													"displayName": "Style",
+													"description": "Style hint for text input",
+													"options": {
+														"text": {
+															"displayName": "Text"
+														},
+														"tel": {
+															"displayName": "Tel"
+														},
+														"url": {
+															"displayName": "URL"
+														},
+														"email": {
+															"displayName": "Email"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value",
+													"description": "The initial value for this field"
+												}
+											}
+										},
+										"elementsUi": {
+											"displayName": "Elements",
+											"placeholder": "Add Element"
+										}
+									}
+								},
+								"actionsUi": {
+									"displayName": "Actions",
+									"placeholder": "Add Action",
+									"multipleValueButtonText": "Add Action",
+									"options": {
+										"actionValues": {
+											"displayName": "Action",
+											"options": {
+												"type": {
+													"displayName": "Type",
+													"options": {
+														"execute": {
+															"displayName": "Execute"
+														},
+														"openUrl": {
+															"displayName": "Open URL"
+														},
+														"submit": {
+															"displayName": "Submit"
+														}
+													}
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "The URL to open"
+												},
+												"data": {
+													"displayName": "Data",
+													"description": "Any extra data to pass along. These are essentially ‘hidden’ properties."
+												},
+												"verb": {
+													"displayName": "Verb",
+													"description": "The card author-defined verb associated with this action"
+												},
+												"title": {
+													"displayName": "Title",
+													"description": "Label for button or link that represents this action"
+												},
+												"iconUrl": {
+													"displayName": "Icon URL",
+													"description": "Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+."
+												},
+												"style": {
+													"displayName": "Style",
+													"description": "Controls the style of an Action, which influences how the action is displayed, spoken, etc",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"positive": {
+															"displayName": "Positive"
+														},
+														"destructive": {
+															"displayName": "Destructive"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"actionValues": {
+											"displayName": "Action",
+											"options": {
+												"type": {
+													"displayName": "Type",
+													"options": {
+														"execute": {
+															"displayName": "Execute"
+														},
+														"openUrl": {
+															"displayName": "Open URL"
+														},
+														"submit": {
+															"displayName": "Submit"
+														}
+													}
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "The URL to open"
+												},
+												"data": {
+													"displayName": "Data",
+													"description": "Any extra data to pass along. These are essentially ‘hidden’ properties."
+												},
+												"verb": {
+													"displayName": "Verb",
+													"description": "The card author-defined verb associated with this action"
+												},
+												"title": {
+													"displayName": "Title",
+													"description": "Label for button or link that represents this action"
+												},
+												"iconUrl": {
+													"displayName": "Icon URL",
+													"description": "Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+."
+												},
+												"style": {
+													"displayName": "Style",
+													"description": "Controls the style of an Action, which influences how the action is displayed, spoken, etc",
+													"options": {
+														"default": {
+															"displayName": "Default"
+														},
+														"positive": {
+															"displayName": "Positive"
+														},
+														"destructive": {
+															"displayName": "Destructive"
+														}
+													}
+												}
+											}
+										},
+										"actionsUi": {
+											"displayName": "Actions",
+											"placeholder": "Add Action"
+										}
+									}
+								}
+							}
+						},
+						"attachmentsUi": {
+							"displayName": "Attachments",
+							"placeholder": "Add Attachment"
+						}
+					}
+				},
+				"fileUi": {
+					"displayName": "File",
+					"placeholder": "Add File",
+					"options": {
+						"fileValue": {
+							"displayName": "File",
+							"options": {
+								"fileLocation": {
+									"displayName": "File Location",
+									"options": {
+										"url": {
+											"displayName": "URL"
+										},
+										"binaryData": {
+											"displayName": "Binary File"
+										}
+									}
+								},
+								"binaryPropertyName": {
+									"displayName": "Input Field With File",
+									"description": "The field in the node input containing the binary file data"
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "The public URL of the file"
+								}
+							}
+						}
+					},
+					"values": {
+						"fileValue": {
+							"displayName": "File",
+							"options": {
+								"fileLocation": {
+									"displayName": "File Location",
+									"options": {
+										"url": {
+											"displayName": "URL"
+										},
+										"binaryData": {
+											"displayName": "Binary File"
+										}
+									}
+								},
+								"binaryPropertyName": {
+									"displayName": "Input Field With File",
+									"description": "The field in the node input containing the binary file data"
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "The public URL of the file"
+								}
+							}
+						},
+						"fileUi": {
+							"displayName": "File",
+							"placeholder": "Add File"
+						}
+					}
+				},
+				"markdown": {
+					"displayName": "Markdown",
+					"description": "The message in markdown format. When used the text parameter is used to provide alternate text for UI clients that do not support rich text."
+				}
+			}
+		},
+		"meetingId": {
+			"displayName": "Meeting ID",
+			"description": "ID of the meeting"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"hostEmail": {
+					"displayName": "Host Email",
+					"description": "Email address for the meeting host. This parameter is only used if the user or application calling the API has the admin-level scopes."
+				},
+				"sendEmail": {
+					"displayName": "Send Email",
+					"description": "Whether or not to send emails to host and invitees. It is an optional field and default value is true."
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "Meeting password. It's required when the meeting is protected by a password and the current user is not privileged to view it if they are not a host, co-host or invitee of the meeting."
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"from": {
+					"displayName": "From",
+					"description": "Start date and time (inclusive) for the meeting. Acceptable <a href=\"https://datatracker.ietf.org/doc/html/rfc2445\"> format</a>."
+				},
+				"hostEmail": {
+					"displayName": "Host Email",
+					"description": "Email address for the meeting host"
+				},
+				"integrationTag": {
+					"displayName": "Integration Tag",
+					"description": "External tag created by another application, e.g. Zendesk ticket ID or Jira ID"
+				},
+				"current": {
+					"displayName": "Limit to Current Meetings",
+					"description": "Whether to return just the current meeting or all meetings"
+				},
+				"meetingNumber": {
+					"displayName": "Meeting Number",
+					"description": "Meeting number for the meeting objects being requested"
+				},
+				"meetingType": {
+					"displayName": "Meeting Type",
+					"options": {
+						"meetingSeries": {
+							"displayName": "Meeting Series",
+							"description": "Master of a scheduled series of meetings which consists of one or more scheduled meeting based on a recurrence rule"
+						},
+						"scheduledMeeting": {
+							"displayName": "Scheduled Meeting",
+							"description": "Instance from a master meeting series"
+						},
+						"meeting": {
+							"displayName": "Meeting",
+							"description": "Meeting instance that is actually happening or has happened"
+						}
+					}
+				},
+				"participantEmail": {
+					"displayName": "Participant Email",
+					"description": "Email of a person that must be a meeting participant"
+				},
+				"siteUrl": {
+					"displayName": "Site URL",
+					"description": "URL of the Webex site which the API lists meetings from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"state": {
+					"displayName": "State",
+					"description": "Meeting state for the meeting objects being requested",
+					"options": {
+						"active": {
+							"displayName": "Active"
+						},
+						"ended": {
+							"displayName": "Ended"
+						},
+						"expired": {
+							"displayName": "Expired"
+						},
+						"inProgress": {
+							"displayName": "In Progress"
+						},
+						"lobby": {
+							"displayName": "Lobby"
+						},
+						"missed": {
+							"displayName": "Missed"
+						},
+						"ready": {
+							"displayName": "Ready"
+						},
+						"scheduled": {
+							"displayName": "Scheduled"
+						}
+					}
+				},
+				"to": {
+					"displayName": "To",
+					"description": "End date and time (inclusive) for the meeting. Acceptable <a href=\"https://datatracker.ietf.org/doc/html/rfc2445\"> format</a>."
+				},
+				"webLink": {
+					"displayName": "Weblink",
+					"description": "URL encoded link to information page for the meeting objects being requested"
+				},
+				"before": {
+					"displayName": "Before",
+					"description": "List messages sent before a date and time"
+				},
+				"beforeMessage": {
+					"displayName": "Before Message",
+					"description": "List messages sent before a message, by ID"
+				},
+				"parentId": {
+					"displayName": "Parent Message ID",
+					"description": "List messages with a parent, by ID"
+				},
+				"mentionedPeople": {
+					"displayName": "Mentioned Person",
+					"description": "List only messages with certain person mentioned. Enter their ID. You can use 'me' as a shorthand for yourself"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"agenda": {
+					"displayName": "Agenda",
+					"description": "The meeting's agenda. Cannot be longer that 1300 characters."
+				},
+				"allowAnyUserToBeCoHost": {
+					"displayName": "Allow Any User To Be Co-Host",
+					"description": "Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting"
+				},
+				"allowAuthenticatedDevices": {
+					"displayName": "Allow Authenticated Devices",
+					"description": "Whether or not to allow authenticated video devices in the meeting's organization to start or join the meeting without a prompt"
+				},
+				"allowFirstUserToBeCoHost": {
+					"displayName": "Allow First User To Be Co-Host",
+					"description": "Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host"
+				},
+				"enableConnectAudioBeforeHost": {
+					"displayName": "Enable Connect Audio Before Host",
+					"description": "Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting"
+				},
+				"enabledAutoRecordMeeting": {
+					"displayName": "Enabled Auto Record Meeting",
+					"description": "Whether or not meeting is recorded automatically"
+				},
+				"enabledJoinBeforeHost": {
+					"displayName": "Enabled Join Before Host",
+					"description": "Whether or not to allow any attendee to join the meeting before the host joins the meeting"
+				},
+				"end": {
+					"displayName": "End",
+					"description": "Date and time for the end of the meeting. Acceptable <a href=\"https://datatracker.ietf.org/doc/html/rfc2445\"> format</a>."
+				},
+				"excludePassword": {
+					"displayName": "Exclude Password",
+					"description": "Whether or not to exclude password from the meeting email invitation"
+				},
+				"hostEmail": {
+					"displayName": "Host Email",
+					"description": "Email address for the meeting host. This attribute should only be set if the user or application calling the API has the admin-level scopes."
+				},
+				"inviteesUi": {
+					"displayName": "Invitees",
+					"placeholder": "Add Invitee",
+					"multipleValueButtonText": "Add Invitee",
+					"options": {
+						"inviteeValues": {
+							"displayName": "Invitee",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"description": "Email address of meeting invitee",
+									"placeholder": "name@email.com"
+								},
+								"displayName": {
+									"displayName": "Display Name",
+									"description": "Display name of meeting invitee"
+								},
+								"coHost": {
+									"displayName": "Co-Host",
+									"description": "Whether or not invitee is allowed to be a co-host for the meeting"
+								}
+							}
+						}
+					},
+					"values": {
+						"inviteeValues": {
+							"displayName": "Invitee",
+							"options": {
+								"email": {
+									"displayName": "Email",
+									"description": "Email address of meeting invitee",
+									"placeholder": "name@email.com"
+								},
+								"displayName": {
+									"displayName": "Display Name",
+									"description": "Display name of meeting invitee"
+								},
+								"coHost": {
+									"displayName": "Co-Host",
+									"description": "Whether or not invitee is allowed to be a co-host for the meeting"
+								}
+							}
+						},
+						"inviteesUi": {
+							"displayName": "Invitees",
+							"placeholder": "Add Invitee"
+						}
+					}
+				},
+				"joinBeforeHostMinutes": {
+					"displayName": "Join Before Host Minutes",
+					"description": "The number of minutes an attendee can join the meeting before the meeting start time and the host joins",
+					"options": {
+						"0": {
+							"displayName": "0"
+						},
+						"5": {
+							"displayName": "5"
+						},
+						"10": {
+							"displayName": "10"
+						},
+						"15": {
+							"displayName": "15"
+						}
+					}
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "Meeting password. Must conform to the site's password complexity settings. If not specified, a random password conforming to the site's password rules will be generated automatically"
+				},
+				"publicMeeting": {
+					"displayName": "Public Meeting",
+					"description": "Whether or not to allow the meeting to be listed on the public calendar"
+				},
+				"recurrence": {
+					"displayName": "Recurrence",
+					"description": "Meeting series recurrence rule (conforming with RFC 2445), applying only to meeting series"
+				},
+				"requireRegistrationInfo": {
+					"displayName": "Required Registration Info",
+					"description": "Data required for meeting registration"
+				},
+				"reminderTime": {
+					"displayName": "Reminder Time",
+					"description": "The number of minutes before the meeting begins, for sending an email reminder to the host"
+				},
+				"sendEmail": {
+					"displayName": "Send Email",
+					"description": "Whether or not to send emails to host and invitees. It is an optional field and default value is true."
+				},
+				"siteUrl": {
+					"displayName": "Site URL",
+					"description": "URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user's preferred site. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"start": {
+					"displayName": "Start",
+					"description": "Date and time for the start of the meeting. Acceptable <a href=\"https://datatracker.ietf.org/doc/html/rfc2445\"> format</a>."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Meeting title"
+				}
+			}
+		},
+		"destination": {
+			"displayName": "Destination",
+			"options": {
+				"room": {
+					"displayName": "Room"
+				},
+				"person": {
+					"displayName": "Person"
+				}
+			}
+		},
+		"roomId": {
+			"displayName": "Room Name or ID",
+			"description": "List messages in a room, by ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"specifyPersonBy": {
+			"displayName": "Specify Person By",
+			"options": {
+				"email": {
+					"displayName": "Email"
+				},
+				"id": {
+					"displayName": "ID"
+				}
+			}
+		},
+		"toPersonId": {
+			"displayName": "Person ID"
+		},
+		"toPersonEmail": {
+			"displayName": "Person Email"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "The message, in plain text"
+		},
+		"messageId": {
+			"displayName": "Message ID",
+			"description": "ID of the message to update"
+		},
+		"markdown": {
+			"displayName": "Is Markdown",
+			"description": "Whether the message uses markdown"
+		},
+		"markdownText": {
+			"displayName": "Markdown",
+			"description": "The message, in Markdown format. The maximum message length is 7439 bytes."
+		}
+	}
+}

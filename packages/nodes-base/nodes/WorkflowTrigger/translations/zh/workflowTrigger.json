@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "工作流触发器",
+		"description": "基于各种生命周期事件触发，例如工作流激活时"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "此节点已弃用，未来将不再更新。请改用'n8n触发器'节点。"
+		},
+		"events": {
+			"displayName": "事件",
+			"description": "指定执行发生的条件：\n<ul>\n<li><b>工作流更新时</b>：当此工作流更新时触发</li>\n<li><b>工作流激活时</b>：当此工作流激活时触发</li>\n</ul>"
+		}
+	}
+}

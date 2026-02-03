@@ -1,0 +1,272 @@
+{
+	"header": {
+		"displayName": "CoinGecko",
+		"description": "Consume CoinGecko API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"coin": {
+					"displayName": "Coin"
+				},
+				"event": {
+					"displayName": "Event"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"candlestick": {
+					"displayName": "Candlestick",
+					"description": "Get a candlestick open-high-low-close chart for the selected currency"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get current data for a coin"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many events"
+				},
+				"history": {
+					"displayName": "History",
+					"description": "Get historical data (name, price, market, stats) at a given date for a coin"
+				},
+				"market": {
+					"displayName": "Market",
+					"description": "Get prices and market related data for all trading pairs that match the selected currency"
+				},
+				"marketChart": {
+					"displayName": "Market Chart",
+					"description": "Get historical market data include price, market cap, and 24h volume (granularity auto)"
+				},
+				"price": {
+					"displayName": "Price",
+					"description": "Get the current price of any cryptocurrencies in any other supported currencies that you need"
+				},
+				"ticker": {
+					"displayName": "Ticker",
+					"description": "Get coin tickers"
+				}
+			}
+		},
+		"searchBy": {
+			"displayName": "Search By",
+			"description": "Search by coin ID or contract address",
+			"options": {
+				"coinId": {
+					"displayName": "Coin ID"
+				},
+				"contractAddress": {
+					"displayName": "Contract Address"
+				}
+			}
+		},
+		"coinId": {
+			"displayName": "Coin Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+			"placeholder": "bitcoin"
+		},
+		"baseCurrency": {
+			"displayName": "Base Currency Name or ID",
+			"description": "The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"baseCurrencies": {
+			"displayName": "Base Currency Names or IDs",
+			"description": "The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "bitcoin"
+		},
+		"platformId": {
+			"displayName": "Platform ID",
+			"description": "The ID of the platform issuing tokens",
+			"options": {
+				"ethereum": {
+					"displayName": "Ethereum"
+				}
+			}
+		},
+		"contractAddress": {
+			"displayName": "Contract Address",
+			"description": "Token's contract address"
+		},
+		"contractAddresses": {
+			"displayName": "Contract Addresses",
+			"description": "The contract address of tokens, comma-separated"
+		},
+		"quoteCurrency": {
+			"displayName": "Quote Currency Name or ID",
+			"description": "The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"quoteCurrencies": {
+			"displayName": "Quote Currency Names or IDs",
+			"description": "The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"days": {
+			"displayName": "Range (Days)",
+			"description": "Return data for this many days in the past from now",
+			"options": {
+				"1": {
+					"displayName": "1"
+				},
+				"7": {
+					"displayName": "7"
+				},
+				"14": {
+					"displayName": "14"
+				},
+				"30": {
+					"displayName": "30"
+				},
+				"90": {
+					"displayName": "90"
+				},
+				"180": {
+					"displayName": "180"
+				},
+				"365": {
+					"displayName": "365"
+				},
+				"max": {
+					"displayName": "Max"
+				}
+			}
+		},
+		"date": {
+			"displayName": "Date",
+			"description": "The date of data snapshot"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"ids": {
+					"displayName": "Coin IDs",
+					"description": "Filter results by comma-separated list of coin ID",
+					"placeholder": "bitcoin"
+				},
+				"category": {
+					"displayName": "Category",
+					"description": "Filter by coin category",
+					"options": {
+						"decentralized_finance_defi": {
+							"displayName": "Decentralized Finance Defi"
+						}
+					}
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "Sorts results by the selected rule",
+					"options": {
+						"gecko_asc": {
+							"displayName": "Gecko Asc"
+						},
+						"gecko_desc": {
+							"displayName": "Gecko Desc"
+						},
+						"id_asc": {
+							"displayName": "ID Asc"
+						},
+						"id_desc": {
+							"displayName": "ID Desc"
+						},
+						"market_cap_asc": {
+							"displayName": "Market Cap Asc"
+						},
+						"market_cap_desc": {
+							"displayName": "Market Cap Desc"
+						},
+						"volume_asc": {
+							"displayName": "Volume Asc"
+						},
+						"volume_desc": {
+							"displayName": "Volume Desc"
+						},
+						"trust_score_desc": {
+							"displayName": "Trust Score Desc"
+						},
+						"trust_score_asc": {
+							"displayName": "Trust Score Asc"
+						}
+					}
+				},
+				"sparkline": {
+					"displayName": "Sparkline",
+					"description": "Whether to include sparkline 7 days data (eg. true, false)."
+				},
+				"price_change_percentage": {
+					"displayName": "Price Change Percentage",
+					"description": "Include price change percentage for specified times"
+				},
+				"include_24hr_change": {
+					"displayName": "Include 24hr Change"
+				},
+				"include_24hr_vol": {
+					"displayName": "Include 24hr Vol"
+				},
+				"include_last_updated_at": {
+					"displayName": "Include Last Updated At"
+				},
+				"include_market_cap": {
+					"displayName": "Include Market Cap"
+				},
+				"exchange_ids": {
+					"displayName": "Exchange Names or IDs",
+					"description": "Filter results by exchange IDs. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"include_exchange_logo": {
+					"displayName": "Include Exchange Logo"
+				},
+				"localization": {
+					"displayName": "Localization",
+					"description": "Whether to include all localized languages in response"
+				},
+				"community_data": {
+					"displayName": "Community Data",
+					"description": "Whether to include community data"
+				},
+				"developer_data": {
+					"displayName": "Developer Data",
+					"description": "Whether to include developer data"
+				},
+				"market_data": {
+					"displayName": "Market Data",
+					"description": "Whether to include market data"
+				},
+				"tickers": {
+					"displayName": "Tickers",
+					"description": "Whether to include tickers data"
+				},
+				"country_code": {
+					"displayName": "Country Code",
+					"description": "Country code of event. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"from_date": {
+					"displayName": "From Date",
+					"description": "Lists events after this date"
+				},
+				"to_date": {
+					"displayName": "To Date",
+					"description": "Lists events before this date"
+				},
+				"type": {
+					"displayName": "Type Name or ID",
+					"description": "Type of event. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"upcoming_events_only": {
+					"displayName": "Upcoming Events Only",
+					"description": "Whether to list only upcoming events"
+				}
+			}
+		}
+	}
+}

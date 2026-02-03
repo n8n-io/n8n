@@ -1,0 +1,4169 @@
+{
+	"header": {
+		"displayName": "HubSpot",
+		"description": "Consume HubSpot API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiKey": {
+					"displayName": "API Key"
+				},
+				"appToken": {
+					"displayName": "APP Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"company": {
+					"displayName": "Company"
+				},
+				"contact": {
+					"displayName": "Contact"
+				},
+				"contactList": {
+					"displayName": "Contact List"
+				},
+				"deal": {
+					"displayName": "Deal"
+				},
+				"engagement": {
+					"displayName": "Engagement"
+				},
+				"ticket": {
+					"displayName": "Ticket"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new contact, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a ticket"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a ticket"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many tickets"
+				},
+				"getRecentlyCreatedUpdated": {
+					"displayName": "Get Recently Created/Updated",
+					"description": "Get recently created/updated deals"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search deals"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add contact to a list"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a contact from a list"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a ticket"
+				},
+				"searchByDomain": {
+					"displayName": "Search",
+					"description": "Search companies by their website domain"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a ticket"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"annualRevenue": {
+					"displayName": "Annual Revenue",
+					"description": "The actual or estimated annual revenue of the company"
+				},
+				"associatedCompanyId": {
+					"displayName": "Associated Company Name or ID",
+					"description": "Companies associated with the ticket. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"buyingRole": {
+					"displayName": "Buying Role",
+					"description": "Role the contact plays during the sales process. Contacts can have multiple roles, and can share roles with others."
+				},
+				"city": {
+					"displayName": "City",
+					"description": "The city where the company is located"
+				},
+				"clickedFacebookAd": {
+					"displayName": "Clicked Facebook Ad"
+				},
+				"closeDate": {
+					"displayName": "Close Date",
+					"description": "The date the ticket was closed. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format."
+				},
+				"companyName": {
+					"displayName": "Company Name"
+				},
+				"companySize": {
+					"displayName": "Company Size"
+				},
+				"contactOwner": {
+					"displayName": "Contact Owner Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"properties": {
+					"displayName": "Ticket Properties to Include",
+					"description": "Whether to include specific Ticket properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"country": {
+					"displayName": "Country/Region"
+				},
+				"countryRegionCode": {
+					"displayName": "Country/Region Code",
+					"description": "The contact's two-letter country code"
+				},
+				"customPropertiesUi": {
+					"displayName": "Custom Properties",
+					"placeholder": "Add Custom Property",
+					"multipleValueButtonText": "Add Custom Property",
+					"options": {
+						"customPropertiesValues": {
+							"displayName": "Custom Property",
+							"options": {
+								"property": {
+									"displayName": "Property Name or ID",
+									"description": "Name of the property. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the property"
+								}
+							}
+						}
+					},
+					"values": {
+						"customPropertiesValues": {
+							"displayName": "Custom Property",
+							"options": {
+								"property": {
+									"displayName": "Property Name or ID",
+									"description": "Name of the property. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the property"
+								}
+							}
+						},
+						"customPropertiesUi": {
+							"displayName": "Custom Properties",
+							"placeholder": "Add Custom Property"
+						}
+					}
+				},
+				"dateOfBirth": {
+					"displayName": "Date of Birth",
+					"description": "When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format"
+				},
+				"degree": {
+					"displayName": "Degree"
+				},
+				"emailCustomerQuarantinedReason": {
+					"displayName": "Email Address Quarantine Reason",
+					"description": "The reason why the email address has been quarantined",
+					"options": {
+						"SUSPENSION_REMEDIATION": {
+							"displayName": "Suspension Remediation"
+						},
+						"BLOCKLIST_REMEDIATION": {
+							"displayName": "Blocklist Remediation"
+						},
+						"TRUST_SAFETY_REMEDIATION": {
+							"displayName": "Trust & Safety Remediation"
+						}
+					}
+				},
+				"employmentRole": {
+					"displayName": "Employment Role",
+					"description": "Job role",
+					"options": {
+						"accounting": {
+							"displayName": "Accounting"
+						},
+						"administrative": {
+							"displayName": "Administrative"
+						},
+						"business_development": {
+							"displayName": "Business Development"
+						},
+						"communications": {
+							"displayName": "Communications"
+						},
+						"consulting": {
+							"displayName": "Consulting"
+						},
+						"customer_service": {
+							"displayName": "Customer Service"
+						},
+						"design": {
+							"displayName": "Design"
+						},
+						"education": {
+							"displayName": "Education"
+						},
+						"engineering": {
+							"displayName": "Engineering"
+						},
+						"entrepreneurship": {
+							"displayName": "Entrepreneurship"
+						},
+						"finance": {
+							"displayName": "Finance"
+						},
+						"health_professional": {
+							"displayName": "Health Professional"
+						},
+						"human_resources": {
+							"displayName": "Human Resources"
+						},
+						"information_technology": {
+							"displayName": "Information Technology"
+						},
+						"legal": {
+							"displayName": "Legal"
+						},
+						"marketing": {
+							"displayName": "Marketing"
+						},
+						"operations": {
+							"displayName": "Operations"
+						},
+						"product": {
+							"displayName": "Product"
+						},
+						"project_management": {
+							"displayName": "Project Management"
+						},
+						"public_relations": {
+							"displayName": "Public Relations"
+						},
+						"quality_assurance": {
+							"displayName": "Quality Assurance"
+						},
+						"real_estate": {
+							"displayName": "Real Estate"
+						},
+						"recruiting": {
+							"displayName": "Recruiting"
+						},
+						"research": {
+							"displayName": "Research"
+						},
+						"retired": {
+							"displayName": "Retired"
+						},
+						"sales": {
+							"displayName": "Sales"
+						},
+						"support": {
+							"displayName": "Support"
+						}
+					}
+				},
+				"employmentSeniority": {
+					"displayName": "Employment Seniority",
+					"description": "Job Seniority",
+					"options": {
+						"director": {
+							"displayName": "Director"
+						},
+						"employee": {
+							"displayName": "Employee"
+						},
+						"entry": {
+							"displayName": "Entry"
+						},
+						"executive": {
+							"displayName": "Executive"
+						},
+						"manager": {
+							"displayName": "Manager"
+						},
+						"owner": {
+							"displayName": "Owner"
+						},
+						"partner": {
+							"displayName": "Partner"
+						},
+						"senior": {
+							"displayName": "Senior"
+						},
+						"vp": {
+							"displayName": "VP"
+						}
+					}
+				},
+				"employmentSubRole": {
+					"displayName": "Employment Sub Role",
+					"description": "Job sub role",
+					"options": {
+						"account_executive": {
+							"displayName": "Account Executive"
+						},
+						"account_manager": {
+							"displayName": "Account Manager"
+						},
+						"accountant": {
+							"displayName": "Accountant"
+						},
+						"accounting_manager": {
+							"displayName": "Accounting Manager"
+						},
+						"administrative_assistant": {
+							"displayName": "Administrative Assistant"
+						},
+						"appraisal": {
+							"displayName": "Appraisal"
+						},
+						"architect_it": {
+							"displayName": "Architect IT"
+						},
+						"assistant": {
+							"displayName": "Assistant"
+						},
+						"attorney": {
+							"displayName": "Attorney"
+						},
+						"auditor": {
+							"displayName": "Auditor"
+						},
+						"brand_marketing": {
+							"displayName": "Brand Marketing"
+						},
+						"business_analyst": {
+							"displayName": "Business Analyst"
+						},
+						"business_consultant": {
+							"displayName": "Business Consultant"
+						},
+						"business_manager": {
+							"displayName": "Business Manager"
+						},
+						"chief_compliance_officer": {
+							"displayName": "Chief Compliance Officer"
+						},
+						"chief_data_officer": {
+							"displayName": "Chief Data Officer"
+						},
+						"chief_executive_officer": {
+							"displayName": "Chief Executive Officer"
+						},
+						"chief_experience_officer": {
+							"displayName": "Chief Experience Officer"
+						},
+						"chief_financial_officer": {
+							"displayName": "Chief Financial Officer"
+						},
+						"chief_human_resources_officer": {
+							"displayName": "Chief Human Resources Officer"
+						},
+						"chief_information_officer": {
+							"displayName": "Chief Information Officer"
+						},
+						"chief_innovation_officer": {
+							"displayName": "Chief Innovation Officer"
+						},
+						"chief_legal_officer": {
+							"displayName": "Chief Legal Officer"
+						},
+						"chief_marketing_officer": {
+							"displayName": "Chief Marketing Officer"
+						},
+						"chief_operating_officer": {
+							"displayName": "Chief Operating Officer"
+						},
+						"chief_product_officer": {
+							"displayName": "Chief Product Officer"
+						},
+						"chief_revenue_officer": {
+							"displayName": "Chief Revenue Officer"
+						},
+						"chief_risk_officer": {
+							"displayName": "Chief Risk Officer"
+						},
+						"chief_security_officer": {
+							"displayName": "Chief Security Officer"
+						},
+						"chief_sustainability_officer": {
+							"displayName": "Chief Sustainability Officer"
+						},
+						"chief_technology_officer": {
+							"displayName": "Chief Technology Officer"
+						},
+						"communications_manager": {
+							"displayName": "Communications Manager"
+						},
+						"community": {
+							"displayName": "Community"
+						},
+						"content_marketing": {
+							"displayName": "Content Marketing"
+						},
+						"contracts": {
+							"displayName": "Contracts"
+						},
+						"creative": {
+							"displayName": "Creative"
+						},
+						"customer_service_specialist": {
+							"displayName": "Customer Service Specialist"
+						},
+						"customer_success": {
+							"displayName": "Customer Success"
+						},
+						"data_it": {
+							"displayName": "Data IT"
+						},
+						"data_science_engineer": {
+							"displayName": "Data Science Engineer"
+						},
+						"database_administrator": {
+							"displayName": "Database Administrator"
+						},
+						"design_engineer": {
+							"displayName": "Design Engineer"
+						},
+						"development_specialist": {
+							"displayName": "Development Specialist"
+						},
+						"devops_engineer": {
+							"displayName": "Devops Engineer"
+						},
+						"digital_marketing": {
+							"displayName": "Digital Marketing"
+						},
+						"director_of_development": {
+							"displayName": "Director of Development"
+						},
+						"editorial": {
+							"displayName": "Editorial"
+						},
+						"electrical_engineer": {
+							"displayName": "Electrical Engineer"
+						},
+						"engineering_manager": {
+							"displayName": "Engineering Manager"
+						},
+						"events": {
+							"displayName": "Events"
+						},
+						"executive_assistant": {
+							"displayName": "Executive Assistant"
+						},
+						"facilities": {
+							"displayName": "Facilities"
+						},
+						"fashion_design": {
+							"displayName": "Fashion Design"
+						},
+						"field_marketing": {
+							"displayName": "Field Marketing"
+						},
+						"financial_analyst": {
+							"displayName": "Financial Analyst"
+						},
+						"financial_controller": {
+							"displayName": "Financial Controller"
+						},
+						"fitness": {
+							"displayName": "Fitness"
+						},
+						"founder": {
+							"displayName": "Founder"
+						},
+						"general_counsel": {
+							"displayName": "General Counsel"
+						},
+						"general_manager": {
+							"displayName": "General Manager"
+						},
+						"general_partner": {
+							"displayName": "General Partner"
+						},
+						"graphic_design": {
+							"displayName": "Graphic Design"
+						},
+						"human_resources_specialist": {
+							"displayName": "Human Resources Specialist"
+						},
+						"information_technology_specialist": {
+							"displayName": "Information Technology Specialist"
+						},
+						"investment": {
+							"displayName": "Investment"
+						},
+						"investment_banker": {
+							"displayName": "Investment Banker"
+						},
+						"journalist": {
+							"displayName": "Journalist"
+						},
+						"key_account_manager": {
+							"displayName": "Key Account Manager"
+						},
+						"law_enforcement": {
+							"displayName": "Law Enforcement"
+						},
+						"lawyer": {
+							"displayName": "Lawyer"
+						},
+						"logistics_manager": {
+							"displayName": "Logistics Manager"
+						},
+						"management": {
+							"displayName": "Management"
+						},
+						"marketing_specialist": {
+							"displayName": "Marketing Specialist"
+						},
+						"mechanical_engineer": {
+							"displayName": "Mechanical Engineer"
+						},
+						"medical_doctor": {
+							"displayName": "Medical Doctor"
+						},
+						"network_engineer": {
+							"displayName": "Network Engineer"
+						},
+						"nurse": {
+							"displayName": "Nurse"
+						},
+						"office_management": {
+							"displayName": "Office Management"
+						},
+						"office_manager": {
+							"displayName": "Office Manager"
+						},
+						"operational_specialist": {
+							"displayName": "Operational Specialist"
+						},
+						"owner": {
+							"displayName": "Owner"
+						},
+						"paralegal": {
+							"displayName": "Paralegal"
+						},
+						"principal": {
+							"displayName": "Principal"
+						},
+						"product_design": {
+							"displayName": "Product Design"
+						},
+						"product_manager": {
+							"displayName": "Product Manager"
+						},
+						"product_marketing": {
+							"displayName": "Product Marketing"
+						},
+						"production_manager": {
+							"displayName": "Production Manager"
+						},
+						"professor": {
+							"displayName": "Professor"
+						},
+						"program_coordinator": {
+							"displayName": "Program Coordinator"
+						},
+						"program_manager": {
+							"displayName": "Program Manager"
+						},
+						"project_engineer": {
+							"displayName": "Project Engineer"
+						},
+						"project_manager": {
+							"displayName": "Project Manager"
+						},
+						"property_manager": {
+							"displayName": "Property Manager"
+						},
+						"qa_engineer": {
+							"displayName": "QA Engineer"
+						},
+						"qa_it": {
+							"displayName": "QA IT"
+						},
+						"quality_assurance_manager": {
+							"displayName": "Quality Assurance Manager"
+						},
+						"quality_assurance_specialist": {
+							"displayName": "Quality Assurance Specialist"
+						},
+						"realtor": {
+							"displayName": "Realtor"
+						},
+						"recruiter": {
+							"displayName": "Recruiter"
+						},
+						"relationship_manager": {
+							"displayName": "Relationship Manager"
+						},
+						"research_analyst": {
+							"displayName": "Research Analyst"
+						},
+						"retail": {
+							"displayName": "Retail"
+						},
+						"retired": {
+							"displayName": "Retired"
+						},
+						"risk_compliance": {
+							"displayName": "Risk Compliance"
+						},
+						"sales_executive": {
+							"displayName": "Sales Executive"
+						},
+						"sales_operations": {
+							"displayName": "Sales Operations"
+						},
+						"sales_specialist": {
+							"displayName": "Sales Specialist"
+						},
+						"salesperson": {
+							"displayName": "Salesperson"
+						},
+						"secretary": {
+							"displayName": "Secretary"
+						},
+						"social_marketing": {
+							"displayName": "Social Marketing"
+						},
+						"software_engineer": {
+							"displayName": "Software Engineer"
+						},
+						"strategy": {
+							"displayName": "Strategy"
+						},
+						"student": {
+							"displayName": "Student"
+						},
+						"support": {
+							"displayName": "Support"
+						},
+						"support_specialist": {
+							"displayName": "Support Specialist"
+						},
+						"system_administrator": {
+							"displayName": "System Administrator"
+						},
+						"system_analyst": {
+							"displayName": "System Analyst"
+						},
+						"systems_engineer": {
+							"displayName": "Systems Engineer"
+						},
+						"talent": {
+							"displayName": "Talent"
+						},
+						"tax_audit": {
+							"displayName": "Tax Audit"
+						},
+						"teacher": {
+							"displayName": "Teacher"
+						},
+						"technical_manager": {
+							"displayName": "Technical Manager"
+						},
+						"technical_support_specialist": {
+							"displayName": "Technical Support Specialist"
+						},
+						"therapist": {
+							"displayName": "Therapist"
+						},
+						"training": {
+							"displayName": "Training"
+						},
+						"video": {
+							"displayName": "Video"
+						},
+						"web_developer": {
+							"displayName": "Web Developer"
+						},
+						"writer": {
+							"displayName": "Writer"
+						}
+					}
+				},
+				"enrichedEmailBounceDetected": {
+					"displayName": "Enriched Email Bounce Detected"
+				},
+				"facebookClickId": {
+					"displayName": "Facebook Click ID"
+				},
+				"faxNumber": {
+					"displayName": "Fax Number"
+				},
+				"fieldOfStudy": {
+					"displayName": "Field Of Study",
+					"description": "A contact's field of study. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool"
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "A contact's first name"
+				},
+				"gender": {
+					"displayName": "Gender"
+				},
+				"googleAdClickId": {
+					"displayName": "Google Ad Click ID"
+				},
+				"graduationDate": {
+					"displayName": "Graduation Date",
+					"description": "A contact's graduation date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format"
+				},
+				"industry": {
+					"displayName": "Industry Name or ID",
+					"description": "The type of business the company performs. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"inferredLanguageCodes": {
+					"displayName": "Inferred Language Codes",
+					"description": "Inferred languages based on location. ISO 639-1.",
+					"options": {
+						"ab": {
+							"displayName": "Abkhazian"
+						},
+						"aa": {
+							"displayName": "Afar"
+						},
+						"af": {
+							"displayName": "Afrikaans"
+						},
+						"ak": {
+							"displayName": "Akan"
+						},
+						"sq": {
+							"displayName": "Albanian"
+						},
+						"am": {
+							"displayName": "Amharic"
+						},
+						"ar": {
+							"displayName": "Arabic"
+						},
+						"an": {
+							"displayName": "Aragonese"
+						},
+						"hy": {
+							"displayName": "Armenian"
+						},
+						"as": {
+							"displayName": "Assamese"
+						},
+						"av": {
+							"displayName": "Avaric"
+						},
+						"ae": {
+							"displayName": "Avestan"
+						},
+						"ay": {
+							"displayName": "Aymara"
+						},
+						"az": {
+							"displayName": "Azerbaijani"
+						},
+						"bm": {
+							"displayName": "Bambara"
+						},
+						"ba": {
+							"displayName": "Bashkir"
+						},
+						"eu": {
+							"displayName": "Basque"
+						},
+						"be": {
+							"displayName": "Belarusian"
+						},
+						"bn": {
+							"displayName": "Bengali"
+						},
+						"bi": {
+							"displayName": "Bislama"
+						},
+						"nb": {
+							"displayName": "Bokmål, Norwegian; Norwegian Bokmål"
+						},
+						"bs": {
+							"displayName": "Bosnian"
+						},
+						"br": {
+							"displayName": "Breton"
+						},
+						"bg": {
+							"displayName": "Bulgarian"
+						},
+						"my": {
+							"displayName": "Burmese"
+						},
+						"ca": {
+							"displayName": "Catalan; Valencian"
+						},
+						"km": {
+							"displayName": "Central Khmer"
+						},
+						"ch": {
+							"displayName": "Chamorro"
+						},
+						"ce": {
+							"displayName": "Chechen"
+						},
+						"ny": {
+							"displayName": "Chichewa; Chewa; Nyanja"
+						},
+						"zh": {
+							"displayName": "Chinese"
+						},
+						"cu": {
+							"displayName": "Church Slavic; Old Slavonic; Church Slavonic; Old Bulgarian; Old Church Slavonic"
+						},
+						"cv": {
+							"displayName": "Chuvash"
+						},
+						"kw": {
+							"displayName": "Cornish"
+						},
+						"co": {
+							"displayName": "Corsican"
+						},
+						"cr": {
+							"displayName": "Cree"
+						},
+						"hr": {
+							"displayName": "Croatian"
+						},
+						"cs": {
+							"displayName": "Czech"
+						},
+						"da": {
+							"displayName": "Danish"
+						},
+						"dv": {
+							"displayName": "Divehi; Dhivehi; Maldivian"
+						},
+						"nl": {
+							"displayName": "Dutch; Flemish"
+						},
+						"dz": {
+							"displayName": "Dzongkha"
+						},
+						"en": {
+							"displayName": "English"
+						},
+						"eo": {
+							"displayName": "Esperanto"
+						},
+						"et": {
+							"displayName": "Estonian"
+						},
+						"ee": {
+							"displayName": "Ewe"
+						},
+						"fo": {
+							"displayName": "Faroese"
+						},
+						"fj": {
+							"displayName": "Fijian"
+						},
+						"fi": {
+							"displayName": "Finnish"
+						},
+						"fr": {
+							"displayName": "French"
+						},
+						"ff": {
+							"displayName": "Fulah"
+						},
+						"gd": {
+							"displayName": "Gaelic; Scottish Gaelic"
+						},
+						"gl": {
+							"displayName": "Galician"
+						},
+						"lg": {
+							"displayName": "Ganda"
+						},
+						"ka": {
+							"displayName": "Georgian"
+						},
+						"de": {
+							"displayName": "German"
+						},
+						"el": {
+							"displayName": "Greek, Modern (1453-)"
+						},
+						"gn": {
+							"displayName": "Guarani"
+						},
+						"gu": {
+							"displayName": "Gujarati"
+						},
+						"ht": {
+							"displayName": "Haitian; Haitian Creole"
+						},
+						"ha": {
+							"displayName": "Hausa"
+						},
+						"he": {
+							"displayName": "Hebrew"
+						},
+						"hz": {
+							"displayName": "Herero"
+						},
+						"hi": {
+							"displayName": "Hindi"
+						},
+						"ho": {
+							"displayName": "Hiri Motu"
+						},
+						"hu": {
+							"displayName": "Hungarian"
+						},
+						"is": {
+							"displayName": "Icelandic"
+						},
+						"io": {
+							"displayName": "Ido"
+						},
+						"ig": {
+							"displayName": "Igbo"
+						},
+						"id": {
+							"displayName": "Indonesian"
+						},
+						"ia": {
+							"displayName": "Interlingua (International Auxiliary Language Association)"
+						},
+						"ie": {
+							"displayName": "Interlingue; Occidental"
+						},
+						"iu": {
+							"displayName": "Inuktitut"
+						},
+						"ik": {
+							"displayName": "Inupiaq"
+						},
+						"ga": {
+							"displayName": "Irish"
+						},
+						"it": {
+							"displayName": "Italian"
+						},
+						"ja": {
+							"displayName": "Japanese"
+						},
+						"jv": {
+							"displayName": "Javanese"
+						},
+						"kl": {
+							"displayName": "Kalaallisut; Greenlandic"
+						},
+						"kn": {
+							"displayName": "Kannada"
+						},
+						"kr": {
+							"displayName": "Kanuri"
+						},
+						"ks": {
+							"displayName": "Kashmiri"
+						},
+						"kk": {
+							"displayName": "Kazakh"
+						},
+						"ki": {
+							"displayName": "Kikuyu; Gikuyu"
+						},
+						"rw": {
+							"displayName": "Kinyarwanda"
+						},
+						"ky": {
+							"displayName": "Kirghiz; Kyrgyz"
+						},
+						"kv": {
+							"displayName": "Komi"
+						},
+						"kg": {
+							"displayName": "Kongo"
+						},
+						"ko": {
+							"displayName": "Korean"
+						},
+						"kj": {
+							"displayName": "Kuanyama; Kwanyama"
+						},
+						"ku": {
+							"displayName": "Kurdish"
+						},
+						"lo": {
+							"displayName": "Lao"
+						},
+						"la": {
+							"displayName": "Latin"
+						},
+						"lv": {
+							"displayName": "Latvian"
+						},
+						"li": {
+							"displayName": "Limburgan; Limburger; Limburgish"
+						},
+						"ln": {
+							"displayName": "Lingala"
+						},
+						"lt": {
+							"displayName": "Lithuanian"
+						},
+						"lu": {
+							"displayName": "Luba-Katanga"
+						},
+						"lb": {
+							"displayName": "Luxembourgish; Letzeburgesch"
+						},
+						"mk": {
+							"displayName": "Macedonian"
+						},
+						"mg": {
+							"displayName": "Malagasy"
+						},
+						"ms": {
+							"displayName": "Malay (Macrolanguage)"
+						},
+						"ml": {
+							"displayName": "Malayalam"
+						},
+						"mt": {
+							"displayName": "Maltese"
+						},
+						"gv": {
+							"displayName": "Manx"
+						},
+						"mi": {
+							"displayName": "Maori"
+						},
+						"mr": {
+							"displayName": "Marathi"
+						},
+						"mh": {
+							"displayName": "Marshallese"
+						},
+						"mn": {
+							"displayName": "Mongolian"
+						},
+						"na": {
+							"displayName": "Nauru"
+						},
+						"nv": {
+							"displayName": "Navajo; Navaho"
+						},
+						"nd": {
+							"displayName": "Ndebele, North; North Ndebele"
+						},
+						"nr": {
+							"displayName": "Ndebele, South; South Ndebele"
+						},
+						"ng": {
+							"displayName": "Ndonga"
+						},
+						"ne": {
+							"displayName": "Nepali (Macrolanguage)"
+						},
+						"se": {
+							"displayName": "Northern Sami"
+						},
+						"no": {
+							"displayName": "Norwegian"
+						},
+						"nn": {
+							"displayName": "Norwegian Nynorsk; Nynorsk, Norwegian"
+						},
+						"oc": {
+							"displayName": "Occitan (Post 1500)"
+						},
+						"oj": {
+							"displayName": "Ojibwa"
+						},
+						"or": {
+							"displayName": "Oriya (Macrolanguage)"
+						},
+						"om": {
+							"displayName": "Oromo"
+						},
+						"os": {
+							"displayName": "Ossetian; Ossetic"
+						},
+						"pi": {
+							"displayName": "Pali"
+						},
+						"pa": {
+							"displayName": "Panjabi; Punjabi"
+						},
+						"fa": {
+							"displayName": "Persian"
+						},
+						"pl": {
+							"displayName": "Polish"
+						},
+						"pt": {
+							"displayName": "Portuguese"
+						},
+						"ps": {
+							"displayName": "Pushto; Pashto"
+						},
+						"qu": {
+							"displayName": "Quechua"
+						},
+						"ro": {
+							"displayName": "Romanian; Moldavian; Moldovan"
+						},
+						"rm": {
+							"displayName": "Romansh"
+						},
+						"rn": {
+							"displayName": "Rundi"
+						},
+						"ru": {
+							"displayName": "Russian"
+						},
+						"sm": {
+							"displayName": "Samoan"
+						},
+						"sg": {
+							"displayName": "Sango"
+						},
+						"sa": {
+							"displayName": "Sanskrit"
+						},
+						"sc": {
+							"displayName": "Sardinian"
+						},
+						"sr": {
+							"displayName": "Serbian"
+						},
+						"sn": {
+							"displayName": "Shona"
+						},
+						"ii": {
+							"displayName": "Sichuan Yi; Nuosu"
+						},
+						"sd": {
+							"displayName": "Sindhi"
+						},
+						"si": {
+							"displayName": "Sinhala; Sinhalese"
+						},
+						"sk": {
+							"displayName": "Slovak"
+						},
+						"sl": {
+							"displayName": "Slovenian"
+						},
+						"so": {
+							"displayName": "Somali"
+						},
+						"st": {
+							"displayName": "Sotho, Southern"
+						},
+						"es": {
+							"displayName": "Spanish; Castilian"
+						},
+						"su": {
+							"displayName": "Sundanese"
+						},
+						"sw": {
+							"displayName": "Swahili (Macrolanguage)"
+						},
+						"ss": {
+							"displayName": "Swati"
+						},
+						"sv": {
+							"displayName": "Swedish"
+						},
+						"tl": {
+							"displayName": "Tagalog"
+						},
+						"ty": {
+							"displayName": "Tahitian"
+						},
+						"tg": {
+							"displayName": "Tajik"
+						},
+						"ta": {
+							"displayName": "Tamil"
+						},
+						"tt": {
+							"displayName": "Tatar"
+						},
+						"te": {
+							"displayName": "Telugu"
+						},
+						"th": {
+							"displayName": "Thai"
+						},
+						"bo": {
+							"displayName": "Tibetan"
+						},
+						"ti": {
+							"displayName": "Tigrinya"
+						},
+						"to": {
+							"displayName": "Tonga (Tonga Islands)"
+						},
+						"ts": {
+							"displayName": "Tsonga"
+						},
+						"tn": {
+							"displayName": "Tswana"
+						},
+						"tr": {
+							"displayName": "Turkish"
+						},
+						"tk": {
+							"displayName": "Turkmen"
+						},
+						"tw": {
+							"displayName": "Twi"
+						},
+						"ug": {
+							"displayName": "Uighur; Uyghur"
+						},
+						"uk": {
+							"displayName": "Ukrainian"
+						},
+						"ur": {
+							"displayName": "Urdu"
+						},
+						"uz": {
+							"displayName": "Uzbek"
+						},
+						"ve": {
+							"displayName": "Venda"
+						},
+						"vi": {
+							"displayName": "Vietnamese"
+						},
+						"vo": {
+							"displayName": "Volapük"
+						},
+						"wa": {
+							"displayName": "Walloon"
+						},
+						"cy": {
+							"displayName": "Welsh"
+						},
+						"fy": {
+							"displayName": "Western Frisian"
+						},
+						"wo": {
+							"displayName": "Wolof"
+						},
+						"xh": {
+							"displayName": "Xhosa"
+						},
+						"yi": {
+							"displayName": "Yiddish"
+						},
+						"yo": {
+							"displayName": "Yoruba"
+						},
+						"za": {
+							"displayName": "Zhuang; Chuang"
+						},
+						"zu": {
+							"displayName": "Zulu"
+						}
+					}
+				},
+				"jobFunction": {
+					"displayName": "Job Function",
+					"description": "A contact's job function. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool"
+				},
+				"jobTitle": {
+					"displayName": "Job Title",
+					"description": "A contact's job title"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "A contact's last name"
+				},
+				"latestTrafficSource": {
+					"displayName": "Latest Traffic Source",
+					"description": "The source of the latest session for a contact",
+					"options": {
+						"DIRECT_TRAFFIC": {
+							"displayName": "Direct Traffic"
+						},
+						"EMAIL_MARKETING": {
+							"displayName": "Email Marketing"
+						},
+						"OFFLINE": {
+							"displayName": "Offline Sources"
+						},
+						"ORGANIC_SEARCH": {
+							"displayName": "Organic Search"
+						},
+						"SOCIAL_MEDIA": {
+							"displayName": "Organic Social"
+						},
+						"OTHER_CAMPAIGNS": {
+							"displayName": "Other Campaigns"
+						},
+						"PAID_SEARCH": {
+							"displayName": "Paid Search"
+						},
+						"PAID_SOCIAL": {
+							"displayName": "Paid Social"
+						},
+						"REFERRALS": {
+							"displayName": "Referrals"
+						}
+					}
+				},
+				"latestTrafficSourceDate": {
+					"displayName": "Latest Traffic Source Date",
+					"description": "The time of the latest session for a contact"
+				},
+				"leadStatus": {
+					"displayName": "Lead Status Name or ID",
+					"description": "The company's sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"processingContactData": {
+					"displayName": "Legal Basic For Processing Contact Data Name or ID",
+					"description": "Legal basis for processing contact's data; 'Not applicable' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"lifeCycleStage": {
+					"displayName": "Lifecycle Stage Name or ID",
+					"description": "The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"linkedinUrl": {
+					"displayName": "LinkedIn URL",
+					"description": "The URL of the contact's LinkedIn page"
+				},
+				"maritalStatus": {
+					"displayName": "Marital Status",
+					"description": "A contact's marital status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool"
+				},
+				"memberEmail": {
+					"displayName": "Member Email",
+					"description": "Email used to send private content information to members"
+				},
+				"membershipNote": {
+					"displayName": "Membership Note",
+					"description": "The notes relating to the contact's content membership"
+				},
+				"message": {
+					"displayName": "Message",
+					"description": "A default property to be used for any message or comments a contact may want to leave on a form"
+				},
+				"militaryStatus": {
+					"displayName": "Military Status",
+					"description": "Contact's military status. Required for the Facebook Ads Integration. Automatically synced from the Lead Ads tool."
+				},
+				"mobilePhoneNumber": {
+					"displayName": "Mobile Phone Number",
+					"description": "A contact's mobile phone number"
+				},
+				"numberOfEmployees": {
+					"displayName": "Number Of Employees",
+					"description": "The total number of employees who work for the company or organization"
+				},
+				"originalSource": {
+					"displayName": "Original Source Name or ID",
+					"description": "The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"persona": {
+					"displayName": "Persona",
+					"description": "A contact's persona"
+				},
+				"phoneNumber": {
+					"displayName": "Phone Number",
+					"description": "A company's primary phone number. Powered by HubSpot Insights."
+				},
+				"postalCode": {
+					"displayName": "Postal Code",
+					"description": "The postal or zip code of the company or organization. Powered by HubSpot Insights."
+				},
+				"prefferedLanguage": {
+					"displayName": "Preffered Language Name or ID",
+					"description": "Set your contact's preferred language for communications. This property can be changed from an import, form, or integration. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"prospectingAgentLastEnrolled": {
+					"displayName": "Prospecting Agent Last Enrolled",
+					"description": "The last time the Prospecting Agent enrolled this contact"
+				},
+				"prospectingAgentTotalEnrolledCount": {
+					"displayName": "Prospecting Agent Total Enrolled Count"
+				},
+				"relationshipStatus": {
+					"displayName": "Relationship Status",
+					"description": "A contact's relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool"
+				},
+				"salutation": {
+					"displayName": "Salutation",
+					"description": "The title used to address a contact"
+				},
+				"school": {
+					"displayName": "School",
+					"description": "A contact's school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool"
+				},
+				"seniority": {
+					"displayName": "Seniority",
+					"description": "A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool"
+				},
+				"startDate": {
+					"displayName": "Start Date",
+					"description": "A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format"
+				},
+				"stateRegion": {
+					"displayName": "State/Region",
+					"description": "The state or region in which the company or organization is located. Powered by HubSpot Insights."
+				},
+				"stateRegionCode": {
+					"displayName": "State/Region Code",
+					"description": "The contact's state or region code"
+				},
+				"status": {
+					"displayName": "Status Name or ID",
+					"description": "The status of the contact's content membership. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"streetAddress": {
+					"displayName": "Street Address",
+					"description": "The street address of the company or organization, including unit number. Powered by HubSpot Insights."
+				},
+				"timeZone": {
+					"displayName": "Time Zone",
+					"description": "The contact’s time zone. This can be set automatically by HubSpot based on other contact properties. It can also be set manually for each contact.",
+					"options": {
+						"atlantic_slash_cape_verde": {
+							"displayName": "UTC -01:00 Atlantic Cape Verde"
+						},
+						"america_slash_godthab": {
+							"displayName": "UTC -02:00 America Godthab"
+						},
+						"america_slash_miquelon": {
+							"displayName": "UTC -02:00 America Miquelon"
+						},
+						"america_slash_noronha": {
+							"displayName": "UTC -02:00 America Noronha"
+						},
+						"atlantic_slash_south_georgia": {
+							"displayName": "UTC -02:00 Atlantic South Georgia"
+						},
+						"brazil_slash_denoronha": {
+							"displayName": "UTC -02:00 Brazil DeNoronha"
+						},
+						"america_slash_st_johns": {
+							"displayName": "UTC -02:30 America St Johns"
+						},
+						"canada_slash_newfoundland": {
+							"displayName": "UTC -02:30 Canada Newfoundland"
+						},
+						"america_slash_araguaina": {
+							"displayName": "UTC -03:00 America Araguaina"
+						},
+						"america_slash_argentina_slash_buenos_aires": {
+							"displayName": "UTC -03:00 America Argentina (Buenos Aires)"
+						},
+						"america_slash_argentina_slash_catamarca": {
+							"displayName": "UTC -03:00 America Argentina (Catamarca)"
+						},
+						"america_slash_argentina_slash_comodrivadavia": {
+							"displayName": "UTC -03:00 America Argentina (ComodRivadavia)"
+						},
+						"america_slash_argentina_slash_cordoba": {
+							"displayName": "UTC -03:00 America Argentina (Cordoba)"
+						},
+						"america_slash_argentina_slash_jujuy": {
+							"displayName": "UTC -03:00 America Argentina (Jujuy)"
+						},
+						"america_slash_argentina_slash_la_rioja": {
+							"displayName": "UTC -03:00 America Argentina (La Rioja)"
+						},
+						"america_slash_argentina_slash_mendoza": {
+							"displayName": "UTC -03:00 America Argentina (Mendoza)"
+						},
+						"america_slash_argentina_slash_rio_gallegos": {
+							"displayName": "UTC -03:00 America Argentina (Rio Gallegos)"
+						},
+						"america_slash_argentina_slash_salta": {
+							"displayName": "UTC -03:00 America Argentina (Salta)"
+						},
+						"america_slash_argentina_slash_san_juan": {
+							"displayName": "UTC -03:00 America Argentina (San Juan)"
+						},
+						"america_slash_argentina_slash_san_luis": {
+							"displayName": "UTC -03:00 America Argentina (San Luis)"
+						},
+						"america_slash_argentina_slash_tucuman": {
+							"displayName": "UTC -03:00 America Argentina (Tucuman)"
+						},
+						"america_slash_argentina_slash_ushuaia": {
+							"displayName": "UTC -03:00 America Argentina (Ushuaia)"
+						},
+						"america_slash_bahia": {
+							"displayName": "UTC -03:00 America Bahia"
+						},
+						"america_slash_belem": {
+							"displayName": "UTC -03:00 America Belem"
+						},
+						"america_slash_buenos_aires": {
+							"displayName": "UTC -03:00 America Buenos Aires"
+						},
+						"america_slash_catamarca": {
+							"displayName": "UTC -03:00 America Catamarca"
+						},
+						"america_slash_cayenne": {
+							"displayName": "UTC -03:00 America Cayenne"
+						},
+						"america_slash_cordoba": {
+							"displayName": "UTC -03:00 America Cordoba"
+						},
+						"america_slash_fortaleza": {
+							"displayName": "UTC -03:00 America Fortaleza"
+						},
+						"america_slash_glace_bay": {
+							"displayName": "UTC -03:00 America Glace Bay"
+						},
+						"america_slash_goose_bay": {
+							"displayName": "UTC -03:00 America Goose Bay"
+						},
+						"america_slash_halifax": {
+							"displayName": "UTC -03:00 America Halifax"
+						},
+						"america_slash_jujuy": {
+							"displayName": "UTC -03:00 America Jujuy"
+						},
+						"america_slash_maceio": {
+							"displayName": "UTC -03:00 America Maceio"
+						},
+						"america_slash_mendoza": {
+							"displayName": "UTC -03:00 America Mendoza"
+						},
+						"america_slash_moncton": {
+							"displayName": "UTC -03:00 America Moncton"
+						},
+						"america_slash_montevideo": {
+							"displayName": "UTC -03:00 America Montevideo"
+						},
+						"america_slash_paramaribo": {
+							"displayName": "UTC -03:00 America Paramaribo"
+						},
+						"america_slash_punta_arenas": {
+							"displayName": "UTC -03:00 America Punta Arenas"
+						},
+						"america_slash_recife": {
+							"displayName": "UTC -03:00 America Recife"
+						},
+						"america_slash_rosario": {
+							"displayName": "UTC -03:00 America Rosario"
+						},
+						"america_slash_santarem": {
+							"displayName": "UTC -03:00 America Santarem"
+						},
+						"america_slash_sao_paulo": {
+							"displayName": "UTC -03:00 America Sao Paulo"
+						},
+						"america_slash_thule": {
+							"displayName": "UTC -03:00 America Thule"
+						},
+						"antarctica_slash_palmer": {
+							"displayName": "UTC -03:00 Antarctica Palmer"
+						},
+						"antarctica_slash_rothera": {
+							"displayName": "UTC -03:00 Antarctica Rothera"
+						},
+						"atlantic_slash_bermuda": {
+							"displayName": "UTC -03:00 Atlantic Bermuda"
+						},
+						"atlantic_slash_stanley": {
+							"displayName": "UTC -03:00 Atlantic Stanley"
+						},
+						"brazil_slash_east": {
+							"displayName": "UTC -03:00 Brazil East"
+						},
+						"canada_slash_atlantic": {
+							"displayName": "UTC -03:00 Canada Atlantic"
+						},
+						"america_slash_anguilla": {
+							"displayName": "UTC -04:00 America Anguilla"
+						},
+						"america_slash_antigua": {
+							"displayName": "UTC -04:00 America Antigua"
+						},
+						"america_slash_aruba": {
+							"displayName": "UTC -04:00 America Aruba"
+						},
+						"america_slash_asuncion": {
+							"displayName": "UTC -04:00 America Asuncion"
+						},
+						"america_slash_barbados": {
+							"displayName": "UTC -04:00 America Barbados"
+						},
+						"america_slash_blanc_hyphen_sablon": {
+							"displayName": "UTC -04:00 America Blanc-Sablon"
+						},
+						"america_slash_boa_vista": {
+							"displayName": "UTC -04:00 America Boa Vista"
+						},
+						"america_slash_campo_grande": {
+							"displayName": "UTC -04:00 America Campo Grande"
+						},
+						"america_slash_caracas": {
+							"displayName": "UTC -04:00 America Caracas"
+						},
+						"cuba": {
+							"displayName": "UTC -04:00 America Cuba"
+						},
+						"america_slash_cuiaba": {
+							"displayName": "UTC -04:00 America Cuiaba"
+						},
+						"america_slash_curacao": {
+							"displayName": "UTC -04:00 America Curacao"
+						},
+						"america_slash_detroit": {
+							"displayName": "UTC -04:00 America Detroit"
+						},
+						"america_slash_dominica": {
+							"displayName": "UTC -04:00 America Dominica"
+						},
+						"america_slash_fort_wayne": {
+							"displayName": "UTC -04:00 America Fort Wayne"
+						},
+						"america_slash_grand_turk": {
+							"displayName": "UTC -04:00 America Grand Turk"
+						},
+						"america_slash_grenada": {
+							"displayName": "UTC -04:00 America Grenada"
+						},
+						"america_slash_guadeloupe": {
+							"displayName": "UTC -04:00 America Guadeloupe"
+						},
+						"america_slash_guyana": {
+							"displayName": "UTC -04:00 America Guyana"
+						},
+						"america_slash_havana": {
+							"displayName": "UTC -04:00 America Havana"
+						},
+						"america_slash_indiana_slash_indianapolis": {
+							"displayName": "UTC -04:00 America Indiana (Indianapolis)"
+						},
+						"america_slash_indiana_slash_marengo": {
+							"displayName": "UTC -04:00 America Indiana (Marengo)"
+						},
+						"america_slash_indiana_slash_petersburg": {
+							"displayName": "UTC -04:00 America Indiana (Petersburg)"
+						},
+						"america_slash_indiana_slash_vevay": {
+							"displayName": "UTC -04:00 America Indiana (Vevay)"
+						},
+						"america_slash_indiana_slash_vincennes": {
+							"displayName": "UTC -04:00 America Indiana (Vincennes)"
+						},
+						"america_slash_indiana_slash_winamac": {
+							"displayName": "UTC -04:00 America Indiana (Winamac)"
+						},
+						"america_slash_indianapolis": {
+							"displayName": "UTC -04:00 America Indianapolis"
+						},
+						"america_slash_iqaluit": {
+							"displayName": "UTC -04:00 America Iqaluit"
+						},
+						"america_slash_kentucky_slash_louisville": {
+							"displayName": "UTC -04:00 America Kentucky (Louisville)"
+						},
+						"america_slash_kentucky_slash_monticello": {
+							"displayName": "UTC -04:00 America Kentucky (Monticello)"
+						},
+						"america_slash_kralendijk": {
+							"displayName": "UTC -04:00 America Kralendijk"
+						},
+						"america_slash_la_paz": {
+							"displayName": "UTC -04:00 America La Paz"
+						},
+						"america_slash_louisville": {
+							"displayName": "UTC -04:00 America Louisville"
+						},
+						"america_slash_lower_princes": {
+							"displayName": "UTC -04:00 America Lower Princes"
+						},
+						"america_slash_manaus": {
+							"displayName": "UTC -04:00 America Manaus"
+						},
+						"america_slash_marigot": {
+							"displayName": "UTC -04:00 America Marigot"
+						},
+						"america_slash_martinique": {
+							"displayName": "UTC -04:00 America Martinique"
+						},
+						"america_slash_montreal": {
+							"displayName": "UTC -04:00 America Montreal"
+						},
+						"america_slash_montserrat": {
+							"displayName": "UTC -04:00 America Montserrat"
+						},
+						"america_slash_nassau": {
+							"displayName": "UTC -04:00 America Nassau"
+						},
+						"america_slash_new_york": {
+							"displayName": "UTC -04:00 America New York"
+						},
+						"america_slash_nipigon": {
+							"displayName": "UTC -04:00 America Nipigon"
+						},
+						"america_slash_pangnirtung": {
+							"displayName": "UTC -04:00 America Pangnirtung"
+						},
+						"america_slash_port_of_spain": {
+							"displayName": "UTC -04:00 America Port of Spain"
+						},
+						"america_slash_port_hyphen_au_hyphen_prince": {
+							"displayName": "UTC -04:00 America Port-Au-Prince"
+						},
+						"america_slash_porto_velho": {
+							"displayName": "UTC -04:00 America Porto Velho"
+						},
+						"america_slash_puerto_rico": {
+							"displayName": "UTC -04:00 America Puerto Rico"
+						},
+						"america_slash_santiago": {
+							"displayName": "UTC -04:00 America Santiago"
+						},
+						"america_slash_santo_domingo": {
+							"displayName": "UTC -04:00 America Santo Domingo"
+						},
+						"america_slash_st_barthelemy": {
+							"displayName": "UTC -04:00 America St Barthelemy"
+						},
+						"america_slash_st_kitts": {
+							"displayName": "UTC -04:00 America St Kitts"
+						},
+						"america_slash_st_lucia": {
+							"displayName": "UTC -04:00 America St Lucia"
+						},
+						"america_slash_st_thomas": {
+							"displayName": "UTC -04:00 America St Thomas"
+						},
+						"america_slash_st_vincent": {
+							"displayName": "UTC -04:00 America St Vincent"
+						},
+						"america_slash_thunder_bay": {
+							"displayName": "UTC -04:00 America Thunder Bay"
+						},
+						"america_slash_toronto": {
+							"displayName": "UTC -04:00 America Toronto"
+						},
+						"america_slash_tortola": {
+							"displayName": "UTC -04:00 America Tortola"
+						},
+						"america_slash_virgin": {
+							"displayName": "UTC -04:00 America Virgin"
+						},
+						"brazil_slash_west": {
+							"displayName": "UTC -04:00 Brazil West"
+						},
+						"canada_slash_eastern": {
+							"displayName": "UTC -04:00 Canada Eastern"
+						},
+						"chile_slash_continental": {
+							"displayName": "UTC -04:00 Chile Continental"
+						},
+						"us_slash_east_hyphen_indiana": {
+							"displayName": "UTC -04:00 US East-Indiana"
+						},
+						"us_slash_eastern": {
+							"displayName": "UTC -04:00 US Eastern"
+						},
+						"us_slash_michigan": {
+							"displayName": "UTC -04:00 US Michigan"
+						},
+						"america_slash_atikokan": {
+							"displayName": "UTC -05:00 America Atikokan"
+						},
+						"america_slash_bahia_banderas": {
+							"displayName": "UTC -05:00 America Bahia Banderas"
+						},
+						"america_slash_bogota": {
+							"displayName": "UTC -05:00 America Bogota"
+						},
+						"america_slash_cancun": {
+							"displayName": "UTC -05:00 America Cancun"
+						},
+						"america_slash_cayman": {
+							"displayName": "UTC -05:00 America Cayman"
+						},
+						"america_slash_chicago": {
+							"displayName": "UTC -05:00 America Chicago"
+						},
+						"america_slash_coral_harbour": {
+							"displayName": "UTC -05:00 America Coral Harbour"
+						},
+						"america_slash_eirunepe": {
+							"displayName": "UTC -05:00 America Eirunepe"
+						},
+						"america_slash_guayaquil": {
+							"displayName": "UTC -05:00 America Guayaquil"
+						},
+						"america_slash_indiana_slash_knox": {
+							"displayName": "UTC -05:00 America Indiana (Knox)"
+						},
+						"america_slash_indiana_slash_tell_city": {
+							"displayName": "UTC -05:00 America Indiana (Tell City)"
+						},
+						"america_slash_jamaica": {
+							"displayName": "UTC -05:00 America Jamaica"
+						},
+						"america_slash_knox_in": {
+							"displayName": "UTC -05:00 America Knox IN"
+						},
+						"america_slash_lima": {
+							"displayName": "UTC -05:00 America Lima"
+						},
+						"america_slash_matamoros": {
+							"displayName": "UTC -05:00 America Matamoros"
+						},
+						"america_slash_menominee": {
+							"displayName": "UTC -05:00 America Menominee"
+						},
+						"america_slash_merida": {
+							"displayName": "UTC -05:00 America Merida"
+						},
+						"america_slash_mexico_city": {
+							"displayName": "UTC -05:00 America Mexico City"
+						},
+						"america_slash_monterrey": {
+							"displayName": "UTC -05:00 America Monterrey"
+						},
+						"america_slash_north_dakota_slash_beulah": {
+							"displayName": "UTC -05:00 America North Dakota (Beulah)"
+						},
+						"america_slash_north_dakota_slash_center": {
+							"displayName": "UTC -05:00 America North Dakota (Center)"
+						},
+						"america_slash_north_dakota_slash_new_salem": {
+							"displayName": "UTC -05:00 America North Dakota (New Salem)"
+						},
+						"america_slash_panama": {
+							"displayName": "UTC -05:00 America Panama"
+						},
+						"america_slash_porto_acre": {
+							"displayName": "UTC -05:00 America Porto Acre"
+						},
+						"america_slash_rainy_river": {
+							"displayName": "UTC -05:00 America Rainy River"
+						},
+						"america_slash_rankin_inlet": {
+							"displayName": "UTC -05:00 America Rankin Inlet"
+						},
+						"america_slash_resolute": {
+							"displayName": "UTC -05:00 America Resolute"
+						},
+						"america_slash_rio_branco": {
+							"displayName": "UTC -05:00 America Rio Branco"
+						},
+						"america_slash_winnipeg": {
+							"displayName": "UTC -05:00 America Winnipeg"
+						},
+						"brazil_slash_acre": {
+							"displayName": "UTC -05:00 Brazil Acre"
+						},
+						"canada_slash_central": {
+							"displayName": "UTC -05:00 Canada Central"
+						},
+						"mexico_slash_general": {
+							"displayName": "UTC -05:00 Mexico General"
+						},
+						"us_slash_central": {
+							"displayName": "UTC -05:00 US Central"
+						},
+						"us_slash_indiana_hyphen_starke": {
+							"displayName": "UTC -05:00 US Indiana-Starke"
+						},
+						"america_slash_belize": {
+							"displayName": "UTC -06:00 America Belize"
+						},
+						"america_slash_boise": {
+							"displayName": "UTC -06:00 America Boise"
+						},
+						"america_slash_cambridge_bay": {
+							"displayName": "UTC -06:00 America Cambridge Bay"
+						},
+						"america_slash_chihuahua": {
+							"displayName": "UTC -06:00 America Chihuahua"
+						},
+						"america_slash_costa_rica": {
+							"displayName": "UTC -06:00 America Costa Rica"
+						},
+						"america_slash_denver": {
+							"displayName": "UTC -06:00 America Denver"
+						},
+						"america_slash_edmonton": {
+							"displayName": "UTC -06:00 America Edmonton"
+						},
+						"america_slash_el_salvador": {
+							"displayName": "UTC -06:00 America El Salvador"
+						},
+						"america_slash_guatemala": {
+							"displayName": "UTC -06:00 America Guatemala"
+						},
+						"america_slash_inuvik": {
+							"displayName": "UTC -06:00 America Inuvik"
+						},
+						"america_slash_managua": {
+							"displayName": "UTC -06:00 America Managua"
+						},
+						"america_slash_mazatlan": {
+							"displayName": "UTC -06:00 America Mazatlan"
+						},
+						"navajo": {
+							"displayName": "UTC -06:00 America Navajo"
+						},
+						"america_slash_ojinaga": {
+							"displayName": "UTC -06:00 America Ojinaga"
+						},
+						"america_slash_regina": {
+							"displayName": "UTC -06:00 America Regina"
+						},
+						"america_slash_shiprock": {
+							"displayName": "UTC -06:00 America Shiprock"
+						},
+						"america_slash_swift_current": {
+							"displayName": "UTC -06:00 America Swift Current"
+						},
+						"america_slash_tegucigalpa": {
+							"displayName": "UTC -06:00 America Tegucigalpa"
+						},
+						"america_slash_yellowknife": {
+							"displayName": "UTC -06:00 America Yellowknife"
+						},
+						"canada_slash_mountain": {
+							"displayName": "UTC -06:00 Canada Mountain"
+						},
+						"canada_slash_saskatchewan": {
+							"displayName": "UTC -06:00 Canada Saskatchewan"
+						},
+						"chile_slash_easterisland": {
+							"displayName": "UTC -06:00 Chile EasterIsland"
+						},
+						"mexico_slash_bajasur": {
+							"displayName": "UTC -06:00 Mexico BajaSur"
+						},
+						"pacific_slash_easter": {
+							"displayName": "UTC -06:00 Pacific Easter"
+						},
+						"pacific_slash_galapagos": {
+							"displayName": "UTC -06:00 Pacific Galapagos"
+						},
+						"us_slash_mountain": {
+							"displayName": "UTC -06:00 US Mountain"
+						},
+						"america_slash_creston": {
+							"displayName": "UTC -07:00 America Creston"
+						},
+						"america_slash_dawson": {
+							"displayName": "UTC -07:00 America Dawson"
+						},
+						"america_slash_dawson_creek": {
+							"displayName": "UTC -07:00 America Dawson Creek"
+						},
+						"america_slash_ensenada": {
+							"displayName": "UTC -07:00 America Ensenada"
+						},
+						"america_slash_fort_nelson": {
+							"displayName": "UTC -07:00 America Fort Nelson"
+						},
+						"america_slash_hermosillo": {
+							"displayName": "UTC -07:00 America Hermosillo"
+						},
+						"america_slash_los_angeles": {
+							"displayName": "UTC -07:00 America Los Angeles"
+						},
+						"america_slash_phoenix": {
+							"displayName": "UTC -07:00 America Phoenix"
+						},
+						"america_slash_santa_isabel": {
+							"displayName": "UTC -07:00 America Santa Isabel"
+						},
+						"america_slash_tijuana": {
+							"displayName": "UTC -07:00 America Tijuana"
+						},
+						"america_slash_vancouver": {
+							"displayName": "UTC -07:00 America Vancouver"
+						},
+						"america_slash_whitehorse": {
+							"displayName": "UTC -07:00 America Whitehorse"
+						},
+						"canada_slash_pacific": {
+							"displayName": "UTC -07:00 Canada Pacific"
+						},
+						"canada_slash_yukon": {
+							"displayName": "UTC -07:00 Canada Yukon"
+						},
+						"mexico_slash_bajanorte": {
+							"displayName": "UTC -07:00 Mexico BajaNorte"
+						},
+						"us_slash_arizona": {
+							"displayName": "UTC -07:00 US Arizona"
+						},
+						"us_slash_pacific": {
+							"displayName": "UTC -07:00 US Pacific"
+						},
+						"us_slash_pacific_hyphen_new": {
+							"displayName": "UTC -07:00 US Pacific-New"
+						},
+						"america_slash_anchorage": {
+							"displayName": "UTC -08:00 America Anchorage"
+						},
+						"america_slash_juneau": {
+							"displayName": "UTC -08:00 America Juneau"
+						},
+						"america_slash_metlakatla": {
+							"displayName": "UTC -08:00 America Metlakatla"
+						},
+						"america_slash_nome": {
+							"displayName": "UTC -08:00 America Nome"
+						},
+						"america_slash_sitka": {
+							"displayName": "UTC -08:00 America Sitka"
+						},
+						"america_slash_yakutat": {
+							"displayName": "UTC -08:00 America Yakutat"
+						},
+						"pacific_slash_pitcairn": {
+							"displayName": "UTC -08:00 Pacific Pitcairn"
+						},
+						"us_slash_alaska": {
+							"displayName": "UTC -08:00 US Alaska"
+						},
+						"america_slash_adak": {
+							"displayName": "UTC -09:00 America Adak"
+						},
+						"america_slash_atka": {
+							"displayName": "UTC -09:00 America Atka"
+						},
+						"pacific_slash_gambier": {
+							"displayName": "UTC -09:00 Pacific Gambier"
+						},
+						"us_slash_aleutian": {
+							"displayName": "UTC -09:00 US Aleutian"
+						},
+						"pacific_slash_marquesas": {
+							"displayName": "UTC -09:30 Pacific Marquesas"
+						},
+						"pacific_slash_honolulu": {
+							"displayName": "UTC -10:00 Pacific Honolulu"
+						},
+						"pacific_slash_johnston": {
+							"displayName": "UTC -10:00 Pacific Johnston"
+						},
+						"pacific_slash_rarotonga": {
+							"displayName": "UTC -10:00 Pacific Rarotonga"
+						},
+						"pacific_slash_tahiti": {
+							"displayName": "UTC -10:00 Pacific Tahiti"
+						},
+						"us_slash_hawaii": {
+							"displayName": "UTC -10:00 US Hawaii"
+						},
+						"pacific_slash_midway": {
+							"displayName": "UTC -11:00 Pacific Midway"
+						},
+						"pacific_slash_niue": {
+							"displayName": "UTC -11:00 Pacific Niue"
+						},
+						"pacific_slash_pago_pago": {
+							"displayName": "UTC -11:00 Pacific Pago Pago"
+						},
+						"pacific_slash_samoa": {
+							"displayName": "UTC -11:00 Pacific Samoa"
+						},
+						"us_slash_samoa": {
+							"displayName": "UTC -11:00 US Samoa"
+						},
+						"africa_slash_abidjan": {
+							"displayName": "UTC +00:00 Africa Abidjan"
+						},
+						"africa_slash_accra": {
+							"displayName": "UTC +00:00 Africa Accra"
+						},
+						"africa_slash_bamako": {
+							"displayName": "UTC +00:00 Africa Bamako"
+						},
+						"africa_slash_banjul": {
+							"displayName": "UTC +00:00 Africa Banjul"
+						},
+						"africa_slash_bissau": {
+							"displayName": "UTC +00:00 Africa Bissau"
+						},
+						"africa_slash_conakry": {
+							"displayName": "UTC +00:00 Africa Conakry"
+						},
+						"africa_slash_dakar": {
+							"displayName": "UTC +00:00 Africa Dakar"
+						},
+						"africa_slash_freetown": {
+							"displayName": "UTC +00:00 Africa Freetown"
+						},
+						"africa_slash_lome": {
+							"displayName": "UTC +00:00 Africa Lome"
+						},
+						"africa_slash_monrovia": {
+							"displayName": "UTC +00:00 Africa Monrovia"
+						},
+						"africa_slash_nouakchott": {
+							"displayName": "UTC +00:00 Africa Nouakchott"
+						},
+						"africa_slash_ouagadougou": {
+							"displayName": "UTC +00:00 Africa Ouagadougou"
+						},
+						"africa_slash_timbuktu": {
+							"displayName": "UTC +00:00 Africa Timbuktu"
+						},
+						"america_slash_danmarkshavn": {
+							"displayName": "UTC +00:00 America Danmarkshavn"
+						},
+						"america_slash_scoresbysund": {
+							"displayName": "UTC +00:00 America Scoresbysund"
+						},
+						"atlantic_slash_azores": {
+							"displayName": "UTC +00:00 Atlantic Azores"
+						},
+						"atlantic_slash_reykjavik": {
+							"displayName": "UTC +00:00 Atlantic Reykjavik"
+						},
+						"atlantic_slash_st_helena": {
+							"displayName": "UTC +00:00 Atlantic St Helena"
+						},
+						"iceland": {
+							"displayName": "UTC +00:00 Europe Iceland"
+						},
+						"africa_slash_algiers": {
+							"displayName": "UTC +01:00 Africa Algiers"
+						},
+						"africa_slash_bangui": {
+							"displayName": "UTC +01:00 Africa Bangui"
+						},
+						"africa_slash_brazzaville": {
+							"displayName": "UTC +01:00 Africa Brazzaville"
+						},
+						"africa_slash_casablanca": {
+							"displayName": "UTC +01:00 Africa Casablanca"
+						},
+						"africa_slash_douala": {
+							"displayName": "UTC +01:00 Africa Douala"
+						},
+						"africa_slash_el_aaiun": {
+							"displayName": "UTC +01:00 Africa El Aaiun"
+						},
+						"africa_slash_kinshasa": {
+							"displayName": "UTC +01:00 Africa Kinshasa"
+						},
+						"africa_slash_lagos": {
+							"displayName": "UTC +01:00 Africa Lagos"
+						},
+						"africa_slash_libreville": {
+							"displayName": "UTC +01:00 Africa Libreville"
+						},
+						"africa_slash_luanda": {
+							"displayName": "UTC +01:00 Africa Luanda"
+						},
+						"africa_slash_malabo": {
+							"displayName": "UTC +01:00 Africa Malabo"
+						},
+						"africa_slash_ndjamena": {
+							"displayName": "UTC +01:00 Africa Ndjamena"
+						},
+						"africa_slash_niamey": {
+							"displayName": "UTC +01:00 Africa Niamey"
+						},
+						"africa_slash_porto_hyphen_novo": {
+							"displayName": "UTC +01:00 Africa Porto-Novo"
+						},
+						"africa_slash_sao_tome": {
+							"displayName": "UTC +01:00 Africa Sao Tome"
+						},
+						"africa_slash_tunis": {
+							"displayName": "UTC +01:00 Africa Tunis"
+						},
+						"atlantic_slash_canary": {
+							"displayName": "UTC +01:00 Atlantic Canary"
+						},
+						"atlantic_slash_faeroe": {
+							"displayName": "UTC +01:00 Atlantic Faeroe"
+						},
+						"atlantic_slash_faroe": {
+							"displayName": "UTC +01:00 Atlantic Faroe"
+						},
+						"atlantic_slash_madeira": {
+							"displayName": "UTC +01:00 Atlantic Madeira"
+						},
+						"europe_slash_belfast": {
+							"displayName": "UTC +01:00 Europe Belfast"
+						},
+						"europe_slash_dublin": {
+							"displayName": "UTC +01:00 Europe Dublin"
+						},
+						"eire": {
+							"displayName": "UTC +01:00 Europe Eire"
+						},
+						"europe_slash_guernsey": {
+							"displayName": "UTC +01:00 Europe Guernsey"
+						},
+						"europe_slash_isle_of_man": {
+							"displayName": "UTC +01:00 Europe Isle of Man"
+						},
+						"europe_slash_jersey": {
+							"displayName": "UTC +01:00 Europe Jersey"
+						},
+						"europe_slash_lisbon": {
+							"displayName": "UTC +01:00 Europe Lisbon"
+						},
+						"europe_slash_london": {
+							"displayName": "UTC +01:00 Europe London"
+						},
+						"portugal": {
+							"displayName": "UTC +01:00 Europe Portugal"
+						},
+						"africa_slash_blantyre": {
+							"displayName": "UTC +02:00 Africa Blantyre"
+						},
+						"africa_slash_bujumbura": {
+							"displayName": "UTC +02:00 Africa Bujumbura"
+						},
+						"africa_slash_cairo": {
+							"displayName": "UTC +02:00 Africa Cairo"
+						},
+						"africa_slash_ceuta": {
+							"displayName": "UTC +02:00 Africa Ceuta"
+						},
+						"egypt": {
+							"displayName": "UTC +02:00 Africa Egypt"
+						},
+						"africa_slash_gaborone": {
+							"displayName": "UTC +02:00 Africa Gaborone"
+						},
+						"africa_slash_harare": {
+							"displayName": "UTC +02:00 Africa Harare"
+						},
+						"africa_slash_johannesburg": {
+							"displayName": "UTC +02:00 Africa Johannesburg"
+						},
+						"africa_slash_khartoum": {
+							"displayName": "UTC +02:00 Africa Khartoum"
+						},
+						"africa_slash_kigali": {
+							"displayName": "UTC +02:00 Africa Kigali"
+						},
+						"libya": {
+							"displayName": "UTC +02:00 Africa Libya"
+						},
+						"africa_slash_lubumbashi": {
+							"displayName": "UTC +02:00 Africa Lubumbashi"
+						},
+						"africa_slash_lusaka": {
+							"displayName": "UTC +02:00 Africa Lusaka"
+						},
+						"africa_slash_maputo": {
+							"displayName": "UTC +02:00 Africa Maputo"
+						},
+						"africa_slash_maseru": {
+							"displayName": "UTC +02:00 Africa Maseru"
+						},
+						"africa_slash_mbabane": {
+							"displayName": "UTC +02:00 Africa Mbabane"
+						},
+						"africa_slash_tripoli": {
+							"displayName": "UTC +02:00 Africa Tripoli"
+						},
+						"africa_slash_windhoek": {
+							"displayName": "UTC +02:00 Africa Windhoek"
+						},
+						"antarctica_slash_troll": {
+							"displayName": "UTC +02:00 Antarctica Troll"
+						},
+						"arctic_slash_longyearbyen": {
+							"displayName": "UTC +02:00 Arctic Longyearbyen"
+						},
+						"atlantic_slash_jan_mayen": {
+							"displayName": "UTC +02:00 Atlantic Jan Mayen"
+						},
+						"europe_slash_amsterdam": {
+							"displayName": "UTC +02:00 Europe Amsterdam"
+						},
+						"europe_slash_andorra": {
+							"displayName": "UTC +02:00 Europe Andorra"
+						},
+						"europe_slash_belgrade": {
+							"displayName": "UTC +02:00 Europe Belgrade"
+						},
+						"europe_slash_berlin": {
+							"displayName": "UTC +02:00 Europe Berlin"
+						},
+						"europe_slash_bratislava": {
+							"displayName": "UTC +02:00 Europe Bratislava"
+						},
+						"europe_slash_brussels": {
+							"displayName": "UTC +02:00 Europe Brussels"
+						},
+						"europe_slash_budapest": {
+							"displayName": "UTC +02:00 Europe Budapest"
+						},
+						"europe_slash_busingen": {
+							"displayName": "UTC +02:00 Europe Busingen"
+						},
+						"europe_slash_copenhagen": {
+							"displayName": "UTC +02:00 Europe Copenhagen"
+						},
+						"europe_slash_gibraltar": {
+							"displayName": "UTC +02:00 Europe Gibraltar"
+						},
+						"europe_slash_kaliningrad": {
+							"displayName": "UTC +02:00 Europe Kaliningrad"
+						},
+						"europe_slash_ljubljana": {
+							"displayName": "UTC +02:00 Europe Ljubljana"
+						},
+						"europe_slash_luxembourg": {
+							"displayName": "UTC +02:00 Europe Luxembourg"
+						},
+						"europe_slash_madrid": {
+							"displayName": "UTC +02:00 Europe Madrid"
+						},
+						"europe_slash_malta": {
+							"displayName": "UTC +02:00 Europe Malta"
+						},
+						"europe_slash_monaco": {
+							"displayName": "UTC +02:00 Europe Monaco"
+						},
+						"europe_slash_oslo": {
+							"displayName": "UTC +02:00 Europe Oslo"
+						},
+						"europe_slash_paris": {
+							"displayName": "UTC +02:00 Europe Paris"
+						},
+						"europe_slash_podgorica": {
+							"displayName": "UTC +02:00 Europe Podgorica"
+						},
+						"poland": {
+							"displayName": "UTC +02:00 Europe Poland"
+						},
+						"europe_slash_prague": {
+							"displayName": "UTC +02:00 Europe Prague"
+						},
+						"europe_slash_rome": {
+							"displayName": "UTC +02:00 Europe Rome"
+						},
+						"europe_slash_san_marino": {
+							"displayName": "UTC +02:00 Europe San Marino"
+						},
+						"europe_slash_sarajevo": {
+							"displayName": "UTC +02:00 Europe Sarajevo"
+						},
+						"europe_slash_skopje": {
+							"displayName": "UTC +02:00 Europe Skopje"
+						},
+						"europe_slash_stockholm": {
+							"displayName": "UTC +02:00 Europe Stockholm"
+						},
+						"europe_slash_tirane": {
+							"displayName": "UTC +02:00 Europe Tirane"
+						},
+						"europe_slash_vaduz": {
+							"displayName": "UTC +02:00 Europe Vaduz"
+						},
+						"europe_slash_vatican": {
+							"displayName": "UTC +02:00 Europe Vatican"
+						},
+						"europe_slash_vienna": {
+							"displayName": "UTC +02:00 Europe Vienna"
+						},
+						"europe_slash_warsaw": {
+							"displayName": "UTC +02:00 Europe Warsaw"
+						},
+						"europe_slash_zagreb": {
+							"displayName": "UTC +02:00 Europe Zagreb"
+						},
+						"europe_slash_zurich": {
+							"displayName": "UTC +02:00 Europe Zurich"
+						},
+						"africa_slash_addis_ababa": {
+							"displayName": "UTC +03:00 Africa Addis Ababa"
+						},
+						"africa_slash_asmara": {
+							"displayName": "UTC +03:00 Africa Asmara"
+						},
+						"africa_slash_asmera": {
+							"displayName": "UTC +03:00 Africa Asmera"
+						},
+						"africa_slash_dar_es_salaam": {
+							"displayName": "UTC +03:00 Africa Dar Es Salaam"
+						},
+						"africa_slash_djibouti": {
+							"displayName": "UTC +03:00 Africa Djibouti"
+						},
+						"africa_slash_juba": {
+							"displayName": "UTC +03:00 Africa Juba"
+						},
+						"africa_slash_kampala": {
+							"displayName": "UTC +03:00 Africa Kampala"
+						},
+						"africa_slash_mogadishu": {
+							"displayName": "UTC +03:00 Africa Mogadishu"
+						},
+						"africa_slash_nairobi": {
+							"displayName": "UTC +03:00 Africa Nairobi"
+						},
+						"antarctica_slash_syowa": {
+							"displayName": "UTC +03:00 Antarctica Syowa"
+						},
+						"asia_slash_aden": {
+							"displayName": "UTC +03:00 Asia Aden"
+						},
+						"asia_slash_amman": {
+							"displayName": "UTC +03:00 Asia Amman"
+						},
+						"asia_slash_baghdad": {
+							"displayName": "UTC +03:00 Asia Baghdad"
+						},
+						"asia_slash_bahrain": {
+							"displayName": "UTC +03:00 Asia Bahrain"
+						},
+						"asia_slash_beirut": {
+							"displayName": "UTC +03:00 Asia Beirut"
+						},
+						"asia_slash_damascus": {
+							"displayName": "UTC +03:00 Asia Damascus"
+						},
+						"asia_slash_famagusta": {
+							"displayName": "UTC +03:00 Asia Famagusta"
+						},
+						"asia_slash_gaza": {
+							"displayName": "UTC +03:00 Asia Gaza"
+						},
+						"asia_slash_hebron": {
+							"displayName": "UTC +03:00 Asia Hebron"
+						},
+						"israel": {
+							"displayName": "UTC +03:00 Asia Israel"
+						},
+						"asia_slash_istanbul": {
+							"displayName": "UTC +03:00 Asia Istanbul"
+						},
+						"asia_slash_jerusalem": {
+							"displayName": "UTC +03:00 Asia Jerusalem"
+						},
+						"asia_slash_kuwait": {
+							"displayName": "UTC +03:00 Asia Kuwait"
+						},
+						"asia_slash_nicosia": {
+							"displayName": "UTC +03:00 Asia Nicosia"
+						},
+						"asia_slash_qatar": {
+							"displayName": "UTC +03:00 Asia Qatar"
+						},
+						"asia_slash_riyadh": {
+							"displayName": "UTC +03:00 Asia Riyadh"
+						},
+						"asia_slash_tel_aviv": {
+							"displayName": "UTC +03:00 Asia Tel Aviv"
+						},
+						"turkey": {
+							"displayName": "UTC +03:00 Asia Türkiye"
+						},
+						"europe_slash_athens": {
+							"displayName": "UTC +03:00 Europe Athens"
+						},
+						"europe_slash_bucharest": {
+							"displayName": "UTC +03:00 Europe Bucharest"
+						},
+						"europe_slash_chisinau": {
+							"displayName": "UTC +03:00 Europe Chisinau"
+						},
+						"europe_slash_helsinki": {
+							"displayName": "UTC +03:00 Europe Helsinki"
+						},
+						"europe_slash_istanbul": {
+							"displayName": "UTC +03:00 Europe Istanbul"
+						},
+						"europe_slash_kirov": {
+							"displayName": "UTC +03:00 Europe Kirov"
+						},
+						"europe_slash_kiev": {
+							"displayName": "UTC +03:00 Europe Kyiv"
+						},
+						"europe_slash_mariehamn": {
+							"displayName": "UTC +03:00 Europe Mariehamn"
+						},
+						"europe_slash_minsk": {
+							"displayName": "UTC +03:00 Europe Minsk"
+						},
+						"europe_slash_moscow": {
+							"displayName": "UTC +03:00 Europe Moscow"
+						},
+						"europe_slash_nicosia": {
+							"displayName": "UTC +03:00 Europe Nicosia"
+						},
+						"europe_slash_riga": {
+							"displayName": "UTC +03:00 Europe Riga"
+						},
+						"europe_slash_simferopol": {
+							"displayName": "UTC +03:00 Europe Simferopol"
+						},
+						"europe_slash_sofia": {
+							"displayName": "UTC +03:00 Europe Sofia"
+						},
+						"europe_slash_tallinn": {
+							"displayName": "UTC +03:00 Europe Tallinn"
+						},
+						"europe_slash_tiraspol": {
+							"displayName": "UTC +03:00 Europe Tiraspol"
+						},
+						"europe_slash_uzhgorod": {
+							"displayName": "UTC +03:00 Europe Uzhgorod"
+						},
+						"europe_slash_vilnius": {
+							"displayName": "UTC +03:00 Europe Vilnius"
+						},
+						"europe_slash_zaporozhye": {
+							"displayName": "UTC +03:00 Europe Zaporizhzhia"
+						},
+						"indian_slash_antananarivo": {
+							"displayName": "UTC +03:00 Indian Antananarivo"
+						},
+						"indian_slash_comoro": {
+							"displayName": "UTC +03:00 Indian Comoro"
+						},
+						"indian_slash_mayotte": {
+							"displayName": "UTC +03:00 Indian Mayotte"
+						},
+						"asia_slash_baku": {
+							"displayName": "UTC +04:00 Asia Baku"
+						},
+						"asia_slash_dubai": {
+							"displayName": "UTC +04:00 Asia Dubai"
+						},
+						"asia_slash_muscat": {
+							"displayName": "UTC +04:00 Asia Muscat"
+						},
+						"asia_slash_tbilisi": {
+							"displayName": "UTC +04:00 Asia Tbilisi"
+						},
+						"asia_slash_yerevan": {
+							"displayName": "UTC +04:00 Asia Yerevan"
+						},
+						"europe_slash_astrakhan": {
+							"displayName": "UTC +04:00 Europe Astrakhan"
+						},
+						"europe_slash_samara": {
+							"displayName": "UTC +04:00 Europe Samara"
+						},
+						"europe_slash_saratov": {
+							"displayName": "UTC +04:00 Europe Saratov"
+						},
+						"europe_slash_ulyanovsk": {
+							"displayName": "UTC +04:00 Europe Ulyanovsk"
+						},
+						"europe_slash_volgograd": {
+							"displayName": "UTC +04:00 Europe Volgograd"
+						},
+						"indian_slash_mahe": {
+							"displayName": "UTC +04:00 Indian Mahe"
+						},
+						"indian_slash_mauritius": {
+							"displayName": "UTC +04:00 Indian Mauritius"
+						},
+						"indian_slash_reunion": {
+							"displayName": "UTC +04:00 Indian Reunion"
+						},
+						"iran": {
+							"displayName": "UTC +04:30 Asia Iran"
+						},
+						"asia_slash_kabul": {
+							"displayName": "UTC +04:30 Asia Kabul"
+						},
+						"asia_slash_tehran": {
+							"displayName": "UTC +04:30 Asia Tehran"
+						},
+						"antarctica_slash_mawson": {
+							"displayName": "UTC +05:00 Antarctica Mawson"
+						},
+						"asia_slash_aqtau": {
+							"displayName": "UTC +05:00 Asia Aqtau"
+						},
+						"asia_slash_aqtobe": {
+							"displayName": "UTC +05:00 Asia Aqtobe"
+						},
+						"asia_slash_ashgabat": {
+							"displayName": "UTC +05:00 Asia Ashgabat"
+						},
+						"asia_slash_ashkhabad": {
+							"displayName": "UTC +05:00 Asia Ashkhabad"
+						},
+						"asia_slash_atyrau": {
+							"displayName": "UTC +05:00 Asia Atyrau"
+						},
+						"asia_slash_dushanbe": {
+							"displayName": "UTC +05:00 Asia Dushanbe"
+						},
+						"asia_slash_karachi": {
+							"displayName": "UTC +05:00 Asia Karachi"
+						},
+						"asia_slash_oral": {
+							"displayName": "UTC +05:00 Asia Oral"
+						},
+						"asia_slash_samarkand": {
+							"displayName": "UTC +05:00 Asia Samarkand"
+						},
+						"asia_slash_tashkent": {
+							"displayName": "UTC +05:00 Asia Tashkent"
+						},
+						"asia_slash_yekaterinburg": {
+							"displayName": "UTC +05:00 Asia Yekaterinburg"
+						},
+						"indian_slash_kerguelen": {
+							"displayName": "UTC +05:00 Indian Kerguelen"
+						},
+						"indian_slash_maldives": {
+							"displayName": "UTC +05:00 Indian Maldives"
+						},
+						"asia_slash_calcutta": {
+							"displayName": "UTC +05:30 Asia Calcutta"
+						},
+						"asia_slash_colombo": {
+							"displayName": "UTC +05:30 Asia Colombo"
+						},
+						"asia_slash_kolkata": {
+							"displayName": "UTC +05:30 Asia Kolkata"
+						},
+						"asia_slash_kathmandu": {
+							"displayName": "UTC +05:45 Asia Kathmandu"
+						},
+						"asia_slash_katmandu": {
+							"displayName": "UTC +05:45 Asia Katmandu"
+						},
+						"antarctica_slash_vostok": {
+							"displayName": "UTC +06:00 Antarctica Vostok"
+						},
+						"asia_slash_almaty": {
+							"displayName": "UTC +06:00 Asia Almaty"
+						},
+						"asia_slash_bishkek": {
+							"displayName": "UTC +06:00 Asia Bishkek"
+						},
+						"asia_slash_dacca": {
+							"displayName": "UTC +06:00 Asia Dacca"
+						},
+						"asia_slash_dhaka": {
+							"displayName": "UTC +06:00 Asia Dhaka"
+						},
+						"asia_slash_kashgar": {
+							"displayName": "UTC +06:00 Asia Kashgar"
+						},
+						"asia_slash_omsk": {
+							"displayName": "UTC +06:00 Asia Omsk"
+						},
+						"asia_slash_qyzylorda": {
+							"displayName": "UTC +06:00 Asia Qyzylorda"
+						},
+						"asia_slash_thimbu": {
+							"displayName": "UTC +06:00 Asia Thimbu"
+						},
+						"asia_slash_thimphu": {
+							"displayName": "UTC +06:00 Asia Thimphu"
+						},
+						"asia_slash_urumqi": {
+							"displayName": "UTC +06:00 Asia Urumqi"
+						},
+						"indian_slash_chagos": {
+							"displayName": "UTC +06:00 Indian Chagos"
+						},
+						"asia_slash_rangoon": {
+							"displayName": "UTC +06:30 Asia Rangoon"
+						},
+						"asia_slash_yangon": {
+							"displayName": "UTC +06:30 Asia Yangon"
+						},
+						"indian_slash_cocos": {
+							"displayName": "UTC +06:30 Indian Cocos"
+						},
+						"antarctica_slash_davis": {
+							"displayName": "UTC +07:00 Antarctica Davis"
+						},
+						"asia_slash_bangkok": {
+							"displayName": "UTC +07:00 Asia Bangkok"
+						},
+						"asia_slash_barnaul": {
+							"displayName": "UTC +07:00 Asia Barnaul"
+						},
+						"asia_slash_ho_chi_minh": {
+							"displayName": "UTC +07:00 Asia Ho Chi Minh"
+						},
+						"asia_slash_hovd": {
+							"displayName": "UTC +07:00 Asia Hovd"
+						},
+						"asia_slash_jakarta": {
+							"displayName": "UTC +07:00 Asia Jakarta"
+						},
+						"asia_slash_krasnoyarsk": {
+							"displayName": "UTC +07:00 Asia Krasnoyarsk"
+						},
+						"asia_slash_novokuznetsk": {
+							"displayName": "UTC +07:00 Asia Novokuznetsk"
+						},
+						"asia_slash_novosibirsk": {
+							"displayName": "UTC +07:00 Asia Novosibirsk"
+						},
+						"asia_slash_phnom_penh": {
+							"displayName": "UTC +07:00 Asia Phnom Penh"
+						},
+						"asia_slash_pontianak": {
+							"displayName": "UTC +07:00 Asia Pontianak"
+						},
+						"asia_slash_saigon": {
+							"displayName": "UTC +07:00 Asia Saigon"
+						},
+						"asia_slash_tomsk": {
+							"displayName": "UTC +07:00 Asia Tomsk"
+						},
+						"asia_slash_vientiane": {
+							"displayName": "UTC +07:00 Asia Vientiane"
+						},
+						"indian_slash_christmas": {
+							"displayName": "UTC +07:00 Indian Christmas"
+						},
+						"antarctica_slash_casey": {
+							"displayName": "UTC +08:00 Antarctica Casey"
+						},
+						"asia_slash_brunei": {
+							"displayName": "UTC +08:00 Asia Brunei"
+						},
+						"asia_slash_choibalsan": {
+							"displayName": "UTC +08:00 Asia Choibalsan"
+						},
+						"asia_slash_chongqing": {
+							"displayName": "UTC +08:00 Asia Chongqing"
+						},
+						"asia_slash_chungking": {
+							"displayName": "UTC +08:00 Asia Chungking"
+						},
+						"asia_slash_harbin": {
+							"displayName": "UTC +08:00 Asia Harbin"
+						},
+						"asia_slash_hong_kong": {
+							"displayName": "UTC +08:00 Asia Hong Kong"
+						},
+						"asia_slash_irkutsk": {
+							"displayName": "UTC +08:00 Asia Irkutsk"
+						},
+						"asia_slash_kuala_lumpur": {
+							"displayName": "UTC +08:00 Asia Kuala Lumpur"
+						},
+						"asia_slash_kuching": {
+							"displayName": "UTC +08:00 Asia Kuching"
+						},
+						"asia_slash_macao": {
+							"displayName": "UTC +08:00 Asia Macao"
+						},
+						"asia_slash_macau": {
+							"displayName": "UTC +08:00 Asia Macau"
+						},
+						"asia_slash_makassar": {
+							"displayName": "UTC +08:00 Asia Makassar"
+						},
+						"asia_slash_manila": {
+							"displayName": "UTC +08:00 Asia Manila"
+						},
+						"asia_slash_shanghai": {
+							"displayName": "UTC +08:00 Asia Shanghai"
+						},
+						"asia_slash_singapore": {
+							"displayName": "UTC +08:00 Asia Singapore"
+						},
+						"asia_slash_taipei": {
+							"displayName": "UTC +08:00 Asia Taipei"
+						},
+						"asia_slash_ujung_pandang": {
+							"displayName": "UTC +08:00 Asia Ujung Pandang"
+						},
+						"asia_slash_ulaanbaatar": {
+							"displayName": "UTC +08:00 Asia Ulaanbaatar"
+						},
+						"asia_slash_ulan_bator": {
+							"displayName": "UTC +08:00 Asia Ulan Bator"
+						},
+						"australia_slash_perth": {
+							"displayName": "UTC +08:00 Australia Perth"
+						},
+						"australia_slash_west": {
+							"displayName": "UTC +08:00 Australia West"
+						},
+						"australia_slash_eucla": {
+							"displayName": "UTC +08:45 Australia Eucla"
+						},
+						"asia_slash_chita": {
+							"displayName": "UTC +09:00 Asia Chita"
+						},
+						"asia_slash_dili": {
+							"displayName": "UTC +09:00 Asia Dili"
+						},
+						"japan": {
+							"displayName": "UTC +09:00 Asia Japan"
+						},
+						"asia_slash_jayapura": {
+							"displayName": "UTC +09:00 Asia Jayapura"
+						},
+						"asia_slash_khandyga": {
+							"displayName": "UTC +09:00 Asia Khandyga"
+						},
+						"asia_slash_pyongyang": {
+							"displayName": "UTC +09:00 Asia Pyongyang"
+						},
+						"asia_slash_seoul": {
+							"displayName": "UTC +09:00 Asia Seoul"
+						},
+						"asia_slash_tokyo": {
+							"displayName": "UTC +09:00 Asia Tokyo"
+						},
+						"asia_slash_yakutsk": {
+							"displayName": "UTC +09:00 Asia Yakutsk"
+						},
+						"pacific_slash_palau": {
+							"displayName": "UTC +09:00 Pacific Palau"
+						},
+						"australia_slash_adelaide": {
+							"displayName": "UTC +09:30 Australia Adelaide"
+						},
+						"australia_slash_broken_hill": {
+							"displayName": "UTC +09:30 Australia Broken Hill"
+						},
+						"australia_slash_darwin": {
+							"displayName": "UTC +09:30 Australia Darwin"
+						},
+						"australia_slash_north": {
+							"displayName": "UTC +09:30 Australia North"
+						},
+						"australia_slash_south": {
+							"displayName": "UTC +09:30 Australia South"
+						},
+						"australia_slash_yancowinna": {
+							"displayName": "UTC +09:30 Australia Yancowinna"
+						},
+						"antarctica_slash_dumontdurville": {
+							"displayName": "UTC +10:00 Antarctica DumontDUrville"
+						},
+						"asia_slash_ust_hyphen_nera": {
+							"displayName": "UTC +10:00 Asia Ust-Nera"
+						},
+						"asia_slash_vladivostok": {
+							"displayName": "UTC +10:00 Asia Vladivostok"
+						},
+						"australia_slash_act": {
+							"displayName": "UTC +10:00 Australia ACT"
+						},
+						"australia_slash_brisbane": {
+							"displayName": "UTC +10:00 Australia Brisbane"
+						},
+						"australia_slash_canberra": {
+							"displayName": "UTC +10:00 Australia Canberra"
+						},
+						"australia_slash_currie": {
+							"displayName": "UTC +10:00 Australia Currie"
+						},
+						"australia_slash_hobart": {
+							"displayName": "UTC +10:00 Australia Hobart"
+						},
+						"australia_slash_lindeman": {
+							"displayName": "UTC +10:00 Australia Lindeman"
+						},
+						"australia_slash_melbourne": {
+							"displayName": "UTC +10:00 Australia Melbourne"
+						},
+						"australia_slash_nsw": {
+							"displayName": "UTC +10:00 Australia NSW"
+						},
+						"australia_slash_queensland": {
+							"displayName": "UTC +10:00 Australia Queensland"
+						},
+						"australia_slash_sydney": {
+							"displayName": "UTC +10:00 Australia Sydney"
+						},
+						"australia_slash_tasmania": {
+							"displayName": "UTC +10:00 Australia Tasmania"
+						},
+						"australia_slash_victoria": {
+							"displayName": "UTC +10:00 Australia Victoria"
+						},
+						"pacific_slash_chuuk": {
+							"displayName": "UTC +10:00 Pacific Chuuk"
+						},
+						"pacific_slash_guam": {
+							"displayName": "UTC +10:00 Pacific Guam"
+						},
+						"pacific_slash_port_moresby": {
+							"displayName": "UTC +10:00 Pacific Port Moresby"
+						},
+						"pacific_slash_saipan": {
+							"displayName": "UTC +10:00 Pacific Saipan"
+						},
+						"pacific_slash_truk": {
+							"displayName": "UTC +10:00 Pacific Truk"
+						},
+						"pacific_slash_yap": {
+							"displayName": "UTC +10:00 Pacific Yap"
+						},
+						"australia_slash_lhi": {
+							"displayName": "UTC +10:30 Australia LHI"
+						},
+						"australia_slash_lord_howe": {
+							"displayName": "UTC +10:30 Australia Lord Howe"
+						},
+						"antarctica_slash_macquarie": {
+							"displayName": "UTC +11:00 Antarctica Macquarie"
+						},
+						"asia_slash_magadan": {
+							"displayName": "UTC +11:00 Asia Magadan"
+						},
+						"asia_slash_sakhalin": {
+							"displayName": "UTC +11:00 Asia Sakhalin"
+						},
+						"asia_slash_srednekolymsk": {
+							"displayName": "UTC +11:00 Asia Srednekolymsk"
+						},
+						"pacific_slash_bougainville": {
+							"displayName": "UTC +11:00 Pacific Bougainville"
+						},
+						"pacific_slash_efate": {
+							"displayName": "UTC +11:00 Pacific Efate"
+						},
+						"pacific_slash_guadalcanal": {
+							"displayName": "UTC +11:00 Pacific Guadalcanal"
+						},
+						"pacific_slash_kosrae": {
+							"displayName": "UTC +11:00 Pacific Kosrae"
+						},
+						"pacific_slash_norfolk": {
+							"displayName": "UTC +11:00 Pacific Norfolk"
+						},
+						"pacific_slash_noumea": {
+							"displayName": "UTC +11:00 Pacific Noumea"
+						},
+						"pacific_slash_pohnpei": {
+							"displayName": "UTC +11:00 Pacific Pohnpei"
+						},
+						"pacific_slash_ponape": {
+							"displayName": "UTC +11:00 Pacific Ponape"
+						},
+						"antarctica_slash_mcmurdo": {
+							"displayName": "UTC +12:00 Antarctica McMurdo"
+						},
+						"antarctica_slash_south_pole": {
+							"displayName": "UTC +12:00 Antarctica South Pole"
+						},
+						"asia_slash_anadyr": {
+							"displayName": "UTC +12:00 Asia Anadyr"
+						},
+						"asia_slash_kamchatka": {
+							"displayName": "UTC +12:00 Asia Kamchatka"
+						},
+						"pacific_slash_auckland": {
+							"displayName": "UTC +12:00 Pacific Auckland"
+						},
+						"pacific_slash_fiji": {
+							"displayName": "UTC +12:00 Pacific Fiji"
+						},
+						"pacific_slash_funafuti": {
+							"displayName": "UTC +12:00 Pacific Funafuti"
+						},
+						"kwajalein": {
+							"displayName": "UTC +12:00 Pacific Kwajalein"
+						},
+						"pacific_slash_majuro": {
+							"displayName": "UTC +12:00 Pacific Majuro"
+						},
+						"pacific_slash_nauru": {
+							"displayName": "UTC +12:00 Pacific Nauru"
+						},
+						"pacific_slash_tarawa": {
+							"displayName": "UTC +12:00 Pacific Tarawa"
+						},
+						"pacific_slash_wake": {
+							"displayName": "UTC +12:00 Pacific Wake"
+						},
+						"pacific_slash_wallis": {
+							"displayName": "UTC +12:00 Pacific Wallis"
+						},
+						"pacific_slash_chatham": {
+							"displayName": "UTC +12:45 Pacific Chatham"
+						},
+						"pacific_slash_apia": {
+							"displayName": "UTC +13:00 Pacific Apia"
+						},
+						"pacific_slash_enderbury": {
+							"displayName": "UTC +13:00 Pacific Enderbury"
+						},
+						"pacific_slash_fakaofo": {
+							"displayName": "UTC +13:00 Pacific Fakaofo"
+						},
+						"pacific_slash_tongatapu": {
+							"displayName": "UTC +13:00 Pacific Tongatapu"
+						},
+						"pacific_slash_kiritimati": {
+							"displayName": "UTC +14:00 Pacific Kiritimati"
+						}
+					}
+				},
+				"twitterUsername": {
+					"displayName": "Twitter Username",
+					"description": "The contact's Twitter handle. This is set by HubSpot using the contact's email address."
+				},
+				"websiteUrl": {
+					"displayName": "Website URL",
+					"description": "The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights."
+				},
+				"whatsappPhoneNumber": {
+					"displayName": "WhatsApp Phone Number",
+					"description": "The phone number associated with the contact’s WhatsApp account"
+				},
+				"workEmail": {
+					"displayName": "Work Email",
+					"description": "A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool"
+				},
+				"formSubmissionMode": {
+					"displayName": "Form Submission Mode",
+					"description": "Specify which form submissions should be fetched",
+					"options": {
+						"all": {
+							"displayName": "All"
+						},
+						"none": {
+							"displayName": "None"
+						},
+						"newest": {
+							"displayName": "Newest"
+						},
+						"oldest": {
+							"displayName": "Oldest"
+						}
+					}
+				},
+				"listMemberships": {
+					"displayName": "Include List Memberships",
+					"description": "Whether current list memberships should be fetched for the contact"
+				},
+				"propertiesCollection": {
+					"displayName": "Company Properties to Include",
+					"description": "Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+					"options": {
+						"propertiesValues": {
+							"displayName": "Companies Properties to Include",
+							"options": {
+								"properties": {
+									"displayName": "Companies Properties to Include",
+									"description": "Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"propertyMode": {
+									"displayName": "Include",
+									"description": "Specify if the current value for a property should be fetched, or the value and all the historical values for that property",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "Value And History"
+										},
+										"valueOnly": {
+											"displayName": "Value Only"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"propertiesValues": {
+							"displayName": "Companies Properties to Include",
+							"options": {
+								"properties": {
+									"displayName": "Companies Properties to Include",
+									"description": "Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"propertyMode": {
+									"displayName": "Include",
+									"description": "Specify if the current value for a property should be fetched, or the value and all the historical values for that property",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "Value And History"
+										},
+										"valueOnly": {
+											"displayName": "Value Only"
+										}
+									}
+								}
+							}
+						},
+						"propertiesCollection": {
+							"displayName": "Company Properties to Include"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "Direction",
+					"description": "Defines the direction in which search results are ordered. Default value is Descending.",
+					"options": {
+						"ASCENDING": {
+							"displayName": "Ascending"
+						},
+						"DESCENDING": {
+							"displayName": "Descending"
+						}
+					}
+				},
+				"query": {
+					"displayName": "Query",
+					"description": "Perform a text search against all property values for an object type"
+				},
+				"sortBy": {
+					"displayName": "Sort By",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"aboutUs": {
+					"displayName": "About Us"
+				},
+				"companyDomainName": {
+					"displayName": "Company Domain Name",
+					"description": "The domain name of the company or organization"
+				},
+				"companyOwner": {
+					"displayName": "Company Owner Name or ID",
+					"description": "The owner of the company. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"countryRegion": {
+					"displayName": "Country/Region",
+					"description": "The country/region in which the company or organization is located"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description of the ticket"
+				},
+				"facebookFans": {
+					"displayName": "Facebook Fans",
+					"description": "Number of facebook fans"
+				},
+				"googlePlusPage": {
+					"displayName": "Google Plus Page",
+					"description": "The URL of the Google Plus page for the company or organization"
+				},
+				"isPublic": {
+					"displayName": "Is Public",
+					"description": "Whether that the company is publicly traded"
+				},
+				"lifecycleStatus": {
+					"displayName": "Lifecycle Stage Name or ID",
+					"description": "The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"linkedinBio": {
+					"displayName": "LinkedIn Bio",
+					"description": "The LinkedIn bio for the company or organization"
+				},
+				"linkedInCompanyPage": {
+					"displayName": "LinkedIn Company Page",
+					"description": "The URL of the LinkedIn company page for the company or organization"
+				},
+				"originalSourceType": {
+					"displayName": "Original Source Type Name or ID",
+					"description": "Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"streetAddress2": {
+					"displayName": "Street Address 2",
+					"description": "The additional address of the company or organization. Powered by HubSpot Insights."
+				},
+				"targetAccount": {
+					"displayName": "Target Account Name or ID",
+					"description": "The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"timezone": {
+					"displayName": "Timezone",
+					"description": "The time zone where the company or organization is located. Powered by HubSpot Insights."
+				},
+				"totalMoneyRaised": {
+					"displayName": "Total Money Raised",
+					"description": "The total amount of money raised by the company. Powered by HubSpot Insights."
+				},
+				"twitterBio": {
+					"displayName": "Twitter Bio",
+					"description": "The Twitter bio of the company or organization"
+				},
+				"twitterFollowers": {
+					"displayName": "Twitter Followers",
+					"description": "The number of Twitter followers of the company or organization"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter Handle",
+					"description": "The main twitter account of the company or organization"
+				},
+				"type": {
+					"displayName": "Type Name or ID",
+					"description": "The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"webTechnologies": {
+					"displayName": "Web Technologies Name or ID",
+					"description": "The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"yearFounded": {
+					"displayName": "Year Founded",
+					"description": "The year the company was created. Powered by HubSpot Insights."
+				},
+				"includeMergeAudits": {
+					"displayName": "Include Merge Audits",
+					"description": "Whether to return any merge history if the company has been previously merged with another company record. Defaults to false."
+				},
+				"since": {
+					"displayName": "Since",
+					"description": "Only return companys created after timestamp x. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format."
+				},
+				"amount": {
+					"displayName": "Amount"
+				},
+				"associatedCompany": {
+					"displayName": "Associated Company Names or IDs",
+					"description": "Whether to include specific Associated Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"associatedVids": {
+					"displayName": "Associated Vid Names or IDs",
+					"description": "Whether to include specific Associated Vid in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"dealName": {
+					"displayName": "Deal Name"
+				},
+				"dealOwner": {
+					"displayName": "Deal Owner",
+					"description": "The HubSpot user to be assigned to the deal"
+				},
+				"dealType": {
+					"displayName": "Deal Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"pipeline": {
+					"displayName": "Pipeline Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"associations": {
+					"displayName": "Associations",
+					"placeholder": "Add Field",
+					"options": {
+						"companyIds": {
+							"displayName": "Company IDs"
+						},
+						"contactIds": {
+							"displayName": "Contact IDs"
+						},
+						"dealIds": {
+							"displayName": "Deals IDs"
+						},
+						"ownerIds": {
+							"displayName": "Owner IDs"
+						},
+						"ownerId": {
+							"displayName": "Owner ID"
+						},
+						"ticketIds": {
+							"displayName": "Ticket IDs"
+						}
+					}
+				},
+				"associatedCompanyIds": {
+					"displayName": "Company Names or IDs",
+					"description": "Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"associatedContactIds": {
+					"displayName": "Contact Names or IDs",
+					"description": "Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"category": {
+					"displayName": "Category Name or ID",
+					"description": "Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"createDate": {
+					"displayName": "Create Date",
+					"description": "The date the ticket was created. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format."
+				},
+				"priority": {
+					"displayName": "Priority Name or ID",
+					"description": "The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"resolution": {
+					"displayName": "Resolution Name or ID",
+					"description": "The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"source": {
+					"displayName": "Source Name or ID",
+					"description": "Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"ticketOwnerId": {
+					"displayName": "Ticket Owner Name or ID",
+					"description": "The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"includeDeleted": {
+					"displayName": "Include Deleted"
+				},
+				"propertiesWithHistory": {
+					"displayName": "Properties With History",
+					"description": "Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value."
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"resolveData": {
+					"displayName": "Simplify Output",
+					"description": "By default the response only includes the ID. If this option gets activated, it will resolve the data automatically."
+				},
+				"includeMergeAudits": {
+					"displayName": "Include Merge Audits",
+					"description": "Whether to return any merge history if a company has been previously merged with another company record. Defaults to false."
+				},
+				"propertiesCollection": {
+					"displayName": "Company Properties to Include",
+					"description": "Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+					"options": {
+						"propertiesValues": {
+							"displayName": "Companies Properties to Include",
+							"options": {
+								"properties": {
+									"displayName": "Companies Properties to Include",
+									"description": "Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"propertyMode": {
+									"displayName": "Include",
+									"description": "Specify if the current value for a property should be fetched, or the value and all the historical values for that property",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "Value And History"
+										},
+										"valueOnly": {
+											"displayName": "Value Only"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"propertiesValues": {
+							"displayName": "Companies Properties to Include",
+							"options": {
+								"properties": {
+									"displayName": "Companies Properties to Include",
+									"description": "Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"propertyMode": {
+									"displayName": "Include",
+									"description": "Specify if the current value for a property should be fetched, or the value and all the historical values for that property",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "Value And History"
+										},
+										"valueOnly": {
+											"displayName": "Value Only"
+										}
+									}
+								}
+							}
+						},
+						"propertiesCollection": {
+							"displayName": "Company Properties to Include"
+						}
+					}
+				},
+				"properties": {
+					"displayName": "Company Properties to Include",
+					"description": "Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "Contact to Delete",
+			"description": "This is not a contact's email but a number like 1485"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filterGroupsUi": {
+			"displayName": "Filter Groups",
+			"description": "When multiple filters are provided within a Filter Group, they will be combined using a logical AND operator. When multiple Filter Groups are provided, they will be combined using a logical OR operator. The system supports a maximum of three Filter Groups with up to three filters each. More info <a href=\"https://developers.hubspot.com/docs/api/crm/search\">here</a>",
+			"placeholder": "Add Filter Group",
+			"multipleValueButtonText": "Add Filter Group",
+			"options": {
+				"filterGroupsValues": {
+					"displayName": "Filter Group",
+					"options": {
+						"filtersUi": {
+							"displayName": "Filters",
+							"description": "Use filters to limit the results to only CRM objects with matching property values. More info <a href=\"https://developers.hubspot.com/docs/api/crm/search\">here</a>.",
+							"placeholder": "Add Filter",
+							"multipleValueButtonText": "Add Filter",
+							"options": {
+								"filterValues": {
+									"displayName": "Filter",
+									"options": {
+										"propertyName": {
+											"displayName": "Property Name or ID",
+											"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+										},
+										"type": {
+											"displayName": "Type"
+										},
+										"operator": {
+											"displayName": "Operator",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "Contains Exactly"
+												},
+												"EQ": {
+													"displayName": "Equal"
+												},
+												"GT": {
+													"displayName": "Greater Than"
+												},
+												"GTE": {
+													"displayName": "Greater Than Or Equal"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "Is Known"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "Is Unknown"
+												},
+												"LT": {
+													"displayName": "Less Than"
+												},
+												"LTE": {
+													"displayName": "Less Than Or Equal"
+												},
+												"NEQ": {
+													"displayName": "Not Equal"
+												}
+											}
+										},
+										"value": {
+											"displayName": "Value"
+										}
+									}
+								}
+							},
+							"values": {
+								"filterValues": {
+									"displayName": "Filter",
+									"options": {
+										"propertyName": {
+											"displayName": "Property Name or ID",
+											"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+										},
+										"type": {
+											"displayName": "Type"
+										},
+										"operator": {
+											"displayName": "Operator",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "Contains Exactly"
+												},
+												"EQ": {
+													"displayName": "Equal"
+												},
+												"GT": {
+													"displayName": "Greater Than"
+												},
+												"GTE": {
+													"displayName": "Greater Than Or Equal"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "Is Known"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "Is Unknown"
+												},
+												"LT": {
+													"displayName": "Less Than"
+												},
+												"LTE": {
+													"displayName": "Less Than Or Equal"
+												},
+												"NEQ": {
+													"displayName": "Not Equal"
+												}
+											}
+										},
+										"value": {
+											"displayName": "Value"
+										}
+									}
+								},
+								"filtersUi": {
+									"displayName": "Filters",
+									"placeholder": "Add Filter"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"filterGroupsValues": {
+					"displayName": "Filter Group",
+					"options": {
+						"filtersUi": {
+							"displayName": "Filters",
+							"description": "Use filters to limit the results to only CRM objects with matching property values. More info <a href=\"https://developers.hubspot.com/docs/api/crm/search\">here</a>.",
+							"placeholder": "Add Filter",
+							"multipleValueButtonText": "Add Filter",
+							"options": {
+								"filterValues": {
+									"displayName": "Filter",
+									"options": {
+										"propertyName": {
+											"displayName": "Property Name or ID",
+											"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+										},
+										"type": {
+											"displayName": "Type"
+										},
+										"operator": {
+											"displayName": "Operator",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "Contains Exactly"
+												},
+												"EQ": {
+													"displayName": "Equal"
+												},
+												"GT": {
+													"displayName": "Greater Than"
+												},
+												"GTE": {
+													"displayName": "Greater Than Or Equal"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "Is Known"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "Is Unknown"
+												},
+												"LT": {
+													"displayName": "Less Than"
+												},
+												"LTE": {
+													"displayName": "Less Than Or Equal"
+												},
+												"NEQ": {
+													"displayName": "Not Equal"
+												}
+											}
+										},
+										"value": {
+											"displayName": "Value"
+										}
+									}
+								}
+							},
+							"values": {
+								"filterValues": {
+									"displayName": "Filter",
+									"options": {
+										"propertyName": {
+											"displayName": "Property Name or ID",
+											"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+										},
+										"type": {
+											"displayName": "Type"
+										},
+										"operator": {
+											"displayName": "Operator",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "Contains Exactly"
+												},
+												"EQ": {
+													"displayName": "Equal"
+												},
+												"GT": {
+													"displayName": "Greater Than"
+												},
+												"GTE": {
+													"displayName": "Greater Than Or Equal"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "Is Known"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "Is Unknown"
+												},
+												"LT": {
+													"displayName": "Less Than"
+												},
+												"LTE": {
+													"displayName": "Less Than Or Equal"
+												},
+												"NEQ": {
+													"displayName": "Not Equal"
+												}
+											}
+										},
+										"value": {
+											"displayName": "Value"
+										}
+									}
+								},
+								"filtersUi": {
+									"displayName": "Filters",
+									"placeholder": "Add Filter"
+								}
+							}
+						}
+					}
+				},
+				"filterGroupsUi": {
+					"displayName": "Filter Groups",
+					"placeholder": "Add Filter Group"
+				}
+			}
+		},
+		"by": {
+			"displayName": "By",
+			"options": {
+				"id": {
+					"displayName": "Contact ID"
+				},
+				"email": {
+					"displayName": "Email"
+				}
+			}
+		},
+		"id": {
+			"displayName": "Contact to Remove"
+		},
+		"listId": {
+			"displayName": "List to Remove From"
+		},
+		"name": {
+			"displayName": "Name"
+		},
+		"companyId": {
+			"displayName": "Company to Delete"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"aboutUs": {
+					"displayName": "About Us"
+				},
+				"annualRevenue": {
+					"displayName": "Annual Revenue",
+					"description": "The actual or estimated annual revenue of the company"
+				},
+				"city": {
+					"displayName": "City",
+					"description": "The city where the company is located"
+				},
+				"closeDate": {
+					"displayName": "Close Date",
+					"description": "The date the ticket was closed. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format."
+				},
+				"companyDomainName": {
+					"displayName": "Company Domain Name",
+					"description": "The domain name of the company or organization"
+				},
+				"companyOwner": {
+					"displayName": "Company Owner Name or ID",
+					"description": "The owner of the company. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"countryRegion": {
+					"displayName": "Country/Region",
+					"description": "The country/region in which the company or organization is located"
+				},
+				"customPropertiesUi": {
+					"displayName": "Custom Properties",
+					"placeholder": "Add Custom Property",
+					"multipleValueButtonText": "Add Custom Property",
+					"options": {
+						"customPropertiesValues": {
+							"displayName": "Custom Property",
+							"options": {
+								"property": {
+									"displayName": "Property Name or ID",
+									"description": "Name of the property. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the property"
+								}
+							}
+						}
+					},
+					"values": {
+						"customPropertiesValues": {
+							"displayName": "Custom Property",
+							"options": {
+								"property": {
+									"displayName": "Property Name or ID",
+									"description": "Name of the property. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the property"
+								}
+							}
+						},
+						"customPropertiesUi": {
+							"displayName": "Custom Properties",
+							"placeholder": "Add Custom Property"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description of the ticket"
+				},
+				"facebookFans": {
+					"displayName": "Facebook Fans",
+					"description": "Number of facebook fans"
+				},
+				"googlePlusPage": {
+					"displayName": "Google Plus Page",
+					"description": "The URL of the Google Plus page for the company or organization"
+				},
+				"industry": {
+					"displayName": "Industry Name or ID",
+					"description": "The type of business the company performs. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"isPublic": {
+					"displayName": "Is Public",
+					"description": "Whether that the company is publicly traded"
+				},
+				"leadStatus": {
+					"displayName": "Lead Status Name or ID",
+					"description": "The company's sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"lifecycleStatus": {
+					"displayName": "Lifecycle Stage Name or ID",
+					"description": "The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"linkedinBio": {
+					"displayName": "Linkedin Bio",
+					"description": "The LinkedIn bio for the company or organization"
+				},
+				"linkedInCompanyPage": {
+					"displayName": "LinkedIn Company Page",
+					"description": "The URL of the LinkedIn company page for the company or organization"
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"numberOfEmployees": {
+					"displayName": "Number Of Employees",
+					"description": "The total number of employees who work for the company or organization"
+				},
+				"originalSourceType": {
+					"displayName": "Original Source Type Name or ID",
+					"description": "Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"phoneNumber": {
+					"displayName": "Phone Number",
+					"description": "A company's primary phone number. Powered by HubSpot Insights."
+				},
+				"postalCode": {
+					"displayName": "Postal Code",
+					"description": "The postal or zip code of the company or organization. Powered by HubSpot Insights."
+				},
+				"stateRegion": {
+					"displayName": "State/Region",
+					"description": "The state or region in which the company or organization is located. Powered by HubSpot Insights."
+				},
+				"streetAddress": {
+					"displayName": "Street Address",
+					"description": "The street address of the company or organization, including unit number. Powered by HubSpot Insights."
+				},
+				"streetAddress2": {
+					"displayName": "Street Address 2",
+					"description": "The additional address of the company or organization. Powered by HubSpot Insights."
+				},
+				"targetAccount": {
+					"displayName": "Target Account Name or ID",
+					"description": "The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"timezone": {
+					"displayName": "Timezone",
+					"description": "The time zone where the company or organization is located. Powered by HubSpot Insights."
+				},
+				"totalMoneyRaised": {
+					"displayName": "Total Money Raised",
+					"description": "The total amount of money raised by the company. Powered by HubSpot Insights."
+				},
+				"twitterBio": {
+					"displayName": "Twitter Bio",
+					"description": "The Twitter bio of the company or organization"
+				},
+				"twitterFollowers": {
+					"displayName": "Twitter Followers",
+					"description": "The number of Twitter followers of the company or organization"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter Handle",
+					"description": "The main twitter account of the company or organization"
+				},
+				"type": {
+					"displayName": "Type Name or ID",
+					"description": "The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"webTechnologies": {
+					"displayName": "Web Technologies Name or ID",
+					"description": "The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"websiteUrl": {
+					"displayName": "Website URL",
+					"description": "The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights."
+				},
+				"yearFounded": {
+					"displayName": "Year Founded",
+					"description": "The year the company was created. Powered by HubSpot Insights."
+				},
+				"amount": {
+					"displayName": "Amount"
+				},
+				"dealName": {
+					"displayName": "Deal Name"
+				},
+				"dealOwner": {
+					"displayName": "Deal Owner",
+					"description": "The HubSpot user to be assigned to the deal"
+				},
+				"stage": {
+					"displayName": "Deal Stage Name or ID",
+					"description": "The deal stage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"dealType": {
+					"displayName": "Deal Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"pipeline": {
+					"displayName": "Pipeline"
+				},
+				"associatedCompanyIds": {
+					"displayName": "Company Names or IDs",
+					"description": "Whether to include specific Company properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"associatedContactIds": {
+					"displayName": "Contact Names or IDs",
+					"description": "Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"category": {
+					"displayName": "Category Name or ID",
+					"description": "Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"createDate": {
+					"displayName": "Create Date",
+					"description": "The date the ticket was created. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format."
+				},
+				"pipelineId": {
+					"displayName": "Pipeline Name or ID",
+					"description": "The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"priority": {
+					"displayName": "Priority Name or ID",
+					"description": "The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"resolution": {
+					"displayName": "Resolution Name or ID",
+					"description": "The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"source": {
+					"displayName": "Source Name or ID",
+					"description": "Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"stageId": {
+					"displayName": "Stage Name or ID",
+					"description": "The stage ID of the pipeline the ticket is in; depends on Pipeline ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"ticketName": {
+					"displayName": "Ticket Name"
+				},
+				"ticketOwnerId": {
+					"displayName": "Ticket Owner Name or ID",
+					"description": "The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"domain": {
+			"displayName": "Domain",
+			"description": "The company's website domain to search for, like n8n.io"
+		},
+		"stage": {
+			"displayName": "Deal Stage Name or ID",
+			"description": "The deal stage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		},
+		"dealId": {
+			"displayName": "Deal to Delete"
+		},
+		"filters": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"includePropertyVersions": {
+					"displayName": "Include Property Versions",
+					"description": "By default, you will only get data for the most recent version of a property in the \"versions\" data. If you include this parameter, you will get data for all previous versions."
+				},
+				"propertiesCollection": {
+					"displayName": "Deal Properties to Include",
+					"description": "<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+					"options": {
+						"propertiesValues": {
+							"displayName": "Deal Properties to Include",
+							"options": {
+								"properties": {
+									"displayName": "Deal Properties to Include",
+									"description": "Whether to include specific Deal properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"propertyMode": {
+									"displayName": "Include",
+									"description": "Specify if the current value for a property should be fetched, or the value and all the historical values for that property",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "Value And History"
+										},
+										"valueOnly": {
+											"displayName": "Value Only"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"propertiesValues": {
+							"displayName": "Deal Properties to Include",
+							"options": {
+								"properties": {
+									"displayName": "Deal Properties to Include",
+									"description": "Whether to include specific Deal properties in the returned results. Choose from a list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"propertyMode": {
+									"displayName": "Include",
+									"description": "Specify if the current value for a property should be fetched, or the value and all the historical values for that property",
+									"options": {
+										"valueAndHistory": {
+											"displayName": "Value And History"
+										},
+										"valueOnly": {
+											"displayName": "Value Only"
+										}
+									}
+								}
+							}
+						},
+						"propertiesCollection": {
+							"displayName": "Deal Properties to Include"
+						}
+					}
+				},
+				"includeAssociations": {
+					"displayName": "Include Associations",
+					"description": "Whether to include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property."
+				},
+				"properties": {
+					"displayName": "Deal Properties to Include",
+					"description": "Include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals."
+				},
+				"propertiesWithHistory": {
+					"displayName": "Deal Properties with History to Include",
+					"description": "Works similarly to properties, but this parameter will include the history for the specified property"
+				},
+				"since": {
+					"displayName": "Since",
+					"description": "Only return deals created after timestamp x. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format."
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"options": {
+				"call": {
+					"displayName": "Call"
+				},
+				"email": {
+					"displayName": "Email"
+				},
+				"meeting": {
+					"displayName": "Meeting"
+				},
+				"task": {
+					"displayName": "Task"
+				}
+			}
+		},
+		"dueDate": {
+			"displayName": "Due Date",
+			"description": "The due date for the task"
+		},
+		"metadata": {
+			"displayName": "Metadata",
+			"placeholder": "Add Field",
+			"options": {
+				"body": {
+					"displayName": "Body"
+				},
+				"forObjectType": {
+					"displayName": "For Object Type",
+					"options": {
+						"COMPANY": {
+							"displayName": "Company"
+						},
+						"CONTACT": {
+							"displayName": "Contact"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"COMPLETED": {
+							"displayName": "Completed"
+						},
+						"DEFERRED": {
+							"displayName": "Deferred"
+						},
+						"IN_PROGRESS": {
+							"displayName": "In Progress"
+						},
+						"NOT_STARTED": {
+							"displayName": "Not Started"
+						},
+						"WAITING": {
+							"displayName": "Waiting"
+						},
+						"BUSY": {
+							"displayName": "Busy"
+						},
+						"CALLING_CRM_USER": {
+							"displayName": "Calling CRM User"
+						},
+						"CANCELED": {
+							"displayName": "Canceled"
+						},
+						"CONNECTING": {
+							"displayName": "Connecting"
+						},
+						"FAILED": {
+							"displayName": "Failed"
+						},
+						"NO_ANSWER": {
+							"displayName": "No Answer"
+						},
+						"QUEUED": {
+							"displayName": "Queued"
+						},
+						"RINGING": {
+							"displayName": "Ringing"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "Subject"
+				},
+				"bcc": {
+					"displayName": "BCC"
+				},
+				"cc": {
+					"displayName": "CC"
+				},
+				"fromEmail": {
+					"displayName": "From Email"
+				},
+				"firstName": {
+					"displayName": "From First Name"
+				},
+				"lastName": {
+					"displayName": "From Last Name"
+				},
+				"html": {
+					"displayName": "HTML"
+				},
+				"toEmail": {
+					"displayName": "To Emails"
+				},
+				"endTime": {
+					"displayName": "End Time",
+					"description": "When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format"
+				},
+				"internalMeetingNotes": {
+					"displayName": "Internal Meeting Notes"
+				},
+				"startTime": {
+					"displayName": "Start Time",
+					"description": "When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format"
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"durationMilliseconds": {
+					"displayName": "Duration Milliseconds"
+				},
+				"fromNumber": {
+					"displayName": "From Number"
+				},
+				"recordingUrl": {
+					"displayName": "Recording URL"
+				},
+				"toNumber": {
+					"displayName": "To Number"
+				}
+			}
+		},
+		"engagementId": {
+			"displayName": "Engagement to Delete"
+		},
+		"pipelineId": {
+			"displayName": "Pipeline Name or ID",
+			"description": "The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"stageId": {
+			"displayName": "Stage Name or ID",
+			"description": "The stage ID of the pipeline the ticket is in; depends on Pipeline ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"ticketName": {
+			"displayName": "Ticket Name"
+		},
+		"ticketId": {
+			"displayName": "Ticket to Delete"
+		}
+	}
+}

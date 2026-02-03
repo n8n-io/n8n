@@ -1,0 +1,43 @@
+{
+	"header": {
+		"displayName": "代码",
+		"description": "运行自定义JavaScript或Python代码"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "模式",
+			"options": {
+				"runOnceForAllItems": {
+					"displayName": "对所有项目仅运行一次",
+					"description": "无论有多少输入项，此代码仅运行一次"
+				},
+				"runOnceForEachItem": {
+					"displayName": "对每个项目运行一次",
+					"description": "根据输入项目的数量多次运行此代码"
+				}
+			}
+		},
+		"language": {
+			"displayName": "语言",
+			"options": {
+				"javaScript": {
+					"displayName": "JavaScript"
+				},
+				"pythonNative": {
+					"displayName": "Python"
+				}
+			}
+		},
+		"jsCode": {
+			"displayName": "JavaScript",
+			"description": "要执行的JavaScript代码。<br><br>提示：您可以使用luxon变量如<code>$today</code>处理日期，使用<code>$jmespath</code>查询JSON结构。<a href=\"https://docs.n8n.io/nodes/n8n-nodes-base.function\">了解更多</a>。"
+		},
+		"notice": {
+			"displayName": "通过使用<code>print()</code>语句并在浏览器控制台中查看其输出来进行调试。<br><br>Python选项不支持<code>_</code>语法和助手，但在所有项模式下支持<code>_items</code>，在逐项模式下支持<code>_item</code>。"
+		},
+		"pythonCode": {
+			"displayName": "Python",
+			"description": "要执行的Python代码。<br><br>提示：您可以使用内置方法和变量，例如<code>_today</code>处理日期，<code>_jmespath</code>查询JSON结构。<a href=\"https://docs.n8n.io/code/builtin/\">了解更多</a>。"
+		}
+	}
+}

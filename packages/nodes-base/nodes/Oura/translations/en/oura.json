@@ -1,0 +1,62 @@
+{
+	"header": {
+		"displayName": "Oura",
+		"description": "Consume Oura API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"profile": {
+					"displayName": "Profile"
+				},
+				"summary": {
+					"displayName": "Summary"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get the user's personal information"
+				},
+				"getActivity": {
+					"displayName": "Get Activity Summary",
+					"description": "Get the user's activity summary"
+				},
+				"getReadiness": {
+					"displayName": "Get Readiness Summary",
+					"description": "Get the user's readiness summary"
+				},
+				"getSleep": {
+					"displayName": "Get Sleep Periods",
+					"description": "Get the user's sleep summary"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"end": {
+					"displayName": "End Date",
+					"description": "End date for the summary retrieval. If omitted, it defaults to the current day."
+				},
+				"start": {
+					"displayName": "Start Date",
+					"description": "Start date for the summary retrieval. If omitted, it defaults to a week ago."
+				}
+			}
+		}
+	}
+}

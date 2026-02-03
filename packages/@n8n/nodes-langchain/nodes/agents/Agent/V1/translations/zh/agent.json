@@ -1,0 +1,167 @@
+{
+	"header": {
+		"displayName": "AI智能体",
+		"description": "生成并执行行动计划。可以使用外部工具。"
+	},
+	"nodeView": {
+		"aiAgentStarterCallout": {
+			"displayName": "提示：通过我们的快速<a href=\"https://docs.n8n.io/advanced-ai/intro-tutorial/\" target=\"_blank\">教程</a>了解智能体，或查看此节点的<a href=\"/templates/1954\" target=\"_blank\">示例</a>工作方式"
+		},
+		"deprecated": {
+			"displayName": "此节点正在使用已弃用的Agent。请改用'工具代理'。"
+		},
+		"agent": {
+			"displayName": "代理",
+			"options": {
+				"conversationalAgent": {
+					"displayName": "对话式代理",
+					"description": "在系统提示中描述工具并解析JSON响应以调用工具。比工具代理更灵活但可能可靠性稍低。适用于简单交互或不支持结构化模式的模型。"
+				},
+				"openAiFunctionsAgent": {
+					"displayName": "OpenAI函数代理",
+					"description": "利用OpenAI的函数调用功能，精确选择和执行工具。在与OpenAI模型配合时，非常适合需要结构化输出的任务。"
+				},
+				"planAndExecuteAgent": {
+					"displayName": "规划与执行代理",
+					"description": "为复杂任务创建高层计划，然后执行每个步骤。适用于多阶段问题或需要策略性方法的情况。"
+				},
+				"reActAgent": {
+					"displayName": "ReAct 智能体",
+					"description": "在迭代过程中结合推理与行动。对于需要仔细分析和逐步解决问题的任务非常有效。"
+				},
+				"sqlAgent": {
+					"displayName": "SQL代理",
+					"description": "专门用于与SQL数据库交互。非常适合数据分析任务、生成查询或从结构化数据中提取见解。"
+				},
+				"toolsAgent": {
+					"displayName": "工具代理",
+					"description": "利用结构化工具模式实现精确可靠的工具选择与执行。推荐用于需要准确一致工具使用的复杂任务，但仅适用于支持工具调用的模型。"
+				}
+			}
+		},
+		"promptType": {
+			"displayName": "提示词来源（用户消息）",
+			"options": {
+				"auto": {
+					"displayName": "已连接的聊天触发器节点",
+					"description": "查找名为'chatInput'的输入字段，该字段来自直接连接的聊天触发器"
+				},
+				"guardrails": {
+					"displayName": "已连接的护栏节点",
+					"description": "查找来自直接连接的护栏节点的名为'guardrailsInput'的输入字段"
+				},
+				"define": {
+					"displayName": "定义如下",
+					"description": "使用表达式引用先前节点中的数据或输入静态文本"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"placeholder": "例如：你好，我能如何帮助你？"
+		},
+		"notice": {
+			"displayName": "在画布上连接一个<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>输出解析器</a>来指定您需要的输出格式"
+		},
+		"hasOutputParser": {
+			"displayName": "要求特定输出格式"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"systemMessage": {
+					"displayName": "系统消息",
+					"description": "对话开始前发送给代理的消息"
+				},
+				"maxIterations": {
+					"displayName": "最大迭代次数",
+					"description": "代理在停止前将运行的最大迭代次数"
+				},
+				"returnIntermediateSteps": {
+					"displayName": "返回中间步骤",
+					"description": "输出是否应包含代理采取的中间步骤"
+				},
+				"passthroughBinaryImages": {
+					"displayName": "自动透传二进制图像",
+					"description": "是否应将二进制图像自动作为图像类型消息传递给代理"
+				},
+				"humanMessage": {
+					"displayName": "将提供给代理使用的工具列表消息",
+					"description": "将提供给代理使用的工具列表消息"
+				},
+				"humanMessageTemplate": {
+					"displayName": "[0]人类消息模板\n[1]将在每个步骤执行期间发送给代理的消息",
+					"description": "The message that will be sent to the agent during each step execution"
+				},
+				"prefix": {
+					"displayName": "前缀消息",
+					"description": "工具列表前显示的字符串"
+				},
+				"suffixChat": {
+					"displayName": "聊天模型后缀消息",
+					"description": "若使用聊天模型，将在工具列表后添加的字符串"
+				},
+				"suffix": {
+					"displayName": "常规模型的后缀消息",
+					"description": "如果使用常规模型，将在工具列表后添加的字符串"
+				},
+				"ignoredTables": {
+					"displayName": "Ignored Tables",
+					"description": "Comma-separated list of tables to ignore from the database. If empty, no tables are ignored."
+				},
+				"includedSampleRows": {
+					"displayName": "包含示例行",
+					"description": "要包含在提示中发送给代理的示例行数量。这有助于代理理解数据库的结构，但也会增加使用的令牌数量。"
+				},
+				"includedTables": {
+					"displayName": "包含的表",
+					"description": "要包含在数据库中的表，以逗号分隔。如果为空，则包含所有表。"
+				},
+				"prefixPrompt": {
+					"displayName": "前缀提示",
+					"description": "供代理使用的前缀提示"
+				},
+				"suffixPrompt": {
+					"displayName": "后缀提示",
+					"description": "代理使用的后缀提示"
+				},
+				"topK": {
+					"displayName": "限制",
+					"description": "返回结果的最大数量"
+				}
+			}
+		},
+		"dataSource": {
+			"displayName": "数据源",
+			"description": "要连接的SQL数据库",
+			"options": {
+				"mysql": {
+					"displayName": "MySQL",
+					"description": "连接到MySQL数据库"
+				},
+				"postgres": {
+					"displayName": "Postgres",
+					"description": "连接到Postgres数据库"
+				},
+				"sqlite": {
+					"displayName": "SQLite",
+					"description": "通过连接数据库文件作为二进制输入来使用SQLite"
+				}
+			}
+		},
+		"credentials": {
+			"displayName": "凭据"
+		},
+		"sqLiteFileNotice": {
+			"displayName": "将SQLite数据库作为二进制数据传入此节点，例如事先插入'从磁盘读取/写入文件'节点"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段",
+			"placeholder": "例如 数据"
+		},
+		"input": {
+			"displayName": "提示"
+		}
+	}
+}

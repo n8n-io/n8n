@@ -1,0 +1,60 @@
+{
+	"header": {
+		"displayName": "Question and Answer Chain",
+		"description": "Answer questions about retrieved documents"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "Save time with an <a href=\"/templates/1960\" target=\"_blank\">example</a> of how this node works"
+		},
+		"query": {
+			"displayName": "Query"
+		},
+		"promptType": {
+			"displayName": "Source for Prompt (User Message)",
+			"options": {
+				"auto": {
+					"displayName": "Connected Chat Trigger Node",
+					"description": "Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger"
+				},
+				"guardrails": {
+					"displayName": "Connected Guardrails Node",
+					"description": "Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node"
+				},
+				"define": {
+					"displayName": "Define below",
+					"description": "Use an expression to reference data in previous nodes or enter static text"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Prompt (User Message)",
+			"placeholder": "e.g. Hello, how can you help me?"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"systemPromptTemplate": {
+					"displayName": "System Prompt Template",
+					"description": "Template string used for the system prompt. This should include the variable `{context}` for the provided context. For text completion models, you should also include the variable `{input}` for the user’s query."
+				},
+				"batching": {
+					"displayName": "Batch Processing",
+					"description": "Batch processing options for rate limiting",
+					"placeholder": "Add Batch Processing Option",
+					"options": {
+						"batchSize": {
+							"displayName": "Batch Size",
+							"description": "How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering."
+						},
+						"delayBetweenBatches": {
+							"displayName": "Delay Between Batches",
+							"description": "Delay in milliseconds between batches. This is useful for rate limiting."
+						}
+					}
+				}
+			}
+		}
+	}
+}

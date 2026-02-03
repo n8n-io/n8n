@@ -1,0 +1,68 @@
+{
+	"header": {
+		"displayName": "从磁盘读取/写入文件",
+		"description": "从运行n8n的计算机读取或写入文件"
+	},
+	"nodeView": {
+		"info": {
+			"displayName": "使用此节点可在运行n8n的同一台计算机上读写文件。如需在不同计算机间处理文件，请使用其他节点（例如FTP、HTTP请求、AWS）。"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"read": {
+					"displayName": "从磁盘读取文件",
+					"description": "从运行 n8n 的计算机上检索一个或多个文件"
+				},
+				"write": {
+					"displayName": "写入文件到磁盘",
+					"description": "在运行n8n的计算机上创建二进制文件"
+				}
+			}
+		},
+		"fileSelector": {
+			"displayName": "文件选择器",
+			"description": "指定文件路径或路径模式以读取多个文件。即使在Windows系统上，路径分隔符也始终使用正斜杠。",
+			"placeholder": "例如：/home/user/Pictures/**/*.png"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fileExtension": {
+					"displayName": "文件扩展名",
+					"description": "输出二进制文件的扩展名",
+					"placeholder": "例如：zip"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "输出二进制文件中的文件名",
+					"placeholder": "例如 data.zip"
+				},
+				"mimeType": {
+					"displayName": "MIME类型",
+					"description": "输出二进制文件的MIME类型",
+					"placeholder": "例如 application/zip"
+				},
+				"dataPropertyName": {
+					"displayName": "将输出文件放入字段",
+					"description": "默认使用'data'",
+					"placeholder": "例如：data"
+				},
+				"append": {
+					"displayName": "追加",
+					"description": "是否追加到现有文件。虽然通常用于文本文件，但不限于此，不过对于具有特定结构（如大多数二进制格式）的文件类型则不适用。"
+				}
+			}
+		},
+		"fileName": {
+			"displayName": "文件路径与名称",
+			"description": "应写入文件的路径与名称。请包含文件扩展名。",
+			"placeholder": "例如：/data/example.jpg"
+		},
+		"dataPropertyName": {
+			"displayName": "输入二进制字段",
+			"placeholder": "例如：数据"
+		}
+	}
+}

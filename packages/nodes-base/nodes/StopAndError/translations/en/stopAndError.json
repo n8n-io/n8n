@@ -1,0 +1,29 @@
+{
+	"header": {
+		"displayName": "Stop and Error",
+		"description": "Throw an error in the workflow"
+	},
+	"nodeView": {
+		"errorType": {
+			"displayName": "Error Type",
+			"description": "Type of error to throw",
+			"options": {
+				"errorMessage": {
+					"displayName": "Error Message"
+				},
+				"errorObject": {
+					"displayName": "Error Object"
+				}
+			}
+		},
+		"errorMessage": {
+			"displayName": "Error Message",
+			"placeholder": "An error occurred!"
+		},
+		"errorObject": {
+			"displayName": "Error Object",
+			"description": "Object containing error properties",
+			"placeholder": "{\n\t\"code\": \"404\",\n\t\"description\": \"The resource could not be fetched\"\n}"
+		}
+	}
+}

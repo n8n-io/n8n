@@ -1,0 +1,355 @@
+{
+	"header": {
+		"displayName": "Mandrill",
+		"description": "使用Mandrill API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"message": {
+					"displayName": "消息",
+					"description": "发送消息"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"sendTemplate": {
+					"displayName": "发送模板",
+					"description": "基于模板发送消息"
+				},
+				"sendHtml": {
+					"displayName": "发送HTML",
+					"description": "基于HTML发送消息"
+				}
+			}
+		},
+		"template": {
+			"displayName": "模板名称或ID",
+			"description": "要发送的模板。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"fromEmail": {
+			"displayName": "发件邮箱",
+			"description": "发件人邮箱地址（可选，可包含姓名）",
+			"placeholder": "管理员 <example@yourdomain.com>"
+		},
+		"toEmail": {
+			"displayName": "收件人邮箱",
+			"description": "收件人的电子邮件地址。多个地址可用逗号分隔。",
+			"placeholder": "info@example.com"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"async": {
+					"displayName": "异步",
+					"description": "是否启用针对批量发送优化的后台发送模式。在异步模式下，messages/send 将立即为每个收件人返回“已排队”状态。要处理异步发送时的拒绝情况，请为 'reject' 事件设置 webhook。对于收件人不超过 10 个的消息，默认值为 false；收件人超过 10 个的消息始终异步发送，与 async 的值无关。"
+				},
+				"autoText": {
+					"displayName": "自动文本",
+					"description": "是否为未提供文本的消息自动生成文本部分"
+				},
+				"autoHtml": {
+					"displayName": "自动HTML",
+					"description": "是否为未提供HTML的消息自动生成HTML部分"
+				},
+				"bccAddress": {
+					"displayName": "密送地址",
+					"description": "接收每个收件人邮件副本的可选地址",
+					"placeholder": "message.bcc_address@example.com"
+				},
+				"fromName": {
+					"displayName": "发件人名称",
+					"description": "可选使用的发件人名称",
+					"placeholder": "张三"
+				},
+				"googleAnalyticsCampaign": {
+					"displayName": "Google Analytics 营销活动",
+					"description": "可选字符串，用于设置 utm_campaign 跟踪参数的值。如未提供，将改用电子邮件的发件地址。"
+				},
+				"googleAnalyticsDomains": {
+					"displayName": "Google Analytics 域名",
+					"description": "以逗号(,)分隔的字符串数组，表示任何匹配的URL将自动在其查询字符串中附加Google Analytics参数"
+				},
+				"html": {
+					"displayName": "HTML",
+					"description": "您想要发送的HTML"
+				},
+				"important": {
+					"displayName": "重要",
+					"description": "此消息是否重要，应优先于非重要消息传递"
+				},
+				"inlineCss": {
+					"displayName": "内联CSS",
+					"description": "是否自动内联消息HTML中提供的所有CSS样式 - 仅适用于小于256KB的HTML文档"
+				},
+				"ipPool": {
+					"displayName": "IP池",
+					"description": "用于发送消息的专用IP池名称。如果您没有任何专用IP，此参数将无效。如果您指定的池不存在，将改用您的默认池。"
+				},
+				"preserveRecipients": {
+					"displayName": "保留收件人",
+					"description": "是否将全部收件人暴露在每封邮件的“收件人”标题中"
+				},
+				"returnPathDomain": {
+					"displayName": "返回路径域名",
+					"description": "用于邮件返回路径的自定义域名"
+				},
+				"sendAt": {
+					"displayName": "发送时间",
+					"description": "此消息应作为UTC时间戳发送，格式为YYYY-MM-DD HH:MM:SS。如果指定过去的时间，消息将立即发送。定时邮件会产生额外费用，此功能仅适用于账户余额为正的账户。"
+				},
+				"signingDomain": {
+					"displayName": "签名域名",
+					"description": "用于SPF/DKIM签名的自定义域名，替代mandrill（在邮件客户端中显示“经由”或“代表”发件人）"
+				},
+				"subAccount": {
+					"displayName": "子账户",
+					"description": "此消息对应的子账户唯一ID - 必须已存在，否则将报错"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "邮件主题行",
+					"placeholder": "我的主题行"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "用逗号(,)分隔的字符串数组，用于标记消息。统计数据使用标签进行累积，但我们只存储前100个标签，因此标签不应是唯一的或频繁更改的。标签长度应为50个字符或更少。任何以下划线开头的标签均保留供内部使用，会导致错误。"
+				},
+				"text": {
+					"displayName": "文本",
+					"description": "示例文本内容"
+				},
+				"trackClicks": {
+					"displayName": "跟踪点击",
+					"description": "是否开启消息的点击跟踪"
+				},
+				"trackOpens": {
+					"displayName": "跟踪打开",
+					"description": "是否开启邮件的打开追踪功能"
+				},
+				"trackingDomain": {
+					"displayName": "跟踪域名",
+					"description": "用于跟踪邮件打开和点击的自定义域名，替代 mandrillapp.com"
+				},
+				"urlStripQs": {
+					"displayName": "URL去除查询参数",
+					"description": "聚合跟踪URL数据时是否去除查询字符串"
+				},
+				"viewContentLink": {
+					"displayName": "查看内容链接",
+					"description": "是否移除敏感邮件的日志记录"
+				}
+			}
+		},
+		"mergeVarsJson": {
+			"displayName": "合并变量",
+			"description": "全局合并变量",
+			"placeholder": "[\n\t{\n\t\t{ \"name\": \"name\", \"content\": \"content\" }\n\t}\n]"
+		},
+		"mergeVarsUi": {
+			"displayName": "合并变量",
+			"description": "按收件人合并变量",
+			"placeholder": "添加合并变量",
+			"multipleValueButtonText": "添加合并变量",
+			"options": {
+				"mergeVarsValues": {
+					"displayName": "变量",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"content": {
+							"displayName": "内容"
+						}
+					}
+				}
+			},
+			"values": {
+				"mergeVarsValues": {
+					"displayName": "变量",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"content": {
+							"displayName": "内容"
+						}
+					}
+				},
+				"mergeVarsUi": {
+					"displayName": "合并变量",
+					"placeholder": "添加合并变量"
+				}
+			}
+		},
+		"metadataUi": {
+			"displayName": "元数据",
+			"description": "元数据是一个用户元数据的关联数组。Mandrill将存储此元数据并使其可供检索。此外，您最多可以选择10个元数字段进行索引，并使用Mandrill搜索API使其可搜索。",
+			"placeholder": "添加元数据",
+			"multipleValueButtonText": "添加元数据",
+			"options": {
+				"metadataValues": {
+					"displayName": "元数据",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为元数据键设置的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"metadataValues": {
+					"displayName": "元数据",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为元数据键设置的值"
+						}
+					}
+				},
+				"metadataUi": {
+					"displayName": "元数据",
+					"placeholder": "添加元数据"
+				}
+			}
+		},
+		"metadataJson": {
+			"displayName": "元数据",
+			"description": "元数据 一个用户元数据的关联数组。Mandrill将存储此元数据并可供检索。此外，您最多可以选择10个元数据字段进行索引，并使用Mandrill搜索API使其可搜索。",
+			"placeholder": "{\n\t\"website\": \"www.example.com\"\n}"
+		},
+		"attachmentsJson": {
+			"displayName": "附件",
+			"description": "要添加到消息中的受支持附件数组",
+			"placeholder": "[\n\t{\n\t\t\"type\": \"text/plain\" (附件的MIME类型),\n\t\t\"name\": \"myfile.txt\" (附件的文件名),\n\t\t\"content\": \"ZXhhbXBsZSBmaWxl\" (附件内容，以base64编码字符串表示)\n\t}\n]"
+		},
+		"attachmentsUi": {
+			"displayName": "附件",
+			"description": "要添加到消息中的支持附件数组",
+			"placeholder": "添加附件",
+			"multipleValueButtonText": "添加附件",
+			"options": {
+				"attachmentsValues": {
+					"displayName": "附件值",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "附件的MIME类型",
+							"placeholder": "附件的MIME类型"
+						},
+						"name": {
+							"displayName": "名称",
+							"description": "附件的文件名",
+							"placeholder": "myfile.txt"
+						},
+						"content": {
+							"displayName": "内容",
+							"description": "附件内容以base64编码的字符串形式提供",
+							"placeholder": "示例文件"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "附件二进制",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"description": "包含应作为邮件附件添加的数据的二进制属性名称"
+						}
+					}
+				}
+			},
+			"values": {
+				"attachmentsValues": {
+					"displayName": "附件值",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "附件的MIME类型",
+							"placeholder": "附件的MIME类型"
+						},
+						"name": {
+							"displayName": "名称",
+							"description": "附件的文件名",
+							"placeholder": "myfile.txt"
+						},
+						"content": {
+							"displayName": "内容",
+							"description": "附件内容以base64编码的字符串形式提供",
+							"placeholder": "示例文件"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "附件二进制",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"description": "包含应作为邮件附件添加的数据的二进制属性名称"
+						}
+					}
+				},
+				"attachmentsUi": {
+					"displayName": "附件",
+					"placeholder": "添加附件"
+				}
+			}
+		},
+		"headersJson": {
+			"displayName": "头部信息",
+			"description": "可添加到消息中的额外头部信息（允许大多数头部）",
+			"placeholder": "{\n\t\"Reply-To\": \"replies@example.com\"\n}"
+		},
+		"headersUi": {
+			"displayName": "请求头",
+			"description": "可选的消息额外头部（允许大多数头部）",
+			"placeholder": "添加头部",
+			"multipleValueButtonText": "添加请求头",
+			"options": {
+				"headersValues": {
+					"displayName": "值",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"headersValues": {
+					"displayName": "值",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"headersUi": {
+					"displayName": "请求头",
+					"placeholder": "添加请求头"
+				}
+			}
+		}
+	}
+}

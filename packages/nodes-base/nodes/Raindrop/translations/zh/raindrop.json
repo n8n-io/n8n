@@ -1,0 +1,232 @@
+{
+	"header": {
+		"displayName": "Raindrop",
+		"description": "使用Raindrop API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"bookmark": {
+					"displayName": "书签"
+				},
+				"collection": {
+					"displayName": "集合"
+				},
+				"tag": {
+					"displayName": "标签"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"collectionId": {
+			"displayName": "集合ID",
+			"description": "要更新的集合ID"
+		},
+		"link": {
+			"displayName": "链接",
+			"description": "要创建的书签链接"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加筛选器",
+			"options": {
+				"important": {
+					"displayName": "重要",
+					"description": "此书签是否标记为收藏"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "书签的排序顺序。例如，要将其移至首位，请输入0。"
+				},
+				"pleaseParse": {
+					"displayName": "解析元数据",
+					"description": "Raindrop是否应为URL加载封面、描述和HTML"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "书签标签。多个标签可用逗号分隔设置。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "要创建的书签标题"
+				},
+				"cover": {
+					"displayName": "封面",
+					"description": "用作集合封面的图片URL"
+				},
+				"public": {
+					"displayName": "公开",
+					"description": "该集合是否无需身份验证即可访问"
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "此集合的父集合ID（如果是子集合）"
+				},
+				"sort": {
+					"displayName": "排序顺序",
+					"description": "此集合的降序排序。该数字表示该集合在所有具有相同父ID的集合中的位置。"
+				},
+				"view": {
+					"displayName": "查看",
+					"description": "此集合的视图样式",
+					"options": {
+						"list": {
+							"displayName": "列表"
+						},
+						"simple": {
+							"displayName": "简单"
+						},
+						"grid": {
+							"displayName": "网格"
+						},
+						"Masonry": {
+							"displayName": "砖墙布局"
+						}
+					}
+				},
+				"collectionId": {
+					"displayName": "集合名称或ID",
+					"description": "可以限制删除操作仅针对一个集合。此项为可选。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"bookmarkId": {
+			"displayName": "书签ID",
+			"description": "要更新的书签ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"collectionId": {
+					"displayName": "集合名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"important": {
+					"displayName": "重要",
+					"description": "此书签是否标记为收藏"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "例如，如果您想将书签移动到首位，请将此字段设置为0"
+				},
+				"pleaseParse": {
+					"displayName": "解析元数据",
+					"description": "Raindrop是否应为URL重新加载封面、描述和HTML"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "书签标签。多个标签可用逗号分隔设置。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "要更新的集合标题"
+				},
+				"cover": {
+					"displayName": "封面",
+					"description": "包含要上传为封面图片数据的二进制属性名称"
+				},
+				"public": {
+					"displayName": "公开",
+					"description": "该集合是否无需身份验证即可访问"
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "此集合的父集合ID（如果是子集合）"
+				},
+				"sort": {
+					"displayName": "排序顺序",
+					"description": "此集合的降序排序。该数字表示该集合在所有具有相同父ID的集合中的位置。"
+				},
+				"view": {
+					"displayName": "查看",
+					"description": "此集合的视图样式",
+					"options": {
+						"list": {
+							"displayName": "列表"
+						},
+						"simple": {
+							"displayName": "简单"
+						},
+						"grid": {
+							"displayName": "网格"
+						},
+						"Masonry": {
+							"displayName": "砖墙布局"
+						}
+					}
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "要创建的集合标题"
+		},
+		"type": {
+			"displayName": "类型",
+			"options": {
+				"parent": {
+					"displayName": "父级",
+					"description": "根级集合"
+				},
+				"children": {
+					"displayName": "子节点",
+					"description": "嵌套集合"
+				}
+			}
+		},
+		"tags": {
+			"displayName": "标签",
+			"description": "要删除的一个或多个标签。输入逗号分隔的值可删除多个标签。"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"collectionId": {
+					"displayName": "集合名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				}
+			}
+		},
+		"self": {
+			"displayName": "自身",
+			"description": "是否返回已登录用户的详细信息"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "要检索的用户的ID"
+		}
+	}
+}

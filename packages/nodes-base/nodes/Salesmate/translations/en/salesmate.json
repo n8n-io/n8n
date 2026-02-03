@@ -1,0 +1,756 @@
+{
+	"header": {
+		"displayName": "Salesmate",
+		"description": "Consume Salesmate API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"activity": {
+					"displayName": "Activity"
+				},
+				"company": {
+					"displayName": "Company"
+				},
+				"deal": {
+					"displayName": "Deal"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a deal"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a deal"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a deal"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many deals"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a deal"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name"
+		},
+		"owner": {
+			"displayName": "Owner Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"rawData": {
+			"displayName": "RAW Data",
+			"description": "Whether the data should include the fields details"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"website": {
+					"displayName": "Website"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"otherPhone": {
+					"displayName": "Other Phone"
+				},
+				"facebookHandle": {
+					"displayName": "Facebook Handle"
+				},
+				"googlePlusHandle": {
+					"displayName": "Google Plus Handle"
+				},
+				"linkedInHandle": {
+					"displayName": "LinkedIn Handle"
+				},
+				"skypeId": {
+					"displayName": "Skype ID"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter Handle"
+				},
+				"currency": {
+					"displayName": "Currency"
+				},
+				"billingAddressLine1": {
+					"displayName": "Billing Address Line 1"
+				},
+				"billingAddressLine2": {
+					"displayName": "Billing Address Line 2"
+				},
+				"billingCity": {
+					"displayName": "Billing City"
+				},
+				"billingZipCode": {
+					"displayName": "Billing Zip Code"
+				},
+				"billingState": {
+					"displayName": "Billing Country"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "This field contains details related to the deal"
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "This field contains tags associated with an deal"
+				},
+				"dueDate": {
+					"displayName": "Due Date",
+					"description": "Expiry date of an activity"
+				},
+				"duration": {
+					"displayName": "Duration",
+					"description": "Time duration of an activity"
+				},
+				"isCalendarInvite": {
+					"displayName": "Is Calendar Invite",
+					"description": "Whether to send calendar invite"
+				},
+				"isCompleted": {
+					"displayName": "Is Completed",
+					"description": "Whether the activity is completed or not"
+				},
+				"primaryCompany": {
+					"displayName": "Primary Company Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"source": {
+					"displayName": "Source",
+					"options": {
+						"Ads": {
+							"displayName": "Ads"
+						},
+						"Referrals": {
+							"displayName": "Referrals"
+						},
+						"Website": {
+							"displayName": "Website"
+						},
+						"Word of mouth": {
+							"displayName": "Word of Mouth"
+						}
+					}
+				},
+				"estimatedCloseDate": {
+					"displayName": "Estimated Close Date"
+				},
+				"dealValue": {
+					"displayName": "Deal Value"
+				},
+				"priority": {
+					"displayName": "Priority",
+					"options": {
+						"High": {
+							"displayName": "High"
+						},
+						"Medium": {
+							"displayName": "Medium"
+						},
+						"Low": {
+							"displayName": "Low"
+						}
+					}
+				}
+			}
+		},
+		"id": {
+			"displayName": "Deal ID",
+			"description": "If more than one deal add them separated by ,"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name"
+				},
+				"owner": {
+					"displayName": "Owner Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"website": {
+					"displayName": "Website"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"otherPhone": {
+					"displayName": "Other Phone"
+				},
+				"facebookHandle": {
+					"displayName": "Facebook Handle"
+				},
+				"googlePlusHandle": {
+					"displayName": "Google Plus Handle"
+				},
+				"linkedInHandle": {
+					"displayName": "LinkedIn Handle"
+				},
+				"skypeId": {
+					"displayName": "Skype ID"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter Handle"
+				},
+				"currency": {
+					"displayName": "Currency"
+				},
+				"billingAddressLine1": {
+					"displayName": "Billing Address Line 1"
+				},
+				"billingAddressLine2": {
+					"displayName": "Billing Address Line 2"
+				},
+				"billingCity": {
+					"displayName": "Billing City"
+				},
+				"billingZipCode": {
+					"displayName": "Billing Zip Code"
+				},
+				"billingState": {
+					"displayName": "Billing Country"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "This field contains details related to the deal"
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "This field contains tags associated with an deal"
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"type": {
+					"displayName": "Type"
+				},
+				"dueDate": {
+					"displayName": "Due Date",
+					"description": "Expiry date of an activity"
+				},
+				"duration": {
+					"displayName": "Duration",
+					"description": "Time duration of an activity"
+				},
+				"isCalendarInvite": {
+					"displayName": "Is Calendar Invite",
+					"description": "Whether to send calendar invite"
+				},
+				"isCompleted": {
+					"displayName": "Is Completed",
+					"description": "Whether the activity is completed or not"
+				},
+				"primaryContact": {
+					"displayName": "Primary Contact Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"pipeline": {
+					"displayName": "Pipeline",
+					"options": {
+						"Sales": {
+							"displayName": "Sales"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"Open": {
+							"displayName": "Open"
+						},
+						"Close": {
+							"displayName": "Close"
+						},
+						"Lost": {
+							"displayName": "Lost"
+						}
+					}
+				},
+				"stage": {
+					"displayName": "Stage",
+					"options": {
+						"Contacted": {
+							"displayName": "Contacted"
+						},
+						"In Negotiation": {
+							"displayName": "In Negotiation"
+						},
+						"New (Untouched)": {
+							"displayName": "New (Untouched)"
+						},
+						"Proposal Presented": {
+							"displayName": "Proposal Presented"
+						},
+						"Qualified": {
+							"displayName": "Qualified"
+						}
+					}
+				},
+				"primaryCompany": {
+					"displayName": "Primary Company Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"source": {
+					"displayName": "Source",
+					"options": {
+						"Ads": {
+							"displayName": "Ads"
+						},
+						"Referrals": {
+							"displayName": "Referrals"
+						},
+						"Website": {
+							"displayName": "Website"
+						},
+						"Word of mouth": {
+							"displayName": "Word of Mouth"
+						}
+					}
+				},
+				"estimatedCloseDate": {
+					"displayName": "Estimated Close Date"
+				},
+				"dealValue": {
+					"displayName": "Deal Value"
+				},
+				"priority": {
+					"displayName": "Priority",
+					"options": {
+						"High": {
+							"displayName": "High"
+						},
+						"Medium": {
+							"displayName": "Medium"
+						},
+						"Low": {
+							"displayName": "Low"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "Comma-separated list of fields to return"
+				},
+				"sortBy": {
+					"displayName": "Sort By",
+					"description": "The field to sort by"
+				},
+				"sortOrder": {
+					"displayName": "Sort Order",
+					"options": {
+						"asc": {
+							"displayName": "ASC"
+						},
+						"desc": {
+							"displayName": "DESC"
+						}
+					}
+				}
+			}
+		},
+		"filtersJson": {
+			"displayName": "Filters"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add filter",
+			"options": {
+				"filtersUi": {
+					"displayName": "Filters",
+					"options": {
+						"operator": {
+							"displayName": "Operator",
+							"options": {
+								"AND": {
+									"displayName": "AND"
+								},
+								"OR": {
+									"displayName": "OR"
+								}
+							}
+						},
+						"conditions": {
+							"displayName": "Conditions",
+							"placeholder": "Add Condition",
+							"multipleValueButtonText": "Add Condition",
+							"options": {
+								"conditionsUi": {
+									"displayName": "Conditions",
+									"options": {
+										"field": {
+											"displayName": "Field",
+											"options": {
+												"name": {
+													"displayName": "Name"
+												},
+												"email": {
+													"displayName": "Email"
+												},
+												"phone": {
+													"displayName": "Phone"
+												},
+												"title": {
+													"displayName": "Title"
+												},
+												"tags": {
+													"displayName": "Tags"
+												},
+												"lastCommunicationMode": {
+													"displayName": "Last Communication Mode"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "Condition",
+											"description": "Value of the property to set",
+											"options": {
+												"EQUALS": {
+													"displayName": "Equals"
+												},
+												"NOT_EQUALS": {
+													"displayName": "Not Equals"
+												},
+												"Contains": {
+													"displayName": "CONTAINS"
+												},
+												"DOES_NOT_CONTAINS": {
+													"displayName": "Does Not Contains"
+												},
+												"EMPTY": {
+													"displayName": "Empty"
+												},
+												"NOT_EMPTY": {
+													"displayName": "Not Empty"
+												},
+												"STARTS_WITH": {
+													"displayName": "Starts With"
+												},
+												"ENDS_WITH": {
+													"displayName": "Ends With"
+												}
+											}
+										},
+										"value": {
+											"displayName": "Value"
+										}
+									}
+								}
+							},
+							"values": {
+								"conditionsUi": {
+									"displayName": "Conditions",
+									"options": {
+										"field": {
+											"displayName": "Field",
+											"options": {
+												"name": {
+													"displayName": "Name"
+												},
+												"email": {
+													"displayName": "Email"
+												},
+												"phone": {
+													"displayName": "Phone"
+												},
+												"title": {
+													"displayName": "Title"
+												},
+												"tags": {
+													"displayName": "Tags"
+												},
+												"lastCommunicationMode": {
+													"displayName": "Last Communication Mode"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "Condition",
+											"description": "Value of the property to set",
+											"options": {
+												"EQUALS": {
+													"displayName": "Equals"
+												},
+												"NOT_EQUALS": {
+													"displayName": "Not Equals"
+												},
+												"Contains": {
+													"displayName": "CONTAINS"
+												},
+												"DOES_NOT_CONTAINS": {
+													"displayName": "Does Not Contains"
+												},
+												"EMPTY": {
+													"displayName": "Empty"
+												},
+												"NOT_EMPTY": {
+													"displayName": "Not Empty"
+												},
+												"STARTS_WITH": {
+													"displayName": "Starts With"
+												},
+												"ENDS_WITH": {
+													"displayName": "Ends With"
+												}
+											}
+										},
+										"value": {
+											"displayName": "Value"
+										}
+									}
+								},
+								"conditions": {
+									"displayName": "Conditions",
+									"placeholder": "Add Condition"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"filtersUi": {
+					"displayName": "Filters",
+					"options": {
+						"operator": {
+							"displayName": "Operator",
+							"options": {
+								"AND": {
+									"displayName": "AND"
+								},
+								"OR": {
+									"displayName": "OR"
+								}
+							}
+						},
+						"conditions": {
+							"displayName": "Conditions",
+							"placeholder": "Add Condition",
+							"multipleValueButtonText": "Add Condition",
+							"options": {
+								"conditionsUi": {
+									"displayName": "Conditions",
+									"options": {
+										"field": {
+											"displayName": "Field",
+											"options": {
+												"name": {
+													"displayName": "Name"
+												},
+												"email": {
+													"displayName": "Email"
+												},
+												"phone": {
+													"displayName": "Phone"
+												},
+												"title": {
+													"displayName": "Title"
+												},
+												"tags": {
+													"displayName": "Tags"
+												},
+												"lastCommunicationMode": {
+													"displayName": "Last Communication Mode"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "Condition",
+											"description": "Value of the property to set",
+											"options": {
+												"EQUALS": {
+													"displayName": "Equals"
+												},
+												"NOT_EQUALS": {
+													"displayName": "Not Equals"
+												},
+												"Contains": {
+													"displayName": "CONTAINS"
+												},
+												"DOES_NOT_CONTAINS": {
+													"displayName": "Does Not Contains"
+												},
+												"EMPTY": {
+													"displayName": "Empty"
+												},
+												"NOT_EMPTY": {
+													"displayName": "Not Empty"
+												},
+												"STARTS_WITH": {
+													"displayName": "Starts With"
+												},
+												"ENDS_WITH": {
+													"displayName": "Ends With"
+												}
+											}
+										},
+										"value": {
+											"displayName": "Value"
+										}
+									}
+								}
+							},
+							"values": {
+								"conditionsUi": {
+									"displayName": "Conditions",
+									"options": {
+										"field": {
+											"displayName": "Field",
+											"options": {
+												"name": {
+													"displayName": "Name"
+												},
+												"email": {
+													"displayName": "Email"
+												},
+												"phone": {
+													"displayName": "Phone"
+												},
+												"title": {
+													"displayName": "Title"
+												},
+												"tags": {
+													"displayName": "Tags"
+												},
+												"lastCommunicationMode": {
+													"displayName": "Last Communication Mode"
+												}
+											}
+										},
+										"condition": {
+											"displayName": "Condition",
+											"description": "Value of the property to set",
+											"options": {
+												"EQUALS": {
+													"displayName": "Equals"
+												},
+												"NOT_EQUALS": {
+													"displayName": "Not Equals"
+												},
+												"Contains": {
+													"displayName": "CONTAINS"
+												},
+												"DOES_NOT_CONTAINS": {
+													"displayName": "Does Not Contains"
+												},
+												"EMPTY": {
+													"displayName": "Empty"
+												},
+												"NOT_EMPTY": {
+													"displayName": "Not Empty"
+												},
+												"STARTS_WITH": {
+													"displayName": "Starts With"
+												},
+												"ENDS_WITH": {
+													"displayName": "Ends With"
+												}
+											}
+										},
+										"value": {
+											"displayName": "Value"
+										}
+									}
+								},
+								"conditions": {
+									"displayName": "Conditions",
+									"placeholder": "Add Condition"
+								}
+							}
+						}
+					}
+				},
+				"filters": {
+					"displayName": "Filters",
+					"placeholder": "Add filter"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title"
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "This field displays activity type such as call, meeting etc"
+		},
+		"primaryContact": {
+			"displayName": "Primary Contact Name or ID",
+			"description": "Primary contact for the deal. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"pipeline": {
+			"displayName": "Pipeline",
+			"options": {
+				"Sales": {
+					"displayName": "Sales"
+				}
+			}
+		},
+		"status": {
+			"displayName": "Status",
+			"options": {
+				"Open": {
+					"displayName": "Open"
+				},
+				"Close": {
+					"displayName": "Close"
+				},
+				"Lost": {
+					"displayName": "Lost"
+				}
+			}
+		},
+		"stage": {
+			"displayName": "Stage",
+			"options": {
+				"New (Untouched)": {
+					"displayName": "New (Untouched)"
+				},
+				"Contacted": {
+					"displayName": "Contacted"
+				},
+				"Qualified": {
+					"displayName": "Qualified"
+				},
+				"In Negotiation": {
+					"displayName": "In Negotiation"
+				},
+				"Proposal Presented": {
+					"displayName": "Proposal Presented"
+				}
+			}
+		},
+		"currency": {
+			"displayName": "Currency"
+		}
+	}
+}

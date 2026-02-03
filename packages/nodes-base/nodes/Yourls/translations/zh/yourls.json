@@ -1,0 +1,54 @@
+{
+	"header": {
+		"displayName": "Yourls",
+		"description": "使用Yourls API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"expand": {
+					"displayName": "展开",
+					"description": "展开URL"
+				},
+				"shorten": {
+					"displayName": "缩短",
+					"description": "缩短URL"
+				},
+				"stats": {
+					"displayName": "统计信息",
+					"description": "获取单个短链接的统计数据"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "要缩短的URL"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"keyword": {
+					"displayName": "关键词"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "自定义短链接标题"
+				}
+			}
+		},
+		"shortUrl": {
+			"displayName": "短链接",
+			"description": "要获取统计数据的短链接"
+		}
+	}
+}

@@ -1,0 +1,27 @@
+{
+	"header": {
+		"displayName": "写入二进制文件",
+		"description": "将二进制文件写入磁盘"
+	},
+	"nodeView": {
+		"fileName": {
+			"displayName": "文件名",
+			"description": "文件应写入的路径",
+			"placeholder": "/data/example.jpg"
+		},
+		"dataPropertyName": {
+			"displayName": "属性名称",
+			"description": "包含待写入文件数据的二进制属性名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"append": {
+					"displayName": "追加",
+					"description": "是否追加到现有文件"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "Read PDF",
+		"description": "Reads a PDF and extracts its content"
+	},
+	"nodeView": {
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field",
+			"description": "Name of the binary property from which to read the PDF file"
+		},
+		"encrypted": {
+			"displayName": "Encrypted"
+		},
+		"password": {
+			"displayName": "Password",
+			"description": "Password to decrypt the PDF file with"
+		}
+	}
+}

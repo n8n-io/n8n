@@ -1,0 +1,411 @@
+{
+	"header": {
+		"displayName": "防护栏",
+		"description": "保护AI模型免受恶意输入或防止其生成不良响应"
+	},
+	"nodeView": {
+		"guardrailsUsage": {
+			"displayName": "使用护栏功能根据一组策略（例如NSFW、提示注入）验证文本，或对其进行清理（例如个人数据、密钥）"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"classify": {
+					"displayName": "检查文本违规",
+					"description": "根据一组策略（例如NSFW、提示注入）验证文本"
+				},
+				"sanitize": {
+					"displayName": "清理文本",
+					"description": "编辑文本以隐藏个人数据、密钥、URL等。"
+				}
+			}
+		},
+		"text": {
+			"displayName": "待检查文本"
+		},
+		"guardrails": {
+			"displayName": "护栏",
+			"placeholder": "添加护栏",
+			"options": {
+				"keywords": {
+					"displayName": "关键词",
+					"description": "此防护栏检查输入文本中是否出现指定关键词，并可配置为基于关键词匹配触发告警。多个关键词可用逗号分隔添加。"
+				},
+				"jailbreak": {
+					"displayName": "越狱检测",
+					"description": "检测试图越狱或绕过AI安全措施的行为",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"threshold": {
+									"displayName": "阈值",
+									"description": "触发护栏的最小置信度阈值（0.0 到 1.0）"
+								},
+								"customizePrompt": {
+									"displayName": "自定义提示"
+								},
+								"prompt": {
+									"displayName": "提示词",
+									"description": "护栏使用的系统提示。阈值和JSON输出由节点自动强制执行。"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"threshold": {
+									"displayName": "阈值",
+									"description": "触发护栏的最小置信度阈值（0.0 到 1.0）"
+								},
+								"customizePrompt": {
+									"displayName": "自定义提示"
+								},
+								"prompt": {
+									"displayName": "提示词",
+									"description": "护栏使用的系统提示。阈值和JSON输出由节点自动强制执行。"
+								}
+							}
+						},
+						"jailbreak": {
+							"displayName": "越狱检测"
+						}
+					}
+				},
+				"nsfw": {
+					"displayName": "NSFW（不适宜工作场所内容）",
+					"description": "检测生成NSFW内容的尝试",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"threshold": {
+									"displayName": "阈值",
+									"description": "触发护栏的最小置信度阈值（0.0 到 1.0）"
+								},
+								"customizePrompt": {
+									"displayName": "自定义提示"
+								},
+								"prompt": {
+									"displayName": "提示词",
+									"description": "护栏使用的系统提示。阈值和JSON输出由节点自动强制执行。"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"threshold": {
+									"displayName": "阈值",
+									"description": "触发护栏的最小置信度阈值（0.0 到 1.0）"
+								},
+								"customizePrompt": {
+									"displayName": "自定义提示"
+								},
+								"prompt": {
+									"displayName": "提示词",
+									"description": "护栏使用的系统提示。阈值和JSON输出由节点自动强制执行。"
+								}
+							}
+						},
+						"nsfw": {
+							"displayName": "NSFW（不适宜工作场所内容）"
+						}
+					}
+				},
+				"pii": {
+					"displayName": "个人数据（PII）",
+					"description": "检测使用个人数据内容的尝试",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"all": {
+											"displayName": "全部"
+										},
+										"selected": {
+											"displayName": "已选择"
+										}
+									}
+								},
+								"entities": {
+									"displayName": "实体"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"all": {
+											"displayName": "全部"
+										},
+										"selected": {
+											"displayName": "已选择"
+										}
+									}
+								},
+								"entities": {
+									"displayName": "实体"
+								}
+							}
+						},
+						"pii": {
+							"displayName": "个人数据（PII）"
+						}
+					}
+				},
+				"secretKeys": {
+					"displayName": "密钥检测",
+					"description": "检测输入文本中尝试使用密钥的行为。扫描常见模式，应用熵分析检测类随机字符串。",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"permissiveness": {
+									"displayName": "宽松性",
+									"options": {
+										"strict": {
+											"displayName": "严格",
+											"description": "最敏感，可能有更多误报（通常会标记高熵文件名或代码）"
+										},
+										"balanced": {
+											"displayName": "平衡",
+											"description": "敏感性与特异性之间的平衡"
+										},
+										"permissive": {
+											"displayName": "宽松模式",
+											"description": "敏感度最低，可能遗漏部分密钥（但也会减少误报）"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"permissiveness": {
+									"displayName": "宽松性",
+									"options": {
+										"strict": {
+											"displayName": "严格",
+											"description": "最敏感，可能有更多误报（通常会标记高熵文件名或代码）"
+										},
+										"balanced": {
+											"displayName": "平衡",
+											"description": "敏感性与特异性之间的平衡"
+										},
+										"permissive": {
+											"displayName": "宽松模式",
+											"description": "敏感度最低，可能遗漏部分密钥（但也会减少误报）"
+										}
+									}
+								}
+							}
+						},
+						"secretKeys": {
+							"displayName": "密钥检测"
+						}
+					}
+				},
+				"topicalAlignment": {
+					"displayName": "主题对齐",
+					"description": "检测偏离业务范围的尝试",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"threshold": {
+									"displayName": "阈值",
+									"description": "触发护栏的最小置信度阈值（0.0 到 1.0）"
+								},
+								"prompt": {
+									"displayName": "提示词",
+									"description": "护栏使用的系统提示。阈值和JSON输出由节点自动强制执行。"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"threshold": {
+									"displayName": "阈值",
+									"description": "触发护栏的最小置信度阈值（0.0 到 1.0）"
+								},
+								"prompt": {
+									"displayName": "提示词",
+									"description": "护栏使用的系统提示。阈值和JSON输出由节点自动强制执行。"
+								}
+							}
+						},
+						"topicalAlignment": {
+							"displayName": "主题对齐"
+						}
+					}
+				},
+				"urls": {
+					"displayName": "URL",
+					"description": "阻止不在允许列表中的URL",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"allowedUrls": {
+									"displayName": "阻止除指定URL外的所有访问",
+									"description": "可添加多个URL，用逗号分隔。留空则阻止所有URL。"
+								},
+								"allowedSchemes": {
+									"displayName": "允许的方案"
+								},
+								"blockUserinfo": {
+									"displayName": "清理用户信息",
+									"description": "是否清理包含用户信息的URL（user:pass@domain）以防止凭据注入"
+								},
+								"allowSubdomains": {
+									"displayName": "允许子域名",
+									"description": "是否允许子域名（例如，若允许domain.com，则允许sub.domain.com）"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"allowedUrls": {
+									"displayName": "阻止除指定URL外的所有访问",
+									"description": "可添加多个URL，用逗号分隔。留空则阻止所有URL。"
+								},
+								"allowedSchemes": {
+									"displayName": "允许的方案"
+								},
+								"blockUserinfo": {
+									"displayName": "清理用户信息",
+									"description": "是否清理包含用户信息的URL（user:pass@domain）以防止凭据注入"
+								},
+								"allowSubdomains": {
+									"displayName": "允许子域名",
+									"description": "是否允许子域名（例如，若允许domain.com，则允许sub.domain.com）"
+								}
+							}
+						},
+						"urls": {
+							"displayName": "URL"
+						}
+					}
+				},
+				"custom": {
+					"displayName": "自定义",
+					"placeholder": "添加自定义护栏",
+					"multipleValueButtonText": "添加自定义护栏",
+					"options": {
+						"guardrail": {
+							"displayName": "护栏",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "自定义护栏名称"
+								},
+								"threshold": {
+									"displayName": "阈值",
+									"description": "触发护栏的最小置信度阈值（0.0 到 1.0）"
+								},
+								"prompt": {
+									"displayName": "提示词",
+									"description": "护栏使用的系统提示。阈值和JSON输出由节点自动强制执行。"
+								}
+							}
+						}
+					},
+					"values": {
+						"guardrail": {
+							"displayName": "护栏",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "自定义护栏名称"
+								},
+								"threshold": {
+									"displayName": "阈值",
+									"description": "触发护栏的最小置信度阈值（0.0 到 1.0）"
+								},
+								"prompt": {
+									"displayName": "提示词",
+									"description": "护栏使用的系统提示。阈值和JSON输出由节点自动强制执行。"
+								}
+							}
+						},
+						"custom": {
+							"displayName": "自定义",
+							"placeholder": "添加自定义护栏"
+						}
+					}
+				},
+				"customRegex": {
+					"displayName": "自定义正则表达式",
+					"placeholder": "添加自定义正则表达式",
+					"multipleValueButtonText": "添加自定义正则表达式",
+					"options": {
+						"regex": {
+							"displayName": "正则表达式",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "自定义正则表达式的名称。在清理时将用于替换。"
+								},
+								"value": {
+									"displayName": "正则表达式",
+									"description": "匹配输入文本的正则表达式",
+									"placeholder": "/text/gi"
+								}
+							}
+						}
+					},
+					"values": {
+						"regex": {
+							"displayName": "正则表达式",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "自定义正则表达式的名称。在清理时将用于替换。"
+								},
+								"value": {
+									"displayName": "正则表达式",
+									"description": "匹配输入文本的正则表达式",
+									"placeholder": "/text/gi"
+								}
+							}
+						},
+						"customRegex": {
+							"displayName": "自定义正则表达式",
+							"placeholder": "添加自定义正则表达式"
+						}
+					}
+				}
+			}
+		},
+		"customizeSystemMessage": {
+			"displayName": "自定义系统消息",
+			"description": "是否自定义护栏使用的系统消息以指定输出格式"
+		},
+		"systemMessage": {
+			"displayName": "系统消息",
+			"description": "护栏用于根据模式强制执行阈值和JSON输出的系统消息"
+		}
+	}
+}

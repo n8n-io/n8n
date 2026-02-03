@@ -1,0 +1,32 @@
+{
+	"header": {
+		"displayName": "DHL",
+		"description": "Consume DHL API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource"
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get Tracking Details"
+				}
+			}
+		},
+		"trackingNumber": {
+			"displayName": "Tracking Number"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"recipientPostalCode": {
+					"displayName": "Recipient's Postal Code",
+					"description": "DHL will return more detailed information on the shipment when you provide the Recipient's Postal Code - it acts as a verification step"
+				}
+			}
+		}
+	}
+}

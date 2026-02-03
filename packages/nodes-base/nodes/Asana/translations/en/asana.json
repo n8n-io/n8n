@@ -1,0 +1,491 @@
+{
+	"header": {
+		"displayName": "Asana",
+		"description": "Consume Asana REST API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"project": {
+					"displayName": "Project"
+				},
+				"subtask": {
+					"displayName": "Subtask"
+				},
+				"task": {
+					"displayName": "Task"
+				},
+				"taskComment": {
+					"displayName": "Task Comment"
+				},
+				"taskProject": {
+					"displayName": "Task Project"
+				},
+				"taskTag": {
+					"displayName": "Task Tag"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new project"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many projects"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a project"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a project"
+				},
+				"move": {
+					"displayName": "Move",
+					"description": "Move a task"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search for tasks"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a project"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add a tag to a task"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a tag from a task"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "Parent Task ID",
+			"description": "The task to operate on"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the project to create"
+		},
+		"otherProperties": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assignee": {
+					"displayName": "Assignee Name or ID",
+					"description": "Set Assignee on the task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"assignee_status": {
+					"displayName": "Assignee Status",
+					"description": "Set Assignee status on the task (requires Assignee)",
+					"options": {
+						"inbox": {
+							"displayName": "Inbox"
+						},
+						"today": {
+							"displayName": "Today"
+						},
+						"upcoming": {
+							"displayName": "Upcoming"
+						},
+						"later": {
+							"displayName": "Later"
+						}
+					}
+				},
+				"completed": {
+					"displayName": "Completed",
+					"description": "Whether the task should be marked completed"
+				},
+				"due_on": {
+					"displayName": "Due On",
+					"description": "Date on which the time is due"
+				},
+				"liked": {
+					"displayName": "Liked",
+					"description": "Whether the task is liked by the authorized user"
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "The task notes"
+				},
+				"workspace": {
+					"displayName": "Workspace Name or ID",
+					"description": "The workspace to create the subtask in. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The new name of the task"
+				},
+				"projects": {
+					"displayName": "Project Names or IDs",
+					"description": "The project to filter tasks on. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"opt_fields": {
+					"displayName": "Field Names or IDs",
+					"description": "Defines fields to return. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"opt_pretty": {
+					"displayName": "Pretty",
+					"description": "Whether to provide “pretty” output"
+				}
+			}
+		},
+		"workspace": {
+			"displayName": "Workspace Name or ID",
+			"description": "The workspace in which to get users. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		},
+		"id": {
+			"displayName": "Project ID",
+			"description": "The ID of the project to update the data of"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"description": "Properties to search for",
+			"placeholder": "Add Filter",
+			"options": {
+				"assignee": {
+					"displayName": "Assignee Name or ID",
+					"description": "The assignee to filter tasks on. Note: If you specify assignee, you must also specify the workspace to filter on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"opt_fields": {
+					"displayName": "Field Names or IDs",
+					"description": "Defines fields to return. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"opt_pretty": {
+					"displayName": "Pretty",
+					"description": "Whether to provide “pretty” output"
+				},
+				"project": {
+					"displayName": "Project Name or ID",
+					"description": "The project to filter tasks on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"section": {
+					"displayName": "Section Name or ID",
+					"description": "The section to filter tasks on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"workspace": {
+					"displayName": "Workspace Name or ID",
+					"description": "The workspace to filter tasks on. Note: If you specify workspace, you must also specify the assignee to filter on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"completed_since": {
+					"displayName": "Completed Since",
+					"description": "Only return tasks that are either incomplete or that have been completed since this time"
+				},
+				"modified_since": {
+					"displayName": "Modified Since",
+					"description": "Only return tasks that have been modified since the given time"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "Project Name or ID",
+			"description": "Project to show the sections of. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		},
+		"section": {
+			"displayName": "Section Name or ID",
+			"description": "The Section to move the task to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		},
+		"searchTaskProperties": {
+			"displayName": "Filters",
+			"description": "Properties to search for",
+			"placeholder": "Add Filter",
+			"options": {
+				"completed": {
+					"displayName": "Completed",
+					"description": "Whether the task is marked completed"
+				},
+				"text": {
+					"displayName": "Text",
+					"description": "Text to search for in name or notes"
+				}
+			}
+		},
+		"isTextHtml": {
+			"displayName": "Is Text HTML",
+			"description": "Whether body is HTML or simple text"
+		},
+		"text": {
+			"displayName": "HTML Text",
+			"description": "Comment as HTML string. Do not use together with plain text."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"description": "Other properties to set",
+			"placeholder": "Add Property",
+			"options": {
+				"is_pinned": {
+					"displayName": "Pinned",
+					"description": "Whether to pin the comment"
+				},
+				"insert_after": {
+					"displayName": "Insert After",
+					"description": "A task in the project to insert the task after, or null to insert at the beginning of the list"
+				},
+				"insert_before": {
+					"displayName": "Insert Before",
+					"description": "A task in the project to insert the task before, or null to insert at the end of the list"
+				},
+				"section": {
+					"displayName": "Section",
+					"description": "A section in the project to insert the task into. The task will be inserted at the bottom of the section."
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "Color of the project",
+					"options": {
+						"dark-blue": {
+							"displayName": "dark-blue"
+						},
+						"dark-brown": {
+							"displayName": "dark-brown"
+						},
+						"dark-green": {
+							"displayName": "dark-green"
+						},
+						"dark-orange": {
+							"displayName": "dark-orange"
+						},
+						"dark-pink": {
+							"displayName": "dark-pink"
+						},
+						"dark-purple": {
+							"displayName": "dark-purple"
+						},
+						"dark-red": {
+							"displayName": "dark-red"
+						},
+						"dark-teal": {
+							"displayName": "dark-teal"
+						},
+						"dark-warm-gray": {
+							"displayName": "dark-warm-gray"
+						},
+						"light-blue": {
+							"displayName": "light-blue"
+						},
+						"light-green": {
+							"displayName": "light-green"
+						},
+						"light-orange": {
+							"displayName": "light-orange"
+						},
+						"light-pink": {
+							"displayName": "light-pink"
+						},
+						"light-purple": {
+							"displayName": "light-purple"
+						},
+						"light-red": {
+							"displayName": "light-red"
+						},
+						"light-teal": {
+							"displayName": "light-teal"
+						},
+						"light-warm-gray": {
+							"displayName": "light-warm-gray"
+						},
+						"light-yellow": {
+							"displayName": "light-yellow"
+						},
+						"none": {
+							"displayName": "none"
+						}
+					}
+				},
+				"due_on": {
+					"displayName": "Due On",
+					"description": "The day on which this project is due. This takes a date with format YYYY-MM-DD."
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "Basic description or notes for the project"
+				},
+				"privacy_setting": {
+					"displayName": "Privacy Setting",
+					"description": "The privacy setting of the project",
+					"options": {
+						"private": {
+							"displayName": "Private"
+						},
+						"private_to_team": {
+							"displayName": "Private to Team"
+						},
+						"public_to_workspace": {
+							"displayName": "Public to Workspace"
+						}
+					}
+				},
+				"archived": {
+					"displayName": "Archived",
+					"description": "Whether to only return projects whose archived field takes on the value of this parameter"
+				},
+				"team": {
+					"displayName": "Teams Name or ID",
+					"description": "The new name of the task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"project": {
+			"displayName": "Project Name or ID",
+			"description": "The project where the task will be removed from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"tag": {
+			"displayName": "Tags Name or ID",
+			"description": "The tag that should be added. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "An identifier for the user to get data of. Can be one of an email address,the globally unique identifier for the user, or the keyword me to indicate the current user making the request."
+		},
+		"team": {
+			"displayName": "Team Name or ID",
+			"description": "The team this project will be assigned to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"description": "Other properties to set",
+			"placeholder": "Add Property",
+			"options": {
+				"color": {
+					"displayName": "Color",
+					"description": "Color of the project",
+					"options": {
+						"dark-blue": {
+							"displayName": "dark-blue"
+						},
+						"dark-brown": {
+							"displayName": "dark-brown"
+						},
+						"dark-green": {
+							"displayName": "dark-green"
+						},
+						"dark-orange": {
+							"displayName": "dark-orange"
+						},
+						"dark-pink": {
+							"displayName": "dark-pink"
+						},
+						"dark-purple": {
+							"displayName": "dark-purple"
+						},
+						"dark-red": {
+							"displayName": "dark-red"
+						},
+						"dark-teal": {
+							"displayName": "dark-teal"
+						},
+						"dark-warm-gray": {
+							"displayName": "dark-warm-gray"
+						},
+						"light-blue": {
+							"displayName": "light-blue"
+						},
+						"light-green": {
+							"displayName": "light-green"
+						},
+						"light-orange": {
+							"displayName": "light-orange"
+						},
+						"light-pink": {
+							"displayName": "light-pink"
+						},
+						"light-purple": {
+							"displayName": "light-purple"
+						},
+						"light-red": {
+							"displayName": "light-red"
+						},
+						"light-teal": {
+							"displayName": "light-teal"
+						},
+						"light-warm-gray": {
+							"displayName": "light-warm-gray"
+						},
+						"light-yellow": {
+							"displayName": "light-yellow"
+						},
+						"none": {
+							"displayName": "none"
+						}
+					}
+				},
+				"due_on": {
+					"displayName": "Due On",
+					"description": "The day on which this project is due. This takes a date with format YYYY-MM-DD."
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the project"
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "Basic description or notes for the project"
+				},
+				"owner": {
+					"displayName": "Owner",
+					"description": "The new assignee/cardinal for this project"
+				},
+				"privacy_setting": {
+					"displayName": "Privacy Setting",
+					"description": "The privacy setting of the project",
+					"options": {
+						"private": {
+							"displayName": "Private"
+						},
+						"private_to_team": {
+							"displayName": "Private to Team"
+						},
+						"public_to_workspace": {
+							"displayName": "Public to Workspace"
+						}
+					}
+				},
+				"team": {
+					"displayName": "Team Name or ID",
+					"description": "The team this project will be assigned to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,22 @@
+{
+	"header": {
+		"displayName": "Character Text Splitter",
+		"description": "Split text into chunks by characters"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a document loader. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_document'>Insert one</a>"
+		},
+		"separator": {
+			"displayName": "Separator"
+		},
+		"chunkSize": {
+			"displayName": "Chunk Size",
+			"description": "Maximum number of characters per chunk"
+		},
+		"chunkOverlap": {
+			"displayName": "Chunk Overlap",
+			"description": "Number of characters shared between consecutive chunks to preserve context"
+		}
+	}
+}

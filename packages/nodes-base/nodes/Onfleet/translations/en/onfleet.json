@@ -1,0 +1,1234 @@
+{
+	"header": {
+		"displayName": "Onfleet",
+		"description": "Consume Onfleet API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"description": "The resource to perform operations on",
+			"options": {
+				"admin": {
+					"displayName": "Admin"
+				},
+				"container": {
+					"displayName": "Container"
+				},
+				"destination": {
+					"displayName": "Destination"
+				},
+				"hub": {
+					"displayName": "Hub"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"recipient": {
+					"displayName": "Recipient"
+				},
+				"task": {
+					"displayName": "Task"
+				},
+				"team": {
+					"displayName": "Team"
+				},
+				"worker": {
+					"displayName": "Worker"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new Onfleet worker"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an Onfleet worker"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many Onfleet workers"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update an Onfleet worker"
+				},
+				"addTask": {
+					"displayName": "Add Tasks",
+					"description": "Add task at index (or append)"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a specific Onfleet worker"
+				},
+				"updateTask": {
+					"displayName": "Update Tasks",
+					"description": "Fully replace a container's tasks"
+				},
+				"getDelegatee": {
+					"displayName": "Get Delegatee Details",
+					"description": "Retrieve the details of an organization with which you are connected"
+				},
+				"clone": {
+					"displayName": "Clone",
+					"description": "Clone an Onfleet task"
+				},
+				"complete": {
+					"displayName": "Complete",
+					"description": "Force-complete a started Onfleet task"
+				},
+				"autoDispatch": {
+					"displayName": "Auto-Dispatch",
+					"description": "Automatically dispatch tasks assigned to a team to on-duty drivers"
+				},
+				"getTimeEstimates": {
+					"displayName": "Get Time Estimates",
+					"description": "Get estimated times for upcoming tasks for a team, returns a selected driver"
+				},
+				"getSchedule": {
+					"displayName": "Get Schedule",
+					"description": "Get a specific Onfleet worker schedule"
+				}
+			}
+		},
+		"id": {
+			"displayName": "Worker ID",
+			"description": "The ID of the worker object for lookup"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The worker's name"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The administrator's email address",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"phone": {
+					"displayName": "Phone",
+					"description": "The administrator's phone number"
+				},
+				"isReadOnly": {
+					"displayName": "Read Only",
+					"description": "Whether this administrator can perform write operations"
+				},
+				"addressApartment": {
+					"displayName": "Apartment",
+					"description": "The suite or apartment number, or any additional relevant information"
+				},
+				"addressName": {
+					"displayName": "Address Name",
+					"description": "A name associated with this address"
+				},
+				"addressNotes": {
+					"displayName": "Address Notes",
+					"description": "Notes about the destination"
+				},
+				"addressPostalCode": {
+					"displayName": "Postal Code",
+					"description": "The postal or zip code"
+				},
+				"teams": {
+					"displayName": "Team Names or IDs",
+					"description": "These are the teams that this Hub will be assigned to. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"recipientNotes": {
+					"displayName": "Recipient Notes Override",
+					"description": "Override the recipient notes for this task only"
+				},
+				"recipientSkipSMSNotifications": {
+					"displayName": "Recipient Skip SMS Notifications Override",
+					"description": "Whether to override the recipient notification settings for this task"
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "Notes for the task"
+				},
+				"completeAfter": {
+					"displayName": "Complete After",
+					"description": "The earliest time the task should be completed"
+				},
+				"completeBefore": {
+					"displayName": "Complete Before",
+					"description": "The latest time the task should be completed"
+				},
+				"executor": {
+					"displayName": "Executor ID",
+					"description": "The ID of the organization that will be responsible for fulfilling the task"
+				},
+				"merchant": {
+					"displayName": "Merchant ID",
+					"description": "The ID of the organization that will be displayed to the recipient of the task"
+				},
+				"pickupTask": {
+					"displayName": "Pick Up Task",
+					"description": "Whether the task is a pickup task"
+				},
+				"quantity": {
+					"displayName": "Quantity",
+					"description": "The number of units to be dropped off while completing this task, for route optimization purposes"
+				},
+				"recipient": {
+					"displayName": "Recipient",
+					"placeholder": "Add Recipient",
+					"options": {
+						"recipientProperties": {
+							"displayName": "Recipient Properties",
+							"options": {
+								"recipientName": {
+									"displayName": "Recipient Name",
+									"description": "The recipient's complete name"
+								},
+								"recipientPhone": {
+									"displayName": "Recipient Phone",
+									"description": "A unique, valid phone number as per the organization's country if there's no leading + sign. If a phone number has a leading + sign, it will disregard the organization's country setting."
+								},
+								"recipientNotes": {
+									"displayName": "Recipient Notes",
+									"description": "Notes for this recipient: these are global notes that should not be task- or destination-specific"
+								},
+								"recipientSkipSMSNotifications": {
+									"displayName": "Skip Recipient SMS Notifications",
+									"description": "Whether this recipient has requested to skip SMS notifications"
+								}
+							}
+						}
+					},
+					"values": {
+						"recipientProperties": {
+							"displayName": "Recipient Properties",
+							"options": {
+								"recipientName": {
+									"displayName": "Recipient Name",
+									"description": "The recipient's complete name"
+								},
+								"recipientPhone": {
+									"displayName": "Recipient Phone",
+									"description": "A unique, valid phone number as per the organization's country if there's no leading + sign. If a phone number has a leading + sign, it will disregard the organization's country setting."
+								},
+								"recipientNotes": {
+									"displayName": "Recipient Notes",
+									"description": "Notes for this recipient: these are global notes that should not be task- or destination-specific"
+								},
+								"recipientSkipSMSNotifications": {
+									"displayName": "Skip Recipient SMS Notifications",
+									"description": "Whether this recipient has requested to skip SMS notifications"
+								}
+							}
+						},
+						"recipient": {
+							"displayName": "Recipient",
+							"placeholder": "Add Recipient"
+						}
+					}
+				},
+				"recipientName": {
+					"displayName": "Recipient Name Override",
+					"description": "Override the recipient name for this task only"
+				},
+				"serviceTime": {
+					"displayName": "Service Time",
+					"description": "The default service time to apply in Minutes to the tasks when no task service time exists"
+				},
+				"useMerchantForProxy": {
+					"displayName": "Use Merchant For Proxy Override",
+					"description": "Whether to override the organization ID with the merchant's org ID for this task"
+				},
+				"hub": {
+					"displayName": "Hub Name or ID",
+					"description": "The team's hub. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"enableSelfAssignment": {
+					"displayName": "Self Assignment",
+					"description": "Whether or not to allow drivers to self-assign tasks that are in the Team's unassigned container"
+				},
+				"endingRoute": {
+					"displayName": "Ending Route",
+					"placeholder": "Add Route",
+					"options": {
+						"endingRouteProperties": {
+							"displayName": "Ending Route Properties",
+							"options": {
+								"routeEnd": {
+									"displayName": "Route End",
+									"description": "Where the route will end",
+									"options": {
+										"team_hub": {
+											"displayName": "Team’s Hub"
+										},
+										"worker_routing_address": {
+											"displayName": "Worker Routing Address"
+										},
+										"hub": {
+											"displayName": "Hub"
+										},
+										"anywhere": {
+											"displayName": "End Anywhere"
+										}
+									}
+								},
+								"hub": {
+									"displayName": "Hub Name or ID",
+									"description": "The team's hub. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								}
+							}
+						}
+					},
+					"values": {
+						"endingRouteProperties": {
+							"displayName": "Ending Route Properties",
+							"options": {
+								"routeEnd": {
+									"displayName": "Route End",
+									"description": "Where the route will end",
+									"options": {
+										"team_hub": {
+											"displayName": "Team’s Hub"
+										},
+										"worker_routing_address": {
+											"displayName": "Worker Routing Address"
+										},
+										"hub": {
+											"displayName": "Hub"
+										},
+										"anywhere": {
+											"displayName": "End Anywhere"
+										}
+									}
+								},
+								"hub": {
+									"displayName": "Hub Name or ID",
+									"description": "The team's hub. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								}
+							}
+						},
+						"endingRoute": {
+							"displayName": "Ending Route",
+							"placeholder": "Add Route"
+						}
+					}
+				},
+				"maxAllowedDelay": {
+					"displayName": "Max Allowed Delay",
+					"description": "Max allowed time in minutes that a task can be late"
+				},
+				"maxTasksPerRoute": {
+					"displayName": "Max Number Of Tasks Per Route",
+					"description": "Total number of tasks allowed on a route"
+				},
+				"scheduleTimeWindow": {
+					"displayName": "Schedule Time Window",
+					"placeholder": "Add Time Window",
+					"options": {
+						"scheduleTimeWindowProperties": {
+							"displayName": "Schedule Time Window Properties",
+							"options": {
+								"startTime": {
+									"displayName": "Start Time"
+								},
+								"endTime": {
+									"displayName": "End Time"
+								}
+							}
+						}
+					},
+					"values": {
+						"scheduleTimeWindowProperties": {
+							"displayName": "Schedule Time Window Properties",
+							"options": {
+								"startTime": {
+									"displayName": "Start Time"
+								},
+								"endTime": {
+									"displayName": "End Time"
+								}
+							}
+						},
+						"scheduleTimeWindow": {
+							"displayName": "Schedule Time Window",
+							"placeholder": "Add Time Window"
+						}
+					}
+				},
+				"taskTimeWindow": {
+					"displayName": "Task Time Window",
+					"placeholder": "Add Time Window",
+					"options": {
+						"taskTimeWindowProperties": {
+							"displayName": "Task Time Window Properties",
+							"options": {
+								"startTime": {
+									"displayName": "Start Time"
+								},
+								"endTime": {
+									"displayName": "End Time"
+								}
+							}
+						}
+					},
+					"values": {
+						"taskTimeWindowProperties": {
+							"displayName": "Task Time Window Properties",
+							"options": {
+								"startTime": {
+									"displayName": "Start Time"
+								},
+								"endTime": {
+									"displayName": "End Time"
+								}
+							}
+						},
+						"taskTimeWindow": {
+							"displayName": "Task Time Window",
+							"placeholder": "Add Time Window"
+						}
+					}
+				},
+				"capacity": {
+					"displayName": "Capacity",
+					"description": "The maximum number of units this worker can carry, for route optimization purposes"
+				},
+				"displayName": {
+					"displayName": "Display Name",
+					"description": "This value is used in place of the worker's actual name within sms notifications, delivery tracking pages, and across organization boundaries"
+				},
+				"vehicle": {
+					"displayName": "Vehicle",
+					"placeholder": "Add Vehicle",
+					"options": {
+						"vehicleProperties": {
+							"displayName": "Vehicle Properties",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"description": "Whether the worker has vehicle or not. If it's not provided, this worker will be treated as if on foot.",
+									"options": {
+										"BICYCLE": {
+											"displayName": "Bicycle"
+										},
+										"CAR": {
+											"displayName": "Car"
+										},
+										"MOTORCYCLE": {
+											"displayName": "Motorcycle"
+										},
+										"TRUCK": {
+											"displayName": "Truck"
+										}
+									}
+								},
+								"description": {
+									"displayName": "Description",
+									"description": "The vehicle's make, model, year, or any other relevant identifying details"
+								},
+								"licensePlate": {
+									"displayName": "License Plate",
+									"description": "The vehicle's license plate number"
+								},
+								"color": {
+									"displayName": "Color",
+									"description": "The vehicle's color"
+								}
+							}
+						}
+					},
+					"values": {
+						"vehicleProperties": {
+							"displayName": "Vehicle Properties",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"description": "Whether the worker has vehicle or not. If it's not provided, this worker will be treated as if on foot.",
+									"options": {
+										"BICYCLE": {
+											"displayName": "Bicycle"
+										},
+										"CAR": {
+											"displayName": "Car"
+										},
+										"MOTORCYCLE": {
+											"displayName": "Motorcycle"
+										},
+										"TRUCK": {
+											"displayName": "Truck"
+										}
+									}
+								},
+								"description": {
+									"displayName": "Description",
+									"description": "The vehicle's make, model, year, or any other relevant identifying details"
+								},
+								"licensePlate": {
+									"displayName": "License Plate",
+									"description": "The vehicle's license plate number"
+								},
+								"color": {
+									"displayName": "Color",
+									"description": "The vehicle's color"
+								}
+							}
+						},
+						"vehicle": {
+							"displayName": "Vehicle",
+							"placeholder": "Add Vehicle"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "The worker's name"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "The administrator's phone number"
+				},
+				"isReadOnly": {
+					"displayName": "Read Only",
+					"description": "Whether this administrator can perform write operations"
+				},
+				"destination": {
+					"displayName": "Destination",
+					"placeholder": "Add Destination",
+					"options": {
+						"destinationProperties": {
+							"displayName": "Destination Properties",
+							"options": {
+								"unparsed": {
+									"displayName": "Unparsed Address",
+									"description": "Whether or not the address is specified in a single unparsed string"
+								},
+								"address": {
+									"displayName": "Destination Address",
+									"description": "The destination's street address details"
+								},
+								"addressNumber": {
+									"displayName": "Number",
+									"description": "The number component of this address, it may also contain letters"
+								},
+								"addressStreet": {
+									"displayName": "Street",
+									"description": "The name of the street"
+								},
+								"addressCity": {
+									"displayName": "City",
+									"description": "The name of the municipality"
+								},
+								"addressState": {
+									"displayName": "State"
+								},
+								"addressCountry": {
+									"displayName": "Country",
+									"description": "The name of the country"
+								},
+								"addressPostalCode": {
+									"displayName": "Postal Code",
+									"description": "The postal or zip code"
+								},
+								"addressName": {
+									"displayName": "Address Name",
+									"description": "A name associated with this address"
+								},
+								"addressApartment": {
+									"displayName": "Apartment",
+									"description": "The suite or apartment number, or any additional relevant information"
+								},
+								"addressNotes": {
+									"displayName": "Address Notes",
+									"description": "Notes about the destination"
+								}
+							}
+						}
+					},
+					"values": {
+						"destinationProperties": {
+							"displayName": "Destination Properties",
+							"options": {
+								"unparsed": {
+									"displayName": "Unparsed Address",
+									"description": "Whether or not the address is specified in a single unparsed string"
+								},
+								"address": {
+									"displayName": "Destination Address",
+									"description": "The destination's street address details"
+								},
+								"addressNumber": {
+									"displayName": "Number",
+									"description": "The number component of this address, it may also contain letters"
+								},
+								"addressStreet": {
+									"displayName": "Street",
+									"description": "The name of the street"
+								},
+								"addressCity": {
+									"displayName": "City",
+									"description": "The name of the municipality"
+								},
+								"addressState": {
+									"displayName": "State"
+								},
+								"addressCountry": {
+									"displayName": "Country",
+									"description": "The name of the country"
+								},
+								"addressPostalCode": {
+									"displayName": "Postal Code",
+									"description": "The postal or zip code"
+								},
+								"addressName": {
+									"displayName": "Address Name",
+									"description": "A name associated with this address"
+								},
+								"addressApartment": {
+									"displayName": "Apartment",
+									"description": "The suite or apartment number, or any additional relevant information"
+								},
+								"addressNotes": {
+									"displayName": "Address Notes",
+									"description": "Notes about the destination"
+								}
+							}
+						},
+						"destination": {
+							"displayName": "Destination",
+							"placeholder": "Add Destination"
+						}
+					}
+				},
+				"teams": {
+					"displayName": "Team Names or IDs",
+					"description": "One or more teams of which the worker is a member. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"recipientName": {
+					"displayName": "Recipient Name",
+					"description": "The recipient's complete name"
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "Notes for the task"
+				},
+				"recipientPhone": {
+					"displayName": "Recipient Phone",
+					"description": "A unique, valid phone number as per the organization's country if there's no leading + sign. If a phone number has a leading + sign, it will disregard the organization's country setting."
+				},
+				"skipSMSNotifications": {
+					"displayName": "Skip Recipient SMS Notifications",
+					"description": "Whether this recipient has requested to skip SMS notifications"
+				},
+				"completeAfter": {
+					"displayName": "Complete After",
+					"description": "The earliest time the task should be completed"
+				},
+				"completeBefore": {
+					"displayName": "Complete Before",
+					"description": "The latest time the task should be completed"
+				},
+				"executor": {
+					"displayName": "Executor ID",
+					"description": "The ID of the organization that will be responsible for fulfilling the task"
+				},
+				"merchant": {
+					"displayName": "Merchant ID",
+					"description": "The ID of the organization that will be displayed to the recipient of the task"
+				},
+				"pickupTask": {
+					"displayName": "Pick Up Task",
+					"description": "Whether the task is a pickup task"
+				},
+				"quantity": {
+					"displayName": "Quantity",
+					"description": "The number of units to be dropped off while completing this task, for route optimization purposes"
+				},
+				"serviceTime": {
+					"displayName": "Service Time",
+					"description": "The number of minutes to be spent by the worker on arrival at this task's destination, for route optimization purposes"
+				},
+				"managers": {
+					"displayName": "Administrator Names or IDs",
+					"description": "A list of managing administrators. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"hub": {
+					"displayName": "Hub Name or ID",
+					"description": "The team's hub. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"enableSelfAssignment": {
+					"displayName": "Self Assignment",
+					"description": "Whether or not to allow drivers to self-assign tasks that are in the Team's unassigned container"
+				},
+				"workers": {
+					"displayName": "Worker Names or IDs",
+					"description": "A list of workers. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"capacity": {
+					"displayName": "Capacity",
+					"description": "The maximum number of units this worker can carry, for route optimization purposes"
+				},
+				"displayName": {
+					"displayName": "Display Name",
+					"description": "This value is used in place of the worker's actual name within sms notifications, delivery tracking pages, and across organization boundaries"
+				}
+			}
+		},
+		"containerType": {
+			"displayName": "Container Type",
+			"options": {
+				"organizations": {
+					"displayName": "Organizations"
+				},
+				"teams": {
+					"displayName": "Teams"
+				},
+				"workers": {
+					"displayName": "Workers"
+				}
+			}
+		},
+		"containerId": {
+			"displayName": "Container ID",
+			"description": "The object ID according to the container chosen"
+		},
+		"type": {
+			"displayName": "Insert Type",
+			"options": {
+				"0": {
+					"displayName": "Prepend"
+				},
+				"1": {
+					"displayName": "At Specific Index"
+				},
+				"-1": {
+					"displayName": "Append"
+				}
+			}
+		},
+		"index": {
+			"displayName": "Index",
+			"description": "The index given indicates the position where the tasks are going to be inserted"
+		},
+		"tasks": {
+			"displayName": "Task IDs",
+			"description": "Task's ID that are going to be used"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"considerDependencies": {
+					"displayName": "Consider Dependencies",
+					"description": "Whether to include the target task's dependency family (parent and child tasks) in the resulting assignment operation"
+				},
+				"recipientSkipPhoneNumberValidation": {
+					"displayName": "Skip Recipient Phone Number Validation",
+					"description": "Whether to skip validation for this recipient's phone number"
+				},
+				"filter": {
+					"displayName": "Fields to Return",
+					"description": "A list of fields to show in the response, if all are not desired"
+				},
+				"analytics": {
+					"displayName": "Analytics",
+					"description": "Whether a more detailed response is needed, includes basic worker duty event, traveled distance (meters) and time analytics"
+				}
+			}
+		},
+		"unparsed": {
+			"displayName": "Unparsed Address",
+			"description": "Whether or not the address is specified in a single unparsed string"
+		},
+		"address": {
+			"displayName": "Destination Address",
+			"description": "The destination's street address details"
+		},
+		"addressNumber": {
+			"displayName": "Number",
+			"description": "The number component of this address, it may also contain letters"
+		},
+		"addressStreet": {
+			"displayName": "Street",
+			"description": "The name of the street"
+		},
+		"addressCity": {
+			"displayName": "City",
+			"description": "The name of the municipality"
+		},
+		"addressCountry": {
+			"displayName": "Country",
+			"description": "The name of the country"
+		},
+		"destination": {
+			"displayName": "Destination",
+			"placeholder": "Add Destination",
+			"options": {
+				"destinationProperties": {
+					"displayName": "Destination Properties",
+					"options": {
+						"unparsed": {
+							"displayName": "Unparsed Address",
+							"description": "Whether or not the address is specified in a single unparsed string"
+						},
+						"address": {
+							"displayName": "Destination Address",
+							"description": "The destination's street address details"
+						},
+						"addressNumber": {
+							"displayName": "Number",
+							"description": "The number component of this address, it may also contain letters"
+						},
+						"addressStreet": {
+							"displayName": "Street",
+							"description": "The name of the street"
+						},
+						"addressCity": {
+							"displayName": "City",
+							"description": "The name of the municipality"
+						},
+						"addressState": {
+							"displayName": "State"
+						},
+						"addressCountry": {
+							"displayName": "Country",
+							"description": "The name of the country"
+						},
+						"addressPostalCode": {
+							"displayName": "Postal Code",
+							"description": "The postal or zip code"
+						},
+						"addressName": {
+							"displayName": "Address Name",
+							"description": "A name associated with this address"
+						},
+						"addressApartment": {
+							"displayName": "Apartment",
+							"description": "The suite or apartment number, or any additional relevant information"
+						},
+						"addressNotes": {
+							"displayName": "Address Notes",
+							"description": "Notes about the destination"
+						}
+					}
+				}
+			},
+			"values": {
+				"destinationProperties": {
+					"displayName": "Destination Properties",
+					"options": {
+						"unparsed": {
+							"displayName": "Unparsed Address",
+							"description": "Whether or not the address is specified in a single unparsed string"
+						},
+						"address": {
+							"displayName": "Destination Address",
+							"description": "The destination's street address details"
+						},
+						"addressNumber": {
+							"displayName": "Number",
+							"description": "The number component of this address, it may also contain letters"
+						},
+						"addressStreet": {
+							"displayName": "Street",
+							"description": "The name of the street"
+						},
+						"addressCity": {
+							"displayName": "City",
+							"description": "The name of the municipality"
+						},
+						"addressState": {
+							"displayName": "State"
+						},
+						"addressCountry": {
+							"displayName": "Country",
+							"description": "The name of the country"
+						},
+						"addressPostalCode": {
+							"displayName": "Postal Code",
+							"description": "The postal or zip code"
+						},
+						"addressName": {
+							"displayName": "Address Name",
+							"description": "A name associated with this address"
+						},
+						"addressApartment": {
+							"displayName": "Apartment",
+							"description": "The suite or apartment number, or any additional relevant information"
+						},
+						"addressNotes": {
+							"displayName": "Address Notes",
+							"description": "Notes about the destination"
+						}
+					}
+				},
+				"destination": {
+					"displayName": "Destination",
+					"placeholder": "Add Destination"
+				}
+			}
+		},
+		"getBy": {
+			"displayName": "Get By",
+			"description": "The variable that is used for looking up a recipient",
+			"options": {
+				"id": {
+					"displayName": "ID"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"name": {
+					"displayName": "Name"
+				}
+			}
+		},
+		"phone": {
+			"displayName": "Phone",
+			"description": "A list of worker’s phone numbers"
+		},
+		"recipientName": {
+			"displayName": "Recipient Name",
+			"description": "The recipient's complete name"
+		},
+		"recipientPhone": {
+			"displayName": "Recipient Phone",
+			"description": "A unique, valid phone number as per the organization's country if there's no leading + sign. If a phone number has a leading + sign, it will disregard the organization's country setting."
+		},
+		"success": {
+			"displayName": "Complete as a Success",
+			"description": "Whether the task's completion was successful"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"from": {
+					"displayName": "From",
+					"description": "The starting time of the range. Tasks created or completed at or after this time will be included."
+				},
+				"state": {
+					"displayName": "State",
+					"description": "The state of the tasks"
+				},
+				"to": {
+					"displayName": "To",
+					"description": "The ending time of the range. Defaults to current time if not specified."
+				},
+				"dropOff": {
+					"displayName": "Drop Off",
+					"placeholder": "Add Drop Off",
+					"options": {
+						"dropOffProperties": {
+							"displayName": "DropOff Properties",
+							"options": {
+								"dropOffLongitude": {
+									"displayName": "Drop Off Longitude",
+									"description": "The longitude for drop off location"
+								},
+								"dropOffLatitude": {
+									"displayName": "Drop Off Latitude",
+									"description": "The latitude for drop off location"
+								}
+							}
+						}
+					},
+					"values": {
+						"dropOffProperties": {
+							"displayName": "DropOff Properties",
+							"options": {
+								"dropOffLongitude": {
+									"displayName": "Drop Off Longitude",
+									"description": "The longitude for drop off location"
+								},
+								"dropOffLatitude": {
+									"displayName": "Drop Off Latitude",
+									"description": "The latitude for drop off location"
+								}
+							}
+						},
+						"dropOff": {
+							"displayName": "Drop Off",
+							"placeholder": "Add Drop Off"
+						}
+					}
+				},
+				"pickUp": {
+					"displayName": "Pick Up",
+					"placeholder": "Add Pick Up",
+					"options": {
+						"pickUpProperties": {
+							"displayName": "Pick Up Properties",
+							"options": {
+								"pickupLongitude": {
+									"displayName": "Pick Up Longitude",
+									"description": "The longitude for pickup location"
+								},
+								"pickupLatitude": {
+									"displayName": "Pick Up Latitude",
+									"description": "The latitude for pickup location"
+								},
+								"pickupTime": {
+									"displayName": "Pick Up Time",
+									"description": "If the request includes pickupLocation, pickupTime must be present if the time is fewer than 3 hours in the future"
+								}
+							}
+						}
+					},
+					"values": {
+						"pickUpProperties": {
+							"displayName": "Pick Up Properties",
+							"options": {
+								"pickupLongitude": {
+									"displayName": "Pick Up Longitude",
+									"description": "The longitude for pickup location"
+								},
+								"pickupLatitude": {
+									"displayName": "Pick Up Latitude",
+									"description": "The latitude for pickup location"
+								},
+								"pickupTime": {
+									"displayName": "Pick Up Time",
+									"description": "If the request includes pickupLocation, pickupTime must be present if the time is fewer than 3 hours in the future"
+								}
+							}
+						},
+						"pickUp": {
+							"displayName": "Pick Up",
+							"placeholder": "Add Pick Up"
+						}
+					}
+				},
+				"restrictedVehicleTypes": {
+					"displayName": "Restricted Vehicle Types",
+					"description": "Vehicle types to ignore in the query",
+					"options": {
+						"CAR": {
+							"displayName": "Car"
+						},
+						"MOTORCYCLE": {
+							"displayName": "Motorcycle"
+						},
+						"BICYCLE": {
+							"displayName": "Bicycle"
+						},
+						"TRUCK": {
+							"displayName": "Truck"
+						}
+					}
+				},
+				"serviceTime": {
+					"displayName": "Service Time",
+					"description": "The expected time a worker will take at the pickupLocation, dropoffLocation, or both (as applicable) Unit: seconds"
+				},
+				"radius": {
+					"displayName": "Radius",
+					"description": "The length in meters of the radius of the spherical area in which to look for workers. Defaults to 1000 if missing. Maximum value is 10000."
+				},
+				"states": {
+					"displayName": "States",
+					"description": "List of worker states"
+				},
+				"teams": {
+					"displayName": "Team Names or IDs",
+					"description": "A list of the teams that workers must be part of. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"phones": {
+					"displayName": "Phones",
+					"description": "A list of workers' phone numbers"
+				}
+			}
+		},
+		"overrideFields": {
+			"displayName": "Override Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"completeAfter": {
+					"displayName": "Complete After",
+					"description": "The earliest time the task should be completed"
+				},
+				"completeBefore": {
+					"displayName": "Complete Before",
+					"description": "The latest time the task should be completed"
+				},
+				"includeBarcodes": {
+					"displayName": "Include Barcodes"
+				},
+				"includeDependencies": {
+					"displayName": "Include Dependencies"
+				},
+				"includeMetadata": {
+					"displayName": "Include Metadata"
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "Notes for the task"
+				},
+				"pickupTask": {
+					"displayName": "Pick Up Task",
+					"description": "Whether the task is a pickup task"
+				},
+				"serviceTime": {
+					"displayName": "Service Time",
+					"description": "The number of minutes to be spent by the worker on arrival at this task's destination, for route optimization purposes"
+				}
+			}
+		},
+		"workers": {
+			"displayName": "Worker Names or IDs",
+			"description": "A list of workers. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"managers": {
+			"displayName": "Administrator Names or IDs",
+			"description": "A list of managing administrators. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"byLocation": {
+			"displayName": "Search by Location",
+			"description": "Whether to search for only those workers who are currently within a certain target area"
+		},
+		"teams": {
+			"displayName": "Team Names or IDs",
+			"description": "One or more teams of which the worker is a member. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"longitude": {
+			"displayName": "Longitude",
+			"description": "The longitude component of the coordinate pair"
+		},
+		"latitude": {
+			"displayName": "Latitude",
+			"description": "The latitude component of the coordinate pair"
+		},
+		"schedule": {
+			"displayName": "Schedule",
+			"placeholder": "Add Schedule",
+			"multipleValueButtonText": "Add Schedule",
+			"options": {
+				"scheduleProperties": {
+					"displayName": "Schedule Properties",
+					"options": {
+						"date": {
+							"displayName": "Date",
+							"description": "Schedule's date"
+						},
+						"timezone": {
+							"displayName": "Timezone Name or ID",
+							"description": "A valid timezone. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"shifts": {
+							"displayName": "Shifts",
+							"placeholder": "Add Shift",
+							"multipleValueButtonText": "Add Shift",
+							"options": {
+								"shiftsProperties": {
+									"displayName": "Shifts Properties",
+									"options": {
+										"start": {
+											"displayName": "Start",
+											"description": "Start time"
+										},
+										"end": {
+											"displayName": "End",
+											"description": "End time"
+										}
+									}
+								}
+							},
+							"values": {
+								"shiftsProperties": {
+									"displayName": "Shifts Properties",
+									"options": {
+										"start": {
+											"displayName": "Start",
+											"description": "Start time"
+										},
+										"end": {
+											"displayName": "End",
+											"description": "End time"
+										}
+									}
+								},
+								"shifts": {
+									"displayName": "Shifts",
+									"placeholder": "Add Shift"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"scheduleProperties": {
+					"displayName": "Schedule Properties",
+					"options": {
+						"date": {
+							"displayName": "Date",
+							"description": "Schedule's date"
+						},
+						"timezone": {
+							"displayName": "Timezone Name or ID",
+							"description": "A valid timezone. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"shifts": {
+							"displayName": "Shifts",
+							"placeholder": "Add Shift",
+							"multipleValueButtonText": "Add Shift",
+							"options": {
+								"shiftsProperties": {
+									"displayName": "Shifts Properties",
+									"options": {
+										"start": {
+											"displayName": "Start",
+											"description": "Start time"
+										},
+										"end": {
+											"displayName": "End",
+											"description": "End time"
+										}
+									}
+								}
+							},
+							"values": {
+								"shiftsProperties": {
+									"displayName": "Shifts Properties",
+									"options": {
+										"start": {
+											"displayName": "Start",
+											"description": "Start time"
+										},
+										"end": {
+											"displayName": "End",
+											"description": "End time"
+										}
+									}
+								},
+								"shifts": {
+									"displayName": "Shifts",
+									"placeholder": "Add Shift"
+								}
+							}
+						}
+					}
+				},
+				"schedule": {
+					"displayName": "Schedule",
+					"placeholder": "Add Schedule"
+				}
+			}
+		}
+	}
+}

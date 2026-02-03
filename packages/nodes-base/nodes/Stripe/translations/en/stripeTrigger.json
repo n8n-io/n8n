@@ -1,0 +1,17 @@
+{
+	"header": {
+		"displayName": "Stripe Trigger",
+		"description": "Handle Stripe events via webhooks"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events",
+			"description": "The event to listen to"
+		},
+		"apiVersion": {
+			"displayName": "API Version",
+			"description": "The API version to use for requests. It controls the format and structure of the incoming event payloads that Stripe sends to your webhook. If empty, Stripe will use the default API version set in your account at the time, which may lead to event processing issues if the API version changes in the future.",
+			"placeholder": "2025-05-28.basil"
+		}
+	}
+}

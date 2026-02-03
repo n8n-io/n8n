@@ -1,0 +1,43 @@
+{
+	"header": {
+		"displayName": "Snowflake",
+		"description": "在Snowflake中获取、添加和更新数据"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"executeQuery": {
+					"displayName": "执行查询",
+					"description": "执行SQL查询"
+				},
+				"insert": {
+					"displayName": "插入",
+					"description": "在数据库中插入行"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新数据库中的行"
+				}
+			}
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "要执行的SQL查询",
+			"placeholder": "SELECT id, name FROM product WHERE id < 40"
+		},
+		"table": {
+			"displayName": "表",
+			"description": "要更新数据的目标表名称"
+		},
+		"columns": {
+			"displayName": "列",
+			"description": "以逗号分隔的属性列表，这些属性将用作要更新行的列",
+			"placeholder": "名称,描述"
+		},
+		"updateKey": {
+			"displayName": "更新键",
+			"description": "决定数据库中哪些行应被更新的属性名称。通常为“id”。"
+		}
+	}
+}

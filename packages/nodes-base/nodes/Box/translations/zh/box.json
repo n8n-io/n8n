@@ -1,0 +1,447 @@
+{
+	"header": {
+		"displayName": "Box",
+		"description": "使用Box API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"copy": {
+					"displayName": "复制",
+					"description": "复制文件"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文件夹"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取文件夹"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索文件"
+				},
+				"share": {
+					"displayName": "分享",
+					"description": "分享文件夹"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传文件"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建文件夹"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新文件夹"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "文件ID",
+			"description": "要共享的文件ID"
+		},
+		"parentId": {
+			"displayName": "父文件夹ID",
+			"description": "要在其中创建新文件夹的文件夹ID。如果未定义，将在根文件夹中创建。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "要在响应中包含的属性列表，以逗号分隔。这可用于请求标准响应中通常不返回的字段。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "复制文件的可选新名称"
+				},
+				"version": {
+					"displayName": "版本",
+					"description": "要复制的特定文件版本的可选ID"
+				},
+				"contet_types": {
+					"displayName": "内容类型",
+					"description": "将搜索结果限制为具有指定内容类型的项目。内容类型定义为Box识别的逗号分隔内容类型列表。"
+				},
+				"createdRangeUi": {
+					"displayName": "创建时间范围",
+					"placeholder": "添加范围",
+					"options": {
+						"createdRangeValuesUi": {
+							"displayName": "范围",
+							"options": {
+								"from": {
+									"displayName": "从"
+								},
+								"to": {
+									"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+								}
+							}
+						}
+					},
+					"values": {
+						"createdRangeValuesUi": {
+							"displayName": "范围",
+							"options": {
+								"from": {
+									"displayName": "从"
+								},
+								"to": {
+									"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+								}
+							}
+						},
+						"createdRangeUi": {
+							"displayName": "创建时间范围",
+							"placeholder": "添加范围"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "方向",
+					"description": "定义搜索结果的排序方向。默认值为DESC。",
+					"options": {
+						"ASC": {
+							"displayName": "升序"
+						},
+						"DESC": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"file_extensions": {
+					"displayName": "文件扩展名",
+					"description": "将搜索结果限制为逗号分隔的文件扩展名列表",
+					"placeholder": "pdf,png,gif"
+				},
+				"ancestor_folder_ids": {
+					"displayName": "文件夹ID",
+					"description": "将搜索结果限制在指定文件夹列表中的项目。文件夹以逗号分隔的文件夹ID列表形式定义。"
+				},
+				"scope": {
+					"displayName": "范围",
+					"description": "将搜索结果限制在用户范围内",
+					"options": {
+						"user_content": {
+							"displayName": "用户内容"
+						},
+						"enterprise_content": {
+							"displayName": "企业内容"
+						}
+					}
+				},
+				"size_range": {
+					"displayName": "文件大小范围",
+					"description": "将搜索结果限制在指定文件大小范围内的项目。文件大小范围以逗号分隔的字节大小定义。",
+					"placeholder": "1000000,5000000"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "按项目最后修改日期降序返回结果",
+					"options": {
+						"relevance": {
+							"displayName": "相关性"
+						},
+						"modified_at": {
+							"displayName": "修改于"
+						}
+					}
+				},
+				"trash_content": {
+					"displayName": "回收站内容",
+					"description": "控制搜索结果是否包含回收站",
+					"options": {
+						"non_trashed_only": {
+							"displayName": "仅显示未删除项"
+						},
+						"trashed_only": {
+							"displayName": "仅已删除"
+						}
+					}
+				},
+				"updatedRangeUi": {
+					"displayName": "更新范围",
+					"placeholder": "添加范围",
+					"options": {
+						"updatedRangeValuesUi": {
+							"displayName": "范围",
+							"options": {
+								"from": {
+									"displayName": "从"
+								},
+								"to": {
+									"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+								}
+							}
+						}
+					},
+					"values": {
+						"updatedRangeValuesUi": {
+							"displayName": "范围",
+							"options": {
+								"from": {
+									"displayName": "从"
+								},
+								"to": {
+									"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+								}
+							}
+						},
+						"updatedRangeUi": {
+							"displayName": "更新范围",
+							"placeholder": "添加范围"
+						}
+					}
+				},
+				"owner_user_ids": {
+					"displayName": "用户ID",
+					"description": "将搜索结果限制为指定所有者列表拥有的项目。所有者定义为以逗号分隔的用户ID列表。"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "要搜索的字符串。此查询会与项目名称、描述、文件文本内容以及不同项目类型的各种其他字段进行匹配。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"accessibleBy": {
+			"displayName": "可访问对象",
+			"description": "文件将共享的对象类型",
+			"options": {
+				"group": {
+					"displayName": "分组"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"useEmail": {
+			"displayName": "使用邮箱",
+			"description": "通过邮箱还是ID来识别用户"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要共享文件夹的用户邮箱地址",
+			"placeholder": "name@email.com"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "要共享文件夹的用户ID"
+		},
+		"groupId": {
+			"displayName": "群组ID",
+			"description": "要共享文件夹的目标群组ID"
+		},
+		"role": {
+			"displayName": "角色",
+			"description": "授予的访问级别",
+			"options": {
+				"coOwner": {
+					"displayName": "共同所有者",
+					"description": "共同所有者拥有与编辑者相同的所有功能读写权限"
+				},
+				"editor": {
+					"displayName": "编辑者",
+					"description": "编辑器对文件夹或文件拥有完全的读写权限"
+				},
+				"previewer": {
+					"displayName": "预览器",
+					"description": "预览器拥有有限的读取权限"
+				},
+				"previewerUploader": {
+					"displayName": "预览上传器",
+					"description": "此访问级别是预览器和上传器的组合"
+				},
+				"uploader": {
+					"displayName": "上传者",
+					"description": "上传者拥有有限的写入权限"
+				},
+				"viewer": {
+					"displayName": "查看者",
+					"description": "查看者对文件夹或文件拥有读取权限"
+				},
+				"viewerUploader": {
+					"displayName": "查看者上传者",
+					"description": "此访问级别是查看者与上传者的组合"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"can_view_path": {
+					"displayName": "可查看路径",
+					"description": "受邀用户是否可以查看关联文件夹的完整父级路径。用户不会获得任何父文件夹的权限，因此无法查看未参与协作的内容。"
+				},
+				"expires_at": {
+					"displayName": "过期时间",
+					"description": "设置协作的过期日期。到达此日期时，协作将自动从项目中移除。"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要在响应中包含的属性列表，以逗号分隔。这可用于请求标准响应中通常不返回的字段。"
+				},
+				"notify": {
+					"displayName": "通知",
+					"description": "用户是否应收到执行操作的电子邮件通知"
+				},
+				"access": {
+					"displayName": "访问",
+					"description": "要在其中创建新文件夹的文件夹ID",
+					"options": {
+						"collaborators": {
+							"displayName": "协作者",
+							"description": "仅接受来自协作者已注册邮箱地址的邮件"
+						},
+						"open": {
+							"displayName": "打开",
+							"description": "它将接受来自任何电子邮件地址的邮件"
+						}
+					}
+				}
+			}
+		},
+		"fileName": {
+			"displayName": "文件名",
+			"description": "文件保存的名称",
+			"placeholder": "photo.png"
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "文件的文本内容"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "文件夹名称"
+		},
+		"folderId": {
+			"displayName": "文件夹ID",
+			"description": "要共享的文件夹ID"
+		},
+		"recursive": {
+			"displayName": "递归",
+			"description": "是否通过递归删除文件夹及其所有内容来删除非空文件夹"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"can_non_owners_invite": {
+					"displayName": "非所有者能否邀请",
+					"description": "非文件夹所有者是否可以邀请新协作者加入文件夹"
+				},
+				"can_non_owners_view_collaborators": {
+					"displayName": "非所有者能否查看协作者",
+					"description": "是否限制非此文件夹所有者的协作者查看此文件夹上的其他协作"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "此文件夹的可选描述"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要在响应中包含的属性列表，以逗号分隔。这可用于请求标准响应中通常不返回的字段。"
+				},
+				"is_collaboration_restricted_to_enterprise": {
+					"displayName": "协作是否仅限于企业版",
+					"description": "此文件夹的新邀请是否仅限于企业内用户。这不影响现有协作。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "此文件夹的可选新名称"
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "此文件夹的父文件夹。使用此选项可移动文件夹或将其从回收站中恢复。"
+				},
+				"shared_link": {
+					"displayName": "共享链接",
+					"description": "共享链接信息",
+					"placeholder": "添加共享链接配置",
+					"options": {
+						"access": {
+							"displayName": "访问",
+							"options": {
+								"collaborators": {
+									"displayName": "协作者",
+									"description": "仅限被邀请到文件夹的用户"
+								},
+								"company": {
+									"displayName": "公司",
+									"description": "仅限公司内部人员"
+								},
+								"open": {
+									"displayName": "打开",
+									"description": "任何拥有链接的人"
+								}
+							}
+						},
+						"password": {
+							"displayName": "密码",
+							"description": "访问共享链接所需的密码。将密码设置为null可将其移除。"
+						},
+						"permissions": {
+							"displayName": "权限",
+							"placeholder": "添加权限",
+							"options": {
+								"can_download": {
+									"displayName": "可下载",
+									"description": "共享链接是否允许下载文件"
+								},
+								"unshared_at": {
+									"displayName": "未共享于",
+									"description": "此共享链接将过期的时间戳"
+								},
+								"vanity_name": {
+									"displayName": "自定义名称",
+									"description": "定义在共享链接URL中使用的自定义名称，例如 https://app.box.com/v/my-shared-link"
+								}
+							}
+						},
+						"tags": {
+							"displayName": "标签",
+							"description": "此项的标签。这些标签会在Box网页应用和移动应用中显示在项目旁边。"
+						}
+					}
+				}
+			}
+		}
+	}
+}

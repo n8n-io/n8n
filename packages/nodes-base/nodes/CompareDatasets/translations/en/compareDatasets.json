@@ -1,0 +1,120 @@
+{
+	"header": {
+		"displayName": "Compare Datasets",
+		"description": "Compare two inputs for changes"
+	},
+	"nodeView": {
+		"infoBox": {
+			"displayName": "Items from different branches are paired together when the fields below match. If paired, the rest of the fields are compared to determine whether the items are the same or different"
+		},
+		"mergeByFields": {
+			"displayName": "Fields to Match",
+			"placeholder": "Add Fields to Match",
+			"multipleValueButtonText": "Add Fields to Match",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field1": {
+							"displayName": "Input A Field",
+							"placeholder": "e.g. id"
+						},
+						"field2": {
+							"displayName": "Input B Field",
+							"placeholder": "e.g. id"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field1": {
+							"displayName": "Input A Field",
+							"placeholder": "e.g. id"
+						},
+						"field2": {
+							"displayName": "Input B Field",
+							"placeholder": "e.g. id"
+						}
+					}
+				},
+				"mergeByFields": {
+					"displayName": "Fields to Match",
+					"placeholder": "Add Fields to Match"
+				}
+			}
+		},
+		"resolve": {
+			"displayName": "When There Are Differences",
+			"options": {
+				"preferInput1": {
+					"displayName": "Use Input A Version"
+				},
+				"preferInput2": {
+					"displayName": "Use Input B Version"
+				},
+				"mix": {
+					"displayName": "Use a Mix of Versions",
+					"description": "Output uses different inputs for different fields"
+				},
+				"includeBoth": {
+					"displayName": "Include Both Versions",
+					"description": "Output contains all data (but structure more complex)"
+				}
+			}
+		},
+		"fuzzyCompare": {
+			"displayName": "Fuzzy Compare",
+			"description": "Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same."
+		},
+		"preferWhenMix": {
+			"displayName": "Prefer",
+			"options": {
+				"input1": {
+					"displayName": "Input A Version"
+				},
+				"input2": {
+					"displayName": "Input B Version"
+				}
+			}
+		},
+		"exceptWhenMix": {
+			"displayName": "For Everything Except",
+			"placeholder": "e.g. id, country"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"skipFields": {
+					"displayName": "Fields to Skip Comparing",
+					"description": "Fields that shouldn't be included when checking whether two items are the same",
+					"placeholder": "e.g. updated_at, updated_by"
+				},
+				"fuzzyCompare": {
+					"displayName": "Fuzzy Compare",
+					"description": "Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same."
+				},
+				"disableDotNotation": {
+					"displayName": "Disable Dot Notation",
+					"description": "Whether to disallow referencing child fields using `parent.child` in the field name"
+				},
+				"multipleMatches": {
+					"displayName": "Multiple Matches",
+					"options": {
+						"first": {
+							"displayName": "Include First Match Only",
+							"description": "Only ever output a single item per match"
+						},
+						"all": {
+							"displayName": "Include All Matches",
+							"description": "Output multiple items if there are multiple matches"
+						}
+					}
+				}
+			}
+		}
+	}
+}

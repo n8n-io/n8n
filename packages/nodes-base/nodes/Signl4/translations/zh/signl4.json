@@ -1,0 +1,143 @@
+{
+	"header": {
+		"displayName": "SIGNL4",
+		"description": "使用SIGNL4 API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"alert": {
+					"displayName": "警报"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "发送警报"
+				},
+				"resolve": {
+					"displayName": "解决",
+					"description": "解决告警"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "警报的详细描述"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"alertingScenario": {
+					"displayName": "告警场景",
+					"options": {
+						"single_ack": {
+							"displayName": "单一确认",
+							"description": "当仅需一人确认此Signl时"
+						},
+						"multi_ack": {
+							"displayName": "多人确认",
+							"description": "当此信号触发时，必须由当时值班的指定人数进行确认"
+						}
+					}
+				},
+				"attachmentsUi": {
+					"displayName": "附件",
+					"placeholder": "添加附件",
+					"options": {
+						"attachmentsBinary": {
+							"displayName": "附件二进制",
+							"options": {
+								"property": {
+									"displayName": "属性名称",
+									"description": "包含应作为附件添加的数据的二进制属性名称",
+									"placeholder": "数据"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachmentsBinary": {
+							"displayName": "附件二进制",
+							"options": {
+								"property": {
+									"displayName": "属性名称",
+									"description": "包含应作为附件添加的数据的二进制属性名称",
+									"placeholder": "数据"
+								}
+							}
+						},
+						"attachmentsUi": {
+							"displayName": "附件",
+							"placeholder": "添加附件"
+						}
+					}
+				},
+				"externalId": {
+					"displayName": "外部ID",
+					"description": "如果事件源自第三方系统的记录，请使用此参数传递该记录的唯一ID。该ID将通过SIGNL4的出站Webhook通知传递，非常适用于将该记录与警报进行关联/同步。如果您要解决/关闭警报，必须使用与原始警报相同的外部ID。"
+				},
+				"filtering": {
+					"displayName": "筛选",
+					"description": "是否为此事件应用事件筛选。如果设置为true，则仅当事件至少包含您服务或系统类别中的一个关键词（即被列入白名单）时，才会向团队触发通知。"
+				},
+				"locationFieldsUi": {
+					"displayName": "位置",
+					"description": "在事件中传输位置信息（'纬度, 经度'），并在移动应用中显示地图",
+					"placeholder": "添加位置",
+					"options": {
+						"locationFieldsValues": {
+							"displayName": "位置",
+							"options": {
+								"latitude": {
+									"displayName": "纬度",
+									"description": "位置纬度"
+								},
+								"longitude": {
+									"displayName": "经度",
+									"description": "经度位置"
+								}
+							}
+						}
+					},
+					"values": {
+						"locationFieldsValues": {
+							"displayName": "位置",
+							"options": {
+								"latitude": {
+									"displayName": "纬度",
+									"description": "位置纬度"
+								},
+								"longitude": {
+									"displayName": "经度",
+									"description": "经度位置"
+								}
+							}
+						},
+						"locationFieldsUi": {
+							"displayName": "位置",
+							"placeholder": "添加位置"
+						}
+					}
+				},
+				"service": {
+					"displayName": "服务",
+					"description": "将警报分配到指定名称的服务/系统类别"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "此警报的标题或主题"
+				}
+			}
+		},
+		"externalId": {
+			"displayName": "外部ID",
+			"description": "如果事件源自第三方系统中的记录，请使用此参数传递该记录的唯一ID。该ID将在SIGNL4发出的出站Webhook通知中传递，这非常有利于将该记录与警报进行关联/同步。如果您要解决/关闭警报，必须使用与原始警报中相同的外部ID。"
+		}
+	}
+}

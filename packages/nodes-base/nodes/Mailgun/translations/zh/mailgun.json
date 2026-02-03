@@ -1,0 +1,43 @@
+{
+	"header": {
+		"displayName": "Mailgun",
+		"description": "通过Mailgun发送邮件"
+	},
+	"nodeView": {
+		"fromEmail": {
+			"displayName": "发件邮箱",
+			"description": "发件人邮箱地址（可选，可包含姓名）",
+			"placeholder": "管理员 <admin@example.com>"
+		},
+		"toEmail": {
+			"displayName": "收件人邮箱",
+			"description": "收件人的电子邮件地址。多个地址可用逗号分隔。",
+			"placeholder": "info@example.com"
+		},
+		"ccEmail": {
+			"displayName": "抄送邮箱",
+			"description": "收件人的抄送邮箱地址。多个地址可用逗号分隔。"
+		},
+		"bccEmail": {
+			"displayName": "密送邮箱",
+			"description": "收件人的密送邮箱地址。多个地址可用逗号分隔。"
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "邮件主题行",
+			"placeholder": "我的主题行"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "电子邮件的纯文本消息"
+		},
+		"html": {
+			"displayName": "HTML",
+			"description": "电子邮件的HTML文本消息"
+		},
+		"attachments": {
+			"displayName": "附件",
+			"description": "应作为附件添加到邮件的二进制属性名称。多个属性可用逗号分隔。"
+		}
+	}
+}

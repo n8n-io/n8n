@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "In Memory Vector Store Insert",
+		"description": "Insert data into an in-memory vector store"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "The embbded data are stored in the server memory, so they will be lost when the server is restarted. Additionally, if the amount of data is too large, it may cause the server to crash due to insufficient memory."
+		},
+		"clearStore": {
+			"displayName": "Clear Store",
+			"description": "Whether to clear the store before inserting new data"
+		},
+		"memoryKey": {
+			"displayName": "Memory Key",
+			"description": "The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions."
+		}
+	}
+}

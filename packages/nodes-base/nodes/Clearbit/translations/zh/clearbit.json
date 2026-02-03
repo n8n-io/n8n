@@ -1,0 +1,97 @@
+{
+	"header": {
+		"displayName": "Clearbit",
+		"description": "使用Clearbit API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"company": {
+					"displayName": "公司",
+					"description": "公司API允许您通过域名查找公司"
+				},
+				"person": {
+					"displayName": "人员",
+					"description": "Person API 可让您检索与电子邮件地址关联的社交信息，例如姓名、位置和 Twitter 账号"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"autocomplete": {
+					"displayName": "自动补全",
+					"description": "自动补全公司名称并获取徽标和域名"
+				},
+				"enrich": {
+					"displayName": "丰富",
+					"description": "基于电子邮件或域名查找个人和公司数据"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "域名",
+			"description": "要查找的域名"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"companyName": {
+					"displayName": "公司名称",
+					"description": "公司名称"
+				},
+				"facebook": {
+					"displayName": "Facebook",
+					"description": "此人的Facebook URL"
+				},
+				"linkedin": {
+					"displayName": "Linkedin",
+					"description": "公司的LinkedIn URL"
+				},
+				"twitter": {
+					"displayName": "Twitter",
+					"description": "该用户的Twitter用户名"
+				},
+				"company": {
+					"displayName": "公司",
+					"description": "人员雇主名称"
+				},
+				"companyDomain": {
+					"displayName": "公司域名",
+					"description": "人员雇主的域名"
+				},
+				"familyName": {
+					"displayName": "姓氏",
+					"description": "人员的姓氏。如果您有此信息，强烈建议提供以提高匹配率。"
+				},
+				"givenName": {
+					"displayName": "名字",
+					"description": "人员的名字"
+				},
+				"ipAddress": {
+					"displayName": "IP地址",
+					"description": "用户的IP地址。若您有此信息，强烈建议提供以提升匹配率。"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "此人居住的城市或国家"
+				},
+				"linkedIn": {
+					"displayName": "LinkedIn",
+					"description": "此人的LinkedIn URL"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "名称是公司的部分名称"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要查找的电子邮件地址",
+			"placeholder": "name@email.com"
+		}
+	}
+}

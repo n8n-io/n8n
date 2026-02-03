@@ -1,0 +1,355 @@
+{
+	"header": {
+		"displayName": "Mandrill",
+		"description": "Consume Mandrill API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"message": {
+					"displayName": "Message",
+					"description": "Send a message"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"sendTemplate": {
+					"displayName": "Send Template",
+					"description": "Send message based on template"
+				},
+				"sendHtml": {
+					"displayName": "Send HTML",
+					"description": "Send message based on HTML"
+				}
+			}
+		},
+		"template": {
+			"displayName": "Template Name or ID",
+			"description": "The template you want to send. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		},
+		"fromEmail": {
+			"displayName": "From Email",
+			"description": "Email address of the sender optional with name",
+			"placeholder": "Admin <example@yourdomain.com>"
+		},
+		"toEmail": {
+			"displayName": "To Email",
+			"description": "Email address of the recipient. Multiple ones can be separated by comma.",
+			"placeholder": "info@example.com"
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"async": {
+					"displayName": "Async",
+					"description": "Whether to enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of \"queued\" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async."
+				},
+				"autoText": {
+					"displayName": "Auto Text",
+					"description": "Whether or not to automatically generate a text part for messages that are not given text"
+				},
+				"autoHtml": {
+					"displayName": "Auto HTML",
+					"description": "Whether or not to automatically generate an HTML part for messages that are not given HTML"
+				},
+				"bccAddress": {
+					"displayName": "BCC Address",
+					"description": "An optional address to receive an exact copy of each recipient's email",
+					"placeholder": "message.bcc_address@example.com"
+				},
+				"fromName": {
+					"displayName": "From Name",
+					"description": "Optional from name to be used",
+					"placeholder": "John Doe"
+				},
+				"googleAnalyticsCampaign": {
+					"displayName": "Google Analytics Campaign",
+					"description": "Optional string indicating the value to set for the utm_campaign tracking parameter. If this isn't provided the email's from address will be used instead."
+				},
+				"googleAnalyticsDomains": {
+					"displayName": "Google Analytics Domains",
+					"description": "An array of strings separated by a comma (,) indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically"
+				},
+				"html": {
+					"displayName": "HTML",
+					"description": "The html you want to send"
+				},
+				"important": {
+					"displayName": "Important",
+					"description": "Whether or not this message is important, and should be delivered ahead of non-important messages"
+				},
+				"inlineCss": {
+					"displayName": "Inline CSS",
+					"description": "Whether or not to automatically inline all CSS styles provided in the message HTML - only for HTML documents less than 256KB in size"
+				},
+				"ipPool": {
+					"displayName": "Ip Pool",
+					"description": "The name of the dedicated ip pool that should be used to send the message. If you do not have any dedicated IPs, this parameter has no effect. If you specify a pool that does not exist, your default pool will be used instead."
+				},
+				"preserveRecipients": {
+					"displayName": "Preserve Recipients",
+					"description": "Whether or not to expose all recipients in to \"To\" header for each email"
+				},
+				"returnPathDomain": {
+					"displayName": "Return Path Domain",
+					"description": "A custom domain to use for the messages's return-path"
+				},
+				"sendAt": {
+					"displayName": "Sent At",
+					"description": "When this message should be sent as a UTC timestamp in YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message will be sent immediately. An additional fee applies for scheduled email, and this feature is only available to accounts with a positive balance."
+				},
+				"signingDomain": {
+					"displayName": "Signing Domain",
+					"description": "A custom domain to use for SPF/DKIM signing instead of mandrill(for \"via\" or \"on behalf of\" in email clients)"
+				},
+				"subAccount": {
+					"displayName": "Subaccount",
+					"description": "The unique ID of a subaccount for this message - must already exist or will fail with an error"
+				},
+				"subject": {
+					"displayName": "Subject",
+					"description": "Subject line of the email",
+					"placeholder": "My subject line"
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "An array of string separated by a comma (,) to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors."
+				},
+				"text": {
+					"displayName": "Text",
+					"description": "Example text content"
+				},
+				"trackClicks": {
+					"displayName": "Track Clicks",
+					"description": "Whether or not to turn on click tracking for the message"
+				},
+				"trackOpens": {
+					"displayName": "Track Opens",
+					"description": "Whether or not to turn on open tracking for the message"
+				},
+				"trackingDomain": {
+					"displayName": "Tracking Domain",
+					"description": "A custom domain to use for tracking opens and clicks instead of mandrillapp.com"
+				},
+				"urlStripQs": {
+					"displayName": "Url Strip Qs",
+					"description": "Whether or not to strip the query string from URLs when aggregating tracked URL data"
+				},
+				"viewContentLink": {
+					"displayName": "View Content Link",
+					"description": "Whether to remove content logging for sensitive emails"
+				}
+			}
+		},
+		"mergeVarsJson": {
+			"displayName": "Merge Vars",
+			"description": "Global merge variables",
+			"placeholder": "[\n\t{\n\t\t{ \"name\": \"name\", \"content\": \"content\" }\n\t}\n]"
+		},
+		"mergeVarsUi": {
+			"displayName": "Merge Vars",
+			"description": "Per-recipient merge variables",
+			"placeholder": "Add Merge Vars",
+			"multipleValueButtonText": "Add Merge Vars",
+			"options": {
+				"mergeVarsValues": {
+					"displayName": "Vars",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"content": {
+							"displayName": "Content"
+						}
+					}
+				}
+			},
+			"values": {
+				"mergeVarsValues": {
+					"displayName": "Vars",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"content": {
+							"displayName": "Content"
+						}
+					}
+				},
+				"mergeVarsUi": {
+					"displayName": "Merge Vars",
+					"placeholder": "Add Merge Vars"
+				}
+			}
+		},
+		"metadataUi": {
+			"displayName": "Metadata",
+			"description": "Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.",
+			"placeholder": "Add Metadata",
+			"multipleValueButtonText": "Add Metadata",
+			"options": {
+				"metadataValues": {
+					"displayName": "Metadata",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to set for the metadata key"
+						}
+					}
+				}
+			},
+			"values": {
+				"metadataValues": {
+					"displayName": "Metadata",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to set for the metadata key"
+						}
+					}
+				},
+				"metadataUi": {
+					"displayName": "Metadata",
+					"placeholder": "Add Metadata"
+				}
+			}
+		},
+		"metadataJson": {
+			"displayName": "Metadata",
+			"description": "Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.",
+			"placeholder": "{\n\t\"website\": \"www.example.com\"\n}"
+		},
+		"attachmentsJson": {
+			"displayName": "Attachments",
+			"description": "An array of supported attachments to add to the message",
+			"placeholder": "[\n\t{\n\t\t\"type\": \"text/plain\" (the MIME type of the attachment),\n\t\t\"name\": \"myfile.txt\" (the file name of the attachment),\n\t\t\"content\": \"ZXhhbXBsZSBmaWxl\" (the content of the attachment as a base64-encoded string)\n\t}\n]"
+		},
+		"attachmentsUi": {
+			"displayName": "Attachments",
+			"description": "Array of supported attachments to add to the message",
+			"placeholder": "Add Attachments",
+			"multipleValueButtonText": "Add Attachments",
+			"options": {
+				"attachmentsValues": {
+					"displayName": "Attachments Values",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "The MIME type of the attachment",
+							"placeholder": "text/plain"
+						},
+						"name": {
+							"displayName": "Name",
+							"description": "The file name of the attachment",
+							"placeholder": "myfile.txt"
+						},
+						"content": {
+							"displayName": "Content",
+							"description": "The content of the attachment as a base64-encoded string",
+							"placeholder": "ZXhhbXBsZSBmaWxl"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "Attachments Binary",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"description": "Name of the binary properties which contain data which should be added to email as attachment"
+						}
+					}
+				}
+			},
+			"values": {
+				"attachmentsValues": {
+					"displayName": "Attachments Values",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "The MIME type of the attachment",
+							"placeholder": "text/plain"
+						},
+						"name": {
+							"displayName": "Name",
+							"description": "The file name of the attachment",
+							"placeholder": "myfile.txt"
+						},
+						"content": {
+							"displayName": "Content",
+							"description": "The content of the attachment as a base64-encoded string",
+							"placeholder": "ZXhhbXBsZSBmaWxl"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "Attachments Binary",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"description": "Name of the binary properties which contain data which should be added to email as attachment"
+						}
+					}
+				},
+				"attachmentsUi": {
+					"displayName": "Attachments",
+					"placeholder": "Add Attachments"
+				}
+			}
+		},
+		"headersJson": {
+			"displayName": "Headers",
+			"description": "Optional extra headers to add to the message (most headers are allowed)",
+			"placeholder": "{\n\t\"Reply-To\": \"replies@example.com\"\n}"
+		},
+		"headersUi": {
+			"displayName": "Headers",
+			"description": "Optional extra headers to add to the message (most headers are allowed)",
+			"placeholder": "Add Headers",
+			"multipleValueButtonText": "Add Headers",
+			"options": {
+				"headersValues": {
+					"displayName": "Values",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"headersValues": {
+					"displayName": "Values",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"headersUi": {
+					"displayName": "Headers",
+					"placeholder": "Add Headers"
+				}
+			}
+		}
+	}
+}

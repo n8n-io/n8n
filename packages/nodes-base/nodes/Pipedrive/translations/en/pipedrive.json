@@ -1,0 +1,1878 @@
+{
+	"header": {
+		"displayName": "Pipedrive",
+		"description": "Create and edit data in Pipedrive"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiToken": {
+					"displayName": "API Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"activity": {
+					"displayName": "Activity"
+				},
+				"deal": {
+					"displayName": "Deal"
+				},
+				"dealActivity": {
+					"displayName": "Deal Activity"
+				},
+				"dealProduct": {
+					"displayName": "Deal Product"
+				},
+				"file": {
+					"displayName": "File"
+				},
+				"lead": {
+					"displayName": "Lead"
+				},
+				"note": {
+					"displayName": "Note"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"person": {
+					"displayName": "Person"
+				},
+				"product": {
+					"displayName": "Product"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a person"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a person"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get data of a person"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get data of many products"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a person"
+				},
+				"duplicate": {
+					"displayName": "Duplicate",
+					"description": "Duplicate a deal"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search all persons"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add a product to a deal"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a product from a deal"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a file"
+				}
+			}
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "The subject of the activity to create"
+		},
+		"done": {
+			"displayName": "Done",
+			"description": "Whether the activity is done or not",
+			"options": {
+				"0": {
+					"displayName": "Not Done"
+				},
+				"1": {
+					"displayName": "Done"
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "Type of the activity like \"call\", \"meeting\", etc",
+			"placeholder": "call"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"deal_id": {
+					"displayName": "Deal ID",
+					"description": "ID of the deal this note will be associated with"
+				},
+				"due_date": {
+					"displayName": "Due Date",
+					"description": "Due Date to activity be done YYYY-MM-DD"
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "Note of the activity (HTML format)"
+				},
+				"org_id": {
+					"displayName": "Organization Name or ID",
+					"description": "ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"person_id": {
+					"displayName": "Person ID",
+					"description": "ID of the person this note will be associated with"
+				},
+				"user_id": {
+					"displayName": "User Name or ID",
+					"description": "The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"customProperties": {
+					"displayName": "Custom Properties",
+					"description": "Adds a custom property to set also values which have not been predefined",
+					"placeholder": "Add Custom Property",
+					"multipleValueButtonText": "Add Custom Property",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Property Name or ID",
+									"description": "Name of the custom field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Property Value",
+									"description": "Value of the property to set"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Property Name or ID",
+									"description": "Name of the custom field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Property Value",
+									"description": "Value of the property to set"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "Custom Properties",
+							"placeholder": "Add Custom Property"
+						}
+					}
+				},
+				"currency": {
+					"displayName": "Currency",
+					"description": "Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ..."
+				},
+				"label": {
+					"displayName": "Label Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"lost_reason": {
+					"displayName": "Lost Reason",
+					"description": "Reason why the deal was lost"
+				},
+				"probability": {
+					"displayName": "Probability",
+					"description": "Deal success probability percentage"
+				},
+				"stage_id": {
+					"displayName": "Stage Name or ID",
+					"description": "ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "The status of the deal. If not provided it will automatically be set to \"open\".",
+					"options": {
+						"open": {
+							"displayName": "Open"
+						},
+						"won": {
+							"displayName": "Won"
+						},
+						"lost": {
+							"displayName": "Lost"
+						},
+						"deleted": {
+							"displayName": "Deleted"
+						}
+					}
+				},
+				"value": {
+					"displayName": "Value",
+					"description": "Potential monetary value associated with the lead",
+					"options": {
+						"valueProperties": {
+							"displayName": "Value Properties",
+							"options": {
+								"amount": {
+									"displayName": "Amount"
+								},
+								"currency": {
+									"displayName": "Currency",
+									"options": {
+										"AFN": {
+											"displayName": "Afghani"
+										},
+										"DZD": {
+											"displayName": "Algerian Dinar"
+										},
+										"ARS": {
+											"displayName": "Argentine Peso"
+										},
+										"AUD": {
+											"displayName": "Australian Dollar"
+										},
+										"AZN": {
+											"displayName": "Azerbaijan Manat"
+										},
+										"BSD": {
+											"displayName": "Bahamian Dollar"
+										},
+										"THB": {
+											"displayName": "Baht"
+										},
+										"BBD": {
+											"displayName": "Barbados Dollar"
+										},
+										"BZD": {
+											"displayName": "Belize Dollar"
+										},
+										"BMD": {
+											"displayName": "Bermudian Dollar"
+										},
+										"BOB": {
+											"displayName": "Boliviano"
+										},
+										"BRL": {
+											"displayName": "Brazilian Real"
+										},
+										"BND": {
+											"displayName": "Brunei Dollar"
+										},
+										"BGN": {
+											"displayName": "Bulgarian Lev"
+										},
+										"CAD": {
+											"displayName": "Canadian Dollar"
+										},
+										"CLP": {
+											"displayName": "Chilean Peso"
+										},
+										"COP": {
+											"displayName": "Colombian Peso"
+										},
+										"NIO": {
+											"displayName": "Cordoba Oro"
+										},
+										"CRC": {
+											"displayName": "Costa Rican Colon"
+										},
+										"CZK": {
+											"displayName": "Czech Koruna"
+										},
+										"DKK": {
+											"displayName": "Danish Krone"
+										},
+										"DOP": {
+											"displayName": "Dominican Peso"
+										},
+										"VND": {
+											"displayName": "Dong"
+										},
+										"XCD": {
+											"displayName": "East Caribbean Dollar"
+										},
+										"EGP": {
+											"displayName": "Egyptian Pound"
+										},
+										"EUR": {
+											"displayName": "Euro"
+										},
+										"FJD": {
+											"displayName": "Fiji Dollar"
+										},
+										"HUF": {
+											"displayName": "Forint"
+										},
+										"HKD": {
+											"displayName": "Hong Kong Dollar"
+										},
+										"UAH": {
+											"displayName": "Hryvnia"
+										},
+										"INR": {
+											"displayName": "Indian Rupee"
+										},
+										"JMD": {
+											"displayName": "Jamaican Dollar"
+										},
+										"KES": {
+											"displayName": "Kenyan Shilling"
+										},
+										"PGK": {
+											"displayName": "Kina"
+										},
+										"HRK": {
+											"displayName": "Kuna"
+										},
+										"MMK": {
+											"displayName": "Kyat"
+										},
+										"LAK": {
+											"displayName": "Lao Kip"
+										},
+										"LBP": {
+											"displayName": "Lebanese Pound"
+										},
+										"ALL": {
+											"displayName": "Lek"
+										},
+										"HNL": {
+											"displayName": "Lempira"
+										},
+										"LRD": {
+											"displayName": "Liberian Dollar"
+										},
+										"MYR": {
+											"displayName": "Malaysian Ringgit"
+										},
+										"MUR": {
+											"displayName": "Mauritius Rupee"
+										},
+										"MXN": {
+											"displayName": "Mexican Peso"
+										},
+										"MAD": {
+											"displayName": "Moroccan Dirham"
+										},
+										"NPR": {
+											"displayName": "Nepalese Rupee"
+										},
+										"ILS": {
+											"displayName": "New Israeli Sheqel"
+										},
+										"TWD": {
+											"displayName": "New Taiwan Dollar"
+										},
+										"NZD": {
+											"displayName": "New Zealand Dollar"
+										},
+										"NOK": {
+											"displayName": "Norwegian Krone"
+										},
+										"MRO": {
+											"displayName": "Ouguiya"
+										},
+										"TOP": {
+											"displayName": "Pa’anga"
+										},
+										"PKR": {
+											"displayName": "Pakistan Rupee"
+										},
+										"MOP": {
+											"displayName": "Pataca"
+										},
+										"PHP": {
+											"displayName": "Philippine Peso"
+										},
+										"GBP": {
+											"displayName": "Pound Sterling"
+										},
+										"BWP": {
+											"displayName": "Pula"
+										},
+										"QAR": {
+											"displayName": "Qatari Rial"
+										},
+										"GTQ": {
+											"displayName": "Quetzal"
+										},
+										"ZAR": {
+											"displayName": "Rand"
+										},
+										"RON": {
+											"displayName": "Romanian Leu"
+										},
+										"MVR": {
+											"displayName": "Rufiyaa"
+										},
+										"IDR": {
+											"displayName": "Rupiah"
+										},
+										"RUB": {
+											"displayName": "Russian Ruble"
+										},
+										"SAR": {
+											"displayName": "Saudi Riyal"
+										},
+										"SCR": {
+											"displayName": "Seychelles Rupee"
+										},
+										"SGD": {
+											"displayName": "Singapore Dollar"
+										},
+										"PEN": {
+											"displayName": "Sol"
+										},
+										"SBD": {
+											"displayName": "Solomon Islands Dollar"
+										},
+										"LKR": {
+											"displayName": "Sri Lanka Rupee"
+										},
+										"SEK": {
+											"displayName": "Swedish Krona"
+										},
+										"CHF": {
+											"displayName": "Swiss Franc"
+										},
+										"SYP": {
+											"displayName": "Syrian Pound"
+										},
+										"BDT": {
+											"displayName": "Taka"
+										},
+										"WST": {
+											"displayName": "Tala"
+										},
+										"KZT": {
+											"displayName": "Tenge"
+										},
+										"TTD": {
+											"displayName": "Trinidad and Tobago Dollar"
+										},
+										"TRY": {
+											"displayName": "Turkish Lira"
+										},
+										"AED": {
+											"displayName": "UAE Dirham"
+										},
+										"USD": {
+											"displayName": "US Dollar"
+										},
+										"VUV": {
+											"displayName": "Vatu"
+										},
+										"XOF": {
+											"displayName": "West African CFA Franc"
+										},
+										"KRW": {
+											"displayName": "Won"
+										},
+										"YER": {
+											"displayName": "Yemeni Rial"
+										},
+										"JPY": {
+											"displayName": "Yen"
+										},
+										"CNY": {
+											"displayName": "Yuan Renminbi"
+										},
+										"PLN": {
+											"displayName": "Zloty"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"valueProperties": {
+							"displayName": "Value Properties",
+							"options": {
+								"amount": {
+									"displayName": "Amount"
+								},
+								"currency": {
+									"displayName": "Currency",
+									"options": {
+										"AFN": {
+											"displayName": "Afghani"
+										},
+										"DZD": {
+											"displayName": "Algerian Dinar"
+										},
+										"ARS": {
+											"displayName": "Argentine Peso"
+										},
+										"AUD": {
+											"displayName": "Australian Dollar"
+										},
+										"AZN": {
+											"displayName": "Azerbaijan Manat"
+										},
+										"BSD": {
+											"displayName": "Bahamian Dollar"
+										},
+										"THB": {
+											"displayName": "Baht"
+										},
+										"BBD": {
+											"displayName": "Barbados Dollar"
+										},
+										"BZD": {
+											"displayName": "Belize Dollar"
+										},
+										"BMD": {
+											"displayName": "Bermudian Dollar"
+										},
+										"BOB": {
+											"displayName": "Boliviano"
+										},
+										"BRL": {
+											"displayName": "Brazilian Real"
+										},
+										"BND": {
+											"displayName": "Brunei Dollar"
+										},
+										"BGN": {
+											"displayName": "Bulgarian Lev"
+										},
+										"CAD": {
+											"displayName": "Canadian Dollar"
+										},
+										"CLP": {
+											"displayName": "Chilean Peso"
+										},
+										"COP": {
+											"displayName": "Colombian Peso"
+										},
+										"NIO": {
+											"displayName": "Cordoba Oro"
+										},
+										"CRC": {
+											"displayName": "Costa Rican Colon"
+										},
+										"CZK": {
+											"displayName": "Czech Koruna"
+										},
+										"DKK": {
+											"displayName": "Danish Krone"
+										},
+										"DOP": {
+											"displayName": "Dominican Peso"
+										},
+										"VND": {
+											"displayName": "Dong"
+										},
+										"XCD": {
+											"displayName": "East Caribbean Dollar"
+										},
+										"EGP": {
+											"displayName": "Egyptian Pound"
+										},
+										"EUR": {
+											"displayName": "Euro"
+										},
+										"FJD": {
+											"displayName": "Fiji Dollar"
+										},
+										"HUF": {
+											"displayName": "Forint"
+										},
+										"HKD": {
+											"displayName": "Hong Kong Dollar"
+										},
+										"UAH": {
+											"displayName": "Hryvnia"
+										},
+										"INR": {
+											"displayName": "Indian Rupee"
+										},
+										"JMD": {
+											"displayName": "Jamaican Dollar"
+										},
+										"KES": {
+											"displayName": "Kenyan Shilling"
+										},
+										"PGK": {
+											"displayName": "Kina"
+										},
+										"HRK": {
+											"displayName": "Kuna"
+										},
+										"MMK": {
+											"displayName": "Kyat"
+										},
+										"LAK": {
+											"displayName": "Lao Kip"
+										},
+										"LBP": {
+											"displayName": "Lebanese Pound"
+										},
+										"ALL": {
+											"displayName": "Lek"
+										},
+										"HNL": {
+											"displayName": "Lempira"
+										},
+										"LRD": {
+											"displayName": "Liberian Dollar"
+										},
+										"MYR": {
+											"displayName": "Malaysian Ringgit"
+										},
+										"MUR": {
+											"displayName": "Mauritius Rupee"
+										},
+										"MXN": {
+											"displayName": "Mexican Peso"
+										},
+										"MAD": {
+											"displayName": "Moroccan Dirham"
+										},
+										"NPR": {
+											"displayName": "Nepalese Rupee"
+										},
+										"ILS": {
+											"displayName": "New Israeli Sheqel"
+										},
+										"TWD": {
+											"displayName": "New Taiwan Dollar"
+										},
+										"NZD": {
+											"displayName": "New Zealand Dollar"
+										},
+										"NOK": {
+											"displayName": "Norwegian Krone"
+										},
+										"MRO": {
+											"displayName": "Ouguiya"
+										},
+										"TOP": {
+											"displayName": "Pa’anga"
+										},
+										"PKR": {
+											"displayName": "Pakistan Rupee"
+										},
+										"MOP": {
+											"displayName": "Pataca"
+										},
+										"PHP": {
+											"displayName": "Philippine Peso"
+										},
+										"GBP": {
+											"displayName": "Pound Sterling"
+										},
+										"BWP": {
+											"displayName": "Pula"
+										},
+										"QAR": {
+											"displayName": "Qatari Rial"
+										},
+										"GTQ": {
+											"displayName": "Quetzal"
+										},
+										"ZAR": {
+											"displayName": "Rand"
+										},
+										"RON": {
+											"displayName": "Romanian Leu"
+										},
+										"MVR": {
+											"displayName": "Rufiyaa"
+										},
+										"IDR": {
+											"displayName": "Rupiah"
+										},
+										"RUB": {
+											"displayName": "Russian Ruble"
+										},
+										"SAR": {
+											"displayName": "Saudi Riyal"
+										},
+										"SCR": {
+											"displayName": "Seychelles Rupee"
+										},
+										"SGD": {
+											"displayName": "Singapore Dollar"
+										},
+										"PEN": {
+											"displayName": "Sol"
+										},
+										"SBD": {
+											"displayName": "Solomon Islands Dollar"
+										},
+										"LKR": {
+											"displayName": "Sri Lanka Rupee"
+										},
+										"SEK": {
+											"displayName": "Swedish Krona"
+										},
+										"CHF": {
+											"displayName": "Swiss Franc"
+										},
+										"SYP": {
+											"displayName": "Syrian Pound"
+										},
+										"BDT": {
+											"displayName": "Taka"
+										},
+										"WST": {
+											"displayName": "Tala"
+										},
+										"KZT": {
+											"displayName": "Tenge"
+										},
+										"TTD": {
+											"displayName": "Trinidad and Tobago Dollar"
+										},
+										"TRY": {
+											"displayName": "Turkish Lira"
+										},
+										"AED": {
+											"displayName": "UAE Dirham"
+										},
+										"USD": {
+											"displayName": "US Dollar"
+										},
+										"VUV": {
+											"displayName": "Vatu"
+										},
+										"XOF": {
+											"displayName": "West African CFA Franc"
+										},
+										"KRW": {
+											"displayName": "Won"
+										},
+										"YER": {
+											"displayName": "Yemeni Rial"
+										},
+										"JPY": {
+											"displayName": "Yen"
+										},
+										"CNY": {
+											"displayName": "Yuan Renminbi"
+										},
+										"PLN": {
+											"displayName": "Zloty"
+										}
+									}
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"visible_to": {
+					"displayName": "Visible To",
+					"description": "Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.",
+					"options": {
+						"1": {
+							"displayName": "Owner & Followers (Private)"
+						},
+						"3": {
+							"displayName": "Entire Company (Shared)"
+						}
+					}
+				},
+				"comments": {
+					"displayName": "Comments",
+					"description": "Text to describe this product-deal attachment"
+				},
+				"discount_percentage": {
+					"displayName": "Discount Percentage",
+					"description": "Percentage of discount to apply"
+				},
+				"product_variation_id": {
+					"displayName": "Product Variation ID",
+					"description": "ID of the product variation to use"
+				},
+				"includeFields": {
+					"displayName": "Include Fields",
+					"description": "Supports including optional fields in the results which are not provided by default"
+				},
+				"organizationId": {
+					"displayName": "Organization ID",
+					"description": "Will filter Deals by the provided Organization ID"
+				},
+				"personId": {
+					"displayName": "Person ID",
+					"description": "Will filter Deals by the provided Person ID"
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "A comma-separated string array. The fields to perform the search from. Defaults to all of them."
+				},
+				"activity_id": {
+					"displayName": "Activity ID",
+					"description": "ID of the activite this file will be associated with"
+				},
+				"product_id": {
+					"displayName": "Product ID",
+					"description": "ID of the person this file will be associated with"
+				},
+				"expected_close_date": {
+					"displayName": "Expected Close Date",
+					"description": "Date when the lead’s deal is expected to be closed, in ISO-8601 format"
+				},
+				"label_ids": {
+					"displayName": "Label Names or IDs",
+					"description": "ID of the labels to attach to the lead to create. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"organization_id": {
+					"displayName": "Organization ID",
+					"description": "ID of the organization to link to this lead"
+				},
+				"owner_id": {
+					"displayName": "User Name or ID",
+					"description": "ID of the User this deal will be associated with. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"exactMatch": {
+					"displayName": "Exact Match",
+					"description": "Whether only full exact matches against the given term are returned. It is not case sensitive."
+				},
+				"rawData": {
+					"displayName": "RAW Data",
+					"description": "Whether to return the data exactly in the way it got received from the API"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email of the person",
+					"placeholder": "name@email.com"
+				},
+				"marketing_status": {
+					"displayName": "Marketing Status",
+					"description": "Please be aware that it is only allowed once to change the marketing status from an old status to a new one",
+					"options": {
+						"no_consent": {
+							"displayName": "No Consent"
+						},
+						"unsubscribed": {
+							"displayName": "Unsubscribed"
+						},
+						"subscribed": {
+							"displayName": "Subscribed"
+						},
+						"archived": {
+							"displayName": "Archived"
+						}
+					}
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "Phone number of the person"
+				},
+				"done": {
+					"displayName": "Done",
+					"description": "Whether the Activity is done or not. 0 = Not done, 1 = Done. If omitted returns both Done and Not done activities."
+				},
+				"exclude": {
+					"displayName": "Exclude Activity IDs",
+					"description": "A comma-separated Activity IDs, to exclude from result. Ex. 4, 9, 11, ..."
+				},
+				"filterId": {
+					"displayName": "Predefined Filter Name or ID",
+					"description": "The ID of the Filter to use (will narrow down results if used together with user_id parameter). Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"firstChar": {
+					"displayName": "First Char",
+					"description": "If supplied, only persons whose name starts with the specified letter will be returned"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The field names and sorting mode separated by a comma (field_name_1 ASC, field_name_2 DESC). Only first-level field keys are supported (no nested keys)."
+				},
+				"lead_id": {
+					"displayName": "Lead ID",
+					"description": "ID of the lead this note will be associated with"
+				},
+				"end_date": {
+					"displayName": "End Date",
+					"description": "Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format."
+				},
+				"start_date": {
+					"displayName": "Star Date",
+					"description": "Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format."
+				},
+				"type": {
+					"displayName": "Type Names or IDs",
+					"description": "Type of the Activity. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"activityId": {
+			"displayName": "Activity ID",
+			"description": "ID of the activity to update"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"busy_flag": {
+					"displayName": "Busy Flag",
+					"description": "Whether the user is set to busy during the activity"
+				},
+				"deal_id": {
+					"displayName": "Deal ID",
+					"description": "ID of the deal this note will be associated with"
+				},
+				"due_date": {
+					"displayName": "Due Date",
+					"description": "Due Date to activity be done YYYY-MM-DD"
+				},
+				"done": {
+					"displayName": "Done",
+					"description": "Whether the activity is done or not",
+					"options": {
+						"0": {
+							"displayName": "Not Done"
+						},
+						"1": {
+							"displayName": "Done"
+						}
+					}
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "Note of the activity (HTML format)"
+				},
+				"org_id": {
+					"displayName": "Organization Name or ID",
+					"description": "ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"person_id": {
+					"displayName": "Person ID",
+					"description": "ID of the person this note will be associated with"
+				},
+				"public_description": {
+					"displayName": "Public Description",
+					"description": "Additional details about the activity that is synced to your external calendar"
+				},
+				"subject": {
+					"displayName": "Subject",
+					"description": "The subject of the activity"
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Type of the activity like \"call\", \"meeting\", etc",
+					"placeholder": "call"
+				},
+				"user_id": {
+					"displayName": "User Name or ID",
+					"description": "ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"customProperties": {
+					"displayName": "Custom Properties",
+					"description": "Adds a custom property to set also values which have not been predefined",
+					"placeholder": "Add Custom Property",
+					"multipleValueButtonText": "Add Custom Property",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Property Name or ID",
+									"description": "Name of the custom field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Property Value",
+									"description": "Value of the property to set"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Property Name or ID",
+									"description": "Name of the custom field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Property Value",
+									"description": "Value of the property to set"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "Custom Properties",
+							"placeholder": "Add Custom Property"
+						}
+					}
+				},
+				"currency": {
+					"displayName": "Currency",
+					"description": "Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ..."
+				},
+				"label": {
+					"displayName": "Label Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"lost_reason": {
+					"displayName": "Lost Reason",
+					"description": "Reason why the deal was lost"
+				},
+				"probability": {
+					"displayName": "Probability",
+					"description": "Deal success probability percentage"
+				},
+				"stage_id": {
+					"displayName": "Stage Name or ID",
+					"description": "ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "The status of the deal. If not provided it will automatically be set to \"open\".",
+					"options": {
+						"open": {
+							"displayName": "Open"
+						},
+						"won": {
+							"displayName": "Won"
+						},
+						"lost": {
+							"displayName": "Lost"
+						},
+						"deleted": {
+							"displayName": "Deleted"
+						}
+					}
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Name of the lead to update"
+				},
+				"value": {
+					"displayName": "Value",
+					"description": "Potential monetary value associated with the lead",
+					"options": {
+						"valueProperties": {
+							"displayName": "Value Properties",
+							"options": {
+								"amount": {
+									"displayName": "Amount"
+								},
+								"currency": {
+									"displayName": "Currency",
+									"options": {
+										"AFN": {
+											"displayName": "Afghani"
+										},
+										"DZD": {
+											"displayName": "Algerian Dinar"
+										},
+										"ARS": {
+											"displayName": "Argentine Peso"
+										},
+										"AUD": {
+											"displayName": "Australian Dollar"
+										},
+										"AZN": {
+											"displayName": "Azerbaijan Manat"
+										},
+										"BSD": {
+											"displayName": "Bahamian Dollar"
+										},
+										"THB": {
+											"displayName": "Baht"
+										},
+										"BBD": {
+											"displayName": "Barbados Dollar"
+										},
+										"BZD": {
+											"displayName": "Belize Dollar"
+										},
+										"BMD": {
+											"displayName": "Bermudian Dollar"
+										},
+										"BOB": {
+											"displayName": "Boliviano"
+										},
+										"BRL": {
+											"displayName": "Brazilian Real"
+										},
+										"BND": {
+											"displayName": "Brunei Dollar"
+										},
+										"BGN": {
+											"displayName": "Bulgarian Lev"
+										},
+										"CAD": {
+											"displayName": "Canadian Dollar"
+										},
+										"CLP": {
+											"displayName": "Chilean Peso"
+										},
+										"COP": {
+											"displayName": "Colombian Peso"
+										},
+										"NIO": {
+											"displayName": "Cordoba Oro"
+										},
+										"CRC": {
+											"displayName": "Costa Rican Colon"
+										},
+										"CZK": {
+											"displayName": "Czech Koruna"
+										},
+										"DKK": {
+											"displayName": "Danish Krone"
+										},
+										"DOP": {
+											"displayName": "Dominican Peso"
+										},
+										"VND": {
+											"displayName": "Dong"
+										},
+										"XCD": {
+											"displayName": "East Caribbean Dollar"
+										},
+										"EGP": {
+											"displayName": "Egyptian Pound"
+										},
+										"EUR": {
+											"displayName": "Euro"
+										},
+										"FJD": {
+											"displayName": "Fiji Dollar"
+										},
+										"HUF": {
+											"displayName": "Forint"
+										},
+										"HKD": {
+											"displayName": "Hong Kong Dollar"
+										},
+										"UAH": {
+											"displayName": "Hryvnia"
+										},
+										"INR": {
+											"displayName": "Indian Rupee"
+										},
+										"JMD": {
+											"displayName": "Jamaican Dollar"
+										},
+										"KES": {
+											"displayName": "Kenyan Shilling"
+										},
+										"PGK": {
+											"displayName": "Kina"
+										},
+										"HRK": {
+											"displayName": "Kuna"
+										},
+										"MMK": {
+											"displayName": "Kyat"
+										},
+										"LAK": {
+											"displayName": "Lao Kip"
+										},
+										"LBP": {
+											"displayName": "Lebanese Pound"
+										},
+										"ALL": {
+											"displayName": "Lek"
+										},
+										"HNL": {
+											"displayName": "Lempira"
+										},
+										"LRD": {
+											"displayName": "Liberian Dollar"
+										},
+										"MYR": {
+											"displayName": "Malaysian Ringgit"
+										},
+										"MUR": {
+											"displayName": "Mauritius Rupee"
+										},
+										"MXN": {
+											"displayName": "Mexican Peso"
+										},
+										"MAD": {
+											"displayName": "Moroccan Dirham"
+										},
+										"NPR": {
+											"displayName": "Nepalese Rupee"
+										},
+										"ILS": {
+											"displayName": "New Israeli Sheqel"
+										},
+										"TWD": {
+											"displayName": "New Taiwan Dollar"
+										},
+										"NZD": {
+											"displayName": "New Zealand Dollar"
+										},
+										"NOK": {
+											"displayName": "Norwegian Krone"
+										},
+										"MRO": {
+											"displayName": "Ouguiya"
+										},
+										"TOP": {
+											"displayName": "Pa’anga"
+										},
+										"PKR": {
+											"displayName": "Pakistan Rupee"
+										},
+										"MOP": {
+											"displayName": "Pataca"
+										},
+										"PHP": {
+											"displayName": "Philippine Peso"
+										},
+										"GBP": {
+											"displayName": "Pound Sterling"
+										},
+										"BWP": {
+											"displayName": "Pula"
+										},
+										"QAR": {
+											"displayName": "Qatari Rial"
+										},
+										"GTQ": {
+											"displayName": "Quetzal"
+										},
+										"ZAR": {
+											"displayName": "Rand"
+										},
+										"RON": {
+											"displayName": "Romanian Leu"
+										},
+										"MVR": {
+											"displayName": "Rufiyaa"
+										},
+										"IDR": {
+											"displayName": "Rupiah"
+										},
+										"RUB": {
+											"displayName": "Russian Ruble"
+										},
+										"SAR": {
+											"displayName": "Saudi Riyal"
+										},
+										"SCR": {
+											"displayName": "Seychelles Rupee"
+										},
+										"SGD": {
+											"displayName": "Singapore Dollar"
+										},
+										"PEN": {
+											"displayName": "Sol"
+										},
+										"SBD": {
+											"displayName": "Solomon Islands Dollar"
+										},
+										"LKR": {
+											"displayName": "Sri Lanka Rupee"
+										},
+										"SEK": {
+											"displayName": "Swedish Krona"
+										},
+										"CHF": {
+											"displayName": "Swiss Franc"
+										},
+										"SYP": {
+											"displayName": "Syrian Pound"
+										},
+										"BDT": {
+											"displayName": "Taka"
+										},
+										"WST": {
+											"displayName": "Tala"
+										},
+										"KZT": {
+											"displayName": "Tenge"
+										},
+										"TTD": {
+											"displayName": "Trinidad and Tobago Dollar"
+										},
+										"TRY": {
+											"displayName": "Turkish Lira"
+										},
+										"AED": {
+											"displayName": "UAE Dirham"
+										},
+										"USD": {
+											"displayName": "US Dollar"
+										},
+										"VUV": {
+											"displayName": "Vatu"
+										},
+										"XOF": {
+											"displayName": "West African CFA Franc"
+										},
+										"KRW": {
+											"displayName": "Won"
+										},
+										"YER": {
+											"displayName": "Yemeni Rial"
+										},
+										"JPY": {
+											"displayName": "Yen"
+										},
+										"CNY": {
+											"displayName": "Yuan Renminbi"
+										},
+										"PLN": {
+											"displayName": "Zloty"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"valueProperties": {
+							"displayName": "Value Properties",
+							"options": {
+								"amount": {
+									"displayName": "Amount"
+								},
+								"currency": {
+									"displayName": "Currency",
+									"options": {
+										"AFN": {
+											"displayName": "Afghani"
+										},
+										"DZD": {
+											"displayName": "Algerian Dinar"
+										},
+										"ARS": {
+											"displayName": "Argentine Peso"
+										},
+										"AUD": {
+											"displayName": "Australian Dollar"
+										},
+										"AZN": {
+											"displayName": "Azerbaijan Manat"
+										},
+										"BSD": {
+											"displayName": "Bahamian Dollar"
+										},
+										"THB": {
+											"displayName": "Baht"
+										},
+										"BBD": {
+											"displayName": "Barbados Dollar"
+										},
+										"BZD": {
+											"displayName": "Belize Dollar"
+										},
+										"BMD": {
+											"displayName": "Bermudian Dollar"
+										},
+										"BOB": {
+											"displayName": "Boliviano"
+										},
+										"BRL": {
+											"displayName": "Brazilian Real"
+										},
+										"BND": {
+											"displayName": "Brunei Dollar"
+										},
+										"BGN": {
+											"displayName": "Bulgarian Lev"
+										},
+										"CAD": {
+											"displayName": "Canadian Dollar"
+										},
+										"CLP": {
+											"displayName": "Chilean Peso"
+										},
+										"COP": {
+											"displayName": "Colombian Peso"
+										},
+										"NIO": {
+											"displayName": "Cordoba Oro"
+										},
+										"CRC": {
+											"displayName": "Costa Rican Colon"
+										},
+										"CZK": {
+											"displayName": "Czech Koruna"
+										},
+										"DKK": {
+											"displayName": "Danish Krone"
+										},
+										"DOP": {
+											"displayName": "Dominican Peso"
+										},
+										"VND": {
+											"displayName": "Dong"
+										},
+										"XCD": {
+											"displayName": "East Caribbean Dollar"
+										},
+										"EGP": {
+											"displayName": "Egyptian Pound"
+										},
+										"EUR": {
+											"displayName": "Euro"
+										},
+										"FJD": {
+											"displayName": "Fiji Dollar"
+										},
+										"HUF": {
+											"displayName": "Forint"
+										},
+										"HKD": {
+											"displayName": "Hong Kong Dollar"
+										},
+										"UAH": {
+											"displayName": "Hryvnia"
+										},
+										"INR": {
+											"displayName": "Indian Rupee"
+										},
+										"JMD": {
+											"displayName": "Jamaican Dollar"
+										},
+										"KES": {
+											"displayName": "Kenyan Shilling"
+										},
+										"PGK": {
+											"displayName": "Kina"
+										},
+										"HRK": {
+											"displayName": "Kuna"
+										},
+										"MMK": {
+											"displayName": "Kyat"
+										},
+										"LAK": {
+											"displayName": "Lao Kip"
+										},
+										"LBP": {
+											"displayName": "Lebanese Pound"
+										},
+										"ALL": {
+											"displayName": "Lek"
+										},
+										"HNL": {
+											"displayName": "Lempira"
+										},
+										"LRD": {
+											"displayName": "Liberian Dollar"
+										},
+										"MYR": {
+											"displayName": "Malaysian Ringgit"
+										},
+										"MUR": {
+											"displayName": "Mauritius Rupee"
+										},
+										"MXN": {
+											"displayName": "Mexican Peso"
+										},
+										"MAD": {
+											"displayName": "Moroccan Dirham"
+										},
+										"NPR": {
+											"displayName": "Nepalese Rupee"
+										},
+										"ILS": {
+											"displayName": "New Israeli Sheqel"
+										},
+										"TWD": {
+											"displayName": "New Taiwan Dollar"
+										},
+										"NZD": {
+											"displayName": "New Zealand Dollar"
+										},
+										"NOK": {
+											"displayName": "Norwegian Krone"
+										},
+										"MRO": {
+											"displayName": "Ouguiya"
+										},
+										"TOP": {
+											"displayName": "Pa’anga"
+										},
+										"PKR": {
+											"displayName": "Pakistan Rupee"
+										},
+										"MOP": {
+											"displayName": "Pataca"
+										},
+										"PHP": {
+											"displayName": "Philippine Peso"
+										},
+										"GBP": {
+											"displayName": "Pound Sterling"
+										},
+										"BWP": {
+											"displayName": "Pula"
+										},
+										"QAR": {
+											"displayName": "Qatari Rial"
+										},
+										"GTQ": {
+											"displayName": "Quetzal"
+										},
+										"ZAR": {
+											"displayName": "Rand"
+										},
+										"RON": {
+											"displayName": "Romanian Leu"
+										},
+										"MVR": {
+											"displayName": "Rufiyaa"
+										},
+										"IDR": {
+											"displayName": "Rupiah"
+										},
+										"RUB": {
+											"displayName": "Russian Ruble"
+										},
+										"SAR": {
+											"displayName": "Saudi Riyal"
+										},
+										"SCR": {
+											"displayName": "Seychelles Rupee"
+										},
+										"SGD": {
+											"displayName": "Singapore Dollar"
+										},
+										"PEN": {
+											"displayName": "Sol"
+										},
+										"SBD": {
+											"displayName": "Solomon Islands Dollar"
+										},
+										"LKR": {
+											"displayName": "Sri Lanka Rupee"
+										},
+										"SEK": {
+											"displayName": "Swedish Krona"
+										},
+										"CHF": {
+											"displayName": "Swiss Franc"
+										},
+										"SYP": {
+											"displayName": "Syrian Pound"
+										},
+										"BDT": {
+											"displayName": "Taka"
+										},
+										"WST": {
+											"displayName": "Tala"
+										},
+										"KZT": {
+											"displayName": "Tenge"
+										},
+										"TTD": {
+											"displayName": "Trinidad and Tobago Dollar"
+										},
+										"TRY": {
+											"displayName": "Turkish Lira"
+										},
+										"AED": {
+											"displayName": "UAE Dirham"
+										},
+										"USD": {
+											"displayName": "US Dollar"
+										},
+										"VUV": {
+											"displayName": "Vatu"
+										},
+										"XOF": {
+											"displayName": "West African CFA Franc"
+										},
+										"KRW": {
+											"displayName": "Won"
+										},
+										"YER": {
+											"displayName": "Yemeni Rial"
+										},
+										"JPY": {
+											"displayName": "Yen"
+										},
+										"CNY": {
+											"displayName": "Yuan Renminbi"
+										},
+										"PLN": {
+											"displayName": "Zloty"
+										}
+									}
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"visible_to": {
+					"displayName": "Visible To",
+					"description": "Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.",
+					"options": {
+						"1": {
+							"displayName": "Owner & Followers (Private)"
+						},
+						"3": {
+							"displayName": "Entire Company (Shared)"
+						}
+					}
+				},
+				"comments": {
+					"displayName": "Comments",
+					"description": "Text to describe this product-deal attachment"
+				},
+				"discount_percentage": {
+					"displayName": "Discount Percentage",
+					"description": "Percentage of discount to apply"
+				},
+				"item_price": {
+					"displayName": "Item Price",
+					"description": "Price at which to add or update this product in a deal"
+				},
+				"quantity": {
+					"displayName": "Quantity",
+					"description": "How many items of this product to add/update in a deal"
+				},
+				"product_variation_id": {
+					"displayName": "Product Variation ID",
+					"description": "ID of the product variation to use"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the person"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The updated description of the file"
+				},
+				"owner_id": {
+					"displayName": "User Name or ID",
+					"description": "ID of the User this person will be associated with. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"label_ids": {
+					"displayName": "Label Names or IDs",
+					"description": "ID of the labels to attach to the lead to update. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"expected_close_date": {
+					"displayName": "Expected Close Date",
+					"description": "Date when the lead’s deal is expected to be closed, in ISO-8601 format"
+				},
+				"content": {
+					"displayName": "Content",
+					"description": "The content of the note"
+				},
+				"lead_id": {
+					"displayName": "Lead ID",
+					"description": "ID of the lead this note will be associated with"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email of the person",
+					"placeholder": "name@email.com"
+				},
+				"marketing_status": {
+					"displayName": "Marketing Status",
+					"description": "Please be aware that it is only allowed once to change the marketing status from an old status to a new one",
+					"options": {
+						"no_consent": {
+							"displayName": "No Consent"
+						},
+						"unsubscribed": {
+							"displayName": "Unsubscribed"
+						},
+						"subscribed": {
+							"displayName": "Subscribed"
+						},
+						"archived": {
+							"displayName": "Archived"
+						}
+					}
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "Phone number of the person"
+				}
+			},
+			"description": "The fields to update"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Name of the lead to create"
+		},
+		"associateWith": {
+			"displayName": "Associate With",
+			"description": "Type of entity to link to this lead",
+			"options": {
+				"organization": {
+					"displayName": "Organization"
+				},
+				"person": {
+					"displayName": "Person"
+				}
+			}
+		},
+		"org_id": {
+			"displayName": "Organization ID",
+			"description": "ID of the organization this deal will be associated with"
+		},
+		"person_id": {
+			"displayName": "Person ID",
+			"description": "ID of the person to link to this lead"
+		},
+		"dealId": {
+			"displayName": "Deal Name or ID",
+			"description": "The ID of the deal whose activity to retrieve. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"productId": {
+			"displayName": "Product Name or ID",
+			"description": "The ID of the product to add to a deal. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"item_price": {
+			"displayName": "Item Price",
+			"description": "Price at which to add or update this product in a deal"
+		},
+		"quantity": {
+			"displayName": "Quantity",
+			"description": "How many items of this product to add/update in a deal"
+		},
+		"productAttachmentId": {
+			"displayName": "Product Attachment Name or ID",
+			"description": "ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"term": {
+			"displayName": "Term",
+			"description": "The search term to look for. Minimum 2 characters (or 1 if using exact_match)."
+		},
+		"exactMatch": {
+			"displayName": "Exact Match",
+			"description": "Whether only full exact matches against the given term are returned. It is not case sensitive."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field"
+		},
+		"fileId": {
+			"displayName": "File ID",
+			"description": "ID of the file to update"
+		},
+		"organization_id": {
+			"displayName": "Organization ID",
+			"description": "ID of the organization to link to this lead"
+		},
+		"leadId": {
+			"displayName": "Lead ID",
+			"description": "ID of the lead to update"
+		},
+		"content": {
+			"displayName": "Content",
+			"description": "The content of the note to create"
+		},
+		"noteId": {
+			"displayName": "Note ID",
+			"description": "ID of the note to update"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the person to create"
+		},
+		"organizationId": {
+			"displayName": "Organization ID",
+			"description": "The ID of the organization to create"
+		},
+		"personId": {
+			"displayName": "Person ID",
+			"description": "ID of the person to update"
+		},
+		"resolveProperties": {
+			"displayName": "Resolve Properties",
+			"description": "By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved."
+		},
+		"encodeProperties": {
+			"displayName": "Encode Properties",
+			"description": "By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded."
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"archived_status": {
+					"displayName": "Archived Status",
+					"options": {
+						"archived": {
+							"displayName": "Archived"
+						},
+						"all": {
+							"displayName": "All"
+						},
+						"not_archived": {
+							"displayName": "Not Archived"
+						}
+					}
+				},
+				"firstChar": {
+					"displayName": "First Char",
+					"description": "If supplied, only organizations whose name starts with the specified letter will be returned"
+				},
+				"filterId": {
+					"displayName": "Predefined Filter Name or ID",
+					"description": "ID of the filter to use. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"filter_id": {
+					"displayName": "Predefined Filter Name or ID",
+					"description": "Predefined filter to apply to the deals to retrieve. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"stage_id": {
+					"displayName": "Stage Name or ID",
+					"description": "ID of the stage to filter deals by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Status to filter deals by. Defaults to <code>all_not_deleted</code>",
+					"options": {
+						"all_not_deleted": {
+							"displayName": "All Not Deleted"
+						},
+						"deleted": {
+							"displayName": "Deleted"
+						},
+						"lost": {
+							"displayName": "Lost"
+						},
+						"open": {
+							"displayName": "Open"
+						},
+						"won": {
+							"displayName": "Won"
+						}
+					}
+				},
+				"user_id": {
+					"displayName": "User Name or ID",
+					"description": "ID of the user to filter deals by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		}
+	}
+}

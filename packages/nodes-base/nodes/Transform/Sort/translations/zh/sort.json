@@ -1,0 +1,95 @@
+{
+	"header": {
+		"displayName": "排序",
+		"description": "更改项目顺序"
+	},
+	"nodeView": {
+		"type": {
+			"displayName": "类型",
+			"description": "要执行的排序类型",
+			"options": {
+				"simple": {
+					"displayName": "简单"
+				},
+				"random": {
+					"displayName": "随机"
+				},
+				"code": {
+					"displayName": "代码"
+				}
+			}
+		},
+		"sortFieldsUi": {
+			"displayName": "排序字段",
+			"description": "输入项中用于排序的字段",
+			"placeholder": "添加排序字段",
+			"multipleValueButtonText": "添加排序字段",
+			"options": {
+				"sortField": {
+					"displayName": "排序字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "排序依据字段",
+							"placeholder": "例如 id"
+						},
+						"order": {
+							"displayName": "排序",
+							"description": "排序依据的顺序",
+							"options": {
+								"ascending": {
+									"displayName": "升序"
+								},
+								"descending": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"sortField": {
+					"displayName": "排序字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "排序依据字段",
+							"placeholder": "例如 id"
+						},
+						"order": {
+							"displayName": "排序",
+							"description": "排序依据的顺序",
+							"options": {
+								"ascending": {
+									"displayName": "升序"
+								},
+								"descending": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				},
+				"sortFieldsUi": {
+					"displayName": "排序字段",
+					"placeholder": "添加排序字段"
+				}
+			}
+		},
+		"code": {
+			"displayName": "代码",
+			"description": "确定任意两个项目顺序的Javascript代码"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				}
+			}
+		}
+	}
+}

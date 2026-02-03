@@ -1,0 +1,162 @@
+{
+	"header": {
+		"displayName": "Default Data Loader",
+		"description": "Load data from previous step in the workflow"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This will load data from a previous step in the workflow. <a href=\"/templates/1962\" target=\"_blank\">Example</a>"
+		},
+		"dataType": {
+			"displayName": "Type of Data",
+			"options": {
+				"json": {
+					"displayName": "JSON",
+					"description": "Process JSON data from previous step in the workflow"
+				},
+				"binary": {
+					"displayName": "Binary",
+					"description": "Process binary data from previous step in the workflow"
+				}
+			}
+		},
+		"jsonMode": {
+			"displayName": "Mode",
+			"options": {
+				"allInputData": {
+					"displayName": "Load All Input Data",
+					"description": "Use all JSON data that flows into the parent agent or chain"
+				},
+				"expressionData": {
+					"displayName": "Load Specific Data",
+					"description": "Load a subset of data, and/or data from any previous step in the workflow"
+				}
+			}
+		},
+		"binaryMode": {
+			"displayName": "Mode",
+			"options": {
+				"allInputData": {
+					"displayName": "Load All Input Data",
+					"description": "Use all Binary data that flows into the parent agent or chain"
+				},
+				"specificField": {
+					"displayName": "Load Specific Data",
+					"description": "Load data from a specific field in the parent agent or chain"
+				}
+			}
+		},
+		"loader": {
+			"displayName": "Data Format",
+			"options": {
+				"auto": {
+					"displayName": "Automatically Detect by Mime Type",
+					"description": "Uses the mime type to detect the format"
+				},
+				"csvLoader": {
+					"displayName": "CSV",
+					"description": "Load CSV files"
+				},
+				"docxLoader": {
+					"displayName": "Docx",
+					"description": "Load Docx documents"
+				},
+				"epubLoader": {
+					"displayName": "EPub",
+					"description": "Load EPub files"
+				},
+				"jsonLoader": {
+					"displayName": "JSON",
+					"description": "Load JSON files"
+				},
+				"pdfLoader": {
+					"displayName": "PDF",
+					"description": "Load PDF documents"
+				},
+				"textLoader": {
+					"displayName": "Text",
+					"description": "Load plain text files"
+				}
+			}
+		},
+		"jsonData": {
+			"displayName": "Data",
+			"description": "Drag and drop fields from the input pane, or use an expression"
+		},
+		"binaryDataKey": {
+			"displayName": "Input Data Field Name",
+			"description": "The name of the field in the agent or chain’s input that contains the binary file to be processed"
+		},
+		"textSplittingMode": {
+			"displayName": "Text Splitting",
+			"options": {
+				"simple": {
+					"displayName": "Simple",
+					"description": "Splits every 1000 characters with a 200 character overlap"
+				},
+				"custom": {
+					"displayName": "Custom",
+					"description": "Connect a custom text-splitting sub-node"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"pointers": {
+					"displayName": "JSON Pointers",
+					"description": "Pointers to extract from JSON, e.g. \"/text\" or \"/text, /meta/title\""
+				},
+				"separator": {
+					"displayName": "CSV Separator",
+					"description": "Separator to use for CSV"
+				},
+				"column": {
+					"displayName": "CSV Column",
+					"description": "Column to extract from CSV"
+				},
+				"splitPages": {
+					"displayName": "Split Pages in PDF",
+					"description": "Whether to split PDF pages into separate documents"
+				},
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "Metadata to add to each document. Could be used for filtering during retrieval",
+					"placeholder": "Add property",
+					"multipleValueButtonText": "Add property",
+					"options": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "Metadata",
+							"placeholder": "Add property"
+						}
+					}
+				}
+			}
+		}
+	}
+}

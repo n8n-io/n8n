@@ -1,0 +1,600 @@
+{
+	"header": {
+		"displayName": "Trello",
+		"description": "创建、更改和删除看板与卡片"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"attachment": {
+					"displayName": "附件"
+				},
+				"board": {
+					"displayName": "看板"
+				},
+				"boardMember": {
+					"displayName": "董事会成员"
+				},
+				"card": {
+					"displayName": "卡片"
+				},
+				"cardComment": {
+					"displayName": "卡片评论"
+				},
+				"checklist": {
+					"displayName": "检查清单"
+				},
+				"label": {
+					"displayName": "标签"
+				},
+				"list": {
+					"displayName": "列表"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新列表"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除标签"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取列表数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个列表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新列表"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "使用成员ID将成员添加到看板"
+				},
+				"invite": {
+					"displayName": "邀请",
+					"description": "通过电子邮件邀请新成员加入看板"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "使用成员ID从看板移除成员"
+				},
+				"createCheckItem": {
+					"displayName": "创建清单项",
+					"description": "创建清单项"
+				},
+				"deleteCheckItem": {
+					"displayName": "删除检查项",
+					"description": "删除检查项"
+				},
+				"getCheckItem": {
+					"displayName": "获取清单项",
+					"description": "获取卡片上的特定清单"
+				},
+				"completedCheckItems": {
+					"displayName": "获取已完成的清单项",
+					"description": "获取卡片上已完成的清单项"
+				},
+				"updateCheckItem": {
+					"displayName": "更新检查清单项",
+					"description": "更新卡片上检查清单中的项目"
+				},
+				"addLabel": {
+					"displayName": "添加到卡片",
+					"description": "为卡片添加标签"
+				},
+				"removeLabel": {
+					"displayName": "从卡片移除",
+					"description": "从卡片移除标签"
+				},
+				"archive": {
+					"displayName": "归档",
+					"description": "归档/取消归档列表"
+				},
+				"getCards": {
+					"displayName": "获取卡片",
+					"description": "获取列表中的所有卡片"
+				}
+			}
+		},
+		"cardId": {
+			"displayName": "卡片ID",
+			"description": "卡片的ID"
+		},
+		"url": {
+			"displayName": "源URL",
+			"description": "要添加的附件URL"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"mimeType": {
+					"displayName": "MIME类型",
+					"description": "要添加的附件的MIME类型",
+					"placeholder": "image/png"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "清单项的新名称"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要返回的字段。可以是\"all\"或逗号分隔的字段列表。"
+				},
+				"prefs_cardAging": {
+					"displayName": "老化",
+					"description": "如果启用了卡片老化功能，则确定应在看板上执行的卡片老化类型",
+					"options": {
+						"pirate": {
+							"displayName": "海盗"
+						},
+						"regular": {
+							"displayName": "常规"
+						}
+					}
+				},
+				"prefs_background": {
+					"displayName": "背景",
+					"description": "自定义背景ID或以下选项之一：蓝色、橙色、绿色、红色、紫色、粉色、青柠色、天空色、灰色"
+				},
+				"prefs_comments": {
+					"displayName": "评论",
+					"description": "谁可以在此看板上评论卡片",
+					"options": {
+						"disabled": {
+							"displayName": "已禁用"
+						},
+						"members": {
+							"displayName": "成员"
+						},
+						"observers": {
+							"displayName": "观察者"
+						},
+						"org": {
+							"displayName": "组织"
+						},
+						"public": {
+							"displayName": "公开"
+						}
+					}
+				},
+				"prefs_cardCovers": {
+					"displayName": "封面",
+					"description": "是否启用卡片封面"
+				},
+				"prefs_invitations": {
+					"displayName": "邀请设置",
+					"description": "确定哪些类型的成员可以邀请用户加入",
+					"options": {
+						"admins": {
+							"displayName": "管理员"
+						},
+						"members": {
+							"displayName": "成员"
+						}
+					}
+				},
+				"keepFromSource": {
+					"displayName": "保留来源数据",
+					"description": "若使用idCardSource，可指定要复制的属性。可选 all 或逗号分隔列表：附件、清单、评论、截止日期、标签、成员、贴纸。"
+				},
+				"defaultLabels": {
+					"displayName": "标签",
+					"description": "是否使用默认标签集"
+				},
+				"defaultLists": {
+					"displayName": "列表",
+					"description": "是否将默认列表集添加到看板（待办、进行中、已完成）。如果提供了idBoardSource则忽略此项"
+				},
+				"idOrganization": {
+					"displayName": "组织ID",
+					"description": "看板应归属的团队ID或名称"
+				},
+				"prefs_permissionLevel": {
+					"displayName": "权限级别",
+					"description": "看板的权限级别",
+					"options": {
+						"org": {
+							"displayName": "组织"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"public": {
+							"displayName": "公开"
+						}
+					}
+				},
+				"powerUps": {
+					"displayName": "增强功能",
+					"description": "应在新看板上启用的增强功能",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						},
+						"calendar": {
+							"displayName": "日历"
+						},
+						"cardAging": {
+							"displayName": "卡片老化"
+						},
+						"recap": {
+							"displayName": "回顾"
+						},
+						"voting": {
+							"displayName": "投票"
+						}
+					}
+				},
+				"prefs_selfJoin": {
+					"displayName": "自加入",
+					"description": "用户是否可以自行加入看板，还是必须被邀请"
+				},
+				"idBoardSource": {
+					"displayName": "源ID",
+					"description": "要复制到新看板的看板ID"
+				},
+				"prefs_voting": {
+					"displayName": "投票",
+					"description": "谁可以在此看板投票",
+					"options": {
+						"disabled": {
+							"displayName": "已禁用"
+						},
+						"members": {
+							"displayName": "成员"
+						},
+						"observers": {
+							"displayName": "观察者"
+						},
+						"org": {
+							"displayName": "组织"
+						},
+						"public": {
+							"displayName": "公开"
+						}
+					}
+				},
+				"pluginData": {
+					"displayName": "插件数据",
+					"description": "是否在响应卡片中包含插件数据"
+				},
+				"allowBillableGuest": {
+					"displayName": "允许计费访客",
+					"description": "是否允许组织管理员将多面板访客添加到面板"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "确定要添加的用户应具有的成员资格类型",
+					"options": {
+						"normal": {
+							"displayName": "普通",
+							"description": "邀请为普通成员"
+						},
+						"admin": {
+							"displayName": "管理员",
+							"description": "邀请为管理员"
+						},
+						"observer": {
+							"displayName": "观察者",
+							"description": "邀请为观察者（Trello高级功能）"
+						}
+					}
+				},
+				"fullName": {
+					"displayName": "全名",
+					"description": "要添加为看板成员的用户全名。长度必须至少为1个字符，且不能以空格开头或结尾。"
+				},
+				"due": {
+					"displayName": "截止日期",
+					"description": "卡片截止日期"
+				},
+				"dueComplete": {
+					"displayName": "截止日期完成",
+					"description": "卡片是否已完成"
+				},
+				"pos": {
+					"displayName": "位置",
+					"description": "新列表的位置。顶部、底部或一个正浮点数。"
+				},
+				"idMembers": {
+					"displayName": "成员ID",
+					"description": "要添加到卡片的成员ID逗号分隔列表"
+				},
+				"idLabels": {
+					"displayName": "标签ID",
+					"description": "要添加到卡片的标签ID列表（以逗号分隔）"
+				},
+				"urlSource": {
+					"displayName": "URL 来源",
+					"description": "要附加到卡片的来源 URL"
+				},
+				"idCardSource": {
+					"displayName": "源ID",
+					"description": "要复制到新卡片中的卡片ID"
+				},
+				"board": {
+					"displayName": "看板",
+					"description": "是否返回卡片所在的面板对象"
+				},
+				"board_fields": {
+					"displayName": "看板字段",
+					"description": "要返回的字段。可以是 \"all\" 或逗号分隔的列表：name, desc, descData, closed, idOrganization, pinned, url, prefs。"
+				},
+				"customFieldItems": {
+					"displayName": "自定义字段项",
+					"description": "是否包含自定义字段项"
+				},
+				"members": {
+					"displayName": "成员",
+					"description": "是否返回卡片上成员的对象"
+				},
+				"member_fields": {
+					"displayName": "成员字段",
+					"description": "要返回的字段。可以是“all”或逗号分隔列表：avatarHash、fullName、initials、username。"
+				},
+				"stickers": {
+					"displayName": "贴纸",
+					"description": "响应中是否包含贴纸模型"
+				},
+				"sticker_fields": {
+					"displayName": "贴纸字段",
+					"description": "要返回的字段。可以是\"all\"或逗号分隔的贴纸字段列表。"
+				},
+				"idChecklistSource": {
+					"displayName": "清单源ID",
+					"description": "要复制到新清单中的源清单ID"
+				},
+				"checked": {
+					"displayName": "已选中",
+					"description": "创建时检查项是否已选中"
+				},
+				"state": {
+					"displayName": "状态",
+					"options": {
+						"complete": {
+							"displayName": "完成"
+						},
+						"incomplete": {
+							"displayName": "不完整"
+						}
+					}
+				},
+				"checklistId": {
+					"displayName": "清单ID",
+					"description": "此项所属清单的ID"
+				},
+				"idListSource": {
+					"displayName": "列出源",
+					"description": "要复制到新列表的列表ID"
+				}
+			}
+		},
+		"id": {
+			"displayName": "列表ID",
+			"description": "要更新的列表ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "列表名称",
+			"placeholder": "我的列表"
+		},
+		"description": {
+			"displayName": "描述",
+			"description": "卡片描述"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"closed": {
+					"displayName": "已关闭",
+					"description": "列表是否已关闭"
+				},
+				"desc": {
+					"displayName": "描述",
+					"description": "看板的新描述"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "列表的新名称"
+				},
+				"idOrganization": {
+					"displayName": "组织ID",
+					"description": "看板应移动到的团队ID"
+				},
+				"subscribed": {
+					"displayName": "已订阅",
+					"description": "操作用户是否已订阅列表"
+				},
+				"idAttachmentCover": {
+					"displayName": "附件封面",
+					"description": "卡片应使用的图片附件ID，或设为null表示无封面"
+				},
+				"idBoard": {
+					"displayName": "看板ID",
+					"description": "列表应移至的目标看板ID"
+				},
+				"due": {
+					"displayName": "截止日期",
+					"description": "卡片截止日期"
+				},
+				"dueComplete": {
+					"displayName": "截止日期完成",
+					"description": "卡片是否已完成"
+				},
+				"idLabels": {
+					"displayName": "标签ID",
+					"description": "要在卡片上设置的标签ID列表（逗号分隔）"
+				},
+				"idList": {
+					"displayName": "列表ID",
+					"description": "卡片应归属的列表ID"
+				},
+				"idMembers": {
+					"displayName": "成员ID",
+					"description": "要在卡片上设置的成员ID逗号分隔列表"
+				},
+				"pos": {
+					"displayName": "位置",
+					"description": "列表的位置。顶部、底部或正浮点数。"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "标签颜色",
+					"options": {
+						"black": {
+							"displayName": "黑色"
+						},
+						"blue": {
+							"displayName": "蓝色"
+						},
+						"green": {
+							"displayName": "绿色"
+						},
+						"lime": {
+							"displayName": "Lime"
+						},
+						"null": {
+							"displayName": "空值"
+						},
+						"orange": {
+							"displayName": "橙色"
+						},
+						"pink": {
+							"displayName": "粉色"
+						},
+						"purple": {
+							"displayName": "紫色"
+						},
+						"red": {
+							"displayName": "红色"
+						},
+						"sky": {
+							"displayName": "Sky"
+						},
+						"yellow": {
+							"displayName": "黄色"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"idMember": {
+			"displayName": "成员ID",
+			"description": "要从看板中移除的成员ID"
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "确定要添加的用户应具有的成员资格类型",
+			"options": {
+				"normal": {
+					"displayName": "普通",
+					"description": "邀请为普通成员"
+				},
+				"admin": {
+					"displayName": "管理员",
+					"description": "邀请为管理员"
+				},
+				"observer": {
+					"displayName": "观察者",
+					"description": "邀请为观察者（Trello高级功能）"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要更新的看板ID",
+			"placeholder": "name@email.com"
+		},
+		"listId": {
+			"displayName": "列表ID",
+			"description": "要在其中创建卡片的列表ID"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "评论文本"
+		},
+		"commentId": {
+			"displayName": "评论ID",
+			"description": "要删除的评论ID"
+		},
+		"checklistId": {
+			"displayName": "清单ID",
+			"description": "要更新的清单ID"
+		},
+		"checkItemId": {
+			"displayName": "检查项ID",
+			"description": "要更新的检查清单项ID"
+		},
+		"boardId": {
+			"displayName": "看板",
+			"description": "看板ID"
+		},
+		"color": {
+			"displayName": "颜色",
+			"description": "标签颜色",
+			"options": {
+				"black": {
+					"displayName": "黑色"
+				},
+				"blue": {
+					"displayName": "蓝色"
+				},
+				"green": {
+					"displayName": "绿色"
+				},
+				"lime": {
+					"displayName": "Lime"
+				},
+				"null": {
+					"displayName": "空值"
+				},
+				"orange": {
+					"displayName": "橙色"
+				},
+				"pink": {
+					"displayName": "粉色"
+				},
+				"purple": {
+					"displayName": "紫色"
+				},
+				"red": {
+					"displayName": "红色"
+				},
+				"sky": {
+					"displayName": "Sky"
+				},
+				"yellow": {
+					"displayName": "黄色"
+				}
+			}
+		},
+		"archive": {
+			"displayName": "归档",
+			"description": "列表应被归档还是取消归档"
+		},
+		"idBoard": {
+			"displayName": "看板ID",
+			"description": "应在其中创建列表的看板ID"
+		}
+	}
+}

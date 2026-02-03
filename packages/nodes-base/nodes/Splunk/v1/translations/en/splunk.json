@@ -1,0 +1,335 @@
+{
+	"header": {
+		"displayName": "Splunk",
+		"description": "Consume the Splunk Enterprise API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"firedAlert": {
+					"displayName": "Fired Alert"
+				},
+				"searchConfiguration": {
+					"displayName": "Search Configuration"
+				},
+				"searchJob": {
+					"displayName": "Search Job"
+				},
+				"searchResult": {
+					"displayName": "Search Result"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getReport": {
+					"displayName": "Get Report",
+					"description": "Retrieve a fired alerts report"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve an user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many users"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create an user"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update an user"
+				}
+			}
+		},
+		"searchConfigurationId": {
+			"displayName": "Search Configuration ID",
+			"description": "ID of the search configuration to retrieve"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"add_orphan_field": {
+					"displayName": "Add Orphan Field",
+					"description": "Whether to include a boolean value for each saved search to show whether the search is orphaned, meaning that it has no valid owner"
+				},
+				"listDefaultActionArgs": {
+					"displayName": "List Default Actions"
+				},
+				"sort_dir": {
+					"displayName": "Sort Direction",
+					"options": {
+						"asc": {
+							"displayName": "Ascending"
+						},
+						"desc": {
+							"displayName": "Descending"
+						}
+					}
+				},
+				"sort_key": {
+					"displayName": "Sort Key",
+					"description": "Key name to use for sorting"
+				},
+				"sort_mode": {
+					"displayName": "Sort Mode",
+					"options": {
+						"auto": {
+							"displayName": "Automatic",
+							"description": "If all field values are numeric, collate numerically. Otherwise, collate alphabetically."
+						},
+						"alpha": {
+							"displayName": "Alphabetic",
+							"description": "Collate alphabetically, case-insensitive"
+						},
+						"alpha_case": {
+							"displayName": "Alphabetic and Case-Sensitive",
+							"description": "Collate alphabetically, case-sensitive"
+						},
+						"num": {
+							"displayName": "Numeric",
+							"description": "Collate numerically"
+						}
+					}
+				},
+				"add_summary_to_metadata": {
+					"displayName": "Add Summary to Metadata",
+					"description": "Whether to include field summary statistics in the response"
+				}
+			}
+		},
+		"search": {
+			"displayName": "Query",
+			"description": "Search language string to execute, in Splunk's <a href=\"https://docs.splunk.com/Documentation/Splunk/latest/SearchReference/WhatsInThisManual\">Search Processing Language</a>"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"adhoc_search_level": {
+					"displayName": "Ad Hoc Search Level",
+					"options": {
+						"fast": {
+							"displayName": "Fast"
+						},
+						"smart": {
+							"displayName": "Smart"
+						},
+						"verbose": {
+							"displayName": "Verbose"
+						}
+					}
+				},
+				"auto_cancel": {
+					"displayName": "Auto-Cancel After (Seconds)",
+					"description": "Seconds after which the search job automatically cancels"
+				},
+				"auto_finalize_ec": {
+					"displayName": "Auto-Finalize After (Num Events)",
+					"description": "Auto-finalize the search after at least this many events are processed"
+				},
+				"auto_pause": {
+					"displayName": "Auto Pause After (Seconds)",
+					"description": "Seconds of inactivity after which the search job automatically pauses"
+				},
+				"index_earliest": {
+					"displayName": "Earliest Index",
+					"description": "The earliest index time for the search (inclusive)"
+				},
+				"earliest_time": {
+					"displayName": "Earliest Time",
+					"description": "The earliest cut-off for the search (inclusive)"
+				},
+				"exec_mode": {
+					"displayName": "Exec Mode",
+					"options": {
+						"blocking": {
+							"displayName": "Blocking"
+						},
+						"normal": {
+							"displayName": "Normal"
+						},
+						"oneshot": {
+							"displayName": "One Shot"
+						}
+					}
+				},
+				"indexedRealtimeOffset": {
+					"displayName": "Indexed Real Time Offset",
+					"description": "Seconds of disk sync delay for indexed real-time search"
+				},
+				"index_latest": {
+					"displayName": "Latest Index",
+					"description": "The latest index time for the search (inclusive)"
+				},
+				"latest_time": {
+					"displayName": "Latest Time",
+					"description": "The latest cut-off for the search (inclusive)"
+				},
+				"max_time": {
+					"displayName": "Max Time",
+					"description": "Number of seconds to run this search before finalizing. Enter <code>0</code> to never finalize."
+				},
+				"namespace": {
+					"displayName": "Namespace",
+					"description": "Application namespace in which to restrict searches"
+				},
+				"reduce_freq": {
+					"displayName": "Reduce Frequency",
+					"description": "How frequently to run the MapReduce reduce phase on accumulated map values"
+				},
+				"remote_server_list": {
+					"displayName": "Remote Server List",
+					"description": "Comma-separated list of (possibly wildcarded) servers from which raw events should be pulled. This same server list is to be used in subsearches."
+				},
+				"reuse_max_seconds_ago": {
+					"displayName": "Reuse Limit (Seconds)",
+					"description": "Number of seconds ago to check when an identical search is started and return the job’s search ID instead of starting a new job"
+				},
+				"rf": {
+					"displayName": "Required Field",
+					"description": "Name of a required field to add to the search. Even if not referenced or used directly by the search, a required field is still included in events and summary endpoints."
+				},
+				"search_mode": {
+					"displayName": "Search Mode",
+					"options": {
+						"normal": {
+							"displayName": "Normal"
+						},
+						"realtime": {
+							"displayName": "Real Time"
+						}
+					}
+				},
+				"status_buckets": {
+					"displayName": "Status Buckets",
+					"description": "The most status buckets to generate. Set <code>0</code> generate no timeline information."
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Number of seconds to keep this search after processing has stopped"
+				},
+				"workload_pool": {
+					"displayName": "Workload Pool",
+					"description": "New workload pool where the existing running search should be placed"
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"realname": {
+					"displayName": "Full Name",
+					"description": "Full name of the user"
+				}
+			}
+		},
+		"searchJobId": {
+			"displayName": "Search ID",
+			"description": "ID of the search whose results to retrieve"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"keyValueMatch": {
+					"displayName": "Key-Value Match",
+					"description": "Key-value pair to match against. Example: if \"Key\" is set to <code>user</code> and \"Field\" is set to <code>john</code>, only the results where <code>user</code> is <code>john</code> will be returned.",
+					"placeholder": "Add Key-Value Pair",
+					"options": {
+						"keyValuePair": {
+							"displayName": "Key-Value Pair",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Key to match against"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to match against"
+								}
+							}
+						}
+					},
+					"values": {
+						"keyValuePair": {
+							"displayName": "Key-Value Pair",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Key to match against"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to match against"
+								}
+							}
+						},
+						"keyValueMatch": {
+							"displayName": "Key-Value Match",
+							"placeholder": "Add Key-Value Pair"
+						}
+					}
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Login name of the user"
+		},
+		"roles": {
+			"displayName": "Role Names or IDs",
+			"description": "Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"password": {
+			"displayName": "Password"
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "ID of the user to update"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"realname": {
+					"displayName": "Full Name",
+					"description": "Full name of the user"
+				},
+				"password": {
+					"displayName": "Password"
+				},
+				"roles": {
+					"displayName": "Role Names or IDs",
+					"description": "Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,5932 @@
+{
+	"header": {
+		"displayName": "WhatsApp Business Cloud",
+		"description": "Access WhatsApp API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"message": {
+					"displayName": "Message"
+				},
+				"media": {
+					"displayName": "Media"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"send": {
+					"displayName": "Send"
+				},
+				"sendAndWait": {
+					"displayName": "Send and Wait for Response"
+				},
+				"sendTemplate": {
+					"displayName": "Send Template"
+				},
+				"mediaUpload": {
+					"displayName": "Upload"
+				},
+				"mediaUrlGet": {
+					"displayName": "Download"
+				},
+				"mediaDelete": {
+					"displayName": "Delete"
+				}
+			},
+			"description": "The operation to perform on the media"
+		},
+		"messagingProduct": {
+			"displayName": "Messaging Product"
+		},
+		"phoneNumberId": {
+			"displayName": "Sender Phone Number (or ID)",
+			"description": "The ID of the business account's phone number to store the media"
+		},
+		"recipientPhoneNumber": {
+			"displayName": "Recipient's Phone Number",
+			"description": "Phone number of the recipient of the message"
+		},
+		"messageType": {
+			"displayName": "MessageType",
+			"description": "The type of the message",
+			"options": {
+				"audio": {
+					"displayName": "Audio"
+				},
+				"contacts": {
+					"displayName": "Contacts"
+				},
+				"document": {
+					"displayName": "Document"
+				},
+				"image": {
+					"displayName": "Image"
+				},
+				"location": {
+					"displayName": "Location"
+				},
+				"text": {
+					"displayName": "Text"
+				},
+				"video": {
+					"displayName": "Video"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"placeholder": "Add Parameter",
+			"options": {
+				"data": {
+					"displayName": "Name",
+					"options": {
+						"formatted_name": {
+							"displayName": "Formatted Name"
+						},
+						"first_name": {
+							"displayName": "First Name"
+						},
+						"last_name": {
+							"displayName": "Last Name"
+						},
+						"middle_name": {
+							"displayName": "Middle Name"
+						},
+						"suffix": {
+							"displayName": "Suffix"
+						},
+						"prefix": {
+							"displayName": "Prefix"
+						}
+					}
+				}
+			},
+			"values": {
+				"data": {
+					"displayName": "Name",
+					"options": {
+						"formatted_name": {
+							"displayName": "Formatted Name"
+						},
+						"first_name": {
+							"displayName": "First Name"
+						},
+						"last_name": {
+							"displayName": "Last Name"
+						},
+						"middle_name": {
+							"displayName": "Middle Name"
+						},
+						"suffix": {
+							"displayName": "Suffix"
+						},
+						"prefix": {
+							"displayName": "Prefix"
+						}
+					}
+				},
+				"name": {
+					"displayName": "Name",
+					"placeholder": "Add Parameter"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"addresses": {
+					"displayName": "Addresses",
+					"placeholder": "Add Parameter",
+					"multipleValueButtonText": "Add Parameter",
+					"options": {
+						"address": {
+							"displayName": "Address",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"HOME": {
+											"displayName": "Home"
+										},
+										"WORK": {
+											"displayName": "Work"
+										}
+									}
+								},
+								"street": {
+									"displayName": "Street"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zip": {
+									"displayName": "Zip"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"country_code": {
+									"displayName": "Country Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address": {
+							"displayName": "Address",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"HOME": {
+											"displayName": "Home"
+										},
+										"WORK": {
+											"displayName": "Work"
+										}
+									}
+								},
+								"street": {
+									"displayName": "Street"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zip": {
+									"displayName": "Zip"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"country_code": {
+									"displayName": "Country Code"
+								}
+							}
+						},
+						"addresses": {
+							"displayName": "Addresses",
+							"placeholder": "Add Parameter"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "Birthday",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"emails": {
+					"displayName": "Emails",
+					"placeholder": "Add Parameter",
+					"multipleValueButtonText": "Add Parameter",
+					"options": {
+						"data": {
+							"displayName": "Email",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"HOME": {
+											"displayName": "Home"
+										},
+										"WORK": {
+											"displayName": "Work"
+										}
+									}
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"data": {
+							"displayName": "Email",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"HOME": {
+											"displayName": "Home"
+										},
+										"WORK": {
+											"displayName": "Work"
+										}
+									}
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								}
+							}
+						},
+						"emails": {
+							"displayName": "Emails",
+							"placeholder": "Add Parameter"
+						}
+					}
+				},
+				"organization": {
+					"displayName": "Organization",
+					"placeholder": "Add Parameter",
+					"options": {
+						"data": {
+							"displayName": "Organization",
+							"options": {
+								"company": {
+									"displayName": "Company"
+								},
+								"department": {
+									"displayName": "Department"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						}
+					},
+					"values": {
+						"data": {
+							"displayName": "Organization",
+							"options": {
+								"company": {
+									"displayName": "Company"
+								},
+								"department": {
+									"displayName": "Department"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						},
+						"organization": {
+							"displayName": "Organization",
+							"placeholder": "Add Parameter"
+						}
+					}
+				},
+				"phones": {
+					"displayName": "Phones",
+					"placeholder": "Add Parameter",
+					"multipleValueButtonText": "Add Parameter",
+					"options": {
+						"data": {
+							"displayName": "Phone",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"CELL": {
+											"displayName": "Cell"
+										},
+										"HOME": {
+											"displayName": "Home"
+										},
+										"IPHONE": {
+											"displayName": "Iphone"
+										},
+										"MAIN": {
+											"displayName": "Main"
+										},
+										"WORK": {
+											"displayName": "Work"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "Phone"
+								},
+								"whatsapp_user_id": {
+									"displayName": "WhatsApp User ID",
+									"description": "If omitted, the message will display an Invite to WhatsApp button instead of the standard buttons"
+								}
+							}
+						}
+					},
+					"values": {
+						"data": {
+							"displayName": "Phone",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"CELL": {
+											"displayName": "Cell"
+										},
+										"HOME": {
+											"displayName": "Home"
+										},
+										"IPHONE": {
+											"displayName": "Iphone"
+										},
+										"MAIN": {
+											"displayName": "Main"
+										},
+										"WORK": {
+											"displayName": "Work"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "Phone"
+								},
+								"whatsapp_user_id": {
+									"displayName": "WhatsApp User ID",
+									"description": "If omitted, the message will display an Invite to WhatsApp button instead of the standard buttons"
+								}
+							}
+						},
+						"phones": {
+							"displayName": "Phones",
+							"placeholder": "Add Parameter"
+						}
+					}
+				},
+				"urls": {
+					"displayName": "URLs",
+					"placeholder": "Add Parameter",
+					"multipleValueButtonText": "Add Parameter",
+					"options": {
+						"url": {
+							"displayName": "URL",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"HOME": {
+											"displayName": "Home"
+										},
+										"WORK": {
+											"displayName": "Work"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL"
+								}
+							}
+						}
+					},
+					"values": {
+						"url": {
+							"displayName": "URL",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"HOME": {
+											"displayName": "Home"
+										},
+										"WORK": {
+											"displayName": "Work"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL"
+								}
+							}
+						},
+						"urls": {
+							"displayName": "URLs",
+							"placeholder": "Add Parameter"
+						}
+					}
+				},
+				"nameAndAddress": {
+					"displayName": "Name and Address",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"address": {
+							"displayName": "Address"
+						}
+					}
+				},
+				"mediaFilename": {
+					"displayName": "Filename",
+					"description": "The name of the file"
+				},
+				"mediaCaption": {
+					"displayName": "Caption",
+					"description": "The caption of the media"
+				},
+				"previewUrl": {
+					"displayName": "Show URL Previews",
+					"description": "Whether to display URL previews in text messages"
+				},
+				"mediaFileName": {
+					"displayName": "Filename",
+					"description": "The name to use for the file"
+				}
+			},
+			"values": {
+				"nameAndAddress": {
+					"displayName": "Name and Address",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"address": {
+							"displayName": "Address"
+						}
+					}
+				},
+				"additionalFields": {
+					"displayName": "Additional Fields",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"longitude": {
+			"displayName": "Longitude"
+		},
+		"latitude": {
+			"displayName": "Latitude"
+		},
+		"textBody": {
+			"displayName": "Text Body",
+			"description": "The body of the message (max 4096 characters)"
+		},
+		"mediaPath": {
+			"displayName": "Take Video From",
+			"description": "Use a link, an ID, or n8n to upload a video",
+			"options": {
+				"useMediaLink": {
+					"displayName": "Link",
+					"description": "When using a link, WhatsApp will download the video, saving you the step of uploading video yourself"
+				},
+				"useMediaId": {
+					"displayName": "WhatsApp Media",
+					"description": "You can use an ID if you have already uploaded the video to WhatsApp"
+				},
+				"useMedian8n": {
+					"displayName": "n8n",
+					"description": "Upload a binary file on the item being processed in n8n"
+				}
+			}
+		},
+		"mediaLink": {
+			"displayName": "Link",
+			"description": "Link of the media to be sent"
+		},
+		"mediaId": {
+			"displayName": "ID",
+			"description": "ID of the media to be sent"
+		},
+		"mediaPropertyName": {
+			"displayName": "Property Name",
+			"description": "Name of the binary property which contains the data for the file to be uploaded"
+		},
+		"mediaFilename": {
+			"displayName": "Filename",
+			"description": "The name of the file (required when using a file ID)"
+		},
+		"template": {
+			"displayName": "Template",
+			"description": "Name of the template"
+		},
+		"components": {
+			"displayName": "Components",
+			"placeholder": "Add Component",
+			"multipleValueButtonText": "Add Component",
+			"options": {
+				"component": {
+					"displayName": "Component",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"body": {
+									"displayName": "Body"
+								},
+								"button": {
+									"displayName": "Button"
+								},
+								"header": {
+									"displayName": "Header"
+								}
+							}
+						},
+						"bodyParameters": {
+							"displayName": "Parameters",
+							"placeholder": "Add Parameter",
+							"multipleValueButtonText": "Add Parameter",
+							"options": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"text": {
+													"displayName": "Text"
+												},
+												"currency": {
+													"displayName": "Currency"
+												},
+												"date_time": {
+													"displayName": "Date Time"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text"
+										},
+										"code": {
+											"displayName": "Currency Code",
+											"placeholder": "USD",
+											"options": {
+												"AED": {
+													"displayName": "AED - UAE Dirham"
+												},
+												"AFN": {
+													"displayName": "AFN - Afghani"
+												},
+												"ALL": {
+													"displayName": "ALL - Lek"
+												},
+												"AMD": {
+													"displayName": "AMD - Armenian Dram"
+												},
+												"ANG": {
+													"displayName": "ANG - Netherlands Antillean Guilder"
+												},
+												"AOA": {
+													"displayName": "AOA - Kwanza"
+												},
+												"ARS": {
+													"displayName": "ARS - Argentine Peso"
+												},
+												"AUD": {
+													"displayName": "AUD - Australian Dollar"
+												},
+												"AWG": {
+													"displayName": "AWG - Aruban Florin"
+												},
+												"AZN": {
+													"displayName": "AZN - Azerbaijan Manat"
+												},
+												"BAM": {
+													"displayName": "BAM - Convertible Mark"
+												},
+												"BBD": {
+													"displayName": "BBD - Barbados Dollar"
+												},
+												"BDT": {
+													"displayName": "BDT - Taka"
+												},
+												"BGN": {
+													"displayName": "BGN - Bulgarian Lev"
+												},
+												"BHD": {
+													"displayName": "BHD - Bahraini Dinar"
+												},
+												"BIF": {
+													"displayName": "BIF - Burundi Franc"
+												},
+												"BMD": {
+													"displayName": "BMD - Bermudian Dollar"
+												},
+												"BND": {
+													"displayName": "BND - Brunei Dollar"
+												},
+												"BOB": {
+													"displayName": "BOB - Boliviano"
+												},
+												"BOV": {
+													"displayName": "BOV - Mvdol"
+												},
+												"BRL": {
+													"displayName": "BRL - Brazilian Real"
+												},
+												"BSD": {
+													"displayName": "BSD - Bahamian Dollar"
+												},
+												"BTN": {
+													"displayName": "BTN - Ngultrum"
+												},
+												"BWP": {
+													"displayName": "BWP - Pula"
+												},
+												"BYN": {
+													"displayName": "BYN - Belarusian Ruble"
+												},
+												"BZD": {
+													"displayName": "BZD - Belize Dollar"
+												},
+												"CAD": {
+													"displayName": "CAD - Canadian Dollar"
+												},
+												"CDF": {
+													"displayName": "CDF - Congolese Franc"
+												},
+												"CHE": {
+													"displayName": "CHE - WIR Euro"
+												},
+												"CHF": {
+													"displayName": "CHF - Swiss Franc"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR Franc"
+												},
+												"CLF": {
+													"displayName": "CLF - Unidad de Fomento"
+												},
+												"CLP": {
+													"displayName": "CLP - Chilean Peso"
+												},
+												"CNY": {
+													"displayName": "CNY - Yuan Renminbi"
+												},
+												"COP": {
+													"displayName": "COP - Colombian Peso"
+												},
+												"COU": {
+													"displayName": "COU - Unidad de Valor Real"
+												},
+												"CRC": {
+													"displayName": "CRC - Costa Rican Colon"
+												},
+												"CUC": {
+													"displayName": "CUC - Peso Convertible"
+												},
+												"CUP": {
+													"displayName": "CUP - Cuban Peso"
+												},
+												"CVE": {
+													"displayName": "CVE - Cabo Verde Escudo"
+												},
+												"CZK": {
+													"displayName": "CZK - Czech Koruna"
+												},
+												"DJF": {
+													"displayName": "DJF - Djibouti Franc"
+												},
+												"DKK": {
+													"displayName": "DKK - Danish Krone"
+												},
+												"DOP": {
+													"displayName": "DOP - Dominican Peso"
+												},
+												"DZD": {
+													"displayName": "DZD - Algerian Dinar"
+												},
+												"EGP": {
+													"displayName": "EGP - Egyptian Pound"
+												},
+												"ERN": {
+													"displayName": "ERN - Nakfa"
+												},
+												"ETB": {
+													"displayName": "ETB - Ethiopian Birr"
+												},
+												"EUR": {
+													"displayName": "EUR - Euro"
+												},
+												"FJD": {
+													"displayName": "FJD - Fiji Dollar"
+												},
+												"FKP": {
+													"displayName": "FKP - Falkland Islands Pound"
+												},
+												"GBP": {
+													"displayName": "GBP - Pound Sterling"
+												},
+												"GEL": {
+													"displayName": "GEL - Lari"
+												},
+												"GHS": {
+													"displayName": "GHS - Ghana Cedi"
+												},
+												"GIP": {
+													"displayName": "GIP - Gibraltar Pound"
+												},
+												"GMD": {
+													"displayName": "GMD - Dalasi"
+												},
+												"GNF": {
+													"displayName": "GNF - Guinean Franc"
+												},
+												"GTQ": {
+													"displayName": "GTQ - Quetzal"
+												},
+												"GYD": {
+													"displayName": "GYD - Guyana Dollar"
+												},
+												"HKD": {
+													"displayName": "HKD - Hong Kong Dollar"
+												},
+												"HNL": {
+													"displayName": "HNL - Lempira"
+												},
+												"HRK": {
+													"displayName": "HRK - Kuna"
+												},
+												"HTG": {
+													"displayName": "HTG - Gourde"
+												},
+												"HUF": {
+													"displayName": "HUF - Forint"
+												},
+												"IDR": {
+													"displayName": "IDR - Rupiah"
+												},
+												"ILS": {
+													"displayName": "ILS - New Israeli Sheqel"
+												},
+												"INR": {
+													"displayName": "INR - Indian Rupee"
+												},
+												"IQD": {
+													"displayName": "IQD - Iraqi Dinar"
+												},
+												"IRR": {
+													"displayName": "IRR - Iranian Rial"
+												},
+												"ISK": {
+													"displayName": "ISK - Iceland Krona"
+												},
+												"JMD": {
+													"displayName": "JMD - Jamaican Dollar"
+												},
+												"JOD": {
+													"displayName": "JOD - Jordanian Dinar"
+												},
+												"JPY": {
+													"displayName": "JPY - Yen"
+												},
+												"KES": {
+													"displayName": "KES - Kenyan Shilling"
+												},
+												"KGS": {
+													"displayName": "KGS - Som"
+												},
+												"KHR": {
+													"displayName": "KHR - Riel"
+												},
+												"KMF": {
+													"displayName": "KMF - Comorian Franc "
+												},
+												"KPW": {
+													"displayName": "KPW - North Korean Won"
+												},
+												"KRW": {
+													"displayName": "KRW - Won"
+												},
+												"KWD": {
+													"displayName": "KWD - Kuwaiti Dinar"
+												},
+												"KYD": {
+													"displayName": "KYD - Cayman Islands Dollar"
+												},
+												"KZT": {
+													"displayName": "KZT - Tenge"
+												},
+												"LAK": {
+													"displayName": "LAK - Lao Kip"
+												},
+												"LBP": {
+													"displayName": "LBP - Lebanese Pound"
+												},
+												"LKR": {
+													"displayName": "LKR - Sri Lanka Rupee"
+												},
+												"LRD": {
+													"displayName": "LRD - Liberian Dollar"
+												},
+												"LSL": {
+													"displayName": "LSL - Loti"
+												},
+												"LYD": {
+													"displayName": "LYD - Libyan Dinar"
+												},
+												"MAD": {
+													"displayName": "MAD - Moroccan Dirham"
+												},
+												"MDL": {
+													"displayName": "MDL - Moldovan Leu"
+												},
+												"MGA": {
+													"displayName": "MGA - Malagasy Ariary"
+												},
+												"MKD": {
+													"displayName": "MKD - Denar"
+												},
+												"MMK": {
+													"displayName": "MMK - Kyat"
+												},
+												"MNT": {
+													"displayName": "MNT - Tugrik"
+												},
+												"MOP": {
+													"displayName": "MOP - Pataca"
+												},
+												"MRU": {
+													"displayName": "MRU - Ouguiya"
+												},
+												"MUR": {
+													"displayName": "MUR - Mauritius Rupee"
+												},
+												"MVR": {
+													"displayName": "MVR - Rufiyaa"
+												},
+												"MWK": {
+													"displayName": "MWK - Malawi Kwacha"
+												},
+												"MXN": {
+													"displayName": "MXN - Mexican Peso"
+												},
+												"MXV": {
+													"displayName": "MXV - Mexican Unidad de Inversion (UDI)"
+												},
+												"MYR": {
+													"displayName": "MYR - Malaysian Ringgit"
+												},
+												"MZN": {
+													"displayName": "MZN - Mozambique Metical"
+												},
+												"NAD": {
+													"displayName": "NAD - Namibia Dollar"
+												},
+												"NGN": {
+													"displayName": "NGN - Naira"
+												},
+												"NIO": {
+													"displayName": "NIO - Cordoba Oro"
+												},
+												"NOK": {
+													"displayName": "NOK - Norwegian Krone"
+												},
+												"NPR": {
+													"displayName": "NPR - Nepalese Rupee"
+												},
+												"NZD": {
+													"displayName": "NZD - New Zealand Dollar"
+												},
+												"OMR": {
+													"displayName": "OMR - Rial Omani"
+												},
+												"PAB": {
+													"displayName": "PAB - Balboa"
+												},
+												"PEN": {
+													"displayName": "PEN - Sol"
+												},
+												"PGK": {
+													"displayName": "PGK - Kina"
+												},
+												"PHP": {
+													"displayName": "PHP - Philippine Peso"
+												},
+												"PKR": {
+													"displayName": "PKR - Pakistan Rupee"
+												},
+												"PLN": {
+													"displayName": "PLN - Zloty"
+												},
+												"PYG": {
+													"displayName": "PYG - Guarani"
+												},
+												"QAR": {
+													"displayName": "QAR - Qatari Rial"
+												},
+												"RON": {
+													"displayName": "RON - Romanian Leu"
+												},
+												"RSD": {
+													"displayName": "RSD - Serbian Dinar"
+												},
+												"RUB": {
+													"displayName": "RUB - Russian Ruble"
+												},
+												"RWF": {
+													"displayName": "RWF - Rwanda Franc"
+												},
+												"SAR": {
+													"displayName": "SAR - Saudi Riyal"
+												},
+												"SBD": {
+													"displayName": "SBD - Solomon Islands Dollar"
+												},
+												"SCR": {
+													"displayName": "SCR - Seychelles Rupee"
+												},
+												"SDG": {
+													"displayName": "SDG - Sudanese Pound"
+												},
+												"SEK": {
+													"displayName": "SEK - Swedish Krona"
+												},
+												"SGD": {
+													"displayName": "SGD - Singapore Dollar"
+												},
+												"SHP": {
+													"displayName": "SHP - Saint Helena Pound"
+												},
+												"SLL": {
+													"displayName": "SLL - Leone"
+												},
+												"SOS": {
+													"displayName": "SOS - Somali Shilling"
+												},
+												"SRD": {
+													"displayName": "SRD - Surinam Dollar"
+												},
+												"SSP": {
+													"displayName": "SSP - South Sudanese Pound"
+												},
+												"STN": {
+													"displayName": "STN - Dobra"
+												},
+												"SVC": {
+													"displayName": "SVC - El Salvador Colon"
+												},
+												"SYP": {
+													"displayName": "SYP - Syrian Pound"
+												},
+												"SZL": {
+													"displayName": "SZL - Lilangeni"
+												},
+												"THB": {
+													"displayName": "THB - Baht"
+												},
+												"TJS": {
+													"displayName": "TJS - Somoni"
+												},
+												"TMT": {
+													"displayName": "TMT - Turkmenistan New Manat"
+												},
+												"TND": {
+													"displayName": "TND - Tunisian Dinar"
+												},
+												"TOP": {
+													"displayName": "TOP - Pa’anga"
+												},
+												"TRY": {
+													"displayName": "TRY - Turkish Lira"
+												},
+												"TTD": {
+													"displayName": "TTD - Trinidad and Tobago Dollar"
+												},
+												"TWD": {
+													"displayName": "TWD - New Taiwan Dollar"
+												},
+												"TZS": {
+													"displayName": "TZS - Tanzanian Shilling"
+												},
+												"UAH": {
+													"displayName": "UAH - Hryvnia"
+												},
+												"UGX": {
+													"displayName": "UGX - Uganda Shilling"
+												},
+												"USD": {
+													"displayName": "USD - US Dollar"
+												},
+												"USN": {
+													"displayName": "USN - US Dollar (Next day)"
+												},
+												"UYI": {
+													"displayName": "UYI - Uruguay Peso en Unidades Indexadas (UI)"
+												},
+												"UYU": {
+													"displayName": "UYU - Peso Uruguayo"
+												},
+												"UYW": {
+													"displayName": "UYW - Unidad Previsional"
+												},
+												"UZS": {
+													"displayName": "UZS - Uzbekistan Sum"
+												},
+												"VES": {
+													"displayName": "VES - Bolívar Soberano"
+												},
+												"VND": {
+													"displayName": "VND - Dong"
+												},
+												"VUV": {
+													"displayName": "VUV - Vatu"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - CFA Franc BEAC"
+												},
+												"XAG": {
+													"displayName": "XAG - Silver"
+												},
+												"XAU": {
+													"displayName": "XAU - Gold"
+												},
+												"XBA": {
+													"displayName": "XBA - Bond Markets Unit European Composite Unit (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - Bond Markets Unit European Monetary Unit (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - Bond Markets Unit European Unit of Account 9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - Bond Markets Unit European Unit of Account 17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - East Caribbean Dollar"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR (Special Drawing Right)"
+												},
+												"XOF": {
+													"displayName": "XOF - CFA Franc BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - Palladium"
+												},
+												"XPF": {
+													"displayName": "XPF - CFP Franc"
+												},
+												"XPT": {
+													"displayName": "XPT - Platinum"
+												},
+												"XSU": {
+													"displayName": "XSU - Sucre"
+												},
+												"XTS": {
+													"displayName": "XTS - Codes specifically reserved for testing purposes"
+												},
+												"XUA": {
+													"displayName": "XUA - ADB Unit of Account"
+												},
+												"XXX": {
+													"displayName": "XXX - The codes assigned for transactions where no currency is involved"
+												},
+												"YER": {
+													"displayName": "YER - Yemeni Rial"
+												},
+												"ZAR": {
+													"displayName": "ZAR - Rand"
+												},
+												"ZMW": {
+													"displayName": "ZMW - Zambian Kwacha"
+												},
+												"ZWL": {
+													"displayName": "ZWL - Zimbabwe Dollar"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "Amount"
+										},
+										"date_time": {
+											"displayName": "Date Time"
+										},
+										"fallback_value": {
+											"displayName": "Fallback Value"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"text": {
+													"displayName": "Text"
+												},
+												"currency": {
+													"displayName": "Currency"
+												},
+												"date_time": {
+													"displayName": "Date Time"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text"
+										},
+										"code": {
+											"displayName": "Currency Code",
+											"placeholder": "USD",
+											"options": {
+												"AED": {
+													"displayName": "AED - UAE Dirham"
+												},
+												"AFN": {
+													"displayName": "AFN - Afghani"
+												},
+												"ALL": {
+													"displayName": "ALL - Lek"
+												},
+												"AMD": {
+													"displayName": "AMD - Armenian Dram"
+												},
+												"ANG": {
+													"displayName": "ANG - Netherlands Antillean Guilder"
+												},
+												"AOA": {
+													"displayName": "AOA - Kwanza"
+												},
+												"ARS": {
+													"displayName": "ARS - Argentine Peso"
+												},
+												"AUD": {
+													"displayName": "AUD - Australian Dollar"
+												},
+												"AWG": {
+													"displayName": "AWG - Aruban Florin"
+												},
+												"AZN": {
+													"displayName": "AZN - Azerbaijan Manat"
+												},
+												"BAM": {
+													"displayName": "BAM - Convertible Mark"
+												},
+												"BBD": {
+													"displayName": "BBD - Barbados Dollar"
+												},
+												"BDT": {
+													"displayName": "BDT - Taka"
+												},
+												"BGN": {
+													"displayName": "BGN - Bulgarian Lev"
+												},
+												"BHD": {
+													"displayName": "BHD - Bahraini Dinar"
+												},
+												"BIF": {
+													"displayName": "BIF - Burundi Franc"
+												},
+												"BMD": {
+													"displayName": "BMD - Bermudian Dollar"
+												},
+												"BND": {
+													"displayName": "BND - Brunei Dollar"
+												},
+												"BOB": {
+													"displayName": "BOB - Boliviano"
+												},
+												"BOV": {
+													"displayName": "BOV - Mvdol"
+												},
+												"BRL": {
+													"displayName": "BRL - Brazilian Real"
+												},
+												"BSD": {
+													"displayName": "BSD - Bahamian Dollar"
+												},
+												"BTN": {
+													"displayName": "BTN - Ngultrum"
+												},
+												"BWP": {
+													"displayName": "BWP - Pula"
+												},
+												"BYN": {
+													"displayName": "BYN - Belarusian Ruble"
+												},
+												"BZD": {
+													"displayName": "BZD - Belize Dollar"
+												},
+												"CAD": {
+													"displayName": "CAD - Canadian Dollar"
+												},
+												"CDF": {
+													"displayName": "CDF - Congolese Franc"
+												},
+												"CHE": {
+													"displayName": "CHE - WIR Euro"
+												},
+												"CHF": {
+													"displayName": "CHF - Swiss Franc"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR Franc"
+												},
+												"CLF": {
+													"displayName": "CLF - Unidad de Fomento"
+												},
+												"CLP": {
+													"displayName": "CLP - Chilean Peso"
+												},
+												"CNY": {
+													"displayName": "CNY - Yuan Renminbi"
+												},
+												"COP": {
+													"displayName": "COP - Colombian Peso"
+												},
+												"COU": {
+													"displayName": "COU - Unidad de Valor Real"
+												},
+												"CRC": {
+													"displayName": "CRC - Costa Rican Colon"
+												},
+												"CUC": {
+													"displayName": "CUC - Peso Convertible"
+												},
+												"CUP": {
+													"displayName": "CUP - Cuban Peso"
+												},
+												"CVE": {
+													"displayName": "CVE - Cabo Verde Escudo"
+												},
+												"CZK": {
+													"displayName": "CZK - Czech Koruna"
+												},
+												"DJF": {
+													"displayName": "DJF - Djibouti Franc"
+												},
+												"DKK": {
+													"displayName": "DKK - Danish Krone"
+												},
+												"DOP": {
+													"displayName": "DOP - Dominican Peso"
+												},
+												"DZD": {
+													"displayName": "DZD - Algerian Dinar"
+												},
+												"EGP": {
+													"displayName": "EGP - Egyptian Pound"
+												},
+												"ERN": {
+													"displayName": "ERN - Nakfa"
+												},
+												"ETB": {
+													"displayName": "ETB - Ethiopian Birr"
+												},
+												"EUR": {
+													"displayName": "EUR - Euro"
+												},
+												"FJD": {
+													"displayName": "FJD - Fiji Dollar"
+												},
+												"FKP": {
+													"displayName": "FKP - Falkland Islands Pound"
+												},
+												"GBP": {
+													"displayName": "GBP - Pound Sterling"
+												},
+												"GEL": {
+													"displayName": "GEL - Lari"
+												},
+												"GHS": {
+													"displayName": "GHS - Ghana Cedi"
+												},
+												"GIP": {
+													"displayName": "GIP - Gibraltar Pound"
+												},
+												"GMD": {
+													"displayName": "GMD - Dalasi"
+												},
+												"GNF": {
+													"displayName": "GNF - Guinean Franc"
+												},
+												"GTQ": {
+													"displayName": "GTQ - Quetzal"
+												},
+												"GYD": {
+													"displayName": "GYD - Guyana Dollar"
+												},
+												"HKD": {
+													"displayName": "HKD - Hong Kong Dollar"
+												},
+												"HNL": {
+													"displayName": "HNL - Lempira"
+												},
+												"HRK": {
+													"displayName": "HRK - Kuna"
+												},
+												"HTG": {
+													"displayName": "HTG - Gourde"
+												},
+												"HUF": {
+													"displayName": "HUF - Forint"
+												},
+												"IDR": {
+													"displayName": "IDR - Rupiah"
+												},
+												"ILS": {
+													"displayName": "ILS - New Israeli Sheqel"
+												},
+												"INR": {
+													"displayName": "INR - Indian Rupee"
+												},
+												"IQD": {
+													"displayName": "IQD - Iraqi Dinar"
+												},
+												"IRR": {
+													"displayName": "IRR - Iranian Rial"
+												},
+												"ISK": {
+													"displayName": "ISK - Iceland Krona"
+												},
+												"JMD": {
+													"displayName": "JMD - Jamaican Dollar"
+												},
+												"JOD": {
+													"displayName": "JOD - Jordanian Dinar"
+												},
+												"JPY": {
+													"displayName": "JPY - Yen"
+												},
+												"KES": {
+													"displayName": "KES - Kenyan Shilling"
+												},
+												"KGS": {
+													"displayName": "KGS - Som"
+												},
+												"KHR": {
+													"displayName": "KHR - Riel"
+												},
+												"KMF": {
+													"displayName": "KMF - Comorian Franc "
+												},
+												"KPW": {
+													"displayName": "KPW - North Korean Won"
+												},
+												"KRW": {
+													"displayName": "KRW - Won"
+												},
+												"KWD": {
+													"displayName": "KWD - Kuwaiti Dinar"
+												},
+												"KYD": {
+													"displayName": "KYD - Cayman Islands Dollar"
+												},
+												"KZT": {
+													"displayName": "KZT - Tenge"
+												},
+												"LAK": {
+													"displayName": "LAK - Lao Kip"
+												},
+												"LBP": {
+													"displayName": "LBP - Lebanese Pound"
+												},
+												"LKR": {
+													"displayName": "LKR - Sri Lanka Rupee"
+												},
+												"LRD": {
+													"displayName": "LRD - Liberian Dollar"
+												},
+												"LSL": {
+													"displayName": "LSL - Loti"
+												},
+												"LYD": {
+													"displayName": "LYD - Libyan Dinar"
+												},
+												"MAD": {
+													"displayName": "MAD - Moroccan Dirham"
+												},
+												"MDL": {
+													"displayName": "MDL - Moldovan Leu"
+												},
+												"MGA": {
+													"displayName": "MGA - Malagasy Ariary"
+												},
+												"MKD": {
+													"displayName": "MKD - Denar"
+												},
+												"MMK": {
+													"displayName": "MMK - Kyat"
+												},
+												"MNT": {
+													"displayName": "MNT - Tugrik"
+												},
+												"MOP": {
+													"displayName": "MOP - Pataca"
+												},
+												"MRU": {
+													"displayName": "MRU - Ouguiya"
+												},
+												"MUR": {
+													"displayName": "MUR - Mauritius Rupee"
+												},
+												"MVR": {
+													"displayName": "MVR - Rufiyaa"
+												},
+												"MWK": {
+													"displayName": "MWK - Malawi Kwacha"
+												},
+												"MXN": {
+													"displayName": "MXN - Mexican Peso"
+												},
+												"MXV": {
+													"displayName": "MXV - Mexican Unidad de Inversion (UDI)"
+												},
+												"MYR": {
+													"displayName": "MYR - Malaysian Ringgit"
+												},
+												"MZN": {
+													"displayName": "MZN - Mozambique Metical"
+												},
+												"NAD": {
+													"displayName": "NAD - Namibia Dollar"
+												},
+												"NGN": {
+													"displayName": "NGN - Naira"
+												},
+												"NIO": {
+													"displayName": "NIO - Cordoba Oro"
+												},
+												"NOK": {
+													"displayName": "NOK - Norwegian Krone"
+												},
+												"NPR": {
+													"displayName": "NPR - Nepalese Rupee"
+												},
+												"NZD": {
+													"displayName": "NZD - New Zealand Dollar"
+												},
+												"OMR": {
+													"displayName": "OMR - Rial Omani"
+												},
+												"PAB": {
+													"displayName": "PAB - Balboa"
+												},
+												"PEN": {
+													"displayName": "PEN - Sol"
+												},
+												"PGK": {
+													"displayName": "PGK - Kina"
+												},
+												"PHP": {
+													"displayName": "PHP - Philippine Peso"
+												},
+												"PKR": {
+													"displayName": "PKR - Pakistan Rupee"
+												},
+												"PLN": {
+													"displayName": "PLN - Zloty"
+												},
+												"PYG": {
+													"displayName": "PYG - Guarani"
+												},
+												"QAR": {
+													"displayName": "QAR - Qatari Rial"
+												},
+												"RON": {
+													"displayName": "RON - Romanian Leu"
+												},
+												"RSD": {
+													"displayName": "RSD - Serbian Dinar"
+												},
+												"RUB": {
+													"displayName": "RUB - Russian Ruble"
+												},
+												"RWF": {
+													"displayName": "RWF - Rwanda Franc"
+												},
+												"SAR": {
+													"displayName": "SAR - Saudi Riyal"
+												},
+												"SBD": {
+													"displayName": "SBD - Solomon Islands Dollar"
+												},
+												"SCR": {
+													"displayName": "SCR - Seychelles Rupee"
+												},
+												"SDG": {
+													"displayName": "SDG - Sudanese Pound"
+												},
+												"SEK": {
+													"displayName": "SEK - Swedish Krona"
+												},
+												"SGD": {
+													"displayName": "SGD - Singapore Dollar"
+												},
+												"SHP": {
+													"displayName": "SHP - Saint Helena Pound"
+												},
+												"SLL": {
+													"displayName": "SLL - Leone"
+												},
+												"SOS": {
+													"displayName": "SOS - Somali Shilling"
+												},
+												"SRD": {
+													"displayName": "SRD - Surinam Dollar"
+												},
+												"SSP": {
+													"displayName": "SSP - South Sudanese Pound"
+												},
+												"STN": {
+													"displayName": "STN - Dobra"
+												},
+												"SVC": {
+													"displayName": "SVC - El Salvador Colon"
+												},
+												"SYP": {
+													"displayName": "SYP - Syrian Pound"
+												},
+												"SZL": {
+													"displayName": "SZL - Lilangeni"
+												},
+												"THB": {
+													"displayName": "THB - Baht"
+												},
+												"TJS": {
+													"displayName": "TJS - Somoni"
+												},
+												"TMT": {
+													"displayName": "TMT - Turkmenistan New Manat"
+												},
+												"TND": {
+													"displayName": "TND - Tunisian Dinar"
+												},
+												"TOP": {
+													"displayName": "TOP - Pa’anga"
+												},
+												"TRY": {
+													"displayName": "TRY - Turkish Lira"
+												},
+												"TTD": {
+													"displayName": "TTD - Trinidad and Tobago Dollar"
+												},
+												"TWD": {
+													"displayName": "TWD - New Taiwan Dollar"
+												},
+												"TZS": {
+													"displayName": "TZS - Tanzanian Shilling"
+												},
+												"UAH": {
+													"displayName": "UAH - Hryvnia"
+												},
+												"UGX": {
+													"displayName": "UGX - Uganda Shilling"
+												},
+												"USD": {
+													"displayName": "USD - US Dollar"
+												},
+												"USN": {
+													"displayName": "USN - US Dollar (Next day)"
+												},
+												"UYI": {
+													"displayName": "UYI - Uruguay Peso en Unidades Indexadas (UI)"
+												},
+												"UYU": {
+													"displayName": "UYU - Peso Uruguayo"
+												},
+												"UYW": {
+													"displayName": "UYW - Unidad Previsional"
+												},
+												"UZS": {
+													"displayName": "UZS - Uzbekistan Sum"
+												},
+												"VES": {
+													"displayName": "VES - Bolívar Soberano"
+												},
+												"VND": {
+													"displayName": "VND - Dong"
+												},
+												"VUV": {
+													"displayName": "VUV - Vatu"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - CFA Franc BEAC"
+												},
+												"XAG": {
+													"displayName": "XAG - Silver"
+												},
+												"XAU": {
+													"displayName": "XAU - Gold"
+												},
+												"XBA": {
+													"displayName": "XBA - Bond Markets Unit European Composite Unit (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - Bond Markets Unit European Monetary Unit (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - Bond Markets Unit European Unit of Account 9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - Bond Markets Unit European Unit of Account 17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - East Caribbean Dollar"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR (Special Drawing Right)"
+												},
+												"XOF": {
+													"displayName": "XOF - CFA Franc BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - Palladium"
+												},
+												"XPF": {
+													"displayName": "XPF - CFP Franc"
+												},
+												"XPT": {
+													"displayName": "XPT - Platinum"
+												},
+												"XSU": {
+													"displayName": "XSU - Sucre"
+												},
+												"XTS": {
+													"displayName": "XTS - Codes specifically reserved for testing purposes"
+												},
+												"XUA": {
+													"displayName": "XUA - ADB Unit of Account"
+												},
+												"XXX": {
+													"displayName": "XXX - The codes assigned for transactions where no currency is involved"
+												},
+												"YER": {
+													"displayName": "YER - Yemeni Rial"
+												},
+												"ZAR": {
+													"displayName": "ZAR - Rand"
+												},
+												"ZMW": {
+													"displayName": "ZMW - Zambian Kwacha"
+												},
+												"ZWL": {
+													"displayName": "ZWL - Zimbabwe Dollar"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "Amount"
+										},
+										"date_time": {
+											"displayName": "Date Time"
+										},
+										"fallback_value": {
+											"displayName": "Fallback Value"
+										}
+									}
+								},
+								"bodyParameters": {
+									"displayName": "Parameters",
+									"placeholder": "Add Parameter"
+								}
+							}
+						},
+						"sub_type": {
+							"displayName": "Sub Type",
+							"options": {
+								"quick_reply": {
+									"displayName": "Quick Reply",
+									"description": "Allows your customer to call a phone number and visit a website"
+								},
+								"url": {
+									"displayName": "URL"
+								}
+							}
+						},
+						"index": {
+							"displayName": "Index"
+						},
+						"buttonParameters": {
+							"displayName": "Parameters",
+							"placeholder": "Add Parameter",
+							"options": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"payload": {
+													"displayName": "Payload"
+												},
+												"text": {
+													"displayName": "Text"
+												}
+											}
+										},
+										"payload": {
+											"displayName": "Payload"
+										},
+										"text": {
+											"displayName": "Text"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"payload": {
+													"displayName": "Payload"
+												},
+												"text": {
+													"displayName": "Text"
+												}
+											}
+										},
+										"payload": {
+											"displayName": "Payload"
+										},
+										"text": {
+											"displayName": "Text"
+										}
+									}
+								},
+								"buttonParameters": {
+									"displayName": "Parameters",
+									"placeholder": "Add Parameter"
+								}
+							}
+						},
+						"headerParameters": {
+							"displayName": "Parameters",
+							"placeholder": "Add Parameter",
+							"multipleValueButtonText": "Add Parameter",
+							"options": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"text": {
+													"displayName": "Text"
+												},
+												"currency": {
+													"displayName": "Currency"
+												},
+												"date_time": {
+													"displayName": "Date Time"
+												},
+												"image": {
+													"displayName": "Image"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text"
+										},
+										"code": {
+											"displayName": "Currency Code",
+											"placeholder": "USD",
+											"options": {
+												"AED": {
+													"displayName": "AED - UAE Dirham"
+												},
+												"AFN": {
+													"displayName": "AFN - Afghani"
+												},
+												"ALL": {
+													"displayName": "ALL - Lek"
+												},
+												"AMD": {
+													"displayName": "AMD - Armenian Dram"
+												},
+												"ANG": {
+													"displayName": "ANG - Netherlands Antillean Guilder"
+												},
+												"AOA": {
+													"displayName": "AOA - Kwanza"
+												},
+												"ARS": {
+													"displayName": "ARS - Argentine Peso"
+												},
+												"AUD": {
+													"displayName": "AUD - Australian Dollar"
+												},
+												"AWG": {
+													"displayName": "AWG - Aruban Florin"
+												},
+												"AZN": {
+													"displayName": "AZN - Azerbaijan Manat"
+												},
+												"BAM": {
+													"displayName": "BAM - Convertible Mark"
+												},
+												"BBD": {
+													"displayName": "BBD - Barbados Dollar"
+												},
+												"BDT": {
+													"displayName": "BDT - Taka"
+												},
+												"BGN": {
+													"displayName": "BGN - Bulgarian Lev"
+												},
+												"BHD": {
+													"displayName": "BHD - Bahraini Dinar"
+												},
+												"BIF": {
+													"displayName": "BIF - Burundi Franc"
+												},
+												"BMD": {
+													"displayName": "BMD - Bermudian Dollar"
+												},
+												"BND": {
+													"displayName": "BND - Brunei Dollar"
+												},
+												"BOB": {
+													"displayName": "BOB - Boliviano"
+												},
+												"BOV": {
+													"displayName": "BOV - Mvdol"
+												},
+												"BRL": {
+													"displayName": "BRL - Brazilian Real"
+												},
+												"BSD": {
+													"displayName": "BSD - Bahamian Dollar"
+												},
+												"BTN": {
+													"displayName": "BTN - Ngultrum"
+												},
+												"BWP": {
+													"displayName": "BWP - Pula"
+												},
+												"BYN": {
+													"displayName": "BYN - Belarusian Ruble"
+												},
+												"BZD": {
+													"displayName": "BZD - Belize Dollar"
+												},
+												"CAD": {
+													"displayName": "CAD - Canadian Dollar"
+												},
+												"CDF": {
+													"displayName": "CDF - Congolese Franc"
+												},
+												"CHE": {
+													"displayName": "CHE - WIR Euro"
+												},
+												"CHF": {
+													"displayName": "CHF - Swiss Franc"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR Franc"
+												},
+												"CLF": {
+													"displayName": "CLF - Unidad de Fomento"
+												},
+												"CLP": {
+													"displayName": "CLP - Chilean Peso"
+												},
+												"CNY": {
+													"displayName": "CNY - Yuan Renminbi"
+												},
+												"COP": {
+													"displayName": "COP - Colombian Peso"
+												},
+												"COU": {
+													"displayName": "COU - Unidad de Valor Real"
+												},
+												"CRC": {
+													"displayName": "CRC - Costa Rican Colon"
+												},
+												"CUC": {
+													"displayName": "CUC - Peso Convertible"
+												},
+												"CUP": {
+													"displayName": "CUP - Cuban Peso"
+												},
+												"CVE": {
+													"displayName": "CVE - Cabo Verde Escudo"
+												},
+												"CZK": {
+													"displayName": "CZK - Czech Koruna"
+												},
+												"DJF": {
+													"displayName": "DJF - Djibouti Franc"
+												},
+												"DKK": {
+													"displayName": "DKK - Danish Krone"
+												},
+												"DOP": {
+													"displayName": "DOP - Dominican Peso"
+												},
+												"DZD": {
+													"displayName": "DZD - Algerian Dinar"
+												},
+												"EGP": {
+													"displayName": "EGP - Egyptian Pound"
+												},
+												"ERN": {
+													"displayName": "ERN - Nakfa"
+												},
+												"ETB": {
+													"displayName": "ETB - Ethiopian Birr"
+												},
+												"EUR": {
+													"displayName": "EUR - Euro"
+												},
+												"FJD": {
+													"displayName": "FJD - Fiji Dollar"
+												},
+												"FKP": {
+													"displayName": "FKP - Falkland Islands Pound"
+												},
+												"GBP": {
+													"displayName": "GBP - Pound Sterling"
+												},
+												"GEL": {
+													"displayName": "GEL - Lari"
+												},
+												"GHS": {
+													"displayName": "GHS - Ghana Cedi"
+												},
+												"GIP": {
+													"displayName": "GIP - Gibraltar Pound"
+												},
+												"GMD": {
+													"displayName": "GMD - Dalasi"
+												},
+												"GNF": {
+													"displayName": "GNF - Guinean Franc"
+												},
+												"GTQ": {
+													"displayName": "GTQ - Quetzal"
+												},
+												"GYD": {
+													"displayName": "GYD - Guyana Dollar"
+												},
+												"HKD": {
+													"displayName": "HKD - Hong Kong Dollar"
+												},
+												"HNL": {
+													"displayName": "HNL - Lempira"
+												},
+												"HRK": {
+													"displayName": "HRK - Kuna"
+												},
+												"HTG": {
+													"displayName": "HTG - Gourde"
+												},
+												"HUF": {
+													"displayName": "HUF - Forint"
+												},
+												"IDR": {
+													"displayName": "IDR - Rupiah"
+												},
+												"ILS": {
+													"displayName": "ILS - New Israeli Sheqel"
+												},
+												"INR": {
+													"displayName": "INR - Indian Rupee"
+												},
+												"IQD": {
+													"displayName": "IQD - Iraqi Dinar"
+												},
+												"IRR": {
+													"displayName": "IRR - Iranian Rial"
+												},
+												"ISK": {
+													"displayName": "ISK - Iceland Krona"
+												},
+												"JMD": {
+													"displayName": "JMD - Jamaican Dollar"
+												},
+												"JOD": {
+													"displayName": "JOD - Jordanian Dinar"
+												},
+												"JPY": {
+													"displayName": "JPY - Yen"
+												},
+												"KES": {
+													"displayName": "KES - Kenyan Shilling"
+												},
+												"KGS": {
+													"displayName": "KGS - Som"
+												},
+												"KHR": {
+													"displayName": "KHR - Riel"
+												},
+												"KMF": {
+													"displayName": "KMF - Comorian Franc "
+												},
+												"KPW": {
+													"displayName": "KPW - North Korean Won"
+												},
+												"KRW": {
+													"displayName": "KRW - Won"
+												},
+												"KWD": {
+													"displayName": "KWD - Kuwaiti Dinar"
+												},
+												"KYD": {
+													"displayName": "KYD - Cayman Islands Dollar"
+												},
+												"KZT": {
+													"displayName": "KZT - Tenge"
+												},
+												"LAK": {
+													"displayName": "LAK - Lao Kip"
+												},
+												"LBP": {
+													"displayName": "LBP - Lebanese Pound"
+												},
+												"LKR": {
+													"displayName": "LKR - Sri Lanka Rupee"
+												},
+												"LRD": {
+													"displayName": "LRD - Liberian Dollar"
+												},
+												"LSL": {
+													"displayName": "LSL - Loti"
+												},
+												"LYD": {
+													"displayName": "LYD - Libyan Dinar"
+												},
+												"MAD": {
+													"displayName": "MAD - Moroccan Dirham"
+												},
+												"MDL": {
+													"displayName": "MDL - Moldovan Leu"
+												},
+												"MGA": {
+													"displayName": "MGA - Malagasy Ariary"
+												},
+												"MKD": {
+													"displayName": "MKD - Denar"
+												},
+												"MMK": {
+													"displayName": "MMK - Kyat"
+												},
+												"MNT": {
+													"displayName": "MNT - Tugrik"
+												},
+												"MOP": {
+													"displayName": "MOP - Pataca"
+												},
+												"MRU": {
+													"displayName": "MRU - Ouguiya"
+												},
+												"MUR": {
+													"displayName": "MUR - Mauritius Rupee"
+												},
+												"MVR": {
+													"displayName": "MVR - Rufiyaa"
+												},
+												"MWK": {
+													"displayName": "MWK - Malawi Kwacha"
+												},
+												"MXN": {
+													"displayName": "MXN - Mexican Peso"
+												},
+												"MXV": {
+													"displayName": "MXV - Mexican Unidad de Inversion (UDI)"
+												},
+												"MYR": {
+													"displayName": "MYR - Malaysian Ringgit"
+												},
+												"MZN": {
+													"displayName": "MZN - Mozambique Metical"
+												},
+												"NAD": {
+													"displayName": "NAD - Namibia Dollar"
+												},
+												"NGN": {
+													"displayName": "NGN - Naira"
+												},
+												"NIO": {
+													"displayName": "NIO - Cordoba Oro"
+												},
+												"NOK": {
+													"displayName": "NOK - Norwegian Krone"
+												},
+												"NPR": {
+													"displayName": "NPR - Nepalese Rupee"
+												},
+												"NZD": {
+													"displayName": "NZD - New Zealand Dollar"
+												},
+												"OMR": {
+													"displayName": "OMR - Rial Omani"
+												},
+												"PAB": {
+													"displayName": "PAB - Balboa"
+												},
+												"PEN": {
+													"displayName": "PEN - Sol"
+												},
+												"PGK": {
+													"displayName": "PGK - Kina"
+												},
+												"PHP": {
+													"displayName": "PHP - Philippine Peso"
+												},
+												"PKR": {
+													"displayName": "PKR - Pakistan Rupee"
+												},
+												"PLN": {
+													"displayName": "PLN - Zloty"
+												},
+												"PYG": {
+													"displayName": "PYG - Guarani"
+												},
+												"QAR": {
+													"displayName": "QAR - Qatari Rial"
+												},
+												"RON": {
+													"displayName": "RON - Romanian Leu"
+												},
+												"RSD": {
+													"displayName": "RSD - Serbian Dinar"
+												},
+												"RUB": {
+													"displayName": "RUB - Russian Ruble"
+												},
+												"RWF": {
+													"displayName": "RWF - Rwanda Franc"
+												},
+												"SAR": {
+													"displayName": "SAR - Saudi Riyal"
+												},
+												"SBD": {
+													"displayName": "SBD - Solomon Islands Dollar"
+												},
+												"SCR": {
+													"displayName": "SCR - Seychelles Rupee"
+												},
+												"SDG": {
+													"displayName": "SDG - Sudanese Pound"
+												},
+												"SEK": {
+													"displayName": "SEK - Swedish Krona"
+												},
+												"SGD": {
+													"displayName": "SGD - Singapore Dollar"
+												},
+												"SHP": {
+													"displayName": "SHP - Saint Helena Pound"
+												},
+												"SLL": {
+													"displayName": "SLL - Leone"
+												},
+												"SOS": {
+													"displayName": "SOS - Somali Shilling"
+												},
+												"SRD": {
+													"displayName": "SRD - Surinam Dollar"
+												},
+												"SSP": {
+													"displayName": "SSP - South Sudanese Pound"
+												},
+												"STN": {
+													"displayName": "STN - Dobra"
+												},
+												"SVC": {
+													"displayName": "SVC - El Salvador Colon"
+												},
+												"SYP": {
+													"displayName": "SYP - Syrian Pound"
+												},
+												"SZL": {
+													"displayName": "SZL - Lilangeni"
+												},
+												"THB": {
+													"displayName": "THB - Baht"
+												},
+												"TJS": {
+													"displayName": "TJS - Somoni"
+												},
+												"TMT": {
+													"displayName": "TMT - Turkmenistan New Manat"
+												},
+												"TND": {
+													"displayName": "TND - Tunisian Dinar"
+												},
+												"TOP": {
+													"displayName": "TOP - Pa’anga"
+												},
+												"TRY": {
+													"displayName": "TRY - Turkish Lira"
+												},
+												"TTD": {
+													"displayName": "TTD - Trinidad and Tobago Dollar"
+												},
+												"TWD": {
+													"displayName": "TWD - New Taiwan Dollar"
+												},
+												"TZS": {
+													"displayName": "TZS - Tanzanian Shilling"
+												},
+												"UAH": {
+													"displayName": "UAH - Hryvnia"
+												},
+												"UGX": {
+													"displayName": "UGX - Uganda Shilling"
+												},
+												"USD": {
+													"displayName": "USD - US Dollar"
+												},
+												"USN": {
+													"displayName": "USN - US Dollar (Next day)"
+												},
+												"UYI": {
+													"displayName": "UYI - Uruguay Peso en Unidades Indexadas (UI)"
+												},
+												"UYU": {
+													"displayName": "UYU - Peso Uruguayo"
+												},
+												"UYW": {
+													"displayName": "UYW - Unidad Previsional"
+												},
+												"UZS": {
+													"displayName": "UZS - Uzbekistan Sum"
+												},
+												"VES": {
+													"displayName": "VES - Bolívar Soberano"
+												},
+												"VND": {
+													"displayName": "VND - Dong"
+												},
+												"VUV": {
+													"displayName": "VUV - Vatu"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - CFA Franc BEAC"
+												},
+												"XAG": {
+													"displayName": "XAG - Silver"
+												},
+												"XAU": {
+													"displayName": "XAU - Gold"
+												},
+												"XBA": {
+													"displayName": "XBA - Bond Markets Unit European Composite Unit (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - Bond Markets Unit European Monetary Unit (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - Bond Markets Unit European Unit of Account 9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - Bond Markets Unit European Unit of Account 17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - East Caribbean Dollar"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR (Special Drawing Right)"
+												},
+												"XOF": {
+													"displayName": "XOF - CFA Franc BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - Palladium"
+												},
+												"XPF": {
+													"displayName": "XPF - CFP Franc"
+												},
+												"XPT": {
+													"displayName": "XPT - Platinum"
+												},
+												"XSU": {
+													"displayName": "XSU - Sucre"
+												},
+												"XTS": {
+													"displayName": "XTS - Codes specifically reserved for testing purposes"
+												},
+												"XUA": {
+													"displayName": "XUA - ADB Unit of Account"
+												},
+												"XXX": {
+													"displayName": "XXX - The codes assigned for transactions where no currency is involved"
+												},
+												"YER": {
+													"displayName": "YER - Yemeni Rial"
+												},
+												"ZAR": {
+													"displayName": "ZAR - Rand"
+												},
+												"ZMW": {
+													"displayName": "ZMW - Zambian Kwacha"
+												},
+												"ZWL": {
+													"displayName": "ZWL - Zimbabwe Dollar"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "Amount"
+										},
+										"date_time": {
+											"displayName": "Date Time"
+										},
+										"imageLink": {
+											"displayName": "Image Link"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"text": {
+													"displayName": "Text"
+												},
+												"currency": {
+													"displayName": "Currency"
+												},
+												"date_time": {
+													"displayName": "Date Time"
+												},
+												"image": {
+													"displayName": "Image"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text"
+										},
+										"code": {
+											"displayName": "Currency Code",
+											"placeholder": "USD",
+											"options": {
+												"AED": {
+													"displayName": "AED - UAE Dirham"
+												},
+												"AFN": {
+													"displayName": "AFN - Afghani"
+												},
+												"ALL": {
+													"displayName": "ALL - Lek"
+												},
+												"AMD": {
+													"displayName": "AMD - Armenian Dram"
+												},
+												"ANG": {
+													"displayName": "ANG - Netherlands Antillean Guilder"
+												},
+												"AOA": {
+													"displayName": "AOA - Kwanza"
+												},
+												"ARS": {
+													"displayName": "ARS - Argentine Peso"
+												},
+												"AUD": {
+													"displayName": "AUD - Australian Dollar"
+												},
+												"AWG": {
+													"displayName": "AWG - Aruban Florin"
+												},
+												"AZN": {
+													"displayName": "AZN - Azerbaijan Manat"
+												},
+												"BAM": {
+													"displayName": "BAM - Convertible Mark"
+												},
+												"BBD": {
+													"displayName": "BBD - Barbados Dollar"
+												},
+												"BDT": {
+													"displayName": "BDT - Taka"
+												},
+												"BGN": {
+													"displayName": "BGN - Bulgarian Lev"
+												},
+												"BHD": {
+													"displayName": "BHD - Bahraini Dinar"
+												},
+												"BIF": {
+													"displayName": "BIF - Burundi Franc"
+												},
+												"BMD": {
+													"displayName": "BMD - Bermudian Dollar"
+												},
+												"BND": {
+													"displayName": "BND - Brunei Dollar"
+												},
+												"BOB": {
+													"displayName": "BOB - Boliviano"
+												},
+												"BOV": {
+													"displayName": "BOV - Mvdol"
+												},
+												"BRL": {
+													"displayName": "BRL - Brazilian Real"
+												},
+												"BSD": {
+													"displayName": "BSD - Bahamian Dollar"
+												},
+												"BTN": {
+													"displayName": "BTN - Ngultrum"
+												},
+												"BWP": {
+													"displayName": "BWP - Pula"
+												},
+												"BYN": {
+													"displayName": "BYN - Belarusian Ruble"
+												},
+												"BZD": {
+													"displayName": "BZD - Belize Dollar"
+												},
+												"CAD": {
+													"displayName": "CAD - Canadian Dollar"
+												},
+												"CDF": {
+													"displayName": "CDF - Congolese Franc"
+												},
+												"CHE": {
+													"displayName": "CHE - WIR Euro"
+												},
+												"CHF": {
+													"displayName": "CHF - Swiss Franc"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR Franc"
+												},
+												"CLF": {
+													"displayName": "CLF - Unidad de Fomento"
+												},
+												"CLP": {
+													"displayName": "CLP - Chilean Peso"
+												},
+												"CNY": {
+													"displayName": "CNY - Yuan Renminbi"
+												},
+												"COP": {
+													"displayName": "COP - Colombian Peso"
+												},
+												"COU": {
+													"displayName": "COU - Unidad de Valor Real"
+												},
+												"CRC": {
+													"displayName": "CRC - Costa Rican Colon"
+												},
+												"CUC": {
+													"displayName": "CUC - Peso Convertible"
+												},
+												"CUP": {
+													"displayName": "CUP - Cuban Peso"
+												},
+												"CVE": {
+													"displayName": "CVE - Cabo Verde Escudo"
+												},
+												"CZK": {
+													"displayName": "CZK - Czech Koruna"
+												},
+												"DJF": {
+													"displayName": "DJF - Djibouti Franc"
+												},
+												"DKK": {
+													"displayName": "DKK - Danish Krone"
+												},
+												"DOP": {
+													"displayName": "DOP - Dominican Peso"
+												},
+												"DZD": {
+													"displayName": "DZD - Algerian Dinar"
+												},
+												"EGP": {
+													"displayName": "EGP - Egyptian Pound"
+												},
+												"ERN": {
+													"displayName": "ERN - Nakfa"
+												},
+												"ETB": {
+													"displayName": "ETB - Ethiopian Birr"
+												},
+												"EUR": {
+													"displayName": "EUR - Euro"
+												},
+												"FJD": {
+													"displayName": "FJD - Fiji Dollar"
+												},
+												"FKP": {
+													"displayName": "FKP - Falkland Islands Pound"
+												},
+												"GBP": {
+													"displayName": "GBP - Pound Sterling"
+												},
+												"GEL": {
+													"displayName": "GEL - Lari"
+												},
+												"GHS": {
+													"displayName": "GHS - Ghana Cedi"
+												},
+												"GIP": {
+													"displayName": "GIP - Gibraltar Pound"
+												},
+												"GMD": {
+													"displayName": "GMD - Dalasi"
+												},
+												"GNF": {
+													"displayName": "GNF - Guinean Franc"
+												},
+												"GTQ": {
+													"displayName": "GTQ - Quetzal"
+												},
+												"GYD": {
+													"displayName": "GYD - Guyana Dollar"
+												},
+												"HKD": {
+													"displayName": "HKD - Hong Kong Dollar"
+												},
+												"HNL": {
+													"displayName": "HNL - Lempira"
+												},
+												"HRK": {
+													"displayName": "HRK - Kuna"
+												},
+												"HTG": {
+													"displayName": "HTG - Gourde"
+												},
+												"HUF": {
+													"displayName": "HUF - Forint"
+												},
+												"IDR": {
+													"displayName": "IDR - Rupiah"
+												},
+												"ILS": {
+													"displayName": "ILS - New Israeli Sheqel"
+												},
+												"INR": {
+													"displayName": "INR - Indian Rupee"
+												},
+												"IQD": {
+													"displayName": "IQD - Iraqi Dinar"
+												},
+												"IRR": {
+													"displayName": "IRR - Iranian Rial"
+												},
+												"ISK": {
+													"displayName": "ISK - Iceland Krona"
+												},
+												"JMD": {
+													"displayName": "JMD - Jamaican Dollar"
+												},
+												"JOD": {
+													"displayName": "JOD - Jordanian Dinar"
+												},
+												"JPY": {
+													"displayName": "JPY - Yen"
+												},
+												"KES": {
+													"displayName": "KES - Kenyan Shilling"
+												},
+												"KGS": {
+													"displayName": "KGS - Som"
+												},
+												"KHR": {
+													"displayName": "KHR - Riel"
+												},
+												"KMF": {
+													"displayName": "KMF - Comorian Franc "
+												},
+												"KPW": {
+													"displayName": "KPW - North Korean Won"
+												},
+												"KRW": {
+													"displayName": "KRW - Won"
+												},
+												"KWD": {
+													"displayName": "KWD - Kuwaiti Dinar"
+												},
+												"KYD": {
+													"displayName": "KYD - Cayman Islands Dollar"
+												},
+												"KZT": {
+													"displayName": "KZT - Tenge"
+												},
+												"LAK": {
+													"displayName": "LAK - Lao Kip"
+												},
+												"LBP": {
+													"displayName": "LBP - Lebanese Pound"
+												},
+												"LKR": {
+													"displayName": "LKR - Sri Lanka Rupee"
+												},
+												"LRD": {
+													"displayName": "LRD - Liberian Dollar"
+												},
+												"LSL": {
+													"displayName": "LSL - Loti"
+												},
+												"LYD": {
+													"displayName": "LYD - Libyan Dinar"
+												},
+												"MAD": {
+													"displayName": "MAD - Moroccan Dirham"
+												},
+												"MDL": {
+													"displayName": "MDL - Moldovan Leu"
+												},
+												"MGA": {
+													"displayName": "MGA - Malagasy Ariary"
+												},
+												"MKD": {
+													"displayName": "MKD - Denar"
+												},
+												"MMK": {
+													"displayName": "MMK - Kyat"
+												},
+												"MNT": {
+													"displayName": "MNT - Tugrik"
+												},
+												"MOP": {
+													"displayName": "MOP - Pataca"
+												},
+												"MRU": {
+													"displayName": "MRU - Ouguiya"
+												},
+												"MUR": {
+													"displayName": "MUR - Mauritius Rupee"
+												},
+												"MVR": {
+													"displayName": "MVR - Rufiyaa"
+												},
+												"MWK": {
+													"displayName": "MWK - Malawi Kwacha"
+												},
+												"MXN": {
+													"displayName": "MXN - Mexican Peso"
+												},
+												"MXV": {
+													"displayName": "MXV - Mexican Unidad de Inversion (UDI)"
+												},
+												"MYR": {
+													"displayName": "MYR - Malaysian Ringgit"
+												},
+												"MZN": {
+													"displayName": "MZN - Mozambique Metical"
+												},
+												"NAD": {
+													"displayName": "NAD - Namibia Dollar"
+												},
+												"NGN": {
+													"displayName": "NGN - Naira"
+												},
+												"NIO": {
+													"displayName": "NIO - Cordoba Oro"
+												},
+												"NOK": {
+													"displayName": "NOK - Norwegian Krone"
+												},
+												"NPR": {
+													"displayName": "NPR - Nepalese Rupee"
+												},
+												"NZD": {
+													"displayName": "NZD - New Zealand Dollar"
+												},
+												"OMR": {
+													"displayName": "OMR - Rial Omani"
+												},
+												"PAB": {
+													"displayName": "PAB - Balboa"
+												},
+												"PEN": {
+													"displayName": "PEN - Sol"
+												},
+												"PGK": {
+													"displayName": "PGK - Kina"
+												},
+												"PHP": {
+													"displayName": "PHP - Philippine Peso"
+												},
+												"PKR": {
+													"displayName": "PKR - Pakistan Rupee"
+												},
+												"PLN": {
+													"displayName": "PLN - Zloty"
+												},
+												"PYG": {
+													"displayName": "PYG - Guarani"
+												},
+												"QAR": {
+													"displayName": "QAR - Qatari Rial"
+												},
+												"RON": {
+													"displayName": "RON - Romanian Leu"
+												},
+												"RSD": {
+													"displayName": "RSD - Serbian Dinar"
+												},
+												"RUB": {
+													"displayName": "RUB - Russian Ruble"
+												},
+												"RWF": {
+													"displayName": "RWF - Rwanda Franc"
+												},
+												"SAR": {
+													"displayName": "SAR - Saudi Riyal"
+												},
+												"SBD": {
+													"displayName": "SBD - Solomon Islands Dollar"
+												},
+												"SCR": {
+													"displayName": "SCR - Seychelles Rupee"
+												},
+												"SDG": {
+													"displayName": "SDG - Sudanese Pound"
+												},
+												"SEK": {
+													"displayName": "SEK - Swedish Krona"
+												},
+												"SGD": {
+													"displayName": "SGD - Singapore Dollar"
+												},
+												"SHP": {
+													"displayName": "SHP - Saint Helena Pound"
+												},
+												"SLL": {
+													"displayName": "SLL - Leone"
+												},
+												"SOS": {
+													"displayName": "SOS - Somali Shilling"
+												},
+												"SRD": {
+													"displayName": "SRD - Surinam Dollar"
+												},
+												"SSP": {
+													"displayName": "SSP - South Sudanese Pound"
+												},
+												"STN": {
+													"displayName": "STN - Dobra"
+												},
+												"SVC": {
+													"displayName": "SVC - El Salvador Colon"
+												},
+												"SYP": {
+													"displayName": "SYP - Syrian Pound"
+												},
+												"SZL": {
+													"displayName": "SZL - Lilangeni"
+												},
+												"THB": {
+													"displayName": "THB - Baht"
+												},
+												"TJS": {
+													"displayName": "TJS - Somoni"
+												},
+												"TMT": {
+													"displayName": "TMT - Turkmenistan New Manat"
+												},
+												"TND": {
+													"displayName": "TND - Tunisian Dinar"
+												},
+												"TOP": {
+													"displayName": "TOP - Pa’anga"
+												},
+												"TRY": {
+													"displayName": "TRY - Turkish Lira"
+												},
+												"TTD": {
+													"displayName": "TTD - Trinidad and Tobago Dollar"
+												},
+												"TWD": {
+													"displayName": "TWD - New Taiwan Dollar"
+												},
+												"TZS": {
+													"displayName": "TZS - Tanzanian Shilling"
+												},
+												"UAH": {
+													"displayName": "UAH - Hryvnia"
+												},
+												"UGX": {
+													"displayName": "UGX - Uganda Shilling"
+												},
+												"USD": {
+													"displayName": "USD - US Dollar"
+												},
+												"USN": {
+													"displayName": "USN - US Dollar (Next day)"
+												},
+												"UYI": {
+													"displayName": "UYI - Uruguay Peso en Unidades Indexadas (UI)"
+												},
+												"UYU": {
+													"displayName": "UYU - Peso Uruguayo"
+												},
+												"UYW": {
+													"displayName": "UYW - Unidad Previsional"
+												},
+												"UZS": {
+													"displayName": "UZS - Uzbekistan Sum"
+												},
+												"VES": {
+													"displayName": "VES - Bolívar Soberano"
+												},
+												"VND": {
+													"displayName": "VND - Dong"
+												},
+												"VUV": {
+													"displayName": "VUV - Vatu"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - CFA Franc BEAC"
+												},
+												"XAG": {
+													"displayName": "XAG - Silver"
+												},
+												"XAU": {
+													"displayName": "XAU - Gold"
+												},
+												"XBA": {
+													"displayName": "XBA - Bond Markets Unit European Composite Unit (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - Bond Markets Unit European Monetary Unit (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - Bond Markets Unit European Unit of Account 9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - Bond Markets Unit European Unit of Account 17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - East Caribbean Dollar"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR (Special Drawing Right)"
+												},
+												"XOF": {
+													"displayName": "XOF - CFA Franc BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - Palladium"
+												},
+												"XPF": {
+													"displayName": "XPF - CFP Franc"
+												},
+												"XPT": {
+													"displayName": "XPT - Platinum"
+												},
+												"XSU": {
+													"displayName": "XSU - Sucre"
+												},
+												"XTS": {
+													"displayName": "XTS - Codes specifically reserved for testing purposes"
+												},
+												"XUA": {
+													"displayName": "XUA - ADB Unit of Account"
+												},
+												"XXX": {
+													"displayName": "XXX - The codes assigned for transactions where no currency is involved"
+												},
+												"YER": {
+													"displayName": "YER - Yemeni Rial"
+												},
+												"ZAR": {
+													"displayName": "ZAR - Rand"
+												},
+												"ZMW": {
+													"displayName": "ZMW - Zambian Kwacha"
+												},
+												"ZWL": {
+													"displayName": "ZWL - Zimbabwe Dollar"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "Amount"
+										},
+										"date_time": {
+											"displayName": "Date Time"
+										},
+										"imageLink": {
+											"displayName": "Image Link"
+										}
+									}
+								},
+								"headerParameters": {
+									"displayName": "Parameters",
+									"placeholder": "Add Parameter"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"component": {
+					"displayName": "Component",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"body": {
+									"displayName": "Body"
+								},
+								"button": {
+									"displayName": "Button"
+								},
+								"header": {
+									"displayName": "Header"
+								}
+							}
+						},
+						"bodyParameters": {
+							"displayName": "Parameters",
+							"placeholder": "Add Parameter",
+							"multipleValueButtonText": "Add Parameter",
+							"options": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"text": {
+													"displayName": "Text"
+												},
+												"currency": {
+													"displayName": "Currency"
+												},
+												"date_time": {
+													"displayName": "Date Time"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text"
+										},
+										"code": {
+											"displayName": "Currency Code",
+											"placeholder": "USD",
+											"options": {
+												"AED": {
+													"displayName": "AED - UAE Dirham"
+												},
+												"AFN": {
+													"displayName": "AFN - Afghani"
+												},
+												"ALL": {
+													"displayName": "ALL - Lek"
+												},
+												"AMD": {
+													"displayName": "AMD - Armenian Dram"
+												},
+												"ANG": {
+													"displayName": "ANG - Netherlands Antillean Guilder"
+												},
+												"AOA": {
+													"displayName": "AOA - Kwanza"
+												},
+												"ARS": {
+													"displayName": "ARS - Argentine Peso"
+												},
+												"AUD": {
+													"displayName": "AUD - Australian Dollar"
+												},
+												"AWG": {
+													"displayName": "AWG - Aruban Florin"
+												},
+												"AZN": {
+													"displayName": "AZN - Azerbaijan Manat"
+												},
+												"BAM": {
+													"displayName": "BAM - Convertible Mark"
+												},
+												"BBD": {
+													"displayName": "BBD - Barbados Dollar"
+												},
+												"BDT": {
+													"displayName": "BDT - Taka"
+												},
+												"BGN": {
+													"displayName": "BGN - Bulgarian Lev"
+												},
+												"BHD": {
+													"displayName": "BHD - Bahraini Dinar"
+												},
+												"BIF": {
+													"displayName": "BIF - Burundi Franc"
+												},
+												"BMD": {
+													"displayName": "BMD - Bermudian Dollar"
+												},
+												"BND": {
+													"displayName": "BND - Brunei Dollar"
+												},
+												"BOB": {
+													"displayName": "BOB - Boliviano"
+												},
+												"BOV": {
+													"displayName": "BOV - Mvdol"
+												},
+												"BRL": {
+													"displayName": "BRL - Brazilian Real"
+												},
+												"BSD": {
+													"displayName": "BSD - Bahamian Dollar"
+												},
+												"BTN": {
+													"displayName": "BTN - Ngultrum"
+												},
+												"BWP": {
+													"displayName": "BWP - Pula"
+												},
+												"BYN": {
+													"displayName": "BYN - Belarusian Ruble"
+												},
+												"BZD": {
+													"displayName": "BZD - Belize Dollar"
+												},
+												"CAD": {
+													"displayName": "CAD - Canadian Dollar"
+												},
+												"CDF": {
+													"displayName": "CDF - Congolese Franc"
+												},
+												"CHE": {
+													"displayName": "CHE - WIR Euro"
+												},
+												"CHF": {
+													"displayName": "CHF - Swiss Franc"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR Franc"
+												},
+												"CLF": {
+													"displayName": "CLF - Unidad de Fomento"
+												},
+												"CLP": {
+													"displayName": "CLP - Chilean Peso"
+												},
+												"CNY": {
+													"displayName": "CNY - Yuan Renminbi"
+												},
+												"COP": {
+													"displayName": "COP - Colombian Peso"
+												},
+												"COU": {
+													"displayName": "COU - Unidad de Valor Real"
+												},
+												"CRC": {
+													"displayName": "CRC - Costa Rican Colon"
+												},
+												"CUC": {
+													"displayName": "CUC - Peso Convertible"
+												},
+												"CUP": {
+													"displayName": "CUP - Cuban Peso"
+												},
+												"CVE": {
+													"displayName": "CVE - Cabo Verde Escudo"
+												},
+												"CZK": {
+													"displayName": "CZK - Czech Koruna"
+												},
+												"DJF": {
+													"displayName": "DJF - Djibouti Franc"
+												},
+												"DKK": {
+													"displayName": "DKK - Danish Krone"
+												},
+												"DOP": {
+													"displayName": "DOP - Dominican Peso"
+												},
+												"DZD": {
+													"displayName": "DZD - Algerian Dinar"
+												},
+												"EGP": {
+													"displayName": "EGP - Egyptian Pound"
+												},
+												"ERN": {
+													"displayName": "ERN - Nakfa"
+												},
+												"ETB": {
+													"displayName": "ETB - Ethiopian Birr"
+												},
+												"EUR": {
+													"displayName": "EUR - Euro"
+												},
+												"FJD": {
+													"displayName": "FJD - Fiji Dollar"
+												},
+												"FKP": {
+													"displayName": "FKP - Falkland Islands Pound"
+												},
+												"GBP": {
+													"displayName": "GBP - Pound Sterling"
+												},
+												"GEL": {
+													"displayName": "GEL - Lari"
+												},
+												"GHS": {
+													"displayName": "GHS - Ghana Cedi"
+												},
+												"GIP": {
+													"displayName": "GIP - Gibraltar Pound"
+												},
+												"GMD": {
+													"displayName": "GMD - Dalasi"
+												},
+												"GNF": {
+													"displayName": "GNF - Guinean Franc"
+												},
+												"GTQ": {
+													"displayName": "GTQ - Quetzal"
+												},
+												"GYD": {
+													"displayName": "GYD - Guyana Dollar"
+												},
+												"HKD": {
+													"displayName": "HKD - Hong Kong Dollar"
+												},
+												"HNL": {
+													"displayName": "HNL - Lempira"
+												},
+												"HRK": {
+													"displayName": "HRK - Kuna"
+												},
+												"HTG": {
+													"displayName": "HTG - Gourde"
+												},
+												"HUF": {
+													"displayName": "HUF - Forint"
+												},
+												"IDR": {
+													"displayName": "IDR - Rupiah"
+												},
+												"ILS": {
+													"displayName": "ILS - New Israeli Sheqel"
+												},
+												"INR": {
+													"displayName": "INR - Indian Rupee"
+												},
+												"IQD": {
+													"displayName": "IQD - Iraqi Dinar"
+												},
+												"IRR": {
+													"displayName": "IRR - Iranian Rial"
+												},
+												"ISK": {
+													"displayName": "ISK - Iceland Krona"
+												},
+												"JMD": {
+													"displayName": "JMD - Jamaican Dollar"
+												},
+												"JOD": {
+													"displayName": "JOD - Jordanian Dinar"
+												},
+												"JPY": {
+													"displayName": "JPY - Yen"
+												},
+												"KES": {
+													"displayName": "KES - Kenyan Shilling"
+												},
+												"KGS": {
+													"displayName": "KGS - Som"
+												},
+												"KHR": {
+													"displayName": "KHR - Riel"
+												},
+												"KMF": {
+													"displayName": "KMF - Comorian Franc "
+												},
+												"KPW": {
+													"displayName": "KPW - North Korean Won"
+												},
+												"KRW": {
+													"displayName": "KRW - Won"
+												},
+												"KWD": {
+													"displayName": "KWD - Kuwaiti Dinar"
+												},
+												"KYD": {
+													"displayName": "KYD - Cayman Islands Dollar"
+												},
+												"KZT": {
+													"displayName": "KZT - Tenge"
+												},
+												"LAK": {
+													"displayName": "LAK - Lao Kip"
+												},
+												"LBP": {
+													"displayName": "LBP - Lebanese Pound"
+												},
+												"LKR": {
+													"displayName": "LKR - Sri Lanka Rupee"
+												},
+												"LRD": {
+													"displayName": "LRD - Liberian Dollar"
+												},
+												"LSL": {
+													"displayName": "LSL - Loti"
+												},
+												"LYD": {
+													"displayName": "LYD - Libyan Dinar"
+												},
+												"MAD": {
+													"displayName": "MAD - Moroccan Dirham"
+												},
+												"MDL": {
+													"displayName": "MDL - Moldovan Leu"
+												},
+												"MGA": {
+													"displayName": "MGA - Malagasy Ariary"
+												},
+												"MKD": {
+													"displayName": "MKD - Denar"
+												},
+												"MMK": {
+													"displayName": "MMK - Kyat"
+												},
+												"MNT": {
+													"displayName": "MNT - Tugrik"
+												},
+												"MOP": {
+													"displayName": "MOP - Pataca"
+												},
+												"MRU": {
+													"displayName": "MRU - Ouguiya"
+												},
+												"MUR": {
+													"displayName": "MUR - Mauritius Rupee"
+												},
+												"MVR": {
+													"displayName": "MVR - Rufiyaa"
+												},
+												"MWK": {
+													"displayName": "MWK - Malawi Kwacha"
+												},
+												"MXN": {
+													"displayName": "MXN - Mexican Peso"
+												},
+												"MXV": {
+													"displayName": "MXV - Mexican Unidad de Inversion (UDI)"
+												},
+												"MYR": {
+													"displayName": "MYR - Malaysian Ringgit"
+												},
+												"MZN": {
+													"displayName": "MZN - Mozambique Metical"
+												},
+												"NAD": {
+													"displayName": "NAD - Namibia Dollar"
+												},
+												"NGN": {
+													"displayName": "NGN - Naira"
+												},
+												"NIO": {
+													"displayName": "NIO - Cordoba Oro"
+												},
+												"NOK": {
+													"displayName": "NOK - Norwegian Krone"
+												},
+												"NPR": {
+													"displayName": "NPR - Nepalese Rupee"
+												},
+												"NZD": {
+													"displayName": "NZD - New Zealand Dollar"
+												},
+												"OMR": {
+													"displayName": "OMR - Rial Omani"
+												},
+												"PAB": {
+													"displayName": "PAB - Balboa"
+												},
+												"PEN": {
+													"displayName": "PEN - Sol"
+												},
+												"PGK": {
+													"displayName": "PGK - Kina"
+												},
+												"PHP": {
+													"displayName": "PHP - Philippine Peso"
+												},
+												"PKR": {
+													"displayName": "PKR - Pakistan Rupee"
+												},
+												"PLN": {
+													"displayName": "PLN - Zloty"
+												},
+												"PYG": {
+													"displayName": "PYG - Guarani"
+												},
+												"QAR": {
+													"displayName": "QAR - Qatari Rial"
+												},
+												"RON": {
+													"displayName": "RON - Romanian Leu"
+												},
+												"RSD": {
+													"displayName": "RSD - Serbian Dinar"
+												},
+												"RUB": {
+													"displayName": "RUB - Russian Ruble"
+												},
+												"RWF": {
+													"displayName": "RWF - Rwanda Franc"
+												},
+												"SAR": {
+													"displayName": "SAR - Saudi Riyal"
+												},
+												"SBD": {
+													"displayName": "SBD - Solomon Islands Dollar"
+												},
+												"SCR": {
+													"displayName": "SCR - Seychelles Rupee"
+												},
+												"SDG": {
+													"displayName": "SDG - Sudanese Pound"
+												},
+												"SEK": {
+													"displayName": "SEK - Swedish Krona"
+												},
+												"SGD": {
+													"displayName": "SGD - Singapore Dollar"
+												},
+												"SHP": {
+													"displayName": "SHP - Saint Helena Pound"
+												},
+												"SLL": {
+													"displayName": "SLL - Leone"
+												},
+												"SOS": {
+													"displayName": "SOS - Somali Shilling"
+												},
+												"SRD": {
+													"displayName": "SRD - Surinam Dollar"
+												},
+												"SSP": {
+													"displayName": "SSP - South Sudanese Pound"
+												},
+												"STN": {
+													"displayName": "STN - Dobra"
+												},
+												"SVC": {
+													"displayName": "SVC - El Salvador Colon"
+												},
+												"SYP": {
+													"displayName": "SYP - Syrian Pound"
+												},
+												"SZL": {
+													"displayName": "SZL - Lilangeni"
+												},
+												"THB": {
+													"displayName": "THB - Baht"
+												},
+												"TJS": {
+													"displayName": "TJS - Somoni"
+												},
+												"TMT": {
+													"displayName": "TMT - Turkmenistan New Manat"
+												},
+												"TND": {
+													"displayName": "TND - Tunisian Dinar"
+												},
+												"TOP": {
+													"displayName": "TOP - Pa’anga"
+												},
+												"TRY": {
+													"displayName": "TRY - Turkish Lira"
+												},
+												"TTD": {
+													"displayName": "TTD - Trinidad and Tobago Dollar"
+												},
+												"TWD": {
+													"displayName": "TWD - New Taiwan Dollar"
+												},
+												"TZS": {
+													"displayName": "TZS - Tanzanian Shilling"
+												},
+												"UAH": {
+													"displayName": "UAH - Hryvnia"
+												},
+												"UGX": {
+													"displayName": "UGX - Uganda Shilling"
+												},
+												"USD": {
+													"displayName": "USD - US Dollar"
+												},
+												"USN": {
+													"displayName": "USN - US Dollar (Next day)"
+												},
+												"UYI": {
+													"displayName": "UYI - Uruguay Peso en Unidades Indexadas (UI)"
+												},
+												"UYU": {
+													"displayName": "UYU - Peso Uruguayo"
+												},
+												"UYW": {
+													"displayName": "UYW - Unidad Previsional"
+												},
+												"UZS": {
+													"displayName": "UZS - Uzbekistan Sum"
+												},
+												"VES": {
+													"displayName": "VES - Bolívar Soberano"
+												},
+												"VND": {
+													"displayName": "VND - Dong"
+												},
+												"VUV": {
+													"displayName": "VUV - Vatu"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - CFA Franc BEAC"
+												},
+												"XAG": {
+													"displayName": "XAG - Silver"
+												},
+												"XAU": {
+													"displayName": "XAU - Gold"
+												},
+												"XBA": {
+													"displayName": "XBA - Bond Markets Unit European Composite Unit (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - Bond Markets Unit European Monetary Unit (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - Bond Markets Unit European Unit of Account 9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - Bond Markets Unit European Unit of Account 17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - East Caribbean Dollar"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR (Special Drawing Right)"
+												},
+												"XOF": {
+													"displayName": "XOF - CFA Franc BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - Palladium"
+												},
+												"XPF": {
+													"displayName": "XPF - CFP Franc"
+												},
+												"XPT": {
+													"displayName": "XPT - Platinum"
+												},
+												"XSU": {
+													"displayName": "XSU - Sucre"
+												},
+												"XTS": {
+													"displayName": "XTS - Codes specifically reserved for testing purposes"
+												},
+												"XUA": {
+													"displayName": "XUA - ADB Unit of Account"
+												},
+												"XXX": {
+													"displayName": "XXX - The codes assigned for transactions where no currency is involved"
+												},
+												"YER": {
+													"displayName": "YER - Yemeni Rial"
+												},
+												"ZAR": {
+													"displayName": "ZAR - Rand"
+												},
+												"ZMW": {
+													"displayName": "ZMW - Zambian Kwacha"
+												},
+												"ZWL": {
+													"displayName": "ZWL - Zimbabwe Dollar"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "Amount"
+										},
+										"date_time": {
+											"displayName": "Date Time"
+										},
+										"fallback_value": {
+											"displayName": "Fallback Value"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"text": {
+													"displayName": "Text"
+												},
+												"currency": {
+													"displayName": "Currency"
+												},
+												"date_time": {
+													"displayName": "Date Time"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text"
+										},
+										"code": {
+											"displayName": "Currency Code",
+											"placeholder": "USD",
+											"options": {
+												"AED": {
+													"displayName": "AED - UAE Dirham"
+												},
+												"AFN": {
+													"displayName": "AFN - Afghani"
+												},
+												"ALL": {
+													"displayName": "ALL - Lek"
+												},
+												"AMD": {
+													"displayName": "AMD - Armenian Dram"
+												},
+												"ANG": {
+													"displayName": "ANG - Netherlands Antillean Guilder"
+												},
+												"AOA": {
+													"displayName": "AOA - Kwanza"
+												},
+												"ARS": {
+													"displayName": "ARS - Argentine Peso"
+												},
+												"AUD": {
+													"displayName": "AUD - Australian Dollar"
+												},
+												"AWG": {
+													"displayName": "AWG - Aruban Florin"
+												},
+												"AZN": {
+													"displayName": "AZN - Azerbaijan Manat"
+												},
+												"BAM": {
+													"displayName": "BAM - Convertible Mark"
+												},
+												"BBD": {
+													"displayName": "BBD - Barbados Dollar"
+												},
+												"BDT": {
+													"displayName": "BDT - Taka"
+												},
+												"BGN": {
+													"displayName": "BGN - Bulgarian Lev"
+												},
+												"BHD": {
+													"displayName": "BHD - Bahraini Dinar"
+												},
+												"BIF": {
+													"displayName": "BIF - Burundi Franc"
+												},
+												"BMD": {
+													"displayName": "BMD - Bermudian Dollar"
+												},
+												"BND": {
+													"displayName": "BND - Brunei Dollar"
+												},
+												"BOB": {
+													"displayName": "BOB - Boliviano"
+												},
+												"BOV": {
+													"displayName": "BOV - Mvdol"
+												},
+												"BRL": {
+													"displayName": "BRL - Brazilian Real"
+												},
+												"BSD": {
+													"displayName": "BSD - Bahamian Dollar"
+												},
+												"BTN": {
+													"displayName": "BTN - Ngultrum"
+												},
+												"BWP": {
+													"displayName": "BWP - Pula"
+												},
+												"BYN": {
+													"displayName": "BYN - Belarusian Ruble"
+												},
+												"BZD": {
+													"displayName": "BZD - Belize Dollar"
+												},
+												"CAD": {
+													"displayName": "CAD - Canadian Dollar"
+												},
+												"CDF": {
+													"displayName": "CDF - Congolese Franc"
+												},
+												"CHE": {
+													"displayName": "CHE - WIR Euro"
+												},
+												"CHF": {
+													"displayName": "CHF - Swiss Franc"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR Franc"
+												},
+												"CLF": {
+													"displayName": "CLF - Unidad de Fomento"
+												},
+												"CLP": {
+													"displayName": "CLP - Chilean Peso"
+												},
+												"CNY": {
+													"displayName": "CNY - Yuan Renminbi"
+												},
+												"COP": {
+													"displayName": "COP - Colombian Peso"
+												},
+												"COU": {
+													"displayName": "COU - Unidad de Valor Real"
+												},
+												"CRC": {
+													"displayName": "CRC - Costa Rican Colon"
+												},
+												"CUC": {
+													"displayName": "CUC - Peso Convertible"
+												},
+												"CUP": {
+													"displayName": "CUP - Cuban Peso"
+												},
+												"CVE": {
+													"displayName": "CVE - Cabo Verde Escudo"
+												},
+												"CZK": {
+													"displayName": "CZK - Czech Koruna"
+												},
+												"DJF": {
+													"displayName": "DJF - Djibouti Franc"
+												},
+												"DKK": {
+													"displayName": "DKK - Danish Krone"
+												},
+												"DOP": {
+													"displayName": "DOP - Dominican Peso"
+												},
+												"DZD": {
+													"displayName": "DZD - Algerian Dinar"
+												},
+												"EGP": {
+													"displayName": "EGP - Egyptian Pound"
+												},
+												"ERN": {
+													"displayName": "ERN - Nakfa"
+												},
+												"ETB": {
+													"displayName": "ETB - Ethiopian Birr"
+												},
+												"EUR": {
+													"displayName": "EUR - Euro"
+												},
+												"FJD": {
+													"displayName": "FJD - Fiji Dollar"
+												},
+												"FKP": {
+													"displayName": "FKP - Falkland Islands Pound"
+												},
+												"GBP": {
+													"displayName": "GBP - Pound Sterling"
+												},
+												"GEL": {
+													"displayName": "GEL - Lari"
+												},
+												"GHS": {
+													"displayName": "GHS - Ghana Cedi"
+												},
+												"GIP": {
+													"displayName": "GIP - Gibraltar Pound"
+												},
+												"GMD": {
+													"displayName": "GMD - Dalasi"
+												},
+												"GNF": {
+													"displayName": "GNF - Guinean Franc"
+												},
+												"GTQ": {
+													"displayName": "GTQ - Quetzal"
+												},
+												"GYD": {
+													"displayName": "GYD - Guyana Dollar"
+												},
+												"HKD": {
+													"displayName": "HKD - Hong Kong Dollar"
+												},
+												"HNL": {
+													"displayName": "HNL - Lempira"
+												},
+												"HRK": {
+													"displayName": "HRK - Kuna"
+												},
+												"HTG": {
+													"displayName": "HTG - Gourde"
+												},
+												"HUF": {
+													"displayName": "HUF - Forint"
+												},
+												"IDR": {
+													"displayName": "IDR - Rupiah"
+												},
+												"ILS": {
+													"displayName": "ILS - New Israeli Sheqel"
+												},
+												"INR": {
+													"displayName": "INR - Indian Rupee"
+												},
+												"IQD": {
+													"displayName": "IQD - Iraqi Dinar"
+												},
+												"IRR": {
+													"displayName": "IRR - Iranian Rial"
+												},
+												"ISK": {
+													"displayName": "ISK - Iceland Krona"
+												},
+												"JMD": {
+													"displayName": "JMD - Jamaican Dollar"
+												},
+												"JOD": {
+													"displayName": "JOD - Jordanian Dinar"
+												},
+												"JPY": {
+													"displayName": "JPY - Yen"
+												},
+												"KES": {
+													"displayName": "KES - Kenyan Shilling"
+												},
+												"KGS": {
+													"displayName": "KGS - Som"
+												},
+												"KHR": {
+													"displayName": "KHR - Riel"
+												},
+												"KMF": {
+													"displayName": "KMF - Comorian Franc "
+												},
+												"KPW": {
+													"displayName": "KPW - North Korean Won"
+												},
+												"KRW": {
+													"displayName": "KRW - Won"
+												},
+												"KWD": {
+													"displayName": "KWD - Kuwaiti Dinar"
+												},
+												"KYD": {
+													"displayName": "KYD - Cayman Islands Dollar"
+												},
+												"KZT": {
+													"displayName": "KZT - Tenge"
+												},
+												"LAK": {
+													"displayName": "LAK - Lao Kip"
+												},
+												"LBP": {
+													"displayName": "LBP - Lebanese Pound"
+												},
+												"LKR": {
+													"displayName": "LKR - Sri Lanka Rupee"
+												},
+												"LRD": {
+													"displayName": "LRD - Liberian Dollar"
+												},
+												"LSL": {
+													"displayName": "LSL - Loti"
+												},
+												"LYD": {
+													"displayName": "LYD - Libyan Dinar"
+												},
+												"MAD": {
+													"displayName": "MAD - Moroccan Dirham"
+												},
+												"MDL": {
+													"displayName": "MDL - Moldovan Leu"
+												},
+												"MGA": {
+													"displayName": "MGA - Malagasy Ariary"
+												},
+												"MKD": {
+													"displayName": "MKD - Denar"
+												},
+												"MMK": {
+													"displayName": "MMK - Kyat"
+												},
+												"MNT": {
+													"displayName": "MNT - Tugrik"
+												},
+												"MOP": {
+													"displayName": "MOP - Pataca"
+												},
+												"MRU": {
+													"displayName": "MRU - Ouguiya"
+												},
+												"MUR": {
+													"displayName": "MUR - Mauritius Rupee"
+												},
+												"MVR": {
+													"displayName": "MVR - Rufiyaa"
+												},
+												"MWK": {
+													"displayName": "MWK - Malawi Kwacha"
+												},
+												"MXN": {
+													"displayName": "MXN - Mexican Peso"
+												},
+												"MXV": {
+													"displayName": "MXV - Mexican Unidad de Inversion (UDI)"
+												},
+												"MYR": {
+													"displayName": "MYR - Malaysian Ringgit"
+												},
+												"MZN": {
+													"displayName": "MZN - Mozambique Metical"
+												},
+												"NAD": {
+													"displayName": "NAD - Namibia Dollar"
+												},
+												"NGN": {
+													"displayName": "NGN - Naira"
+												},
+												"NIO": {
+													"displayName": "NIO - Cordoba Oro"
+												},
+												"NOK": {
+													"displayName": "NOK - Norwegian Krone"
+												},
+												"NPR": {
+													"displayName": "NPR - Nepalese Rupee"
+												},
+												"NZD": {
+													"displayName": "NZD - New Zealand Dollar"
+												},
+												"OMR": {
+													"displayName": "OMR - Rial Omani"
+												},
+												"PAB": {
+													"displayName": "PAB - Balboa"
+												},
+												"PEN": {
+													"displayName": "PEN - Sol"
+												},
+												"PGK": {
+													"displayName": "PGK - Kina"
+												},
+												"PHP": {
+													"displayName": "PHP - Philippine Peso"
+												},
+												"PKR": {
+													"displayName": "PKR - Pakistan Rupee"
+												},
+												"PLN": {
+													"displayName": "PLN - Zloty"
+												},
+												"PYG": {
+													"displayName": "PYG - Guarani"
+												},
+												"QAR": {
+													"displayName": "QAR - Qatari Rial"
+												},
+												"RON": {
+													"displayName": "RON - Romanian Leu"
+												},
+												"RSD": {
+													"displayName": "RSD - Serbian Dinar"
+												},
+												"RUB": {
+													"displayName": "RUB - Russian Ruble"
+												},
+												"RWF": {
+													"displayName": "RWF - Rwanda Franc"
+												},
+												"SAR": {
+													"displayName": "SAR - Saudi Riyal"
+												},
+												"SBD": {
+													"displayName": "SBD - Solomon Islands Dollar"
+												},
+												"SCR": {
+													"displayName": "SCR - Seychelles Rupee"
+												},
+												"SDG": {
+													"displayName": "SDG - Sudanese Pound"
+												},
+												"SEK": {
+													"displayName": "SEK - Swedish Krona"
+												},
+												"SGD": {
+													"displayName": "SGD - Singapore Dollar"
+												},
+												"SHP": {
+													"displayName": "SHP - Saint Helena Pound"
+												},
+												"SLL": {
+													"displayName": "SLL - Leone"
+												},
+												"SOS": {
+													"displayName": "SOS - Somali Shilling"
+												},
+												"SRD": {
+													"displayName": "SRD - Surinam Dollar"
+												},
+												"SSP": {
+													"displayName": "SSP - South Sudanese Pound"
+												},
+												"STN": {
+													"displayName": "STN - Dobra"
+												},
+												"SVC": {
+													"displayName": "SVC - El Salvador Colon"
+												},
+												"SYP": {
+													"displayName": "SYP - Syrian Pound"
+												},
+												"SZL": {
+													"displayName": "SZL - Lilangeni"
+												},
+												"THB": {
+													"displayName": "THB - Baht"
+												},
+												"TJS": {
+													"displayName": "TJS - Somoni"
+												},
+												"TMT": {
+													"displayName": "TMT - Turkmenistan New Manat"
+												},
+												"TND": {
+													"displayName": "TND - Tunisian Dinar"
+												},
+												"TOP": {
+													"displayName": "TOP - Pa’anga"
+												},
+												"TRY": {
+													"displayName": "TRY - Turkish Lira"
+												},
+												"TTD": {
+													"displayName": "TTD - Trinidad and Tobago Dollar"
+												},
+												"TWD": {
+													"displayName": "TWD - New Taiwan Dollar"
+												},
+												"TZS": {
+													"displayName": "TZS - Tanzanian Shilling"
+												},
+												"UAH": {
+													"displayName": "UAH - Hryvnia"
+												},
+												"UGX": {
+													"displayName": "UGX - Uganda Shilling"
+												},
+												"USD": {
+													"displayName": "USD - US Dollar"
+												},
+												"USN": {
+													"displayName": "USN - US Dollar (Next day)"
+												},
+												"UYI": {
+													"displayName": "UYI - Uruguay Peso en Unidades Indexadas (UI)"
+												},
+												"UYU": {
+													"displayName": "UYU - Peso Uruguayo"
+												},
+												"UYW": {
+													"displayName": "UYW - Unidad Previsional"
+												},
+												"UZS": {
+													"displayName": "UZS - Uzbekistan Sum"
+												},
+												"VES": {
+													"displayName": "VES - Bolívar Soberano"
+												},
+												"VND": {
+													"displayName": "VND - Dong"
+												},
+												"VUV": {
+													"displayName": "VUV - Vatu"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - CFA Franc BEAC"
+												},
+												"XAG": {
+													"displayName": "XAG - Silver"
+												},
+												"XAU": {
+													"displayName": "XAU - Gold"
+												},
+												"XBA": {
+													"displayName": "XBA - Bond Markets Unit European Composite Unit (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - Bond Markets Unit European Monetary Unit (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - Bond Markets Unit European Unit of Account 9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - Bond Markets Unit European Unit of Account 17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - East Caribbean Dollar"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR (Special Drawing Right)"
+												},
+												"XOF": {
+													"displayName": "XOF - CFA Franc BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - Palladium"
+												},
+												"XPF": {
+													"displayName": "XPF - CFP Franc"
+												},
+												"XPT": {
+													"displayName": "XPT - Platinum"
+												},
+												"XSU": {
+													"displayName": "XSU - Sucre"
+												},
+												"XTS": {
+													"displayName": "XTS - Codes specifically reserved for testing purposes"
+												},
+												"XUA": {
+													"displayName": "XUA - ADB Unit of Account"
+												},
+												"XXX": {
+													"displayName": "XXX - The codes assigned for transactions where no currency is involved"
+												},
+												"YER": {
+													"displayName": "YER - Yemeni Rial"
+												},
+												"ZAR": {
+													"displayName": "ZAR - Rand"
+												},
+												"ZMW": {
+													"displayName": "ZMW - Zambian Kwacha"
+												},
+												"ZWL": {
+													"displayName": "ZWL - Zimbabwe Dollar"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "Amount"
+										},
+										"date_time": {
+											"displayName": "Date Time"
+										},
+										"fallback_value": {
+											"displayName": "Fallback Value"
+										}
+									}
+								},
+								"bodyParameters": {
+									"displayName": "Parameters",
+									"placeholder": "Add Parameter"
+								}
+							}
+						},
+						"sub_type": {
+							"displayName": "Sub Type",
+							"options": {
+								"quick_reply": {
+									"displayName": "Quick Reply",
+									"description": "Allows your customer to call a phone number and visit a website"
+								},
+								"url": {
+									"displayName": "URL"
+								}
+							}
+						},
+						"index": {
+							"displayName": "Index"
+						},
+						"buttonParameters": {
+							"displayName": "Parameters",
+							"placeholder": "Add Parameter",
+							"options": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"payload": {
+													"displayName": "Payload"
+												},
+												"text": {
+													"displayName": "Text"
+												}
+											}
+										},
+										"payload": {
+											"displayName": "Payload"
+										},
+										"text": {
+											"displayName": "Text"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"payload": {
+													"displayName": "Payload"
+												},
+												"text": {
+													"displayName": "Text"
+												}
+											}
+										},
+										"payload": {
+											"displayName": "Payload"
+										},
+										"text": {
+											"displayName": "Text"
+										}
+									}
+								},
+								"buttonParameters": {
+									"displayName": "Parameters",
+									"placeholder": "Add Parameter"
+								}
+							}
+						},
+						"headerParameters": {
+							"displayName": "Parameters",
+							"placeholder": "Add Parameter",
+							"multipleValueButtonText": "Add Parameter",
+							"options": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"text": {
+													"displayName": "Text"
+												},
+												"currency": {
+													"displayName": "Currency"
+												},
+												"date_time": {
+													"displayName": "Date Time"
+												},
+												"image": {
+													"displayName": "Image"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text"
+										},
+										"code": {
+											"displayName": "Currency Code",
+											"placeholder": "USD",
+											"options": {
+												"AED": {
+													"displayName": "AED - UAE Dirham"
+												},
+												"AFN": {
+													"displayName": "AFN - Afghani"
+												},
+												"ALL": {
+													"displayName": "ALL - Lek"
+												},
+												"AMD": {
+													"displayName": "AMD - Armenian Dram"
+												},
+												"ANG": {
+													"displayName": "ANG - Netherlands Antillean Guilder"
+												},
+												"AOA": {
+													"displayName": "AOA - Kwanza"
+												},
+												"ARS": {
+													"displayName": "ARS - Argentine Peso"
+												},
+												"AUD": {
+													"displayName": "AUD - Australian Dollar"
+												},
+												"AWG": {
+													"displayName": "AWG - Aruban Florin"
+												},
+												"AZN": {
+													"displayName": "AZN - Azerbaijan Manat"
+												},
+												"BAM": {
+													"displayName": "BAM - Convertible Mark"
+												},
+												"BBD": {
+													"displayName": "BBD - Barbados Dollar"
+												},
+												"BDT": {
+													"displayName": "BDT - Taka"
+												},
+												"BGN": {
+													"displayName": "BGN - Bulgarian Lev"
+												},
+												"BHD": {
+													"displayName": "BHD - Bahraini Dinar"
+												},
+												"BIF": {
+													"displayName": "BIF - Burundi Franc"
+												},
+												"BMD": {
+													"displayName": "BMD - Bermudian Dollar"
+												},
+												"BND": {
+													"displayName": "BND - Brunei Dollar"
+												},
+												"BOB": {
+													"displayName": "BOB - Boliviano"
+												},
+												"BOV": {
+													"displayName": "BOV - Mvdol"
+												},
+												"BRL": {
+													"displayName": "BRL - Brazilian Real"
+												},
+												"BSD": {
+													"displayName": "BSD - Bahamian Dollar"
+												},
+												"BTN": {
+													"displayName": "BTN - Ngultrum"
+												},
+												"BWP": {
+													"displayName": "BWP - Pula"
+												},
+												"BYN": {
+													"displayName": "BYN - Belarusian Ruble"
+												},
+												"BZD": {
+													"displayName": "BZD - Belize Dollar"
+												},
+												"CAD": {
+													"displayName": "CAD - Canadian Dollar"
+												},
+												"CDF": {
+													"displayName": "CDF - Congolese Franc"
+												},
+												"CHE": {
+													"displayName": "CHE - WIR Euro"
+												},
+												"CHF": {
+													"displayName": "CHF - Swiss Franc"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR Franc"
+												},
+												"CLF": {
+													"displayName": "CLF - Unidad de Fomento"
+												},
+												"CLP": {
+													"displayName": "CLP - Chilean Peso"
+												},
+												"CNY": {
+													"displayName": "CNY - Yuan Renminbi"
+												},
+												"COP": {
+													"displayName": "COP - Colombian Peso"
+												},
+												"COU": {
+													"displayName": "COU - Unidad de Valor Real"
+												},
+												"CRC": {
+													"displayName": "CRC - Costa Rican Colon"
+												},
+												"CUC": {
+													"displayName": "CUC - Peso Convertible"
+												},
+												"CUP": {
+													"displayName": "CUP - Cuban Peso"
+												},
+												"CVE": {
+													"displayName": "CVE - Cabo Verde Escudo"
+												},
+												"CZK": {
+													"displayName": "CZK - Czech Koruna"
+												},
+												"DJF": {
+													"displayName": "DJF - Djibouti Franc"
+												},
+												"DKK": {
+													"displayName": "DKK - Danish Krone"
+												},
+												"DOP": {
+													"displayName": "DOP - Dominican Peso"
+												},
+												"DZD": {
+													"displayName": "DZD - Algerian Dinar"
+												},
+												"EGP": {
+													"displayName": "EGP - Egyptian Pound"
+												},
+												"ERN": {
+													"displayName": "ERN - Nakfa"
+												},
+												"ETB": {
+													"displayName": "ETB - Ethiopian Birr"
+												},
+												"EUR": {
+													"displayName": "EUR - Euro"
+												},
+												"FJD": {
+													"displayName": "FJD - Fiji Dollar"
+												},
+												"FKP": {
+													"displayName": "FKP - Falkland Islands Pound"
+												},
+												"GBP": {
+													"displayName": "GBP - Pound Sterling"
+												},
+												"GEL": {
+													"displayName": "GEL - Lari"
+												},
+												"GHS": {
+													"displayName": "GHS - Ghana Cedi"
+												},
+												"GIP": {
+													"displayName": "GIP - Gibraltar Pound"
+												},
+												"GMD": {
+													"displayName": "GMD - Dalasi"
+												},
+												"GNF": {
+													"displayName": "GNF - Guinean Franc"
+												},
+												"GTQ": {
+													"displayName": "GTQ - Quetzal"
+												},
+												"GYD": {
+													"displayName": "GYD - Guyana Dollar"
+												},
+												"HKD": {
+													"displayName": "HKD - Hong Kong Dollar"
+												},
+												"HNL": {
+													"displayName": "HNL - Lempira"
+												},
+												"HRK": {
+													"displayName": "HRK - Kuna"
+												},
+												"HTG": {
+													"displayName": "HTG - Gourde"
+												},
+												"HUF": {
+													"displayName": "HUF - Forint"
+												},
+												"IDR": {
+													"displayName": "IDR - Rupiah"
+												},
+												"ILS": {
+													"displayName": "ILS - New Israeli Sheqel"
+												},
+												"INR": {
+													"displayName": "INR - Indian Rupee"
+												},
+												"IQD": {
+													"displayName": "IQD - Iraqi Dinar"
+												},
+												"IRR": {
+													"displayName": "IRR - Iranian Rial"
+												},
+												"ISK": {
+													"displayName": "ISK - Iceland Krona"
+												},
+												"JMD": {
+													"displayName": "JMD - Jamaican Dollar"
+												},
+												"JOD": {
+													"displayName": "JOD - Jordanian Dinar"
+												},
+												"JPY": {
+													"displayName": "JPY - Yen"
+												},
+												"KES": {
+													"displayName": "KES - Kenyan Shilling"
+												},
+												"KGS": {
+													"displayName": "KGS - Som"
+												},
+												"KHR": {
+													"displayName": "KHR - Riel"
+												},
+												"KMF": {
+													"displayName": "KMF - Comorian Franc "
+												},
+												"KPW": {
+													"displayName": "KPW - North Korean Won"
+												},
+												"KRW": {
+													"displayName": "KRW - Won"
+												},
+												"KWD": {
+													"displayName": "KWD - Kuwaiti Dinar"
+												},
+												"KYD": {
+													"displayName": "KYD - Cayman Islands Dollar"
+												},
+												"KZT": {
+													"displayName": "KZT - Tenge"
+												},
+												"LAK": {
+													"displayName": "LAK - Lao Kip"
+												},
+												"LBP": {
+													"displayName": "LBP - Lebanese Pound"
+												},
+												"LKR": {
+													"displayName": "LKR - Sri Lanka Rupee"
+												},
+												"LRD": {
+													"displayName": "LRD - Liberian Dollar"
+												},
+												"LSL": {
+													"displayName": "LSL - Loti"
+												},
+												"LYD": {
+													"displayName": "LYD - Libyan Dinar"
+												},
+												"MAD": {
+													"displayName": "MAD - Moroccan Dirham"
+												},
+												"MDL": {
+													"displayName": "MDL - Moldovan Leu"
+												},
+												"MGA": {
+													"displayName": "MGA - Malagasy Ariary"
+												},
+												"MKD": {
+													"displayName": "MKD - Denar"
+												},
+												"MMK": {
+													"displayName": "MMK - Kyat"
+												},
+												"MNT": {
+													"displayName": "MNT - Tugrik"
+												},
+												"MOP": {
+													"displayName": "MOP - Pataca"
+												},
+												"MRU": {
+													"displayName": "MRU - Ouguiya"
+												},
+												"MUR": {
+													"displayName": "MUR - Mauritius Rupee"
+												},
+												"MVR": {
+													"displayName": "MVR - Rufiyaa"
+												},
+												"MWK": {
+													"displayName": "MWK - Malawi Kwacha"
+												},
+												"MXN": {
+													"displayName": "MXN - Mexican Peso"
+												},
+												"MXV": {
+													"displayName": "MXV - Mexican Unidad de Inversion (UDI)"
+												},
+												"MYR": {
+													"displayName": "MYR - Malaysian Ringgit"
+												},
+												"MZN": {
+													"displayName": "MZN - Mozambique Metical"
+												},
+												"NAD": {
+													"displayName": "NAD - Namibia Dollar"
+												},
+												"NGN": {
+													"displayName": "NGN - Naira"
+												},
+												"NIO": {
+													"displayName": "NIO - Cordoba Oro"
+												},
+												"NOK": {
+													"displayName": "NOK - Norwegian Krone"
+												},
+												"NPR": {
+													"displayName": "NPR - Nepalese Rupee"
+												},
+												"NZD": {
+													"displayName": "NZD - New Zealand Dollar"
+												},
+												"OMR": {
+													"displayName": "OMR - Rial Omani"
+												},
+												"PAB": {
+													"displayName": "PAB - Balboa"
+												},
+												"PEN": {
+													"displayName": "PEN - Sol"
+												},
+												"PGK": {
+													"displayName": "PGK - Kina"
+												},
+												"PHP": {
+													"displayName": "PHP - Philippine Peso"
+												},
+												"PKR": {
+													"displayName": "PKR - Pakistan Rupee"
+												},
+												"PLN": {
+													"displayName": "PLN - Zloty"
+												},
+												"PYG": {
+													"displayName": "PYG - Guarani"
+												},
+												"QAR": {
+													"displayName": "QAR - Qatari Rial"
+												},
+												"RON": {
+													"displayName": "RON - Romanian Leu"
+												},
+												"RSD": {
+													"displayName": "RSD - Serbian Dinar"
+												},
+												"RUB": {
+													"displayName": "RUB - Russian Ruble"
+												},
+												"RWF": {
+													"displayName": "RWF - Rwanda Franc"
+												},
+												"SAR": {
+													"displayName": "SAR - Saudi Riyal"
+												},
+												"SBD": {
+													"displayName": "SBD - Solomon Islands Dollar"
+												},
+												"SCR": {
+													"displayName": "SCR - Seychelles Rupee"
+												},
+												"SDG": {
+													"displayName": "SDG - Sudanese Pound"
+												},
+												"SEK": {
+													"displayName": "SEK - Swedish Krona"
+												},
+												"SGD": {
+													"displayName": "SGD - Singapore Dollar"
+												},
+												"SHP": {
+													"displayName": "SHP - Saint Helena Pound"
+												},
+												"SLL": {
+													"displayName": "SLL - Leone"
+												},
+												"SOS": {
+													"displayName": "SOS - Somali Shilling"
+												},
+												"SRD": {
+													"displayName": "SRD - Surinam Dollar"
+												},
+												"SSP": {
+													"displayName": "SSP - South Sudanese Pound"
+												},
+												"STN": {
+													"displayName": "STN - Dobra"
+												},
+												"SVC": {
+													"displayName": "SVC - El Salvador Colon"
+												},
+												"SYP": {
+													"displayName": "SYP - Syrian Pound"
+												},
+												"SZL": {
+													"displayName": "SZL - Lilangeni"
+												},
+												"THB": {
+													"displayName": "THB - Baht"
+												},
+												"TJS": {
+													"displayName": "TJS - Somoni"
+												},
+												"TMT": {
+													"displayName": "TMT - Turkmenistan New Manat"
+												},
+												"TND": {
+													"displayName": "TND - Tunisian Dinar"
+												},
+												"TOP": {
+													"displayName": "TOP - Pa’anga"
+												},
+												"TRY": {
+													"displayName": "TRY - Turkish Lira"
+												},
+												"TTD": {
+													"displayName": "TTD - Trinidad and Tobago Dollar"
+												},
+												"TWD": {
+													"displayName": "TWD - New Taiwan Dollar"
+												},
+												"TZS": {
+													"displayName": "TZS - Tanzanian Shilling"
+												},
+												"UAH": {
+													"displayName": "UAH - Hryvnia"
+												},
+												"UGX": {
+													"displayName": "UGX - Uganda Shilling"
+												},
+												"USD": {
+													"displayName": "USD - US Dollar"
+												},
+												"USN": {
+													"displayName": "USN - US Dollar (Next day)"
+												},
+												"UYI": {
+													"displayName": "UYI - Uruguay Peso en Unidades Indexadas (UI)"
+												},
+												"UYU": {
+													"displayName": "UYU - Peso Uruguayo"
+												},
+												"UYW": {
+													"displayName": "UYW - Unidad Previsional"
+												},
+												"UZS": {
+													"displayName": "UZS - Uzbekistan Sum"
+												},
+												"VES": {
+													"displayName": "VES - Bolívar Soberano"
+												},
+												"VND": {
+													"displayName": "VND - Dong"
+												},
+												"VUV": {
+													"displayName": "VUV - Vatu"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - CFA Franc BEAC"
+												},
+												"XAG": {
+													"displayName": "XAG - Silver"
+												},
+												"XAU": {
+													"displayName": "XAU - Gold"
+												},
+												"XBA": {
+													"displayName": "XBA - Bond Markets Unit European Composite Unit (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - Bond Markets Unit European Monetary Unit (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - Bond Markets Unit European Unit of Account 9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - Bond Markets Unit European Unit of Account 17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - East Caribbean Dollar"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR (Special Drawing Right)"
+												},
+												"XOF": {
+													"displayName": "XOF - CFA Franc BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - Palladium"
+												},
+												"XPF": {
+													"displayName": "XPF - CFP Franc"
+												},
+												"XPT": {
+													"displayName": "XPT - Platinum"
+												},
+												"XSU": {
+													"displayName": "XSU - Sucre"
+												},
+												"XTS": {
+													"displayName": "XTS - Codes specifically reserved for testing purposes"
+												},
+												"XUA": {
+													"displayName": "XUA - ADB Unit of Account"
+												},
+												"XXX": {
+													"displayName": "XXX - The codes assigned for transactions where no currency is involved"
+												},
+												"YER": {
+													"displayName": "YER - Yemeni Rial"
+												},
+												"ZAR": {
+													"displayName": "ZAR - Rand"
+												},
+												"ZMW": {
+													"displayName": "ZMW - Zambian Kwacha"
+												},
+												"ZWL": {
+													"displayName": "ZWL - Zimbabwe Dollar"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "Amount"
+										},
+										"date_time": {
+											"displayName": "Date Time"
+										},
+										"imageLink": {
+											"displayName": "Image Link"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "Parameter",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"options": {
+												"text": {
+													"displayName": "Text"
+												},
+												"currency": {
+													"displayName": "Currency"
+												},
+												"date_time": {
+													"displayName": "Date Time"
+												},
+												"image": {
+													"displayName": "Image"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text"
+										},
+										"code": {
+											"displayName": "Currency Code",
+											"placeholder": "USD",
+											"options": {
+												"AED": {
+													"displayName": "AED - UAE Dirham"
+												},
+												"AFN": {
+													"displayName": "AFN - Afghani"
+												},
+												"ALL": {
+													"displayName": "ALL - Lek"
+												},
+												"AMD": {
+													"displayName": "AMD - Armenian Dram"
+												},
+												"ANG": {
+													"displayName": "ANG - Netherlands Antillean Guilder"
+												},
+												"AOA": {
+													"displayName": "AOA - Kwanza"
+												},
+												"ARS": {
+													"displayName": "ARS - Argentine Peso"
+												},
+												"AUD": {
+													"displayName": "AUD - Australian Dollar"
+												},
+												"AWG": {
+													"displayName": "AWG - Aruban Florin"
+												},
+												"AZN": {
+													"displayName": "AZN - Azerbaijan Manat"
+												},
+												"BAM": {
+													"displayName": "BAM - Convertible Mark"
+												},
+												"BBD": {
+													"displayName": "BBD - Barbados Dollar"
+												},
+												"BDT": {
+													"displayName": "BDT - Taka"
+												},
+												"BGN": {
+													"displayName": "BGN - Bulgarian Lev"
+												},
+												"BHD": {
+													"displayName": "BHD - Bahraini Dinar"
+												},
+												"BIF": {
+													"displayName": "BIF - Burundi Franc"
+												},
+												"BMD": {
+													"displayName": "BMD - Bermudian Dollar"
+												},
+												"BND": {
+													"displayName": "BND - Brunei Dollar"
+												},
+												"BOB": {
+													"displayName": "BOB - Boliviano"
+												},
+												"BOV": {
+													"displayName": "BOV - Mvdol"
+												},
+												"BRL": {
+													"displayName": "BRL - Brazilian Real"
+												},
+												"BSD": {
+													"displayName": "BSD - Bahamian Dollar"
+												},
+												"BTN": {
+													"displayName": "BTN - Ngultrum"
+												},
+												"BWP": {
+													"displayName": "BWP - Pula"
+												},
+												"BYN": {
+													"displayName": "BYN - Belarusian Ruble"
+												},
+												"BZD": {
+													"displayName": "BZD - Belize Dollar"
+												},
+												"CAD": {
+													"displayName": "CAD - Canadian Dollar"
+												},
+												"CDF": {
+													"displayName": "CDF - Congolese Franc"
+												},
+												"CHE": {
+													"displayName": "CHE - WIR Euro"
+												},
+												"CHF": {
+													"displayName": "CHF - Swiss Franc"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR Franc"
+												},
+												"CLF": {
+													"displayName": "CLF - Unidad de Fomento"
+												},
+												"CLP": {
+													"displayName": "CLP - Chilean Peso"
+												},
+												"CNY": {
+													"displayName": "CNY - Yuan Renminbi"
+												},
+												"COP": {
+													"displayName": "COP - Colombian Peso"
+												},
+												"COU": {
+													"displayName": "COU - Unidad de Valor Real"
+												},
+												"CRC": {
+													"displayName": "CRC - Costa Rican Colon"
+												},
+												"CUC": {
+													"displayName": "CUC - Peso Convertible"
+												},
+												"CUP": {
+													"displayName": "CUP - Cuban Peso"
+												},
+												"CVE": {
+													"displayName": "CVE - Cabo Verde Escudo"
+												},
+												"CZK": {
+													"displayName": "CZK - Czech Koruna"
+												},
+												"DJF": {
+													"displayName": "DJF - Djibouti Franc"
+												},
+												"DKK": {
+													"displayName": "DKK - Danish Krone"
+												},
+												"DOP": {
+													"displayName": "DOP - Dominican Peso"
+												},
+												"DZD": {
+													"displayName": "DZD - Algerian Dinar"
+												},
+												"EGP": {
+													"displayName": "EGP - Egyptian Pound"
+												},
+												"ERN": {
+													"displayName": "ERN - Nakfa"
+												},
+												"ETB": {
+													"displayName": "ETB - Ethiopian Birr"
+												},
+												"EUR": {
+													"displayName": "EUR - Euro"
+												},
+												"FJD": {
+													"displayName": "FJD - Fiji Dollar"
+												},
+												"FKP": {
+													"displayName": "FKP - Falkland Islands Pound"
+												},
+												"GBP": {
+													"displayName": "GBP - Pound Sterling"
+												},
+												"GEL": {
+													"displayName": "GEL - Lari"
+												},
+												"GHS": {
+													"displayName": "GHS - Ghana Cedi"
+												},
+												"GIP": {
+													"displayName": "GIP - Gibraltar Pound"
+												},
+												"GMD": {
+													"displayName": "GMD - Dalasi"
+												},
+												"GNF": {
+													"displayName": "GNF - Guinean Franc"
+												},
+												"GTQ": {
+													"displayName": "GTQ - Quetzal"
+												},
+												"GYD": {
+													"displayName": "GYD - Guyana Dollar"
+												},
+												"HKD": {
+													"displayName": "HKD - Hong Kong Dollar"
+												},
+												"HNL": {
+													"displayName": "HNL - Lempira"
+												},
+												"HRK": {
+													"displayName": "HRK - Kuna"
+												},
+												"HTG": {
+													"displayName": "HTG - Gourde"
+												},
+												"HUF": {
+													"displayName": "HUF - Forint"
+												},
+												"IDR": {
+													"displayName": "IDR - Rupiah"
+												},
+												"ILS": {
+													"displayName": "ILS - New Israeli Sheqel"
+												},
+												"INR": {
+													"displayName": "INR - Indian Rupee"
+												},
+												"IQD": {
+													"displayName": "IQD - Iraqi Dinar"
+												},
+												"IRR": {
+													"displayName": "IRR - Iranian Rial"
+												},
+												"ISK": {
+													"displayName": "ISK - Iceland Krona"
+												},
+												"JMD": {
+													"displayName": "JMD - Jamaican Dollar"
+												},
+												"JOD": {
+													"displayName": "JOD - Jordanian Dinar"
+												},
+												"JPY": {
+													"displayName": "JPY - Yen"
+												},
+												"KES": {
+													"displayName": "KES - Kenyan Shilling"
+												},
+												"KGS": {
+													"displayName": "KGS - Som"
+												},
+												"KHR": {
+													"displayName": "KHR - Riel"
+												},
+												"KMF": {
+													"displayName": "KMF - Comorian Franc "
+												},
+												"KPW": {
+													"displayName": "KPW - North Korean Won"
+												},
+												"KRW": {
+													"displayName": "KRW - Won"
+												},
+												"KWD": {
+													"displayName": "KWD - Kuwaiti Dinar"
+												},
+												"KYD": {
+													"displayName": "KYD - Cayman Islands Dollar"
+												},
+												"KZT": {
+													"displayName": "KZT - Tenge"
+												},
+												"LAK": {
+													"displayName": "LAK - Lao Kip"
+												},
+												"LBP": {
+													"displayName": "LBP - Lebanese Pound"
+												},
+												"LKR": {
+													"displayName": "LKR - Sri Lanka Rupee"
+												},
+												"LRD": {
+													"displayName": "LRD - Liberian Dollar"
+												},
+												"LSL": {
+													"displayName": "LSL - Loti"
+												},
+												"LYD": {
+													"displayName": "LYD - Libyan Dinar"
+												},
+												"MAD": {
+													"displayName": "MAD - Moroccan Dirham"
+												},
+												"MDL": {
+													"displayName": "MDL - Moldovan Leu"
+												},
+												"MGA": {
+													"displayName": "MGA - Malagasy Ariary"
+												},
+												"MKD": {
+													"displayName": "MKD - Denar"
+												},
+												"MMK": {
+													"displayName": "MMK - Kyat"
+												},
+												"MNT": {
+													"displayName": "MNT - Tugrik"
+												},
+												"MOP": {
+													"displayName": "MOP - Pataca"
+												},
+												"MRU": {
+													"displayName": "MRU - Ouguiya"
+												},
+												"MUR": {
+													"displayName": "MUR - Mauritius Rupee"
+												},
+												"MVR": {
+													"displayName": "MVR - Rufiyaa"
+												},
+												"MWK": {
+													"displayName": "MWK - Malawi Kwacha"
+												},
+												"MXN": {
+													"displayName": "MXN - Mexican Peso"
+												},
+												"MXV": {
+													"displayName": "MXV - Mexican Unidad de Inversion (UDI)"
+												},
+												"MYR": {
+													"displayName": "MYR - Malaysian Ringgit"
+												},
+												"MZN": {
+													"displayName": "MZN - Mozambique Metical"
+												},
+												"NAD": {
+													"displayName": "NAD - Namibia Dollar"
+												},
+												"NGN": {
+													"displayName": "NGN - Naira"
+												},
+												"NIO": {
+													"displayName": "NIO - Cordoba Oro"
+												},
+												"NOK": {
+													"displayName": "NOK - Norwegian Krone"
+												},
+												"NPR": {
+													"displayName": "NPR - Nepalese Rupee"
+												},
+												"NZD": {
+													"displayName": "NZD - New Zealand Dollar"
+												},
+												"OMR": {
+													"displayName": "OMR - Rial Omani"
+												},
+												"PAB": {
+													"displayName": "PAB - Balboa"
+												},
+												"PEN": {
+													"displayName": "PEN - Sol"
+												},
+												"PGK": {
+													"displayName": "PGK - Kina"
+												},
+												"PHP": {
+													"displayName": "PHP - Philippine Peso"
+												},
+												"PKR": {
+													"displayName": "PKR - Pakistan Rupee"
+												},
+												"PLN": {
+													"displayName": "PLN - Zloty"
+												},
+												"PYG": {
+													"displayName": "PYG - Guarani"
+												},
+												"QAR": {
+													"displayName": "QAR - Qatari Rial"
+												},
+												"RON": {
+													"displayName": "RON - Romanian Leu"
+												},
+												"RSD": {
+													"displayName": "RSD - Serbian Dinar"
+												},
+												"RUB": {
+													"displayName": "RUB - Russian Ruble"
+												},
+												"RWF": {
+													"displayName": "RWF - Rwanda Franc"
+												},
+												"SAR": {
+													"displayName": "SAR - Saudi Riyal"
+												},
+												"SBD": {
+													"displayName": "SBD - Solomon Islands Dollar"
+												},
+												"SCR": {
+													"displayName": "SCR - Seychelles Rupee"
+												},
+												"SDG": {
+													"displayName": "SDG - Sudanese Pound"
+												},
+												"SEK": {
+													"displayName": "SEK - Swedish Krona"
+												},
+												"SGD": {
+													"displayName": "SGD - Singapore Dollar"
+												},
+												"SHP": {
+													"displayName": "SHP - Saint Helena Pound"
+												},
+												"SLL": {
+													"displayName": "SLL - Leone"
+												},
+												"SOS": {
+													"displayName": "SOS - Somali Shilling"
+												},
+												"SRD": {
+													"displayName": "SRD - Surinam Dollar"
+												},
+												"SSP": {
+													"displayName": "SSP - South Sudanese Pound"
+												},
+												"STN": {
+													"displayName": "STN - Dobra"
+												},
+												"SVC": {
+													"displayName": "SVC - El Salvador Colon"
+												},
+												"SYP": {
+													"displayName": "SYP - Syrian Pound"
+												},
+												"SZL": {
+													"displayName": "SZL - Lilangeni"
+												},
+												"THB": {
+													"displayName": "THB - Baht"
+												},
+												"TJS": {
+													"displayName": "TJS - Somoni"
+												},
+												"TMT": {
+													"displayName": "TMT - Turkmenistan New Manat"
+												},
+												"TND": {
+													"displayName": "TND - Tunisian Dinar"
+												},
+												"TOP": {
+													"displayName": "TOP - Pa’anga"
+												},
+												"TRY": {
+													"displayName": "TRY - Turkish Lira"
+												},
+												"TTD": {
+													"displayName": "TTD - Trinidad and Tobago Dollar"
+												},
+												"TWD": {
+													"displayName": "TWD - New Taiwan Dollar"
+												},
+												"TZS": {
+													"displayName": "TZS - Tanzanian Shilling"
+												},
+												"UAH": {
+													"displayName": "UAH - Hryvnia"
+												},
+												"UGX": {
+													"displayName": "UGX - Uganda Shilling"
+												},
+												"USD": {
+													"displayName": "USD - US Dollar"
+												},
+												"USN": {
+													"displayName": "USN - US Dollar (Next day)"
+												},
+												"UYI": {
+													"displayName": "UYI - Uruguay Peso en Unidades Indexadas (UI)"
+												},
+												"UYU": {
+													"displayName": "UYU - Peso Uruguayo"
+												},
+												"UYW": {
+													"displayName": "UYW - Unidad Previsional"
+												},
+												"UZS": {
+													"displayName": "UZS - Uzbekistan Sum"
+												},
+												"VES": {
+													"displayName": "VES - Bolívar Soberano"
+												},
+												"VND": {
+													"displayName": "VND - Dong"
+												},
+												"VUV": {
+													"displayName": "VUV - Vatu"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - CFA Franc BEAC"
+												},
+												"XAG": {
+													"displayName": "XAG - Silver"
+												},
+												"XAU": {
+													"displayName": "XAU - Gold"
+												},
+												"XBA": {
+													"displayName": "XBA - Bond Markets Unit European Composite Unit (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - Bond Markets Unit European Monetary Unit (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - Bond Markets Unit European Unit of Account 9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - Bond Markets Unit European Unit of Account 17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - East Caribbean Dollar"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR (Special Drawing Right)"
+												},
+												"XOF": {
+													"displayName": "XOF - CFA Franc BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - Palladium"
+												},
+												"XPF": {
+													"displayName": "XPF - CFP Franc"
+												},
+												"XPT": {
+													"displayName": "XPT - Platinum"
+												},
+												"XSU": {
+													"displayName": "XSU - Sucre"
+												},
+												"XTS": {
+													"displayName": "XTS - Codes specifically reserved for testing purposes"
+												},
+												"XUA": {
+													"displayName": "XUA - ADB Unit of Account"
+												},
+												"XXX": {
+													"displayName": "XXX - The codes assigned for transactions where no currency is involved"
+												},
+												"YER": {
+													"displayName": "YER - Yemeni Rial"
+												},
+												"ZAR": {
+													"displayName": "ZAR - Rand"
+												},
+												"ZMW": {
+													"displayName": "ZMW - Zambian Kwacha"
+												},
+												"ZWL": {
+													"displayName": "ZWL - Zimbabwe Dollar"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "Amount"
+										},
+										"date_time": {
+											"displayName": "Date Time"
+										},
+										"imageLink": {
+											"displayName": "Image Link"
+										}
+									}
+								},
+								"headerParameters": {
+									"displayName": "Parameters",
+									"placeholder": "Add Parameter"
+								}
+							}
+						}
+					}
+				},
+				"components": {
+					"displayName": "Components",
+					"placeholder": "Add Component"
+				}
+			}
+		},
+		"mediaGetId": {
+			"displayName": "Media ID",
+			"description": "The ID of the media"
+		},
+		"mediaDeleteId": {
+			"displayName": "Media ID",
+			"description": "The ID of the media"
+		},
+		"message": {
+			"displayName": "Message"
+		},
+		"responseType": {
+			"displayName": "Response Type",
+			"options": {
+				"approval": {
+					"displayName": "Approval",
+					"description": "User can approve/disapprove from within the message"
+				},
+				"freeText": {
+					"displayName": "Free Text",
+					"description": "User can submit a response via a form"
+				},
+				"customForm": {
+					"displayName": "Custom Form",
+					"description": "User can submit a response via a custom form"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "Define Form",
+			"options": {
+				"fields": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "Form Fields"
+		},
+		"formFields": {
+			"displayName": "Form Elements",
+			"placeholder": "Add Form Element",
+			"multipleValueButtonText": "Add Form Element",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "Form Elements",
+					"placeholder": "Add Form Element"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "Approval Options",
+			"placeholder": "Add option",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "Approval Options",
+					"placeholder": "Add option"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"limitWaitTime": {
+					"displayName": "Limit Wait Time",
+					"description": "Whether to limit the time this node should wait for a user response before execution resumes",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "Limit Wait Time"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the phrase \"This message was sent automatically with n8n\" to the end of the message"
+				},
+				"messageButtonLabel": {
+					"displayName": "Message Button Label"
+				},
+				"responseFormTitle": {
+					"displayName": "Response Form Title",
+					"description": "Title of the form that the user can access to provide their response"
+				},
+				"responseFormDescription": {
+					"displayName": "Response Form Description",
+					"description": "Description of the form that the user can access to provide their response"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "Response Form Button Label"
+				},
+				"responseFormCustomCss": {
+					"displayName": "Response Form Custom Styling",
+					"description": "Override default styling of the response form with CSS"
+				}
+			}
+		}
+	}
+}

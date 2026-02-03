@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "工作流触发器",
+		"description": "通过Webhook处理工作流事件"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"description": "触发Webhook的资源",
+			"options": {
+				"list": {
+					"displayName": "项目"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"listIds": {
+			"displayName": "项目ID",
+			"description": "列出ID，可能更常被称为“项目”，用逗号（,）分隔"
+		},
+		"taskIds": {
+			"displayName": "任务ID",
+			"description": "任务ID（用逗号分隔）"
+		}
+	}
+}

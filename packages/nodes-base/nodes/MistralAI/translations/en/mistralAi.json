@@ -1,0 +1,86 @@
+{
+	"header": {
+		"displayName": "Mistral AI",
+		"description": "Consume Mistral AI API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"document": {
+					"displayName": "Document"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"extractText": {
+					"displayName": "Extract Text",
+					"description": "Extract text from document using OCR"
+				}
+			}
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The OCR model to use",
+			"options": {
+				"mistral-ocr-latest": {
+					"displayName": "mistral-ocr-latest"
+				}
+			}
+		},
+		"documentType": {
+			"displayName": "Document Type",
+			"description": "The type of document to process",
+			"options": {
+				"document_url": {
+					"displayName": "Document"
+				},
+				"image_url": {
+					"displayName": "Image"
+				}
+			}
+		},
+		"inputType": {
+			"displayName": "Input Type",
+			"description": "How the document will be provided",
+			"options": {
+				"binary": {
+					"displayName": "Binary Data"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		},
+		"binaryProperty": {
+			"displayName": "Input Binary Field",
+			"description": "Name of the input binary field that contains the file to process",
+			"placeholder": "e.g. data"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "URL of the document or image to process",
+			"placeholder": "e.g. https://example.com/document.pdf"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batch": {
+					"displayName": "Enable Batch Processing",
+					"description": "Whether to process multiple documents in a single API call (more cost-efficient)"
+				},
+				"batchSize": {
+					"displayName": "Batch Size",
+					"description": "Maximum number of documents to process in a single batch"
+				},
+				"deleteFiles": {
+					"displayName": "Delete Files After Processing",
+					"description": "Whether to delete the files on Mistral Cloud after processing"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,326 @@
+{
+	"header": {
+		"displayName": "Schedule Trigger",
+		"description": "Triggers the workflow on a given schedule"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This workflow will run on the schedule you define here once you publish it.<br><br>For testing, you can also trigger it manually: by going back to the canvas and clicking 'execute workflow'"
+		},
+		"rule": {
+			"displayName": "Trigger Rules",
+			"placeholder": "Add Rule",
+			"multipleValueButtonText": "Add Rule",
+			"options": {
+				"interval": {
+					"displayName": "Trigger Interval",
+					"options": {
+						"field": {
+							"displayName": "Trigger Interval",
+							"options": {
+								"seconds": {
+									"displayName": "Seconds"
+								},
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								},
+								"days": {
+									"displayName": "Days"
+								},
+								"weeks": {
+									"displayName": "Weeks"
+								},
+								"months": {
+									"displayName": "Months"
+								},
+								"cronExpression": {
+									"displayName": "Custom (Cron)"
+								}
+							}
+						},
+						"secondsInterval": {
+							"displayName": "Seconds Between Triggers",
+							"description": "Number of seconds between each workflow trigger"
+						},
+						"minutesInterval": {
+							"displayName": "Minutes Between Triggers",
+							"description": "Number of minutes between each workflow trigger"
+						},
+						"hoursInterval": {
+							"displayName": "Hours Between Triggers",
+							"description": "Number of hours between each workflow trigger"
+						},
+						"daysInterval": {
+							"displayName": "Days Between Triggers",
+							"description": "Number of days between each workflow trigger"
+						},
+						"weeksInterval": {
+							"displayName": "Weeks Between Triggers",
+							"description": "Would run every week unless specified otherwise"
+						},
+						"monthsInterval": {
+							"displayName": "Months Between Triggers",
+							"description": "Would run every month unless specified otherwise"
+						},
+						"triggerAtDayOfMonth": {
+							"displayName": "Trigger at Day of Month",
+							"description": "The day of the month to trigger (1-31)"
+						},
+						"triggerAtDay": {
+							"displayName": "Trigger on Weekdays"
+						},
+						"triggerAtHour": {
+							"displayName": "Trigger at Hour",
+							"description": "The hour of the day to trigger",
+							"options": {
+								"0": {
+									"displayName": "Midnight"
+								},
+								"1": {
+									"displayName": "1am"
+								},
+								"2": {
+									"displayName": "2am"
+								},
+								"3": {
+									"displayName": "3am"
+								},
+								"4": {
+									"displayName": "4am"
+								},
+								"5": {
+									"displayName": "5am"
+								},
+								"6": {
+									"displayName": "6am"
+								},
+								"7": {
+									"displayName": "7am"
+								},
+								"8": {
+									"displayName": "8am"
+								},
+								"9": {
+									"displayName": "9am"
+								},
+								"10": {
+									"displayName": "10am"
+								},
+								"11": {
+									"displayName": "11am"
+								},
+								"12": {
+									"displayName": "Noon"
+								},
+								"13": {
+									"displayName": "1pm"
+								},
+								"14": {
+									"displayName": "2pm"
+								},
+								"15": {
+									"displayName": "3pm"
+								},
+								"16": {
+									"displayName": "4pm"
+								},
+								"17": {
+									"displayName": "5pm"
+								},
+								"18": {
+									"displayName": "6pm"
+								},
+								"19": {
+									"displayName": "7pm"
+								},
+								"20": {
+									"displayName": "8pm"
+								},
+								"21": {
+									"displayName": "9pm"
+								},
+								"22": {
+									"displayName": "10pm"
+								},
+								"23": {
+									"displayName": "11pm"
+								}
+							}
+						},
+						"triggerAtMinute": {
+							"displayName": "Trigger at Minute",
+							"description": "The minute past the hour to trigger (0-59)"
+						},
+						"notice": {
+							"displayName": "You can find help generating your cron expression <a href=\"https://crontab.guru/examples.html\" target=\"_blank\">here</a>"
+						},
+						"expression": {
+							"displayName": "Expression",
+							"placeholder": "eg. 0 15 * 1 sun"
+						}
+					}
+				}
+			},
+			"values": {
+				"interval": {
+					"displayName": "Trigger Interval",
+					"options": {
+						"field": {
+							"displayName": "Trigger Interval",
+							"options": {
+								"seconds": {
+									"displayName": "Seconds"
+								},
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								},
+								"days": {
+									"displayName": "Days"
+								},
+								"weeks": {
+									"displayName": "Weeks"
+								},
+								"months": {
+									"displayName": "Months"
+								},
+								"cronExpression": {
+									"displayName": "Custom (Cron)"
+								}
+							}
+						},
+						"secondsInterval": {
+							"displayName": "Seconds Between Triggers",
+							"description": "Number of seconds between each workflow trigger"
+						},
+						"minutesInterval": {
+							"displayName": "Minutes Between Triggers",
+							"description": "Number of minutes between each workflow trigger"
+						},
+						"hoursInterval": {
+							"displayName": "Hours Between Triggers",
+							"description": "Number of hours between each workflow trigger"
+						},
+						"daysInterval": {
+							"displayName": "Days Between Triggers",
+							"description": "Number of days between each workflow trigger"
+						},
+						"weeksInterval": {
+							"displayName": "Weeks Between Triggers",
+							"description": "Would run every week unless specified otherwise"
+						},
+						"monthsInterval": {
+							"displayName": "Months Between Triggers",
+							"description": "Would run every month unless specified otherwise"
+						},
+						"triggerAtDayOfMonth": {
+							"displayName": "Trigger at Day of Month",
+							"description": "The day of the month to trigger (1-31)"
+						},
+						"triggerAtDay": {
+							"displayName": "Trigger on Weekdays"
+						},
+						"triggerAtHour": {
+							"displayName": "Trigger at Hour",
+							"description": "The hour of the day to trigger",
+							"options": {
+								"0": {
+									"displayName": "Midnight"
+								},
+								"1": {
+									"displayName": "1am"
+								},
+								"2": {
+									"displayName": "2am"
+								},
+								"3": {
+									"displayName": "3am"
+								},
+								"4": {
+									"displayName": "4am"
+								},
+								"5": {
+									"displayName": "5am"
+								},
+								"6": {
+									"displayName": "6am"
+								},
+								"7": {
+									"displayName": "7am"
+								},
+								"8": {
+									"displayName": "8am"
+								},
+								"9": {
+									"displayName": "9am"
+								},
+								"10": {
+									"displayName": "10am"
+								},
+								"11": {
+									"displayName": "11am"
+								},
+								"12": {
+									"displayName": "Noon"
+								},
+								"13": {
+									"displayName": "1pm"
+								},
+								"14": {
+									"displayName": "2pm"
+								},
+								"15": {
+									"displayName": "3pm"
+								},
+								"16": {
+									"displayName": "4pm"
+								},
+								"17": {
+									"displayName": "5pm"
+								},
+								"18": {
+									"displayName": "6pm"
+								},
+								"19": {
+									"displayName": "7pm"
+								},
+								"20": {
+									"displayName": "8pm"
+								},
+								"21": {
+									"displayName": "9pm"
+								},
+								"22": {
+									"displayName": "10pm"
+								},
+								"23": {
+									"displayName": "11pm"
+								}
+							}
+						},
+						"triggerAtMinute": {
+							"displayName": "Trigger at Minute",
+							"description": "The minute past the hour to trigger (0-59)"
+						},
+						"notice": {
+							"displayName": "You can find help generating your cron expression <a href=\"https://crontab.guru/examples.html\" target=\"_blank\">here</a>"
+						},
+						"expression": {
+							"displayName": "Expression",
+							"placeholder": "eg. 0 15 * 1 sun"
+						}
+					}
+				},
+				"rule": {
+					"displayName": "Trigger Rules",
+					"placeholder": "Add Rule"
+				}
+			}
+		}
+	}
+}

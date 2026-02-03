@@ -1,0 +1,152 @@
+{
+	"header": {
+		"displayName": "Respond to Webhook",
+		"description": "Returns data for Webhook"
+	},
+	"nodeView": {
+		"enableResponseOutput": {
+			"displayName": "Enable Response Output Branch",
+			"description": "Whether to provide an additional output branch with the response sent to the webhook"
+		},
+		"generalNotice": {
+			"displayName": "Verify that the \"Webhook\" node's \"Respond\" parameter is set to \"Using Respond to Webhook Node\". <a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/\" target=\"_blank\">More details"
+		},
+		"respondWith": {
+			"displayName": "Respond With",
+			"description": "The data that should be returned",
+			"options": {
+				"allIncomingItems": {
+					"displayName": "All Incoming Items",
+					"description": "Respond with all input JSON items"
+				},
+				"binary": {
+					"displayName": "Binary File",
+					"description": "Respond with incoming file binary data"
+				},
+				"firstIncomingItem": {
+					"displayName": "First Incoming Item",
+					"description": "Respond with the first input JSON item"
+				},
+				"json": {
+					"displayName": "JSON",
+					"description": "Respond with a custom JSON body"
+				},
+				"jwt": {
+					"displayName": "JWT Token",
+					"description": "Respond with a JWT token"
+				},
+				"noData": {
+					"displayName": "No Data",
+					"description": "Respond with an empty body"
+				},
+				"redirect": {
+					"displayName": "Redirect",
+					"description": "Respond with a redirect to a given URL"
+				},
+				"text": {
+					"displayName": "Text",
+					"description": "Respond with a simple text message body"
+				}
+			}
+		},
+		"credentials": {
+			"displayName": "Credentials"
+		},
+		"webhookNotice": {
+			"displayName": "When using expressions, note that this node will only run for the first item in the input data"
+		},
+		"redirectURL": {
+			"displayName": "Redirect URL",
+			"description": "The URL to redirect to",
+			"placeholder": "e.g. http://www.n8n.io"
+		},
+		"responseBody": {
+			"displayName": "Response Body",
+			"description": "The HTTP response text data",
+			"placeholder": "e.g. Workflow completed"
+		},
+		"payload": {
+			"displayName": "Payload",
+			"description": "The payload to include in the JWT token"
+		},
+		"responseDataSource": {
+			"displayName": "Response Data Source",
+			"options": {
+				"automatically": {
+					"displayName": "Choose Automatically From Input",
+					"description": "Use if input data will contain a single piece of binary data"
+				},
+				"set": {
+					"displayName": "Specify Myself",
+					"description": "Enter the name of the input field the binary data will be in"
+				}
+			}
+		},
+		"inputFieldName": {
+			"displayName": "Input Field Name",
+			"description": "The name of the node input field with the binary data"
+		},
+		"contentTypeNotice": {
+			"displayName": "To avoid unexpected behavior, add a \"Content-Type\" response header with the appropriate value"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"responseCode": {
+					"displayName": "Response Code",
+					"description": "The HTTP response code to return. Defaults to 200."
+				},
+				"responseHeaders": {
+					"displayName": "Response Headers",
+					"description": "Add headers to the webhook response",
+					"placeholder": "Add Response Header",
+					"multipleValueButtonText": "Add Response Header",
+					"options": {
+						"entries": {
+							"displayName": "Entries",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the header"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the header"
+								}
+							}
+						}
+					},
+					"values": {
+						"entries": {
+							"displayName": "Entries",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the header"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the header"
+								}
+							}
+						},
+						"responseHeaders": {
+							"displayName": "Response Headers",
+							"placeholder": "Add Response Header"
+						}
+					}
+				},
+				"responseKey": {
+					"displayName": "Put Response in Field",
+					"description": "The name of the response field to put all items in",
+					"placeholder": "e.g. data"
+				},
+				"enableStreaming": {
+					"displayName": "Enable Streaming",
+					"description": "Whether to enable streaming to the response"
+				}
+			}
+		}
+	}
+}

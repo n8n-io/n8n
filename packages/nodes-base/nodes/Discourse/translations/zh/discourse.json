@@ -1,0 +1,256 @@
+{
+	"header": {
+		"displayName": "Discourse",
+		"description": "使用Discourse API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"category": {
+					"displayName": "分类"
+				},
+				"group": {
+					"displayName": "分组"
+				},
+				"post": {
+					"displayName": "发布"
+				},
+				"user": {
+					"displayName": "用户"
+				},
+				"userGroup": {
+					"displayName": "用户组"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"description": "选择操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新帖子"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "创建用户到群组"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从群组中移除用户"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的用户名称"
+		},
+		"color": {
+			"displayName": "颜色",
+			"description": "分类颜色"
+		},
+		"textColor": {
+			"displayName": "文本颜色",
+			"description": "分类的文本颜色"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"categoryId": {
+			"displayName": "分类ID",
+			"description": "分类的ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"color": {
+					"displayName": "颜色",
+					"description": "分类的颜色"
+				},
+				"textColor": {
+					"displayName": "文本颜色",
+					"description": "分类的文本颜色"
+				},
+				"edit_reason": {
+					"displayName": "编辑原因"
+				},
+				"cooked": {
+					"displayName": "已处理"
+				}
+			}
+		},
+		"groupId": {
+			"displayName": "群组ID",
+			"description": "要移除的组ID"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "帖子标题"
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "帖子内容。支持HTML。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"category": {
+					"displayName": "分类名称或ID",
+					"description": "分类的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"reply_to_post_number": {
+					"displayName": "回复帖子编号",
+					"description": "要回复的帖子编号"
+				},
+				"topic_id": {
+					"displayName": "主题ID",
+					"description": "主题的ID"
+				},
+				"active": {
+					"displayName": "激活状态"
+				},
+				"approved": {
+					"displayName": "已批准"
+				}
+			}
+		},
+		"postId": {
+			"displayName": "帖子ID",
+			"description": "帖子ID"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要创建用户的邮箱",
+			"placeholder": "name@email.com"
+		},
+		"username": {
+			"displayName": "用户名",
+			"description": "要返回用户的用户名"
+		},
+		"password": {
+			"displayName": "密码",
+			"description": "要创建用户的密码"
+		},
+		"by": {
+			"displayName": "按",
+			"description": "搜索依据",
+			"options": {
+				"username": {
+					"displayName": "用户名"
+				},
+				"externalId": {
+					"displayName": "SSO外部ID"
+				}
+			}
+		},
+		"externalId": {
+			"displayName": "SSO外部ID",
+			"description": "Discourse SSO外部ID"
+		},
+		"flag": {
+			"displayName": "标记",
+			"description": "要搜索的用户标记",
+			"options": {
+				"active": {
+					"displayName": "激活状态"
+				},
+				"blocked": {
+					"displayName": "已阻止"
+				},
+				"new": {
+					"displayName": "新建"
+				},
+				"staff": {
+					"displayName": "员工"
+				},
+				"suspect": {
+					"displayName": "可疑"
+				},
+				"suspended": {
+					"displayName": "已暂停"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"asc": {
+					"displayName": "升序",
+					"description": "是否按升序排序"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "按什么排序",
+					"options": {
+						"created": {
+							"displayName": "已创建"
+						},
+						"days_visited": {
+							"displayName": "访问天数"
+						},
+						"email": {
+							"displayName": "电子邮件"
+						},
+						"last_emailed": {
+							"displayName": "最近发送邮件"
+						},
+						"posts": {
+							"displayName": "帖子"
+						},
+						"posts_read": {
+							"displayName": "帖子读取"
+						},
+						"read_time": {
+							"displayName": "读取时间"
+						},
+						"seen": {
+							"displayName": "已查看"
+						},
+						"topics_viewed": {
+							"displayName": "已查看主题"
+						},
+						"trust_level": {
+							"displayName": "信任级别"
+						},
+						"username": {
+							"displayName": "用户名"
+						}
+					}
+				},
+				"showEmails": {
+					"displayName": "显示邮件",
+					"description": "是否包含用户邮箱地址"
+				},
+				"stats": {
+					"displayName": "统计信息",
+					"description": "是否返回用户统计信息"
+				}
+			}
+		},
+		"usernames": {
+			"displayName": "用户名",
+			"description": "要从组中移除的用户名。多个用户名可用逗号分隔定义。"
+		}
+	}
+}

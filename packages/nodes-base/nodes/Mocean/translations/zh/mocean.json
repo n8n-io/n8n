@@ -1,0 +1,71 @@
+{
+	"header": {
+		"displayName": "Mocean",
+		"description": "通过Mocean发送短信和语音消息"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"sms": {
+					"displayName": "短信"
+				},
+				"voice": {
+					"displayName": "语音"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "发送短信/语音消息"
+				}
+			}
+		},
+		"from": {
+			"displayName": "可自定义的发件人名称。长度应在3到11个字符之间，仅允许使用字母数字字符。",
+			"description": "要发送消息的号码",
+			"placeholder": "发送方号码"
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"description": "发送消息的号码",
+			"placeholder": "接收方号码"
+		},
+		"language": {
+			"displayName": "语言",
+			"options": {
+				"cmn-CN": {
+					"displayName": "简体中文（中国）"
+				},
+				"en-GB": {
+					"displayName": "英语（英国）"
+				},
+				"en-US": {
+					"displayName": "英语（美国）"
+				},
+				"ja-JP": {
+					"displayName": "日语（日本）"
+				},
+				"ko-KR": {
+					"displayName": "韩语（韩国）"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"dlrUrl": {
+					"displayName": "投递报告URL"
+				}
+			}
+		}
+	}
+}

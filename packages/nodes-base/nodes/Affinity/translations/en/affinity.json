@@ -1,0 +1,161 @@
+{
+	"header": {
+		"displayName": "Affinity",
+		"description": "Consume Affinity API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"list": {
+					"displayName": "List"
+				},
+				"listEntry": {
+					"displayName": "List Entry"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"person": {
+					"displayName": "Person"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a person"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many persons"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a person"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a person"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a person"
+				}
+			}
+		},
+		"listId": {
+			"displayName": "List Name or ID",
+			"description": "The unique ID of the list that contains the specified list_entry_id. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"entityId": {
+			"displayName": "Entity ID",
+			"description": "The unique ID of the entity (person, organization, or opportunity) to add to this list"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"creator_id": {
+					"displayName": "Creator ID",
+					"description": "The ID of a Person resource who should be recorded as adding the entry to the list. Must be a person who can access Affinity. If not provided the creator defaults to the owner of the API key."
+				},
+				"persons": {
+					"displayName": "Person Names or IDs",
+					"description": "Persons that the new organization will be associated with. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"organizations": {
+					"displayName": "Organization Names or IDs",
+					"description": "Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"listEntryId": {
+			"displayName": "List Entry ID",
+			"description": "The unique ID of the list entry object to be deleted"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the organization"
+		},
+		"domain": {
+			"displayName": "Domain",
+			"description": "The domain name of the organization"
+		},
+		"organizationId": {
+			"displayName": "Organization ID",
+			"description": "Unique identifier for the organization"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"domain": {
+					"displayName": "Domain",
+					"description": "The domain name of the organization"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the organization"
+				},
+				"persons": {
+					"displayName": "Person Names or IDs",
+					"description": "Persons that the new organization will be associated with. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "The first name of the person"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "The last name of the person"
+				},
+				"organizations": {
+					"displayName": "Organization Names or IDs",
+					"description": "Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"withInteractionDates": {
+					"displayName": "With Interaction Dates",
+					"description": "Whether interaction dates will be present on the returned resources"
+				},
+				"term": {
+					"displayName": "Term",
+					"description": "A string used to search all the persons in your team’s address book. This could be an email address, a first name or a last name."
+				}
+			}
+		},
+		"firstName": {
+			"displayName": "First Name",
+			"description": "The first name of the person"
+		},
+		"lastName": {
+			"displayName": "Last Name",
+			"description": "The last name of the person"
+		},
+		"emails": {
+			"displayName": "Emails",
+			"description": "The email addresses of the person",
+			"placeholder": "info@example.com"
+		},
+		"personId": {
+			"displayName": "Person ID",
+			"description": "Unique identifier for the person"
+		}
+	}
+}

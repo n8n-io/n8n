@@ -1,0 +1,1294 @@
+{
+	"header": {
+		"displayName": "Copper",
+		"description": "使用Copper API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"company": {
+					"displayName": "公司"
+				},
+				"customerSource": {
+					"displayName": "客户来源"
+				},
+				"lead": {
+					"displayName": "潜在客户"
+				},
+				"opportunity": {
+					"displayName": "商机"
+				},
+				"person": {
+					"displayName": "人员"
+				},
+				"project": {
+					"displayName": "项目"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的项目名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"placeholder": "添加地址字段",
+					"options": {
+						"addressFields": {
+							"displayName": "地址字段",
+							"options": {
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"postal_code": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "ISO 3166 alpha-2 国家代码"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "地址字段",
+							"options": {
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"postal_code": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "ISO 3166 alpha-2 国家代码"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加地址字段"
+						}
+					}
+				},
+				"details": {
+					"displayName": "详细信息",
+					"description": "要创建的任务描述"
+				},
+				"email_domain": {
+					"displayName": "邮箱域名"
+				},
+				"phone_numbers": {
+					"displayName": "电话号码",
+					"placeholder": "添加电话号码",
+					"multipleValueButtonText": "添加电话号码",
+					"options": {
+						"phoneFields": {
+							"displayName": "电话字段",
+							"options": {
+								"number": {
+									"displayName": "数字"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneFields": {
+							"displayName": "电话字段",
+							"options": {
+								"number": {
+									"displayName": "数字"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						},
+						"phone_numbers": {
+							"displayName": "电话号码",
+							"placeholder": "添加电话号码"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "添加邮箱",
+					"options": {
+						"emailFields": {
+							"displayName": "邮件字段",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailFields": {
+							"displayName": "邮件字段",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "添加邮箱"
+						}
+					}
+				},
+				"emails": {
+					"displayName": "邮件",
+					"placeholder": "添加邮箱",
+					"multipleValueButtonText": "添加邮箱",
+					"options": {
+						"emailFields": {
+							"displayName": "邮件字段",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailFields": {
+							"displayName": "邮件字段",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						},
+						"emails": {
+							"displayName": "邮件",
+							"placeholder": "添加邮箱"
+						}
+					}
+				},
+				"assignee_id": {
+					"displayName": "负责人ID",
+					"description": "将拥有待创建任务的用户ID"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"Completed": {
+							"displayName": "已完成"
+						},
+						"Open": {
+							"displayName": "打开"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"High": {
+							"displayName": "高"
+						},
+						"None": {
+							"displayName": "无"
+						}
+					}
+				}
+			}
+		},
+		"companyId": {
+			"displayName": "公司ID",
+			"description": "要更新的公司ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filterFields": {
+			"displayName": "过滤器",
+			"placeholder": "添加过滤器",
+			"options": {
+				"country": {
+					"displayName": "国家",
+					"description": "要筛选的国家名称",
+					"options": {
+						"AF": {
+							"displayName": "阿富汗"
+						},
+						"AX": {
+							"displayName": "奥兰群岛"
+						},
+						"AL": {
+							"displayName": "阿尔巴尼亚"
+						},
+						"DZ": {
+							"displayName": "阿尔及利亚"
+						},
+						"AS": {
+							"displayName": "美属萨摩亚"
+						},
+						"AD": {
+							"displayName": "安道尔"
+						},
+						"AO": {
+							"displayName": "安哥拉"
+						},
+						"AI": {
+							"displayName": "安圭拉"
+						},
+						"AQ": {
+							"displayName": "南极洲"
+						},
+						"AG": {
+							"displayName": "安提瓜和巴布达"
+						},
+						"AR": {
+							"displayName": "阿根廷"
+						},
+						"AM": {
+							"displayName": "亚美尼亚"
+						},
+						"AW": {
+							"displayName": "Aruba"
+						},
+						"AU": {
+							"displayName": "澳大利亚"
+						},
+						"AT": {
+							"displayName": "奥地利"
+						},
+						"AZ": {
+							"displayName": "阿塞拜疆"
+						},
+						"BS": {
+							"displayName": "巴哈马"
+						},
+						"BH": {
+							"displayName": "巴林"
+						},
+						"BD": {
+							"displayName": "孟加拉国"
+						},
+						"BB": {
+							"displayName": "巴巴多斯"
+						},
+						"BY": {
+							"displayName": "白俄罗斯"
+						},
+						"BE": {
+							"displayName": "比利时"
+						},
+						"BZ": {
+							"displayName": "伯利兹"
+						},
+						"BJ": {
+							"displayName": "贝宁"
+						},
+						"BM": {
+							"displayName": "百慕大"
+						},
+						"BT": {
+							"displayName": "不丹"
+						},
+						"BO": {
+							"displayName": "玻利维亚（多民族国）"
+						},
+						"BQ": {
+							"displayName": "博奈尔、圣尤斯特歇斯和萨巴"
+						},
+						"BA": {
+							"displayName": "波斯尼亚和黑塞哥维那"
+						},
+						"BW": {
+							"displayName": "博茨瓦纳"
+						},
+						"BV": {
+							"displayName": "布韦岛"
+						},
+						"BR": {
+							"displayName": "巴西"
+						},
+						"IO": {
+							"displayName": "英属印度洋领地"
+						},
+						"BN": {
+							"displayName": "文莱达鲁萨兰国"
+						},
+						"BG": {
+							"displayName": "保加利亚"
+						},
+						"BF": {
+							"displayName": "布基纳法索"
+						},
+						"BI": {
+							"displayName": "布隆迪"
+						},
+						"CV": {
+							"displayName": "佛得角"
+						},
+						"KH": {
+							"displayName": "柬埔寨"
+						},
+						"CM": {
+							"displayName": "喀麦隆"
+						},
+						"CA": {
+							"displayName": "加拿大"
+						},
+						"KY": {
+							"displayName": "开曼群岛"
+						},
+						"CF": {
+							"displayName": "中非共和国"
+						},
+						"TD": {
+							"displayName": "乍得"
+						},
+						"CL": {
+							"displayName": "智利"
+						},
+						"CN": {
+							"displayName": "中国"
+						},
+						"CX": {
+							"displayName": "圣诞岛"
+						},
+						"CC": {
+							"displayName": "科科斯（基林）群岛"
+						},
+						"CO": {
+							"displayName": "哥伦比亚"
+						},
+						"KM": {
+							"displayName": "科摩罗"
+						},
+						"CD": {
+							"displayName": "刚果（金）"
+						},
+						"CG": {
+							"displayName": "刚果（布）"
+						},
+						"CK": {
+							"displayName": "库克群岛"
+						},
+						"CR": {
+							"displayName": "哥斯达黎加"
+						},
+						"CI": {
+							"displayName": "科特迪瓦"
+						},
+						"HR": {
+							"displayName": "克罗地亚"
+						},
+						"CU": {
+							"displayName": "古巴"
+						},
+						"CW": {
+							"displayName": "库拉索"
+						},
+						"CY": {
+							"displayName": "塞浦路斯"
+						},
+						"CZ": {
+							"displayName": "捷克"
+						},
+						"DK": {
+							"displayName": "丹麦"
+						},
+						"DJ": {
+							"displayName": "吉布提"
+						},
+						"DM": {
+							"displayName": "多米尼克"
+						},
+						"DO": {
+							"displayName": "多米尼加共和国"
+						},
+						"EC": {
+							"displayName": "厄瓜多尔"
+						},
+						"EG": {
+							"displayName": "埃及"
+						},
+						"SV": {
+							"displayName": "萨尔瓦多"
+						},
+						"GQ": {
+							"displayName": "赤道几内亚"
+						},
+						"ER": {
+							"displayName": "厄立特里亚"
+						},
+						"EE": {
+							"displayName": "爱沙尼亚"
+						},
+						"ET": {
+							"displayName": "埃塞俄比亚"
+						},
+						"FK": {
+							"displayName": "福克兰群岛（马尔维纳斯群岛）"
+						},
+						"FO": {
+							"displayName": "法罗群岛"
+						},
+						"FJ": {
+							"displayName": "斐济"
+						},
+						"FI": {
+							"displayName": "芬兰"
+						},
+						"FR": {
+							"displayName": "法国"
+						},
+						"GF": {
+							"displayName": "法属圭亚那"
+						},
+						"PF": {
+							"displayName": "法属波利尼西亚"
+						},
+						"TF": {
+							"displayName": "法属南部领地"
+						},
+						"GA": {
+							"displayName": "加蓬"
+						},
+						"GM": {
+							"displayName": "冈比亚"
+						},
+						"GE": {
+							"displayName": "格鲁吉亚"
+						},
+						"DE": {
+							"displayName": "德国"
+						},
+						"GH": {
+							"displayName": "加纳"
+						},
+						"GI": {
+							"displayName": "直布罗陀"
+						},
+						"GR": {
+							"displayName": "希腊"
+						},
+						"GL": {
+							"displayName": "格陵兰"
+						},
+						"GD": {
+							"displayName": "格林纳达"
+						},
+						"GP": {
+							"displayName": "瓜德罗普"
+						},
+						"GU": {
+							"displayName": "关岛"
+						},
+						"GT": {
+							"displayName": "危地马拉"
+						},
+						"GG": {
+							"displayName": "根西岛"
+						},
+						"GN": {
+							"displayName": "几内亚"
+						},
+						"GW": {
+							"displayName": "几内亚比绍"
+						},
+						"GY": {
+							"displayName": "圭亚那"
+						},
+						"HT": {
+							"displayName": "海地"
+						},
+						"HM": {
+							"displayName": "赫德岛和麦克唐纳群岛"
+						},
+						"VA": {
+							"displayName": "梵蒂冈"
+						},
+						"HN": {
+							"displayName": "洪都拉斯"
+						},
+						"HK": {
+							"displayName": "香港"
+						},
+						"HU": {
+							"displayName": "匈牙利"
+						},
+						"IS": {
+							"displayName": "冰岛"
+						},
+						"IN": {
+							"displayName": "印度"
+						},
+						"ID": {
+							"displayName": "印度尼西亚"
+						},
+						"IR": {
+							"displayName": "伊朗（伊斯兰共和国）"
+						},
+						"IQ": {
+							"displayName": "伊拉克"
+						},
+						"IE": {
+							"displayName": "爱尔兰"
+						},
+						"IM": {
+							"displayName": "马恩岛"
+						},
+						"IL": {
+							"displayName": "以色列"
+						},
+						"IT": {
+							"displayName": "意大利"
+						},
+						"JM": {
+							"displayName": "牙买加"
+						},
+						"JP": {
+							"displayName": "日本"
+						},
+						"JE": {
+							"displayName": "Jersey"
+						},
+						"JO": {
+							"displayName": "乔丹"
+						},
+						"KZ": {
+							"displayName": "哈萨克斯坦"
+						},
+						"KE": {
+							"displayName": "肯尼亚"
+						},
+						"KI": {
+							"displayName": "基里巴斯"
+						},
+						"KP": {
+							"displayName": "朝鲜民主主义人民共和国"
+						},
+						"KR": {
+							"displayName": "大韩民国"
+						},
+						"KW": {
+							"displayName": "科威特"
+						},
+						"KG": {
+							"displayName": "吉尔吉斯斯坦"
+						},
+						"LA": {
+							"displayName": "老挝人民民主共和国"
+						},
+						"LV": {
+							"displayName": "拉脱维亚"
+						},
+						"LB": {
+							"displayName": "黎巴嫩"
+						},
+						"LS": {
+							"displayName": "莱索托"
+						},
+						"LR": {
+							"displayName": "利比里亚"
+						},
+						"LY": {
+							"displayName": "利比亚"
+						},
+						"LI": {
+							"displayName": "列支敦士登"
+						},
+						"LT": {
+							"displayName": "立陶宛"
+						},
+						"LU": {
+							"displayName": "卢森堡"
+						},
+						"MO": {
+							"displayName": "澳门"
+						},
+						"MK": {
+							"displayName": "马其顿（前南斯拉夫共和国）"
+						},
+						"MG": {
+							"displayName": "马达加斯加"
+						},
+						"MW": {
+							"displayName": "马拉维"
+						},
+						"MY": {
+							"displayName": "马来西亚"
+						},
+						"MV": {
+							"displayName": "马尔代夫"
+						},
+						"ML": {
+							"displayName": "马里"
+						},
+						"MT": {
+							"displayName": "马耳他"
+						},
+						"MH": {
+							"displayName": "马绍尔群岛"
+						},
+						"MQ": {
+							"displayName": "马提尼克"
+						},
+						"MR": {
+							"displayName": "毛里塔尼亚"
+						},
+						"MU": {
+							"displayName": "毛里求斯"
+						},
+						"YT": {
+							"displayName": "马约特"
+						},
+						"MX": {
+							"displayName": "墨西哥"
+						},
+						"FM": {
+							"displayName": "密克罗尼西亚联邦"
+						},
+						"MD": {
+							"displayName": "摩尔多瓦共和国"
+						},
+						"MC": {
+							"displayName": "Monaco"
+						},
+						"MN": {
+							"displayName": "蒙古"
+						},
+						"ME": {
+							"displayName": "黑山"
+						},
+						"MS": {
+							"displayName": "Montserrat"
+						},
+						"MA": {
+							"displayName": "摩洛哥"
+						},
+						"MZ": {
+							"displayName": "莫桑比克"
+						},
+						"MM": {
+							"displayName": "缅甸"
+						},
+						"NA": {
+							"displayName": "纳米比亚"
+						},
+						"NR": {
+							"displayName": "瑙鲁"
+						},
+						"NP": {
+							"displayName": "尼泊尔"
+						},
+						"NL": {
+							"displayName": "荷兰"
+						},
+						"NC": {
+							"displayName": "新喀里多尼亚"
+						},
+						"NZ": {
+							"displayName": "新西兰"
+						},
+						"NI": {
+							"displayName": "尼加拉瓜"
+						},
+						"NE": {
+							"displayName": "尼日尔"
+						},
+						"NG": {
+							"displayName": "尼日利亚"
+						},
+						"NU": {
+							"displayName": "纽埃"
+						},
+						"NF": {
+							"displayName": "诺福克岛"
+						},
+						"MP": {
+							"displayName": "北马里亚纳群岛"
+						},
+						"NO": {
+							"displayName": "挪威"
+						},
+						"OM": {
+							"displayName": "阿曼"
+						},
+						"PK": {
+							"displayName": "巴基斯坦"
+						},
+						"PW": {
+							"displayName": "帕劳"
+						},
+						"PS": {
+							"displayName": "巴勒斯坦国"
+						},
+						"PA": {
+							"displayName": "巴拿马"
+						},
+						"PG": {
+							"displayName": "巴布亚新几内亚"
+						},
+						"PY": {
+							"displayName": "巴拉圭"
+						},
+						"PE": {
+							"displayName": "秘鲁"
+						},
+						"PH": {
+							"displayName": "菲律宾"
+						},
+						"PN": {
+							"displayName": "皮特凯恩"
+						},
+						"PL": {
+							"displayName": "波兰"
+						},
+						"PT": {
+							"displayName": "葡萄牙"
+						},
+						"PR": {
+							"displayName": "波多黎各"
+						},
+						"QA": {
+							"displayName": "卡塔尔"
+						},
+						"RE": {
+							"displayName": "会议"
+						},
+						"RO": {
+							"displayName": "罗马尼亚"
+						},
+						"RU": {
+							"displayName": "俄罗斯联邦"
+						},
+						"RW": {
+							"displayName": "卢旺达"
+						},
+						"BL": {
+							"displayName": "圣巴泰勒米"
+						},
+						"SH": {
+							"displayName": "圣赫勒拿、阿森松和特里斯坦-达库尼亚"
+						},
+						"KN": {
+							"displayName": "圣基茨和尼维斯"
+						},
+						"LC": {
+							"displayName": "圣卢西亚"
+						},
+						"MF": {
+							"displayName": "圣马丁（法属部分）"
+						},
+						"PM": {
+							"displayName": "圣皮埃尔和密克隆"
+						},
+						"VC": {
+							"displayName": "圣文森特和格林纳丁斯"
+						},
+						"WS": {
+							"displayName": "萨摩亚"
+						},
+						"SM": {
+							"displayName": "圣马力诺"
+						},
+						"ST": {
+							"displayName": "圣多美和普林西比"
+						},
+						"SA": {
+							"displayName": "沙特阿拉伯"
+						},
+						"SN": {
+							"displayName": "塞内加尔"
+						},
+						"RS": {
+							"displayName": "塞尔维亚"
+						},
+						"SC": {
+							"displayName": "塞舌尔"
+						},
+						"SL": {
+							"displayName": "塞拉利昂"
+						},
+						"SG": {
+							"displayName": "新加坡"
+						},
+						"SX": {
+							"displayName": "圣马丁（荷属部分）"
+						},
+						"SK": {
+							"displayName": "斯洛伐克"
+						},
+						"SI": {
+							"displayName": "斯洛文尼亚"
+						},
+						"SB": {
+							"displayName": "所罗门群岛"
+						},
+						"SO": {
+							"displayName": "索马里"
+						},
+						"ZA": {
+							"displayName": "南非"
+						},
+						"GS": {
+							"displayName": "南乔治亚和南桑威奇群岛"
+						},
+						"SS": {
+							"displayName": "南苏丹"
+						},
+						"ES": {
+							"displayName": "西班牙"
+						},
+						"LK": {
+							"displayName": "斯里兰卡"
+						},
+						"SD": {
+							"displayName": "苏丹"
+						},
+						"SR": {
+							"displayName": "苏里南"
+						},
+						"SJ": {
+							"displayName": "斯瓦尔巴和扬马延"
+						},
+						"SZ": {
+							"displayName": "斯威士兰"
+						},
+						"SE": {
+							"displayName": "瑞典"
+						},
+						"CH": {
+							"displayName": "瑞士"
+						},
+						"SY": {
+							"displayName": "阿拉伯叙利亚共和国"
+						},
+						"TW": {
+							"displayName": "台湾（中国的省份）"
+						},
+						"TJ": {
+							"displayName": "塔吉克斯坦"
+						},
+						"TZ": {
+							"displayName": "坦桑尼亚联合共和国"
+						},
+						"TH": {
+							"displayName": "泰国"
+						},
+						"TL": {
+							"displayName": "东帝汶"
+						},
+						"TG": {
+							"displayName": "多哥"
+						},
+						"TK": {
+							"displayName": "托克劳"
+						},
+						"TO": {
+							"displayName": "汤加"
+						},
+						"TT": {
+							"displayName": "特立尼达和多巴哥"
+						},
+						"TN": {
+							"displayName": "突尼斯"
+						},
+						"TR": {
+							"displayName": "土耳其"
+						},
+						"TM": {
+							"displayName": "土库曼斯坦"
+						},
+						"TC": {
+							"displayName": "特克斯和凯科斯群岛"
+						},
+						"TV": {
+							"displayName": "图瓦卢"
+						},
+						"UG": {
+							"displayName": "乌干达"
+						},
+						"UA": {
+							"displayName": "乌克兰"
+						},
+						"AE": {
+							"displayName": "阿拉伯联合酋长国"
+						},
+						"GB": {
+							"displayName": "大不列颠及北爱尔兰联合王国"
+						},
+						"UM": {
+							"displayName": "美国本土外小岛屿"
+						},
+						"US": {
+							"displayName": "美利坚合众国"
+						},
+						"UY": {
+							"displayName": "乌拉圭"
+						},
+						"UZ": {
+							"displayName": "乌兹别克斯坦"
+						},
+						"VU": {
+							"displayName": "瓦努阿图"
+						},
+						"VE": {
+							"displayName": "委内瑞拉（玻利瓦尔共和国）"
+						},
+						"VN": {
+							"displayName": "越南"
+						},
+						"VG": {
+							"displayName": "英属维尔京群岛"
+						},
+						"VI": {
+							"displayName": "美属维尔京群岛"
+						},
+						"WF": {
+							"displayName": "瓦利斯和富图纳"
+						},
+						"EH": {
+							"displayName": "西撒哈拉*"
+						},
+						"YE": {
+							"displayName": "也门"
+						},
+						"ZM": {
+							"displayName": "赞比亚"
+						},
+						"ZW": {
+							"displayName": "津巴布韦"
+						}
+					}
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "按项目名称筛选"
+				},
+				"company_ids": {
+					"displayName": "公司ID",
+					"description": "要筛选的主要公司的逗号分隔ID"
+				},
+				"customer_source_ids": {
+					"displayName": "客户来源ID",
+					"description": "用于筛选的客户来源ID，以逗号分隔"
+				},
+				"assignee_ids": {
+					"displayName": "负责人ID",
+					"description": "要筛选的负责人ID，以逗号分隔"
+				},
+				"project_ids": {
+					"displayName": "项目ID",
+					"description": "用于筛选的项目ID，以逗号分隔"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"placeholder": "添加地址字段",
+					"options": {
+						"addressFields": {
+							"displayName": "地址字段",
+							"options": {
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"postal_code": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "ISO 3166 alpha-2 国家代码"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "地址字段",
+							"options": {
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"postal_code": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "ISO 3166 alpha-2 国家代码"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加地址字段"
+						}
+					}
+				},
+				"details": {
+					"displayName": "详细信息",
+					"description": "要为任务设置的描述"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "为任务设置的名称"
+				},
+				"phone_numbers": {
+					"displayName": "电话号码",
+					"placeholder": "添加电话号码",
+					"multipleValueButtonText": "添加电话号码",
+					"options": {
+						"phoneFields": {
+							"displayName": "电话字段",
+							"options": {
+								"number": {
+									"displayName": "数字"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneFields": {
+							"displayName": "电话字段",
+							"options": {
+								"number": {
+									"displayName": "数字"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						},
+						"phone_numbers": {
+							"displayName": "电话号码",
+							"placeholder": "添加电话号码"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "添加邮箱",
+					"options": {
+						"emailFields": {
+							"displayName": "邮件字段",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailFields": {
+							"displayName": "邮件字段",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"placeholder": "添加邮箱"
+						}
+					}
+				},
+				"customer_source_id": {
+					"displayName": "客户来源ID",
+					"description": "与此商机关联的主公司ID"
+				},
+				"primary_contact_id": {
+					"displayName": "主要联系人ID",
+					"description": "生成此商机的客户来源ID"
+				},
+				"email_domain": {
+					"displayName": "邮箱域名"
+				},
+				"emails": {
+					"displayName": "邮件",
+					"placeholder": "添加邮箱",
+					"multipleValueButtonText": "添加邮箱",
+					"options": {
+						"emailFields": {
+							"displayName": "邮件字段",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailFields": {
+							"displayName": "邮件字段",
+							"options": {
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								},
+								"category": {
+									"displayName": "分类"
+								}
+							}
+						},
+						"emails": {
+							"displayName": "邮件",
+							"placeholder": "添加邮箱"
+						}
+					}
+				},
+				"assignee_id": {
+					"displayName": "负责人ID",
+					"description": "将拥有此任务的用户ID"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"Completed": {
+							"displayName": "已完成"
+						},
+						"Open": {
+							"displayName": "打开"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"High": {
+							"displayName": "高"
+						},
+						"None": {
+							"displayName": "无"
+						}
+					}
+				}
+			}
+		},
+		"leadId": {
+			"displayName": "潜在客户ID",
+			"description": "要更新的潜在客户ID"
+		},
+		"customerSourceId": {
+			"displayName": "客户来源ID",
+			"description": "生成此商机的客户来源ID"
+		},
+		"primaryContactId": {
+			"displayName": "主要联系人ID",
+			"description": "与此商机关联的主要公司ID"
+		},
+		"opportunityId": {
+			"displayName": "商机ID",
+			"description": "要更新的商机ID"
+		},
+		"personId": {
+			"displayName": "人员ID",
+			"description": "要更新的人员ID"
+		},
+		"projectId": {
+			"displayName": "项目ID",
+			"description": "要更新的项目ID"
+		},
+		"taskId": {
+			"displayName": "任务ID",
+			"description": "要更新的任务ID"
+		}
+	}
+}

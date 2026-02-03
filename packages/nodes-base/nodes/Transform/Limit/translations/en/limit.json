@@ -1,0 +1,24 @@
+{
+	"header": {
+		"displayName": "Limit",
+		"description": "Restrict the number of items"
+	},
+	"nodeView": {
+		"maxItems": {
+			"displayName": "Max Items",
+			"description": "If there are more items than this number, some are removed"
+		},
+		"keep": {
+			"displayName": "Keep",
+			"description": "When removing items, whether to keep the ones at the start or the ending",
+			"options": {
+				"firstItems": {
+					"displayName": "First Items"
+				},
+				"lastItems": {
+					"displayName": "Last Items"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,128 @@
+{
+	"header": {
+		"displayName": "LoneScale",
+		"description": "Create List, add / delete items"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"description": "Create a new list",
+			"options": {
+				"list": {
+					"displayName": "List",
+					"description": "Manipulate list"
+				},
+				"item": {
+					"displayName": "Item",
+					"description": "Manipulate item"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a list"
+				},
+				"add": {
+					"displayName": "Create",
+					"description": "Create an item"
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "Type of your list",
+			"options": {
+				"COMPANY": {
+					"displayName": "Company",
+					"description": "Create a list of companies"
+				},
+				"PEOPLE": {
+					"displayName": "Contact",
+					"description": "Create a list of contacts"
+				}
+			}
+		},
+		"list": {
+			"displayName": "List Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"first_name": {
+			"displayName": "First Name",
+			"description": "Contact first name"
+		},
+		"last_name": {
+			"displayName": "Last Name",
+			"description": "Contact last name"
+		},
+		"company_name": {
+			"displayName": "Company Name",
+			"description": "Contact company name"
+		},
+		"peopleAdditionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"full_name": {
+					"displayName": "Full Name",
+					"description": "Contact full name"
+				},
+				"email": {
+					"displayName": "Contact Email",
+					"placeholder": "name@email.com"
+				},
+				"company_name": {
+					"displayName": "Company Name",
+					"description": "Contact company name"
+				},
+				"current_position": {
+					"displayName": "Current Position",
+					"description": "Contact current position"
+				},
+				"domain": {
+					"displayName": "Company Domain",
+					"description": "Contact company domain"
+				},
+				"linkedin_url": {
+					"displayName": "Linkedin Url",
+					"description": "Contact Linkedin URL"
+				},
+				"location": {
+					"displayName": "Contact Location"
+				},
+				"contact_id": {
+					"displayName": "Contact ID",
+					"description": "Contact ID from your source"
+				}
+			}
+		},
+		"companyAdditionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"linkedin_url": {
+					"displayName": "Linkedin Url",
+					"description": "Company Linkedin URL"
+				},
+				"domain": {
+					"displayName": "Company Domain",
+					"description": "Company company domain"
+				},
+				"location": {
+					"displayName": "Contact Location"
+				},
+				"contact_id": {
+					"displayName": "Contact ID",
+					"description": "Contact ID from your source"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of your list",
+			"placeholder": "list name"
+		}
+	}
+}

@@ -1,0 +1,175 @@
+{
+	"header": {
+		"displayName": "RabbitMQ",
+		"description": "Sends messages to a RabbitMQ topic"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"sendMessage": {
+					"displayName": "Send a Message to RabbitMQ"
+				},
+				"deleteMessage": {
+					"displayName": "Delete From Queue"
+				}
+			}
+		},
+		"deleteMessage": {
+			"displayName": "Will delete an item from the queue triggered earlier in the workflow by a RabbitMQ Trigger node"
+		},
+		"mode": {
+			"displayName": "Mode",
+			"description": "To where data should be moved",
+			"options": {
+				"queue": {
+					"displayName": "Queue",
+					"description": "Publish data to queue"
+				},
+				"exchange": {
+					"displayName": "Exchange",
+					"description": "Publish data to exchange"
+				}
+			}
+		},
+		"queue": {
+			"displayName": "Queue / Topic",
+			"description": "Name of the queue to publish to",
+			"placeholder": "queue-name"
+		},
+		"exchange": {
+			"displayName": "Exchange",
+			"description": "Name of the exchange to publish to",
+			"placeholder": "exchange-name"
+		},
+		"exchangeType": {
+			"displayName": "Type",
+			"description": "Type of exchange",
+			"options": {
+				"direct": {
+					"displayName": "Direct",
+					"description": "Direct exchange type"
+				},
+				"topic": {
+					"displayName": "Topic",
+					"description": "Topic exchange type"
+				},
+				"headers": {
+					"displayName": "Headers",
+					"description": "Headers exchange type"
+				},
+				"fanout": {
+					"displayName": "Fanout",
+					"description": "Fanout exchange type"
+				}
+			}
+		},
+		"routingKey": {
+			"displayName": "Routing Key",
+			"description": "The routing key for the message",
+			"placeholder": "routing-key"
+		},
+		"sendInputData": {
+			"displayName": "Send Input Data",
+			"description": "Whether to send the data the node receives as JSON"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The message to be sent"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"alternateExchange": {
+					"displayName": "Alternate Exchange",
+					"description": "An exchange to send messages to if this exchange can’t route them to any queues"
+				},
+				"arguments": {
+					"displayName": "Arguments",
+					"description": "Arguments to add, See <a href=\"https://amqp-node.github.io/amqplib/channel_api.html#channel_publish\" target=\"_blank\">here</a> for valid options",
+					"placeholder": "Add Argument",
+					"multipleValueButtonText": "Add Argument",
+					"options": {
+						"argument": {
+							"displayName": "Argument",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"argument": {
+							"displayName": "Argument",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"arguments": {
+							"displayName": "Arguments",
+							"placeholder": "Add Argument"
+						}
+					}
+				},
+				"autoDelete": {
+					"displayName": "Auto Delete Queue",
+					"description": "Whether the queue will be deleted when the number of consumers drops to zero"
+				},
+				"durable": {
+					"displayName": "Durable",
+					"description": "Whether the queue will survive broker restarts"
+				},
+				"exclusive": {
+					"displayName": "Exclusive",
+					"description": "Whether to scope the queue to the connection"
+				},
+				"headers": {
+					"displayName": "Headers",
+					"description": "Headers to add",
+					"placeholder": "Add Header",
+					"multipleValueButtonText": "Add Header",
+					"options": {
+						"header": {
+							"displayName": "Header",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"header": {
+							"displayName": "Header",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"headers": {
+							"displayName": "Headers",
+							"placeholder": "Add Header"
+						}
+					}
+				}
+			}
+		}
+	}
+}

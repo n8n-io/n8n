@@ -1,0 +1,582 @@
+{
+	"header": {
+		"displayName": "Google Cloud Storage",
+		"description": "使用 Google Cloud Storage API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"bucket": {
+					"displayName": "存储桶"
+				},
+				"object": {
+					"displayName": "对象"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建对象"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除对象"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取对象数据或元数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索对象列表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新对象的元数据"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "项目ID",
+			"placeholder": "项目ID"
+		},
+		"bucketName": {
+			"displayName": "存储桶名称",
+			"placeholder": "存储桶名称"
+		},
+		"prefix": {
+			"displayName": "前缀",
+			"placeholder": "筛选存储桶名称"
+		},
+		"projection": {
+			"displayName": "投影",
+			"options": {
+				"full": {
+					"displayName": "所有属性"
+				},
+				"noAcl": {
+					"displayName": "无访问控制列表"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"getFilters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"ifMetagenerationMatch": {
+					"displayName": "元生成匹配",
+					"description": "仅当存储桶的元生成值与发送值匹配时返回数据"
+				},
+				"ifMetagenerationNotMatch": {
+					"displayName": "元生成排除",
+					"description": "仅当存储桶的元生成值与发送值不匹配时返回数据"
+				}
+			}
+		},
+		"createAcl": {
+			"displayName": "预定义访问控制",
+			"placeholder": "添加访问控制参数",
+			"options": {
+				"predefinedAcl": {
+					"displayName": "预定义ACL",
+					"placeholder": "为此存储桶应用预定义的访问控制集",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "已认证读取"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"projectPrivate": {
+							"displayName": "项目私有"
+						},
+						"publicRead": {
+							"displayName": "公开读取"
+						},
+						"publicReadWrite": {
+							"displayName": "公开读写"
+						}
+					}
+				},
+				"predefinedDefaultObjectAcl": {
+					"displayName": "预定义默认对象ACL",
+					"placeholder": "对此存储桶应用预定义的一组默认对象访问控制",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "已认证读取"
+						},
+						"bucketOwnerFullControl": {
+							"displayName": "存储桶所有者完全控制"
+						},
+						"bucketOwnerRead": {
+							"displayName": "存储桶所有者读取"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"projectPrivate": {
+							"displayName": "项目私有"
+						},
+						"publicRead": {
+							"displayName": "公开读取"
+						}
+					}
+				}
+			}
+		},
+		"createBody": {
+			"displayName": "附加参数",
+			"placeholder": "添加元数据参数",
+			"options": {
+				"acl": {
+					"displayName": "访问控制",
+					"placeholder": "存储桶上的访问控制"
+				},
+				"billing": {
+					"displayName": "计费",
+					"placeholder": "存储桶的计费配置"
+				},
+				"cors": {
+					"displayName": "CORS",
+					"placeholder": "存储桶的跨域资源共享配置"
+				},
+				"customPlacementConfig": {
+					"displayName": "自定义放置配置",
+					"placeholder": "存储桶的区域配置"
+				},
+				"dataLocations": {
+					"displayName": "数据位置",
+					"placeholder": "构成双区域存储桶的各个区域列表"
+				},
+				"defaultEventBasedHold": {
+					"displayName": "默认基于事件的保留",
+					"placeholder": "是否自动对新对象应用基于事件的保留"
+				},
+				"defaultObjectAcl": {
+					"displayName": "默认对象ACL",
+					"placeholder": "未提供ACL时新对象的默认访问控制"
+				},
+				"encryption": {
+					"displayName": "加密",
+					"placeholder": "存储桶的加密配置"
+				},
+				"iamConfiguration": {
+					"displayName": "IAM配置",
+					"placeholder": "存储桶的IAM配置"
+				},
+				"labels": {
+					"displayName": "标签",
+					"placeholder": "用户提供的存储桶标签，以键/值对形式"
+				},
+				"lifecycle": {
+					"displayName": "生命周期",
+					"placeholder": "存储桶的生命周期配置"
+				},
+				"location": {
+					"displayName": "位置",
+					"placeholder": "存储桶的位置"
+				},
+				"logging": {
+					"displayName": "日志记录",
+					"placeholder": "存储桶的日志配置"
+				},
+				"retentionPolicy": {
+					"displayName": "保留策略",
+					"placeholder": "存储桶的保留策略"
+				},
+				"rpo": {
+					"displayName": "恢复点目标",
+					"placeholder": "存储桶的恢复点目标"
+				},
+				"storageClass": {
+					"displayName": "存储类别",
+					"placeholder": "存储桶的默认存储类别，适用于未定义存储类别的对象"
+				},
+				"versioning": {
+					"displayName": "版本控制",
+					"placeholder": "存储桶的版本控制配置"
+				},
+				"website": {
+					"displayName": "网站",
+					"placeholder": "存储桶用作托管网站时的网站配置"
+				}
+			}
+		},
+		"objectName": {
+			"displayName": "对象名称",
+			"placeholder": "对象名称"
+		},
+		"updateProjection": {
+			"displayName": "投影",
+			"options": {
+				"full": {
+					"displayName": "所有属性"
+				},
+				"noAcl": {
+					"displayName": "无访问控制列表"
+				}
+			}
+		},
+		"alt": {
+			"displayName": "返回数据",
+			"placeholder": "从请求返回的数据类型",
+			"options": {
+				"json": {
+					"displayName": "元数据"
+				},
+				"media": {
+					"displayName": "对象数据"
+				}
+			}
+		},
+		"createFromBinary": {
+			"displayName": "使用输入二进制字段",
+			"description": "创建文件的数据是否应来自二进制字段"
+		},
+		"createBinaryPropertyName": {
+			"displayName": "二进制输入字段"
+		},
+		"createContent": {
+			"displayName": "文件内容",
+			"description": "要上传的文件内容"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		},
+		"maxResults": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"createData": {
+			"displayName": "创建字段",
+			"placeholder": "添加创建正文字段",
+			"options": {
+				"acl": {
+					"displayName": "访问控制列表"
+				},
+				"cacheControl": {
+					"displayName": "缓存控制"
+				},
+				"contentDisposition": {
+					"displayName": "内容配置"
+				},
+				"contentEncoding": {
+					"displayName": "内容编码"
+				},
+				"contentLanguage": {
+					"displayName": "内容语言"
+				},
+				"contentType": {
+					"displayName": "内容类型"
+				},
+				"crc32c": {
+					"displayName": "CRC32c 校验和"
+				},
+				"customTime": {
+					"displayName": "自定义时间"
+				},
+				"eventBasedHold": {
+					"displayName": "基于事件的保留"
+				},
+				"md5Hash": {
+					"displayName": "MD5哈希"
+				},
+				"metadata": {
+					"displayName": "元数据"
+				},
+				"storageClass": {
+					"displayName": "存储类别"
+				},
+				"temporaryHold": {
+					"displayName": "临时保留"
+				}
+			}
+		},
+		"updateData": {
+			"displayName": "更新字段",
+			"placeholder": "添加更新正文字段",
+			"options": {
+				"acl": {
+					"displayName": "访问控制"
+				},
+				"cacheControl": {
+					"displayName": "缓存控制"
+				},
+				"contentDisposition": {
+					"displayName": "内容配置"
+				},
+				"contentEncoding": {
+					"displayName": "内容编码"
+				},
+				"contentLanguage": {
+					"displayName": "内容语言"
+				},
+				"contentType": {
+					"displayName": "内容类型"
+				},
+				"customTime": {
+					"displayName": "自定义时间"
+				},
+				"eventBasedHold": {
+					"displayName": "基于事件的保留"
+				},
+				"metadata": {
+					"displayName": "元数据"
+				},
+				"temporaryHold": {
+					"displayName": "临时保留"
+				}
+			}
+		},
+		"createQuery": {
+			"displayName": "其他参数",
+			"placeholder": "添加其他参数",
+			"options": {
+				"contentEncoding": {
+					"displayName": "内容编码"
+				},
+				"generation": {
+					"displayName": "生成",
+					"placeholder": "选择指定对象的特定修订版本"
+				},
+				"ifGenerationMatch": {
+					"displayName": "生成匹配",
+					"placeholder": "当对象生成与此值匹配时，使操作有条件执行"
+				},
+				"ifGenerationNotMatch": {
+					"displayName": "生成排除",
+					"placeholder": "当对象生成不匹配此值时，使操作有条件执行"
+				},
+				"ifMetagenerationMatch": {
+					"displayName": "元生成匹配",
+					"placeholder": "当对象的当前元代与此值匹配时执行操作"
+				},
+				"ifMetagenerationNotMatch": {
+					"displayName": "元生成排除",
+					"placeholder": "当对象的当前元代不匹配此值时执行操作"
+				},
+				"kmsKeyName": {
+					"displayName": "KMS密钥名称"
+				},
+				"predefinedAcl": {
+					"displayName": "预定义ACL",
+					"placeholder": "对对象应用预定义的访问控制集",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "已认证读取"
+						},
+						"bucketOwnerFullControl": {
+							"displayName": "存储桶所有者完全控制"
+						},
+						"bucketOwnerRead": {
+							"displayName": "存储桶所有者读取"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"projectPrivate": {
+							"displayName": "项目私有"
+						},
+						"publicRead": {
+							"displayName": "公开读取"
+						}
+					}
+				}
+			}
+		},
+		"getParameters": {
+			"displayName": "附加参数",
+			"placeholder": "添加附加参数",
+			"options": {
+				"generation": {
+					"displayName": "生成",
+					"placeholder": "选择指定对象的特定修订版本"
+				},
+				"ifGenerationMatch": {
+					"displayName": "生成匹配",
+					"placeholder": "当对象生成与此值匹配时，使操作有条件执行"
+				},
+				"ifGenerationNotMatch": {
+					"displayName": "生成排除",
+					"placeholder": "当对象生成不匹配此值时，使操作有条件执行"
+				},
+				"ifMetagenerationMatch": {
+					"displayName": "元生成匹配",
+					"placeholder": "当对象的当前元代与此值匹配时执行操作"
+				},
+				"ifMetagenerationNotMatch": {
+					"displayName": "元生成排除",
+					"placeholder": "当对象的当前元代不匹配此值时执行操作"
+				}
+			}
+		},
+		"metagenAndAclQuery": {
+			"displayName": "其他参数",
+			"placeholder": "添加其他参数",
+			"options": {
+				"generation": {
+					"displayName": "生成",
+					"placeholder": "选择指定对象的特定修订版本"
+				},
+				"ifGenerationMatch": {
+					"displayName": "生成匹配",
+					"placeholder": "当对象生成与此值匹配时，使操作有条件执行"
+				},
+				"ifGenerationNotMatch": {
+					"displayName": "生成排除",
+					"placeholder": "当对象生成不匹配此值时，使操作有条件执行"
+				},
+				"ifMetagenerationMatch": {
+					"displayName": "元生成匹配",
+					"placeholder": "当对象的当前元代与此值匹配时执行操作"
+				},
+				"ifMetagenerationNotMatch": {
+					"displayName": "元生成排除",
+					"placeholder": "当对象的当前元代不匹配此值时执行操作"
+				},
+				"predefinedAcl": {
+					"displayName": "预定义ACL",
+					"placeholder": "对对象应用预定义的访问控制集",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "已认证读取"
+						},
+						"bucketOwnerFullControl": {
+							"displayName": "存储桶所有者完全控制"
+						},
+						"bucketOwnerRead": {
+							"displayName": "存储桶所有者读取"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"projectPrivate": {
+							"displayName": "项目私有"
+						},
+						"publicRead": {
+							"displayName": "公开读取"
+						}
+					}
+				}
+			}
+		},
+		"encryptionHeaders": {
+			"displayName": "加密标头",
+			"placeholder": "添加加密标头",
+			"options": {
+				"X-Goog-Encryption-Algorithm": {
+					"displayName": "加密算法",
+					"placeholder": "使用的加密算法必须是AES256。用于在请求中提供您自己的密钥",
+					"options": {
+						"AES256": {
+							"displayName": "AES256"
+						}
+					}
+				},
+				"X-Goog-Encryption-Key": {
+					"displayName": "加密密钥",
+					"placeholder": "AES256加密密钥的Base64编码字符串"
+				},
+				"X-Goog-Encryption-Key-Sha256": {
+					"displayName": "加密密钥哈希",
+					"placeholder": "加密密钥SHA256哈希的Base64编码字符串"
+				}
+			}
+		},
+		"listFilters": {
+			"displayName": "其他参数",
+			"placeholder": "添加其他参数",
+			"options": {
+				"delimiter": {
+					"displayName": "分隔符",
+					"placeholder": "以目录模式返回结果，使用此值作为分隔符"
+				},
+				"endOffset": {
+					"displayName": "结束偏移量",
+					"placeholder": "筛选名称按字典顺序在此值之前的结果"
+				},
+				"includeTrailingDelimiter": {
+					"displayName": "包含结尾分隔符",
+					"placeholder": "如果为真，对象名称末尾将恰好出现一个分隔符实例"
+				},
+				"prefix": {
+					"displayName": "前缀",
+					"placeholder": "筛选名称以此值开头的节点"
+				},
+				"startOffset": {
+					"displayName": "起始偏移量",
+					"placeholder": "筛选名称按字典顺序等于或晚于此值的结果"
+				},
+				"versions": {
+					"displayName": "版本",
+					"placeholder": "如果为真，将所有对象版本列为独立条目"
+				}
+			}
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

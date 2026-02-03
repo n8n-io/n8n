@@ -1,0 +1,716 @@
+{
+	"header": {
+		"displayName": "Harvest",
+		"description": "访问Harvest上的数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"client": {
+					"displayName": "客户端"
+				},
+				"company": {
+					"displayName": "公司"
+				},
+				"contact": {
+					"displayName": "联系人"
+				},
+				"estimate": {
+					"displayName": "估算"
+				},
+				"expense": {
+					"displayName": "费用"
+				},
+				"invoice": {
+					"displayName": "发票"
+				},
+				"project": {
+					"displayName": "项目"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"timeEntry": {
+					"displayName": "时间记录"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户"
+				},
+				"createByDuration": {
+					"displayName": "通过时长创建",
+					"description": "通过时长创建时间条目"
+				},
+				"createByStartEnd": {
+					"displayName": "通过开始和结束时间创建",
+					"description": "通过开始和结束时间创建时间条目"
+				},
+				"deleteExternal": {
+					"displayName": "删除外部引用",
+					"description": "删除时间条目的外部引用"
+				},
+				"restartTime": {
+					"displayName": "重新启动",
+					"description": "重新启动时间条目"
+				},
+				"stopTime": {
+					"displayName": "停止",
+					"description": "停止时间记录"
+				},
+				"me": {
+					"displayName": "我",
+					"description": "获取认证用户的数据"
+				}
+			}
+		},
+		"accountId": {
+			"displayName": "账户名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"is_active": {
+					"displayName": "是否激活",
+					"description": "是否仅返回活跃用户，false则返回非活跃用户"
+				},
+				"updated_since": {
+					"displayName": "更新于",
+					"description": "仅返回属于给定ID用户的用户"
+				},
+				"client_id": {
+					"displayName": "客户端ID",
+					"description": "仅返回属于指定ID客户的时间条目"
+				},
+				"from": {
+					"displayName": "从",
+					"description": "仅返回花费日期在给定日期或之后的时间条目"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "仅返回状态与所提供值匹配的发票。选项：草稿、待支付、已支付或已关闭。"
+				},
+				"to": {
+					"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。",
+					"description": "仅返回花费日期在给定日期或之前的工时条目"
+				},
+				"page": {
+					"displayName": "页面",
+					"description": "用于分页的页码"
+				},
+				"is_billed": {
+					"displayName": "是否已开票",
+					"description": "true仅返回已开发票的时间条目，false返回未开发票的时间条目"
+				},
+				"project_id": {
+					"displayName": "项目ID",
+					"description": "仅返回属于指定ID客户的时间条目"
+				},
+				"user_id": {
+					"displayName": "用户ID",
+					"description": "仅返回属于指定ID用户的时间记录"
+				},
+				"is_running": {
+					"displayName": "正在运行",
+					"description": "是否仅返回运行中的时间条目，false则返回非运行中的时间条目"
+				}
+			}
+		},
+		"id": {
+			"displayName": "时间记录ID",
+			"description": "要更新的时间记录ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "任务的名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"description": "客户实际地址的文本表示。可能包含换行符。"
+				},
+				"currency": {
+					"displayName": "货币",
+					"description": "发票使用的货币。如未提供，将使用客户的货币。查看支持的货币列表"
+				},
+				"is_active": {
+					"displayName": "是否激活",
+					"description": "用户处于活跃状态还是归档状态"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "联系人的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "传真",
+					"description": "联系人的传真号码"
+				},
+				"last_name": {
+					"displayName": "姓氏",
+					"description": "联系人的姓氏"
+				},
+				"phone_mobile": {
+					"displayName": "手机",
+					"description": "联系人的手机号码"
+				},
+				"phone_office": {
+					"displayName": "办公电话",
+					"description": "联系人的办公电话号码"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "联系人的标题"
+				},
+				"over_budget_notification_percentage": {
+					"displayName": "超预算通知百分比",
+					"description": "用于触发超预算邮件提醒的百分比值。例如：输入10.0表示10.0%。"
+				},
+				"issue_date": {
+					"displayName": "开票日期",
+					"description": "发票开具日期。默认为当天日期。"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "这是关于时间条目的说明"
+				},
+				"number": {
+					"displayName": "数字",
+					"description": "如果未设置值，数字将自动生成"
+				},
+				"purchase_order": {
+					"displayName": "采购订单",
+					"description": "采购订单编号"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "发票主题"
+				},
+				"tax": {
+					"displayName": "税率",
+					"description": "此百分比应用于小计，包括行项目和折扣。例如：使用10.0表示10.0%。"
+				},
+				"tax2": {
+					"displayName": "税务2",
+					"description": "此百分比应用于小计，包括行项目和折扣。例如：使用10.0表示10.0%。"
+				},
+				"billable": {
+					"displayName": "计费",
+					"description": "此项费用是否可计费。默认为 true。"
+				},
+				"total_cost": {
+					"displayName": "总成本",
+					"description": "费用总额"
+				},
+				"units": {
+					"displayName": "单位",
+					"description": "用于计算费用总成本的单位数量"
+				},
+				"user_id": {
+					"displayName": "用户ID",
+					"description": "要关联时间条目的用户ID。默认为当前已认证用户的ID。"
+				},
+				"ends_on": {
+					"displayName": "结束日期",
+					"description": "项目结束日期"
+				},
+				"estimate_id": {
+					"displayName": "估算单ID",
+					"description": "与此发票关联的估算单ID"
+				},
+				"payment_term": {
+					"displayName": "付款条件",
+					"description": "发票应支付的期限。默认为自定义。选项：收到即付、净15天、净30天、净45天或净60天。"
+				},
+				"retainer_id": {
+					"displayName": "保留者ID",
+					"description": "与此发票关联的保留者ID"
+				},
+				"budget": {
+					"displayName": "预算",
+					"description": "按时间预算时，项目的工时预算"
+				},
+				"budget_is_monthly": {
+					"displayName": "预算按月计算",
+					"description": "预算是否每月重置。默认为 false。"
+				},
+				"cost_budget": {
+					"displayName": "成本预算",
+					"description": "按金额预算时，项目的货币预算"
+				},
+				"cost_budget_include_expenses": {
+					"displayName": "成本预算包含支出",
+					"description": "设置总项目费用预算是否包含已追踪的支出。默认值为 false。"
+				},
+				"fee": {
+					"displayName": "费用",
+					"description": "您计划为该项目开具发票的金额。仅适用于固定费用项目。"
+				},
+				"hourly_rate": {
+					"displayName": "小时费率",
+					"description": "按项目小时费率计费项目的费率"
+				},
+				"is_fixed_fee": {
+					"displayName": "是否为固定费用",
+					"description": "该项目是否为固定费用项目"
+				},
+				"notify_when_over_budget": {
+					"displayName": "超预算时通知",
+					"description": "项目超预算时是否通知项目经理。默认为 false。"
+				},
+				"show_budget_to_all": {
+					"displayName": "向所有人显示预算",
+					"description": "是否向所有员工显示项目预算。不适用于总项目费用项目。默认为 false。"
+				},
+				"starts_on": {
+					"displayName": "开始于",
+					"description": "项目启动日期"
+				},
+				"billable_by_default": {
+					"displayName": "默认计费",
+					"description": "创建新项目时，默认任务是否应标记为可计费。默认为 true。"
+				},
+				"default_hourly_rate": {
+					"displayName": "默认小时费率",
+					"description": "将此用户添加到项目时使用的可计费费率"
+				},
+				"is_default": {
+					"displayName": "设为默认",
+					"description": "是否将此任务自动添加到未来的项目中。默认为 false。"
+				},
+				"hours": {
+					"displayName": "小时",
+					"description": "当前已追踪的时间"
+				},
+				"ended_time": {
+					"displayName": "结束时间",
+					"description": "条目结束的时间",
+					"placeholder": "下午3:00"
+				},
+				"started_time": {
+					"displayName": "开始时间",
+					"description": "条目开始的时间。默认为当前时间。例如：“8:00am”。",
+					"placeholder": "8:00am"
+				},
+				"can_create_invoices": {
+					"displayName": "可创建发票",
+					"description": "用户是否可以创建发票。仅适用于项目经理。"
+				},
+				"can_create_projects": {
+					"displayName": "可创建项目",
+					"description": "用户是否可以创建项目。仅适用于项目经理。"
+				},
+				"can_see_rates": {
+					"displayName": "可查看费率",
+					"description": "用户是否可以在项目中查看计费费率。仅适用于项目经理。"
+				},
+				"cost_rate": {
+					"displayName": "成本费率",
+					"description": "计算项目成本与可计费金额时，用于此用户的成本费率"
+				},
+				"has_access_to_all_future_projects": {
+					"displayName": "可访问所有未来项目",
+					"description": "用户是否应自动加入未来项目"
+				},
+				"is_admin": {
+					"displayName": "是否为管理员",
+					"description": "用户是否拥有管理员权限"
+				},
+				"is_contractor": {
+					"displayName": "是否为承包商",
+					"description": "用户是承包商还是员工"
+				},
+				"is_project_manager": {
+					"displayName": "是否为项目经理",
+					"description": "用户是否拥有项目经理权限"
+				},
+				"roles": {
+					"displayName": "角色",
+					"description": "分配给此人的角色名称"
+				},
+				"timezone": {
+					"displayName": "时区",
+					"description": "用户的时区。默认为公司时区。查看支持的<a href=\"/api-v2/introduction/overview/supported-timezones/\">时区列表</a>。"
+				},
+				"weekly_capacity": {
+					"displayName": "每周容量",
+					"description": "此人每周可工作的小时数（以秒为单位）。默认为<code class=\"language-plaintext highlighter-rouge\">126000</code>秒（35小时）。"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"description": "客户实际地址的文本表示。可能包含换行符。"
+				},
+				"currency": {
+					"displayName": "货币",
+					"description": "发票使用的货币。如未提供，将使用客户的货币。查看支持的货币列表"
+				},
+				"is_active": {
+					"displayName": "是否激活",
+					"description": "用户处于活跃状态还是归档状态"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "任务名称"
+				},
+				"client_id": {
+					"displayName": "客户端ID",
+					"description": "与此项目关联的客户端ID"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用户邮箱",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "传真",
+					"description": "联系人的传真号码"
+				},
+				"first_name": {
+					"displayName": "名字",
+					"description": "用户名字"
+				},
+				"last_name": {
+					"displayName": "姓氏",
+					"description": "用户姓氏"
+				},
+				"phone_mobile": {
+					"displayName": "手机",
+					"description": "联系人的手机号码"
+				},
+				"phone_office": {
+					"displayName": "办公电话",
+					"description": "联系人的办公电话号码"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "联系人的标题"
+				},
+				"over_budget_notification_percentage": {
+					"displayName": "超预算通知百分比",
+					"description": "用于触发超预算邮件提醒的百分比值。例如：输入10.0表示10.0%。"
+				},
+				"issue_date": {
+					"displayName": "开票日期",
+					"description": "发票开具日期。默认为当天日期。"
+				},
+				"number": {
+					"displayName": "数字",
+					"description": "如果未设置值，数字将自动生成"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "这是关于时间条目的说明"
+				},
+				"purchase_order": {
+					"displayName": "采购订单",
+					"description": "采购订单编号"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "发票主题"
+				},
+				"tax": {
+					"displayName": "税率",
+					"description": "此百分比应用于小计，包括行项目和折扣。例如：使用10.0表示10.0%。"
+				},
+				"tax2": {
+					"displayName": "税务2",
+					"description": "此百分比应用于小计，包括行项目和折扣。例如：使用10.0表示10.0%。"
+				},
+				"billable": {
+					"displayName": "计费",
+					"description": "此项费用是否可计费。默认为 true。"
+				},
+				"expense_category_id": {
+					"displayName": "费用类别ID",
+					"description": "此费用所归属的费用类别ID"
+				},
+				"project_id": {
+					"displayName": "项目ID",
+					"description": "与此支出关联的项目ID"
+				},
+				"spent_date": {
+					"displayName": "支出日期",
+					"description": "费用发生日期"
+				},
+				"total_cost": {
+					"displayName": "总成本",
+					"description": "费用总额"
+				},
+				"units": {
+					"displayName": "单位",
+					"description": "用于计算费用总成本的单位数量"
+				},
+				"user_id": {
+					"displayName": "用户ID",
+					"description": "与此支出关联的用户ID。默认为当前认证用户的ID。"
+				},
+				"ends_on": {
+					"displayName": "结束日期",
+					"description": "项目结束日期"
+				},
+				"estimate_id": {
+					"displayName": "估算单ID",
+					"description": "与此发票关联的估算单ID"
+				},
+				"payment_term": {
+					"displayName": "付款条件",
+					"description": "发票应支付的期限。默认为自定义。选项：收到即付、净15天、净30天、净45天或净60天。"
+				},
+				"retainer_id": {
+					"displayName": "保留者ID",
+					"description": "与此发票关联的保留者ID"
+				},
+				"bill_by": {
+					"displayName": "计费方式",
+					"description": "项目开具发票的方式",
+					"options": {
+						"none": {
+							"displayName": "无"
+						},
+						"People": {
+							"displayName": "用户"
+						},
+						"Project": {
+							"displayName": "项目"
+						},
+						"Tasks": {
+							"displayName": "任务"
+						}
+					}
+				},
+				"budget": {
+					"displayName": "预算",
+					"description": "按时间预算时，项目的工时预算"
+				},
+				"budget_by": {
+					"displayName": "预算归属",
+					"description": "用户邮箱或“无”"
+				},
+				"budget_is_monthly": {
+					"displayName": "预算按月计算",
+					"description": "是否每月重置预算。默认为false。"
+				},
+				"cost_budget": {
+					"displayName": "成本预算",
+					"description": "按金额预算时，项目的货币预算"
+				},
+				"cost_budget_include_expenses": {
+					"displayName": "成本预算包含支出",
+					"description": "设置总项目费用预算是否包含已追踪的支出。默认值为 false。"
+				},
+				"fee": {
+					"displayName": "费用",
+					"description": "您计划为该项目开具发票的金额。仅适用于固定费用项目。"
+				},
+				"hourly_rate": {
+					"displayName": "小时费率",
+					"description": "按项目小时费率计费项目的费率"
+				},
+				"is_billable": {
+					"displayName": "可计费",
+					"description": "项目是否可计费"
+				},
+				"is_fixed_fee": {
+					"displayName": "是否为固定费用",
+					"description": "该项目是否为固定费用项目"
+				},
+				"notify_when_over_budget": {
+					"displayName": "超预算时通知",
+					"description": "项目超预算时是否通知项目经理。默认为 false。"
+				},
+				"show_budget_to_all": {
+					"displayName": "向所有人显示预算",
+					"description": "是否向所有员工显示项目预算。不适用于总项目费用项目。默认为 false。"
+				},
+				"starts_on": {
+					"displayName": "开始于",
+					"description": "项目启动日期"
+				},
+				"billable_by_default": {
+					"displayName": "默认计费",
+					"description": "创建新项目时，默认任务是否应标记为可计费。默认为 true。"
+				},
+				"default_hourly_rate": {
+					"displayName": "默认小时费率",
+					"description": "将此用户添加到项目时使用的可计费费率"
+				},
+				"is_default": {
+					"displayName": "设为默认",
+					"description": "是否将此任务自动添加到未来的项目中。默认为 false。"
+				},
+				"ended_time": {
+					"displayName": "结束时间",
+					"description": "条目结束的时间",
+					"placeholder": "下午3:00"
+				},
+				"hours": {
+					"displayName": "小时",
+					"description": "当前已追踪的时间"
+				},
+				"started_time": {
+					"displayName": "开始时间",
+					"description": "条目开始的时间。默认为当前时间。例如：“8:00am”。",
+					"placeholder": "下午3:00"
+				},
+				"can_create_invoices": {
+					"displayName": "可创建发票",
+					"description": "用户是否可以创建发票。仅适用于项目经理。"
+				},
+				"can_create_projects": {
+					"displayName": "可创建项目",
+					"description": "用户是否可以创建项目。仅适用于项目经理。"
+				},
+				"can_see_rates": {
+					"displayName": "可查看费率",
+					"description": "用户是否可以在项目中查看计费费率。仅适用于项目经理。"
+				},
+				"cost_rate": {
+					"displayName": "成本费率",
+					"description": "计算项目成本与可计费金额时，用于此用户的成本费率"
+				},
+				"has_access_to_all_future_projects": {
+					"displayName": "可访问所有未来项目",
+					"description": "用户是否应自动加入未来项目"
+				},
+				"is_admin": {
+					"displayName": "是否为管理员",
+					"description": "用户是否拥有管理员权限"
+				},
+				"is_contractor": {
+					"displayName": "是否为承包商",
+					"description": "用户是承包商还是员工"
+				},
+				"is_project_manager": {
+					"displayName": "是否为项目经理",
+					"description": "用户是否拥有项目经理权限"
+				},
+				"roles": {
+					"displayName": "角色",
+					"description": "分配给此人的角色名称"
+				},
+				"timezone": {
+					"displayName": "时区",
+					"description": "用户的时区。默认为公司时区。查看支持的<a href=\"/api-v2/introduction/overview/supported-timezones/\">时区列表</a>。"
+				},
+				"weekly_capacity": {
+					"displayName": "每周容量",
+					"description": "此人每周可工作的小时数（以秒为单位）。默认为<code class=\"language-plaintext highlighter-rouge\">126000</code>秒（35小时）。"
+				}
+			}
+		},
+		"firstName": {
+			"displayName": "名字",
+			"description": "用户的名字"
+		},
+		"clientId": {
+			"displayName": "客户端ID",
+			"description": "与此项目关联的客户端ID"
+		},
+		"projectId": {
+			"displayName": "项目ID",
+			"description": "与时间条目关联的项目ID"
+		},
+		"expenseCategoryId": {
+			"displayName": "费用类别ID",
+			"description": "此费用所归属的费用类别ID"
+		},
+		"spentDate": {
+			"displayName": "花费日期",
+			"description": "时间条目的ISO 8601格式花费日期"
+		},
+		"isBillable": {
+			"displayName": "是否计费",
+			"description": "该项目是否可计费"
+		},
+		"billBy": {
+			"displayName": "计费方式",
+			"description": "项目开具发票所依据的方法",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"People": {
+					"displayName": "用户"
+				},
+				"Project": {
+					"displayName": "项目"
+				},
+				"Tasks": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"budgetBy": {
+			"displayName": "预算归属",
+			"description": "用户邮箱或“无”"
+		},
+		"taskId": {
+			"displayName": "任务ID",
+			"description": "要与时间条目关联的任务ID"
+		},
+		"lastName": {
+			"displayName": "姓氏",
+			"description": "用户的姓氏"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "用户的电子邮件",
+			"placeholder": "name@email.com"
+		}
+	}
+}

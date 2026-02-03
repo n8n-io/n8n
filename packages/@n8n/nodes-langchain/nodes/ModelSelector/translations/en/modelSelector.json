@@ -1,0 +1,85 @@
+{
+	"header": {
+		"displayName": "Model Selector",
+		"description": "Use this node to select one of the connected models to this node based on workflow data"
+	},
+	"nodeView": {
+		"numberInputs": {
+			"displayName": "Number of Inputs",
+			"description": "The number of data inputs you want to merge. The node waits for all connected inputs to be executed.",
+			"options": {
+				"2": {
+					"displayName": "2"
+				},
+				"3": {
+					"displayName": "3"
+				},
+				"4": {
+					"displayName": "4"
+				},
+				"5": {
+					"displayName": "5"
+				},
+				"6": {
+					"displayName": "6"
+				},
+				"7": {
+					"displayName": "7"
+				},
+				"8": {
+					"displayName": "8"
+				},
+				"9": {
+					"displayName": "9"
+				},
+				"10": {
+					"displayName": "10"
+				}
+			}
+		},
+		"rules": {
+			"displayName": "Rules",
+			"description": "Rules to map workflow data to specific models",
+			"placeholder": "Add Rule",
+			"multipleValueButtonText": "Add Rule",
+			"options": {
+				"rule": {
+					"displayName": "Rule",
+					"options": {
+						"modelIndex": {
+							"displayName": "Model",
+							"description": "Choose model input from the list",
+							"placeholder": "Choose model input from the list"
+						},
+						"conditions": {
+							"displayName": "Conditions",
+							"description": "Conditions that must be met to select this model",
+							"placeholder": "Add Condition"
+						}
+					}
+				}
+			},
+			"values": {
+				"rule": {
+					"displayName": "Rule",
+					"options": {
+						"modelIndex": {
+							"displayName": "Model",
+							"description": "Choose model input from the list",
+							"placeholder": "Choose model input from the list"
+						},
+						"conditions": {
+							"displayName": "Conditions",
+							"description": "Conditions that must be met to select this model",
+							"placeholder": "Add Condition"
+						}
+					}
+				},
+				"rules": {
+					"displayName": "Rules",
+					"placeholder": "Add Rule"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,421 @@
+{
+	"header": {
+		"displayName": "Baserow",
+		"description": "使用 Baserow API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"row": {
+					"displayName": "行"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建一行"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一行"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索一行数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多行数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新行数据"
+				}
+			}
+		},
+		"databaseId": {
+			"displayName": "数据库名称或ID",
+			"description": "要操作的数据库。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"tableId": {
+			"displayName": "表名或ID",
+			"description": "要操作的表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"rowId": {
+			"displayName": "行ID",
+			"description": "要删除的行的ID"
+		},
+		"dataToSend": {
+			"displayName": "要发送的数据",
+			"description": "是否将本节点接收的输入数据插入到新行中",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "自动映射输入数据到列",
+					"description": "当节点输入属性与目标列名匹配时使用"
+				},
+				"defineBelow": {
+					"displayName": "为每列定义以下内容",
+					"description": "为每个目标列设置值"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "要忽略的输入",
+			"description": "要避免发送的输入属性列表，用逗号分隔。留空则发送所有属性。",
+			"placeholder": "输入属性..."
+		},
+		"fieldsUi": {
+			"displayName": "要发送的字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加要发送的字段",
+			"options": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "要发送的字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"additionalOptions": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"filters": {
+					"displayName": "筛选器",
+					"description": "基于比较运算符筛选行",
+					"placeholder": "添加筛选器",
+					"multipleValueButtonText": "添加筛选器",
+					"options": {
+						"fields": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "要比较的字段。从列表中选择，或使用<表达式>指定ID。"
+								},
+								"operator": {
+									"displayName": "筛选器",
+									"description": "用于比较字段和值的运算符",
+									"options": {
+										"contains": {
+											"displayName": "包含",
+											"description": "字段包含值"
+										},
+										"contains_not": {
+											"displayName": "不包含",
+											"description": "字段不包含值"
+										},
+										"date_after": {
+											"displayName": "日期之后",
+											"description": "此日期之后的字段。格式：'YYYY-MM-DD'。"
+										},
+										"date_before": {
+											"displayName": "日期早于指定日期",
+											"description": "早于此日期的字段。格式：'YYYY-MM-DD'。"
+										},
+										"date_equal": {
+											"displayName": "日期等于",
+											"description": "字段为日期。格式：'YYYY-MM-DD'。"
+										},
+										"date_equals_month": {
+											"displayName": "日期等于月份",
+											"description": "此月中的字段。格式：字符串。"
+										},
+										"date_equals_today": {
+											"displayName": "日期等于今天",
+											"description": "字段为今天。格式：字符串。"
+										},
+										"date_equals_year": {
+											"displayName": "日期等于年份",
+											"description": "此年份内的字段。格式：字符串。"
+										},
+										"date_not_equal": {
+											"displayName": "日期不相等",
+											"description": "字段不是日期格式。格式应为：'YYYY-MM-DD'。"
+										},
+										"equal": {
+											"displayName": "等于",
+											"description": "字段等于值"
+										},
+										"filename_contains": {
+											"displayName": "文件名包含",
+											"description": "字段 filename 包含值"
+										},
+										"higher_than": {
+											"displayName": "高于",
+											"description": "字段高于值"
+										},
+										"empty": {
+											"displayName": "为空",
+											"description": "字段为空"
+										},
+										"not_empty": {
+											"displayName": "不为空",
+											"description": "字段不为空"
+										},
+										"boolean": {
+											"displayName": "为真",
+											"description": "布尔字段为真"
+										},
+										"link_row_has_not": {
+											"displayName": "链接行不存在",
+											"description": "字段没有链接ID"
+										},
+										"link_row_has": {
+											"displayName": "关联行包含",
+											"description": "字段包含关联ID"
+										},
+										"lower_than": {
+											"displayName": "小于",
+											"description": "字段小于值"
+										},
+										"not_equal": {
+											"displayName": "不等于",
+											"description": "字段不等于值"
+										},
+										"single_select_equal": {
+											"displayName": "单选等于",
+											"description": "所选字段选项等于值"
+										},
+										"single_select_not_equal": {
+											"displayName": "单选不等于",
+											"description": "字段所选选项不等于值"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要比较的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"fields": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "要比较的字段。从列表中选择，或使用<表达式>指定ID。"
+								},
+								"operator": {
+									"displayName": "筛选器",
+									"description": "用于比较字段和值的运算符",
+									"options": {
+										"contains": {
+											"displayName": "包含",
+											"description": "字段包含值"
+										},
+										"contains_not": {
+											"displayName": "不包含",
+											"description": "字段不包含值"
+										},
+										"date_after": {
+											"displayName": "日期之后",
+											"description": "此日期之后的字段。格式：'YYYY-MM-DD'。"
+										},
+										"date_before": {
+											"displayName": "日期早于指定日期",
+											"description": "早于此日期的字段。格式：'YYYY-MM-DD'。"
+										},
+										"date_equal": {
+											"displayName": "日期等于",
+											"description": "字段为日期。格式：'YYYY-MM-DD'。"
+										},
+										"date_equals_month": {
+											"displayName": "日期等于月份",
+											"description": "此月中的字段。格式：字符串。"
+										},
+										"date_equals_today": {
+											"displayName": "日期等于今天",
+											"description": "字段为今天。格式：字符串。"
+										},
+										"date_equals_year": {
+											"displayName": "日期等于年份",
+											"description": "此年份内的字段。格式：字符串。"
+										},
+										"date_not_equal": {
+											"displayName": "日期不相等",
+											"description": "字段不是日期格式。格式应为：'YYYY-MM-DD'。"
+										},
+										"equal": {
+											"displayName": "等于",
+											"description": "字段等于值"
+										},
+										"filename_contains": {
+											"displayName": "文件名包含",
+											"description": "字段 filename 包含值"
+										},
+										"higher_than": {
+											"displayName": "高于",
+											"description": "字段高于值"
+										},
+										"empty": {
+											"displayName": "为空",
+											"description": "字段为空"
+										},
+										"not_empty": {
+											"displayName": "不为空",
+											"description": "字段不为空"
+										},
+										"boolean": {
+											"displayName": "为真",
+											"description": "布尔字段为真"
+										},
+										"link_row_has_not": {
+											"displayName": "链接行不存在",
+											"description": "字段没有链接ID"
+										},
+										"link_row_has": {
+											"displayName": "关联行包含",
+											"description": "字段包含关联ID"
+										},
+										"lower_than": {
+											"displayName": "小于",
+											"description": "字段小于值"
+										},
+										"not_equal": {
+											"displayName": "不等于",
+											"description": "字段不等于值"
+										},
+										"single_select_equal": {
+											"displayName": "单选等于",
+											"description": "所选字段选项等于值"
+										},
+										"single_select_not_equal": {
+											"displayName": "单选不等于",
+											"description": "字段所选选项不等于值"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要比较的值"
+								}
+							}
+						},
+						"filters": {
+							"displayName": "筛选器",
+							"placeholder": "添加筛选器"
+						}
+					}
+				},
+				"filterType": {
+					"displayName": "筛选类型",
+					"description": "仅当提供两个或更多筛选条件时生效。默认为<code>AND</code>",
+					"options": {
+						"AND": {
+							"displayName": "与",
+							"description": "表示行必须匹配所有提供的筛选条件"
+						},
+						"OR": {
+							"displayName": "或",
+							"description": "表示行只需匹配其中一个筛选器"
+						}
+					}
+				},
+				"search": {
+					"displayName": "搜索词",
+					"description": "匹配文本（可在任意列）"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "设置结果行的排序顺序",
+					"placeholder": "添加排序顺序",
+					"multipleValueButtonText": "添加排序顺序",
+					"options": {
+						"fields": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "用于排序的字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向，升序或降序",
+									"options": {
+										"": {
+											"displayName": "升序",
+											"description": "按升序排序"
+										},
+										"-": {
+											"displayName": "描述",
+											"description": "按降序排序"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"fields": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "用于排序的字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向，升序或降序",
+									"options": {
+										"": {
+											"displayName": "升序",
+											"description": "按升序排序"
+										},
+										"-": {
+											"displayName": "描述",
+											"description": "按降序排序"
+										}
+									}
+								}
+							}
+						},
+						"order": {
+							"displayName": "排序",
+							"placeholder": "添加排序顺序"
+						}
+					}
+				}
+			}
+		}
+	}
+}

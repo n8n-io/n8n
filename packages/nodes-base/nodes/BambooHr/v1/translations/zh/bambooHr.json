@@ -1,0 +1,921 @@
+{
+	"header": {
+		"displayName": "BambooHR",
+		"description": "使用BambooHR API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"companyReport": {
+					"displayName": "公司报告"
+				},
+				"employee": {
+					"displayName": "员工"
+				},
+				"employeeDocument": {
+					"displayName": "员工文档"
+				},
+				"file": {
+					"displayName": "文件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建员工"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取公司报告"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个公司文件"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新公司文件"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除公司文件"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载公司文件"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传公司文件"
+				}
+			}
+		},
+		"synced": {
+			"displayName": "已与Trax Payroll同步",
+			"description": "待创建的员工是否已添加到与Trax Payroll同步的薪资周期"
+		},
+		"firstName": {
+			"displayName": "名字"
+		},
+		"lastName": {
+			"displayName": "姓氏"
+		},
+		"address": {
+			"displayName": "地址",
+			"placeholder": "地址",
+			"options": {
+				"value": {
+					"displayName": "地址",
+					"options": {
+						"address1": {
+							"displayName": "第1行"
+						},
+						"address2": {
+							"displayName": "第2行"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态",
+							"description": "州/省全称",
+							"placeholder": "佛罗里达州"
+						},
+						"country": {
+							"displayName": "国家",
+							"description": "国家名称。必须存在于BambooHr国家列表中。",
+							"placeholder": "美国"
+						}
+					}
+				}
+			},
+			"values": {
+				"value": {
+					"displayName": "地址",
+					"options": {
+						"address1": {
+							"displayName": "第1行"
+						},
+						"address2": {
+							"displayName": "第2行"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态",
+							"description": "州/省全称",
+							"placeholder": "佛罗里达州"
+						},
+						"country": {
+							"displayName": "国家",
+							"description": "国家名称。必须存在于BambooHr国家列表中。",
+							"placeholder": "美国"
+						}
+					}
+				},
+				"address": {
+					"displayName": "地址",
+					"placeholder": "地址"
+				}
+			}
+		},
+		"dateOfBirth": {
+			"displayName": "出生日期"
+		},
+		"department": {
+			"displayName": "部门名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"division": {
+			"displayName": "部门名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"employeeNumber": {
+			"displayName": "员工编号"
+		},
+		"exempt": {
+			"displayName": "FLSA加班状态",
+			"options": {
+				"exempt": {
+					"displayName": "豁免"
+				},
+				"non-exempt": {
+					"displayName": "非豁免"
+				}
+			}
+		},
+		"gender": {
+			"displayName": "性别",
+			"options": {
+				"female": {
+					"displayName": "女性"
+				},
+				"male": {
+					"displayName": "男性"
+				}
+			}
+		},
+		"hireDate": {
+			"displayName": "入职日期"
+		},
+		"location": {
+			"displayName": "位置名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"maritalStatus": {
+			"displayName": "婚姻状况",
+			"options": {
+				"single": {
+					"displayName": "单个"
+				},
+				"married": {
+					"displayName": "已婚"
+				},
+				"domesticPartnership": {
+					"displayName": "国内合伙关系"
+				}
+			}
+		},
+		"mobilePhone": {
+			"displayName": "手机"
+		},
+		"paidPer": {
+			"displayName": "按次付费",
+			"options": {
+				"hour": {
+					"displayName": "小时"
+				},
+				"day": {
+					"displayName": "天"
+				},
+				"week": {
+					"displayName": "周"
+				},
+				"month": {
+					"displayName": "月份"
+				},
+				"quater": {
+					"displayName": "季度"
+				},
+				"year": {
+					"displayName": "年"
+				}
+			}
+		},
+		"payRate": {
+			"displayName": "薪资标准",
+			"placeholder": "添加薪资标准",
+			"options": {
+				"value": {
+					"displayName": "支付费率",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"placeholder": "20.00"
+						},
+						"currency": {
+							"displayName": "货币",
+							"placeholder": "美元"
+						}
+					}
+				}
+			},
+			"values": {
+				"value": {
+					"displayName": "支付费率",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"placeholder": "20.00"
+						},
+						"currency": {
+							"displayName": "货币",
+							"placeholder": "美元"
+						}
+					}
+				},
+				"payRate": {
+					"displayName": "支付费率",
+					"placeholder": "添加工资标准"
+				}
+			}
+		},
+		"payType": {
+			"displayName": "支付类型",
+			"options": {
+				"commission": {
+					"displayName": "佣金"
+				},
+				"contract": {
+					"displayName": "合同"
+				},
+				"daily": {
+					"displayName": "每日"
+				},
+				"exceptionHourly": {
+					"displayName": "异常 每小时"
+				},
+				"hourly": {
+					"displayName": "每小时"
+				},
+				"monthly": {
+					"displayName": "每月"
+				},
+				"pieceRate": {
+					"displayName": "计件工资"
+				},
+				"proRata": {
+					"displayName": "按比例"
+				},
+				"salary": {
+					"displayName": "薪资"
+				},
+				"weekly": {
+					"displayName": "每周"
+				}
+			}
+		},
+		"preferredName": {
+			"displayName": "首选名称"
+		},
+		"ssn": {
+			"displayName": "社会保障号码",
+			"description": "标准美国社会保障号码，带连字符",
+			"placeholder": "123-45-6789"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"placeholder": "地址",
+					"options": {
+						"value": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "第1行"
+								},
+								"address2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态",
+									"description": "州/省全称",
+									"placeholder": "佛罗里达州"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "国家名称。必须存在于BambooHr国家列表中。",
+									"placeholder": "美国"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "第1行"
+								},
+								"address2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态",
+									"description": "州/省全称",
+									"placeholder": "佛罗里达州"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "国家名称。必须存在于BambooHr国家列表中。",
+									"placeholder": "美国"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "地址"
+						}
+					}
+				},
+				"dateOfBirth": {
+					"displayName": "出生日期"
+				},
+				"department": {
+					"displayName": "部门名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"division": {
+					"displayName": "部门名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"employeeNumber": {
+					"displayName": "员工编号"
+				},
+				"exempt": {
+					"displayName": "FLSA加班状态",
+					"options": {
+						"exempt": {
+							"displayName": "豁免"
+						},
+						"non-exempt": {
+							"displayName": "非豁免"
+						}
+					}
+				},
+				"gender": {
+					"displayName": "性别",
+					"options": {
+						"female": {
+							"displayName": "女性"
+						},
+						"male": {
+							"displayName": "男性"
+						}
+					}
+				},
+				"hireDate": {
+					"displayName": "入职日期"
+				},
+				"location": {
+					"displayName": "位置名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"maritalStatus": {
+					"displayName": "婚姻状况",
+					"options": {
+						"single": {
+							"displayName": "单个"
+						},
+						"married": {
+							"displayName": "已婚"
+						},
+						"domesticPartnership": {
+							"displayName": "国内合伙关系"
+						}
+					}
+				},
+				"mobilePhone": {
+					"displayName": "手机"
+				},
+				"paidPer": {
+					"displayName": "按次付费",
+					"options": {
+						"hour": {
+							"displayName": "小时"
+						},
+						"day": {
+							"displayName": "天"
+						},
+						"week": {
+							"displayName": "周"
+						},
+						"month": {
+							"displayName": "月份"
+						},
+						"quater": {
+							"displayName": "季度"
+						},
+						"year": {
+							"displayName": "年"
+						}
+					}
+				},
+				"payRate": {
+					"displayName": "支付费率",
+					"placeholder": "添加工资标准",
+					"options": {
+						"value": {
+							"displayName": "支付费率",
+							"options": {
+								"value": {
+									"displayName": "值",
+									"placeholder": "20.00"
+								},
+								"currency": {
+									"displayName": "货币",
+									"placeholder": "美元"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "支付费率",
+							"options": {
+								"value": {
+									"displayName": "值",
+									"placeholder": "20.00"
+								},
+								"currency": {
+									"displayName": "货币",
+									"placeholder": "美元"
+								}
+							}
+						},
+						"payRate": {
+							"displayName": "支付费率",
+							"placeholder": "添加工资标准"
+						}
+					}
+				},
+				"payType": {
+					"displayName": "支付类型",
+					"options": {
+						"commission": {
+							"displayName": "佣金"
+						},
+						"contract": {
+							"displayName": "合同"
+						},
+						"daily": {
+							"displayName": "每日"
+						},
+						"exceptionHourly": {
+							"displayName": "异常 每小时"
+						},
+						"hourly": {
+							"displayName": "每小时"
+						},
+						"monthly": {
+							"displayName": "每月"
+						},
+						"pieceRate": {
+							"displayName": "计件工资"
+						},
+						"proRata": {
+							"displayName": "按比例"
+						},
+						"salary": {
+							"displayName": "薪资"
+						},
+						"weekly": {
+							"displayName": "每周"
+						}
+					}
+				},
+				"preferredName": {
+					"displayName": "首选名称"
+				},
+				"ssn": {
+					"displayName": "社会保障号码",
+					"description": "标准美国社会安全号码，带连字符",
+					"placeholder": "123-45-6789"
+				},
+				"workEmail": {
+					"displayName": "工作邮箱"
+				},
+				"workPhone": {
+					"displayName": "工作电话"
+				}
+			}
+		},
+		"employeeId": {
+			"displayName": "员工ID",
+			"description": "员工ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"fields": {
+					"displayName": "字段名称或ID",
+					"description": "要从员工数据中获取的字段集合。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"share": {
+					"displayName": "与员工共享",
+					"description": "此文件是否已共享"
+				},
+				"fd": {
+					"displayName": "重复字段过滤",
+					"description": "是否应用标准重复字段过滤"
+				},
+				"onlyCurrent": {
+					"displayName": "仅当前",
+					"description": "是否在历史记录表字段中隐藏未来日期的值"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"addasasress": {
+			"displayName": "地址",
+			"placeholder": "地址",
+			"options": {
+				"value": {
+					"displayName": "地址",
+					"options": {
+						"address1": {
+							"displayName": "第1行"
+						},
+						"address2": {
+							"displayName": "第2行"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态",
+							"description": "州/省全称",
+							"placeholder": "佛罗里达州"
+						},
+						"country": {
+							"displayName": "国家",
+							"description": "国家名称。必须存在于BambooHr国家列表中。",
+							"placeholder": "美国"
+						}
+					}
+				}
+			},
+			"values": {
+				"value": {
+					"displayName": "地址",
+					"options": {
+						"address1": {
+							"displayName": "第1行"
+						},
+						"address2": {
+							"displayName": "第2行"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态",
+							"description": "州/省全称",
+							"placeholder": "佛罗里达州"
+						},
+						"country": {
+							"displayName": "国家",
+							"description": "国家名称。必须存在于BambooHr国家列表中。",
+							"placeholder": "美国"
+						}
+					}
+				},
+				"addasasress": {
+					"displayName": "地址",
+					"placeholder": "地址"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addasasress": {
+					"displayName": "地址",
+					"placeholder": "地址",
+					"options": {
+						"value": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "第1行"
+								},
+								"address2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态",
+									"description": "州/省全称",
+									"placeholder": "佛罗里达州"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "国家名称。必须存在于BambooHr国家列表中。",
+									"placeholder": "美国"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "第1行"
+								},
+								"address2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态",
+									"description": "州/省全称",
+									"placeholder": "佛罗里达州"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "国家名称。必须存在于BambooHr国家列表中。",
+									"placeholder": "美国"
+								}
+							}
+						},
+						"addasasress": {
+							"displayName": "地址",
+							"placeholder": "地址"
+						}
+					}
+				},
+				"dateOfBirth": {
+					"displayName": "出生日期"
+				},
+				"department": {
+					"displayName": "部门名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"division": {
+					"displayName": "部门名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"employeeNumber": {
+					"displayName": "员工编号"
+				},
+				"firstName": {
+					"displayName": "名字"
+				},
+				"lastName": {
+					"displayName": "姓氏"
+				},
+				"exempt": {
+					"displayName": "FLSA加班状态",
+					"options": {
+						"exempt": {
+							"displayName": "豁免"
+						},
+						"non-exempt": {
+							"displayName": "非豁免"
+						}
+					}
+				},
+				"gender": {
+					"displayName": "性别",
+					"options": {
+						"female": {
+							"displayName": "女性"
+						},
+						"male": {
+							"displayName": "男性"
+						}
+					}
+				},
+				"hireDate": {
+					"displayName": "入职日期"
+				},
+				"location": {
+					"displayName": "位置名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"maritalStatus": {
+					"displayName": "婚姻状况",
+					"options": {
+						"single": {
+							"displayName": "单个"
+						},
+						"married": {
+							"displayName": "已婚"
+						},
+						"domesticPartnership": {
+							"displayName": "国内合伙关系"
+						}
+					}
+				},
+				"mobilePhone": {
+					"displayName": "手机"
+				},
+				"paidPer": {
+					"displayName": "按次付费",
+					"options": {
+						"hour": {
+							"displayName": "小时"
+						},
+						"day": {
+							"displayName": "天"
+						},
+						"week": {
+							"displayName": "周"
+						},
+						"month": {
+							"displayName": "月份"
+						},
+						"quater": {
+							"displayName": "季度"
+						},
+						"year": {
+							"displayName": "年"
+						}
+					}
+				},
+				"payRate": {
+					"displayName": "支付费率",
+					"placeholder": "添加工资标准",
+					"options": {
+						"value": {
+							"displayName": "支付费率",
+							"options": {
+								"value": {
+									"displayName": "值",
+									"placeholder": "20.00"
+								},
+								"currency": {
+									"displayName": "货币",
+									"placeholder": "美元"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "支付费率",
+							"options": {
+								"value": {
+									"displayName": "值",
+									"placeholder": "20.00"
+								},
+								"currency": {
+									"displayName": "货币",
+									"placeholder": "美元"
+								}
+							}
+						},
+						"payRate": {
+							"displayName": "支付费率",
+							"placeholder": "添加工资标准"
+						}
+					}
+				},
+				"payType": {
+					"displayName": "支付类型",
+					"options": {
+						"commission": {
+							"displayName": "佣金"
+						},
+						"contract": {
+							"displayName": "合同"
+						},
+						"daily": {
+							"displayName": "每日"
+						},
+						"exceptionHourly": {
+							"displayName": "异常 每小时"
+						},
+						"hourly": {
+							"displayName": "每小时"
+						},
+						"monthly": {
+							"displayName": "每月"
+						},
+						"pieceRate": {
+							"displayName": "计件工资"
+						},
+						"proRata": {
+							"displayName": "按比例"
+						},
+						"salary": {
+							"displayName": "薪资"
+						},
+						"weekly": {
+							"displayName": "每周"
+						}
+					}
+				},
+				"preferredName": {
+					"displayName": "首选名称"
+				},
+				"ssn": {
+					"displayName": "社会保障号码",
+					"description": "标准美国社会安全号码，带连字符",
+					"placeholder": "123-45-6789"
+				},
+				"workEmail": {
+					"displayName": "工作邮箱"
+				},
+				"workPhone": {
+					"displayName": "工作电话"
+				},
+				"categoryId": {
+					"displayName": "分类名称或ID",
+					"description": "将文件移动到不同类别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "文件的新名称"
+				},
+				"shareWithEmployee": {
+					"displayName": "与员工共享",
+					"description": "此文件是否已共享"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "文件ID",
+			"description": "文件ID"
+		},
+		"output": {
+			"displayName": "将输出放入字段",
+			"description": "用于存放二进制文件数据的输出字段名称"
+		},
+		"simplifyOutput": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"categoryId": {
+			"displayName": "分类名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入数据字段名称",
+			"description": "包含待上传二进制文件数据的输入字段名称。支持的文件类型：PNG、JPEG。"
+		},
+		"reportId": {
+			"displayName": "报告ID",
+			"description": "报告ID。您可以在报告页面上将鼠标悬停在报告名称上并获取ID来获得报告编号。"
+		},
+		"format": {
+			"displayName": "格式",
+			"description": "报告的输出格式",
+			"options": {
+				"CSV": {
+					"displayName": "CSV"
+				},
+				"JSON": {
+					"displayName": "JSON"
+				},
+				"PDF": {
+					"displayName": "PDF"
+				},
+				"XLS": {
+					"displayName": "XLS"
+				},
+				"XML": {
+					"displayName": "XML"
+				}
+			}
+		}
+	}
+}

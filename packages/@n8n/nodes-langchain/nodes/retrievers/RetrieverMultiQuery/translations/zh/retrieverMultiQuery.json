@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "多查询检索器",
+		"description": "自动优化提示，生成多样化查询并扩展文档池以增强检索效果。"
+	},
+	"nodeView": {
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"queryCount": {
+					"displayName": "查询计数",
+					"description": "为给定问题生成的不同版本数量"
+				}
+			}
+		}
+	}
+}

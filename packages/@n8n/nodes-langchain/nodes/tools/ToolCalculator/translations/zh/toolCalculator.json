@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "计算器",
+		"description": "让AI代理更轻松地执行算术运算"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		}
+	}
+}

@@ -1,0 +1,206 @@
+{
+	"header": {
+		"displayName": "Grist",
+		"description": "Consume the Grist API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create Row",
+					"description": "Create rows in a table"
+				},
+				"delete": {
+					"displayName": "Delete Row",
+					"description": "Delete rows from a table"
+				},
+				"getAll": {
+					"displayName": "Get Many Rows",
+					"description": "Read rows from a table"
+				},
+				"update": {
+					"displayName": "Update Row",
+					"description": "Update rows in a table"
+				}
+			}
+		},
+		"docId": {
+			"displayName": "Document ID",
+			"description": "In your document, click your profile icon, then Document Settings, then copy the value under \"This document's ID\""
+		},
+		"tableId": {
+			"displayName": "Table ID",
+			"description": "ID of table to operate on. If unsure, look at the Code View."
+		},
+		"rowId": {
+			"displayName": "Row ID",
+			"description": "ID of the row to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"additionalOptions": {
+			"displayName": "Additional Options",
+			"placeholder": "Add option",
+			"options": {
+				"filter": {
+					"displayName": "Filter",
+					"description": "Only return rows matching all of the given filters. For complex filters, create a formula column and filter for the value \"true\".",
+					"placeholder": "Add Filter",
+					"multipleValueButtonText": "Add Filter",
+					"options": {
+						"filterProperties": {
+							"displayName": "Filter Properties",
+							"options": {
+								"field": {
+									"displayName": "Column Name or ID",
+									"description": "Column to apply the filter in. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"values": {
+									"displayName": "Values",
+									"description": "Comma-separated list of values to search for in the filtered column"
+								}
+							}
+						}
+					},
+					"values": {
+						"filterProperties": {
+							"displayName": "Filter Properties",
+							"options": {
+								"field": {
+									"displayName": "Column Name or ID",
+									"description": "Column to apply the filter in. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"values": {
+									"displayName": "Values",
+									"description": "Comma-separated list of values to search for in the filtered column"
+								}
+							}
+						},
+						"filter": {
+							"displayName": "Filter",
+							"placeholder": "Add Filter"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Sort Order",
+					"placeholder": "Add Field",
+					"multipleValueButtonText": "Add Field",
+					"options": {
+						"sortProperties": {
+							"displayName": "Sort Properties",
+							"options": {
+								"field": {
+									"displayName": "Column Name or ID",
+									"description": "Column to sort on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"direction": {
+									"displayName": "Direction",
+									"description": "Direction to sort in",
+									"options": {
+										"asc": {
+											"displayName": "Ascending"
+										},
+										"desc": {
+											"displayName": "Descending"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"sortProperties": {
+							"displayName": "Sort Properties",
+							"options": {
+								"field": {
+									"displayName": "Column Name or ID",
+									"description": "Column to sort on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"direction": {
+									"displayName": "Direction",
+									"description": "Direction to sort in",
+									"options": {
+										"asc": {
+											"displayName": "Ascending"
+										},
+										"desc": {
+											"displayName": "Descending"
+										}
+									}
+								}
+							}
+						},
+						"sort": {
+							"displayName": "Sort Order",
+							"placeholder": "Add Field"
+						}
+					}
+				}
+			}
+		},
+		"dataToSend": {
+			"displayName": "Data to Send",
+			"description": "Whether to insert the input data this node receives in the new row",
+			"options": {
+				"autoMapInputs": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties match destination column names"
+				},
+				"defineInNode": {
+					"displayName": "Define Below for Each Column",
+					"description": "Set the value for each destination column"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "Inputs to Ignore",
+			"description": "List of input properties to avoid sending, separated by commas. Leave empty to send all properties.",
+			"placeholder": "Enter properties..."
+		},
+		"fieldsToSend": {
+			"displayName": "Fields to Send",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field to Send",
+			"options": {
+				"properties": {
+					"displayName": "Properties",
+					"options": {
+						"fieldId": {
+							"displayName": "Column Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"properties": {
+					"displayName": "Properties",
+					"options": {
+						"fieldId": {
+							"displayName": "Column Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"fieldsToSend": {
+					"displayName": "Fields to Send",
+					"placeholder": "Add Field"
+				}
+			}
+		}
+	}
+}

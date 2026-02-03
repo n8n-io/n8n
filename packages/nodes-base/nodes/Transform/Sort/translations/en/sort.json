@@ -1,0 +1,95 @@
+{
+	"header": {
+		"displayName": "Sort",
+		"description": "Change items order"
+	},
+	"nodeView": {
+		"type": {
+			"displayName": "Type",
+			"description": "The type of sorting to perform",
+			"options": {
+				"simple": {
+					"displayName": "Simple"
+				},
+				"random": {
+					"displayName": "Random"
+				},
+				"code": {
+					"displayName": "Code"
+				}
+			}
+		},
+		"sortFieldsUi": {
+			"displayName": "Fields To Sort By",
+			"description": "The fields of the input items to sort by",
+			"placeholder": "Add Field To Sort By",
+			"multipleValueButtonText": "Add Field To Sort By",
+			"options": {
+				"sortField": {
+					"displayName": "sortField",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name",
+							"description": "The field to sort by",
+							"placeholder": "e.g. id"
+						},
+						"order": {
+							"displayName": "Order",
+							"description": "The order to sort by",
+							"options": {
+								"ascending": {
+									"displayName": "Ascending"
+								},
+								"descending": {
+									"displayName": "Descending"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"sortField": {
+					"displayName": "sortField",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name",
+							"description": "The field to sort by",
+							"placeholder": "e.g. id"
+						},
+						"order": {
+							"displayName": "Order",
+							"description": "The order to sort by",
+							"options": {
+								"ascending": {
+									"displayName": "Ascending"
+								},
+								"descending": {
+									"displayName": "Descending"
+								}
+							}
+						}
+					}
+				},
+				"sortFieldsUi": {
+					"displayName": "Fields To Sort By",
+					"placeholder": "Add Field To Sort By"
+				}
+			}
+		},
+		"code": {
+			"displayName": "Code",
+			"description": "Javascript code to determine the order of any two items"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "Disable Dot Notation",
+					"description": "Whether to disallow referencing child fields using `parent.child` in the field name"
+				}
+			}
+		}
+	}
+}

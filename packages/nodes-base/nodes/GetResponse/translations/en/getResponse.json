@@ -1,0 +1,333 @@
+{
+	"header": {
+		"displayName": "GetResponse",
+		"description": "Consume GetResponse API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiKey": {
+					"displayName": "API Key"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new contact"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a contact"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a contact"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many contacts"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update contact properties"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "name@email.com"
+		},
+		"campaignId": {
+			"displayName": "Campaign Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"customFieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"customFieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"dayOfCycle": {
+					"displayName": "Day Of Cycle",
+					"description": "The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle."
+				},
+				"ipAddress": {
+					"displayName": "IP Address",
+					"description": "The contact's IP address. IPv4 and IPv6 formats are accepted."
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"note": {
+					"displayName": "Note"
+				},
+				"scoring": {
+					"displayName": "Scoring",
+					"description": "Contact scoring, pass null to remove the score from a contact"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "Unique identifier for a particular contact"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"ipAddress": {
+					"displayName": "IP Address",
+					"description": "This makes it possible to pass the IP from which the contact unsubscribed. Used only if the messageId was send."
+				},
+				"messageId": {
+					"displayName": "Message ID",
+					"description": "The ID of a message (such as a newsletter, an autoresponder, or an RSS-newsletter). When passed, this method will simulate the unsubscribe process, as if the contact clicked the unsubscribe link in a given message."
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "List of fields that should be returned. ID is always returned. Fields should be separated by comma"
+				},
+				"campaignId": {
+					"displayName": "Campaign ID",
+					"description": "Search contacts by campaign ID"
+				},
+				"changeOnFrom": {
+					"displayName": "Change On From",
+					"description": "Search contacts edited from this date"
+				},
+				"changeOnTo": {
+					"displayName": "Change On To",
+					"description": "Search contacts edited to this date"
+				},
+				"createdOnFrom": {
+					"displayName": "Created On From",
+					"description": "Count data from this date"
+				},
+				"createdOnTo": {
+					"displayName": "Created On To",
+					"description": "Count data from this date"
+				},
+				"exactMatch": {
+					"displayName": "Exact Match",
+					"description": "Whether to search for contacts with the exact value of the email and name provided in the query string. Without this flag, matching is done via a standard 'like' comparison, which may sometimes be slow."
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Search contacts by name"
+				},
+				"origin": {
+					"displayName": "Origin",
+					"description": "Search contacts by origin",
+					"options": {
+						"api": {
+							"displayName": "API"
+						},
+						"copy": {
+							"displayName": "Copy"
+						},
+						"email": {
+							"displayName": "Email"
+						},
+						"forward": {
+							"displayName": "Forward"
+						},
+						"import": {
+							"displayName": "Import"
+						},
+						"iphone": {
+							"displayName": "Iphone"
+						},
+						"landing_page": {
+							"displayName": "Landing Page"
+						},
+						"leads": {
+							"displayName": "Leads"
+						},
+						"panel": {
+							"displayName": "Panel"
+						},
+						"sale": {
+							"displayName": "Sale"
+						},
+						"survey": {
+							"displayName": "Survey"
+						},
+						"webinar": {
+							"displayName": "Webinar"
+						},
+						"www": {
+							"displayName": "WWW"
+						}
+					}
+				},
+				"sortBy": {
+					"displayName": "Sort By",
+					"options": {
+						"campaignId": {
+							"displayName": "Campaign ID"
+						},
+						"changedOn": {
+							"displayName": "Changed On"
+						},
+						"createdOn": {
+							"displayName": "Created On"
+						},
+						"email": {
+							"displayName": "Email"
+						}
+					}
+				},
+				"sortOrder": {
+					"displayName": "Sort Order",
+					"options": {
+						"ASC": {
+							"displayName": "ASC"
+						},
+						"DESC": {
+							"displayName": "DESC"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"campaignId": {
+					"displayName": "Campaign Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"customFieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"customFieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"dayOfCycle": {
+					"displayName": "Day Of Cycle",
+					"description": "The day on which the contact is in the Autoresponder cycle. null indicates the contacts is not in the cycle."
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"ipAddress": {
+					"displayName": "IP Address",
+					"description": "The contact's IP address. IPv4 and IPv6 formats are accepted."
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"note": {
+					"displayName": "Note"
+				},
+				"scoring": {
+					"displayName": "Scoring",
+					"description": "Contact scoring, pass null to remove the score from a contact"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				}
+			}
+		}
+	}
+}

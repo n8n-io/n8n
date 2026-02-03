@@ -1,0 +1,156 @@
+{
+	"header": {
+		"displayName": "Dropbox",
+		"description": "Access data on Dropbox"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "Means of authenticating with the service",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"file": {
+					"displayName": "File"
+				},
+				"folder": {
+					"displayName": "Folder"
+				},
+				"search": {
+					"displayName": "Search"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"copy": {
+					"displayName": "Copy",
+					"description": "Copy a folder"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a folder"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a file"
+				},
+				"move": {
+					"displayName": "Move",
+					"description": "Move a folder"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a file"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a folder"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "Return the files and folders in a given folder"
+				},
+				"query": {
+					"displayName": "Query"
+				}
+			}
+		},
+		"path": {
+			"displayName": "Folder Path",
+			"description": "The path of which to list the content",
+			"placeholder": "/invoices/2019/"
+		},
+		"toPath": {
+			"displayName": "To Path",
+			"description": "The new path of file or folder",
+			"placeholder": "/invoices/new_name.txt"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the data to upload should be taken from binary field"
+		},
+		"fileContent": {
+			"displayName": "File Content",
+			"description": "The text content of the file to upload"
+		},
+		"query": {
+			"displayName": "Query",
+			"description": "The string to search for. May match across multiple fields based on the request arguments."
+		},
+		"fileStatus": {
+			"displayName": "File Status",
+			"description": "The string to search for. May match across multiple fields based on the request arguments.",
+			"options": {
+				"active": {
+					"displayName": "Active"
+				},
+				"deleted": {
+					"displayName": "Deleted"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"file_categories": {
+					"displayName": "File Categories"
+				},
+				"file_extensions": {
+					"displayName": "File Extensions",
+					"description": "Multiple file extensions can be set separated by comma. Example: jpg,pdf."
+				},
+				"path": {
+					"displayName": "Folder",
+					"description": "If this field is not specified, this module searches the entire Dropbox"
+				},
+				"include_deleted": {
+					"displayName": "Include Deleted",
+					"description": "Whether the results will include entries for files and folders that used to exist but were deleted. The default for this field is False."
+				},
+				"include_has_explicit_shared_members": {
+					"displayName": "Include Shared Members",
+					"description": "Whether the results will include a flag for each file indicating whether or not that file has any explicit members. The default for this field is False."
+				},
+				"include_mounted_folders": {
+					"displayName": "Include Mounted Folders",
+					"description": "Whether the results will include entries under mounted folders which includes app folder, shared folder and team folder. The default for this field is True."
+				},
+				"include_non_downloadable_files": {
+					"displayName": "Include Non Downloadable Files",
+					"description": "Whether to include files that are not downloadable, i.e. Google Docs. The default for this field is True."
+				},
+				"recursive": {
+					"displayName": "Recursive",
+					"description": "Whether the list folder operation will be applied recursively to all subfolders and the response will contain contents of all subfolders. The default for this field is False."
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,397 @@
+{
+	"header": {
+		"displayName": "Google Sheets ",
+		"description": "Read, update and write data to Google Sheets"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"serviceAccount": {
+					"displayName": "Service Account"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"spreadsheet": {
+					"displayName": "Spreadsheet"
+				},
+				"sheet": {
+					"displayName": "Sheet"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"append": {
+					"displayName": "Append",
+					"description": "Append data to a sheet"
+				},
+				"clear": {
+					"displayName": "Clear",
+					"description": "Clear data from a sheet"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a spreadsheet"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new record, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete columns and rows from a sheet"
+				},
+				"lookup": {
+					"displayName": "Lookup",
+					"description": "Look up a specific column value and return the matching row"
+				},
+				"read": {
+					"displayName": "Read",
+					"description": "Read data from a sheet"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a sheet"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update rows in a sheet"
+				}
+			}
+		},
+		"sheetId": {
+			"displayName": "Spreadsheet ID",
+			"description": "The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/."
+		},
+		"range": {
+			"displayName": "Range",
+			"description": "The table range to read from or to append data to. See the Google <a href=\"https://developers.google.com/sheets/api/guides/values#writing\">documentation</a> for the details. If it contains multiple sheets it can also be added like this: \"MySheet!A:F\""
+		},
+		"toDelete": {
+			"displayName": "To Delete",
+			"description": "Deletes columns and rows from a sheet",
+			"placeholder": "Add Columns/Rows to delete",
+			"multipleValueButtonText": "Add Columns/Rows to delete",
+			"options": {
+				"columns": {
+					"displayName": "Columns",
+					"options": {
+						"sheetId": {
+							"displayName": "Sheet Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+							"options": {}
+						},
+						"startIndex": {
+							"displayName": "Start Index",
+							"description": "The start index (0 based and inclusive) of column to delete"
+						},
+						"amount": {
+							"displayName": "Amount",
+							"description": "Number of columns to delete"
+						}
+					}
+				},
+				"rows": {
+					"displayName": "Rows",
+					"options": {
+						"sheetId": {
+							"displayName": "Sheet Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+							"options": {}
+						},
+						"startIndex": {
+							"displayName": "Start Index",
+							"description": "The start index (0 based and inclusive) of row to delete"
+						},
+						"amount": {
+							"displayName": "Amount",
+							"description": "Number of rows to delete"
+						}
+					}
+				}
+			},
+			"values": {
+				"columns": {
+					"displayName": "Columns",
+					"options": {
+						"sheetId": {
+							"displayName": "Sheet Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+							"options": {}
+						},
+						"startIndex": {
+							"displayName": "Start Index",
+							"description": "The start index (0 based and inclusive) of column to delete"
+						},
+						"amount": {
+							"displayName": "Amount",
+							"description": "Number of columns to delete"
+						}
+					}
+				},
+				"rows": {
+					"displayName": "Rows",
+					"options": {
+						"sheetId": {
+							"displayName": "Sheet Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+							"options": {}
+						},
+						"startIndex": {
+							"displayName": "Start Index",
+							"description": "The start index (0 based and inclusive) of row to delete"
+						},
+						"amount": {
+							"displayName": "Amount",
+							"description": "Number of rows to delete"
+						}
+					}
+				},
+				"toDelete": {
+					"displayName": "To Delete",
+					"placeholder": "Add Columns/Rows to delete"
+				}
+			}
+		},
+		"rawData": {
+			"displayName": "RAW Data",
+			"description": "Whether the data supplied is RAW instead of parsed into keys"
+		},
+		"dataProperty": {
+			"displayName": "Data Property",
+			"description": "The name of the property from which to read the RAW data"
+		},
+		"dataStartRow": {
+			"displayName": "Data Start Row",
+			"description": "Index of the first row which contains the actual data and not the keys. Starts with 0."
+		},
+		"keyRow": {
+			"displayName": "Key Row",
+			"description": "Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive."
+		},
+		"lookupColumn": {
+			"displayName": "Lookup Column",
+			"description": "The name of the column in which to look for value",
+			"placeholder": "Email"
+		},
+		"lookupValue": {
+			"displayName": "Lookup Value",
+			"description": "The value to look for in column",
+			"placeholder": "frank@example.com"
+		},
+		"key": {
+			"displayName": "Key",
+			"description": "The name of the key to identify which data should be updated in the sheet"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"continue": {
+					"displayName": "Continue If Empty",
+					"description": "By default, the workflow stops executing if the lookup/read does not return values"
+				},
+				"returnAllMatches": {
+					"displayName": "Return All Matches",
+					"description": "By default only the first result gets returned. If options gets set all found matches get returned."
+				},
+				"usePathForKeyRow": {
+					"displayName": "Use Header Names as JSON Paths",
+					"description": "Whether you want to match the headers as path, for example, the row header \"category.name\" will match the \"category\" object and get the field \"name\" from it. By default \"category.name\" will match with the field with exact name, not nested object."
+				},
+				"valueInputMode": {
+					"displayName": "Value Input Mode",
+					"description": "Determines how data should be interpreted",
+					"options": {
+						"RAW": {
+							"displayName": "RAW",
+							"description": "The values will not be parsed and will be stored as-is"
+						},
+						"USER_ENTERED": {
+							"displayName": "User Entered",
+							"description": "The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI."
+						}
+					}
+				},
+				"valueRenderMode": {
+					"displayName": "Value Render Mode",
+					"description": "Determines how values should be rendered in the output",
+					"options": {
+						"FORMATTED_VALUE": {
+							"displayName": "Formatted Value",
+							"description": "Values will be calculated & formatted in the reply according to the cell's formatting.Formatting is based on the spreadsheet's locale, not the requesting user's locale. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return \"$1.23\"."
+						},
+						"FORMULA": {
+							"displayName": "Formula",
+							"description": "Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return \"=A1\"."
+						},
+						"UNFORMATTED_VALUE": {
+							"displayName": "Unformatted Value",
+							"description": "Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23."
+						}
+					}
+				},
+				"locale": {
+					"displayName": "Locale",
+					"description": "The locale of the spreadsheet in one of the following formats:\n\t\t\t\t\t<ul>\n\t\t\t\t\t\t<li>en (639-1)</li>\n\t\t\t\t\t\t<li>fil (639-2 if no 639-1 format exists)</li>\n\t\t\t\t\t\t<li>en_US (combination of ISO language an country)</li>\n\t\t\t\t\t<ul>",
+					"placeholder": "en_US"
+				},
+				"autoRecalc": {
+					"displayName": "Recalculation Interval",
+					"description": "Cell recalculation interval options",
+					"options": {
+						"": {
+							"displayName": "Default",
+							"description": "Default value"
+						},
+						"ON_CHANGE": {
+							"displayName": "On Change",
+							"description": "Volatile functions are updated on every change"
+						},
+						"MINUTE": {
+							"displayName": "Minute",
+							"description": "Volatile functions are updated on every change and every minute"
+						},
+						"HOUR": {
+							"displayName": "Hour",
+							"description": "Volatile functions are updated on every change and hourly"
+						}
+					}
+				},
+				"gridProperties": {
+					"displayName": "Grid Properties",
+					"description": "The type of the sheet",
+					"placeholder": "Add Property",
+					"options": {
+						"columnCount": {
+							"displayName": "Column Count",
+							"description": "The number of columns in the grid"
+						},
+						"columnGroupControlAfter": {
+							"displayName": "Column Group Control After",
+							"description": "Whether the column grouping control toggle is shown after the group"
+						},
+						"frozenColumnCount": {
+							"displayName": "Frozen Column Count",
+							"description": "The number of columns that are frozen in the grid"
+						},
+						"frozenRowCount": {
+							"displayName": "Frozen Row Count",
+							"description": "The number of rows that are frozen in the grid"
+						},
+						"hideGridlines": {
+							"displayName": "Hide Gridlines",
+							"description": "Whether the grid isn't showing gridlines in the UI"
+						},
+						"rowCount": {
+							"displayName": "Row Count",
+							"description": "The number of rows in the grid"
+						},
+						"rowGroupControlAfter": {
+							"displayName": "Row Group Control After",
+							"description": "Whether the row grouping control toggle is shown after the group"
+						}
+					}
+				},
+				"hidden": {
+					"displayName": "Hidden",
+					"description": "Whether the sheet is hidden in the UI, false if it's visible"
+				},
+				"rightToLeft": {
+					"displayName": "Right To Left",
+					"description": "Whether the sheet is an RTL sheet instead of an LTR sheet"
+				},
+				"sheetId": {
+					"displayName": "Sheet ID",
+					"description": "The ID of the sheet. Must be non-negative. This field cannot be changed once set."
+				},
+				"index": {
+					"displayName": "Sheet Index",
+					"description": "The index of the sheet within the spreadsheet"
+				},
+				"tabColor": {
+					"displayName": "Tab Color",
+					"description": "The color of the tab in the UI"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "The Sheet name"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The title of the spreadsheet"
+		},
+		"sheetsUi": {
+			"displayName": "Sheets",
+			"placeholder": "Add Sheet",
+			"multipleValueButtonText": "Add Sheet",
+			"options": {
+				"sheetValues": {
+					"displayName": "Sheet",
+					"options": {
+						"propertiesUi": {
+							"displayName": "Sheet Properties",
+							"placeholder": "Add Property",
+							"options": {
+								"hidden": {
+									"displayName": "Hidden",
+									"description": "Whether the Sheet should be hidden in the UI"
+								},
+								"title": {
+									"displayName": "Title",
+									"description": "Title of the property to create"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"sheetValues": {
+					"displayName": "Sheet",
+					"options": {
+						"propertiesUi": {
+							"displayName": "Sheet Properties",
+							"placeholder": "Add Property",
+							"options": {
+								"hidden": {
+									"displayName": "Hidden",
+									"description": "Whether the Sheet should be hidden in the UI"
+								},
+								"title": {
+									"displayName": "Title",
+									"description": "Title of the property to create"
+								}
+							}
+						}
+					}
+				},
+				"sheetsUi": {
+					"displayName": "Sheets",
+					"placeholder": "Add Sheet"
+				}
+			}
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"id": {
+			"displayName": "Sheet ID",
+			"description": "The ID of the sheet to delete"
+		}
+	}
+}

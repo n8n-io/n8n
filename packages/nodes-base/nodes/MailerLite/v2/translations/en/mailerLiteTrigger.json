@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "MailerLite Trigger",
+		"description": "Starts the workflow when MailerLite events occur"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events",
+			"description": "The events to listen to"
+		}
+	}
+}

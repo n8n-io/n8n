@@ -1,0 +1,122 @@
+{
+	"header": {
+		"displayName": "执行工作流触发器",
+		"description": "用于调用其他n8n工作流的辅助工具。用于设计模块化、微服务式的工作流。"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件"
+		},
+		"notice": {
+			"displayName": "当‘执行工作流’节点调用此工作流时，执行从此处开始。传入‘执行工作流’节点的任何数据都将由此节点输出。"
+		},
+		"outdatedVersionWarning": {
+			"displayName": "此节点已过时。请移除并添加新节点进行升级"
+		},
+		"inputSource": {
+			"displayName": "输入数据模式",
+			"options": {
+				"workflowInputs": {
+					"displayName": "使用下方字段定义",
+					"description": "通过UI提供输入字段"
+				},
+				"jsonExample": {
+					"displayName": "使用JSON示例定义",
+					"description": "从示例JSON对象生成模式"
+				},
+				"passthrough": {
+					"displayName": "接受所有数据",
+					"description": "使用来自父工作流的所有传入数据"
+				}
+			}
+		},
+		"jsonExample_notice": {
+			"displayName": "Provide an example object to infer fields and their types.<br>To allow any type for a given field, set the value to null."
+		},
+		"jsonExample": {
+			"displayName": "JSON示例"
+		},
+		"workflowInputs": {
+			"displayName": "工作流输入模式",
+			"description": "定义预期的输入字段。如果未提供输入，则将传递来自调用工作流的所有数据。",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称",
+							"description": "此工作流输入的唯一名称，用于从其他工作流引用",
+							"placeholder": "例如：fieldName"
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "此输入值的预期数据类型。决定此字段的值如何存储、验证和显示。",
+							"options": {
+								"any": {
+									"displayName": "允许任何类型"
+								},
+								"string": {
+									"displayName": "字符串"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"boolean": {
+									"displayName": "布尔值"
+								},
+								"array": {
+									"displayName": "数组"
+								},
+								"object": {
+									"displayName": "对象"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称",
+							"description": "此工作流输入的唯一名称，用于从其他工作流引用",
+							"placeholder": "例如：fieldName"
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "此输入值的预期数据类型。决定此字段的值如何存储、验证和显示。",
+							"options": {
+								"any": {
+									"displayName": "允许任何类型"
+								},
+								"string": {
+									"displayName": "字符串"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"boolean": {
+									"displayName": "布尔值"
+								},
+								"array": {
+									"displayName": "数组"
+								},
+								"object": {
+									"displayName": "对象"
+								}
+							}
+						}
+					}
+				},
+				"workflowInputs": {
+					"displayName": "工作流输入模式",
+					"placeholder": "添加字段"
+				}
+			}
+		}
+	}
+}

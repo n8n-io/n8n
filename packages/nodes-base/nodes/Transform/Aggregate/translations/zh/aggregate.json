@@ -1,0 +1,120 @@
+{
+	"header": {
+		"displayName": "聚合",
+		"description": "将多个条目中的字段合并到单个条目的列表中"
+	},
+	"nodeView": {
+		"aggregate": {
+			"displayName": "聚合",
+			"options": {
+				"aggregateIndividualFields": {
+					"displayName": "单个字段"
+				},
+				"aggregateAllItemData": {
+					"displayName": "所有项目数据（合并为单一列表）"
+				}
+			}
+		},
+		"fieldsToAggregate": {
+			"displayName": "待聚合字段",
+			"placeholder": "添加待聚合字段",
+			"multipleValueButtonText": "添加字段到聚合",
+			"options": {
+				"fieldToAggregate": {
+					"displayName": "聚合字段",
+					"options": {
+						"fieldToAggregate": {
+							"displayName": "输入字段名称",
+							"description": "输入项中要聚合在一起的字段名称",
+							"placeholder": "例如 id"
+						},
+						"renameField": {
+							"displayName": "重命名字段",
+							"description": "是否在输出中为字段指定不同名称"
+						},
+						"outputFieldName": {
+							"displayName": "输出字段名称",
+							"description": "存放聚合数据的字段名称。留空则使用输入字段名称。"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldToAggregate": {
+					"displayName": "聚合字段",
+					"options": {
+						"fieldToAggregate": {
+							"displayName": "输入字段名称",
+							"description": "输入项中要聚合在一起的字段名称",
+							"placeholder": "例如 id"
+						},
+						"renameField": {
+							"displayName": "重命名字段",
+							"description": "是否在输出中为字段指定不同名称"
+						},
+						"outputFieldName": {
+							"displayName": "输出字段名称",
+							"description": "存放聚合数据的字段名称。留空则使用输入字段名称。"
+						}
+					}
+				},
+				"fieldsToAggregate": {
+					"displayName": "要聚合的字段",
+					"placeholder": "添加聚合字段"
+				}
+			}
+		},
+		"destinationFieldName": {
+			"displayName": "输出到字段",
+			"description": "用于存放数据的输出字段名称"
+		},
+		"include": {
+			"displayName": "包含",
+			"options": {
+				"allFields": {
+					"displayName": "所有字段"
+				},
+				"specifiedFields": {
+					"displayName": "指定字段"
+				},
+				"allFieldsExcept": {
+					"displayName": "除以下字段外的所有字段"
+				}
+			}
+		},
+		"fieldsToExclude": {
+			"displayName": "要排除的字段",
+			"placeholder": "例如：email, name"
+		},
+		"fieldsToInclude": {
+			"displayName": "要包含的字段",
+			"placeholder": "例如：邮箱、姓名"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				},
+				"mergeLists": {
+					"displayName": "合并列表",
+					"description": "如果聚合字段是列表，是否将输出合并为单个扁平列表（而非列表的列表）"
+				},
+				"includeBinaries": {
+					"displayName": "包含二进制文件",
+					"description": "是否在新项目中包含二进制数据"
+				},
+				"keepOnlyUnique": {
+					"displayName": "仅保留唯一二进制文件",
+					"description": "是否通过比较MIME类型、文件类型、文件大小和文件扩展名来仅保留唯一二进制文件"
+				},
+				"keepMissing": {
+					"displayName": "保留缺失值和空值",
+					"description": "当存在缺失值或空值时，是否在聚合列表中添加空条目"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,209 @@
+{
+	"header": {
+		"displayName": "Google BigQuery",
+		"description": "使用 Google BigQuery API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				},
+				"serviceAccount": {
+					"displayName": "服务账号"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"executeQuery": {
+					"displayName": "执行查询",
+					"description": "执行SQL查询"
+				},
+				"insert": {
+					"displayName": "插入",
+					"description": "在表中插入行"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "项目",
+			"description": "您已被授予任何项目角色的项目"
+		},
+		"datasetId": {
+			"displayName": "数据集"
+		},
+		"tableId": {
+			"displayName": "表格"
+		},
+		"sqlQuery": {
+			"displayName": "SQL查询",
+			"description": "要执行的SQL查询，有关传统SQL语法的更多信息请<a href=\"https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax\" target=\"_blank\">点击此处</a>",
+			"placeholder": "SELECT * FROM [project:dataset.table] LIMIT 100;"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"defaultDataset": {
+					"displayName": "默认数据集名称或ID",
+					"description": "如果未设置，查询字符串中的所有表名必须使用'datasetId.tableId'格式进行限定。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"dryRun": {
+					"displayName": "试运行",
+					"description": "设置为true时BigQuery不运行作业。相反，如果查询有效，BigQuery会返回作业的统计信息，例如将处理多少字节。如果查询无效，则返回错误。"
+				},
+				"includeSchema": {
+					"displayName": "输出中包含架构",
+					"description": "是否在输出中包含架构。如果设为 true，输出将包含带有表架构的 '_schema' 键。"
+				},
+				"location": {
+					"displayName": "位置（区域）",
+					"description": "数据存储和处理的位置或区域。存储和分析的定价也由数据位置和预留决定，更多信息请<a href=\"https://cloud.google.com/bigquery/docs/locations\" target=\"_blank\">点击此处</a>。",
+					"placeholder": "例如：europe-west3"
+				},
+				"maximumBytesBilled": {
+					"displayName": "最大计费字节数",
+					"description": "限制此查询的计费字节数。计费字节数超过此限制的查询将失败（且不会产生费用）。使用<a href=\"https://developers.google.com/discovery/v1/type-format?utm_source=cloud.google.com&utm_medium=referral\" target=\"_blank\">Int64Value</a>格式的字符串"
+				},
+				"maxResults": {
+					"displayName": "每页最大结果数",
+					"description": "每页返回的最大结果数量。这在处理大型数据集时特别有用。它不会影响返回的结果总数，例如表中的行数。您可以在SQL查询中使用LIMIT来限制返回的行数。"
+				},
+				"timeoutMs": {
+					"displayName": "超时时间",
+					"description": "指定客户端愿意等待查询完成的最大时间（毫秒）。请注意，调用不保证会等待指定的超时时间；即使查询未完成，通常也会在大约200秒（200,000毫秒）后返回。"
+				},
+				"rawOutput": {
+					"displayName": "原始输出"
+				},
+				"useLegacySql": {
+					"displayName": "使用传统SQL",
+					"description": "是否为此查询使用BigQuery的传统SQL方言。如果设为false，查询将使用BigQuery的标准SQL。"
+				},
+				"returnAsNumbers": {
+					"displayName": "将整数作为数字返回",
+					"description": "是否将所有整数值作为数字返回。如果设为 false，所有整数值将作为字符串返回。"
+				},
+				"queryParameters": {
+					"displayName": "查询参数（命名）",
+					"description": "使用<a href=\"https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized-queries\" target=\"_blank\">参数化查询</a>以防止SQL注入。目前不支持位置参数。使用传统SQL时此功能不可用。",
+					"placeholder": "添加参数",
+					"multipleValueButtonText": "添加参数",
+					"options": {
+						"namedParameters": {
+							"displayName": "命名参数",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "参数名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "替代值。必须是字符串类型。<a href=\"https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized_queries\" target=\"_blank\">官方文档</a>中提到的数组、日期和结构体类型暂不支持。"
+								}
+							}
+						}
+					},
+					"values": {
+						"namedParameters": {
+							"displayName": "命名参数",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "参数名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "替代值。必须是字符串类型。<a href=\"https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized_queries\" target=\"_blank\">官方文档</a>中提到的数组、日期和结构体类型暂不支持。"
+								}
+							}
+						},
+						"queryParameters": {
+							"displayName": "查询参数（命名）",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"batchSize": {
+					"displayName": "批次大小"
+				},
+				"ignoreUnknownValues": {
+					"displayName": "忽略未知值",
+					"description": "是否忽略不符合架构的行值"
+				},
+				"skipInvalidRows": {
+					"displayName": "跳过无效行",
+					"description": "是否跳过包含与架构不匹配值的行"
+				},
+				"templateSuffix": {
+					"displayName": "模板后缀",
+					"description": "基于目标表创建新表并将行插入新表。新表将命名为<code>{destinationTable}{templateSuffix}</code>"
+				},
+				"traceId": {
+					"displayName": "追踪ID",
+					"description": "请求的唯一标识符，仅用于调试。区分大小写，最多36个ASCII字符。建议使用UUID。"
+				}
+			}
+		},
+		"dataMode": {
+			"displayName": "数据模式",
+			"description": "是否将本节点接收的输入数据插入新行",
+			"options": {
+				"autoMap": {
+					"displayName": "自动映射输入数据",
+					"description": "当节点输入属性与目标字段名称匹配时使用"
+				},
+				"define": {
+					"displayName": "映射以下每个字段",
+					"description": "为每个目标字段设置值"
+				}
+			}
+		},
+		"info": {
+			"displayName": "在此模式下，请确保传入数据字段的名称与BigQuery中的列名相同。（如有需要，可在本节点前使用“编辑字段”节点进行更改。）"
+		},
+		"fieldsUi": {
+			"displayName": "要发送的字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"values": {
+					"displayName": "字段",
+					"values": {
+						"fieldId": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "字段",
+					"values": {
+						"fieldId": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "要发送的字段",
+					"placeholder": "添加字段"
+				}
+			}
+		}
+	}
+}

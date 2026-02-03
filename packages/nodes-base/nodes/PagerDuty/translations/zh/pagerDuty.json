@@ -1,0 +1,280 @@
+{
+	"header": {
+		"displayName": "PagerDuty",
+		"description": "使用PagerDuty API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiToken": {
+					"displayName": "API令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"incident": {
+					"displayName": "事件"
+				},
+				"incidentNote": {
+					"displayName": "事件备注"
+				},
+				"logEntry": {
+					"displayName": "日志条目"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建事件备注"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多条日志记录"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新事件"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "对事件性质、症状、原因或影响的简要描述"
+		},
+		"serviceId": {
+			"displayName": "服务名称或ID",
+			"description": "事件将在此服务上创建。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "发出请求的账户关联的有效用户的电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"escalationPolicyId": {
+					"displayName": "升级策略名称或ID",
+					"description": "将此事件委托给指定的升级策略。如果已指定受理人，则无法指定此项。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"details": {
+					"displayName": "事件详情",
+					"description": "事件的附加详情，将放入正文"
+				},
+				"incidentKey": {
+					"displayName": "事件密钥",
+					"description": "如果存在与该事件密钥匹配的未解决事件，则发送引用相同服务且使用相同事件密钥的后续请求将被拒绝。"
+				},
+				"priorityId": {
+					"displayName": "优先级名称或ID",
+					"description": "将在此服务上创建事件。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"urgency": {
+					"displayName": "紧急程度",
+					"description": "事件紧急程度",
+					"options": {
+						"high": {
+							"displayName": "高度"
+						},
+						"low": {
+							"displayName": "低"
+						}
+					}
+				}
+			}
+		},
+		"conferenceBridgeUi": {
+			"displayName": "会议桥接",
+			"placeholder": "添加会议桥接",
+			"options": {
+				"conferenceBridgeValues": {
+					"displayName": "会议桥",
+					"options": {
+						"conferenceNumber": {
+							"displayName": "会议号码",
+							"description": "电话号码应格式化为 +1 415-555-1212,,,,1234#，其中逗号 (,) 表示等待一秒，井号 (#) 完成接入码输入"
+						},
+						"conferenceUrl": {
+							"displayName": "会议链接",
+							"description": "会议桥接的URL。这可以是网络会议或Slack频道的链接。"
+						}
+					}
+				}
+			},
+			"values": {
+				"conferenceBridgeValues": {
+					"displayName": "会议桥",
+					"options": {
+						"conferenceNumber": {
+							"displayName": "会议号码",
+							"description": "电话号码应格式化为 +1 415-555-1212,,,,1234#，其中逗号 (,) 表示等待一秒，井号 (#) 完成接入码输入"
+						},
+						"conferenceUrl": {
+							"displayName": "会议链接",
+							"description": "会议桥接的URL。这可以是网络会议或Slack频道的链接。"
+						}
+					}
+				},
+				"conferenceBridgeUi": {
+					"displayName": "会议桥",
+					"placeholder": "添加会议桥接"
+				}
+			}
+		},
+		"incidentId": {
+			"displayName": "事件ID",
+			"description": "事件的唯一标识符"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"dateRange": {
+					"displayName": "日期范围",
+					"description": "设为all时，将忽略since和until参数及其默认值",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						}
+					}
+				},
+				"incidentKey": {
+					"displayName": "事件密钥",
+					"description": "事件去重键。包含子警报的事件没有事件键；按事件键查询将返回其警报的alert_key与给定事件键匹配的事件。"
+				},
+				"include": {
+					"displayName": "包含",
+					"description": "要包含的额外详细信息"
+				},
+				"serviceIds": {
+					"displayName": "服务名称或ID",
+					"description": "仅返回与传入服务关联的事件。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"since": {
+					"displayName": "自",
+					"description": "要搜索的日期范围的开始时间。（日期范围限制为6个月）"
+				},
+				"sortBy": {
+					"displayName": "排序方式",
+					"description": "用于指定结果排序的字段（incident_number/created_at/resolved_at/urgency）以及排序方向（asc/desc）。sort_by字段和方向应以冒号分隔。最多可包含两个字段，用逗号分隔。",
+					"placeholder": "created_at:asc,resolved_at:desc"
+				},
+				"statuses": {
+					"displayName": "状态",
+					"description": "仅返回与传入服务关联的事件"
+				},
+				"teamIds": {
+					"displayName": "团队ID",
+					"description": "团队ID。仅返回与这些团队相关的结果。账户必须具有团队权限才能使用此参数。（多个ID可用逗号分隔添加）"
+				},
+				"timeZone": {
+					"displayName": "时区名称或ID",
+					"description": "结果中日期将呈现的时区。如果未设置，日期将返回UTC。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"until": {
+					"displayName": "截至",
+					"description": "要搜索的日期范围的结束时间。（日期范围限制为6个月）。"
+				},
+				"urgencies": {
+					"displayName": "紧急程度",
+					"description": "要返回的事件的紧急程度。默认为所有紧急程度。账户必须具备紧急程度权限才能执行此操作。"
+				},
+				"userIds": {
+					"displayName": "用户ID",
+					"description": "仅返回当前分配给指定用户的事件。此操作需要一个或多个用户ID（多个ID可用逗号分隔添加）。"
+				},
+				"isOverview": {
+					"displayName": "是否为概览",
+					"description": "是否仅返回显示事件最重要更改的日志条目子集"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"escalationLevel": {
+					"displayName": "升级级别",
+					"description": "将事件升级至此策略级别"
+				},
+				"escalationPolicyId": {
+					"displayName": "升级策略名称或ID",
+					"description": "将此事件委托给指定的升级策略。如果已指定受理人，则无法指定此项。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"priorityId": {
+					"displayName": "优先级名称或ID",
+					"description": "将在此服务上创建事件。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"resolution": {
+					"displayName": "解决方案",
+					"description": "当状态设为已解决时，此事件的解决方案"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "事件的新状态",
+					"options": {
+						"acknowledged": {
+							"displayName": "已确认"
+						},
+						"resolved": {
+							"displayName": "已解析"
+						}
+					}
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "对事件性质、症状、原因或影响的简要描述"
+				},
+				"urgency": {
+					"displayName": "紧急程度",
+					"description": "事件紧急程度",
+					"options": {
+						"high": {
+							"displayName": "高"
+						},
+						"low": {
+							"displayName": "低"
+						}
+					}
+				}
+			}
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "笔记内容"
+		},
+		"logEntryId": {
+			"displayName": "日志条目ID",
+			"description": "日志条目的唯一标识符"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "用户的唯一标识符"
+		}
+	}
+}

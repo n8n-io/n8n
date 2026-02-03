@@ -1,0 +1,102 @@
+{
+	"header": {
+		"displayName": "Kafka",
+		"description": "Sends messages to a Kafka topic"
+	},
+	"nodeView": {
+		"topic": {
+			"displayName": "Topic",
+			"description": "Name of the queue of topic to publish to",
+			"placeholder": "topic-name"
+		},
+		"sendInputData": {
+			"displayName": "Send Input Data",
+			"description": "Whether to send the data the node receives as JSON to Kafka"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The message to be sent"
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"useSchemaRegistry": {
+			"displayName": "Use Schema Registry",
+			"description": "Whether to use Confluent Schema Registry"
+		},
+		"schemaRegistryUrl": {
+			"displayName": "Schema Registry URL",
+			"description": "URL of the schema registry",
+			"placeholder": "https://schema-registry-domain:8081"
+		},
+		"useKey": {
+			"displayName": "Use Key",
+			"description": "Whether to use a message key"
+		},
+		"key": {
+			"displayName": "Key",
+			"description": "The message key"
+		},
+		"eventName": {
+			"displayName": "Event Name",
+			"description": "Namespace and Name of Schema in Schema Registry (namespace.name)"
+		},
+		"headersUi": {
+			"displayName": "Headers",
+			"placeholder": "Add Header",
+			"multipleValueButtonText": "Add Header",
+			"options": {
+				"headerValues": {
+					"displayName": "Header",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"headerValues": {
+					"displayName": "Header",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"headersUi": {
+					"displayName": "Headers",
+					"placeholder": "Add Header"
+				}
+			}
+		},
+		"headerParametersJson": {
+			"displayName": "Headers (JSON)",
+			"description": "Header parameters as JSON (flat object)"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"acks": {
+					"displayName": "Acks",
+					"description": "Whether or not producer must wait for acknowledgement from all replicas"
+				},
+				"compression": {
+					"displayName": "Compression",
+					"description": "Whether to send the data in a compressed format using the GZIP codec"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "The time to await a response in ms"
+				}
+			}
+		}
+	}
+}

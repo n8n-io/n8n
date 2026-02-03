@@ -1,0 +1,86 @@
+{
+	"header": {
+		"displayName": "Mistral AI",
+		"description": "使用Mistral AI API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"document": {
+					"displayName": "文档"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"extractText": {
+					"displayName": "提取文本",
+					"description": "使用OCR从文档中提取文本"
+				}
+			}
+		},
+		"model": {
+			"displayName": "模型",
+			"description": "要使用的OCR模型",
+			"options": {
+				"mistral-ocr-latest": {
+					"displayName": "mistral-ocr-latest"
+				}
+			}
+		},
+		"documentType": {
+			"displayName": "文档类型",
+			"description": "要处理的文档类型",
+			"options": {
+				"document_url": {
+					"displayName": "文档"
+				},
+				"image_url": {
+					"displayName": "图片"
+				}
+			}
+		},
+		"inputType": {
+			"displayName": "输入类型",
+			"description": "文档提供方式",
+			"options": {
+				"binary": {
+					"displayName": "二进制数据"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		},
+		"binaryProperty": {
+			"displayName": "输入二进制字段",
+			"description": "包含要处理文件的输入二进制字段名称",
+			"placeholder": "例如：data"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "要处理的文档或图像URL",
+			"placeholder": "例如 https://example.com/document.pdf"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batch": {
+					"displayName": "启用批量处理",
+					"description": "是否在单个API调用中处理多个文档（更经济高效）"
+				},
+				"batchSize": {
+					"displayName": "批次大小",
+					"description": "单批次处理的最大文档数量"
+				},
+				"deleteFiles": {
+					"displayName": "处理后删除文件",
+					"description": "是否在处理后删除Mistral Cloud上的文件"
+				}
+			}
+		}
+	}
+}

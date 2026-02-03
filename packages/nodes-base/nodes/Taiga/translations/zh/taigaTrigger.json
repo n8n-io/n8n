@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "Taiga触发器",
+		"description": "通过Webhook处理Taiga事件"
+	},
+	"nodeView": {
+		"projectId": {
+			"displayName": "项目名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"resources": {
+			"displayName": "资源",
+			"description": "要监听的资源"
+		},
+		"operations": {
+			"displayName": "操作",
+			"description": "要监听的操作"
+		}
+	}
+}

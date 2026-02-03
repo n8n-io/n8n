@@ -1,0 +1,730 @@
+{
+	"header": {
+		"displayName": "Agile CRM",
+		"description": "使用Agile CRM API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"company": {
+					"displayName": "公司"
+				},
+				"contact": {
+					"displayName": "联系人"
+				},
+				"deal": {
+					"displayName": "交易"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新交易"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除交易"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取交易"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个交易"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新交易属性"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "特定联系人的唯一标识符"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filterType": {
+			"displayName": "筛选",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"manual": {
+					"displayName": "手动构建"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"matchType": {
+			"displayName": "必须匹配",
+			"options": {
+				"anyFilter": {
+					"displayName": "任意筛选器"
+				},
+				"allFilters": {
+					"displayName": "所有筛选器"
+				}
+			}
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加条件",
+			"multipleValueButtonText": "添加条件",
+			"options": {
+				"conditions": {
+					"displayName": "条件",
+					"options": {
+						"field": {
+							"displayName": "字段",
+							"description": "任何可搜索字段"
+						},
+						"condition_type": {
+							"displayName": "条件类型",
+							"options": {
+								"AFTER": {
+									"displayName": "之后"
+								},
+								"BEFORE": {
+									"displayName": "之前"
+								},
+								"BETWEEN": {
+									"displayName": "介于"
+								},
+								"EQUALS": {
+									"displayName": "等于"
+								},
+								"LAST": {
+									"displayName": "上次"
+								},
+								"NOTEQUALS": {
+									"displayName": "不等于"
+								},
+								"ON": {
+									"displayName": "开启"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						},
+						"value2": {
+							"displayName": "值 2"
+						}
+					}
+				}
+			},
+			"values": {
+				"conditions": {
+					"displayName": "条件",
+					"options": {
+						"field": {
+							"displayName": "字段",
+							"description": "任何可搜索字段"
+						},
+						"condition_type": {
+							"displayName": "条件类型",
+							"options": {
+								"AFTER": {
+									"displayName": "之后"
+								},
+								"BEFORE": {
+									"displayName": "之前"
+								},
+								"BETWEEN": {
+									"displayName": "介于"
+								},
+								"EQUALS": {
+									"displayName": "等于"
+								},
+								"LAST": {
+									"displayName": "上次"
+								},
+								"NOTEQUALS": {
+									"displayName": "不等于"
+								},
+								"ON": {
+									"displayName": "开启"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						},
+						"value2": {
+							"displayName": "值 2"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "筛选器",
+					"placeholder": "添加条件"
+				}
+			}
+		},
+		"jsonNotice": {
+			"displayName": "请参阅<a href=\"https://github.com/agilecrm/rest-api#121-get-contacts-by-dynamic-filter\" target=\"_blank\">Agile CRM指南</a>了解如何创建过滤器"
+		},
+		"filterJson": {
+			"displayName": "过滤器 (JSON)"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"sort": {
+					"displayName": "排序",
+					"placeholder": "添加排序",
+					"options": {
+						"sort": {
+							"displayName": "排序",
+							"options": {
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向",
+									"options": {
+										"ASC": {
+											"displayName": "升序"
+										},
+										"DESC": {
+											"displayName": "降序"
+										}
+									}
+								},
+								"field": {
+									"displayName": "字段",
+									"description": "排序字段"
+								}
+							}
+						}
+					},
+					"values": {
+						"sort": {
+							"displayName": "排序",
+							"placeholder": "添加排序"
+						}
+					}
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"additionalFieldsJson": {
+			"displayName": "附加字段",
+			"description": "要设置的值对象，具体描述请参见<a href=\"https://github.com/agilecrm/rest-api#1-deals---companies-api\">此处</a>"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addressOptions": {
+					"displayName": "地址",
+					"description": "公司地址",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"addressProperties": {
+							"displayName": "地址属性",
+							"options": {
+								"subtype": {
+									"displayName": "类型",
+									"description": "地址类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"postal": {
+											"displayName": "邮政编码"
+										},
+										"office": {
+											"displayName": "Office"
+										}
+									}
+								},
+								"address": {
+									"displayName": "地址",
+									"description": "完整地址"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressProperties": {
+							"displayName": "地址属性",
+							"options": {
+								"subtype": {
+									"displayName": "类型",
+									"description": "地址类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"postal": {
+											"displayName": "邮政编码"
+										},
+										"office": {
+											"displayName": "Office"
+										}
+									}
+								},
+								"address": {
+									"displayName": "地址",
+									"description": "完整地址"
+								}
+							}
+						},
+						"addressOptions": {
+							"displayName": "地址"
+						}
+					}
+				},
+				"company": {
+					"displayName": "公司",
+					"description": "公司名称"
+				},
+				"emailOptions": {
+					"displayName": "电子邮件",
+					"description": "联系邮箱",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"emailProperties": {
+							"displayName": "邮件属性",
+							"options": {
+								"subtype": {
+									"displayName": "类型",
+									"description": "邮件类型",
+									"options": {
+										"work": {
+											"displayName": "工作"
+										},
+										"personal": {
+											"displayName": "个人"
+										}
+									}
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailProperties": {
+							"displayName": "邮件属性",
+							"options": {
+								"subtype": {
+									"displayName": "类型",
+									"description": "邮件类型",
+									"options": {
+										"work": {
+											"displayName": "工作"
+										},
+										"personal": {
+											"displayName": "个人"
+										}
+									}
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								}
+							}
+						},
+						"emailOptions": {
+							"displayName": "电子邮件"
+						}
+					}
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "联系人名字"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "联系人姓氏"
+				},
+				"leadScore": {
+					"displayName": "潜在客户评分",
+					"description": "联系人的潜在客户评分"
+				},
+				"starValue": {
+					"displayName": "星级评分",
+					"description": "公司评分（最高5分）。此项不适用于公司。",
+					"options": {
+						"0": {
+							"displayName": "0"
+						},
+						"1": {
+							"displayName": "1"
+						},
+						"2": {
+							"displayName": "2"
+						},
+						"3": {
+							"displayName": "3"
+						},
+						"4": {
+							"displayName": "4"
+						},
+						"5": {
+							"displayName": "5"
+						}
+					}
+				},
+				"phoneOptions": {
+					"displayName": "电话",
+					"description": "联系人电话",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"phoneProperties": {
+							"displayName": "电话属性",
+							"options": {
+								"subtype": {
+									"displayName": "类型",
+									"description": "电话号码类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"homeFax": {
+											"displayName": "家庭传真"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"workFax": {
+											"displayName": "工作传真"
+										}
+									}
+								},
+								"number": {
+									"displayName": "数字",
+									"description": "电话号码"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneProperties": {
+							"displayName": "电话属性",
+							"options": {
+								"subtype": {
+									"displayName": "类型",
+									"description": "电话号码类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"homeFax": {
+											"displayName": "家庭传真"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"workFax": {
+											"displayName": "工作传真"
+										}
+									}
+								},
+								"number": {
+									"displayName": "数字",
+									"description": "电话号码"
+								}
+							}
+						},
+						"phoneOptions": {
+							"displayName": "电话"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "为公司添加的唯一标识符，便于管理公司。这不适用于公司。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "专业头衔"
+				},
+				"websiteOptions": {
+					"displayName": "网站",
+					"description": "公司网站",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"websiteProperties": {
+							"displayName": "网站属性。",
+							"options": {
+								"subtype": {
+									"displayName": "类型",
+									"description": "网站类型",
+									"options": {
+										"facebook": {
+											"displayName": "Facebook"
+										},
+										"feed": {
+											"displayName": "Feed"
+										},
+										"flickr": {
+											"displayName": "Flickr"
+										},
+										"github": {
+											"displayName": "Github"
+										},
+										"googlePlus": {
+											"displayName": "Google Plus"
+										},
+										"linkedin": {
+											"displayName": "LinkedIn"
+										},
+										"skype": {
+											"displayName": "Skype"
+										},
+										"twitter": {
+											"displayName": "Twitter"
+										},
+										"url": {
+											"displayName": "URL"
+										},
+										"xing": {
+											"displayName": "Xing"
+										},
+										"youtube": {
+											"displayName": "YouTube"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "网站URL"
+								}
+							}
+						}
+					},
+					"values": {
+						"websiteProperties": {
+							"displayName": "网站属性。",
+							"options": {
+								"subtype": {
+									"displayName": "类型",
+									"description": "网站类型",
+									"options": {
+										"facebook": {
+											"displayName": "Facebook"
+										},
+										"feed": {
+											"displayName": "Feed"
+										},
+										"flickr": {
+											"displayName": "Flickr"
+										},
+										"github": {
+											"displayName": "Github"
+										},
+										"googlePlus": {
+											"displayName": "Google Plus"
+										},
+										"linkedin": {
+											"displayName": "LinkedIn"
+										},
+										"skype": {
+											"displayName": "Skype"
+										},
+										"twitter": {
+											"displayName": "Twitter"
+										},
+										"url": {
+											"displayName": "URL"
+										},
+										"xing": {
+											"displayName": "Xing"
+										},
+										"youtube": {
+											"displayName": "YouTube"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "网站URL"
+								}
+							}
+						},
+						"websiteOptions": {
+							"displayName": "网站"
+						}
+					}
+				},
+				"customProperties": {
+					"displayName": "自定义属性",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"customProperty": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "属性名称"
+								},
+								"subtype": {
+									"displayName": "子类型",
+									"description": "属性子类型"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customProperty": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "属性名称"
+								},
+								"subtype": {
+									"displayName": "子类型",
+									"description": "属性子类型"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "自定义属性"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "公司邮箱",
+					"placeholder": "name@email.com"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "交易名称"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "公司电话"
+				},
+				"contactIds": {
+					"displayName": "联系人ID",
+					"description": "唯一联系人标识符"
+				},
+				"customData": {
+					"displayName": "自定义数据",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"customProperty": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "属性名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customProperty": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "属性名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						},
+						"customData": {
+							"displayName": "自定义数据"
+						}
+					}
+				},
+				"expectedValue": {
+					"displayName": "期望值",
+					"description": "交易期望值"
+				},
+				"probability": {
+					"displayName": "概率",
+					"description": "交易期望值"
+				}
+			}
+		},
+		"companyId": {
+			"displayName": "公司ID",
+			"description": "特定公司的唯一标识符"
+		},
+		"dealId": {
+			"displayName": "交易ID",
+			"description": "要更新的交易ID"
+		},
+		"closeDate": {
+			"displayName": "关闭日期",
+			"description": "交易关闭日期"
+		},
+		"expectedValue": {
+			"displayName": "期望值",
+			"description": "交易期望值"
+		},
+		"milestone": {
+			"displayName": "里程碑",
+			"description": "交易里程碑"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "交易名称"
+		},
+		"probability": {
+			"displayName": "概率",
+			"description": "预期概率"
+		}
+	}
+}

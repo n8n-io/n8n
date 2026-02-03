@@ -1,0 +1,1019 @@
+{
+	"header": {
+		"displayName": "Shopify",
+		"description": "Consume Shopify API"
+	},
+	"nodeView": {
+		"apiVersion": {
+			"displayName": "Shopify API Version: 2024-07"
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				},
+				"apiKey": {
+					"displayName": "API Key"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"order": {
+					"displayName": "Order"
+				},
+				"product": {
+					"displayName": "Product"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a product"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a product"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a product"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many products"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a product"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"billingAddressUi": {
+					"displayName": "Billing Address",
+					"placeholder": "Add Billing Address",
+					"options": {
+						"billingAddressValues": {
+							"displayName": "Billing Address",
+							"options": {
+								"firstName": {
+									"displayName": "First Name"
+								},
+								"lastName": {
+									"displayName": "Last Name"
+								},
+								"company": {
+									"displayName": "Company"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"province": {
+									"displayName": "Province"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								},
+								"phone": {
+									"displayName": "Phone"
+								}
+							}
+						}
+					},
+					"values": {
+						"billingAddressValues": {
+							"displayName": "Billing Address",
+							"options": {
+								"firstName": {
+									"displayName": "First Name"
+								},
+								"lastName": {
+									"displayName": "Last Name"
+								},
+								"company": {
+									"displayName": "Company"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"province": {
+									"displayName": "Province"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								},
+								"phone": {
+									"displayName": "Phone"
+								}
+							}
+						},
+						"billingAddressUi": {
+							"displayName": "Billing Address",
+							"placeholder": "Add Billing Address"
+						}
+					}
+				},
+				"discountCodesUi": {
+					"displayName": "Discount Codes",
+					"placeholder": "Add Discount Code",
+					"multipleValueButtonText": "Add Discount Code",
+					"options": {
+						"discountCodesValues": {
+							"displayName": "Discount Code",
+							"options": {
+								"amount": {
+									"displayName": "Amount",
+									"description": "The amount that's deducted from the order total"
+								},
+								"code": {
+									"displayName": "Code",
+									"description": "When the associated discount application is of type code"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "When the associated discount application is of type code",
+									"options": {
+										"fixedAmount": {
+											"displayName": "Fixed Amount",
+											"description": "Applies amount as a unit of the store's currency"
+										},
+										"percentage": {
+											"displayName": "Percentage",
+											"description": "Applies a discount of amount as a percentage of the order total"
+										},
+										"shipping": {
+											"displayName": "Shipping",
+											"description": "Applies a free shipping discount on orders that have a shipping rate less than or equal to amount"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"discountCodesValues": {
+							"displayName": "Discount Code",
+							"options": {
+								"amount": {
+									"displayName": "Amount",
+									"description": "The amount that's deducted from the order total"
+								},
+								"code": {
+									"displayName": "Code",
+									"description": "When the associated discount application is of type code"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "When the associated discount application is of type code",
+									"options": {
+										"fixedAmount": {
+											"displayName": "Fixed Amount",
+											"description": "Applies amount as a unit of the store's currency"
+										},
+										"percentage": {
+											"displayName": "Percentage",
+											"description": "Applies a discount of amount as a percentage of the order total"
+										},
+										"shipping": {
+											"displayName": "Shipping",
+											"description": "Applies a free shipping discount on orders that have a shipping rate less than or equal to amount"
+										}
+									}
+								}
+							}
+						},
+						"discountCodesUi": {
+							"displayName": "Discount Codes",
+							"placeholder": "Add Discount Code"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The customer's email address",
+					"placeholder": "name@email.com"
+				},
+				"fulfillmentStatus": {
+					"displayName": "Fulfillment Status",
+					"description": "The order's status in terms of fulfilled line items",
+					"options": {
+						"fulfilled": {
+							"displayName": "Fulfilled",
+							"description": "Every line item in the order has been fulfilled"
+						},
+						"null": {
+							"displayName": "Null",
+							"description": "None of the line items in the order have been fulfilled"
+						},
+						"partial": {
+							"displayName": "Partial",
+							"description": "At least one line item in the order has been fulfilled"
+						},
+						"restocked": {
+							"displayName": "Restocked",
+							"description": "Every line item in the order has been restocked and the order canceled"
+						}
+					}
+				},
+				"inventoryBehaviour": {
+					"displayName": "Inventory Behaviour",
+					"description": "The behaviour to use when updating inventory",
+					"options": {
+						"bypass": {
+							"displayName": "Bypass",
+							"description": "Do not claim inventory"
+						},
+						"decrementIgnoringPolicy": {
+							"displayName": "Decrement Ignoring Policy",
+							"description": "Ignore the product's inventory policy and claim inventory"
+						},
+						"decrementObeyingPolicy": {
+							"displayName": "Decrement Obeying Policy",
+							"description": "Follow the product's inventory policy and claim inventory, if possible"
+						}
+					}
+				},
+				"locationId": {
+					"displayName": "Location Name or ID",
+					"description": "The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "An optional note that a shop owner can attach to the order"
+				},
+				"sendFulfillmentReceipt": {
+					"displayName": "Send Fulfillment Receipt",
+					"description": "Whether to send a shipping confirmation to the customer"
+				},
+				"sendReceipt": {
+					"displayName": "Send Receipt",
+					"description": "Whether to send an order confirmation to the customer"
+				},
+				"shippingAddressUi": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Shipping",
+					"options": {
+						"shippingAddressValues": {
+							"displayName": "Shipping Address",
+							"options": {
+								"firstName": {
+									"displayName": "First Name"
+								},
+								"lastName": {
+									"displayName": "Last Name"
+								},
+								"company": {
+									"displayName": "Company"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"province": {
+									"displayName": "Province"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								},
+								"phone": {
+									"displayName": "Phone"
+								}
+							}
+						}
+					},
+					"values": {
+						"shippingAddressValues": {
+							"displayName": "Shipping Address",
+							"options": {
+								"firstName": {
+									"displayName": "First Name"
+								},
+								"lastName": {
+									"displayName": "Last Name"
+								},
+								"company": {
+									"displayName": "Company"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"province": {
+									"displayName": "Province"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								},
+								"phone": {
+									"displayName": "Phone"
+								}
+							}
+						},
+						"shippingAddressUi": {
+							"displayName": "Shipping Address",
+							"placeholder": "Add Shipping"
+						}
+					}
+				},
+				"sourceName": {
+					"displayName": "Source Name",
+					"description": "Where the order originated. Can be set only during order creation, and is not writeable afterwards."
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "A string of comma-separated tags that are used for filtering and search. A product can have up to 250 tags. Each tag can have up to 255 characters."
+				},
+				"test": {
+					"displayName": "Test",
+					"description": "Whether this is a test order"
+				},
+				"body_html": {
+					"displayName": "Body HTML",
+					"description": "A description of the product. Supports HTML formatting."
+				},
+				"handle": {
+					"displayName": "Handle",
+					"description": "Filter results by product handle"
+				},
+				"images": {
+					"displayName": "Images",
+					"description": "A list of product image objects, each one representing an image associated with the product",
+					"placeholder": "Add Image Field",
+					"multipleValueButtonText": "Add Image Field",
+					"options": {
+						"created_at": {
+							"displayName": "Created At",
+							"description": "The date and time when the product image was created"
+						},
+						"id": {
+							"displayName": "ID",
+							"description": "A unique numeric identifier for the product image"
+						},
+						"position": {
+							"displayName": "Position",
+							"description": "The order of the product image in the list. The first product image is at position 1 and is the \"main\" image for the product."
+						},
+						"product_id": {
+							"displayName": "Product ID",
+							"description": "The ID of the product associated with the image"
+						},
+						"variant_ids": {
+							"displayName": "Variant IDs",
+							"description": "An array of variant IDs associated with the image"
+						},
+						"src": {
+							"displayName": "Source",
+							"description": "<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>."
+						},
+						"width": {
+							"displayName": "Width",
+							"description": "Width dimension of the image which is determined on upload"
+						},
+						"height": {
+							"displayName": "Height",
+							"description": "Height dimension of the image which is determined on upload"
+						},
+						"updated_at": {
+							"displayName": "Updated At",
+							"description": "The date and time when the product image was last modified"
+						}
+					}
+				},
+				"productOptions": {
+					"displayName": "Options",
+					"description": "The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.",
+					"placeholder": "Add option",
+					"multipleValueButtonText": "Add option",
+					"options": {
+						"option": {
+							"displayName": "Option",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Option's name"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Option's values"
+								}
+							}
+						}
+					},
+					"values": {
+						"option": {
+							"displayName": "Option",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Option's name"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Option's values"
+								}
+							}
+						},
+						"productOptions": {
+							"displayName": "Options",
+							"placeholder": "Add option"
+						}
+					}
+				},
+				"product_type": {
+					"displayName": "Product Type",
+					"description": "Filter results by product type"
+				},
+				"published_at": {
+					"displayName": "Published At",
+					"description": "The date and time (ISO 8601 format) when the product was published. Can be set to null to unpublish the product from the Online Store channel."
+				},
+				"published_scope": {
+					"displayName": "Published Scope",
+					"options": {
+						"global": {
+							"displayName": "Global",
+							"description": "The product is published to both the Online Store channel and the Point of Sale channel"
+						},
+						"web": {
+							"displayName": "Web",
+							"description": "The product is published to the Online Store channel but not published to the Point of Sale channel"
+						}
+					}
+				},
+				"template_suffix": {
+					"displayName": "Template Suffix",
+					"description": "The suffix of the Liquid template used for the product page. If this property is specified, then the product page uses a template called \"product.suffix.liquid\", where \"suffix\" is the value of this property. If this property is \"\" or null, then the product page uses the default template \"product.liquid\". (default: null)"
+				},
+				"vendor": {
+					"displayName": "Vendor",
+					"description": "Filter results by product vendor"
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Show only certain fields, specified by a comma-separated list of field names"
+				},
+				"collection_id": {
+					"displayName": "Collection ID",
+					"description": "Filter results by product collection ID"
+				},
+				"created_at_max": {
+					"displayName": "Created At Max",
+					"description": "Show products created before date"
+				},
+				"created_at_min": {
+					"displayName": "Created At Min",
+					"description": "Show products created after date"
+				},
+				"ids": {
+					"displayName": "IDs",
+					"description": "Return only products specified by a comma-separated list of product IDs"
+				},
+				"presentment_currencies": {
+					"displayName": "Presentment Currencies",
+					"description": "Return presentment prices in only certain currencies, specified by a comma-separated list of ISO 4217 currency codes"
+				},
+				"published_at_max": {
+					"displayName": "Published At Max",
+					"description": "Show products published before date"
+				},
+				"published_at_min": {
+					"displayName": "Published At Min",
+					"description": "Show products published after date"
+				},
+				"published_status": {
+					"displayName": "Published Status",
+					"description": "Return products by their published status",
+					"options": {
+						"any": {
+							"displayName": "Any",
+							"description": "Show all products"
+						},
+						"published": {
+							"displayName": "Published",
+							"description": "Show only published products"
+						},
+						"unpublished": {
+							"displayName": "Unpublished",
+							"description": "Show only unpublished products"
+						}
+					}
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Filter results by product title"
+				},
+				"updated_at_max": {
+					"displayName": "Updated At Max",
+					"description": "Show products last updated before date"
+				},
+				"updated_at_min": {
+					"displayName": "Updated At Min",
+					"description": "Show products last updated after date"
+				}
+			}
+		},
+		"limeItemsUi": {
+			"displayName": "Line Items",
+			"placeholder": "Add Line Item",
+			"multipleValueButtonText": "Add Line Item",
+			"options": {
+				"lineItemValues": {
+					"displayName": "Line Item",
+					"options": {
+						"productId": {
+							"displayName": "Product Name or ID",
+							"description": "The ID of the product that the line item belongs to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"variantId": {
+							"displayName": "Variant ID",
+							"description": "The ID of the product variant"
+						},
+						"title": {
+							"displayName": "Title",
+							"description": "The title of the product"
+						},
+						"grams": {
+							"displayName": "Grams",
+							"description": "The weight of the item in grams"
+						},
+						"quantity": {
+							"displayName": "Quantity",
+							"description": "The number of items that were purchased"
+						},
+						"price": {
+							"displayName": "Price"
+						}
+					}
+				}
+			},
+			"values": {
+				"lineItemValues": {
+					"displayName": "Line Item",
+					"options": {
+						"productId": {
+							"displayName": "Product Name or ID",
+							"description": "The ID of the product that the line item belongs to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"variantId": {
+							"displayName": "Variant ID",
+							"description": "The ID of the product variant"
+						},
+						"title": {
+							"displayName": "Title",
+							"description": "The title of the product"
+						},
+						"grams": {
+							"displayName": "Grams",
+							"description": "The weight of the item in grams"
+						},
+						"quantity": {
+							"displayName": "Quantity",
+							"description": "The number of items that were purchased"
+						},
+						"price": {
+							"displayName": "Price"
+						}
+					}
+				},
+				"limeItemsUi": {
+					"displayName": "Line Items",
+					"placeholder": "Add Line Item"
+				}
+			}
+		},
+		"orderId": {
+			"displayName": "Order ID"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields the orders will return, formatted as a string of comma-separated values. By default all the fields are returned."
+				},
+				"attributionAppId": {
+					"displayName": "Attribution App ID",
+					"description": "Show orders attributed to a certain app, specified by the app ID. Set as current to show orders for the app currently consuming the API."
+				},
+				"createdAtMin": {
+					"displayName": "Created At Min",
+					"description": "Show orders created at or after date"
+				},
+				"createdAtMax": {
+					"displayName": "Created At Max",
+					"description": "Show orders created at or before date"
+				},
+				"financialStatus": {
+					"displayName": "Financial Status",
+					"description": "Filter orders by their financial status",
+					"options": {
+						"any": {
+							"displayName": "Any",
+							"description": "Show orders of any financial status"
+						},
+						"authorized": {
+							"displayName": "Authorized",
+							"description": "Show only authorized orders"
+						},
+						"paid": {
+							"displayName": "Paid",
+							"description": "Show only paid orders"
+						},
+						"partiallyPaid": {
+							"displayName": "Partially Paid",
+							"description": "Show only partially paid orders"
+						},
+						"partiallyRefunded": {
+							"displayName": "Partially Refunded",
+							"description": "Show only partially refunded orders"
+						},
+						"pending": {
+							"displayName": "Pending",
+							"description": "Show only pending orders"
+						},
+						"refunded": {
+							"displayName": "Refunded",
+							"description": "Show only refunded orders"
+						},
+						"unpaid": {
+							"displayName": "Unpaid",
+							"description": "Show authorized and partially paid orders"
+						},
+						"voided": {
+							"displayName": "Voided",
+							"description": "Show only voided orders"
+						}
+					}
+				},
+				"fulfillmentStatus": {
+					"displayName": "Fulfillment Status",
+					"description": "Filter orders by their fulfillment status",
+					"options": {
+						"any": {
+							"displayName": "Any",
+							"description": "Show orders of any fulfillment status"
+						},
+						"partial": {
+							"displayName": "Partial",
+							"description": "Show partially shipped orders"
+						},
+						"shipped": {
+							"displayName": "Shipped",
+							"description": "Show orders that have been shipped. Returns orders with fulfillment_status of fulfilled."
+						},
+						"unfulfilled": {
+							"displayName": "Unfulfilled",
+							"description": "Returns orders with fulfillment_status of null or partial"
+						},
+						"unshipped": {
+							"displayName": "Unshipped",
+							"description": "Show orders that have not yet been shipped. Returns orders with fulfillment_status of null."
+						}
+					}
+				},
+				"ids": {
+					"displayName": "IDs",
+					"description": "Retrieve only orders specified by a comma-separated list of order IDs"
+				},
+				"processedAtMax": {
+					"displayName": "Processed At Max",
+					"description": "Show orders imported at or before date"
+				},
+				"processedAtMin": {
+					"displayName": "Processed At Min",
+					"description": "Show orders imported at or after date"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Filter orders by their status",
+					"options": {
+						"any": {
+							"displayName": "Any",
+							"description": "Show orders of any status, including archived orders"
+						},
+						"Cancelled": {
+							"displayName": "Cancelled",
+							"description": "Show only canceled orders"
+						},
+						"closed": {
+							"displayName": "Closed",
+							"description": "Show only closed orders"
+						},
+						"open": {
+							"displayName": "Open",
+							"description": "Show only open orders"
+						}
+					}
+				},
+				"sinceId": {
+					"displayName": "Since ID",
+					"description": "Show orders after the specified ID"
+				},
+				"updatedAtMax": {
+					"displayName": "Updated At Max",
+					"description": "Show orders last updated at or after date"
+				},
+				"updatedAtMin": {
+					"displayName": "Updated At Min",
+					"description": "Show orders last updated at or before date"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"email": {
+					"displayName": "Email",
+					"description": "The customer's email address",
+					"placeholder": "name@email.com"
+				},
+				"locationId": {
+					"displayName": "Location Name or ID",
+					"description": "The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "An optional note that a shop owner can attach to the order"
+				},
+				"shippingAddressUi": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Shipping",
+					"options": {
+						"shippingAddressValues": {
+							"displayName": "Shipping Address",
+							"options": {
+								"firstName": {
+									"displayName": "First Name"
+								},
+								"lastName": {
+									"displayName": "Last Name"
+								},
+								"company": {
+									"displayName": "Company"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"province": {
+									"displayName": "Province"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								},
+								"phone": {
+									"displayName": "Phone"
+								}
+							}
+						}
+					},
+					"values": {
+						"shippingAddressValues": {
+							"displayName": "Shipping Address",
+							"options": {
+								"firstName": {
+									"displayName": "First Name"
+								},
+								"lastName": {
+									"displayName": "Last Name"
+								},
+								"company": {
+									"displayName": "Company"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"province": {
+									"displayName": "Province"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								},
+								"phone": {
+									"displayName": "Phone"
+								}
+							}
+						},
+						"shippingAddressUi": {
+							"displayName": "Shipping Address",
+							"placeholder": "Add Shipping"
+						}
+					}
+				},
+				"sourceName": {
+					"displayName": "Source Name",
+					"description": "Where the order originated. Can be set only during order creation, and is not writeable afterwards."
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "A string of comma-separated tags that are used for filtering and search. A product can have up to 250 tags. Each tag can have up to 255 characters."
+				},
+				"body_html": {
+					"displayName": "Body HTML",
+					"description": "A description of the product. Supports HTML formatting."
+				},
+				"handle": {
+					"displayName": "Handle",
+					"description": "A unique human-friendly string for the product. Automatically generated from the product's title. Used by the Liquid templating language to refer to objects."
+				},
+				"images": {
+					"displayName": "Images",
+					"description": "A list of product image objects, each one representing an image associated with the product",
+					"placeholder": "Add Image Field",
+					"multipleValueButtonText": "Add Image Field",
+					"options": {
+						"created_at": {
+							"displayName": "Created At",
+							"description": "The date and time when the product image was created"
+						},
+						"id": {
+							"displayName": "ID",
+							"description": "A unique numeric identifier for the product image"
+						},
+						"position": {
+							"displayName": "Position",
+							"description": "The order of the product image in the list. The first product image is at position 1 and is the \"main\" image for the product."
+						},
+						"product_id": {
+							"displayName": "Product ID",
+							"description": "The ID of the product associated with the image"
+						},
+						"variant_ids": {
+							"displayName": "Variant IDs",
+							"description": "An array of variant IDs associated with the image"
+						},
+						"src": {
+							"displayName": "Source",
+							"description": "<p>Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image.</p><p>For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).</p>."
+						},
+						"width": {
+							"displayName": "Width",
+							"description": "Width dimension of the image which is determined on upload"
+						},
+						"height": {
+							"displayName": "Height",
+							"description": "Height dimension of the image which is determined on upload"
+						},
+						"updated_at": {
+							"displayName": "Updated At",
+							"description": "The date and time when the product image was last modified"
+						}
+					}
+				},
+				"productOptions": {
+					"displayName": "Options",
+					"description": "The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.",
+					"placeholder": "Add option",
+					"multipleValueButtonText": "Add option",
+					"options": {
+						"option": {
+							"displayName": "Option",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Option's name"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Option's values"
+								}
+							}
+						}
+					},
+					"values": {
+						"option": {
+							"displayName": "Option",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Option's name"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Option's values"
+								}
+							}
+						},
+						"productOptions": {
+							"displayName": "Options",
+							"placeholder": "Add option"
+						}
+					}
+				},
+				"product_type": {
+					"displayName": "Product Type",
+					"description": "A categorization for the product used for filtering and searching products"
+				},
+				"published_at": {
+					"displayName": "Published At",
+					"description": "The date and time (ISO 8601 format) when the product was published. Can be set to null to unpublish the product from the Online Store channel."
+				},
+				"published_scope": {
+					"displayName": "Published Scope",
+					"options": {
+						"global": {
+							"displayName": "Global",
+							"description": "The product is published to both the Online Store channel and the Point of Sale channel"
+						},
+						"web": {
+							"displayName": "Web",
+							"description": "The product is published to the Online Store channel but not published to the Point of Sale channel"
+						}
+					}
+				},
+				"template_suffix": {
+					"displayName": "Template Suffix",
+					"description": "The suffix of the Liquid template used for the product page. If this property is specified, then the product page uses a template called \"product.suffix.liquid\", where \"suffix\" is the value of this property. If this property is \"\" or null, then the product page uses the default template \"product.liquid\". (default: null)"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "The name of the product"
+				},
+				"vendor": {
+					"displayName": "Vendor",
+					"description": "The name of the product's vendor"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The name of the product"
+		},
+		"productId": {
+			"displayName": "Product ID"
+		}
+	}
+}

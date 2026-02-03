@@ -1,0 +1,202 @@
+{
+	"header": {
+		"displayName": "基础LLM链",
+		"description": "用于提示大型语言模型的简单链"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "在画布上连接一个<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>输出解析器</a>来指定您需要的输出格式"
+		},
+		"prompt": {
+			"displayName": "提示"
+		},
+		"promptType": {
+			"displayName": "提示词来源（用户消息）",
+			"options": {
+				"auto": {
+					"displayName": "已连接的聊天触发器节点",
+					"description": "查找名为'chatInput'的输入字段，该字段来自直接连接的聊天触发器"
+				},
+				"guardrails": {
+					"displayName": "已连接的护栏节点",
+					"description": "查找来自直接连接的护栏节点的名为'guardrailsInput'的输入字段"
+				},
+				"define": {
+					"displayName": "定义如下",
+					"description": "使用表达式引用先前节点中的数据或输入静态文本"
+				}
+			}
+		},
+		"text": {
+			"displayName": "例如：你好，我能如何帮助你？",
+			"placeholder": "例如：你好，我能如何帮助你？"
+		},
+		"hasOutputParser": {
+			"displayName": "要求特定输出格式"
+		},
+		"needsFallback": {
+			"displayName": "启用备用模型"
+		},
+		"messages": {
+			"displayName": "聊天消息（如果使用聊天模型）",
+			"placeholder": "添加提示",
+			"multipleValueButtonText": "添加提示",
+			"options": {
+				"messageValues": {
+					"displayName": "提示词",
+					"options": {
+						"type": {
+							"displayName": "输入名称或ID",
+							"options": {
+								"AIMessagePromptTemplate": {
+									"displayName": "AI"
+								},
+								"SystemMessagePromptTemplate": {
+									"displayName": "系统"
+								},
+								"HumanMessagePromptTemplate": {
+									"displayName": "用户"
+								}
+							}
+						},
+						"messageType": {
+							"displayName": "消息类型",
+							"options": {
+								"text": {
+									"displayName": "文本",
+									"description": "简单文本消息"
+								},
+								"imageBinary": {
+									"displayName": "图像（二进制）",
+									"description": "处理来自上一个节点的二进制输入"
+								},
+								"imageUrl": {
+									"displayName": "图片（URL）",
+									"description": "处理指定URL的图像"
+								}
+							}
+						},
+						"binaryImageDataKey": {
+							"displayName": "图像数据字段名称",
+							"description": "链式输入中包含待处理二进制图像文件的字段名称"
+						},
+						"imageUrl": {
+							"displayName": "图片URL",
+							"description": "待处理图片的URL"
+						},
+						"imageDetail": {
+							"displayName": "图像详情",
+							"description": "控制模型如何处理图像并生成文本理解",
+							"options": {
+								"auto": {
+									"displayName": "自动",
+									"description": "模型将使用自动设置，该设置会查看图像输入大小并决定使用低设置还是高设置"
+								},
+								"low": {
+									"displayName": "低",
+									"description": "模型将接收512px x 512px低分辨率版本的图像，并使用65个令牌的预算来表示图像。这使得API能够更快地返回响应，并为不需要高细节的用例消耗更少的输入令牌。"
+								},
+								"high": {
+									"displayName": "高",
+									"description": "允许模型查看低分辨率图像，然后根据输入图像尺寸创建512像素正方形的详细裁剪区域。每个详细裁剪区域使用两倍的令牌预算（65个令牌），总计129个令牌。"
+								}
+							}
+						},
+						"message": {
+							"displayName": "消息"
+						}
+					}
+				}
+			},
+			"values": {
+				"messageValues": {
+					"displayName": "提示词",
+					"options": {
+						"type": {
+							"displayName": "输入名称或ID",
+							"options": {
+								"AIMessagePromptTemplate": {
+									"displayName": "AI"
+								},
+								"SystemMessagePromptTemplate": {
+									"displayName": "系统"
+								},
+								"HumanMessagePromptTemplate": {
+									"displayName": "用户"
+								}
+							}
+						},
+						"messageType": {
+							"displayName": "消息类型",
+							"options": {
+								"text": {
+									"displayName": "文本",
+									"description": "简单文本消息"
+								},
+								"imageBinary": {
+									"displayName": "图像（二进制）",
+									"description": "处理来自上一个节点的二进制输入"
+								},
+								"imageUrl": {
+									"displayName": "图片（URL）",
+									"description": "处理指定URL的图像"
+								}
+							}
+						},
+						"binaryImageDataKey": {
+							"displayName": "图像数据字段名称",
+							"description": "链式输入中包含待处理二进制图像文件的字段名称"
+						},
+						"imageUrl": {
+							"displayName": "图片URL",
+							"description": "待处理图片的URL"
+						},
+						"imageDetail": {
+							"displayName": "图像详情",
+							"description": "控制模型如何处理图像并生成文本理解",
+							"options": {
+								"auto": {
+									"displayName": "自动",
+									"description": "模型将使用自动设置，该设置会查看图像输入大小并决定使用低设置还是高设置"
+								},
+								"low": {
+									"displayName": "低",
+									"description": "模型将接收512px x 512px低分辨率版本的图像，并使用65个令牌的预算来表示图像。这使得API能够更快地返回响应，并为不需要高细节的用例消耗更少的输入令牌。"
+								},
+								"high": {
+									"displayName": "高",
+									"description": "允许模型查看低分辨率图像，然后根据输入图像尺寸创建512像素正方形的详细裁剪区域。每个详细裁剪区域使用两倍的令牌预算（65个令牌），总计129个令牌。"
+								}
+							}
+						},
+						"message": {
+							"displayName": "消息"
+						}
+					}
+				},
+				"messages": {
+					"displayName": "聊天消息（如果使用聊天模型）",
+					"placeholder": "添加提示"
+				}
+			}
+		},
+		"batching": {
+			"displayName": "批量处理",
+			"description": "用于速率限制的批量处理选项",
+			"placeholder": "添加批量处理选项",
+			"options": {
+				"batchSize": {
+					"displayName": "批次大小",
+					"description": "并行处理的项目数量。这对速率限制很有用，但可能会影响日志输出顺序。"
+				},
+				"delayBetweenBatches": {
+					"displayName": "批次间延迟",
+					"description": "批次之间的延迟时间（毫秒）。适用于速率限制场景。"
+				}
+			}
+		},
+		"fallbackNotice": {
+			"displayName": "在画布上连接一个额外的语言模型，作为主模型失败时的备用方案"
+		}
+	}
+}

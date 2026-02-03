@@ -1,0 +1,79 @@
+{
+	"header": {
+		"displayName": "Facebook触发器",
+		"description": "当Facebook事件发生时启动工作流"
+	},
+	"nodeView": {
+		"appId": {
+			"displayName": "应用ID",
+			"description": "Facebook 应用ID"
+		},
+		"whatsappBusinessAccountNotice": {
+			"displayName": "要监听WhatsApp商业账户事件，请使用WhatsApp触发器节点"
+		},
+		"object": {
+			"displayName": "对象",
+			"description": "要订阅的对象",
+			"options": {
+				"adAccount": {
+					"displayName": "广告账户",
+					"description": "获取广告账户更新"
+				},
+				"application": {
+					"displayName": "应用",
+					"description": "获取应用更新"
+				},
+				"certificateTransparency": {
+					"displayName": "证书透明度",
+					"description": "获取证书透明度更新"
+				},
+				"group": {
+					"displayName": "分组",
+					"description": "获取Workplace中群组活动和群组事件的更新"
+				},
+				"instagram": {
+					"displayName": "Instagram",
+					"description": "获取您媒体评论的更新"
+				},
+				"link": {
+					"displayName": "链接",
+					"description": "通过外部提供商获取链接富预览的更新"
+				},
+				"page": {
+					"displayName": "页面",
+					"description": "页面更新"
+				},
+				"permissions": {
+					"displayName": "权限",
+					"description": "关于授予或撤销权限的更新"
+				},
+				"user": {
+					"displayName": "用户",
+					"description": "用户资料更新"
+				},
+				"whatsappBusinessAccount": {
+					"displayName": "WhatsApp商业账户",
+					"description": "获取WhatsApp商业账户更新"
+				},
+				"workplaceSecurity": {
+					"displayName": "工作场所安全",
+					"description": "获取工作场所安全更新"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "字段名称或ID",
+			"description": "此对象中已订阅的字段集合。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"includeValues": {
+					"displayName": "包含值",
+					"description": "变更通知是否应包含新值"
+				}
+			}
+		}
+	}
+}

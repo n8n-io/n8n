@@ -1,0 +1,196 @@
+{
+	"header": {
+		"displayName": "Metabase",
+		"description": "使用Metabase API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"alerts": {
+					"displayName": "警报"
+				},
+				"databases": {
+					"displayName": "数据库"
+				},
+				"metrics": {
+					"displayName": "指标"
+				},
+				"questions": {
+					"displayName": "问题"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取特定警报"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个告警"
+				},
+				"resultData": {
+					"displayName": "结果数据",
+					"description": "将问题结果返回到特定文件格式"
+				},
+				"addNewDatasource": {
+					"displayName": "添加",
+					"description": "向 Metabase 实例添加新的数据源"
+				},
+				"getFields": {
+					"displayName": "获取字段",
+					"description": "从数据库获取字段"
+				}
+			}
+		},
+		"questionId": {
+			"displayName": "问题ID",
+			"placeholder": "0"
+		},
+		"format": {
+			"displayName": "格式",
+			"options": {
+				"csv": {
+					"displayName": "CSV"
+				},
+				"json": {
+					"displayName": "JSON"
+				},
+				"xlsx": {
+					"displayName": "XLSX"
+				}
+			}
+		},
+		"metricId": {
+			"displayName": "指标ID",
+			"placeholder": "0"
+		},
+		"databaseId": {
+			"displayName": "数据库ID",
+			"placeholder": "0"
+		},
+		"engine": {
+			"displayName": "引擎",
+			"placeholder": "PostgreSQL",
+			"options": {
+				"h2": {
+					"displayName": "H2"
+				},
+				"mongo": {
+					"displayName": "MongoDB"
+				},
+				"mysql": {
+					"displayName": "Mysql"
+				},
+				"postgres": {
+					"displayName": "PostgreSQL"
+				},
+				"redshift": {
+					"displayName": "Redshift"
+				},
+				"sqlite": {
+					"displayName": "SQLite"
+				}
+			}
+		},
+		"host": {
+			"displayName": "主机",
+			"placeholder": "localhost:5432"
+		},
+		"name": {
+			"displayName": "名称",
+			"placeholder": "数据库 1"
+		},
+		"port": {
+			"displayName": "端口",
+			"placeholder": "5432"
+		},
+		"user": {
+			"displayName": "用户",
+			"placeholder": "管理员"
+		},
+		"password": {
+			"displayName": "密码",
+			"placeholder": "密码"
+		},
+		"dbName": {
+			"displayName": "数据库名称",
+			"placeholder": "用户"
+		},
+		"filePath": {
+			"displayName": "文件路径",
+			"placeholder": "file:/Users/admin/Desktop/Users"
+		},
+		"fullSync": {
+			"displayName": "全量同步"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"alertId": {
+			"displayName": "警报ID",
+			"placeholder": "0"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

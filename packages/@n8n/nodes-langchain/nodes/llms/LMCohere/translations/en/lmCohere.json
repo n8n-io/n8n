@@ -1,0 +1,30 @@
+{
+	"header": {
+		"displayName": "Cohere Model",
+		"description": "Language Model Cohere"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"maxTokens": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768)."
+				},
+				"model": {
+					"displayName": "Model",
+					"description": "The name of the model to use"
+				},
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive."
+				}
+			}
+		}
+	}
+}

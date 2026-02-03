@@ -1,0 +1,477 @@
+{
+	"header": {
+		"displayName": "Odoo",
+		"description": "Consume Odoo API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				},
+				"custom": {
+					"displayName": "Custom Resource"
+				},
+				"note": {
+					"displayName": "Note"
+				},
+				"opportunity": {
+					"displayName": "Opportunity"
+				}
+			}
+		},
+		"customResource": {
+			"displayName": "Custom Resource Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new note"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a note"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a note"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many notes"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a note"
+				}
+			}
+		},
+		"fieldsToCreateOrUpdate": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field",
+			"options": {
+				"fields": {
+					"displayName": "Field Record:",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "New Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "Field Record:",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "New Value"
+						}
+					}
+				},
+				"fieldsToCreateOrUpdate": {
+					"displayName": "Update Fields",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"customResourceId": {
+			"displayName": "Custom Resource ID"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"fieldsList": {
+					"displayName": "Fields to Include",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				}
+			}
+		},
+		"filterRequest": {
+			"displayName": "Filters",
+			"description": "Filter request by applying filters",
+			"placeholder": "Add condition",
+			"multipleValueButtonText": "Add Filter",
+			"options": {
+				"filter": {
+					"displayName": "Filter",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"operator": {
+							"displayName": "Operator",
+							"description": "Specify an operator",
+							"options": {
+								"notEqual": {
+									"displayName": "!="
+								},
+								"lesserThen": {
+									"displayName": "<"
+								},
+								"lesserOrEqual": {
+									"displayName": "<="
+								},
+								"equal": {
+									"displayName": "="
+								},
+								"greaterThen": {
+									"displayName": ">"
+								},
+								"greaterOrEqual": {
+									"displayName": ">="
+								},
+								"childOf": {
+									"displayName": "Child Of"
+								},
+								"in": {
+									"displayName": "In"
+								},
+								"like": {
+									"displayName": "Like"
+								},
+								"notIn": {
+									"displayName": "Not In"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Specify value for comparison"
+						}
+					}
+				}
+			},
+			"values": {
+				"filter": {
+					"displayName": "Filter",
+					"options": {
+						"fieldName": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"operator": {
+							"displayName": "Operator",
+							"description": "Specify an operator",
+							"options": {
+								"notEqual": {
+									"displayName": "!="
+								},
+								"lesserThen": {
+									"displayName": "<"
+								},
+								"lesserOrEqual": {
+									"displayName": "<="
+								},
+								"equal": {
+									"displayName": "="
+								},
+								"greaterThen": {
+									"displayName": ">"
+								},
+								"greaterOrEqual": {
+									"displayName": ">="
+								},
+								"childOf": {
+									"displayName": "Child Of"
+								},
+								"in": {
+									"displayName": "In"
+								},
+								"like": {
+									"displayName": "Like"
+								},
+								"notIn": {
+									"displayName": "Not In"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Specify value for comparison"
+						}
+					}
+				},
+				"filterRequest": {
+					"displayName": "Filters",
+					"placeholder": "Add condition"
+				}
+			}
+		},
+		"opportunityName": {
+			"displayName": "Name"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"email_from": {
+					"displayName": "Email"
+				},
+				"expected_revenue": {
+					"displayName": "Expected Revenue"
+				},
+				"description": {
+					"displayName": "Internal Notes"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"priority": {
+					"displayName": "Priority",
+					"options": {
+						"1": {
+							"displayName": "1"
+						},
+						"2": {
+							"displayName": "2"
+						},
+						"3": {
+							"displayName": "3"
+						}
+					}
+				},
+				"probability": {
+					"displayName": "Probability"
+				},
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Add Address",
+					"options": {
+						"value": {
+							"displayName": "Address",
+							"options": {
+								"city": {
+									"displayName": "City"
+								},
+								"country_id": {
+									"displayName": "Country Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"state_id": {
+									"displayName": "State Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"street": {
+									"displayName": "Street"
+								},
+								"street2": {
+									"displayName": "Street 2"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Address",
+							"options": {
+								"city": {
+									"displayName": "City"
+								},
+								"country_id": {
+									"displayName": "Country Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"state_id": {
+									"displayName": "State Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"street": {
+									"displayName": "Street"
+								},
+								"street2": {
+									"displayName": "Street 2"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Address"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"comment": {
+					"displayName": "Internal Notes"
+				},
+				"function": {
+					"displayName": "Job Position"
+				},
+				"mobile": {
+					"displayName": "Mobile"
+				},
+				"vat": {
+					"displayName": "Tax ID"
+				},
+				"website": {
+					"displayName": "Website"
+				}
+			}
+		},
+		"opportunityId": {
+			"displayName": "Opportunity ID"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"email_from": {
+					"displayName": "Email"
+				},
+				"expected_revenue": {
+					"displayName": "Expected Revenue"
+				},
+				"description": {
+					"displayName": "Internal Notes"
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"priority": {
+					"displayName": "Priority",
+					"options": {
+						"1": {
+							"displayName": "1"
+						},
+						"2": {
+							"displayName": "2"
+						},
+						"3": {
+							"displayName": "3"
+						}
+					}
+				},
+				"probability": {
+					"displayName": "Probability"
+				},
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Add Address",
+					"options": {
+						"value": {
+							"displayName": "Address",
+							"options": {
+								"city": {
+									"displayName": "City"
+								},
+								"country_id": {
+									"displayName": "Country Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"state_id": {
+									"displayName": "State Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"street": {
+									"displayName": "Street"
+								},
+								"street2": {
+									"displayName": "Street 2"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Address",
+							"options": {
+								"city": {
+									"displayName": "City"
+								},
+								"country_id": {
+									"displayName": "Country Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"state_id": {
+									"displayName": "State Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"street": {
+									"displayName": "Street"
+								},
+								"street2": {
+									"displayName": "Street 2"
+								},
+								"zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Address"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"comment": {
+					"displayName": "Internal Notes"
+				},
+				"function": {
+					"displayName": "Job Position"
+				},
+				"mobile": {
+					"displayName": "Mobile"
+				},
+				"vat": {
+					"displayName": "Tax ID"
+				},
+				"website": {
+					"displayName": "Website"
+				}
+			}
+		},
+		"contactName": {
+			"displayName": "Name"
+		},
+		"contactId": {
+			"displayName": "Contact ID"
+		},
+		"memo": {
+			"displayName": "Memo"
+		},
+		"noteId": {
+			"displayName": "Note ID"
+		}
+	}
+}

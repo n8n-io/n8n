@@ -1,0 +1,67 @@
+{
+	"header": {
+		"displayName": "Email Trigger (IMAP)",
+		"description": "Triggers the workflow when a new email is received"
+	},
+	"nodeView": {
+		"mailbox": {
+			"displayName": "Mailbox Name"
+		},
+		"postProcessAction": {
+			"displayName": "Action",
+			"description": "What to do after the email has been received. If \"nothing\" gets selected it will be processed multiple times.",
+			"options": {
+				"read": {
+					"displayName": "Mark as Read"
+				},
+				"nothing": {
+					"displayName": "Nothing"
+				}
+			}
+		},
+		"downloadAttachments": {
+			"displayName": "Download Attachments",
+			"description": "Whether attachments of emails should be downloaded. Only set if needed as it increases processing."
+		},
+		"format": {
+			"displayName": "Format",
+			"description": "The format to return the message in",
+			"options": {
+				"raw": {
+					"displayName": "RAW",
+					"description": "Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used"
+				},
+				"resolved": {
+					"displayName": "Resolved",
+					"description": "Returns the full email with all data resolved and attachments saved as binary data"
+				},
+				"simple": {
+					"displayName": "Simple",
+					"description": "Returns the full email; do not use if you wish to gather inline attachments"
+				}
+			}
+		},
+		"dataPropertyAttachmentsPrefixName": {
+			"displayName": "Property Prefix Name",
+			"description": "Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is \"attachment_\" the first attachment is saved to \"attachment_0\""
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"customEmailConfig": {
+					"displayName": "Custom Email Rules",
+					"description": "Custom email fetching rules. See <a href=\"https://github.com/mscdex/node-imap\">node-imap</a>'s search function for more details."
+				},
+				"forceReconnect": {
+					"displayName": "Force Reconnect Every Minutes",
+					"description": "Sets an interval (in minutes) to force a reconnection"
+				},
+				"trackLastMessageId": {
+					"displayName": "Fetch Only New Emails",
+					"description": "Whether to fetch only new emails since the last run, or all emails that match the \"Custom Email Rules\" ([\"UNSEEN\"] by default)"
+				}
+			}
+		}
+	}
+}

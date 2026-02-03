@@ -1,0 +1,85 @@
+{
+	"header": {
+		"displayName": "模型选择器",
+		"description": "使用此节点根据工作流数据选择连接到此节点的模型之一"
+	},
+	"nodeView": {
+		"numberInputs": {
+			"displayName": "输入数量",
+			"description": "您想要合并的数据输入数量。节点会等待所有已连接的输入执行完毕。",
+			"options": {
+				"2": {
+					"displayName": "2"
+				},
+				"3": {
+					"displayName": "3"
+				},
+				"4": {
+					"displayName": "4"
+				},
+				"5": {
+					"displayName": "5"
+				},
+				"6": {
+					"displayName": "6"
+				},
+				"7": {
+					"displayName": "7"
+				},
+				"8": {
+					"displayName": "8"
+				},
+				"9": {
+					"displayName": "9"
+				},
+				"10": {
+					"displayName": "10"
+				}
+			}
+		},
+		"rules": {
+			"displayName": "规则",
+			"description": "将工作流数据映射到特定模型的规则",
+			"placeholder": "添加规则",
+			"multipleValueButtonText": "添加规则",
+			"options": {
+				"rule": {
+					"displayName": "规则",
+					"options": {
+						"modelIndex": {
+							"displayName": "模型",
+							"description": "从列表中选择模型输入",
+							"placeholder": "从列表中选择模型输入"
+						},
+						"conditions": {
+							"displayName": "条件",
+							"description": "选择此模型必须满足的条件",
+							"placeholder": "添加条件"
+						}
+					}
+				}
+			},
+			"values": {
+				"rule": {
+					"displayName": "规则",
+					"options": {
+						"modelIndex": {
+							"displayName": "模型",
+							"description": "从列表中选择模型输入",
+							"placeholder": "从列表中选择模型输入"
+						},
+						"conditions": {
+							"displayName": "条件",
+							"description": "选择此模型必须满足的条件",
+							"placeholder": "添加条件"
+						}
+					}
+				},
+				"rules": {
+					"displayName": "规则",
+					"placeholder": "添加规则"
+				}
+			}
+		}
+	}
+}

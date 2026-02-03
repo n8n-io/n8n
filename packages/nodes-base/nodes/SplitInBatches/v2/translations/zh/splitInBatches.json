@@ -1,0 +1,25 @@
+{
+	"header": {
+		"displayName": "分批处理",
+		"description": "将数据拆分为批次并遍历每个批次"
+	},
+	"nodeView": {
+		"splitInBatchesNotice": {
+			"displayName": "您可能不需要此节点——n8n节点会自动为每个输入项运行一次。<a href=\"https://docs.n8n.io/getting-started/key-concepts/looping.html#using-loops-in-n8n\" target=\"_blank\">更多信息</a>"
+		},
+		"batchSize": {
+			"displayName": "批次大小",
+			"description": "每次调用返回的项目数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"reset": {
+					"displayName": "重置",
+					"description": "节点是否会被重置，并随之用当前输入数据重新初始化"
+				}
+			}
+		}
+	}
+}

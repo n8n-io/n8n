@@ -1,0 +1,53 @@
+{
+	"header": {
+		"displayName": "Telegram触发器",
+		"description": "在Telegram更新时启动工作流"
+	},
+	"nodeView": {
+		"telegramTriggerNotice": {
+			"displayName": "由于Telegram API限制，每个机器人一次只能使用一个Telegram触发器"
+		},
+		"updates": {
+			"displayName": "触发条件"
+		},
+		"attachmentNotice": {
+			"displayName": "每个上传的附件，即使在群组中发送，都会触发独立事件。可通过<code>media_group_id</code>识别附件所属群组。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"download": {
+					"displayName": "下载图像/文件",
+					"description": "Telegram会提供多种尺寸的图像。默认情况下，仅下载大尺寸图像。如需更改尺寸，请设置'图像尺寸'字段。"
+				},
+				"imageSize": {
+					"displayName": "图像尺寸",
+					"description": "要下载的图像尺寸",
+					"options": {
+						"small": {
+							"displayName": "小"
+						},
+						"medium": {
+							"displayName": "中等"
+						},
+						"large": {
+							"displayName": "大型"
+						},
+						"extraLarge": {
+							"displayName": "特大号"
+						}
+					}
+				},
+				"chatIds": {
+					"displayName": "限制到聊天ID",
+					"description": "要限制触发器生效的聊天ID。多个ID可用逗号分隔定义。"
+				},
+				"userIds": {
+					"displayName": "限制用户ID",
+					"description": "限制触发器仅对指定用户ID生效。可定义多个用户ID，用逗号分隔。"
+				}
+			}
+		}
+	}
+}

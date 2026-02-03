@@ -1,0 +1,212 @@
+{
+	"header": {
+		"displayName": "Microsoft To Do",
+		"description": "使用 Microsoft To Do API。"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"linkedResource": {
+					"displayName": "关联资源"
+				},
+				"list": {
+					"displayName": "列表"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"taskListId": {
+			"displayName": "列表名称或ID",
+			"description": "列表的标识符，在用户邮箱中唯一。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"taskId": {
+			"displayName": "任务ID"
+		},
+		"displayName": {
+			"displayName": "新列表名称",
+			"description": "列表显示名称"
+		},
+		"applicationName": {
+			"displayName": "应用程序名称",
+			"description": "发送关联实体的来源应用名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"externalId": {
+					"displayName": "外部ID",
+					"description": "第三方/合作伙伴系统中与此任务关联的对象ID"
+				},
+				"webUrl": {
+					"displayName": "Web URL",
+					"description": "链接实体的深度链接"
+				},
+				"content": {
+					"displayName": "内容",
+					"description": "任务内容"
+				},
+				"dueDateTime": {
+					"displayName": "截止日期",
+					"description": "任务应在指定时区完成的日期"
+				},
+				"reminderDateTime": {
+					"displayName": "提醒",
+					"description": "任务提醒的指定时区日期"
+				},
+				"importance": {
+					"displayName": "重要性",
+					"description": "任务的重要性",
+					"options": {
+						"low": {
+							"displayName": "低"
+						},
+						"normal": {
+							"displayName": "普通"
+						},
+						"high": {
+							"displayName": "高"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "指示任务的状态或进度",
+					"options": {
+						"notStarted": {
+							"displayName": "未开始"
+						},
+						"inProgress": {
+							"displayName": "执行中"
+						},
+						"completed": {
+							"displayName": "已完成"
+						},
+						"waitingOnOthers": {
+							"displayName": "等待他人处理"
+						},
+						"deferred": {
+							"displayName": "延迟"
+						}
+					}
+				}
+			}
+		},
+		"linkedResourceId": {
+			"displayName": "关联资源ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"applicationName": {
+					"displayName": "应用程序名称",
+					"description": "发送关联实体的来源应用名称"
+				},
+				"displayName": {
+					"displayName": "名称",
+					"description": "指示链接实体标题的字段"
+				},
+				"externalId": {
+					"displayName": "外部ID",
+					"description": "第三方/合作伙伴系统中与此任务关联的对象ID"
+				},
+				"webUrl": {
+					"displayName": "Web URL",
+					"description": "链接实体的深度链接"
+				},
+				"content": {
+					"displayName": "内容",
+					"description": "任务内容"
+				},
+				"dueDateTime": {
+					"displayName": "到期日期时间",
+					"description": "任务应在指定时区完成的日期"
+				},
+				"reminderDateTime": {
+					"displayName": "提醒",
+					"description": "任务提醒的指定时区日期"
+				},
+				"importance": {
+					"displayName": "重要性",
+					"description": "任务的重要性",
+					"options": {
+						"low": {
+							"displayName": "低"
+						},
+						"normal": {
+							"displayName": "普通"
+						},
+						"high": {
+							"displayName": "高"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "指示任务的状态或进度",
+					"options": {
+						"notStarted": {
+							"displayName": "未开始"
+						},
+						"inProgress": {
+							"displayName": "执行中"
+						},
+						"completed": {
+							"displayName": "已完成"
+						},
+						"waitingOnOthers": {
+							"displayName": "等待他人处理"
+						},
+						"deferred": {
+							"displayName": "延迟"
+						}
+					}
+				},
+				"title": {
+					"displayName": "主题",
+					"description": "任务的简要描述"
+				}
+			}
+		},
+		"title": {
+			"displayName": "主题",
+			"description": "任务简要描述"
+		},
+		"listId": {
+			"displayName": "列表ID",
+			"description": "列表的标识符，在用户邮箱中唯一"
+		}
+	}
+}

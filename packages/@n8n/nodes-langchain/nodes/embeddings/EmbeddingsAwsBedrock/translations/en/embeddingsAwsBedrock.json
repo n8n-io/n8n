@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "Embeddings AWS Bedrock",
+		"description": "Use Embeddings AWS Bedrock"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a vector store. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>Insert one</a>"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will generate the completion. <a href=\"https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html\">Learn more</a>."
+		}
+	}
+}

@@ -1,0 +1,473 @@
+{
+	"header": {
+		"displayName": "GitLab",
+		"description": "从GitLab API检索数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"issue": {
+					"displayName": "问题"
+				},
+				"release": {
+					"displayName": "发布"
+				},
+				"repository": {
+					"displayName": "仓库"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "在仓库中创建新文件"
+				},
+				"createComment": {
+					"displayName": "创建评论",
+					"description": "在问题上创建新评论"
+				},
+				"edit": {
+					"displayName": "编辑",
+					"description": "编辑仓库中的文件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取单个文件的数据"
+				},
+				"lock": {
+					"displayName": "锁定",
+					"description": "锁定问题"
+				},
+				"getIssues": {
+					"displayName": "获取问题",
+					"description": "返回仓库的问题"
+				},
+				"getRepositories": {
+					"displayName": "获取仓库",
+					"description": "返回用户的仓库"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除仓库中的文件"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个发布版本"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新一个发布"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "列出文件夹内容"
+				}
+			}
+		},
+		"owner": {
+			"displayName": "项目所有者",
+			"description": "项目的用户、群组或命名空间",
+			"placeholder": "n8n-io"
+		},
+		"repository": {
+			"displayName": "项目名称",
+			"description": "项目的名称",
+			"placeholder": "n8n"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "问题标题"
+		},
+		"body": {
+			"displayName": "正文",
+			"description": "评论正文"
+		},
+		"due_date": {
+			"displayName": "截止日期",
+			"description": "问题截止日期"
+		},
+		"labels": {
+			"displayName": "标签",
+			"multipleValueButtonText": "添加标签",
+			"options": {
+				"label": {
+					"displayName": "标签",
+					"description": "要添加到问题的标签"
+				}
+			}
+		},
+		"assignee_ids": {
+			"displayName": "负责人",
+			"multipleValueButtonText": "添加负责人",
+			"options": {
+				"assignee": {
+					"displayName": "分配对象",
+					"description": "分配问题的用户ID"
+				}
+			}
+		},
+		"issueNumber": {
+			"displayName": "问题编号",
+			"description": "要锁定的议题编号"
+		},
+		"editFields": {
+			"displayName": "编辑字段",
+			"options": {
+				"title": {
+					"displayName": "标题",
+					"description": "问题标题"
+				},
+				"description": {
+					"displayName": "正文",
+					"description": "问题正文"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "要设置的状态",
+					"options": {
+						"closed": {
+							"displayName": "已关闭",
+							"description": "将状态设置为“已关闭”"
+						},
+						"open": {
+							"displayName": "打开",
+							"description": "将状态设置为“open”"
+						}
+					}
+				},
+				"labels": {
+					"displayName": "标签",
+					"multipleValueButtonText": "添加标签",
+					"options": {
+						"label": {
+							"displayName": "标签",
+							"description": "要添加到问题的标签"
+						}
+					}
+				},
+				"assignee_ids": {
+					"displayName": "负责人",
+					"multipleValueButtonText": "添加受理人",
+					"options": {
+						"assignee": {
+							"displayName": "负责人",
+							"description": "分配问题的用户"
+						}
+					}
+				},
+				"due_date": {
+					"displayName": "截止日期",
+					"description": "问题截止日期"
+				}
+			}
+		},
+		"lockReason": {
+			"displayName": "锁定原因",
+			"description": "锁定议题的原因",
+			"options": {
+				"off-topic": {
+					"displayName": "离题",
+					"description": "此问题已离题"
+				},
+				"too heated": {
+					"displayName": "过于激烈",
+					"description": "讨论过于激烈"
+				},
+				"resolved": {
+					"displayName": "已解析",
+					"description": "问题已解决"
+				},
+				"spam": {
+					"displayName": "垃圾信息",
+					"description": "该问题是垃圾信息"
+				}
+			}
+		},
+		"releaseTag": {
+			"displayName": "标签",
+			"description": "发布的标签"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "发布名称"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "版本发布说明。您可以使用Markdown格式。"
+				},
+				"ref": {
+					"displayName": "参考",
+					"description": "如果标签不存在，将从此参考创建发布。它可以是提交SHA、另一个标签名称或分支名称。"
+				},
+				"order_by": {
+					"displayName": "排序方式",
+					"description": "用作排序的字段",
+					"options": {
+						"created_at": {
+							"displayName": "创建时间"
+						},
+						"released_at": {
+							"displayName": "发布时间"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "订单的方向。",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"milestones": {
+					"displayName": "里程碑",
+					"description": "要与发布关联的每个里程碑的标题（提供以逗号分隔的标题列表）"
+				},
+				"released_at": {
+					"displayName": "发布时间",
+					"description": "发布就绪的日期"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "项目ID",
+			"description": "项目的ID或URL编码路径"
+		},
+		"tag_name": {
+			"displayName": "标签名称",
+			"description": "发布关联的Git标签"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"getRepositoryIssuesFilters": {
+			"displayName": "过滤器",
+			"options": {
+				"assignee_username": {
+					"displayName": "分配对象",
+					"description": "仅返回分配给特定用户的问题"
+				},
+				"author_username": {
+					"displayName": "创建者",
+					"description": "仅返回由特定用户创建的问题"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "根据标题和描述搜索问题"
+				},
+				"labels": {
+					"displayName": "标签",
+					"description": "仅返回具有指定标签的问题。多个标签可用逗号分隔。"
+				},
+				"updated_after": {
+					"displayName": "更新于之后",
+					"description": "仅返回在此时间或之后更新的问题"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "要筛选的状态",
+					"options": {
+						"": {
+							"displayName": "全部",
+							"description": "返回任意状态的问题"
+						},
+						"closed": {
+							"displayName": "已关闭",
+							"description": "返回状态为“已关闭”的问题"
+						},
+						"opened": {
+							"displayName": "打开",
+							"description": "返回状态为\"open\"的问题"
+						}
+					}
+				},
+				"order_by": {
+					"displayName": "排序",
+					"description": "问题返回顺序",
+					"options": {
+						"created_at": {
+							"displayName": "创建时间",
+							"description": "按创建日期排序"
+						},
+						"updated_at": {
+							"displayName": "更新时间",
+							"description": "按更新日期排序"
+						},
+						"priority": {
+							"displayName": "优先级",
+							"description": "按优先级排序"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "方向",
+					"description": "排序顺序",
+					"options": {
+						"asc": {
+							"displayName": "升序",
+							"description": "按升序排序"
+						},
+						"desc": {
+							"displayName": "降序",
+							"description": "按降序排序"
+						}
+					}
+				}
+			}
+		},
+		"filePath": {
+			"displayName": "路径",
+			"description": "要列出文件夹的路径",
+			"placeholder": "docs/"
+		},
+		"page": {
+			"displayName": "页面",
+			"description": "要显示的页码"
+		},
+		"additionalParameters": {
+			"displayName": "附加参数",
+			"description": "要添加的附加字段",
+			"placeholder": "添加参数",
+			"options": {
+				"ref": {
+					"displayName": "参考",
+					"description": "提交/分支/标签的名称。默认：仓库的默认分支（通常为 main）。",
+					"placeholder": "main"
+				},
+				"recursive": {
+					"displayName": "递归",
+					"description": "是否获取递归文件树。默认为 false。"
+				},
+				"reference": {
+					"displayName": "参考",
+					"description": "提交/分支/标签的名称。默认：仓库的默认分支（通常为 main）。",
+					"placeholder": "main"
+				},
+				"branchStart": {
+					"displayName": "开始分支",
+					"options": {
+						"branchStart": {
+							"displayName": "开始分支",
+							"description": "创建新分支所基于的基础分支名称"
+						}
+					}
+				},
+				"author": {
+					"displayName": "作者",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "提交作者姓名"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"description": "提交作者的电子邮件",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"encoding": {
+					"displayName": "编码",
+					"options": {
+						"encoding": {
+							"displayName": "编码",
+							"description": "将编码更改为base64。默认为文本。"
+						}
+					}
+				}
+			},
+			"values": {
+				"branchStart": {
+					"displayName": "开始分支",
+					"options": {
+						"branchStart": {
+							"displayName": "开始分支",
+							"description": "创建新分支所基于的基础分支名称"
+						}
+					}
+				},
+				"author": {
+					"displayName": "作者",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "提交作者姓名"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"description": "提交作者的电子邮件",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"encoding": {
+					"displayName": "编码",
+					"options": {
+						"encoding": {
+							"displayName": "编码",
+							"description": "将编码更改为base64。默认为文本。"
+						}
+					}
+				},
+				"additionalParameters": {
+					"displayName": "附加参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"asBinaryProperty": {
+			"displayName": "作为二进制属性",
+			"description": "是否将文件数据设为二进制属性而非返回原始API响应"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "文件的文本内容"
+		},
+		"commitMessage": {
+			"displayName": "提交信息"
+		},
+		"branch": {
+			"displayName": "分支",
+			"description": "要创建的新分支名称。提交将添加到此分支。"
+		}
+	}
+}

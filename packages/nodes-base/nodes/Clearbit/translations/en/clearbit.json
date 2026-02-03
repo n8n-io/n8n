@@ -1,0 +1,97 @@
+{
+	"header": {
+		"displayName": "Clearbit",
+		"description": "Consume Clearbit API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"company": {
+					"displayName": "Company",
+					"description": "The Company API allows you to look up a company by their domain"
+				},
+				"person": {
+					"displayName": "Person",
+					"description": "The Person API lets you retrieve social information associated with an email address, such as a person’s name, location and Twitter handle"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"autocomplete": {
+					"displayName": "Autocomplete",
+					"description": "Auto-complete company names and retrieve logo and domain"
+				},
+				"enrich": {
+					"displayName": "Enrich",
+					"description": "Look up a person and company data based on an email or domain"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "Domain",
+			"description": "The domain to look up"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"companyName": {
+					"displayName": "Company Name",
+					"description": "The name of the company"
+				},
+				"facebook": {
+					"displayName": "Facebook",
+					"description": "The Facebook URL for the person"
+				},
+				"linkedin": {
+					"displayName": "Linkedin",
+					"description": "The LinkedIn URL for the company"
+				},
+				"twitter": {
+					"displayName": "Twitter",
+					"description": "The Twitter handle for the person"
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "The name of the person’s employer"
+				},
+				"companyDomain": {
+					"displayName": "Company Domain",
+					"description": "The domain for the person’s employer"
+				},
+				"familyName": {
+					"displayName": "Family Name",
+					"description": "Last name of person. If you have this, passing this is strongly recommended to improve match rates."
+				},
+				"givenName": {
+					"displayName": "Given Name",
+					"description": "First name of person"
+				},
+				"ipAddress": {
+					"displayName": "IP Address",
+					"description": "IP address of the person. If you have this, passing this is strongly recommended to improve match rates."
+				},
+				"location": {
+					"displayName": "Location",
+					"description": "The city or country where the person resides"
+				},
+				"linkedIn": {
+					"displayName": "LinkedIn",
+					"description": "The LinkedIn URL for the person"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name is the partial name of the company"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email address to look up",
+			"placeholder": "name@email.com"
+		}
+	}
+}

@@ -1,0 +1,32 @@
+{
+	"header": {
+		"displayName": "Mailchimp触发器",
+		"description": "通过Webhook处理Mailchimp事件"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiKey": {
+					"displayName": "API密钥"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"list": {
+			"displayName": "列表名称或ID",
+			"description": "将触发事件的列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"events": {
+			"displayName": "事件",
+			"description": "可触发Webhook的事件及其启用状态"
+		},
+		"sources": {
+			"displayName": "来源",
+			"description": "可能触发Webhook的事件来源及其启用状态"
+		}
+	}
+}

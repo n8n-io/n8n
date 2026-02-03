@@ -1,0 +1,283 @@
+{
+	"header": {
+		"displayName": "Microsoft Outlook触发器",
+		"description": "从Microsoft Outlook获取邮件，并在指定的轮询间隔触发工作流。"
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "轮询时间",
+			"description": "轮询应发生的时间",
+			"placeholder": "添加轮询时间",
+			"multipleValueButtonText": "添加轮询时间",
+			"options": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "轮询时间",
+					"placeholder": "添加轮询时间"
+				}
+			}
+		},
+		"event": {
+			"displayName": "触发器开启",
+			"options": {
+				"messageReceived": {
+					"displayName": "消息已接收"
+				}
+			}
+		},
+		"output": {
+			"displayName": "输出",
+			"options": {
+				"simple": {
+					"displayName": "仅返回特定字段：kind、ID、primaryEmail、name（含子字段）、isAdmin、lastLoginTime、creationTime 和 suspended"
+				},
+				"raw": {
+					"displayName": "原始"
+				},
+				"fields": {
+					"displayName": "选择包含字段"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "字段",
+			"description": "要添加到输出的字段"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"custom": {
+					"displayName": "过滤查询",
+					"placeholder": "例如 是否已读 等于 否"
+				},
+				"hasAttachments": {
+					"displayName": "包含附件"
+				},
+				"foldersToExclude": {
+					"displayName": "排除文件夹",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"foldersToInclude": {
+					"displayName": "包含的文件夹",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"readStatus": {
+					"displayName": "读取状态",
+					"options": {
+						"both": {
+							"displayName": "未读和已读消息"
+						},
+						"unread": {
+							"displayName": "仅未读消息"
+						},
+						"read": {
+							"displayName": "[0]仅读取消息"
+						}
+					}
+				},
+				"sender": {
+					"displayName": "发送方",
+					"description": "用于筛选的发件人姓名或邮箱"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"attachmentsPrefix": {
+					"displayName": "附件前缀",
+					"description": "用于存放二进制文件数据的输出字段名称前缀。将添加从0开始的索引。例如，如果名称为\"attachment_\"，则第一个附件将保存到\"attachment_0\"。"
+				},
+				"downloadAttachments": {
+					"displayName": "下载附件",
+					"description": "是否下载消息附件并包含在输出中"
+				}
+			}
+		}
+	}
+}

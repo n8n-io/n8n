@@ -1,0 +1,63 @@
+{
+	"header": {
+		"displayName": "Stackby",
+		"description": "Read, write, and delete data in Stackby"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"placeholder": "Action to perform",
+			"options": {
+				"append": {
+					"displayName": "Append"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"list": {
+					"displayName": "List"
+				},
+				"read": {
+					"displayName": "Read"
+				}
+			}
+		},
+		"stackId": {
+			"displayName": "Stack ID",
+			"description": "The ID of the stack to access"
+		},
+		"table": {
+			"displayName": "Table",
+			"description": "Enter Table Name",
+			"placeholder": "Stories"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "ID of the record to return"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"view": {
+					"displayName": "View",
+					"description": "The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.",
+					"placeholder": "All Stories"
+				}
+			}
+		},
+		"columns": {
+			"displayName": "Columns",
+			"description": "Comma-separated list of the properties which should used as columns for the new rows",
+			"placeholder": "id,name,description"
+		}
+	}
+}

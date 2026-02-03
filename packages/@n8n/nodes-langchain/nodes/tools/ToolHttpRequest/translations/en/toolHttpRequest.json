@@ -1,0 +1,462 @@
+{
+	"header": {
+		"displayName": "HTTP Request Tool",
+		"description": "Makes an HTTP request and returns the response data"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"toolDescription": {
+			"displayName": "Description",
+			"description": "Explain to LLM what this tool does, better description would allow LLM to produce expected result",
+			"placeholder": "e.g. Get the current weather in the requested city"
+		},
+		"method": {
+			"displayName": "Method",
+			"options": {
+				"DELETE": {
+					"displayName": "DELETE"
+				},
+				"GET": {
+					"displayName": "GET"
+				},
+				"PATCH": {
+					"displayName": "PATCH"
+				},
+				"POST": {
+					"displayName": "POST"
+				},
+				"PUT": {
+					"displayName": "PUT"
+				}
+			}
+		},
+		"placeholderNotice": {
+			"displayName": "Tip: You can use a {placeholder} for any part of the request to be filled by the model. Provide more context about them in the placeholders section"
+		},
+		"url": {
+			"displayName": "URL",
+			"placeholder": "e.g. http://www.example.com/{path}"
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "Select the type of authentication to use if needed, authentication would be done by n8n and your credentials will not be shared with the LLM",
+			"options": {
+				"none": {
+					"displayName": "None"
+				},
+				"predefinedCredentialType": {
+					"displayName": "Predefined Credential Type",
+					"description": "We've already implemented auth for many services so that you don't have to set it up manually"
+				},
+				"genericCredentialType": {
+					"displayName": "Generic Credential Type",
+					"description": "Fully customizable. Choose between basic, header, OAuth2, etc."
+				}
+			}
+		},
+		"nodeCredentialType": {
+			"displayName": "Credential Type"
+		},
+		"googleApiWarning": {
+			"displayName": "Make sure you have specified the scope(s) for the Service Account in the credential"
+		},
+		"genericAuthType": {
+			"displayName": "Generic Auth Type"
+		},
+		"sendQuery": {
+			"displayName": "Send Query Parameters",
+			"description": "Whether the request has query params or not"
+		},
+		"specifyQuery": {
+			"displayName": "Specify Query Parameters",
+			"options": {
+				"keypair": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON Below"
+				},
+				"model": {
+					"displayName": "Let Model Specify Entire Body"
+				}
+			}
+		},
+		"parametersQuery": {
+			"displayName": "Query Parameters",
+			"placeholder": "Add Parameter",
+			"multipleValueButtonText": "Add Parameter",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name"
+						},
+						"valueProvider": {
+							"displayName": "Value Provided",
+							"options": {
+								"modelRequired": {
+									"displayName": "By Model (and is required)"
+								},
+								"modelOptional": {
+									"displayName": "By Model (but is optional)"
+								},
+								"fieldValue": {
+									"displayName": "Using Field Below"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name"
+						},
+						"valueProvider": {
+							"displayName": "Value Provided",
+							"options": {
+								"modelRequired": {
+									"displayName": "By Model (and is required)"
+								},
+								"modelOptional": {
+									"displayName": "By Model (but is optional)"
+								},
+								"fieldValue": {
+									"displayName": "Using Field Below"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"parametersQuery": {
+					"displayName": "Query Parameters",
+					"placeholder": "Add Parameter"
+				}
+			}
+		},
+		"jsonQuery": {
+			"displayName": "JSON"
+		},
+		"sendHeaders": {
+			"displayName": "Send Headers",
+			"description": "Whether the request has headers or not"
+		},
+		"specifyHeaders": {
+			"displayName": "Specify Headers",
+			"options": {
+				"keypair": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON Below"
+				},
+				"model": {
+					"displayName": "Let Model Specify Entire Body"
+				}
+			}
+		},
+		"parametersHeaders": {
+			"displayName": "Header Parameters",
+			"placeholder": "Add Parameter",
+			"multipleValueButtonText": "Add Parameter",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name"
+						},
+						"valueProvider": {
+							"displayName": "Value Provided",
+							"options": {
+								"modelRequired": {
+									"displayName": "By Model (and is required)"
+								},
+								"modelOptional": {
+									"displayName": "By Model (but is optional)"
+								},
+								"fieldValue": {
+									"displayName": "Using Field Below"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name"
+						},
+						"valueProvider": {
+							"displayName": "Value Provided",
+							"options": {
+								"modelRequired": {
+									"displayName": "By Model (and is required)"
+								},
+								"modelOptional": {
+									"displayName": "By Model (but is optional)"
+								},
+								"fieldValue": {
+									"displayName": "Using Field Below"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"parametersHeaders": {
+					"displayName": "Header Parameters",
+					"placeholder": "Add Parameter"
+				}
+			}
+		},
+		"jsonHeaders": {
+			"displayName": "JSON"
+		},
+		"sendBody": {
+			"displayName": "Send Body",
+			"description": "Whether the request has body or not"
+		},
+		"specifyBody": {
+			"displayName": "Specify Body",
+			"options": {
+				"keypair": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON Below"
+				},
+				"model": {
+					"displayName": "Let Model Specify Entire Body"
+				}
+			}
+		},
+		"parametersBody": {
+			"displayName": "Body Parameters",
+			"placeholder": "Add Parameter",
+			"multipleValueButtonText": "Add Parameter",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name"
+						},
+						"valueProvider": {
+							"displayName": "Value Provided",
+							"options": {
+								"modelRequired": {
+									"displayName": "By Model (and is required)"
+								},
+								"modelOptional": {
+									"displayName": "By Model (but is optional)"
+								},
+								"fieldValue": {
+									"displayName": "Using Field Below"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name"
+						},
+						"valueProvider": {
+							"displayName": "Value Provided",
+							"options": {
+								"modelRequired": {
+									"displayName": "By Model (and is required)"
+								},
+								"modelOptional": {
+									"displayName": "By Model (but is optional)"
+								},
+								"fieldValue": {
+									"displayName": "Using Field Below"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"parametersBody": {
+					"displayName": "Body Parameters",
+					"placeholder": "Add Parameter"
+				}
+			}
+		},
+		"jsonBody": {
+			"displayName": "JSON"
+		},
+		"placeholderDefinitions": {
+			"displayName": "Placeholder Definitions",
+			"placeholder": "Add Definition",
+			"multipleValueButtonText": "Add Definition",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Placeholder Name"
+						},
+						"description": {
+							"displayName": "Description"
+						},
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"not specified": {
+									"displayName": "Not Specified (Default)"
+								},
+								"string": {
+									"displayName": "String"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"boolean": {
+									"displayName": "Boolean"
+								},
+								"json": {
+									"displayName": "JSON"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Placeholder Name"
+						},
+						"description": {
+							"displayName": "Description"
+						},
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"not specified": {
+									"displayName": "Not Specified (Default)"
+								},
+								"string": {
+									"displayName": "String"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"boolean": {
+									"displayName": "Boolean"
+								},
+								"json": {
+									"displayName": "JSON"
+								}
+							}
+						}
+					}
+				},
+				"placeholderDefinitions": {
+					"displayName": "Placeholder Definitions",
+					"placeholder": "Add Definition"
+				}
+			}
+		},
+		"optimizeResponse": {
+			"displayName": "Optimize Response",
+			"description": "Whether the optimize the tool response to reduce amount of data passed to the LLM that could lead to better result and reduce cost"
+		},
+		"responseType": {
+			"displayName": "Expected Response Type",
+			"options": {
+				"json": {
+					"displayName": "JSON"
+				},
+				"html": {
+					"displayName": "HTML"
+				},
+				"text": {
+					"displayName": "Text"
+				}
+			}
+		},
+		"dataField": {
+			"displayName": "Field Containing Data",
+			"description": "Specify the name of the field in the response containing the data",
+			"placeholder": "e.g. records"
+		},
+		"fieldsToInclude": {
+			"displayName": "Include Fields",
+			"description": "What fields response object should include",
+			"options": {
+				"all": {
+					"displayName": "All",
+					"description": "Include all fields"
+				},
+				"selected": {
+					"displayName": "Selected",
+					"description": "Include only fields specified below"
+				},
+				"except": {
+					"displayName": "Except",
+					"description": "Exclude fields specified below"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "Fields",
+			"description": "Comma-separated list of the field names. Supports dot notation. You can drag the selected fields from the input panel.",
+			"placeholder": "e.g. field1,field2"
+		},
+		"cssSelector": {
+			"displayName": "Selector (CSS)",
+			"description": "Select specific element(e.g. body) or multiple elements(e.g. div) of chosen type in the response HTML.",
+			"placeholder": "e.g. body"
+		},
+		"onlyContent": {
+			"displayName": "Return Only Content",
+			"description": "Whether to return only content of html elements, stripping html tags and attributes"
+		},
+		"elementsToOmit": {
+			"displayName": "Elements To Omit",
+			"description": "Comma-separated list of selectors that would be excluded when extracting content",
+			"placeholder": "e.g. img, .className, #ItemId"
+		},
+		"truncateResponse": {
+			"displayName": "Truncate Response"
+		},
+		"maxLength": {
+			"displayName": "Max Response Characters"
+		}
+	}
+}

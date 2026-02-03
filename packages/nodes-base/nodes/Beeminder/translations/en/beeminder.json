@@ -1,0 +1,340 @@
+{
+	"header": {
+		"displayName": "Beeminder",
+		"description": "Consume Beeminder API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiToken": {
+					"displayName": "API Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"charge": {
+					"displayName": "Charge"
+				},
+				"datapoint": {
+					"displayName": "Datapoint"
+				},
+				"goal": {
+					"displayName": "Goal"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new goal"
+				},
+				"createAll": {
+					"displayName": "Create All",
+					"description": "Create multiple datapoints at once"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a datapoint"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get user information"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many goals"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a goal"
+				},
+				"getArchived": {
+					"displayName": "Get Archived",
+					"description": "Get archived goals"
+				},
+				"refresh": {
+					"displayName": "Refresh",
+					"description": "Refresh goal data"
+				},
+				"shortCircuit": {
+					"displayName": "Short Circuit",
+					"description": "Short circuit pledge"
+				},
+				"stepDown": {
+					"displayName": "Step Down",
+					"description": "Step down pledge"
+				},
+				"cancelStepDown": {
+					"displayName": "Cancel Step Down"
+				},
+				"uncle": {
+					"displayName": "Uncle",
+					"description": "Derail a goal and charge the pledge amount"
+				}
+			}
+		},
+		"goalName": {
+			"displayName": "Goal Name or ID",
+			"description": "The name of the goal. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"amount": {
+			"displayName": "Amount",
+			"description": "Charge amount in USD"
+		},
+		"datapoints": {
+			"displayName": "Datapoints",
+			"description": "Array of datapoint objects to create. Each object should contain value and optionally timestamp, comment, etc.",
+			"placeholder": "[{\"value\": 1, \"comment\": \"First datapoint\"}, {\"value\": 2, \"comment\": \"Second datapoint\"}]"
+		},
+		"slug": {
+			"displayName": "Goal Slug",
+			"description": "Unique identifier for the goal"
+		},
+		"title": {
+			"displayName": "Goal Title",
+			"description": "Human-readable title for the goal"
+		},
+		"goal_type": {
+			"displayName": "Goal Type",
+			"description": "Type of goal. <a href=\"https://api.beeminder.com/#attributes-2\">More info here.</a>.",
+			"options": {
+				"hustler": {
+					"displayName": "Hustler"
+				},
+				"biker": {
+					"displayName": "Biker"
+				},
+				"fatloser": {
+					"displayName": "Fatloser"
+				},
+				"gainer": {
+					"displayName": "Gainer"
+				},
+				"inboxer": {
+					"displayName": "Inboxer"
+				},
+				"drinker": {
+					"displayName": "Drinker"
+				},
+				"custom": {
+					"displayName": "Custom"
+				}
+			}
+		},
+		"gunits": {
+			"displayName": "Goal Units",
+			"description": "Units for the goal (e.g., \"hours\", \"pages\", \"pounds\")"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "Datapoint value to send"
+		},
+		"datapointId": {
+			"displayName": "Datapoint ID"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"comment": {
+					"displayName": "Comment"
+				},
+				"timestamp": {
+					"displayName": "Timestamp",
+					"description": "Defaults to \"now\" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created"
+				},
+				"requestid": {
+					"displayName": "Request ID",
+					"description": "String to uniquely identify a datapoint"
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "Charge explanation"
+				},
+				"dryrun": {
+					"displayName": "Dry Run",
+					"description": "Whether to test the endpoint without actually creating a goal"
+				},
+				"goaldate": {
+					"displayName": "Goal Date",
+					"description": "Target date for the goal"
+				},
+				"goalval": {
+					"displayName": "Goal Value",
+					"description": "Target value for the goal"
+				},
+				"rate": {
+					"displayName": "Rate",
+					"description": "Rate of progress (units per day)"
+				},
+				"initval": {
+					"displayName": "Initial Value",
+					"description": "Initial value for today's date"
+				},
+				"secret": {
+					"displayName": "Secret",
+					"description": "Whether the goal is secret"
+				},
+				"datapublic": {
+					"displayName": "Data Public",
+					"description": "Whether the data is public"
+				},
+				"datasource": {
+					"displayName": "Data Source",
+					"description": "Data source for the goal",
+					"options": {
+						"api": {
+							"displayName": "API"
+						},
+						"ifttt": {
+							"displayName": "IFTTT"
+						},
+						"zapier": {
+							"displayName": "Zapier"
+						},
+						"manual": {
+							"displayName": "Manual"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Array of alphanumeric tags for the goal. Replaces existing tags.",
+					"placeholder": "[\"tag1\", \"tag2\"]"
+				},
+				"datapoints": {
+					"displayName": "Include Datapoints",
+					"description": "Whether to include datapoints in the response"
+				},
+				"emaciated": {
+					"displayName": "Emaciated",
+					"description": "Whether to include the goal attributes called road, roadall, and fullroad will be stripped from the goal objects"
+				},
+				"associations": {
+					"displayName": "Associations",
+					"description": "Whether to include associations in the response"
+				},
+				"diff_since": {
+					"displayName": "Diff Since",
+					"description": "Only goals and datapoints that have been created or updated since the timestamp will be returned"
+				},
+				"skinny": {
+					"displayName": "Skinny",
+					"description": "Whether to return minimal user data"
+				},
+				"datapoints_count": {
+					"displayName": "Datapoints Count",
+					"description": "Number of datapoints to include"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"title": {
+					"displayName": "Title",
+					"description": "Human-readable title for the goal"
+				},
+				"yaxis": {
+					"displayName": "Y-Axis",
+					"description": "Y-axis label for the goal graph"
+				},
+				"tmin": {
+					"displayName": "Tmin",
+					"description": "Minimum date for the goal in format yyyy-mm-dd",
+					"placeholder": "yyyy-mm-dd"
+				},
+				"tmax": {
+					"displayName": "Tmax",
+					"description": "Maximum date for the goal in format yyyy-mm-dd",
+					"placeholder": "yyyy-mm-dd"
+				},
+				"secret": {
+					"displayName": "Secret",
+					"description": "Whether the goal is secret"
+				},
+				"datapublic": {
+					"displayName": "Data Public",
+					"description": "Whether the data is public"
+				},
+				"roadall": {
+					"displayName": "Road All",
+					"description": "Array of arrays defining the bright red line. Each sub-array contains [date, value, rate] with exactly one field null.",
+					"placeholder": "[[\"2023-01-01\", 0, null], [null, 100, 1]]"
+				},
+				"datasource": {
+					"displayName": "Data Source",
+					"description": "Data source for the goal. Use empty string for manual entry.",
+					"options": {
+						"api": {
+							"displayName": "API"
+						},
+						"ifttt": {
+							"displayName": "IFTTT"
+						},
+						"zapier": {
+							"displayName": "Zapier"
+						},
+						"": {
+							"displayName": "Manual"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Array of alphanumeric tags for the goal. Replaces existing tags.",
+					"placeholder": "[\"tag1\", \"tag2\"]"
+				},
+				"value": {
+					"displayName": "Value",
+					"description": "Datapoint value to send"
+				},
+				"comment": {
+					"displayName": "Comment"
+				},
+				"timestamp": {
+					"displayName": "Timestamp",
+					"description": "Defaults to \"now\" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add field",
+			"options": {
+				"sort": {
+					"displayName": "Sort",
+					"description": "Attribute to sort on"
+				},
+				"page": {
+					"displayName": "Page",
+					"description": "Used to paginate results, 1-indexed, meaning page 1 is the first page"
+				},
+				"per": {
+					"displayName": "Per Page",
+					"description": "Number of results per page. Default 25. Ignored without page parameter. Must be non-negative"
+				}
+			}
+		}
+	}
+}

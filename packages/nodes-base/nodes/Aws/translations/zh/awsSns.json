@@ -1,0 +1,64 @@
+{
+	"header": {
+		"displayName": "AWS SNS",
+		"description": "发送数据到 AWS SNS"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (代入角色)"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建主题"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除主题"
+				},
+				"publish": {
+					"displayName": "发布",
+					"description": "发布消息到主题"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"displayName": {
+					"displayName": "显示名称",
+					"description": "用于SMS订阅主题的显示名称"
+				},
+				"fifoTopic": {
+					"displayName": "FIFO 主题",
+					"description": "您要创建的主题是否为 FIFO（先进先出）主题"
+				}
+			}
+		},
+		"topic": {
+			"displayName": "主题"
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "邮件送达端点时的主题"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "您要发送的消息"
+		}
+	}
+}

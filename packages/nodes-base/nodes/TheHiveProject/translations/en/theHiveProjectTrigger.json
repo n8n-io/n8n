@@ -1,0 +1,97 @@
+{
+	"header": {
+		"displayName": "TheHive 5 Trigger",
+		"description": "Starts the workflow when TheHive events occur"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "You must set up the webhook in TheHive — instructions <a href=\"https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.thehive5trigger/#configure-a-webhook-in-thehive\" target=\"_blank\">here</a>"
+		},
+		"events": {
+			"displayName": "Events",
+			"description": "Events types"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"description": "Filter any incoming events based on their fields",
+			"placeholder": "Add Filter",
+			"multipleValueButtonText": "Add Filter",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field": {
+							"displayName": "Field",
+							"placeholder": "e.g. context.severity"
+						},
+						"operator": {
+							"displayName": "Operator",
+							"options": {
+								"equal": {
+									"displayName": "Equal",
+									"description": "Field is equal to value"
+								},
+								"notEqual": {
+									"displayName": "Not Equal",
+									"description": "Field is not equal to value"
+								},
+								"includes": {
+									"displayName": "Includes",
+									"description": "Field includes value"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field": {
+							"displayName": "Field",
+							"placeholder": "e.g. context.severity"
+						},
+						"operator": {
+							"displayName": "Operator",
+							"options": {
+								"equal": {
+									"displayName": "Equal",
+									"description": "Field is equal to value"
+								},
+								"notEqual": {
+									"displayName": "Not Equal",
+									"description": "Field is not equal to value"
+								},
+								"includes": {
+									"displayName": "Includes",
+									"description": "Field includes value"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "Filters",
+					"placeholder": "Add Filter"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"outputOnlyData": {
+					"displayName": "Output Only Data",
+					"description": "Whether to output data with additional details and omit headers"
+				}
+			}
+		}
+	}
+}

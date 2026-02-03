@@ -1,0 +1,168 @@
+{
+	"header": {
+		"displayName": "Emelia",
+		"description": "使用Emelia API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"campaign": {
+					"displayName": "营销活动"
+				},
+				"contactList": {
+					"displayName": "联系人列表"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"addContact": {
+					"displayName": "添加联系人"
+				},
+				"create": {
+					"displayName": "创建"
+				},
+				"duplicate": {
+					"displayName": "复制"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"pause": {
+					"displayName": "暂停"
+				},
+				"start": {
+					"displayName": "开始"
+				},
+				"add": {
+					"displayName": "添加"
+				}
+			}
+		},
+		"campaignId": {
+			"displayName": "活动名称或ID",
+			"description": "要复制的营销活动ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"contactEmail": {
+			"displayName": "联系人邮箱",
+			"description": "要添加到联系人列表的联系人邮箱"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"description": "按自定义字段筛选",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldName": {
+									"displayName": "字段名称",
+									"description": "要添加自定义字段的字段名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldName": {
+									"displayName": "字段名称",
+									"description": "要添加自定义字段的字段名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "要添加联系人的名字"
+				},
+				"lastContacted": {
+					"displayName": "最后联系时间",
+					"description": "要添加联系人的最后联系日期"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "要添加的联系人姓氏"
+				},
+				"lastOpen": {
+					"displayName": "最后打开",
+					"description": "要添加联系人的最后打开日期"
+				},
+				"lastReplied": {
+					"displayName": "最后回复",
+					"description": "要添加联系人的最后回复日期"
+				},
+				"mailsSent": {
+					"displayName": "已发送邮件",
+					"description": "要添加的联系人的已发送邮件数量"
+				},
+				"phoneNumber": {
+					"displayName": "电话号码",
+					"description": "要添加联系人的电话号码"
+				}
+			}
+		},
+		"campaignName": {
+			"displayName": "新建营销活动名称",
+			"description": "要创建的新营销活动的名称"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"copyContacts": {
+					"displayName": "复制联系人",
+					"description": "是否从原始营销活动中复制所有联系人"
+				},
+				"copyProvider": {
+					"displayName": "复制邮件服务商",
+					"description": "是否设置与原始营销活动相同的邮件服务商"
+				},
+				"copyMails": {
+					"displayName": "复制邮件序列",
+					"description": "是否从原始营销活动中复制邮件序列的所有步骤"
+				},
+				"copySettings": {
+					"displayName": "复制全局设置",
+					"description": "是否从原始营销活动中复制所有常规设置"
+				}
+			}
+		},
+		"contactListId": {
+			"displayName": "联系人列表名称或ID",
+			"description": "要添加联系人到的联系人列表ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

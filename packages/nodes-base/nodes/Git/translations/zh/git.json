@@ -1,0 +1,206 @@
+{
+	"header": {
+		"displayName": "Git",
+		"description": "控制Git。"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "身份验证方式",
+			"options": {
+				"gitPassword": {
+					"displayName": "身份验证"
+				},
+				"none": {
+					"displayName": "无"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"add": {
+					"displayName": "添加",
+					"description": "添加文件或文件夹到提交"
+				},
+				"addConfig": {
+					"displayName": "添加配置",
+					"description": "添加配置属性"
+				},
+				"clone": {
+					"displayName": "克隆",
+					"description": "克隆仓库"
+				},
+				"commit": {
+					"displayName": "提交",
+					"description": "提交文件或文件夹到git"
+				},
+				"fetch": {
+					"displayName": "获取",
+					"description": "从远程仓库获取"
+				},
+				"listConfig": {
+					"displayName": "列出配置",
+					"description": "返回当前配置"
+				},
+				"log": {
+					"displayName": "日志",
+					"description": "返回Git提交历史"
+				},
+				"pull": {
+					"displayName": "拉取",
+					"description": "从远程仓库拉取"
+				},
+				"push": {
+					"displayName": "推送",
+					"description": "推送到远程仓库"
+				},
+				"pushTags": {
+					"displayName": "推送标签",
+					"description": "推送标签到远程仓库"
+				},
+				"reflog": {
+					"displayName": "引用日志",
+					"description": "返回引用日志"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "返回当前仓库状态"
+				},
+				"switchBranch": {
+					"displayName": "切换分支",
+					"description": "切换到其他分支"
+				},
+				"tag": {
+					"displayName": "标签",
+					"description": "创建新标签"
+				},
+				"userSetup": {
+					"displayName": "用户设置",
+					"description": "设置用户"
+				}
+			}
+		},
+		"repositoryPath": {
+			"displayName": "新仓库路径",
+			"description": "Git仓库应克隆到的本地路径",
+			"placeholder": "/tmp/repository"
+		},
+		"pathsToAdd": {
+			"displayName": "要添加的路径",
+			"description": "要添加的文件或文件夹路径（绝对路径或相对于仓库路径的路径），以逗号分隔",
+			"placeholder": "README.md"
+		},
+		"key": {
+			"displayName": "键",
+			"description": "要设置的键名",
+			"options": {
+				"user.email": {
+					"displayName": "用户邮箱"
+				},
+				"user.name": {
+					"displayName": "用户.名称"
+				},
+				"remote.origin.url": {
+					"displayName": "remote.origin.url"
+				}
+			},
+			"placeholder": "user.email"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "要设置的键值",
+			"placeholder": "name@example.com"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"mode": {
+					"displayName": "模式",
+					"description": "在本地配置中追加设置而非覆盖设置",
+					"options": {
+						"append": {
+							"displayName": "追加"
+						},
+						"set": {
+							"displayName": "设置"
+						}
+					}
+				},
+				"branch": {
+					"displayName": "分支",
+					"description": "推送前要切换到的分支。如果为空或未设置，将推送当前分支。",
+					"placeholder": "main"
+				},
+				"pathsToAdd": {
+					"displayName": "要添加的路径",
+					"description": "要提交的文件或文件夹路径（绝对路径或相对于仓库路径），以逗号分隔。如果未设置，将提交所有“已添加”的文件和文件夹。",
+					"placeholder": "/data/file1.json"
+				},
+				"file": {
+					"displayName": "文件",
+					"description": "要获取历史记录的文件或文件夹路径（绝对路径或相对于仓库路径）"
+				},
+				"targetRepository": {
+					"displayName": "目标仓库",
+					"description": "要推送到的仓库URL或路径",
+					"placeholder": "https://github.com/n8n-io/n8n"
+				},
+				"reference": {
+					"displayName": "参考",
+					"description": "要显示reflog的引用（例如HEAD、分支名）。留空则默认为HEAD。",
+					"placeholder": "HEAD"
+				},
+				"createBranch": {
+					"displayName": "如果不存在则创建分支",
+					"description": "如果分支不存在是否创建"
+				},
+				"startPoint": {
+					"displayName": "起点",
+					"description": "创建新分支所基于的提交/分支/标签。如果未设置，则从当前HEAD创建。",
+					"placeholder": "main"
+				},
+				"force": {
+					"displayName": "强制切换",
+					"description": "是否强制切换分支，丢弃所有本地更改"
+				},
+				"setUpstream": {
+					"displayName": "设置上游",
+					"description": "创建新分支时是否设置远程分支跟踪"
+				},
+				"remoteName": {
+					"displayName": "远程名称",
+					"description": "要追踪的远程仓库名称",
+					"placeholder": "origin"
+				}
+			}
+		},
+		"sourceRepository": {
+			"displayName": "源仓库",
+			"description": "要克隆的仓库URL或路径",
+			"placeholder": "https://github.com/n8n-io/n8n"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要使用的提交消息"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"branchName": {
+			"displayName": "分支名称",
+			"description": "要切换到的分支名称",
+			"placeholder": "feature/new-feature"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的标签名称"
+		}
+	}
+}

@@ -1,0 +1,185 @@
+{
+	"header": {
+		"displayName": "Microsoft SharePoint",
+		"description": "与 Microsoft SharePoint API 交互"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"item": {
+					"displayName": "项目"
+				},
+				"list": {
+					"displayName": "列表"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "在现有列表中更新项目"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传现有文件"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "在现有列表中创建项目"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新项目，如果已存在则更新当前项目（upsert）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从列表中删除一个项目"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索单个列表的详细信息"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取列表列表"
+				}
+			}
+		},
+		"site": {
+			"displayName": "站点",
+			"description": "选择要从中检索列表的站点"
+		},
+		"folder": {
+			"displayName": "父文件夹",
+			"description": "选择要上传文件到的文件夹",
+			"placeholder": "/ (库根目录)"
+		},
+		"file": {
+			"displayName": "文件",
+			"description": "选择要更新的文件",
+			"placeholder": "例如：my-file.pdf"
+		},
+		"fileName": {
+			"displayName": "文件名",
+			"description": "正在上传的文件名称",
+			"placeholder": "例如：我的新文件"
+		},
+		"changeFileContent": {
+			"displayName": "更改文件内容",
+			"description": "是否更新文件内容",
+			"placeholder": "例如：我的新文件"
+		},
+		"fileContents": {
+			"displayName": "文件内容",
+			"description": "在左侧输入面板的二进制选项卡中，找到包含要上传的二进制数据的输入字段名称",
+			"placeholder": "数据"
+		},
+		"list": {
+			"displayName": "列表",
+			"description": "选择要检索的列表"
+		},
+		"noticeUnsupportedFields": {
+			"displayName": "由于API限制，以下列类型无法更新：超链接、位置、元数据"
+		},
+		"columns": {
+			"displayName": "列"
+		},
+		"item": {
+			"displayName": "项",
+			"description": "选择要获取的项目"
+		},
+		"simplify": {
+			"displayName": "简化"
+		},
+		"filter": {
+			"displayName": "按公式筛选",
+			"description": "公式将对每条记录进行评估。<a href=\"https://learn.microsoft.com/en-us/graph/filter-query-parameter\">更多信息</a>。",
+			"placeholder": "例如：fields/Title eq 'item1'"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "您希望在输出中包含的字段"
+				}
+			}
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

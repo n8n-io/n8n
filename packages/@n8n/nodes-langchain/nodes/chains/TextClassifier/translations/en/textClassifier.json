@@ -1,0 +1,84 @@
+{
+	"header": {
+		"displayName": "Text Classifier",
+		"description": "Classify your text into distinct categories"
+	},
+	"nodeView": {
+		"inputText": {
+			"displayName": "Text to Classify",
+			"description": "Use an expression to reference data in previous nodes or enter static text"
+		},
+		"categories": {
+			"displayName": "Categories",
+			"placeholder": "Add Category",
+			"multipleValueButtonText": "Add Category",
+			"options": {
+				"categories": {
+					"displayName": "Categories",
+					"options": {
+						"category": {
+							"displayName": "Category",
+							"description": "Category to add"
+						},
+						"description": {
+							"displayName": "Description",
+							"description": "Describe your category if it's not obvious"
+						}
+					}
+				}
+			},
+			"values": {
+				"categories": {
+					"displayName": "Categories",
+					"placeholder": "Add Category"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"multiClass": {
+					"displayName": "Allow Multiple Classes To Be True"
+				},
+				"fallback": {
+					"displayName": "When No Clear Match",
+					"description": "What to do with items that don’t match the categories exactly",
+					"options": {
+						"discard": {
+							"displayName": "Discard Item",
+							"description": "Ignore the item and drop it from the output"
+						},
+						"other": {
+							"displayName": "Output on Extra, 'Other' Branch",
+							"description": "Create a separate output branch called 'Other'"
+						}
+					}
+				},
+				"systemPromptTemplate": {
+					"displayName": "System Prompt Template",
+					"description": "String to use directly as the system prompt template"
+				},
+				"enableAutoFixing": {
+					"displayName": "Enable Auto-Fixing",
+					"description": "Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)"
+				},
+				"batching": {
+					"displayName": "Batch Processing",
+					"description": "Batch processing options for rate limiting",
+					"placeholder": "Add Batch Processing Option",
+					"options": {
+						"batchSize": {
+							"displayName": "Batch Size",
+							"description": "How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering."
+						},
+						"delayBetweenBatches": {
+							"displayName": "Delay Between Batches",
+							"description": "Delay in milliseconds between batches. This is useful for rate limiting."
+						}
+					}
+				}
+			}
+		}
+	}
+}

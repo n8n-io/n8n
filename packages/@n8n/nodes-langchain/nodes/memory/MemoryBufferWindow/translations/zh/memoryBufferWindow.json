@@ -1,0 +1,34 @@
+{
+	"header": {
+		"displayName": "简单内存",
+		"description": "存储在n8n内存中，无需凭据"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"scalingNotice": {
+			"displayName": "此节点在n8n实例中本地存储内存。它与队列模式或多主节点设置不兼容，因为内存不会在工作进程间共享。如需在生产环境中扩展使用，请考虑使用外部内存存储，如Redis、Postgres或其他持久化内存节点。"
+		},
+		"sessionKey": {
+			"displayName": "键",
+			"description": "用于在内存中存储会话ID的键"
+		},
+		"sessionIdType": {
+			"displayName": "会话ID",
+			"options": {
+				"fromInput": {
+					"displayName": "已连接的聊天触发器节点",
+					"description": "查找来自直接连接的聊天触发器的名为'sessionId'的输入字段"
+				},
+				"customKey": {
+					"displayName": "定义如下",
+					"description": "使用表达式引用先前节点中的数据或输入静态文本"
+				}
+			}
+		},
+		"contextWindowLength": {
+			"displayName": "上下文窗口长度"
+		}
+	}
+}

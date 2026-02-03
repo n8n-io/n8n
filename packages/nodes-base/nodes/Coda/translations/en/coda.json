@@ -1,0 +1,186 @@
+{
+	"header": {
+		"displayName": "Coda",
+		"description": "Consume Coda API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"control": {
+					"displayName": "Control",
+					"description": "Controls provide a user-friendly way to input a value that can affect other parts of the doc"
+				},
+				"formula": {
+					"displayName": "Formula",
+					"description": "Formulas can be great for performing one-off computations"
+				},
+				"table": {
+					"displayName": "Table",
+					"description": "Access data of tables in documents"
+				},
+				"view": {
+					"displayName": "View",
+					"description": "Access data of views in documents"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"createRow": {
+					"displayName": "Create Row",
+					"description": "Create/Insert a row"
+				},
+				"deleteRow": {
+					"displayName": "Delete Row",
+					"description": "Delete one or multiple rows"
+				},
+				"getAllColumns": {
+					"displayName": "Get All Columns",
+					"description": "Get all columns in a table"
+				},
+				"getAllRows": {
+					"displayName": "Get All Rows",
+					"description": "Get all rows in a table"
+				},
+				"getColumn": {
+					"displayName": "Get Column",
+					"description": "Get a column"
+				},
+				"getRow": {
+					"displayName": "Get Row",
+					"description": "Get a row"
+				},
+				"pushButton": {
+					"displayName": "Push Button",
+					"description": "Pushes a button"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a view"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many views"
+				},
+				"deleteViewRow": {
+					"displayName": "Delete Row",
+					"description": "Delete view row"
+				},
+				"getAllViewColumns": {
+					"displayName": "Get Columns",
+					"description": "Get all views columns"
+				},
+				"getAllViewRows": {
+					"displayName": "Get Rows",
+					"description": "Get all views rows"
+				},
+				"pushViewButton": {
+					"displayName": "Push Button",
+					"description": "Push view button"
+				},
+				"updateViewRow": {
+					"displayName": "Update Row"
+				}
+			}
+		},
+		"docId": {
+			"displayName": "Doc Name or ID",
+			"description": "ID of the doc. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"tableId": {
+			"displayName": "Table Name or ID",
+			"description": "The table to get the row from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"disableParsing": {
+					"displayName": "Disable Parsing",
+					"description": "Whether the API will not attempt to parse the data in any way"
+				},
+				"keyColumns": {
+					"displayName": "Key Columns",
+					"description": "Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,)."
+				},
+				"rawData": {
+					"displayName": "RAW Data",
+					"description": "Whether to return the data exactly in the way it got received from the API"
+				},
+				"useColumnNames": {
+					"displayName": "Use Column Names",
+					"description": "Whether to use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors."
+				},
+				"valueFormat": {
+					"displayName": "ValueFormat",
+					"description": "The format that cell values are returned as",
+					"options": {
+						"simple": {
+							"displayName": "Simple"
+						},
+						"simpleWithArrays": {
+							"displayName": "Simple With Arrays"
+						},
+						"rich": {
+							"displayName": "Rich"
+						}
+					}
+				},
+				"query": {
+					"displayName": "Query",
+					"description": "Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you'd like to use a column name instead of an ID, you must quote it (e.g., \"My Column\":123). Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., \"groceries\")."
+				},
+				"sortBy": {
+					"displayName": "Sort By",
+					"description": "Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.",
+					"options": {
+						"createdAt": {
+							"displayName": "Created At"
+						},
+						"natural": {
+							"displayName": "Natural"
+						}
+					}
+				},
+				"visibleOnly": {
+					"displayName": "Visible Only",
+					"description": "Whether to return only visible rows and columns for the table"
+				}
+			}
+		},
+		"rowId": {
+			"displayName": "Row Name or ID",
+			"description": "The view to get the row from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"columnId": {
+			"displayName": "Column Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"formulaId": {
+			"displayName": "Formula ID",
+			"description": "The formula to get the row from"
+		},
+		"controlId": {
+			"displayName": "Control ID",
+			"description": "The control to get the row from"
+		},
+		"viewId": {
+			"displayName": "View Name or ID",
+			"description": "The view to get the row from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"keyName": {
+			"displayName": "Key Name",
+			"description": "The view to get the row from"
+		}
+	}
+}

@@ -1,0 +1,191 @@
+{
+	"header": {
+		"displayName": "Netscaler ADC",
+		"description": "使用Netscaler ADC API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"certificate": {
+					"displayName": "证书"
+				},
+				"file": {
+					"displayName": "文件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"install": {
+					"displayName": "安装"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"download": {
+					"displayName": "下载"
+				},
+				"upload": {
+					"displayName": "上传"
+				}
+			}
+		},
+		"certificateFileName": {
+			"displayName": "证书文件名",
+			"description": "用于构成证书-密钥对的X509证书文件的名称及可选路径。默认路径为/nsconfig/ssl/。"
+		},
+		"certificateFormat": {
+			"displayName": "证书格式",
+			"description": "证书和私钥文件的输入格式。设备支持的三种格式为：PEM - 隐私增强邮件 DER - 可分辨编码规则 PFX - 个人信息交换。",
+			"options": {
+				"PEM": {
+					"displayName": "PEM"
+				},
+				"DER": {
+					"displayName": "数据执行区域"
+				}
+			}
+		},
+		"certificateType": {
+			"displayName": "证书类型",
+			"options": {
+				"ROOT_CERT": {
+					"displayName": "根证书颁发机构",
+					"description": "必须指定密钥文件名。生成的根CA证书可用于签署终端用户客户端或服务器证书，或用于创建中间CA证书。"
+				},
+				"INTM_CERT": {
+					"displayName": "中间CA",
+					"description": "中间CA证书"
+				},
+				"SRVR_CERT": {
+					"displayName": "服务器",
+					"description": "SSL服务器上用于端到端加密的SSL服务器证书"
+				},
+				"CLNT_CERT": {
+					"displayName": "客户端",
+					"description": "用于客户端身份验证的终端用户客户端证书"
+				}
+			}
+		},
+		"certificateRequestFileName": {
+			"displayName": "证书请求文件名",
+			"description": "证书签名请求（CSR）的名称及可选路径。默认路径为 /nsconfig/ssl/。"
+		},
+		"caCertificateFileName": {
+			"displayName": "CA证书文件名",
+			"description": "签发并签署中间CA证书或最终用户客户端和服务器证书的CA证书文件名"
+		},
+		"caCertificateFileFormat": {
+			"displayName": "CA证书文件格式",
+			"description": "CA证书格式",
+			"options": {
+				"PEM": {
+					"displayName": "PEM"
+				},
+				"DER": {
+					"displayName": "数据执行区域"
+				}
+			}
+		},
+		"caPrivateKeyFileName": {
+			"displayName": "CA私钥文件名",
+			"description": "与CA证书关联的私钥，用于签署中间CA证书或最终用户客户端和服务器证书。如果CA密钥文件受密码保护，系统将提示用户输入用于加密密钥的密码短语。"
+		},
+		"caPrivateKeyFileFormat": {
+			"displayName": "CA私钥文件格式",
+			"description": "CA证书格式",
+			"options": {
+				"PEM": {
+					"displayName": "PEM"
+				},
+				"DER": {
+					"displayName": "数据执行区域"
+				}
+			}
+		},
+		"privateKeyFileName": {
+			"displayName": "私钥文件名",
+			"description": "用于组成证书-密钥对的X509证书文件的名称及可选路径。默认路径为/nsconfig/ssl/。"
+		},
+		"caSerialFileNumber": {
+			"displayName": "CA序列号文件编号",
+			"description": "为CA证书维护的序列号文件。此文件包含CA将要签发或签名的下一个证书的序列号。"
+		},
+		"privateKeyFormat": {
+			"displayName": "私钥格式",
+			"description": "设备上的密钥存储格式",
+			"options": {
+				"PEM": {
+					"displayName": "PEM"
+				},
+				"DER": {
+					"displayName": "数据执行区域"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"pempassphrase": {
+					"displayName": "PEM密码短语（用于加密的CA密钥）",
+					"description": "私钥的名称及可选路径。您可以使用现有的RSA或DSA密钥，也可以在Netscaler ADC上创建新的私钥。此文件仅在创建自签名根CA证书时需要。密钥文件默认存储在/nsconfig/ssl目录中。"
+				},
+				"subjectaltname": {
+					"displayName": "主题备用名称",
+					"description": "主题备用名称 (SAN) 是 X.509 的扩展，允许使用 subjectAltName 字段将各种值与安全证书关联"
+				},
+				"days": {
+					"displayName": "有效期（天数）",
+					"description": "证书有效的天数，从创建时的系统时间和日期开始计算"
+				}
+			}
+		},
+		"certificateKeyPairName": {
+			"displayName": "证书-密钥对名称",
+			"description": "证书与私钥对的名称"
+		},
+		"password": {
+			"displayName": "密码",
+			"description": "证书和私钥文件的输入格式。设备支持的三种格式为：PEM - 隐私增强邮件、DER - 可辨别编码规则、PFX - 个人信息交换。"
+		},
+		"notifyExpiration": {
+			"displayName": "到期时通知",
+			"description": "证书即将到期时是否发出警报"
+		},
+		"notificationPeriod": {
+			"displayName": "通知周期（天）",
+			"description": "在证书过期前多少天生成即将过期的警报"
+		},
+		"certificateBundle": {
+			"displayName": "证书捆绑包",
+			"description": "是否在文件中将服务器证书链接到其颁发者证书后，将证书链解析为单个文件"
+		},
+		"fileLocation": {
+			"displayName": "文件位置"
+		},
+		"binaryProperty": {
+			"displayName": "将输出放入字段",
+			"description": "用于存放二进制文件数据的输出字段名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fileName": {
+					"displayName": "文件名",
+					"description": "文件名。不应包含文件路径。"
+				}
+			}
+		},
+		"fileName": {
+			"displayName": "文件名",
+			"description": "文件名。不应包含文件路径。"
+		}
+	}
+}

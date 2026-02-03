@@ -1,0 +1,114 @@
+{
+	"header": {
+		"displayName": "LinkedIn",
+		"description": "使用LinkedIn API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"standard": {
+					"displayName": "标准"
+				},
+				"communityManagement": {
+					"displayName": "社区管理"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"post": {
+					"displayName": "发布"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新帖子"
+				}
+			}
+		},
+		"postAs": {
+			"displayName": "发布身份",
+			"description": "选择以用户身份还是组织身份发布",
+			"options": {
+				"person": {
+					"displayName": "人员"
+				},
+				"organization": {
+					"displayName": "组织"
+				}
+			}
+		},
+		"person": {
+			"displayName": "人员姓名或ID",
+			"description": "作为哪个人员发布帖子。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"organization": {
+			"displayName": "组织统一资源名称",
+			"description": "作为发布者身份的组织统一资源名称",
+			"placeholder": "1234567"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "帖子主要内容"
+		},
+		"shareMediaCategory": {
+			"displayName": "媒体类别",
+			"options": {
+				"NONE": {
+					"displayName": "无",
+					"description": "该帖子不包含任何媒体，仅由文本构成"
+				},
+				"ARTICLE": {
+					"displayName": "文章",
+					"description": "该帖子包含一个文章URL"
+				},
+				"IMAGE": {
+					"displayName": "图片",
+					"description": "该帖子包含一张图片"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述",
+					"description": "为您的图片或文章提供简短描述"
+				},
+				"originalUrl": {
+					"displayName": "原始URL",
+					"description": "在此处提供您想要分享的文章URL"
+				},
+				"thumbnailBinaryPropertyName": {
+					"displayName": "输入二进制字段"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "自定义您的图片或文章标题"
+				},
+				"visibility": {
+					"displayName": "可见性",
+					"description": "决定帖子是公开可见还是仅限联系人可见",
+					"options": {
+						"CONNECTIONS": {
+							"displayName": "连接"
+						},
+						"PUBLIC": {
+							"displayName": "公开"
+						}
+					}
+				}
+			}
+		}
+	}
+}

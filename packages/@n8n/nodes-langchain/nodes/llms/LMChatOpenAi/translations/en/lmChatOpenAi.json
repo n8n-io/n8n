@@ -1,0 +1,348 @@
+{
+	"header": {
+		"displayName": "OpenAI Chat Model",
+		"description": "For advanced usage with an AI chain"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "When using non-OpenAI models via \"Base URL\" override, not all models might be chat-compatible or support other features, like tools calling or JSON response format"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model. Choose from the list, or specify an ID."
+		},
+		"responsesApiEnabled": {
+			"displayName": "Use Responses API",
+			"description": "Whether to use the Responses API to generate the response. <a href=\"https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/#use-responses-api\">Learn more</a>."
+		},
+		"builtInTools": {
+			"displayName": "Built-in Tools",
+			"placeholder": "Add Built-in Tool",
+			"options": {
+				"webSearch": {
+					"displayName": "Web Search",
+					"options": {
+						"searchContextSize": {
+							"displayName": "Search Context Size",
+							"description": "High level guidance for the amount of context window space to use for the search",
+							"options": {
+								"low": {
+									"displayName": "Low"
+								},
+								"medium": {
+									"displayName": "Medium"
+								},
+								"high": {
+									"displayName": "High"
+								}
+							}
+						},
+						"allowedDomains": {
+							"displayName": "Web Search Allowed Domains",
+							"description": "Comma-separated list of domains to search. Only domains in this list will be searched.",
+							"placeholder": "e.g. google.com, wikipedia.org"
+						},
+						"country": {
+							"displayName": "Country",
+							"placeholder": "e.g. US, GB"
+						},
+						"city": {
+							"displayName": "City",
+							"placeholder": "e.g. New York, London"
+						},
+						"region": {
+							"displayName": "Region",
+							"placeholder": "e.g. New York, London"
+						}
+					}
+				},
+				"fileSearch": {
+					"displayName": "File Search",
+					"options": {
+						"vectorStoreIds": {
+							"displayName": "Vector Store IDs",
+							"description": "The vector store IDs to use for the file search. Vector stores are managed via OpenAI Dashboard. <a href=\"https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/#built-in-tools\">Learn more</a>."
+						},
+						"filters": {
+							"displayName": "Filters"
+						},
+						"maxResults": {
+							"displayName": "Max Results"
+						}
+					}
+				},
+				"codeInterpreter": {
+					"displayName": "Code Interpreter",
+					"description": "Whether to allow the model to execute code in a sandboxed environment"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"baseURL": {
+					"displayName": "Base URL",
+					"description": "Override the default base URL for the API"
+				},
+				"frequencyPenalty": {
+					"displayName": "Frequency Penalty",
+					"description": "Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim"
+				},
+				"maxTokens": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768)."
+				},
+				"responseFormat": {
+					"displayName": "Response Format",
+					"options": {
+						"text": {
+							"displayName": "Text",
+							"description": "Regular text response"
+						},
+						"json_object": {
+							"displayName": "JSON",
+							"description": "Enables JSON mode, which should guarantee the message the model generates is valid JSON"
+						}
+					}
+				},
+				"textFormat": {
+					"displayName": "Response Format",
+					"options": {
+						"textOptions": {
+							"displayName": "Text",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"text": {
+											"displayName": "Text"
+										},
+										"json_schema": {
+											"displayName": "JSON Schema (recommended)"
+										},
+										"json_object": {
+											"displayName": "JSON Object"
+										}
+									}
+								},
+								"verbosity": {
+									"displayName": "Verbosity",
+									"options": {
+										"low": {
+											"displayName": "Low"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"high": {
+											"displayName": "High"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64."
+								},
+								"requiredNotice": {
+									"displayName": "All properties in the schema must be set to \"required\", when using \"strict\" mode."
+								},
+								"schema": {
+									"displayName": "Schema",
+									"description": "The schema of the response format"
+								},
+								"description": {
+									"displayName": "Description",
+									"description": "The description of the response format"
+								},
+								"strict": {
+									"displayName": "Strict",
+									"description": "Whether to require that the AI will always generate responses that match the provided JSON Schema"
+								}
+							}
+						}
+					},
+					"values": {
+						"textOptions": {
+							"displayName": "Text",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"text": {
+											"displayName": "Text"
+										},
+										"json_schema": {
+											"displayName": "JSON Schema (recommended)"
+										},
+										"json_object": {
+											"displayName": "JSON Object"
+										}
+									}
+								},
+								"verbosity": {
+									"displayName": "Verbosity",
+									"options": {
+										"low": {
+											"displayName": "Low"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"high": {
+											"displayName": "High"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64."
+								},
+								"requiredNotice": {
+									"displayName": "All properties in the schema must be set to \"required\", when using \"strict\" mode."
+								},
+								"schema": {
+									"displayName": "Schema",
+									"description": "The schema of the response format"
+								},
+								"description": {
+									"displayName": "Description",
+									"description": "The description of the response format"
+								},
+								"strict": {
+									"displayName": "Strict",
+									"description": "Whether to require that the AI will always generate responses that match the provided JSON Schema"
+								}
+							}
+						},
+						"textFormat": {
+							"displayName": "Response Format"
+						}
+					}
+				},
+				"presencePenalty": {
+					"displayName": "Presence Penalty",
+					"description": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics"
+				},
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive."
+				},
+				"reasoningEffort": {
+					"displayName": "Reasoning Effort",
+					"description": "Controls the amount of reasoning tokens to use. A value of \"low\" will favor speed and economical token usage, \"high\" will favor more complete reasoning at the cost of more tokens generated and slower responses.",
+					"options": {
+						"low": {
+							"displayName": "Low",
+							"description": "Favors speed and economical token usage"
+						},
+						"medium": {
+							"displayName": "Medium",
+							"description": "Balance between speed and reasoning accuracy"
+						},
+						"high": {
+							"displayName": "High",
+							"description": "Favors more complete reasoning at the cost of more tokens generated and slower responses"
+						}
+					}
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Maximum amount of time a request is allowed to take in milliseconds"
+				},
+				"maxRetries": {
+					"displayName": "Max Retries",
+					"description": "Maximum number of retries to attempt"
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both."
+				},
+				"conversationId": {
+					"displayName": "Conversation ID",
+					"description": "The conversation that this response belongs to. Input items and output items from this response are automatically added to this conversation after this response completes."
+				},
+				"promptCacheKey": {
+					"displayName": "Prompt Cache Key",
+					"description": "Used by OpenAI to cache responses for similar requests to optimize your cache hit rates"
+				},
+				"safetyIdentifier": {
+					"displayName": "Safety Identifier",
+					"description": "A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies. The IDs should be a string that uniquely identifies each user."
+				},
+				"serviceTier": {
+					"displayName": "Service Tier",
+					"description": "The service tier to use for the request",
+					"options": {
+						"auto": {
+							"displayName": "Auto"
+						},
+						"flex": {
+							"displayName": "Flex"
+						},
+						"default": {
+							"displayName": "Default"
+						},
+						"priority": {
+							"displayName": "Priority"
+						}
+					}
+				},
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional information about the object in a structured format, and querying for objects via API or the dashboard. Keys are strings with a maximum length of 64 characters. Values are strings with a maximum length of 512 characters."
+				},
+				"topLogprobs": {
+					"displayName": "Top Logprobs",
+					"description": "An integer between 0 and 20 specifying the number of most likely tokens to return at each token position, each with an associated log probability"
+				},
+				"promptConfig": {
+					"displayName": "Prompt",
+					"description": "Configure the reusable prompt template configured via OpenAI Dashboard. <a href=\"https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts\">Learn more</a>.",
+					"options": {
+						"promptOptions": {
+							"displayName": "Prompt",
+							"options": {
+								"promptId": {
+									"displayName": "Prompt ID",
+									"description": "The unique identifier of the prompt template to use"
+								},
+								"version": {
+									"displayName": "Version",
+									"description": "Optional version of the prompt template"
+								},
+								"variables": {
+									"displayName": "Variables",
+									"description": "Variables to be substituted into the prompt template"
+								}
+							}
+						}
+					},
+					"values": {
+						"promptOptions": {
+							"displayName": "Prompt",
+							"options": {
+								"promptId": {
+									"displayName": "Prompt ID",
+									"description": "The unique identifier of the prompt template to use"
+								},
+								"version": {
+									"displayName": "Version",
+									"description": "Optional version of the prompt template"
+								},
+								"variables": {
+									"displayName": "Variables",
+									"description": "Variables to be substituted into the prompt template"
+								}
+							}
+						},
+						"promptConfig": {
+							"displayName": "Prompt"
+						}
+					}
+				}
+			}
+		}
+	}
+}

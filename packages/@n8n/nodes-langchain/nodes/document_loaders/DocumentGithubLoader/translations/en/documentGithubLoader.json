@@ -1,0 +1,43 @@
+{
+	"header": {
+		"displayName": "GitHub Document Loader",
+		"description": "Use GitHub data as input to this chain"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a vector store. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>Insert one</a>"
+		},
+		"repository": {
+			"displayName": "Repository Link"
+		},
+		"branch": {
+			"displayName": "Branch"
+		},
+		"textSplittingMode": {
+			"displayName": "Text Splitting",
+			"options": {
+				"simple": {
+					"displayName": "Simple",
+					"description": "Splits every 1000 characters with a 200 character overlap"
+				},
+				"custom": {
+					"displayName": "Custom",
+					"description": "Connect a custom text-splitting sub-node"
+				}
+			}
+		},
+		"additionalOptions": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"recursive": {
+					"displayName": "Recursive"
+				},
+				"ignorePaths": {
+					"displayName": "Ignore Paths",
+					"description": "Comma-separated list of paths to ignore, e.g. \"docs, src/tests"
+				}
+			}
+		}
+	}
+}

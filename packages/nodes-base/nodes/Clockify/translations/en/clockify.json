@@ -1,0 +1,542 @@
+{
+	"header": {
+		"displayName": "Clockify",
+		"description": "Consume Clockify REST API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"client": {
+					"displayName": "Client"
+				},
+				"project": {
+					"displayName": "Project"
+				},
+				"tag": {
+					"displayName": "Tag"
+				},
+				"task": {
+					"displayName": "Task"
+				},
+				"timeEntry": {
+					"displayName": "Time Entry"
+				},
+				"user": {
+					"displayName": "User"
+				},
+				"workspace": {
+					"displayName": "Workspace"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a time entry"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a time entry"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get time entrie"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many workspaces"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a time entry"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"workspaceId": {
+			"displayName": "Workspace Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"name": {
+			"displayName": "Task Name",
+			"description": "Name of task to create"
+		},
+		"clientId": {
+			"displayName": "Client ID"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"archived": {
+					"displayName": "Archived"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "If provided, you'll get a filtered list of users that contain the provided string in their name"
+				},
+				"sort-order": {
+					"displayName": "Sort Order",
+					"options": {
+						"ASCENDING": {
+							"displayName": "Ascending"
+						},
+						"DESCENDING": {
+							"displayName": "Descending"
+						}
+					}
+				},
+				"billable": {
+					"displayName": "Billable"
+				},
+				"color": {
+					"displayName": "Color"
+				},
+				"clientId": {
+					"displayName": "Client Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"estimateUi": {
+					"displayName": "Estimate",
+					"placeholder": "Add Estimate",
+					"options": {
+						"estimateValues": {
+							"displayName": "Estimate",
+							"options": {
+								"estimate": {
+									"displayName": "Estimate"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"AUTO": {
+											"displayName": "Auto"
+										},
+										"MANUAL": {
+											"displayName": "Manual"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"estimateValues": {
+							"displayName": "Estimate",
+							"options": {
+								"estimate": {
+									"displayName": "Estimate"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"AUTO": {
+											"displayName": "Auto"
+										},
+										"MANUAL": {
+											"displayName": "Manual"
+										}
+									}
+								}
+							}
+						},
+						"estimateUi": {
+							"displayName": "Estimate",
+							"placeholder": "Add Estimate"
+						}
+					}
+				},
+				"isPublic": {
+					"displayName": "Is Public"
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "Note about the project"
+				},
+				"clients": {
+					"displayName": "Client Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"contains-client": {
+					"displayName": "Contains Client",
+					"description": "Whether to return only projects having a client"
+				},
+				"client-status": {
+					"displayName": "Client Status",
+					"description": "If provided, projects will be filtered by whether they have a client",
+					"options": {
+						"ACTIVE": {
+							"displayName": "Active"
+						},
+						"ARCHIVED": {
+							"displayName": "Archived"
+						}
+					}
+				},
+				"contains-user": {
+					"displayName": "Contains User",
+					"description": "Whether to return only projects having users"
+				},
+				"is-template": {
+					"displayName": "Is Template",
+					"description": "Whether to return only projects as templates"
+				},
+				"sort-column": {
+					"displayName": "Sort Column",
+					"options": {
+						"NAME": {
+							"displayName": "Name"
+						},
+						"CLIENT_NAME": {
+							"displayName": "Client Name"
+						},
+						"DURATION": {
+							"displayName": "Duration"
+						},
+						"EMAIL": {
+							"displayName": "Email"
+						},
+						"HOURLYRATE": {
+							"displayName": "Hourly Rate"
+						}
+					}
+				},
+				"users": {
+					"displayName": "User Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"user-status": {
+					"displayName": "User Status",
+					"description": "If provided, projects will be filtered by whether they have a client",
+					"options": {
+						"ACTIVE": {
+							"displayName": "Active"
+						},
+						"ARCHIVED": {
+							"displayName": "Archived"
+						}
+					}
+				},
+				"assigneeIds": {
+					"displayName": "Assignee Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"estimate": {
+					"displayName": "Estimate",
+					"description": "Estimate time the task will take, e.x: 2:30 (2 hours and 30 minutes)",
+					"placeholder": "2:30"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "If provided, you'll get a filtered list of users that contain the provided string in their email address",
+					"placeholder": "name@email.com"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "If provided, you'll get a filtered list of users with the corresponding status",
+					"options": {
+						"ACTIVE": {
+							"displayName": "Active"
+						},
+						"INACTIVE": {
+							"displayName": "Inactive"
+						},
+						"PENDING": {
+							"displayName": "Pending"
+						},
+						"DECLINED": {
+							"displayName": "Declined"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Filter by custom fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"customFieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"customFieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"end": {
+					"displayName": "End"
+				},
+				"projectId": {
+					"displayName": "Project Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"tagIds": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"taskId": {
+					"displayName": "Task ID"
+				},
+				"consider-duration-format": {
+					"displayName": "Consider Duration Format",
+					"description": "Whether to return the time entry's duration rounded to minutes or seconds based on duration format (hh:mm or hh:mm:ss) from workspace settings"
+				},
+				"hydrated": {
+					"displayName": "Hydrated",
+					"description": "Whether to return the time entry's project, task and tags in full and not just their IDs"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"description": "Address of client being created/updated"
+				},
+				"archived": {
+					"displayName": "Archived"
+				},
+				"billable": {
+					"displayName": "Billable"
+				},
+				"color": {
+					"displayName": "Color"
+				},
+				"clientId": {
+					"displayName": "Client Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"estimateUi": {
+					"displayName": "Estimate",
+					"placeholder": "Add Estimate",
+					"options": {
+						"estimateValues": {
+							"displayName": "Estimate",
+							"options": {
+								"estimate": {
+									"displayName": "Estimate"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"AUTO": {
+											"displayName": "Auto"
+										},
+										"MANUAL": {
+											"displayName": "Manual"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"estimateValues": {
+							"displayName": "Estimate",
+							"options": {
+								"estimate": {
+									"displayName": "Estimate"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"AUTO": {
+											"displayName": "Auto"
+										},
+										"MANUAL": {
+											"displayName": "Manual"
+										}
+									}
+								}
+							}
+						},
+						"estimateUi": {
+							"displayName": "Estimate",
+							"placeholder": "Add Estimate"
+						}
+					}
+				},
+				"isPublic": {
+					"displayName": "Is Public"
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "Note about the project"
+				},
+				"assigneeIds": {
+					"displayName": "Assignee Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"estimate": {
+					"displayName": "Estimate",
+					"description": "Estimate time the task will take, e.x: 2:30 (2 hours and 30 minutes)",
+					"placeholder": "2:30"
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"ACTIVE": {
+							"displayName": "Active"
+						},
+						"DONE": {
+							"displayName": "Done"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Filter by custom fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"customFieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"customFieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"end": {
+					"displayName": "End"
+				},
+				"projectId": {
+					"displayName": "Project Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"start": {
+					"displayName": "Start"
+				},
+				"tagIds": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"taskId": {
+					"displayName": "Task ID"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "Project Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"tagId": {
+			"displayName": "Tag ID"
+		},
+		"taskId": {
+			"displayName": "Task ID",
+			"description": "ID of task to update"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"is-active": {
+					"displayName": "Is Active"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Text to match in the task name"
+				},
+				"sort-column": {
+					"displayName": "Sort Column",
+					"options": {
+						"NAME": {
+							"displayName": "Name"
+						}
+					}
+				},
+				"sort-order": {
+					"displayName": "Sort Order",
+					"options": {
+						"ASCENDING": {
+							"displayName": "Ascending"
+						},
+						"DESCENDING": {
+							"displayName": "Descending"
+						}
+					}
+				}
+			}
+		},
+		"start": {
+			"displayName": "Start"
+		},
+		"timeEntryId": {
+			"displayName": "Time Entry ID"
+		}
+	}
+}

@@ -1,0 +1,135 @@
+{
+	"header": {
+		"displayName": "Philips Hue",
+		"description": "使用Philips Hue API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"light": {
+					"displayName": "浅色"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一个灯"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索灯光"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个灯光"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新灯光"
+				}
+			}
+		},
+		"lightId": {
+			"displayName": "灯名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"on": {
+			"displayName": "开",
+			"description": "灯的开关状态"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"alert": {
+					"displayName": "警报效果",
+					"description": "警报效果是对灯泡状态的临时更改",
+					"options": {
+						"none": {
+							"displayName": "无",
+							"description": "该灯光未执行警报效果"
+						},
+						"select": {
+							"displayName": "选择",
+							"description": "灯光正在执行一次呼吸循环"
+						},
+						"lselect": {
+							"displayName": "LSelect",
+							"description": "灯光正在执行15秒的呼吸循环，或直到收到\"alert\": \"none\"命令"
+						}
+					}
+				},
+				"bri": {
+					"displayName": "亮度",
+					"description": "设置灯光的目标亮度值。亮度范围为1（灯光的最小亮度）到254（最大亮度）。"
+				},
+				"bri_inc": {
+					"displayName": "亮度增量",
+					"description": "增加或减少亮度值。如果提供了亮度属性，则忽略此值。"
+				},
+				"ct": {
+					"displayName": "色温",
+					"description": "灯光的Mired色温值。2012年连接的灯光支持153（6500K）到500（2000K）的范围。"
+				},
+				"ct_inc": {
+					"displayName": "色温增量",
+					"description": "增加或减少ct值。如果提供了ct属性，则忽略ct_inc。"
+				},
+				"xy": {
+					"displayName": "坐标",
+					"description": "颜色在CIE色彩空间中的x和y坐标。第一个条目是x坐标，第二个条目是y坐标。x和y都在0到1之间。",
+					"placeholder": "0.64394,0.33069"
+				},
+				"xy_inc": {
+					"displayName": "坐标增量",
+					"description": "增加或减少xy的值。如果提供了坐标属性，则忽略此值。任何进行中的颜色过渡将被停止。最大值[0.5, 0.5]",
+					"placeholder": "0.5,0.5"
+				},
+				"effect": {
+					"displayName": "动态效果",
+					"description": "灯光的动态效果",
+					"options": {
+						"none": {
+							"displayName": "无"
+						},
+						"colorloop": {
+							"displayName": "颜色循环"
+						}
+					}
+				},
+				"hue": {
+					"displayName": "色调",
+					"description": "设置灯光的色调值。色调值是一个在0到65535之间循环的值。0和65535均为红色，25500为绿色，46920为蓝色。"
+				},
+				"hue_inc": {
+					"displayName": "色相增量",
+					"description": "增加或减少色相值。如果提供了色相属性，则忽略色相增量。"
+				},
+				"sat": {
+					"displayName": "饱和度",
+					"description": "光的饱和度。254为最高饱和度（色彩最浓），0为最低饱和度（白色）。"
+				},
+				"sat_inc": {
+					"displayName": "饱和度增量",
+					"description": "增加或减少饱和度值。如果提供了Saturation属性，则忽略此值。"
+				},
+				"transitiontime": {
+					"displayName": "过渡时间",
+					"description": "灯光从当前状态过渡到新状态所需的持续时间（秒）"
+				}
+			}
+		}
+	}
+}

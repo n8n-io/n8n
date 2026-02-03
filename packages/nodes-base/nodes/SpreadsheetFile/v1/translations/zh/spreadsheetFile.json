@@ -1,0 +1,181 @@
+{
+	"header": {
+		"displayName": "电子表格文件",
+		"description": "从CSV、XLS、ODS等电子表格文件中读取和写入数据"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"fromFile": {
+					"displayName": "从文件读取",
+					"description": "从电子表格文件中读取数据"
+				},
+				"toFile": {
+					"displayName": "写入文件",
+					"description": "将工作流数据写入电子表格文件"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		},
+		"fileFormat": {
+			"displayName": "文件格式",
+			"description": "保存数据时使用的文件格式",
+			"options": {
+				"csv": {
+					"displayName": "CSV",
+					"description": "逗号分隔值"
+				},
+				"html": {
+					"displayName": "HTML",
+					"description": "HTML表格"
+				},
+				"ods": {
+					"displayName": "ODS",
+					"description": "开放文档电子表格"
+				},
+				"rtf": {
+					"displayName": "RTF",
+					"description": "富文本格式"
+				},
+				"xls": {
+					"displayName": "XLS",
+					"description": "Excel"
+				},
+				"xlsx": {
+					"displayName": "XLSX",
+					"description": "Excel"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"delimiter": {
+					"displayName": "分隔符",
+					"description": "设置字段分隔符，通常为逗号",
+					"placeholder": "例如 ,"
+				},
+				"encoding": {
+					"displayName": "编码",
+					"options": {
+						"ascii": {
+							"displayName": "ASCII"
+						},
+						"latin1": {
+							"displayName": "拉丁1编码"
+						},
+						"ucs-2": {
+							"displayName": "UCS-2"
+						},
+						"ucs2": {
+							"displayName": "UCS2"
+						},
+						"utf-8": {
+							"displayName": "UTF-8"
+						},
+						"utf16le": {
+							"displayName": "UTF16LE"
+						},
+						"utf8": {
+							"displayName": "UTF8"
+						}
+					}
+				},
+				"enableBOM": {
+					"displayName": "排除字节顺序标记(BOM)",
+					"description": "是否从CSV输入中检测并排除字节顺序标记(如果存在)"
+				},
+				"relaxQuotes": {
+					"displayName": "保留引号",
+					"description": "是否将CSV字段中未闭合的引号作为字段内容处理，而不是抛出解析错误"
+				},
+				"headerRow": {
+					"displayName": "标题行",
+					"description": "文件首行是否包含标题名称"
+				},
+				"includeEmptyCells": {
+					"displayName": "包含空单元格",
+					"description": "从文件读取时是否包含空单元格。空单元格将填充为空字符串。"
+				},
+				"maxRowCount": {
+					"displayName": "最大加载行数",
+					"description": "读取指定行数后停止处理记录。如需加载所有行请使用-1。",
+					"placeholder": "例如：10"
+				},
+				"range": {
+					"displayName": "范围",
+					"description": "要从表中读取的范围。如果设置为数字，则作为起始行。如果设置为字符串，则用作A1样式表示法的范围。"
+				},
+				"rawData": {
+					"displayName": "原始数据",
+					"description": "是否返回原始数据，而非解析后的数据"
+				},
+				"readAsString": {
+					"displayName": "读取为字符串",
+					"description": "在某些情况和文件格式中，需要以字符串形式读取以确保特殊字符被正确解析"
+				},
+				"sheetName": {
+					"displayName": "工作表名称",
+					"description": "要在电子表格中创建的工作表名称",
+					"placeholder": "例如：mySheet"
+				},
+				"fromLine": {
+					"displayName": "起始行",
+					"description": "从请求的行号开始处理记录。从0开始计数。",
+					"placeholder": "例如：0"
+				},
+				"skipRecordsWithErrors": {
+					"displayName": "跳过错误记录",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"enabled": {
+									"displayName": "已启用",
+									"description": "从文件读取时是否跳过错误记录"
+								},
+								"maxSkippedRecords": {
+									"displayName": "最大跳过记录数",
+									"description": "可跳过的最大记录数，超过此限制将抛出错误。设置为-1可取消限制。"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"enabled": {
+									"displayName": "已启用",
+									"description": "从文件读取时是否跳过错误记录"
+								},
+								"maxSkippedRecords": {
+									"displayName": "最大跳过记录数",
+									"description": "可跳过的最大记录数，超过此限制将抛出错误。设置为-1可取消限制。"
+								}
+							}
+						},
+						"skipRecordsWithErrors": {
+							"displayName": "跳过错误记录"
+						}
+					}
+				},
+				"compression": {
+					"displayName": "压缩",
+					"description": "是否应用压缩"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "二进制数据中设置的文件名。默认将使用\"spreadsheet.&lt;文件格式&gt;\"。"
+				}
+			}
+		}
+	}
+}

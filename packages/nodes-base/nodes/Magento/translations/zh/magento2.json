@@ -1,0 +1,842 @@
+{
+	"header": {
+		"displayName": "Magento 2",
+		"description": "使用 Magento API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"customer": {
+					"displayName": "客户"
+				},
+				"invoice": {
+					"displayName": "发票"
+				},
+				"order": {
+					"displayName": "排序"
+				},
+				"product": {
+					"displayName": "产品"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建产品"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除产品"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取产品"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个产品"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新产品"
+				},
+				"cancel": {
+					"displayName": "取消",
+					"description": "取消订单"
+				},
+				"ship": {
+					"displayName": "发货",
+					"description": "发货订单"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要创建用户的邮箱地址",
+			"placeholder": "name@email.com"
+		},
+		"firstname": {
+			"displayName": "名字",
+			"description": "要创建用户的名字"
+		},
+		"lastname": {
+			"displayName": "姓氏",
+			"description": "要创建用户的姓氏"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addresses": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"multipleValueButtonText": "添加地址",
+					"options": {
+						"address": {
+							"displayName": "地址",
+							"options": {
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"postcode": {
+									"displayName": "邮政编码"
+								},
+								"country_id": {
+									"displayName": "国家名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"fax": {
+									"displayName": "传真"
+								},
+								"firstname": {
+									"displayName": "名字"
+								},
+								"lastname": {
+									"displayName": "姓氏"
+								},
+								"middlename": {
+									"displayName": "中间名"
+								},
+								"prefix": {
+									"displayName": "前缀"
+								},
+								"suffix": {
+									"displayName": "后缀"
+								},
+								"telephone": {
+									"displayName": "电话"
+								},
+								"default_billing": {
+									"displayName": "默认账单地址",
+									"description": "此地址是否为默认账单地址"
+								},
+								"default_shipping": {
+									"displayName": "默认收货地址",
+									"description": "此地址是否为默认收货地址"
+								}
+							}
+						}
+					},
+					"values": {
+						"address": {
+							"displayName": "地址",
+							"options": {
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"postcode": {
+									"displayName": "邮政编码"
+								},
+								"country_id": {
+									"displayName": "国家名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"fax": {
+									"displayName": "传真"
+								},
+								"firstname": {
+									"displayName": "名字"
+								},
+								"lastname": {
+									"displayName": "姓氏"
+								},
+								"middlename": {
+									"displayName": "中间名"
+								},
+								"prefix": {
+									"displayName": "前缀"
+								},
+								"suffix": {
+									"displayName": "后缀"
+								},
+								"telephone": {
+									"displayName": "电话"
+								},
+								"default_billing": {
+									"displayName": "默认账单地址",
+									"description": "此地址是否为默认账单地址"
+								},
+								"default_shipping": {
+									"displayName": "默认收货地址",
+									"description": "此地址是否为默认收货地址"
+								}
+							}
+						},
+						"addresses": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"amazon_id": {
+					"displayName": "Amazon ID"
+				},
+				"confirmation": {
+					"displayName": "确认"
+				},
+				"customAttributes": {
+					"displayName": "自定义属性",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"customAttribute": {
+							"displayName": "自定义属性",
+							"options": {
+								"attribute_code": {
+									"displayName": "属性代码名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customAttribute": {
+							"displayName": "自定义属性",
+							"options": {
+								"attribute_code": {
+									"displayName": "属性代码名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"customAttributes": {
+							"displayName": "自定义属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				},
+				"dob": {
+					"displayName": "出生日期"
+				},
+				"default_billing": {
+					"displayName": "默认账单地址ID"
+				},
+				"default_shipping": {
+					"displayName": "默认收货地址ID"
+				},
+				"gender": {
+					"displayName": "性别",
+					"options": {
+						"1": {
+							"displayName": "男性"
+						},
+						"2": {
+							"displayName": "女性"
+						},
+						"3": {
+							"displayName": "未指定"
+						}
+					}
+				},
+				"group_id": {
+					"displayName": "组名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"is_subscribed": {
+					"displayName": "已订阅"
+				},
+				"middlename": {
+					"displayName": "中间名"
+				},
+				"password": {
+					"displayName": "密码"
+				},
+				"prefix": {
+					"displayName": "前缀"
+				},
+				"store_id": {
+					"displayName": "店铺名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"suffix": {
+					"displayName": "后缀"
+				},
+				"vertex_customer_code": {
+					"displayName": "Vertex 客户代码"
+				},
+				"vertex_customer_country": {
+					"displayName": "Vertex客户国家"
+				},
+				"website_id": {
+					"displayName": "网站名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"attribute_set_id": {
+					"displayName": "属性集名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"price": {
+					"displayName": "价格"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"1": {
+							"displayName": "已启用"
+						},
+						"2": {
+							"displayName": "已禁用"
+						}
+					}
+				},
+				"type_id": {
+					"displayName": "输入名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"visibility": {
+					"displayName": "可见性",
+					"options": {
+						"1": {
+							"displayName": "不可见"
+						},
+						"2": {
+							"displayName": "目录"
+						},
+						"3": {
+							"displayName": "搜索"
+						},
+						"4": {
+							"displayName": "目录与搜索"
+						}
+					}
+				},
+				"weight": {
+					"displayName": "重量（磅）"
+				}
+			}
+		},
+		"customerId": {
+			"displayName": "客户ID",
+			"description": "要更新的客户ID"
+		},
+		"firstName": {
+			"displayName": "名字"
+		},
+		"lastName": {
+			"displayName": "姓氏"
+		},
+		"website_id": {
+			"displayName": "网站名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addresses": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"multipleValueButtonText": "添加地址",
+					"options": {
+						"address": {
+							"displayName": "地址",
+							"options": {
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"postcode": {
+									"displayName": "邮政编码"
+								},
+								"country_id": {
+									"displayName": "国家名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"fax": {
+									"displayName": "传真"
+								},
+								"firstname": {
+									"displayName": "名字"
+								},
+								"lastname": {
+									"displayName": "姓氏"
+								},
+								"middlename": {
+									"displayName": "中间名"
+								},
+								"prefix": {
+									"displayName": "前缀"
+								},
+								"suffix": {
+									"displayName": "后缀"
+								},
+								"telephone": {
+									"displayName": "电话"
+								},
+								"default_billing": {
+									"displayName": "默认账单地址",
+									"description": "此地址是否为默认账单地址"
+								},
+								"default_shipping": {
+									"displayName": "默认收货地址",
+									"description": "此地址是否为默认收货地址"
+								}
+							}
+						}
+					},
+					"values": {
+						"address": {
+							"displayName": "地址",
+							"options": {
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"postcode": {
+									"displayName": "邮政编码"
+								},
+								"country_id": {
+									"displayName": "国家名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"fax": {
+									"displayName": "传真"
+								},
+								"firstname": {
+									"displayName": "名字"
+								},
+								"lastname": {
+									"displayName": "姓氏"
+								},
+								"middlename": {
+									"displayName": "中间名"
+								},
+								"prefix": {
+									"displayName": "前缀"
+								},
+								"suffix": {
+									"displayName": "后缀"
+								},
+								"telephone": {
+									"displayName": "电话"
+								},
+								"default_billing": {
+									"displayName": "默认账单地址",
+									"description": "此地址是否为默认账单地址"
+								},
+								"default_shipping": {
+									"displayName": "默认收货地址",
+									"description": "此地址是否为默认收货地址"
+								}
+							}
+						},
+						"addresses": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"amazon_id": {
+					"displayName": "Amazon ID"
+				},
+				"confirmation": {
+					"displayName": "确认"
+				},
+				"customAttributes": {
+					"displayName": "自定义属性",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"customAttribute": {
+							"displayName": "自定义属性",
+							"options": {
+								"attribute_code": {
+									"displayName": "属性代码名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customAttribute": {
+							"displayName": "自定义属性",
+							"options": {
+								"attribute_code": {
+									"displayName": "属性代码名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"customAttributes": {
+							"displayName": "自定义属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				},
+				"dob": {
+					"displayName": "出生日期"
+				},
+				"default_billing": {
+					"displayName": "默认账单地址ID"
+				},
+				"default_shipping": {
+					"displayName": "默认收货地址ID"
+				},
+				"gender": {
+					"displayName": "性别",
+					"options": {
+						"1": {
+							"displayName": "男性"
+						},
+						"2": {
+							"displayName": "女性"
+						},
+						"3": {
+							"displayName": "未指定"
+						}
+					}
+				},
+				"group_id": {
+					"displayName": "组名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"is_subscribed": {
+					"displayName": "已订阅"
+				},
+				"middlename": {
+					"displayName": "中间名"
+				},
+				"password": {
+					"displayName": "密码"
+				},
+				"prefix": {
+					"displayName": "前缀"
+				},
+				"store_id": {
+					"displayName": "店铺名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"suffix": {
+					"displayName": "后缀"
+				},
+				"vertex_customer_code": {
+					"displayName": "Vertex 客户代码"
+				},
+				"vertex_customer_country": {
+					"displayName": "Vertex客户国家"
+				},
+				"website_id": {
+					"displayName": "网站名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"attribute_set_id": {
+					"displayName": "属性集名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"price": {
+					"displayName": "价格"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"1": {
+							"displayName": "已启用"
+						},
+						"2": {
+							"displayName": "已禁用"
+						}
+					}
+				},
+				"type_id": {
+					"displayName": "输入名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"visibility": {
+					"displayName": "可见性",
+					"options": {
+						"1": {
+							"displayName": "不可见"
+						},
+						"2": {
+							"displayName": "目录"
+						},
+						"3": {
+							"displayName": "搜索"
+						},
+						"4": {
+							"displayName": "目录与搜索"
+						}
+					}
+				},
+				"weight": {
+					"displayName": "重量（磅）"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filterType": {
+			"displayName": "筛选",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"manual": {
+					"displayName": "手动构建"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"matchType": {
+			"displayName": "必须匹配",
+			"options": {
+				"anyFilter": {
+					"displayName": "任意筛选器"
+				},
+				"allFilters": {
+					"displayName": "所有筛选器"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加条件",
+			"multipleValueButtonText": "添加条件",
+			"options": {
+				"conditions": {
+					"displayName": "条件",
+					"options": {
+						"field": {
+							"displayName": "字段"
+						},
+						"condition_type": {
+							"displayName": "条件类型",
+							"options": {
+								"eq": {
+									"displayName": "等于"
+								},
+								"gt": {
+									"displayName": "大于"
+								},
+								"gteq": {
+									"displayName": "大于或等于"
+								},
+								"in": {
+									"displayName": "在",
+									"description": "该值可以包含一个逗号分隔的值列表"
+								},
+								"lt": {
+									"displayName": "小于"
+								},
+								"lte": {
+									"displayName": "小于或等于"
+								},
+								"like": {
+									"displayName": "点赞",
+									"description": "当指定like时，该值可以包含SQL通配符"
+								},
+								"moreq": {
+									"displayName": "大于或等于"
+								},
+								"neq": {
+									"displayName": "不等于"
+								},
+								"nin": {
+									"displayName": "不在",
+									"description": "该值可以包含一个逗号分隔的值列表"
+								},
+								"notnull": {
+									"displayName": "非空"
+								},
+								"null": {
+									"displayName": "空值"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"conditions": {
+					"displayName": "条件",
+					"options": {
+						"field": {
+							"displayName": "字段"
+						},
+						"condition_type": {
+							"displayName": "条件类型",
+							"options": {
+								"eq": {
+									"displayName": "等于"
+								},
+								"gt": {
+									"displayName": "大于"
+								},
+								"gteq": {
+									"displayName": "大于或等于"
+								},
+								"in": {
+									"displayName": "在",
+									"description": "该值可以包含一个逗号分隔的值列表"
+								},
+								"lt": {
+									"displayName": "小于"
+								},
+								"lte": {
+									"displayName": "小于或等于"
+								},
+								"like": {
+									"displayName": "点赞",
+									"description": "当指定like时，该值可以包含SQL通配符"
+								},
+								"moreq": {
+									"displayName": "大于或等于"
+								},
+								"neq": {
+									"displayName": "不等于"
+								},
+								"nin": {
+									"displayName": "不在",
+									"description": "该值可以包含一个逗号分隔的值列表"
+								},
+								"notnull": {
+									"displayName": "非空"
+								},
+								"null": {
+									"displayName": "空值"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "筛选器",
+					"placeholder": "添加条件"
+				}
+			}
+		},
+		"jsonNotice": {
+			"displayName": "请参阅<a href=\"https://devdocs.magento.com/guides/v2.4/rest/performing-searches.html\" target=\"_blank\">Magento指南</a>创建筛选器"
+		},
+		"filterJson": {
+			"displayName": "过滤器 (JSON)"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"sort": {
+					"displayName": "排序",
+					"placeholder": "添加排序",
+					"multipleValueButtonText": "添加排序",
+					"options": {
+						"sort": {
+							"displayName": "排序",
+							"options": {
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向",
+									"options": {
+										"ASC": {
+											"displayName": "升序"
+										},
+										"DESC": {
+											"displayName": "降序"
+										}
+									}
+								},
+								"field": {
+									"displayName": "字段",
+									"description": "排序字段"
+								}
+							}
+						}
+					},
+					"values": {
+						"sort": {
+							"displayName": "排序",
+							"placeholder": "添加排序"
+						}
+					}
+				}
+			}
+		},
+		"orderId": {
+			"displayName": "订单ID"
+		},
+		"sku": {
+			"displayName": "SKU",
+			"description": "产品的库存单位"
+		},
+		"name": {
+			"displayName": "名称"
+		},
+		"attributeSetId": {
+			"displayName": "属性集名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"price": {
+			"displayName": "价格"
+		}
+	}
+}

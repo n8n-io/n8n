@@ -1,0 +1,124 @@
+{
+	"header": {
+		"displayName": "Remove Duplicates",
+		"description": "Delete items with matching field values"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"removeDuplicateInputItems": {
+					"displayName": "Remove Items Repeated Within Current Input",
+					"description": "Remove duplicates from incoming items"
+				},
+				"removeItemsSeenInPreviousExecutions": {
+					"displayName": "Remove Items Processed in Previous Executions",
+					"description": "Deduplicate items already seen in previous executions"
+				},
+				"clearDeduplicationHistory": {
+					"displayName": "Clear Deduplication History",
+					"description": "Wipe the store of previous items"
+				}
+			}
+		},
+		"compare": {
+			"displayName": "Compare",
+			"description": "The fields of the input items to compare to see if they are the same",
+			"options": {
+				"allFields": {
+					"displayName": "All Fields"
+				},
+				"allFieldsExcept": {
+					"displayName": "All Fields Except"
+				},
+				"selectedFields": {
+					"displayName": "Selected Fields"
+				}
+			}
+		},
+		"fieldsToExclude": {
+			"displayName": "Fields To Exclude",
+			"description": "Fields in the input to exclude from the comparison",
+			"placeholder": "e.g. email, name"
+		},
+		"fieldsToCompare": {
+			"displayName": "Fields To Compare",
+			"description": "Fields in the input to add to the comparison",
+			"placeholder": "e.g. email, name"
+		},
+		"logic": {
+			"displayName": "Keep Items Where",
+			"description": "How to select input items to remove by comparing them with key values previously processed",
+			"options": {
+				"removeItemsWithAlreadySeenKeyValues": {
+					"displayName": "Value Is New",
+					"description": "Remove all input items with values matching those already processed"
+				},
+				"removeItemsUpToStoredIncrementalKey": {
+					"displayName": "Value Is Higher than Any Previous Value",
+					"description": "Works with incremental values, removes all input items with values up to the stored value"
+				},
+				"removeItemsUpToStoredDate": {
+					"displayName": "Value Is a Date Later than Any Previous Date",
+					"description": "Works with date values, removes all input items with values up to the stored date"
+				}
+			}
+		},
+		"dedupeValue": {
+			"displayName": "Value to Dedupe On",
+			"description": "Use an input field (or a combination of fields) that has a unique ID value",
+			"placeholder": "e.g. ID"
+		},
+		"incrementalDedupeValue": {
+			"displayName": "Value to Dedupe On",
+			"description": "Use an input field (or a combination of fields) that has an incremental value",
+			"placeholder": "e.g. ID"
+		},
+		"dateDedupeValue": {
+			"displayName": "Value to Dedupe On",
+			"description": "Use an input field that has a date value in ISO format",
+			"placeholder": " e.g. 2024-08-09T13:44:16Z"
+		},
+		"mode": {
+			"displayName": "Mode",
+			"description": "How you want to modify the key values stored on the database. None of these modes removes input items.",
+			"options": {
+				"cleanDatabase": {
+					"displayName": "Clean Database",
+					"description": "Clear all values stored for a key in the database"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "Disable Dot Notation",
+					"description": "Whether to disallow referencing child fields using `parent.child` in the field name"
+				},
+				"removeOtherFields": {
+					"displayName": "Remove Other Fields",
+					"description": "Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates."
+				},
+				"scope": {
+					"displayName": "Scope",
+					"description": "If set to ‘workflow,’ key values will be shared across all nodes in the workflow. If set to ‘node,’ key values will be specific to this node.",
+					"options": {
+						"workflow": {
+							"displayName": "Workflow",
+							"description": "Deduplication info will be shared by all the nodes in the workflow"
+						},
+						"node": {
+							"displayName": "Node",
+							"description": "Deduplication info will be stored only for this node"
+						}
+					}
+				},
+				"historySize": {
+					"displayName": "History Size"
+				}
+			}
+		}
+	}
+}

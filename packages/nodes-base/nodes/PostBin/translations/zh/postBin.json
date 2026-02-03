@@ -1,0 +1,112 @@
+{
+	"header": {
+		"displayName": "PostBin",
+		"description": "使用PostBin API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"bin": {
+					"displayName": "回收站"
+				},
+				"request": {
+					"displayName": "请求"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建容器"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "接收请求"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一个Bin"
+				},
+				"removeFirst": {
+					"displayName": "移除首个",
+					"description": "从回收站中移除首个请求"
+				},
+				"send": {
+					"displayName": "发送",
+					"description": "向bin发送测试请求"
+				}
+			}
+		},
+		"binId": {
+			"displayName": "箱柜ID",
+			"description": "每个箱柜的唯一标识符"
+		},
+		"binContent": {
+			"displayName": "二进制内容"
+		},
+		"requestId": {
+			"displayName": "请求ID",
+			"description": "每个请求的唯一标识符"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

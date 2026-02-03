@@ -1,0 +1,168 @@
+{
+	"header": {
+		"displayName": "Adalo",
+		"description": "使用Adalo API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"collection": {
+					"displayName": "集合"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建一行"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一行"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索一行数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多行数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新行数据"
+				}
+			}
+		},
+		"collectionId": {
+			"displayName": "集合ID",
+			"description": "打开您的Adalo应用，点击集合名称旁边的三个按钮，然后选择API文档"
+		},
+		"rowId": {
+			"displayName": "行ID"
+		},
+		"dataToSend": {
+			"displayName": "要发送的数据",
+			"description": "是否将本节点接收的输入数据插入到新行中",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "自动映射输入数据到列",
+					"description": "当节点输入属性与目标列名匹配时使用"
+				},
+				"defineBelow": {
+					"displayName": "为每列定义以下内容",
+					"description": "为每个目标列设置值"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "要忽略的输入",
+			"description": "要避免发送的输入属性列表，用逗号分隔。留空则发送所有属性。",
+			"placeholder": "输入属性..."
+		},
+		"fieldsUi": {
+			"displayName": "要发送的字段",
+			"description": "字段必须在集合中定义，否则将被忽略。如果集合中定义的字段未在此处设置，则将被设为 null。",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加要发送的字段",
+			"options": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段ID"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段ID"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "要发送的字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,73 @@
+{
+	"header": {
+		"displayName": "SSH",
+		"description": "Execute commands via SSH"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"password": {
+					"displayName": "Password"
+				},
+				"privateKey": {
+					"displayName": "Private Key"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"command": {
+					"displayName": "Command"
+				},
+				"file": {
+					"displayName": "File"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"execute": {
+					"displayName": "Execute",
+					"description": "Execute a command"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a file"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a file"
+				}
+			}
+		},
+		"command": {
+			"displayName": "Command",
+			"description": "The command to be executed on a remote device"
+		},
+		"cwd": {
+			"displayName": "Working Directory"
+		},
+		"binaryPropertyName": {
+			"displayName": "File Property",
+			"description": "Object property name which holds binary data"
+		},
+		"path": {
+			"displayName": "Path",
+			"description": "The file path of the file to download. Has to contain the full path including file name.",
+			"placeholder": "/home/user/invoice.txt"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fileName": {
+					"displayName": "File Name",
+					"description": "Overrides the binary data file name"
+				}
+			}
+		}
+	}
+}

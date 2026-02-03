@@ -1,0 +1,350 @@
+{
+	"header": {
+		"displayName": "Okta",
+		"description": "Use the Okta API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new user"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an existing user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get details of a user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many users"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update an existing user"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "User",
+			"description": "The user you want to operate on. Choose from the list, or specify an ID."
+		},
+		"firstName": {
+			"displayName": "First Name",
+			"placeholder": "e.g. Nathan"
+		},
+		"lastName": {
+			"displayName": "Last Name",
+			"placeholder": "e.g. Smith"
+		},
+		"login": {
+			"displayName": "Username",
+			"placeholder": "e.g. nathan@example.com"
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "e.g. nathan@example.com"
+		},
+		"activate": {
+			"displayName": "Activate",
+			"description": "Whether to activate the user and allow access to all assigned applications"
+		},
+		"getCreateFields": {
+			"displayName": "Fields",
+			"placeholder": "Add field",
+			"options": {
+				"city": {
+					"displayName": "City"
+				},
+				"costCenter": {
+					"displayName": "Cost Center"
+				},
+				"countryCode": {
+					"displayName": "Country Code"
+				},
+				"department": {
+					"displayName": "Department"
+				},
+				"displayName": {
+					"displayName": "Display Name"
+				},
+				"division": {
+					"displayName": "Division"
+				},
+				"employeeNumber": {
+					"displayName": "Employee Number"
+				},
+				"honorificPrefix": {
+					"displayName": "Honorific Prefix"
+				},
+				"honorificSuffix": {
+					"displayName": "Honorific Suffix"
+				},
+				"locale": {
+					"displayName": "Locale"
+				},
+				"manager": {
+					"displayName": "Manager"
+				},
+				"managerId": {
+					"displayName": "ManagerId"
+				},
+				"middleName": {
+					"displayName": "Middle Name"
+				},
+				"mobilePhone": {
+					"displayName": "Mobile Phone"
+				},
+				"nickName": {
+					"displayName": "Nick Name"
+				},
+				"password": {
+					"displayName": "Password"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"postalAddress": {
+					"displayName": "Postal Address"
+				},
+				"preferredLanguage": {
+					"displayName": "Preferred Language"
+				},
+				"primaryPhone": {
+					"displayName": "Primary Phone"
+				},
+				"profileUrl": {
+					"displayName": "Profile Url"
+				},
+				"recoveryQuestionAnswer": {
+					"displayName": "Recovery Question Answer"
+				},
+				"recoveryQuestionQuestion": {
+					"displayName": "Recovery Question Question"
+				},
+				"secondEmail": {
+					"displayName": "Second Email"
+				},
+				"state": {
+					"displayName": "State"
+				},
+				"streetAddress": {
+					"displayName": "Street Address"
+				},
+				"timezone": {
+					"displayName": "Timezone"
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"userType": {
+					"displayName": "User Type"
+				},
+				"zipCode": {
+					"displayName": "Zip Code"
+				}
+			}
+		},
+		"getUpdateFields": {
+			"displayName": "Fields",
+			"placeholder": "Add field",
+			"options": {
+				"city": {
+					"displayName": "City"
+				},
+				"costCenter": {
+					"displayName": "Cost Center"
+				},
+				"countryCode": {
+					"displayName": "Country Code"
+				},
+				"department": {
+					"displayName": "Department"
+				},
+				"displayName": {
+					"displayName": "Display Name"
+				},
+				"division": {
+					"displayName": "Division"
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "e.g. nathan@example.com"
+				},
+				"employeeNumber": {
+					"displayName": "Employee Number"
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"placeholder": "e.g. Nathan"
+				},
+				"honorificPrefix": {
+					"displayName": "Honorific Prefix"
+				},
+				"honorificSuffix": {
+					"displayName": "Honorific Suffix"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"placeholder": "e.g. Smith"
+				},
+				"locale": {
+					"displayName": "Locale"
+				},
+				"manager": {
+					"displayName": "Manager"
+				},
+				"managerId": {
+					"displayName": "ManagerId"
+				},
+				"middleName": {
+					"displayName": "Middle Name"
+				},
+				"mobilePhone": {
+					"displayName": "Mobile Phone"
+				},
+				"nickName": {
+					"displayName": "Nick Name"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"password": {
+					"displayName": "Password"
+				},
+				"postalAddress": {
+					"displayName": "Postal Address"
+				},
+				"preferredLanguage": {
+					"displayName": "Preferred Language"
+				},
+				"primaryPhone": {
+					"displayName": "Primary Phone"
+				},
+				"profileUrl": {
+					"displayName": "Profile Url"
+				},
+				"recoveryQuestionAnswer": {
+					"displayName": "Recovery Question Answer"
+				},
+				"recoveryQuestionQuestion": {
+					"displayName": "Recovery Question Question"
+				},
+				"secondEmail": {
+					"displayName": "Second Email"
+				},
+				"state": {
+					"displayName": "State"
+				},
+				"streetAddress": {
+					"displayName": "Street Address"
+				},
+				"timezone": {
+					"displayName": "Timezone"
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"userType": {
+					"displayName": "User Type"
+				},
+				"login": {
+					"displayName": "Username",
+					"placeholder": "e.g. nathan@example.com"
+				},
+				"zipCode": {
+					"displayName": "Zip Code"
+				}
+			}
+		},
+		"searchQuery": {
+			"displayName": "Search Query",
+			"placeholder": "e.g. profile.lastName sw \"Smi\""
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"simplify": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"sendEmail": {
+			"displayName": "Send Email",
+			"description": "Whether to send a deactivation email to the administrator"
+		},
+		"requestOptions": {
+			"displayName": "Request Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batching": {
+					"displayName": "Batching",
+					"placeholder": "Add Batching",
+					"options": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						},
+						"batching": {
+							"displayName": "Batching",
+							"placeholder": "Add Batching"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to accept the response even if SSL certificate validation is not possible"
+				},
+				"proxy": {
+					"displayName": "Proxy",
+					"description": "HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128",
+					"placeholder": "e.g. http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for the server to send response headers (and start the response body) before aborting the request"
+				}
+			}
+		}
+	}
+}

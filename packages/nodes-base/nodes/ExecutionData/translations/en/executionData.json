@@ -1,0 +1,58 @@
+{
+	"header": {
+		"displayName": "Execution Data",
+		"description": "Add execution data for search"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "Save important data using this node. It will be displayed on each execution for easy reference and you can filter by it.<br />Filtering is available on Pro and Enterprise plans. <a href='https://n8n.io/pricing/' target='_blank'>More Info</a>"
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"save": {
+					"displayName": "Save Highlight Data (for Search/review)"
+				}
+			}
+		},
+		"dataToSave": {
+			"displayName": "Data to Save",
+			"placeholder": "Add Saved Field",
+			"multipleValueButtonText": "Add Saved Field",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"key": {
+							"displayName": "Key",
+							"placeholder": "e.g. myKey"
+						},
+						"value": {
+							"displayName": "Value",
+							"placeholder": "e.g. myValue"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"key": {
+							"displayName": "Key",
+							"placeholder": "e.g. myKey"
+						},
+						"value": {
+							"displayName": "Value",
+							"placeholder": "e.g. myValue"
+						}
+					}
+				},
+				"dataToSave": {
+					"displayName": "Data to Save",
+					"placeholder": "Add Saved Field"
+				}
+			}
+		}
+	}
+}

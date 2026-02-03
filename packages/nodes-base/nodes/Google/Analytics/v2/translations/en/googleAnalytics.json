@@ -1,0 +1,2493 @@
+{
+	"header": {
+		"displayName": "Google Analytics",
+		"description": "Use the Google Analytics API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"report": {
+					"displayName": "Report"
+				},
+				"userActivity": {
+					"displayName": "User Activity"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Return the analytics data"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Return user activity data"
+				}
+			}
+		},
+		"propertyType": {
+			"displayName": "Property Type",
+			"description": "Google Analytics 4 is the latest version. Universal Analytics is an older version that is not fully functional after the end of June 2023.",
+			"options": {
+				"ga4": {
+					"displayName": "Google Analytics 4"
+				},
+				"universal": {
+					"displayName": "Universal Analytics"
+				}
+			}
+		},
+		"propertyId": {
+			"displayName": "Property",
+			"description": "The Property of Google Analytics"
+		},
+		"dateRange": {
+			"displayName": "Date Range",
+			"options": {
+				"last7days": {
+					"displayName": "Last 7 Days"
+				},
+				"last30days": {
+					"displayName": "Last 30 Days"
+				},
+				"today": {
+					"displayName": "Today"
+				},
+				"yesterday": {
+					"displayName": "Yesterday"
+				},
+				"lastCalendarWeek": {
+					"displayName": "Last Complete Calendar Week"
+				},
+				"lastCalendarMonth": {
+					"displayName": "Last Complete Calendar Month"
+				},
+				"custom": {
+					"displayName": "Custom"
+				}
+			}
+		},
+		"startDate": {
+			"displayName": "Start"
+		},
+		"endDate": {
+			"displayName": "End"
+		},
+		"metricsGA4": {
+			"displayName": "Metrics",
+			"description": "The quantitative measurements of a report. For example, the metric eventCount is the total number of events. Requests are allowed up to 10 metrics.",
+			"placeholder": "Add Metric",
+			"multipleValueButtonText": "Add Metric",
+			"options": {
+				"metricValues": {
+					"displayName": "Values",
+					"options": {
+						"listName": {
+							"displayName": "Metric",
+							"options": {
+								"active1DayUsers": {
+									"displayName": "1 Day Active Users"
+								},
+								"active28DayUsers": {
+									"displayName": "28 Day Active Users"
+								},
+								"active7DayUsers": {
+									"displayName": "7 Day Active Users"
+								},
+								"checkouts": {
+									"displayName": "Checkouts"
+								},
+								"eventCount": {
+									"displayName": "Events"
+								},
+								"screenPageViews": {
+									"displayName": "Page Views"
+								},
+								"userEngagementDuration": {
+									"displayName": "Session Duration"
+								},
+								"sessions": {
+									"displayName": "Sessions"
+								},
+								"sessionsPerUser": {
+									"displayName": "Sessions per User"
+								},
+								"totalUsers": {
+									"displayName": "Total Users"
+								},
+								"other": {
+									"displayName": "Other metrics…"
+								},
+								"custom": {
+									"displayName": "Custom metric…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name"
+						},
+						"expression": {
+							"displayName": "Expression",
+							"description": "A mathematical expression for derived metrics. For example, the metric Event count per user is eventCount/totalUsers.",
+							"placeholder": "e.g. eventCount/totalUsers"
+						},
+						"invisible": {
+							"displayName": "Invisible",
+							"description": "Whether a metric is invisible in the report response. If a metric is invisible, the metric will not produce a column in the response, but can be used in metricFilter, orderBys, or a metric expression."
+						}
+					}
+				}
+			},
+			"values": {
+				"metricValues": {
+					"displayName": "Values",
+					"options": {
+						"listName": {
+							"displayName": "Metric",
+							"options": {
+								"active1DayUsers": {
+									"displayName": "1 Day Active Users"
+								},
+								"active28DayUsers": {
+									"displayName": "28 Day Active Users"
+								},
+								"active7DayUsers": {
+									"displayName": "7 Day Active Users"
+								},
+								"checkouts": {
+									"displayName": "Checkouts"
+								},
+								"eventCount": {
+									"displayName": "Events"
+								},
+								"screenPageViews": {
+									"displayName": "Page Views"
+								},
+								"userEngagementDuration": {
+									"displayName": "Session Duration"
+								},
+								"sessions": {
+									"displayName": "Sessions"
+								},
+								"sessionsPerUser": {
+									"displayName": "Sessions per User"
+								},
+								"totalUsers": {
+									"displayName": "Total Users"
+								},
+								"other": {
+									"displayName": "Other metrics…"
+								},
+								"custom": {
+									"displayName": "Custom metric…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name"
+						},
+						"expression": {
+							"displayName": "Expression",
+							"description": "A mathematical expression for derived metrics. For example, the metric Event count per user is eventCount/totalUsers.",
+							"placeholder": "e.g. eventCount/totalUsers"
+						},
+						"invisible": {
+							"displayName": "Invisible",
+							"description": "Whether a metric is invisible in the report response. If a metric is invisible, the metric will not produce a column in the response, but can be used in metricFilter, orderBys, or a metric expression."
+						}
+					}
+				},
+				"metricsGA4": {
+					"displayName": "Metrics",
+					"placeholder": "Add Metric"
+				}
+			}
+		},
+		"dimensionsGA4": {
+			"displayName": "Dimensions to split by",
+			"description": "Dimensions are attributes of your data. For example, the dimension city indicates the city from which an event originates. Dimension values in report responses are strings; for example, the city could be \"Paris\" or \"New York\". Requests are allowed up to 9 dimensions.",
+			"placeholder": "Add Dimension",
+			"multipleValueButtonText": "Add Dimension",
+			"options": {
+				"dimensionValues": {
+					"displayName": "Values",
+					"options": {
+						"listName": {
+							"displayName": "Dimension",
+							"options": {
+								"browser": {
+									"displayName": "Browser"
+								},
+								"campaignName": {
+									"displayName": "Campaign"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"deviceCategory": {
+									"displayName": "Device Category"
+								},
+								"itemName": {
+									"displayName": "Item Name"
+								},
+								"language": {
+									"displayName": "Language"
+								},
+								"pageLocation": {
+									"displayName": "Page Location"
+								},
+								"sourceMedium": {
+									"displayName": "Source / Medium"
+								},
+								"other": {
+									"displayName": "Other dimensions…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name or ID",
+							"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				}
+			},
+			"values": {
+				"dimensionValues": {
+					"displayName": "Values",
+					"options": {
+						"listName": {
+							"displayName": "Dimension",
+							"options": {
+								"browser": {
+									"displayName": "Browser"
+								},
+								"campaignName": {
+									"displayName": "Campaign"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"deviceCategory": {
+									"displayName": "Device Category"
+								},
+								"itemName": {
+									"displayName": "Item Name"
+								},
+								"language": {
+									"displayName": "Language"
+								},
+								"pageLocation": {
+									"displayName": "Page Location"
+								},
+								"sourceMedium": {
+									"displayName": "Source / Medium"
+								},
+								"other": {
+									"displayName": "Other dimensions…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name or ID",
+							"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				},
+				"dimensionsGA4": {
+					"displayName": "Dimensions to split by",
+					"placeholder": "Add Dimension"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"simple": {
+			"displayName": "Simplify Output",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"currencyCode": {
+					"displayName": "Currency Code",
+					"description": "A currency code in ISO4217 format, such as \"AED\", \"USD\", \"JPY\". If the field is empty, the report uses the property's default currency."
+				},
+				"dimensionFiltersUI": {
+					"displayName": "Dimensions Filters",
+					"placeholder": "Add Filter",
+					"options": {
+						"filterExpressions": {
+							"displayName": "Filter Expressions",
+							"options": {
+								"filterExpressionType": {
+									"displayName": "Filter Expression Type",
+									"options": {
+										"andGroup": {
+											"displayName": "And Group"
+										},
+										"orGroup": {
+											"displayName": "Or Group"
+										}
+									}
+								},
+								"expression": {
+									"displayName": "Expression",
+									"placeholder": "Add Expression",
+									"multipleValueButtonText": "Add Expression",
+									"options": {
+										"stringFilter": {
+											"displayName": "String Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"caseSensitive": {
+													"displayName": "Case Sensitive"
+												},
+												"matchType": {
+													"displayName": "Match Type",
+													"options": {
+														"BEGINS_WITH": {
+															"displayName": "Begins With"
+														},
+														"CONTAINS": {
+															"displayName": "Contains Value"
+														},
+														"ENDS_WITH": {
+															"displayName": "Ends With"
+														},
+														"EXACT": {
+															"displayName": "Exact Match"
+														},
+														"FULL_REGEXP": {
+															"displayName": "Full Match for the Regular Expression"
+														},
+														"PARTIAL_REGEXP": {
+															"displayName": "Partial Match for the Regular Expression"
+														}
+													}
+												}
+											}
+										},
+										"inListFilter": {
+											"displayName": "In List Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"values": {
+													"displayName": "Values"
+												},
+												"caseSensitive": {
+													"displayName": "Case Sensitive"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "Numeric Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"operation": {
+													"displayName": "Operation",
+													"options": {
+														"EQUAL": {
+															"displayName": "Equal"
+														},
+														"GREATER_THAN": {
+															"displayName": "Greater Than"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "Greater than or Equal"
+														},
+														"LESS_THAN": {
+															"displayName": "Less Than"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "Less than or Equal"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"stringFilter": {
+											"displayName": "String Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"caseSensitive": {
+													"displayName": "Case Sensitive"
+												},
+												"matchType": {
+													"displayName": "Match Type",
+													"options": {
+														"BEGINS_WITH": {
+															"displayName": "Begins With"
+														},
+														"CONTAINS": {
+															"displayName": "Contains Value"
+														},
+														"ENDS_WITH": {
+															"displayName": "Ends With"
+														},
+														"EXACT": {
+															"displayName": "Exact Match"
+														},
+														"FULL_REGEXP": {
+															"displayName": "Full Match for the Regular Expression"
+														},
+														"PARTIAL_REGEXP": {
+															"displayName": "Partial Match for the Regular Expression"
+														}
+													}
+												}
+											}
+										},
+										"inListFilter": {
+											"displayName": "In List Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"values": {
+													"displayName": "Values"
+												},
+												"caseSensitive": {
+													"displayName": "Case Sensitive"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "Numeric Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"operation": {
+													"displayName": "Operation",
+													"options": {
+														"EQUAL": {
+															"displayName": "Equal"
+														},
+														"GREATER_THAN": {
+															"displayName": "Greater Than"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "Greater than or Equal"
+														},
+														"LESS_THAN": {
+															"displayName": "Less Than"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "Less than or Equal"
+														}
+													}
+												}
+											}
+										},
+										"expression": {
+											"displayName": "Expression",
+											"placeholder": "Add Expression"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"filterExpressions": {
+							"displayName": "Filter Expressions",
+							"options": {
+								"filterExpressionType": {
+									"displayName": "Filter Expression Type",
+									"options": {
+										"andGroup": {
+											"displayName": "And Group"
+										},
+										"orGroup": {
+											"displayName": "Or Group"
+										}
+									}
+								},
+								"expression": {
+									"displayName": "Expression",
+									"placeholder": "Add Expression",
+									"multipleValueButtonText": "Add Expression",
+									"options": {
+										"stringFilter": {
+											"displayName": "String Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"caseSensitive": {
+													"displayName": "Case Sensitive"
+												},
+												"matchType": {
+													"displayName": "Match Type",
+													"options": {
+														"BEGINS_WITH": {
+															"displayName": "Begins With"
+														},
+														"CONTAINS": {
+															"displayName": "Contains Value"
+														},
+														"ENDS_WITH": {
+															"displayName": "Ends With"
+														},
+														"EXACT": {
+															"displayName": "Exact Match"
+														},
+														"FULL_REGEXP": {
+															"displayName": "Full Match for the Regular Expression"
+														},
+														"PARTIAL_REGEXP": {
+															"displayName": "Partial Match for the Regular Expression"
+														}
+													}
+												}
+											}
+										},
+										"inListFilter": {
+											"displayName": "In List Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"values": {
+													"displayName": "Values"
+												},
+												"caseSensitive": {
+													"displayName": "Case Sensitive"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "Numeric Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"operation": {
+													"displayName": "Operation",
+													"options": {
+														"EQUAL": {
+															"displayName": "Equal"
+														},
+														"GREATER_THAN": {
+															"displayName": "Greater Than"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "Greater than or Equal"
+														},
+														"LESS_THAN": {
+															"displayName": "Less Than"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "Less than or Equal"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"stringFilter": {
+											"displayName": "String Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"caseSensitive": {
+													"displayName": "Case Sensitive"
+												},
+												"matchType": {
+													"displayName": "Match Type",
+													"options": {
+														"BEGINS_WITH": {
+															"displayName": "Begins With"
+														},
+														"CONTAINS": {
+															"displayName": "Contains Value"
+														},
+														"ENDS_WITH": {
+															"displayName": "Ends With"
+														},
+														"EXACT": {
+															"displayName": "Exact Match"
+														},
+														"FULL_REGEXP": {
+															"displayName": "Full Match for the Regular Expression"
+														},
+														"PARTIAL_REGEXP": {
+															"displayName": "Partial Match for the Regular Expression"
+														}
+													}
+												}
+											}
+										},
+										"inListFilter": {
+											"displayName": "In List Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"values": {
+													"displayName": "Values"
+												},
+												"caseSensitive": {
+													"displayName": "Case Sensitive"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "Numeric Filter",
+											"options": {
+												"listName": {
+													"displayName": "Dimension",
+													"options": {
+														"browser": {
+															"displayName": "Browser"
+														},
+														"campaignName": {
+															"displayName": "Campaign"
+														},
+														"city": {
+															"displayName": "City"
+														},
+														"country": {
+															"displayName": "Country"
+														},
+														"date": {
+															"displayName": "Date"
+														},
+														"deviceCategory": {
+															"displayName": "Device Category"
+														},
+														"itemName": {
+															"displayName": "Item Name"
+														},
+														"language": {
+															"displayName": "Language"
+														},
+														"pageLocation": {
+															"displayName": "Page Location"
+														},
+														"sourceMedium": {
+															"displayName": "Source / Medium"
+														},
+														"other": {
+															"displayName": "Other dimensions…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name or ID",
+													"description": "The name of the dimension. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"operation": {
+													"displayName": "Operation",
+													"options": {
+														"EQUAL": {
+															"displayName": "Equal"
+														},
+														"GREATER_THAN": {
+															"displayName": "Greater Than"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "Greater than or Equal"
+														},
+														"LESS_THAN": {
+															"displayName": "Less Than"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "Less than or Equal"
+														}
+													}
+												}
+											}
+										},
+										"expression": {
+											"displayName": "Expression",
+											"placeholder": "Add Expression"
+										}
+									}
+								}
+							}
+						},
+						"dimensionFiltersUI": {
+							"displayName": "Dimensions Filters",
+							"placeholder": "Add Filter"
+						}
+					}
+				},
+				"metricAggregations": {
+					"displayName": "Metric Aggregation"
+				},
+				"metricsFiltersUI": {
+					"displayName": "Metrics Filters",
+					"placeholder": "Add Filter",
+					"options": {
+						"filterExpressions": {
+							"displayName": "Filter Expressions",
+							"options": {
+								"filterExpressionType": {
+									"displayName": "Filter Expression Type",
+									"options": {
+										"andGroup": {
+											"displayName": "And Group"
+										},
+										"orGroup": {
+											"displayName": "Or Group"
+										}
+									}
+								},
+								"expression": {
+									"displayName": "Expression",
+									"placeholder": "Add Expression",
+									"multipleValueButtonText": "Add Expression",
+									"options": {
+										"betweenFilter": {
+											"displayName": "Between Filter",
+											"options": {
+												"listName": {
+													"displayName": "Metric",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1 Day Active Users"
+														},
+														"active28DayUsers": {
+															"displayName": "28 Day Active Users"
+														},
+														"active7DayUsers": {
+															"displayName": "7 Day Active Users"
+														},
+														"checkouts": {
+															"displayName": "Checkouts"
+														},
+														"eventCount": {
+															"displayName": "Events"
+														},
+														"screenPageViews": {
+															"displayName": "Page Views"
+														},
+														"userEngagementDuration": {
+															"displayName": "Session Duration"
+														},
+														"sessions": {
+															"displayName": "Sessions"
+														},
+														"sessionsPerUser": {
+															"displayName": "Sessions per User"
+														},
+														"totalUsers": {
+															"displayName": "Total Users"
+														},
+														"other": {
+															"displayName": "Other metrics…"
+														},
+														"custom": {
+															"displayName": "Custom metric…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name"
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"fromValue": {
+													"displayName": "From Value"
+												},
+												"toValue": {
+													"displayName": "To Value"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "Numeric Filter",
+											"options": {
+												"listName": {
+													"displayName": "Metric",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1 Day Active Users"
+														},
+														"active28DayUsers": {
+															"displayName": "28 Day Active Users"
+														},
+														"active7DayUsers": {
+															"displayName": "7 Day Active Users"
+														},
+														"checkouts": {
+															"displayName": "Checkouts"
+														},
+														"eventCount": {
+															"displayName": "Events"
+														},
+														"screenPageViews": {
+															"displayName": "Page Views"
+														},
+														"userEngagementDuration": {
+															"displayName": "Session Duration"
+														},
+														"sessions": {
+															"displayName": "Sessions"
+														},
+														"sessionsPerUser": {
+															"displayName": "Sessions per User"
+														},
+														"totalUsers": {
+															"displayName": "Total Users"
+														},
+														"other": {
+															"displayName": "Other metrics…"
+														},
+														"custom": {
+															"displayName": "Custom metric…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name"
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"operation": {
+													"displayName": "Operation",
+													"options": {
+														"EQUAL": {
+															"displayName": "Equal"
+														},
+														"GREATER_THAN": {
+															"displayName": "Greater Than"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "Greater than or Equal"
+														},
+														"LESS_THAN": {
+															"displayName": "Less Than"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "Less than or Equal"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"betweenFilter": {
+											"displayName": "Between Filter",
+											"options": {
+												"listName": {
+													"displayName": "Metric",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1 Day Active Users"
+														},
+														"active28DayUsers": {
+															"displayName": "28 Day Active Users"
+														},
+														"active7DayUsers": {
+															"displayName": "7 Day Active Users"
+														},
+														"checkouts": {
+															"displayName": "Checkouts"
+														},
+														"eventCount": {
+															"displayName": "Events"
+														},
+														"screenPageViews": {
+															"displayName": "Page Views"
+														},
+														"userEngagementDuration": {
+															"displayName": "Session Duration"
+														},
+														"sessions": {
+															"displayName": "Sessions"
+														},
+														"sessionsPerUser": {
+															"displayName": "Sessions per User"
+														},
+														"totalUsers": {
+															"displayName": "Total Users"
+														},
+														"other": {
+															"displayName": "Other metrics…"
+														},
+														"custom": {
+															"displayName": "Custom metric…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name"
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"fromValue": {
+													"displayName": "From Value"
+												},
+												"toValue": {
+													"displayName": "To Value"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "Numeric Filter",
+											"options": {
+												"listName": {
+													"displayName": "Metric",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1 Day Active Users"
+														},
+														"active28DayUsers": {
+															"displayName": "28 Day Active Users"
+														},
+														"active7DayUsers": {
+															"displayName": "7 Day Active Users"
+														},
+														"checkouts": {
+															"displayName": "Checkouts"
+														},
+														"eventCount": {
+															"displayName": "Events"
+														},
+														"screenPageViews": {
+															"displayName": "Page Views"
+														},
+														"userEngagementDuration": {
+															"displayName": "Session Duration"
+														},
+														"sessions": {
+															"displayName": "Sessions"
+														},
+														"sessionsPerUser": {
+															"displayName": "Sessions per User"
+														},
+														"totalUsers": {
+															"displayName": "Total Users"
+														},
+														"other": {
+															"displayName": "Other metrics…"
+														},
+														"custom": {
+															"displayName": "Custom metric…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name"
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"operation": {
+													"displayName": "Operation",
+													"options": {
+														"EQUAL": {
+															"displayName": "Equal"
+														},
+														"GREATER_THAN": {
+															"displayName": "Greater Than"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "Greater than or Equal"
+														},
+														"LESS_THAN": {
+															"displayName": "Less Than"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "Less than or Equal"
+														}
+													}
+												}
+											}
+										},
+										"expression": {
+											"displayName": "Expression",
+											"placeholder": "Add Expression"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"filterExpressions": {
+							"displayName": "Filter Expressions",
+							"options": {
+								"filterExpressionType": {
+									"displayName": "Filter Expression Type",
+									"options": {
+										"andGroup": {
+											"displayName": "And Group"
+										},
+										"orGroup": {
+											"displayName": "Or Group"
+										}
+									}
+								},
+								"expression": {
+									"displayName": "Expression",
+									"placeholder": "Add Expression",
+									"multipleValueButtonText": "Add Expression",
+									"options": {
+										"betweenFilter": {
+											"displayName": "Between Filter",
+											"options": {
+												"listName": {
+													"displayName": "Metric",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1 Day Active Users"
+														},
+														"active28DayUsers": {
+															"displayName": "28 Day Active Users"
+														},
+														"active7DayUsers": {
+															"displayName": "7 Day Active Users"
+														},
+														"checkouts": {
+															"displayName": "Checkouts"
+														},
+														"eventCount": {
+															"displayName": "Events"
+														},
+														"screenPageViews": {
+															"displayName": "Page Views"
+														},
+														"userEngagementDuration": {
+															"displayName": "Session Duration"
+														},
+														"sessions": {
+															"displayName": "Sessions"
+														},
+														"sessionsPerUser": {
+															"displayName": "Sessions per User"
+														},
+														"totalUsers": {
+															"displayName": "Total Users"
+														},
+														"other": {
+															"displayName": "Other metrics…"
+														},
+														"custom": {
+															"displayName": "Custom metric…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name"
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"fromValue": {
+													"displayName": "From Value"
+												},
+												"toValue": {
+													"displayName": "To Value"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "Numeric Filter",
+											"options": {
+												"listName": {
+													"displayName": "Metric",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1 Day Active Users"
+														},
+														"active28DayUsers": {
+															"displayName": "28 Day Active Users"
+														},
+														"active7DayUsers": {
+															"displayName": "7 Day Active Users"
+														},
+														"checkouts": {
+															"displayName": "Checkouts"
+														},
+														"eventCount": {
+															"displayName": "Events"
+														},
+														"screenPageViews": {
+															"displayName": "Page Views"
+														},
+														"userEngagementDuration": {
+															"displayName": "Session Duration"
+														},
+														"sessions": {
+															"displayName": "Sessions"
+														},
+														"sessionsPerUser": {
+															"displayName": "Sessions per User"
+														},
+														"totalUsers": {
+															"displayName": "Total Users"
+														},
+														"other": {
+															"displayName": "Other metrics…"
+														},
+														"custom": {
+															"displayName": "Custom metric…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name"
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"operation": {
+													"displayName": "Operation",
+													"options": {
+														"EQUAL": {
+															"displayName": "Equal"
+														},
+														"GREATER_THAN": {
+															"displayName": "Greater Than"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "Greater than or Equal"
+														},
+														"LESS_THAN": {
+															"displayName": "Less Than"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "Less than or Equal"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"betweenFilter": {
+											"displayName": "Between Filter",
+											"options": {
+												"listName": {
+													"displayName": "Metric",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1 Day Active Users"
+														},
+														"active28DayUsers": {
+															"displayName": "28 Day Active Users"
+														},
+														"active7DayUsers": {
+															"displayName": "7 Day Active Users"
+														},
+														"checkouts": {
+															"displayName": "Checkouts"
+														},
+														"eventCount": {
+															"displayName": "Events"
+														},
+														"screenPageViews": {
+															"displayName": "Page Views"
+														},
+														"userEngagementDuration": {
+															"displayName": "Session Duration"
+														},
+														"sessions": {
+															"displayName": "Sessions"
+														},
+														"sessionsPerUser": {
+															"displayName": "Sessions per User"
+														},
+														"totalUsers": {
+															"displayName": "Total Users"
+														},
+														"other": {
+															"displayName": "Other metrics…"
+														},
+														"custom": {
+															"displayName": "Custom metric…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name"
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"fromValue": {
+													"displayName": "From Value"
+												},
+												"toValue": {
+													"displayName": "To Value"
+												}
+											}
+										},
+										"numericFilter": {
+											"displayName": "Numeric Filter",
+											"options": {
+												"listName": {
+													"displayName": "Metric",
+													"options": {
+														"active1DayUsers": {
+															"displayName": "1 Day Active Users"
+														},
+														"active28DayUsers": {
+															"displayName": "28 Day Active Users"
+														},
+														"active7DayUsers": {
+															"displayName": "7 Day Active Users"
+														},
+														"checkouts": {
+															"displayName": "Checkouts"
+														},
+														"eventCount": {
+															"displayName": "Events"
+														},
+														"screenPageViews": {
+															"displayName": "Page Views"
+														},
+														"userEngagementDuration": {
+															"displayName": "Session Duration"
+														},
+														"sessions": {
+															"displayName": "Sessions"
+														},
+														"sessionsPerUser": {
+															"displayName": "Sessions per User"
+														},
+														"totalUsers": {
+															"displayName": "Total Users"
+														},
+														"other": {
+															"displayName": "Other metrics…"
+														},
+														"custom": {
+															"displayName": "Custom metric…"
+														}
+													}
+												},
+												"name": {
+													"displayName": "Name"
+												},
+												"valueType": {
+													"displayName": "Value Type",
+													"options": {
+														"doubleValue": {
+															"displayName": "Double Value"
+														},
+														"int64Value": {
+															"displayName": "Integer Value"
+														}
+													}
+												},
+												"value": {
+													"displayName": "Value"
+												},
+												"operation": {
+													"displayName": "Operation",
+													"options": {
+														"EQUAL": {
+															"displayName": "Equal"
+														},
+														"GREATER_THAN": {
+															"displayName": "Greater Than"
+														},
+														"GREATER_THAN_OR_EQUAL": {
+															"displayName": "Greater than or Equal"
+														},
+														"LESS_THAN": {
+															"displayName": "Less Than"
+														},
+														"LESS_THAN_OR_EQUAL": {
+															"displayName": "Less than or Equal"
+														}
+													}
+												}
+											}
+										},
+										"expression": {
+											"displayName": "Expression",
+											"placeholder": "Add Expression"
+										}
+									}
+								}
+							}
+						},
+						"metricsFiltersUI": {
+							"displayName": "Metrics Filters",
+							"placeholder": "Add Filter"
+						}
+					}
+				},
+				"keepEmptyRows": {
+					"displayName": "Keep Empty Rows",
+					"description": "Whether false or unspecified, each row with all metrics equal to 0 will not be returned. If true, these rows will be returned if they are not separately removed by a filter."
+				},
+				"orderByUI": {
+					"displayName": "Order By",
+					"description": "Specifies how rows are ordered in the response",
+					"placeholder": "Add Order",
+					"multipleValueButtonText": "Add Order",
+					"options": {
+						"metricOrderBy": {
+							"displayName": "Metric Order By",
+							"options": {
+								"desc": {
+									"displayName": "Descending",
+									"description": "Whether true, sorts by descending order"
+								},
+								"metricName": {
+									"displayName": "Metric Name or ID",
+									"description": "Sorts by metric values. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								}
+							}
+						},
+						"dimmensionOrderBy": {
+							"displayName": "Dimmension Order By",
+							"options": {
+								"desc": {
+									"displayName": "Descending",
+									"description": "Whether true, sorts by descending order"
+								},
+								"dimensionName": {
+									"displayName": "Dimmension Name or ID",
+									"description": "Sorts by metric values. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"orderType": {
+									"displayName": "Order Type",
+									"options": {
+										"ALPHANUMERIC": {
+											"displayName": "Alphanumeric",
+											"description": "Alphanumeric sort by Unicode code point"
+										},
+										"CASE_INSENSITIVE_ALPHANUMERIC": {
+											"displayName": "Case Insensitive Alphanumeric",
+											"description": "Case insensitive alphanumeric sort by lower case Unicode code point"
+										},
+										"NUMERIC": {
+											"displayName": "Numeric",
+											"description": "Dimension values are converted to numbers before sorting"
+										},
+										"ORDER_TYPE_UNSPECIFIED": {
+											"displayName": "Unspecified"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"metricOrderBy": {
+							"displayName": "Metric Order By",
+							"options": {
+								"desc": {
+									"displayName": "Descending",
+									"description": "Whether true, sorts by descending order"
+								},
+								"metricName": {
+									"displayName": "Metric Name or ID",
+									"description": "Sorts by metric values. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								}
+							}
+						},
+						"dimmensionOrderBy": {
+							"displayName": "Dimmension Order By",
+							"options": {
+								"desc": {
+									"displayName": "Descending",
+									"description": "Whether true, sorts by descending order"
+								},
+								"dimensionName": {
+									"displayName": "Dimmension Name or ID",
+									"description": "Sorts by metric values. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"orderType": {
+									"displayName": "Order Type",
+									"options": {
+										"ALPHANUMERIC": {
+											"displayName": "Alphanumeric",
+											"description": "Alphanumeric sort by Unicode code point"
+										},
+										"CASE_INSENSITIVE_ALPHANUMERIC": {
+											"displayName": "Case Insensitive Alphanumeric",
+											"description": "Case insensitive alphanumeric sort by lower case Unicode code point"
+										},
+										"NUMERIC": {
+											"displayName": "Numeric",
+											"description": "Dimension values are converted to numbers before sorting"
+										},
+										"ORDER_TYPE_UNSPECIFIED": {
+											"displayName": "Unspecified"
+										}
+									}
+								}
+							}
+						},
+						"orderByUI": {
+							"displayName": "Order By",
+							"placeholder": "Add Order"
+						}
+					}
+				},
+				"returnPropertyQuota": {
+					"displayName": "Return Property Quota",
+					"description": "Whether to return the current state of this Analytics Property's quota. Quota is returned in PropertyQuota."
+				},
+				"dimensionFiltersUi": {
+					"displayName": "Dimension Filters",
+					"description": "Dimension Filters in the request",
+					"placeholder": "Add Dimension Filter",
+					"multipleValueButtonText": "Add Dimension Filter",
+					"options": {
+						"filterValues": {
+							"displayName": "Filters",
+							"options": {
+								"listName": {
+									"displayName": "Dimension",
+									"options": {
+										"ga:browser": {
+											"displayName": "Browser"
+										},
+										"ga:campaign": {
+											"displayName": "Campaign"
+										},
+										"ga:city": {
+											"displayName": "City"
+										},
+										"ga:country": {
+											"displayName": "Country"
+										},
+										"ga:date": {
+											"displayName": "Date"
+										},
+										"ga:deviceCategory": {
+											"displayName": "Device Category"
+										},
+										"ga:productName": {
+											"displayName": "Item Name"
+										},
+										"ga:language": {
+											"displayName": "Language"
+										},
+										"ga:pagePath": {
+											"displayName": "Page"
+										},
+										"ga:sourceMedium": {
+											"displayName": "Source / Medium"
+										},
+										"other": {
+											"displayName": "Other dimensions…"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name or ID",
+									"description": "Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"operator": {
+									"displayName": "Operator",
+									"description": "Operator to use in combination with value",
+									"options": {
+										"BEGINS_WITH": {
+											"displayName": "Begins With"
+										},
+										"ENDS_WITH": {
+											"displayName": "Ends With"
+										},
+										"NUMERIC_EQUAL": {
+											"displayName": "Equals (Number)"
+										},
+										"EXACT": {
+											"displayName": "Exactly Matches"
+										},
+										"NUMERIC_GREATER_THAN": {
+											"displayName": "Greater Than (Number)"
+										},
+										"NUMERIC_LESS_THAN": {
+											"displayName": "Less Than (Number)"
+										},
+										"PARTIAL": {
+											"displayName": "Partly Matches"
+										},
+										"REGEXP": {
+											"displayName": "Regular Expression"
+										}
+									}
+								},
+								"expressions": {
+									"displayName": "Value",
+									"description": "String or <a href=\"https://support.google.com/analytics/answer/1034324?hl=en\">regular expression</a> to match against"
+								}
+							}
+						}
+					},
+					"values": {
+						"filterValues": {
+							"displayName": "Filters",
+							"options": {
+								"listName": {
+									"displayName": "Dimension",
+									"options": {
+										"ga:browser": {
+											"displayName": "Browser"
+										},
+										"ga:campaign": {
+											"displayName": "Campaign"
+										},
+										"ga:city": {
+											"displayName": "City"
+										},
+										"ga:country": {
+											"displayName": "Country"
+										},
+										"ga:date": {
+											"displayName": "Date"
+										},
+										"ga:deviceCategory": {
+											"displayName": "Device Category"
+										},
+										"ga:productName": {
+											"displayName": "Item Name"
+										},
+										"ga:language": {
+											"displayName": "Language"
+										},
+										"ga:pagePath": {
+											"displayName": "Page"
+										},
+										"ga:sourceMedium": {
+											"displayName": "Source / Medium"
+										},
+										"other": {
+											"displayName": "Other dimensions…"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name or ID",
+									"description": "Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"operator": {
+									"displayName": "Operator",
+									"description": "Operator to use in combination with value",
+									"options": {
+										"BEGINS_WITH": {
+											"displayName": "Begins With"
+										},
+										"ENDS_WITH": {
+											"displayName": "Ends With"
+										},
+										"NUMERIC_EQUAL": {
+											"displayName": "Equals (Number)"
+										},
+										"EXACT": {
+											"displayName": "Exactly Matches"
+										},
+										"NUMERIC_GREATER_THAN": {
+											"displayName": "Greater Than (Number)"
+										},
+										"NUMERIC_LESS_THAN": {
+											"displayName": "Less Than (Number)"
+										},
+										"PARTIAL": {
+											"displayName": "Partly Matches"
+										},
+										"REGEXP": {
+											"displayName": "Regular Expression"
+										}
+									}
+								},
+								"expressions": {
+									"displayName": "Value",
+									"description": "String or <a href=\"https://support.google.com/analytics/answer/1034324?hl=en\">regular expression</a> to match against"
+								}
+							}
+						},
+						"dimensionFiltersUi": {
+							"displayName": "Dimension Filters",
+							"placeholder": "Add Dimension Filter"
+						}
+					}
+				},
+				"hideTotals": {
+					"displayName": "Hide Totals",
+					"description": "Whether to hide the total of all metrics for all the matching rows, for every date range"
+				},
+				"hideValueRanges": {
+					"displayName": "Hide Value Ranges",
+					"description": "Whether to hide the minimum and maximum across all matching rows"
+				},
+				"includeEmptyRows": {
+					"displayName": "Include Empty Rows",
+					"description": "Whether the response exclude rows if all the retrieved metrics are equal to zero"
+				},
+				"useResourceQuotas": {
+					"displayName": "Use Resource Quotas",
+					"description": "Whether to enable resource based quotas"
+				},
+				"activityTypes": {
+					"displayName": "Activity Types",
+					"description": "Type of activites requested"
+				}
+			}
+		},
+		"viewId": {
+			"displayName": "View Name or ID",
+			"description": "The view from Google Analytics. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "123456"
+		},
+		"metricsUA": {
+			"displayName": "Metrics",
+			"description": "Metrics in the request",
+			"placeholder": "Add metric",
+			"multipleValueButtonText": "Add metric",
+			"options": {
+				"metricValues": {
+					"displayName": "Metric",
+					"options": {
+						"listName": {
+							"displayName": "Metric",
+							"options": {
+								"ga:productCheckouts": {
+									"displayName": "Checkouts"
+								},
+								"ga:totalEvents": {
+									"displayName": "Events"
+								},
+								"ga:pageviews": {
+									"displayName": "Page Views"
+								},
+								"ga:sessionDuration": {
+									"displayName": "Session Duration"
+								},
+								"ga:sessions": {
+									"displayName": "Sessions"
+								},
+								"ga:sessionsPerUser": {
+									"displayName": "Sessions per User"
+								},
+								"ga:users": {
+									"displayName": "Total Users"
+								},
+								"other": {
+									"displayName": "Other metrics…"
+								},
+								"custom": {
+									"displayName": "Custom metric…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name"
+						},
+						"expression": {
+							"displayName": "Expression",
+							"description": "Learn more about Google Analytics <a href=\"https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Metric\">metric expressions</a>",
+							"placeholder": "e.g. ga:totalRefunds/ga:users"
+						},
+						"formattingType": {
+							"displayName": "Formatting Type",
+							"description": "Specifies how the metric expression should be formatted",
+							"options": {
+								"CURRENCY": {
+									"displayName": "Currency"
+								},
+								"FLOAT": {
+									"displayName": "Float"
+								},
+								"INTEGER": {
+									"displayName": "Integer"
+								},
+								"PERCENT": {
+									"displayName": "Percent"
+								},
+								"TIME": {
+									"displayName": "Time"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"metricValues": {
+					"displayName": "Metric",
+					"options": {
+						"listName": {
+							"displayName": "Metric",
+							"options": {
+								"ga:productCheckouts": {
+									"displayName": "Checkouts"
+								},
+								"ga:totalEvents": {
+									"displayName": "Events"
+								},
+								"ga:pageviews": {
+									"displayName": "Page Views"
+								},
+								"ga:sessionDuration": {
+									"displayName": "Session Duration"
+								},
+								"ga:sessions": {
+									"displayName": "Sessions"
+								},
+								"ga:sessionsPerUser": {
+									"displayName": "Sessions per User"
+								},
+								"ga:users": {
+									"displayName": "Total Users"
+								},
+								"other": {
+									"displayName": "Other metrics…"
+								},
+								"custom": {
+									"displayName": "Custom metric…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name"
+						},
+						"expression": {
+							"displayName": "Expression",
+							"description": "Learn more about Google Analytics <a href=\"https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Metric\">metric expressions</a>",
+							"placeholder": "e.g. ga:totalRefunds/ga:users"
+						},
+						"formattingType": {
+							"displayName": "Formatting Type",
+							"description": "Specifies how the metric expression should be formatted",
+							"options": {
+								"CURRENCY": {
+									"displayName": "Currency"
+								},
+								"FLOAT": {
+									"displayName": "Float"
+								},
+								"INTEGER": {
+									"displayName": "Integer"
+								},
+								"PERCENT": {
+									"displayName": "Percent"
+								},
+								"TIME": {
+									"displayName": "Time"
+								}
+							}
+						}
+					}
+				},
+				"metricsUA": {
+					"displayName": "Metrics",
+					"placeholder": "Add metric"
+				}
+			}
+		},
+		"dimensionsUA": {
+			"displayName": "Dimensions to split by",
+			"description": "Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, \"Paris\" or \"New York\", from which a session originates.",
+			"placeholder": "Add Dimension",
+			"multipleValueButtonText": "Add Dimension",
+			"options": {
+				"dimensionValues": {
+					"displayName": "Values",
+					"options": {
+						"listName": {
+							"displayName": "Dimension",
+							"options": {
+								"ga:browser": {
+									"displayName": "Browser"
+								},
+								"ga:campaign": {
+									"displayName": "Campaign"
+								},
+								"ga:city": {
+									"displayName": "City"
+								},
+								"ga:country": {
+									"displayName": "Country"
+								},
+								"ga:date": {
+									"displayName": "Date"
+								},
+								"ga:deviceCategory": {
+									"displayName": "Device Category"
+								},
+								"ga:productName": {
+									"displayName": "Item Name"
+								},
+								"ga:language": {
+									"displayName": "Language"
+								},
+								"ga:pagePath": {
+									"displayName": "Page"
+								},
+								"ga:sourceMedium": {
+									"displayName": "Source / Medium"
+								},
+								"other": {
+									"displayName": "Other dimensions…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name or ID",
+							"description": "Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				}
+			},
+			"values": {
+				"dimensionValues": {
+					"displayName": "Values",
+					"options": {
+						"listName": {
+							"displayName": "Dimension",
+							"options": {
+								"ga:browser": {
+									"displayName": "Browser"
+								},
+								"ga:campaign": {
+									"displayName": "Campaign"
+								},
+								"ga:city": {
+									"displayName": "City"
+								},
+								"ga:country": {
+									"displayName": "Country"
+								},
+								"ga:date": {
+									"displayName": "Date"
+								},
+								"ga:deviceCategory": {
+									"displayName": "Device Category"
+								},
+								"ga:productName": {
+									"displayName": "Item Name"
+								},
+								"ga:language": {
+									"displayName": "Language"
+								},
+								"ga:pagePath": {
+									"displayName": "Page"
+								},
+								"ga:sourceMedium": {
+									"displayName": "Source / Medium"
+								},
+								"other": {
+									"displayName": "Other dimensions…"
+								}
+							}
+						},
+						"name": {
+							"displayName": "Name or ID",
+							"description": "Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				},
+				"dimensionsUA": {
+					"displayName": "Dimensions to split by",
+					"placeholder": "Add Dimension"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "ID of a user",
+			"placeholder": "123456"
+		}
+	}
+}

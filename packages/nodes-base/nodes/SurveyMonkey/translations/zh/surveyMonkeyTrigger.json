@@ -1,0 +1,103 @@
+{
+	"header": {
+		"displayName": "SurveyMonkey触发器",
+		"description": "当Survey Monkey事件发生时启动工作流"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"objectType": {
+			"displayName": "类型",
+			"options": {
+				"collector": {
+					"displayName": "收集器"
+				},
+				"survey": {
+					"displayName": "调查"
+				}
+			}
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"collector_created": {
+					"displayName": "采集器已创建",
+					"description": "采集器已创建"
+				},
+				"collector_deleted": {
+					"displayName": "采集器已删除",
+					"description": "采集器已被删除"
+				},
+				"collector_updated": {
+					"displayName": "采集器已更新",
+					"description": "采集器已更新"
+				},
+				"response_completed": {
+					"displayName": "响应已完成",
+					"description": "调查响应已完成"
+				},
+				"response_created": {
+					"displayName": "响应已创建",
+					"description": "受访者开始填写问卷"
+				},
+				"response_deleted": {
+					"displayName": "响应已删除",
+					"description": "响应已删除"
+				},
+				"response_disqualified": {
+					"displayName": "响应已取消资格",
+					"description": "调查响应已取消资格"
+				},
+				"response_overquota": {
+					"displayName": "响应超出配额",
+					"description": "响应已超出调查配额"
+				},
+				"response_updated": {
+					"displayName": "响应已更新",
+					"description": "调查响应已更新"
+				},
+				"survey_created": {
+					"displayName": "调查已创建",
+					"description": "调查已创建"
+				},
+				"survey_deleted": {
+					"displayName": "调查已删除",
+					"description": "调查被删除"
+				},
+				"survey_updated": {
+					"displayName": "调查已更新",
+					"description": "调查已更新"
+				}
+			}
+		},
+		"surveyIds": {
+			"displayName": "调查名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"surveyId": {
+			"displayName": "调查名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"collectorIds": {
+			"displayName": "收集器名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，Webhook数据仅包含ID。如果激活此选项，它将自动解析数据。"
+		},
+		"onlyAnswers": {
+			"displayName": "仅返回答案",
+			"description": "是否仅返回表单的答案而不返回任何其他数据"
+		}
+	}
+}

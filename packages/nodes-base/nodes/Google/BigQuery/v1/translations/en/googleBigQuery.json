@@ -1,0 +1,98 @@
+{
+	"header": {
+		"displayName": "Google BigQuery",
+		"description": "Consume Google BigQuery API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				},
+				"serviceAccount": {
+					"displayName": "Service Account"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"record": {
+					"displayName": "Record"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new record"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many records"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "Project Name or ID",
+			"description": "ID of the project to retrieve all rows from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"datasetId": {
+			"displayName": "Dataset Name or ID",
+			"description": "ID of the dataset to retrieve all rows from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"tableId": {
+			"displayName": "Table Name or ID",
+			"description": "ID of the table to retrieve all rows from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"columns": {
+			"displayName": "Columns",
+			"description": "Comma-separated list of the item properties to use as columns",
+			"placeholder": "id,name,description"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"ignoreUnknownValues": {
+					"displayName": "Ignore Unknown Values",
+					"description": "Whether to ignore row values that do not match the schema"
+				},
+				"skipInvalidRows": {
+					"displayName": "Skip Invalid Rows",
+					"description": "Whether to skip rows with values that do not match the schema"
+				},
+				"templateSuffix": {
+					"displayName": "Template Suffix",
+					"description": "Create a new table based on the destination table and insert rows into the new table. The new table will be named <code>{destinationTable}{templateSuffix}</code>"
+				},
+				"traceId": {
+					"displayName": "Trace ID",
+					"description": "Unique ID for the request, for debugging only. It is case-sensitive, limited to up to 36 ASCII characters. A UUID is recommended."
+				},
+				"selectedFields": {
+					"displayName": "Fields",
+					"description": "Subset of fields to return, supports select into sub fields. Example: <code>selectedFields = \"a,e.d.f\"</code>"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		}
+	}
+}

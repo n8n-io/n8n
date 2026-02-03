@@ -1,0 +1,156 @@
+{
+	"header": {
+		"displayName": "SeaTable",
+		"description": "使用 SeaTable API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"row": {
+					"displayName": "行"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"description": "正在执行的操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建一行"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一行"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取一行"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多行数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新行数据"
+				}
+			}
+		},
+		"tableName": {
+			"displayName": "表名",
+			"description": "要访问的SeaTable表名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code-examples/expressions/\">表达式</a>指定名称。",
+			"placeholder": "表名称"
+		},
+		"tableId": {
+			"displayName": "表格ID",
+			"description": "要访问的SeaTable表名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "表ID"
+		},
+		"rowId": {
+			"displayName": "行ID"
+		},
+		"fieldsToSend": {
+			"displayName": "要发送的数据",
+			"description": "是否将本节点接收的输入数据插入新行",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "自动映射输入数据到列",
+					"description": "当节点输入属性与目标列名匹配时使用"
+				},
+				"defineBelow": {
+					"displayName": "为每列定义以下内容",
+					"description": "为每个目标列设置值"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "要忽略的输入",
+			"description": "要避免发送的输入属性列表，用逗号分隔。留空则发送所有属性。",
+			"placeholder": "输入属性..."
+		},
+		"columnsUi": {
+			"displayName": "要发送的列",
+			"description": "添加目标列及其值",
+			"placeholder": "添加列",
+			"multipleValueButtonText": "添加要发送的列",
+			"options": {
+				"columnValues": {
+					"displayName": "列",
+					"options": {
+						"columnName": {
+							"displayName": "列名",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code-examples/expressions/\">表达式</a>指定名称"
+						},
+						"columnValue": {
+							"displayName": "列值"
+						}
+					}
+				}
+			},
+			"values": {
+				"columnValues": {
+					"displayName": "列",
+					"options": {
+						"columnName": {
+							"displayName": "列名",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code-examples/expressions/\">表达式</a>指定名称"
+						},
+						"columnValue": {
+							"displayName": "列值"
+						}
+					}
+				},
+				"columnsUi": {
+					"displayName": "要发送的列",
+					"placeholder": "添加列"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"view_name": {
+					"displayName": "视图名称",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code-examples/expressions/\">表达式</a>指定视图名称"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"convert_link_id": {
+					"displayName": "转换链接ID",
+					"description": "是否在链接列中返回关联行的ID（true）。否则返回关联行的名称（false）。"
+				},
+				"direction": {
+					"displayName": "方向",
+					"description": "排序方向，升序（asc）或降序（desc）",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "降序"
+						}
+					}
+				},
+				"order_by": {
+					"displayName": "按列排序",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code-examples/expressions/\">表达式</a>指定列"
+				}
+			}
+		}
+	}
+}

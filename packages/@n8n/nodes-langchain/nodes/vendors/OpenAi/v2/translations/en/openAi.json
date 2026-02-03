@@ -1,0 +1,1234 @@
+{
+	"header": {
+		"displayName": "OpenAI",
+		"description": "Message an assistant or GPT, analyze images, generate audio, etc."
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"text": {
+					"displayName": "Text"
+				},
+				"image": {
+					"displayName": "Image"
+				},
+				"audio": {
+					"displayName": "Audio"
+				},
+				"file": {
+					"displayName": "File"
+				},
+				"conversation": {
+					"displayName": "Conversation"
+				},
+				"video": {
+					"displayName": "Video"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"generate": {
+					"displayName": "Generate",
+					"description": "Creates a video from a text prompt"
+				},
+				"transcribe": {
+					"displayName": "Transcribe a Recording",
+					"description": "Transcribes audio into text"
+				},
+				"translate": {
+					"displayName": "Translate a Recording",
+					"description": "Translates audio into text in English"
+				},
+				"deleteFile": {
+					"displayName": "Delete a File",
+					"description": "Delete a file from the server"
+				},
+				"list": {
+					"displayName": "List Files",
+					"description": "Returns a list of files that belong to the user's organization"
+				},
+				"upload": {
+					"displayName": "Upload a File",
+					"description": "Upload a file that can be used across various endpoints"
+				},
+				"analyze": {
+					"displayName": "Analyze Image",
+					"description": "Take in images and answer questions about them"
+				},
+				"edit": {
+					"displayName": "Edit Image",
+					"description": "Edit an image"
+				},
+				"response": {
+					"displayName": "Message a Model",
+					"description": "Generate a model response with GPT 3, 4, 5, etc. using Responses API"
+				},
+				"classify": {
+					"displayName": "Classify Text for Violations",
+					"description": "Check whether content complies with usage policies"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a conversation"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a conversation"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a conversation"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a conversation"
+				}
+			}
+		},
+		"fileSizeLimitNotice": {
+			"displayName": "OpenAI API limits the size of the audio file to 25 MB"
+		},
+		"model": {
+			"displayName": "Model",
+			"options": {
+				"tts-1": {
+					"displayName": "TTS-1"
+				},
+				"tts-1-hd": {
+					"displayName": "TTS-1-HD"
+				},
+				"dall-e-2": {
+					"displayName": "DALL·E 2"
+				},
+				"dall-e-3": {
+					"displayName": "DALL·E 3"
+				},
+				"gpt-image-1": {
+					"displayName": "GPT Image 1"
+				}
+			},
+			"description": "The model to use for image generation"
+		},
+		"input": {
+			"displayName": "Text Input",
+			"description": "The input text to classify if it is violates the moderation policy",
+			"placeholder": "e.g. Sample text goes here"
+		},
+		"voice": {
+			"displayName": "Voice",
+			"description": "The voice to use when generating the audio",
+			"options": {
+				"alloy": {
+					"displayName": "Alloy"
+				},
+				"echo": {
+					"displayName": "Echo"
+				},
+				"fable": {
+					"displayName": "Fable"
+				},
+				"nova": {
+					"displayName": "Nova"
+				},
+				"onyx": {
+					"displayName": "Onyx"
+				},
+				"shimmer": {
+					"displayName": "Shimmer"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"response_format": {
+					"displayName": "Response Format",
+					"options": {
+						"mp3": {
+							"displayName": "MP3"
+						},
+						"opus": {
+							"displayName": "OPUS"
+						},
+						"aac": {
+							"displayName": "AAC"
+						},
+						"flac": {
+							"displayName": "FLAC"
+						}
+					}
+				},
+				"speed": {
+					"displayName": "Audio Speed"
+				},
+				"binaryPropertyOutput": {
+					"displayName": "Put Output in Field"
+				},
+				"language": {
+					"displayName": "Language of the Audio File",
+					"description": "The language of the input audio. Supplying the input language in <a href=\"https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes\" target=\"_blank\">ISO-639-1</a> format will improve accuracy and latency."
+				},
+				"temperature": {
+					"displayName": "Output Randomness (Temperature)",
+					"description": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. We generally recommend altering this or top_p but not both"
+				},
+				"purpose": {
+					"displayName": "Purpose",
+					"description": "Only return files with the given purpose",
+					"options": {
+						"assistants": {
+							"displayName": "Assistants"
+						},
+						"fine-tune": {
+							"displayName": "Fine-Tune"
+						},
+						"vision": {
+							"displayName": "Vision"
+						},
+						"user_data": {
+							"displayName": "User Data"
+						},
+						"any": {
+							"displayName": "Any [Default]"
+						}
+					}
+				},
+				"n": {
+					"displayName": "Number of Images",
+					"description": "Number of images to generate"
+				},
+				"dalleQuality": {
+					"displayName": "Quality",
+					"description": "The quality of the image that will be generated, HD creates images with finer details and greater consistency across the image",
+					"options": {
+						"hd": {
+							"displayName": "HD"
+						},
+						"standard": {
+							"displayName": "Standard"
+						}
+					}
+				},
+				"quality": {
+					"displayName": "Quality",
+					"description": "The quality of the image that will be generated, High creates images with finer details and greater consistency across the image",
+					"options": {
+						"high": {
+							"displayName": "High"
+						},
+						"medium": {
+							"displayName": "Medium"
+						},
+						"low": {
+							"displayName": "Low"
+						}
+					}
+				},
+				"size": {
+					"displayName": "Resolution",
+					"options": {
+						"1024x1024": {
+							"displayName": "1024x1024"
+						},
+						"1024x1536": {
+							"displayName": "1024x1536"
+						},
+						"1536x1024": {
+							"displayName": "1536x1024"
+						}
+					}
+				},
+				"style": {
+					"displayName": "Style",
+					"options": {
+						"natural": {
+							"displayName": "Natural",
+							"description": "Produce more natural looking images"
+						},
+						"vivid": {
+							"displayName": "Vivid",
+							"description": "Lean towards generating hyper-real and dramatic images"
+						}
+					}
+				},
+				"returnImageUrls": {
+					"displayName": "Respond with Image URL(s)",
+					"description": "Whether to return image URL(s) instead of binary file(s)"
+				},
+				"detail": {
+					"displayName": "Detail",
+					"options": {
+						"auto": {
+							"displayName": "Auto",
+							"description": "Model will look at the image input size and decide if it should use the low or high setting"
+						},
+						"low": {
+							"displayName": "Low",
+							"description": "Return faster responses and consume fewer tokens"
+						},
+						"high": {
+							"displayName": "High",
+							"description": "Return more detailed responses, consumes more tokens"
+						}
+					}
+				},
+				"maxTokens": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768)."
+				},
+				"user": {
+					"displayName": "User",
+					"description": "A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse",
+					"placeholder": "user-12345"
+				},
+				"background": {
+					"displayName": "Background",
+					"description": "Allows to set transparency for the background of the generated image(s). Only supported for gpt-image-1.",
+					"options": {
+						"auto": {
+							"displayName": "Auto"
+						},
+						"transparent": {
+							"displayName": "Transparent"
+						},
+						"opaque": {
+							"displayName": "Opaque"
+						}
+					}
+				},
+				"inputFidelity": {
+					"displayName": "Input Fidelity",
+					"description": "Control how much effort the model will exert to match the style and features of input images. Only supported for gpt-image-1.",
+					"options": {
+						"low": {
+							"displayName": "Low"
+						},
+						"high": {
+							"displayName": "High"
+						}
+					}
+				},
+				"imageMask": {
+					"displayName": "Image Mask",
+					"description": "Name of the binary property which contains the image. An additional image whose fully transparent areas (e.g. where alpha is zero) indicate where image should be edited. If there are multiple images provided, the mask will be applied on the first image. Must be a valid PNG file, less than 4MB, and have the same dimensions as image."
+				},
+				"useStableModel": {
+					"displayName": "Use Stable Model",
+					"description": "Whether to use the stable version of the model instead of the latest version, accuracy may be slightly lower"
+				},
+				"conversationId": {
+					"displayName": "Conversation ID",
+					"description": "The conversation that this response belongs to. Input items and output items from this response are automatically added to this conversation after this response completes."
+				},
+				"include": {
+					"displayName": "Include Additional Data",
+					"description": "Specify additional output data to include in the model response"
+				},
+				"instructions": {
+					"displayName": "Instructions",
+					"description": "Instructions for the model to follow"
+				},
+				"maxToolsIterations": {
+					"displayName": "Max Tool Calls Iterations",
+					"description": "The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit."
+				},
+				"maxToolCalls": {
+					"displayName": "Max Built-in Tool Calls",
+					"description": "The maximum number of total calls to built-in tools that can be processed in a response. This maximum number applies across all built-in tool calls, not per individual tool. Any further attempts to call a tool by the model will be ignored."
+				},
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional information about the object in a structured format, and querying for objects via API or the dashboard. Keys are strings with a maximum length of 64 characters. Values are strings with a maximum length of 512 characters."
+				},
+				"parallelToolCalls": {
+					"displayName": "Parallel Tool Calls",
+					"description": "Whether to allow parallel tool calls. If true, the model can call multiple tools at once."
+				},
+				"previousResponseId": {
+					"displayName": "Previous Response ID",
+					"description": "The ID of the previous response to continue from. Cannot be used in conjunction with Conversation ID."
+				},
+				"promptConfig": {
+					"displayName": "Prompt",
+					"description": "Configure the reusable prompt template configured via OpenAI Dashboard. <a href=\"https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts\">Learn more</a>.",
+					"options": {
+						"promptOptions": {
+							"displayName": "Prompt",
+							"options": {
+								"promptId": {
+									"displayName": "Prompt ID",
+									"description": "The unique identifier of the prompt template to use"
+								},
+								"version": {
+									"displayName": "Version",
+									"description": "Optional version of the prompt template"
+								},
+								"variables": {
+									"displayName": "Variables",
+									"description": "Variables to be substituted into the prompt template"
+								}
+							}
+						}
+					},
+					"values": {
+						"promptOptions": {
+							"displayName": "Prompt",
+							"options": {
+								"promptId": {
+									"displayName": "Prompt ID",
+									"description": "The unique identifier of the prompt template to use"
+								},
+								"version": {
+									"displayName": "Version",
+									"description": "Optional version of the prompt template"
+								},
+								"variables": {
+									"displayName": "Variables",
+									"description": "Variables to be substituted into the prompt template"
+								}
+							}
+						},
+						"promptConfig": {
+							"displayName": "Prompt"
+						}
+					}
+				},
+				"promptCacheKey": {
+					"displayName": "Prompt Cache Key",
+					"description": "Used by OpenAI to cache responses for similar requests to optimize your cache hit rates"
+				},
+				"reasoning": {
+					"displayName": "Reasoning",
+					"options": {
+						"reasoningOptions": {
+							"displayName": "Reasoning",
+							"options": {
+								"effort": {
+									"displayName": "Effort",
+									"options": {
+										"low": {
+											"displayName": "Low"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"high": {
+											"displayName": "High"
+										}
+									}
+								},
+								"summary": {
+									"displayName": "Summary",
+									"description": "A summary of the reasoning performed by the model. This can be useful for debugging and understanding the model's reasoning process.",
+									"options": {
+										"none": {
+											"displayName": "None"
+										},
+										"auto": {
+											"displayName": "Auto"
+										},
+										"concise": {
+											"displayName": "Concise"
+										},
+										"detailed": {
+											"displayName": "Detailed"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"reasoningOptions": {
+							"displayName": "Reasoning",
+							"options": {
+								"effort": {
+									"displayName": "Effort",
+									"options": {
+										"low": {
+											"displayName": "Low"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"high": {
+											"displayName": "High"
+										}
+									}
+								},
+								"summary": {
+									"displayName": "Summary",
+									"description": "A summary of the reasoning performed by the model. This can be useful for debugging and understanding the model's reasoning process.",
+									"options": {
+										"none": {
+											"displayName": "None"
+										},
+										"auto": {
+											"displayName": "Auto"
+										},
+										"concise": {
+											"displayName": "Concise"
+										},
+										"detailed": {
+											"displayName": "Detailed"
+										}
+									}
+								}
+							}
+						},
+						"reasoning": {
+							"displayName": "Reasoning"
+						}
+					}
+				},
+				"safetyIdentifier": {
+					"displayName": "Safety Identifier",
+					"description": "A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies. The IDs should be a string that uniquely identifies each user."
+				},
+				"serviceTier": {
+					"displayName": "Service Tier",
+					"description": "The service tier to use for the request",
+					"options": {
+						"auto": {
+							"displayName": "Auto"
+						},
+						"flex": {
+							"displayName": "Flex"
+						},
+						"default": {
+							"displayName": "Default"
+						},
+						"priority": {
+							"displayName": "Priority"
+						}
+					}
+				},
+				"store": {
+					"displayName": "Store",
+					"description": "Whether to store the generated model response for later retrieval via API"
+				},
+				"textFormat": {
+					"displayName": "Output Format",
+					"options": {
+						"textOptions": {
+							"displayName": "Text",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"text": {
+											"displayName": "Text"
+										},
+										"json_schema": {
+											"displayName": "JSON Schema (recommended)"
+										},
+										"json_object": {
+											"displayName": "JSON Object"
+										}
+									}
+								},
+								"verbosity": {
+									"displayName": "Verbosity",
+									"options": {
+										"low": {
+											"displayName": "Low"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"high": {
+											"displayName": "High"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64."
+								},
+								"requiredNotice": {
+									"displayName": "All properties in the schema must be set to \"required\", when using \"strict\" mode."
+								},
+								"schema": {
+									"displayName": "Schema",
+									"description": "The schema of the response format"
+								},
+								"description": {
+									"displayName": "Description",
+									"description": "The description of the response format"
+								},
+								"strict": {
+									"displayName": "Strict",
+									"description": "Whether to require that the AI will always generate responses that match the provided JSON Schema"
+								}
+							}
+						}
+					},
+					"values": {
+						"textOptions": {
+							"displayName": "Text",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"text": {
+											"displayName": "Text"
+										},
+										"json_schema": {
+											"displayName": "JSON Schema (recommended)"
+										},
+										"json_object": {
+											"displayName": "JSON Object"
+										}
+									}
+								},
+								"verbosity": {
+									"displayName": "Verbosity",
+									"options": {
+										"low": {
+											"displayName": "Low"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"high": {
+											"displayName": "High"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64."
+								},
+								"requiredNotice": {
+									"displayName": "All properties in the schema must be set to \"required\", when using \"strict\" mode."
+								},
+								"schema": {
+									"displayName": "Schema",
+									"description": "The schema of the response format"
+								},
+								"description": {
+									"displayName": "Description",
+									"description": "The description of the response format"
+								},
+								"strict": {
+									"displayName": "Strict",
+									"description": "Whether to require that the AI will always generate responses that match the provided JSON Schema"
+								}
+							}
+						},
+						"textFormat": {
+							"displayName": "Output Format"
+						}
+					}
+				},
+				"topLogprobs": {
+					"displayName": "Top Logprobs",
+					"description": "An integer between 0 and 20 specifying the number of most likely tokens to return at each token position, each with an associated log probability"
+				},
+				"topP": {
+					"displayName": "Output Randomness (Top P)",
+					"description": "An alternative to sampling with temperature, controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both."
+				},
+				"truncation": {
+					"displayName": "Truncation",
+					"description": "Whether to truncate the input to the model's context window size. When disabled will throw a 400 error instead."
+				},
+				"backgroundMode": {
+					"displayName": "Background Mode",
+					"options": {
+						"values": {
+							"displayName": "Bakground",
+							"values": {
+								"enabled": {
+									"displayName": "Background Mode",
+									"description": "Whether to run the model in background mode. If true, the model will run in background mode."
+								},
+								"timeout": {
+									"displayName": "Timeout",
+									"description": "The timeout for the background mode in seconds. If 0, the timeout is infinite."
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Bakground",
+							"values": {
+								"enabled": {
+									"displayName": "Background Mode",
+									"description": "Whether to run the model in background mode. If true, the model will run in background mode."
+								},
+								"timeout": {
+									"displayName": "Timeout",
+									"description": "The timeout for the background mode in seconds. If 0, the timeout is infinite."
+								}
+							}
+						},
+						"backgroundMode": {
+							"displayName": "Background Mode"
+						}
+					}
+				},
+				"binaryPropertyNameReference": {
+					"displayName": "Reference",
+					"description": "Optional image reference that guides generation",
+					"placeholder": "e.g. data"
+				},
+				"waitTime": {
+					"displayName": "Wait Timeout",
+					"description": "Time to wait for the video to be generated in seconds"
+				},
+				"fileName": {
+					"displayName": "Output Field Name"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Binary Field Name",
+			"description": "Name of the binary property which contains the image. It should be a square png file less than 4MB.",
+			"placeholder": "e.g. data"
+		},
+		"fileId": {
+			"displayName": "File"
+		},
+		"prompt": {
+			"displayName": "Prompt",
+			"description": "The prompt to generate a video from",
+			"placeholder": "A beautiful sunset over mountains"
+		},
+		"modelId": {
+			"displayName": "Model"
+		},
+		"text": {
+			"displayName": "Text Input",
+			"placeholder": "e.g. What's in this image?"
+		},
+		"inputType": {
+			"displayName": "Input Type",
+			"options": {
+				"url": {
+					"displayName": "Image URL(s)"
+				},
+				"base64": {
+					"displayName": "Binary File(s)"
+				}
+			}
+		},
+		"imageUrls": {
+			"displayName": "URL(s)",
+			"description": "URL(s) of the image(s) to analyze, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/image.jpeg"
+		},
+		"simplify": {
+			"displayName": "Simplify Output",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"images": {
+			"displayName": "Images",
+			"description": "Add one or more binary fields to include images with your prompt. Each image should be a png, webp, or jpg file less than 50MB. You can provide up to 16 images.",
+			"placeholder": "Add Image",
+			"multipleValueButtonText": "Add Image",
+			"options": {
+				"values": {
+					"displayName": "Image",
+					"values": {
+						"binaryPropertyName": {
+							"displayName": "Binary Field Name",
+							"description": "The name of the binary field containing the image data",
+							"placeholder": "e.g. data"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Image",
+					"values": {
+						"binaryPropertyName": {
+							"displayName": "Binary Field Name",
+							"description": "The name of the binary field containing the image data",
+							"placeholder": "e.g. data"
+						}
+					}
+				},
+				"images": {
+					"displayName": "Images",
+					"placeholder": "Add Image"
+				}
+			}
+		},
+		"n": {
+			"displayName": "Number of Images",
+			"description": "The number of images to generate. Must be between 1 and 10."
+		},
+		"size": {
+			"displayName": "Size",
+			"description": "Output resolution formatted as width x height. 1024x1792 and 1792x1024 are only supported by Sora 2 Pro.",
+			"options": {
+				"256x256": {
+					"displayName": "256x256"
+				},
+				"512x512": {
+					"displayName": "512x512"
+				},
+				"1024x1024": {
+					"displayName": "1024x1024"
+				},
+				"1024x1536": {
+					"displayName": "1024x1536 (Portrait)"
+				},
+				"1536x1024": {
+					"displayName": "1536x1024 (Landscape)"
+				},
+				"auto": {
+					"displayName": "Auto"
+				},
+				"720x1280": {
+					"displayName": "720x1280"
+				},
+				"1280x720": {
+					"displayName": "1280x720"
+				},
+				"1024x1792": {
+					"displayName": "1024x1792"
+				},
+				"1792x1024": {
+					"displayName": "1792x1024"
+				}
+			}
+		},
+		"quality": {
+			"displayName": "Quality",
+			"description": "The quality of the image that will be generated",
+			"options": {
+				"auto": {
+					"displayName": "Auto"
+				},
+				"high": {
+					"displayName": "High"
+				},
+				"medium": {
+					"displayName": "Medium"
+				},
+				"low": {
+					"displayName": "Low"
+				},
+				"standard": {
+					"displayName": "Standard"
+				}
+			}
+		},
+		"responseFormat": {
+			"displayName": "Response Format",
+			"description": "The format in which the generated images are returned. URLs are only valid for 60 minutes after generation.",
+			"options": {
+				"url": {
+					"displayName": "URL"
+				},
+				"b64_json": {
+					"displayName": "Base64 JSON"
+				}
+			}
+		},
+		"outputFormat": {
+			"displayName": "Output Format",
+			"description": "The format in which the generated images are returned. Only supported for gpt-image-1.",
+			"options": {
+				"png": {
+					"displayName": "PNG"
+				},
+				"jpeg": {
+					"displayName": "JPEG"
+				},
+				"webp": {
+					"displayName": "WebP"
+				}
+			}
+		},
+		"outputCompression": {
+			"displayName": "Output Compression",
+			"description": "The compression level (0-100%) for the generated images. Only supported for gpt-image-1 with webp or jpeg output formats."
+		},
+		"responses": {
+			"displayName": "Messages",
+			"placeholder": "Add Message",
+			"multipleValueButtonText": "Add Message",
+			"options": {
+				"values": {
+					"displayName": "Message",
+					"values": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"text": {
+									"displayName": "Text"
+								},
+								"image": {
+									"displayName": "Image"
+								},
+								"file": {
+									"displayName": "File"
+								}
+							}
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality"
+								},
+								"system": {
+									"displayName": "System",
+									"description": "Usually used to set the model's behavior or context for the next user message"
+								}
+							}
+						},
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be send",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"imageType": {
+							"displayName": "Image Type",
+							"options": {
+								"url": {
+									"displayName": "Image URL"
+								},
+								"fileId": {
+									"displayName": "File ID"
+								},
+								"base64": {
+									"displayName": "File Data"
+								}
+							}
+						},
+						"imageUrl": {
+							"displayName": "Image URL",
+							"description": "URL of the image to be sent",
+							"placeholder": "e.g. https://example.com/image.jpeg"
+						},
+						"binaryPropertyName": {
+							"displayName": "File Data",
+							"description": "Name of the binary property which contains the file",
+							"placeholder": "e.g. data"
+						},
+						"fileId": {
+							"displayName": "File ID",
+							"description": "ID of the file to be sent"
+						},
+						"imageDetail": {
+							"displayName": "Detail",
+							"description": "The detail level of the image to be sent to the model",
+							"options": {
+								"auto": {
+									"displayName": "Auto"
+								},
+								"low": {
+									"displayName": "Low"
+								},
+								"high": {
+									"displayName": "High"
+								}
+							}
+						},
+						"fileType": {
+							"displayName": "File Type",
+							"options": {
+								"url": {
+									"displayName": "File URL"
+								},
+								"fileId": {
+									"displayName": "File ID"
+								},
+								"base64": {
+									"displayName": "File Data"
+								}
+							}
+						},
+						"fileUrl": {
+							"displayName": "File URL",
+							"description": "URL of the file to be sent. Accepts base64 encoded files as well.",
+							"placeholder": "e.g. https://example.com/file.pdf"
+						},
+						"fileName": {
+							"displayName": "File Name"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Message",
+					"values": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"text": {
+									"displayName": "Text"
+								},
+								"image": {
+									"displayName": "Image"
+								},
+								"file": {
+									"displayName": "File"
+								}
+							}
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality"
+								},
+								"system": {
+									"displayName": "System",
+									"description": "Usually used to set the model's behavior or context for the next user message"
+								}
+							}
+						},
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be send",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"imageType": {
+							"displayName": "Image Type",
+							"options": {
+								"url": {
+									"displayName": "Image URL"
+								},
+								"fileId": {
+									"displayName": "File ID"
+								},
+								"base64": {
+									"displayName": "File Data"
+								}
+							}
+						},
+						"imageUrl": {
+							"displayName": "Image URL",
+							"description": "URL of the image to be sent",
+							"placeholder": "e.g. https://example.com/image.jpeg"
+						},
+						"binaryPropertyName": {
+							"displayName": "File Data",
+							"description": "Name of the binary property which contains the file",
+							"placeholder": "e.g. data"
+						},
+						"fileId": {
+							"displayName": "File ID",
+							"description": "ID of the file to be sent"
+						},
+						"imageDetail": {
+							"displayName": "Detail",
+							"description": "The detail level of the image to be sent to the model",
+							"options": {
+								"auto": {
+									"displayName": "Auto"
+								},
+								"low": {
+									"displayName": "Low"
+								},
+								"high": {
+									"displayName": "High"
+								}
+							}
+						},
+						"fileType": {
+							"displayName": "File Type",
+							"options": {
+								"url": {
+									"displayName": "File URL"
+								},
+								"fileId": {
+									"displayName": "File ID"
+								},
+								"base64": {
+									"displayName": "File Data"
+								}
+							}
+						},
+						"fileUrl": {
+							"displayName": "File URL",
+							"description": "URL of the file to be sent. Accepts base64 encoded files as well.",
+							"placeholder": "e.g. https://example.com/file.pdf"
+						},
+						"fileName": {
+							"displayName": "File Name"
+						}
+					}
+				},
+				"responses": {
+					"displayName": "Messages",
+					"placeholder": "Add Message"
+				}
+			}
+		},
+		"hideTools": {
+			"displayName": "Hide Tools"
+		},
+		"noticeTools": {
+			"displayName": "Connect your own custom n8n tools to this node on the canvas"
+		},
+		"builtInTools": {
+			"displayName": "Built-in Tools",
+			"placeholder": "Add Built-in Tool",
+			"options": {
+				"webSearch": {
+					"displayName": "Web Search",
+					"options": {
+						"searchContextSize": {
+							"displayName": "Search Context Size",
+							"description": "High level guidance for the amount of context window space to use for the search",
+							"options": {
+								"low": {
+									"displayName": "Low"
+								},
+								"medium": {
+									"displayName": "Medium"
+								},
+								"high": {
+									"displayName": "High"
+								}
+							}
+						},
+						"allowedDomains": {
+							"displayName": "Web Search Allowed Domains",
+							"description": "Comma-separated list of domains to search. Only domains in this list will be searched.",
+							"placeholder": "e.g. google.com, wikipedia.org"
+						},
+						"country": {
+							"displayName": "Country",
+							"placeholder": "e.g. US, GB"
+						},
+						"city": {
+							"displayName": "City",
+							"placeholder": "e.g. New York, London"
+						},
+						"region": {
+							"displayName": "Region",
+							"placeholder": "e.g. New York, London"
+						}
+					}
+				},
+				"fileSearch": {
+					"displayName": "File Search",
+					"options": {
+						"vectorStoreIds": {
+							"displayName": "Vector Store IDs",
+							"description": "The vector store IDs to use for the file search. Vector stores are managed via OpenAI Dashboard."
+						},
+						"filters": {
+							"displayName": "Filters"
+						},
+						"maxResults": {
+							"displayName": "Max Results"
+						}
+					}
+				},
+				"codeInterpreter": {
+					"displayName": "Code Interpreter",
+					"description": "Whether to allow the model to execute code in a sandboxed environment"
+				}
+			}
+		},
+		"messages": {
+			"displayName": "Messages",
+			"placeholder": "Add Message",
+			"multipleValueButtonText": "Add Message",
+			"options": {
+				"values": {
+					"displayName": "Message",
+					"values": {
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality"
+								},
+								"system": {
+									"displayName": "System",
+									"description": "Usually used to set the model's behavior or context for the next user message"
+								}
+							}
+						},
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be send",
+							"placeholder": "e.g. Hello, how can you help me?"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Message",
+					"values": {
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality"
+								},
+								"system": {
+									"displayName": "System",
+									"description": "Usually used to set the model's behavior or context for the next user message"
+								}
+							}
+						},
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be send",
+							"placeholder": "e.g. Hello, how can you help me?"
+						}
+					}
+				},
+				"messages": {
+					"displayName": "Messages",
+					"placeholder": "Add Message"
+				}
+			}
+		},
+		"conversationId": {
+			"displayName": "Conversation ID",
+			"description": "The ID of the conversation to retrieve",
+			"placeholder": "conv_1234567890"
+		},
+		"metadata": {
+			"displayName": "Metadata",
+			"description": "Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional information about the object in a structured format, and querying for objects via API or the dashboard. Keys are strings with a maximum length of 64 characters. Values are strings with a maximum length of 512 characters."
+		},
+		"seconds": {
+			"displayName": "Seconds",
+			"description": "Clip duration in seconds"
+		}
+	}
+}

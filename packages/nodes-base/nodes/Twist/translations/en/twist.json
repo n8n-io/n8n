@@ -1,0 +1,535 @@
+{
+	"header": {
+		"displayName": "Twist",
+		"description": "Consume Twist API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"channel": {
+					"displayName": "Channel"
+				},
+				"comment": {
+					"displayName": "Comment"
+				},
+				"messageConversation": {
+					"displayName": "Message Conversation"
+				},
+				"thread": {
+					"displayName": "Thread"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"archive": {
+					"displayName": "Archive",
+					"description": "Archive a channel"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new thread in a channel"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a thread"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get information about a thread"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many threads"
+				},
+				"unarchive": {
+					"displayName": "Unarchive",
+					"description": "Unarchive a channel"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a thread"
+				}
+			}
+		},
+		"workspaceId": {
+			"displayName": "Workspace Name or ID",
+			"description": "The ID of the workspace. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the channel"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"color": {
+					"displayName": "Color",
+					"description": "The color of the channel",
+					"options": {
+						"0": {
+							"displayName": "Grey"
+						},
+						"1": {
+							"displayName": "Blue"
+						},
+						"2": {
+							"displayName": "Turquoise"
+						},
+						"3": {
+							"displayName": "Teal Blue"
+						},
+						"4": {
+							"displayName": "Green"
+						},
+						"5": {
+							"displayName": "Red"
+						},
+						"6": {
+							"displayName": "Berry Red"
+						},
+						"7": {
+							"displayName": "Magenta"
+						},
+						"8": {
+							"displayName": "Sky Blue"
+						},
+						"9": {
+							"displayName": "Mint Green"
+						},
+						"10": {
+							"displayName": "Yellow"
+						},
+						"11": {
+							"displayName": "Salmon"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The description of the channel"
+				},
+				"public": {
+					"displayName": "Public",
+					"description": "Whether the channel will be marked as public"
+				},
+				"temp_id": {
+					"displayName": "Temporary ID",
+					"description": "The temporary ID of the thread"
+				},
+				"user_ids": {
+					"displayName": "User Names or IDs",
+					"description": "The users that will participate in the channel. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"actionsUi": {
+					"displayName": "Actions",
+					"placeholder": "Add Action",
+					"multipleValueButtonText": "Add Action",
+					"options": {
+						"actionValues": {
+							"displayName": "Action",
+							"options": {
+								"action": {
+									"displayName": "Action",
+									"description": "The action of the button",
+									"options": {
+										"open_url": {
+											"displayName": "Open URL"
+										},
+										"prefill_message": {
+											"displayName": "Prefill Message"
+										},
+										"send_reply": {
+											"displayName": "Send Reply"
+										}
+									}
+								},
+								"button_text": {
+									"displayName": "Button Text",
+									"description": "The text for the action button"
+								},
+								"message": {
+									"displayName": "Message",
+									"description": "The text for the action button"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the button. (Currently only <code>action</code> is available).",
+									"options": {
+										"action": {
+											"displayName": "Action"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "URL to redirect"
+								}
+							}
+						}
+					},
+					"values": {
+						"actionValues": {
+							"displayName": "Action",
+							"options": {
+								"action": {
+									"displayName": "Action",
+									"description": "The action of the button",
+									"options": {
+										"open_url": {
+											"displayName": "Open URL"
+										},
+										"prefill_message": {
+											"displayName": "Prefill Message"
+										},
+										"send_reply": {
+											"displayName": "Send Reply"
+										}
+									}
+								},
+								"button_text": {
+									"displayName": "Button Text",
+									"description": "The text for the action button"
+								},
+								"message": {
+									"displayName": "Message",
+									"description": "The text for the action button"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the button. (Currently only <code>action</code> is available).",
+									"options": {
+										"action": {
+											"displayName": "Action"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "URL to redirect"
+								}
+							}
+						},
+						"actionsUi": {
+							"displayName": "Actions",
+							"placeholder": "Add Action"
+						}
+					}
+				},
+				"binaryProperties": {
+					"displayName": "Attachments",
+					"description": "Name of the property that holds the binary data. Multiple can be defined separated by comma."
+				},
+				"direct_mentions": {
+					"displayName": "Direct Mention Names or IDs",
+					"description": "The users that are directly mentioned. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"mark_thread_position": {
+					"displayName": "Mark Thread Position",
+					"description": "Whether the position of the thread is marked"
+				},
+				"recipients": {
+					"displayName": "Recipient Names or IDs",
+					"description": "The users that will attached to the thread. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"send_as_integration": {
+					"displayName": "Send as Integration",
+					"description": "Whether to display the integration as the thread creator"
+				},
+				"to_obj_index": {
+					"displayName": "Ending Object Index",
+					"description": "Limit messages ending at the specified object index"
+				},
+				"limit": {
+					"displayName": "Limit",
+					"description": "Max number of results to return"
+				},
+				"order_by": {
+					"displayName": "Order By",
+					"description": "The order of the conversations returned - one of DESC or ASC",
+					"options": {
+						"ASC": {
+							"displayName": "ASC"
+						},
+						"DESC": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"from_obj_index": {
+					"displayName": "Starting Object Index",
+					"description": "Limit messages starting at the specified object index"
+				}
+			},
+			"description": "Other options to set"
+		},
+		"channelId": {
+			"displayName": "Channel ID",
+			"description": "The ID of the channel"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"archived": {
+					"displayName": "Archived",
+					"description": "Whether only archived conversations are returned"
+				},
+				"as_ids": {
+					"displayName": "As IDs",
+					"description": "Whether only the IDs of the threads are returned"
+				},
+				"to_obj_index": {
+					"displayName": "Ending Object Index",
+					"description": "Limit comments ending at the specified object index"
+				},
+				"newer_than_ts": {
+					"displayName": "Newer Than",
+					"description": "Limits threads to those newer when the specified Unix time"
+				},
+				"older_than_ts": {
+					"displayName": "Older Than",
+					"description": "Limits threads to those older than the specified Unix time"
+				},
+				"order_by": {
+					"displayName": "Order By",
+					"description": "The order of the comments returned - one of DESC or ASC",
+					"options": {
+						"ASC": {
+							"displayName": "ASC"
+						},
+						"DESC": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"from_obj_index": {
+					"displayName": "Starting Object Index",
+					"description": "Limit comments starting at the specified object index"
+				},
+				"filter_by": {
+					"displayName": "Filter By",
+					"description": "A filter can be one of <code>attached_to_me</code>, <code>everyone</code> and <code>is_starred</code>",
+					"options": {
+						"attached_to_me": {
+							"displayName": "Attached to Me"
+						},
+						"everyone": {
+							"displayName": "Everyone"
+						},
+						"is_starred": {
+							"displayName": "Starred"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"color": {
+					"displayName": "Color",
+					"description": "The color of the channel",
+					"options": {
+						"0": {
+							"displayName": "Grey"
+						},
+						"1": {
+							"displayName": "Blue"
+						},
+						"2": {
+							"displayName": "Turquoise"
+						},
+						"3": {
+							"displayName": "Teal Blue"
+						},
+						"4": {
+							"displayName": "Green"
+						},
+						"5": {
+							"displayName": "Red"
+						},
+						"6": {
+							"displayName": "Berry Red"
+						},
+						"7": {
+							"displayName": "Magenta"
+						},
+						"8": {
+							"displayName": "Sky Blue"
+						},
+						"9": {
+							"displayName": "Mint Green"
+						},
+						"10": {
+							"displayName": "Yellow"
+						},
+						"11": {
+							"displayName": "Salmon"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The description of the channel"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the channel"
+				},
+				"public": {
+					"displayName": "Public",
+					"description": "Whether the channel will be marked as public"
+				},
+				"actionsUi": {
+					"displayName": "Actions",
+					"placeholder": "Add Action",
+					"multipleValueButtonText": "Add Action",
+					"options": {
+						"actionValues": {
+							"displayName": "Action",
+							"options": {
+								"action": {
+									"displayName": "Action",
+									"description": "The action of the button",
+									"options": {
+										"open_url": {
+											"displayName": "Open URL"
+										},
+										"prefill_message": {
+											"displayName": "Prefill Message"
+										},
+										"send_reply": {
+											"displayName": "Send Reply"
+										}
+									}
+								},
+								"button_text": {
+									"displayName": "Button Text",
+									"description": "The text for the action button"
+								},
+								"message": {
+									"displayName": "Message",
+									"description": "The text for the action button"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the button. (Currently only <code>action</code> is available).",
+									"options": {
+										"action": {
+											"displayName": "Action"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "URL to redirect"
+								}
+							}
+						}
+					},
+					"values": {
+						"actionValues": {
+							"displayName": "Action",
+							"options": {
+								"action": {
+									"displayName": "Action",
+									"description": "The action of the button",
+									"options": {
+										"open_url": {
+											"displayName": "Open URL"
+										},
+										"prefill_message": {
+											"displayName": "Prefill Message"
+										},
+										"send_reply": {
+											"displayName": "Send Reply"
+										}
+									}
+								},
+								"button_text": {
+									"displayName": "Button Text",
+									"description": "The text for the action button"
+								},
+								"message": {
+									"displayName": "Message",
+									"description": "The text for the action button"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the button. (Currently only <code>action</code> is available).",
+									"options": {
+										"action": {
+											"displayName": "Action"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "URL to redirect"
+								}
+							}
+						},
+						"actionsUi": {
+							"displayName": "Actions",
+							"placeholder": "Add Action"
+						}
+					}
+				},
+				"binaryProperties": {
+					"displayName": "Attachments",
+					"description": "Name of the property that holds the binary data. Multiple can be defined separated by comma."
+				},
+				"content": {
+					"displayName": "Content",
+					"description": "The content of the thread"
+				},
+				"direct_mentions": {
+					"displayName": "Direct Mention Names or IDs",
+					"description": "The users that are directly mentioned. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "The title of the thread (1 < length < 300)"
+				}
+			},
+			"description": "Other options to set"
+		},
+		"threadId": {
+			"displayName": "Thread ID",
+			"description": "The ID of the thread"
+		},
+		"content": {
+			"displayName": "Content",
+			"description": "The content of the thread"
+		},
+		"commentId": {
+			"displayName": "Comment ID",
+			"description": "The ID of the comment"
+		},
+		"conversationId": {
+			"displayName": "Conversation Name or ID",
+			"description": "The ID of the conversation. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"id": {
+			"displayName": "Conversation Message ID",
+			"description": "The ID of the conversation message"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The title of the new thread (1 < length < 300)"
+		}
+	}
+}

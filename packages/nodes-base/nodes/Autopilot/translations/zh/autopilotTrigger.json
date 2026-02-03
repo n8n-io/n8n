@@ -1,0 +1,34 @@
+{
+	"header": {
+		"displayName": "自动导航触发器",
+		"description": "通过Webhook处理自动导航事件"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"contactAdded": {
+					"displayName": "联系人已添加"
+				},
+				"contactAddedToList": {
+					"displayName": "联系人已添加到列表"
+				},
+				"contactEnteredSegment": {
+					"displayName": "联系人进入细分"
+				},
+				"contactLeftSegment": {
+					"displayName": "联系人离开细分"
+				},
+				"contactRemovedFromList": {
+					"displayName": "联系人已从列表中移除"
+				},
+				"contactUnsubscribed": {
+					"displayName": "联系人已取消订阅"
+				},
+				"contactUpdated": {
+					"displayName": "联系人已更新"
+				}
+			}
+		}
+	}
+}

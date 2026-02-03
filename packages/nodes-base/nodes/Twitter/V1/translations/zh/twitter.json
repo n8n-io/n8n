@@ -1,0 +1,209 @@
+{
+	"header": {
+		"displayName": "X（原Twitter）",
+		"description": "使用Twitter API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"directMessage": {
+					"displayName": "私信"
+				},
+				"tweet": {
+					"displayName": "推文"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建或回复推文"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一条推文"
+				},
+				"like": {
+					"displayName": "点赞",
+					"description": "点赞推文"
+				},
+				"retweet": {
+					"displayName": "转推",
+					"description": "转推推文"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索推文"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "应接收直接消息的用户ID"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "状态更新的文本。必要时进行URL编码。t.co链接包装会影响字符计数。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"attachment": {
+					"displayName": "附件",
+					"description": "包含应作为附件添加到直接消息的数据的二进制属性名称"
+				},
+				"attachments": {
+					"displayName": "附件",
+					"description": "包含应作为附件添加到推文的二进制数据属性名称。多个属性可用逗号分隔。"
+				},
+				"displayCoordinates": {
+					"displayName": "显示坐标",
+					"description": "是否在推文发送的精确坐标上放置图钉"
+				},
+				"inReplyToStatusId": {
+					"displayName": "回复推文",
+					"description": "要回复的现有状态ID"
+				},
+				"locationFieldsUi": {
+					"displayName": "位置",
+					"description": "订阅者位置信息。",
+					"placeholder": "添加位置",
+					"options": {
+						"locationFieldsValues": {
+							"displayName": "位置",
+							"options": {
+								"latitude": {
+									"displayName": "纬度",
+									"description": "位置纬度"
+								},
+								"longitude": {
+									"displayName": "经度",
+									"description": "经度位置"
+								},
+								"radius": {
+									"displayName": "半径",
+									"description": "返回位于给定经纬度指定半径范围内的用户发布的推文",
+									"options": {
+										"mi": {
+											"displayName": "米尔斯"
+										},
+										"km": {
+											"displayName": "公里"
+										}
+									}
+								},
+								"distance": {
+									"displayName": "距离"
+								}
+							}
+						}
+					},
+					"values": {
+						"locationFieldsValues": {
+							"displayName": "位置",
+							"options": {
+								"latitude": {
+									"displayName": "纬度",
+									"description": "位置纬度"
+								},
+								"longitude": {
+									"displayName": "经度",
+									"description": "经度位置"
+								},
+								"radius": {
+									"displayName": "半径",
+									"description": "返回位于给定经纬度指定半径范围内的用户发布的推文",
+									"options": {
+										"mi": {
+											"displayName": "米尔斯"
+										},
+										"km": {
+											"displayName": "公里"
+										}
+									}
+								},
+								"distance": {
+									"displayName": "距离"
+								}
+							}
+						},
+						"locationFieldsUi": {
+							"displayName": "位置",
+							"placeholder": "添加位置"
+						}
+					}
+				},
+				"possiblySensitive": {
+					"displayName": "可能包含敏感内容",
+					"description": "您上传的推文媒体是否可能被视为敏感内容，例如裸露或医疗程序"
+				},
+				"includeEntities": {
+					"displayName": "包含实体",
+					"description": "是否省略实体"
+				},
+				"lang": {
+					"displayName": "语言名称或ID",
+					"description": "将推文限制为指定语言，使用ISO 639-1代码。语言检测为尽力而为。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"resultType": {
+					"displayName": "结果类型",
+					"description": "指定您希望接收的搜索结果类型",
+					"options": {
+						"mixed": {
+							"displayName": "混合",
+							"description": "在响应中包含热门和实时结果"
+						},
+						"recent": {
+							"displayName": "最近",
+							"description": "Return only the most recent results in the response"
+						},
+						"popular": {
+							"displayName": "热门组件",
+							"description": "在响应中只返回最受欢迎的结果"
+						}
+					}
+				},
+				"tweetMode": {
+					"displayName": "推文模式",
+					"description": "选择扩展模式时，响应将包含推文的完整未截断文本",
+					"options": {
+						"compat": {
+							"displayName": "兼容性"
+						},
+						"extended": {
+							"displayName": "已扩展"
+						}
+					}
+				},
+				"until": {
+					"displayName": "截至",
+					"description": "返回在指定日期之前创建的推文"
+				},
+				"trimUser": {
+					"displayName": "精简用户信息",
+					"description": "时间线中返回的每条推文是否包含仅含状态作者数字ID的用户对象"
+				}
+			}
+		},
+		"tweetId": {
+			"displayName": "推文ID",
+			"description": "该推文的ID"
+		},
+		"searchText": {
+			"displayName": "搜索文本",
+			"description": "一个最多500字符的UTF-8 URL编码搜索查询，可包含运算符。查询可能还会受到复杂度的限制。查看搜索示例请<a href=\"https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators\">点击此处</a>。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

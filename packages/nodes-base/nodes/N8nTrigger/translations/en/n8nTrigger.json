@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "n8n Trigger",
+		"description": "Handle events and perform actions on your n8n instance"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events",
+			"description": "Specifies under which conditions an execution should happen:\n\t\t\t\t<ul>\n\t\t\t\t\t<li><b>Published Workflow Updated</b>: Triggers when workflow version is published from a published state (workflow was already published)</li>\n\t\t\t\t\t<li><b>Instance Started</b>:  Triggers when this n8n instance is started or re-started</li>\n\t\t\t\t\t<li><b>Workflow Published</b>: Triggers when workflow version is published from an unpublished state (workflow was unpublished)</li>\n\t\t\t\t</ul>"
+		}
+	}
+}

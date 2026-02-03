@@ -1,0 +1,77 @@
+{
+	"header": {
+		"displayName": "简易向量存储",
+		"description": "无需外部配置即可体验向量存储的最简单方式。"
+	},
+	"nodeView": {
+		"ragStarterCallout": {
+			"displayName": "提示：通过我们的示例体验n8n中的向量存储"
+		},
+		"mode": {
+			"displayName": "操作模式",
+			"options": {
+				"load": {
+					"displayName": "获取多个",
+					"description": "从向量存储中获取多个与查询相关的排序文档"
+				},
+				"insert": {
+					"displayName": "插入文档",
+					"description": "将文档插入向量存储"
+				},
+				"retrieve": {
+					"displayName": "检索文档（作为链/工具的向量存储）",
+					"description": "从向量存储中检索文档，用作AI节点的向量存储"
+				},
+				"retrieve-as-tool": {
+					"displayName": "检索文档（作为AI代理工具）",
+					"description": "从向量存储检索文档，用作AI节点的工具"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "<strong>仅限实验用途</strong>：数据存储在内存中，n8n重启后会丢失。可用内存不足时数据也可能被清除，且此实例的所有用户均可访问。<a href=\"https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/\">更多信息</a>"
+		},
+		"toolName": {
+			"displayName": "名称",
+			"description": "向量存储名称",
+			"placeholder": "例如：公司知识库"
+		},
+		"toolDescription": {
+			"displayName": "描述",
+			"description": "向LLM解释此工具的功能，一个良好、具体的描述能让LLM更频繁地生成预期结果",
+			"placeholder": "例如，无需外部设置即可体验向量存储的最简单方法。"
+		},
+		"memoryKey": {
+			"displayName": "内存键",
+			"description": "用于在工作流数据中存储向量内存的键。这些键在工作流之间共享。"
+		},
+		"embeddingBatchSize": {
+			"displayName": "嵌入批处理大小",
+			"description": "单批次嵌入的文档数量"
+		},
+		"clearStore": {
+			"displayName": "清空存储",
+			"description": "是否在插入新数据前清空存储"
+		},
+		"prompt": {
+			"displayName": "提示",
+			"description": "Search prompt to retrieve matching documents from the vector store using similarity-based ranking"
+		},
+		"topK": {
+			"displayName": "限制",
+			"description": "从向量存储中获取的顶部结果数量"
+		},
+		"includeDocumentMetadata": {
+			"displayName": "包含元数据",
+			"description": "是否包含文档元数据"
+		},
+		"useReranker": {
+			"displayName": "重新排序结果",
+			"description": "是否重新排序结果"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "嵌入条目的ID"
+		}
+	}
+}

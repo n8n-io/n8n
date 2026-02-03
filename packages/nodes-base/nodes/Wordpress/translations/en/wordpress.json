@@ -1,0 +1,830 @@
+{
+	"header": {
+		"displayName": "Wordpress",
+		"description": "Consume Wordpress API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"post": {
+					"displayName": "Post"
+				},
+				"page": {
+					"displayName": "Page"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many users"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a user"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The title for the page"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"authorId": {
+					"displayName": "Author Name or ID",
+					"description": "The ID for the author of the object. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"content": {
+					"displayName": "Content",
+					"description": "The content for the page"
+				},
+				"slug": {
+					"displayName": "Slug",
+					"description": "An alphanumeric identifier for the user"
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "A password to protect access to the content and excerpt"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "A named status for the page",
+					"options": {
+						"draft": {
+							"displayName": "Draft"
+						},
+						"future": {
+							"displayName": "Future"
+						},
+						"pending": {
+							"displayName": "Pending"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"publish": {
+							"displayName": "Publish"
+						}
+					}
+				},
+				"date": {
+					"displayName": "Date",
+					"description": "The date the post was published, in the site's timezone"
+				},
+				"commentStatus": {
+					"displayName": "Comment Status",
+					"description": "Whether or not comments are open on the page",
+					"options": {
+						"open": {
+							"displayName": "Open"
+						},
+						"closed": {
+							"displayName": "Close"
+						}
+					}
+				},
+				"pingStatus": {
+					"displayName": "Ping Status",
+					"description": "If the a message should be send to announce the page",
+					"options": {
+						"open": {
+							"displayName": "Open"
+						},
+						"closed": {
+							"displayName": "Close"
+						}
+					}
+				},
+				"format": {
+					"displayName": "Format",
+					"description": "Whether or not comments are open on the post",
+					"options": {
+						"aside": {
+							"displayName": "Aside"
+						},
+						"audio": {
+							"displayName": "Audio"
+						},
+						"chat": {
+							"displayName": "Chat"
+						},
+						"gallery": {
+							"displayName": "Gallery"
+						},
+						"image": {
+							"displayName": "Image"
+						},
+						"link": {
+							"displayName": "Link"
+						},
+						"quote": {
+							"displayName": "Quote"
+						},
+						"standard": {
+							"displayName": "Standard"
+						},
+						"status": {
+							"displayName": "Status"
+						},
+						"video": {
+							"displayName": "Video"
+						}
+					}
+				},
+				"sticky": {
+					"displayName": "Sticky",
+					"description": "Whether or not the object should be treated as sticky"
+				},
+				"categories": {
+					"displayName": "Category Names or IDs",
+					"description": "The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"postTemplate": {
+					"displayName": "Template",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor Template",
+									"description": "Whether site uses elementor page builder"
+								},
+								"template": {
+									"displayName": "Template",
+									"description": "The Elementor template to use",
+									"options": {
+										"": {
+											"displayName": "Standard"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor Canvas"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor Header Footer"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor Theme"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor Template",
+									"description": "Whether site uses elementor page builder"
+								},
+								"template": {
+									"displayName": "Template",
+									"description": "The Elementor template to use",
+									"options": {
+										"": {
+											"displayName": "Standard"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor Canvas"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor Header Footer"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor Theme"
+										}
+									}
+								}
+							}
+						},
+						"postTemplate": {
+							"displayName": "Template"
+						}
+					}
+				},
+				"parent": {
+					"displayName": "Parent ID",
+					"description": "The ID for the parent of the post"
+				},
+				"pageTemplate": {
+					"displayName": "Template",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor Template",
+									"description": "Whether site uses elementor page builder"
+								},
+								"template": {
+									"displayName": "Template",
+									"description": "The Elementor template to use",
+									"options": {
+										"": {
+											"displayName": "Standard"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor Canvas"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor Header Footer"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor Theme"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor Template",
+									"description": "Whether site uses elementor page builder"
+								},
+								"template": {
+									"displayName": "Template",
+									"description": "The Elementor template to use",
+									"options": {
+										"": {
+											"displayName": "Standard"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor Canvas"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor Header Footer"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor Theme"
+										}
+									}
+								}
+							}
+						},
+						"pageTemplate": {
+							"displayName": "Template"
+						}
+					}
+				},
+				"menuOrder": {
+					"displayName": "Menu Order",
+					"description": "The order of the page in relation to other pages"
+				},
+				"featuredMediaId": {
+					"displayName": "Featured Media ID",
+					"description": "The ID of the featured media for the page"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "URL of the user"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description of the user"
+				},
+				"nickname": {
+					"displayName": "Nickname",
+					"description": "The nickname for the user"
+				}
+			}
+		},
+		"postId": {
+			"displayName": "Post ID",
+			"description": "Unique identifier for the object"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"authorId": {
+					"displayName": "Author Name or ID",
+					"description": "The ID for the author of the object. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "The title for the page"
+				},
+				"content": {
+					"displayName": "Content",
+					"description": "The content for the page"
+				},
+				"slug": {
+					"displayName": "Slug",
+					"description": "An alphanumeric identifier for the user"
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "Password for the user (never included)"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "A named status for the page",
+					"options": {
+						"draft": {
+							"displayName": "Draft"
+						},
+						"future": {
+							"displayName": "Future"
+						},
+						"pending": {
+							"displayName": "Pending"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"publish": {
+							"displayName": "Publish"
+						}
+					}
+				},
+				"date": {
+					"displayName": "Date",
+					"description": "The date the post was published, in the site's timezone"
+				},
+				"commentStatus": {
+					"displayName": "Comment Status",
+					"description": "Whether or not comments are open on the page",
+					"options": {
+						"open": {
+							"displayName": "Open"
+						},
+						"closed": {
+							"displayName": "Closed"
+						}
+					}
+				},
+				"pingStatus": {
+					"displayName": "Ping Status",
+					"description": "Whether or not comments are open on the page",
+					"options": {
+						"open": {
+							"displayName": "Open"
+						},
+						"closed": {
+							"displayName": "Close"
+						}
+					}
+				},
+				"format": {
+					"displayName": "Format",
+					"description": "The format of the post",
+					"options": {
+						"aside": {
+							"displayName": "Aside"
+						},
+						"audio": {
+							"displayName": "Audio"
+						},
+						"chat": {
+							"displayName": "Chat"
+						},
+						"gallery": {
+							"displayName": "Gallery"
+						},
+						"image": {
+							"displayName": "Image"
+						},
+						"link": {
+							"displayName": "Link"
+						},
+						"quote": {
+							"displayName": "Quote"
+						},
+						"standard": {
+							"displayName": "Standard"
+						},
+						"status": {
+							"displayName": "Status"
+						},
+						"video": {
+							"displayName": "Video"
+						}
+					}
+				},
+				"sticky": {
+					"displayName": "Sticky",
+					"description": "Whether or not the object should be treated as sticky"
+				},
+				"categories": {
+					"displayName": "Category Names or IDs",
+					"description": "The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"postTemplate": {
+					"displayName": "Template",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor Template",
+									"description": "Whether site uses elementor page builder"
+								},
+								"template": {
+									"displayName": "Template",
+									"description": "The Elementor template to use",
+									"options": {
+										"": {
+											"displayName": "Standard"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor Canvas"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor Header Footer"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor Theme"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor Template",
+									"description": "Whether site uses elementor page builder"
+								},
+								"template": {
+									"displayName": "Template",
+									"description": "The Elementor template to use",
+									"options": {
+										"": {
+											"displayName": "Standard"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor Canvas"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor Header Footer"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor Theme"
+										}
+									}
+								}
+							}
+						},
+						"postTemplate": {
+							"displayName": "Template"
+						}
+					}
+				},
+				"parent": {
+					"displayName": "Parent ID",
+					"description": "The ID for the parent of the post"
+				},
+				"pageTemplate": {
+					"displayName": "Template",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor Template",
+									"description": "Whether site uses elementor page builder"
+								},
+								"template": {
+									"displayName": "Template",
+									"description": "The Elementor template to use",
+									"options": {
+										"": {
+											"displayName": "Standard"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor Canvas"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor Header Footer"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor Theme"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor Template",
+									"description": "Whether site uses elementor page builder"
+								},
+								"template": {
+									"displayName": "Template",
+									"description": "The Elementor template to use",
+									"options": {
+										"": {
+											"displayName": "Standard"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor Canvas"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor Header Footer"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor Theme"
+										}
+									}
+								}
+							}
+						},
+						"pageTemplate": {
+							"displayName": "Template"
+						}
+					}
+				},
+				"menuOrder": {
+					"displayName": "Menu Order",
+					"description": "The order of the page in relation to other pages"
+				},
+				"featuredMediaId": {
+					"displayName": "Featured Media ID",
+					"description": "The ID of the featured media for the page"
+				},
+				"username": {
+					"displayName": "Username",
+					"description": "Login name for the user"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Display name for the user"
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "First name for the user"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "Last name for the user"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The email address for the user",
+					"placeholder": "name@email.com"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "URL of the user"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description of the user"
+				},
+				"nickname": {
+					"displayName": "Nickname",
+					"description": "The nickname for the user"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"password": {
+					"displayName": "Password",
+					"description": "The password for the page if it is password protected"
+				},
+				"context": {
+					"displayName": "Context",
+					"description": "Scope under which the request is made; determines fields present in response",
+					"options": {
+						"view": {
+							"displayName": "View"
+						},
+						"embed": {
+							"displayName": "Embed"
+						},
+						"edit": {
+							"displayName": "Edit"
+						}
+					}
+				},
+				"after": {
+					"displayName": "After",
+					"description": "Limit response to pages published after a given ISO8601 compliant date"
+				},
+				"author": {
+					"displayName": "Author Names or IDs",
+					"description": "Limit result set to pages assigned to specific authors. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"before": {
+					"displayName": "Before",
+					"description": "Limit response to pages published before a given ISO8601 compliant date"
+				},
+				"categories": {
+					"displayName": "Category Names or IDs",
+					"description": "Limit result set to all items that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"excludedCategories": {
+					"displayName": "Exclude Categories",
+					"description": "Limit result set to all items except those that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"excludedTags": {
+					"displayName": "Exclude Tags",
+					"description": "Limit result set to all items except those that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "Order sort attribute ascending or descending",
+					"options": {
+						"asc": {
+							"displayName": "ASC"
+						},
+						"desc": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"orderBy": {
+					"displayName": "Order By",
+					"description": "Sort collection by object attribute",
+					"options": {
+						"author": {
+							"displayName": "Author"
+						},
+						"date": {
+							"displayName": "Date"
+						},
+						"id": {
+							"displayName": "ID"
+						},
+						"include": {
+							"displayName": "Include"
+						},
+						"include_slugs": {
+							"displayName": "Include Slugs"
+						},
+						"modified": {
+							"displayName": "Modified"
+						},
+						"parent": {
+							"displayName": "Parent"
+						},
+						"relevance": {
+							"displayName": "Relevance"
+						},
+						"slug": {
+							"displayName": "Slug"
+						},
+						"title": {
+							"displayName": "Title"
+						},
+						"email": {
+							"displayName": "Email"
+						},
+						"name": {
+							"displayName": "Name"
+						},
+						"registered_date": {
+							"displayName": "Registered Date"
+						},
+						"url": {
+							"displayName": "URL"
+						}
+					}
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Limit results to those matching a string"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "The status of the page",
+					"options": {
+						"draft": {
+							"displayName": "Draft"
+						},
+						"future": {
+							"displayName": "Future"
+						},
+						"pending": {
+							"displayName": "Pending"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"publish": {
+							"displayName": "Publish"
+						}
+					}
+				},
+				"sticky": {
+					"displayName": "Sticky",
+					"description": "Whether to limit the result set to items that are sticky"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Limit result set to all items that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"force": {
+					"displayName": "Force",
+					"description": "Whether to bypass trash and force deletion"
+				},
+				"menuOrder": {
+					"displayName": "Menu Order",
+					"description": "Limit result set to items with a specific menu order value"
+				},
+				"page": {
+					"displayName": "Page",
+					"description": "Current page of the collection"
+				},
+				"parent": {
+					"displayName": "Parent Page ID",
+					"description": "Limit result set to items with a particular parent page ID"
+				},
+				"who": {
+					"displayName": "Who",
+					"description": "Limit result set to users who are considered authors",
+					"options": {
+						"authors": {
+							"displayName": "Authors"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"pageId": {
+			"displayName": "Page ID",
+			"description": "Unique identifier for the object"
+		},
+		"username": {
+			"displayName": "Username",
+			"description": "Login name for the user"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Display name for the user"
+		},
+		"firstName": {
+			"displayName": "First Name",
+			"description": "First name for the user"
+		},
+		"lastName": {
+			"displayName": "Last Name",
+			"description": "Last name for the user"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email address for the user",
+			"placeholder": "name@email.com"
+		},
+		"password": {
+			"displayName": "Password",
+			"description": "Password for the user (never included)"
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "Unique identifier for the user"
+		},
+		"reassign": {
+			"displayName": "Reassign",
+			"description": "Reassign the deleted user's posts and links to this user ID"
+		}
+	}
+}

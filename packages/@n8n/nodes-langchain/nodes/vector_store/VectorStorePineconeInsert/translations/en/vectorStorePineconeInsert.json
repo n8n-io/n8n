@@ -1,0 +1,21 @@
+{
+	"header": {
+		"displayName": "Pinecone: Insert",
+		"description": "Insert data into Pinecone Vector Store index"
+	},
+	"nodeView": {
+		"pineconeIndex": {
+			"displayName": "Pinecone Index"
+		},
+		"pineconeNamespace": {
+			"displayName": "Pinecone Namespace"
+		},
+		"notice": {
+			"displayName": "Specify the document to load in the document loader sub-node"
+		},
+		"clearNamespace": {
+			"displayName": "Clear Namespace",
+			"description": "Whether to clear the namespace before inserting new data"
+		}
+	}
+}

@@ -1,0 +1,535 @@
+{
+	"header": {
+		"displayName": "Paddle",
+		"description": "使用 Paddle API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"coupon": {
+					"displayName": "优惠券"
+				},
+				"payment": {
+					"displayName": "付款"
+				},
+				"plan": {
+					"displayName": "方案"
+				},
+				"product": {
+					"displayName": "产品"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建优惠券"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新优惠券"
+				},
+				"reschedule": {
+					"displayName": "重新安排",
+					"description": "重新安排付款"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取方案"
+				}
+			}
+		},
+		"couponType": {
+			"displayName": "优惠券类型",
+			"description": "商品类型（适用于指定商品或订阅计划）或结账类型（适用于任何结账）",
+			"options": {
+				"checkout": {
+					"displayName": "结账"
+				},
+				"product": {
+					"displayName": "产品"
+				}
+			}
+		},
+		"productIds": {
+			"displayName": "产品名称或ID",
+			"description": "产品ID的逗号分隔列表。如果coupon_type为product，则必填。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"discountType": {
+			"displayName": "折扣类型",
+			"description": "固定金额或百分比",
+			"options": {
+				"flat": {
+					"displayName": "扁平化"
+				},
+				"percentage": {
+					"displayName": "百分比"
+				}
+			}
+		},
+		"discountAmount": {
+			"displayName": "折扣百分比",
+			"description": "折扣百分比"
+		},
+		"currency": {
+			"displayName": "货币",
+			"description": "货币必须与您账户中指定的余额货币一致",
+			"options": {
+				"ARS": {
+					"displayName": "ARS"
+				},
+				"AUD": {
+					"displayName": "澳元"
+				},
+				"BRL": {
+					"displayName": "巴西雷亚尔"
+				},
+				"CAD": {
+					"displayName": "CAD"
+				},
+				"CHF": {
+					"displayName": "瑞士法郎"
+				},
+				"CNY": {
+					"displayName": "CNY"
+				},
+				"CZK": {
+					"displayName": "捷克克朗"
+				},
+				"DKK": {
+					"displayName": "丹麦克朗"
+				},
+				"EUR": {
+					"displayName": "欧元"
+				},
+				"GBP": {
+					"displayName": "英镑"
+				},
+				"HKD": {
+					"displayName": "港币"
+				},
+				"HUF": {
+					"displayName": "匈牙利福林"
+				},
+				"INR": {
+					"displayName": "印度卢比"
+				},
+				"JPY": {
+					"displayName": "日元"
+				},
+				"KRW": {
+					"displayName": "韩元"
+				},
+				"MXN": {
+					"displayName": "墨西哥比索"
+				},
+				"NOK": {
+					"displayName": "NOK"
+				},
+				"NZD": {
+					"displayName": "新西兰元"
+				},
+				"PLN": {
+					"displayName": "PLN"
+				},
+				"RUB": {
+					"displayName": "卢布"
+				},
+				"SEK": {
+					"displayName": "瑞典克朗"
+				},
+				"SGD": {
+					"displayName": "新加坡元"
+				},
+				"THB": {
+					"displayName": "泰铢"
+				},
+				"TWD": {
+					"displayName": "新台币"
+				},
+				"USD": {
+					"displayName": "美元"
+				},
+				"ZAR": {
+					"displayName": "南非兰特"
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"additionalFieldsJson": {
+			"displayName": "附加字段",
+			"description": "JSON格式的属性"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"allowedUses": {
+					"displayName": "允许使用次数",
+					"description": "优惠券在结账时可使用的次数。如未指定，默认将设置为999,999次。"
+				},
+				"couponCode": {
+					"displayName": "优惠券代码",
+					"description": "未指定时将随机生成"
+				},
+				"couponPrefix": {
+					"displayName": "优惠券前缀",
+					"description": "生成代码的前缀。若指定了coupon_code则无效。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "优惠券描述。这将在卖家仪表板中显示。"
+				},
+				"expires": {
+					"displayName": "过期时间",
+					"description": "优惠券将在该日期的 00:00:00 UTC 过期"
+				},
+				"group": {
+					"displayName": "分组",
+					"description": "此优惠券应分配到的优惠券组名称"
+				},
+				"numberOfCoupons": {
+					"displayName": "优惠券数量",
+					"description": "要生成的优惠券数量。如果指定了coupon_code，则此项无效。"
+				},
+				"recurring": {
+					"displayName": "定期",
+					"description": "如果优惠券用于订阅产品，此选项表示折扣是否应在首次购买后应用于定期付款"
+				},
+				"discount": {
+					"displayName": "折扣",
+					"options": {
+						"discountProperties": {
+							"displayName": "折扣属性",
+							"options": {
+								"currency": {
+									"displayName": "货币",
+									"description": "货币必须与您账户中指定的余额货币一致",
+									"options": {
+										"ARS": {
+											"displayName": "ARS"
+										},
+										"AUD": {
+											"displayName": "澳元"
+										},
+										"BRL": {
+											"displayName": "巴西雷亚尔"
+										},
+										"CAD": {
+											"displayName": "CAD"
+										},
+										"CHF": {
+											"displayName": "瑞士法郎"
+										},
+										"CNY": {
+											"displayName": "CNY"
+										},
+										"CZK": {
+											"displayName": "捷克克朗"
+										},
+										"DKK": {
+											"displayName": "丹麦克朗"
+										},
+										"EUR": {
+											"displayName": "欧元"
+										},
+										"GBP": {
+											"displayName": "英镑"
+										},
+										"HKD": {
+											"displayName": "港币"
+										},
+										"HUF": {
+											"displayName": "匈牙利福林"
+										},
+										"INR": {
+											"displayName": "印度卢比"
+										},
+										"JPY": {
+											"displayName": "日元"
+										},
+										"KRW": {
+											"displayName": "韩元"
+										},
+										"MXN": {
+											"displayName": "墨西哥比索"
+										},
+										"NOK": {
+											"displayName": "NOK"
+										},
+										"NZD": {
+											"displayName": "新西兰元"
+										},
+										"PLN": {
+											"displayName": "PLN"
+										},
+										"RUB": {
+											"displayName": "卢布"
+										},
+										"SEK": {
+											"displayName": "瑞典克朗"
+										},
+										"SGD": {
+											"displayName": "新加坡元"
+										},
+										"THB": {
+											"displayName": "泰铢"
+										},
+										"TWD": {
+											"displayName": "新台币"
+										},
+										"USD": {
+											"displayName": "美元"
+										},
+										"ZAR": {
+											"displayName": "南非兰特"
+										}
+									}
+								},
+								"discountAmount": {
+									"displayName": "折扣金额百分比",
+									"description": "折扣金额"
+								},
+								"discountType": {
+									"displayName": "折扣类型",
+									"description": "固定金额或百分比",
+									"options": {
+										"flat": {
+											"displayName": "扁平化"
+										},
+										"percentage": {
+											"displayName": "百分比"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"discountProperties": {
+							"displayName": "折扣属性",
+							"options": {
+								"currency": {
+									"displayName": "货币",
+									"description": "货币必须与您账户中指定的余额货币一致",
+									"options": {
+										"ARS": {
+											"displayName": "ARS"
+										},
+										"AUD": {
+											"displayName": "澳元"
+										},
+										"BRL": {
+											"displayName": "巴西雷亚尔"
+										},
+										"CAD": {
+											"displayName": "CAD"
+										},
+										"CHF": {
+											"displayName": "瑞士法郎"
+										},
+										"CNY": {
+											"displayName": "CNY"
+										},
+										"CZK": {
+											"displayName": "捷克克朗"
+										},
+										"DKK": {
+											"displayName": "丹麦克朗"
+										},
+										"EUR": {
+											"displayName": "欧元"
+										},
+										"GBP": {
+											"displayName": "英镑"
+										},
+										"HKD": {
+											"displayName": "港币"
+										},
+										"HUF": {
+											"displayName": "匈牙利福林"
+										},
+										"INR": {
+											"displayName": "印度卢比"
+										},
+										"JPY": {
+											"displayName": "日元"
+										},
+										"KRW": {
+											"displayName": "韩元"
+										},
+										"MXN": {
+											"displayName": "墨西哥比索"
+										},
+										"NOK": {
+											"displayName": "NOK"
+										},
+										"NZD": {
+											"displayName": "新西兰元"
+										},
+										"PLN": {
+											"displayName": "PLN"
+										},
+										"RUB": {
+											"displayName": "卢布"
+										},
+										"SEK": {
+											"displayName": "瑞典克朗"
+										},
+										"SGD": {
+											"displayName": "新加坡元"
+										},
+										"THB": {
+											"displayName": "泰铢"
+										},
+										"TWD": {
+											"displayName": "新台币"
+										},
+										"USD": {
+											"displayName": "美元"
+										},
+										"ZAR": {
+											"displayName": "南非兰特"
+										}
+									}
+								},
+								"discountAmount": {
+									"displayName": "折扣金额百分比",
+									"description": "折扣金额"
+								},
+								"discountType": {
+									"displayName": "折扣类型",
+									"description": "固定金额或百分比",
+									"options": {
+										"flat": {
+											"displayName": "扁平化"
+										},
+										"percentage": {
+											"displayName": "百分比"
+										}
+									}
+								}
+							}
+						},
+						"discount": {
+							"displayName": "折扣"
+						}
+					}
+				},
+				"newCouponCode": {
+					"displayName": "新优惠券代码",
+					"description": "用于重命名优惠券的新代码"
+				},
+				"newGroup": {
+					"displayName": "新分组名称",
+					"description": "要移动优惠券到的新分组名称"
+				},
+				"productIds": {
+					"displayName": "产品ID",
+					"description": "逗号分隔的产品列表，例如：499531,1234,123546。若留空则移除关联产品。"
+				},
+				"from": {
+					"displayName": "起始日期",
+					"description": "付款起始日期"
+				},
+				"to": {
+					"displayName": "截止日期",
+					"description": "付款截止日期"
+				},
+				"isPaid": {
+					"displayName": "已支付",
+					"description": "支付是否已完成"
+				},
+				"plan": {
+					"displayName": "方案ID",
+					"description": "筛选器：产品/方案ID（单个值或以逗号分隔的多个值）"
+				},
+				"subscriptionId": {
+					"displayName": "订阅ID",
+					"description": "特定用户订阅ID"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "过滤器：用户订阅状态。如未指定，则返回所有活跃、逾期、试用中和已暂停的订阅计划。",
+					"options": {
+						"active": {
+							"displayName": "激活状态"
+						},
+						"past_due": {
+							"displayName": "逾期"
+						},
+						"paused": {
+							"displayName": "已暂停"
+						},
+						"trialing": {
+							"displayName": "试用中"
+						}
+					}
+				},
+				"isOneOffCharge": {
+					"displayName": "一次性收费"
+				},
+				"planId": {
+					"displayName": "方案ID",
+					"description": "筛选条件：订阅方案ID"
+				}
+			}
+		},
+		"productId": {
+			"displayName": "产品ID",
+			"description": "具体产品/订阅ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateBy": {
+			"displayName": "更新者",
+			"description": "可以是固定值或百分比",
+			"options": {
+				"couponCode": {
+					"displayName": "优惠券代码"
+				},
+				"group": {
+					"displayName": "分组"
+				}
+			}
+		},
+		"couponCode": {
+			"displayName": "优惠券代码",
+			"description": "识别要更新的优惠券"
+		},
+		"group": {
+			"displayName": "分组",
+			"description": "您想要更新的优惠券分组名称"
+		},
+		"paymentId": {
+			"displayName": "付款名称或ID",
+			"description": "即将到来的订阅付款ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"date": {
+			"displayName": "日期",
+			"description": "希望将付款移至的日期"
+		},
+		"planId": {
+			"displayName": "套餐ID",
+			"description": "筛选：订阅套餐ID"
+		}
+	}
+}

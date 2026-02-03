@@ -1,0 +1,4481 @@
+{
+	"header": {
+		"displayName": "Freshworks CRM",
+		"description": "使用 Freshworks CRM API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"account": {
+					"displayName": "账户"
+				},
+				"appointment": {
+					"displayName": "预约"
+				},
+				"contact": {
+					"displayName": "联系人"
+				},
+				"deal": {
+					"displayName": "交易"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"salesActivity": {
+					"displayName": "销售活动"
+				},
+				"search": {
+					"displayName": "搜索"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建任务"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除任务"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索任务"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个任务"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新任务"
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "通过输入自定义搜索查询来查找记录"
+				},
+				"lookup": {
+					"displayName": "查找",
+					"description": "搜索记录的名称或电子邮件地址"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "交易名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"description": "联系人的地址"
+				},
+				"annual_revenue": {
+					"displayName": "年度营收",
+					"description": "账户年度营收"
+				},
+				"business_type_id": {
+					"displayName": "业务类型名称或ID",
+					"description": "账户所属业务的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "联系人所属城市"
+				},
+				"country": {
+					"displayName": "国家",
+					"description": "联系人所属国家"
+				},
+				"facebook": {
+					"displayName": "Facebook",
+					"description": "联系人的Facebook用户名"
+				},
+				"industry_type_id": {
+					"displayName": "行业类型名称或ID",
+					"description": "账户所属行业的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"linkedin": {
+					"displayName": "LinkedIn",
+					"description": "联系人的LinkedIn账户"
+				},
+				"number_of_employees": {
+					"displayName": "员工数量",
+					"description": "账户中的员工数量"
+				},
+				"owner_id": {
+					"displayName": "所有者姓名或ID",
+					"description": "交易分配的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"parent_sales_account_id": {
+					"displayName": "父级销售账户ID",
+					"description": "账户的父级账户ID"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "账户的电话号码"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "说明联系人所属的州/省"
+				},
+				"territory_id": {
+					"displayName": "区域名称或ID",
+					"description": "交易所属区域的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"twitter": {
+					"displayName": "Twitter",
+					"description": "联系人的Twitter用户名"
+				},
+				"website": {
+					"displayName": "网站",
+					"description": "账户网站"
+				},
+				"zipcode": {
+					"displayName": "邮政编码",
+					"description": "联系人所属区域的邮政编码"
+				},
+				"creater_id": {
+					"displayName": "创建者名称或ID",
+					"description": "创建任务的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"is_allday": {
+					"displayName": "全天",
+					"description": "是否为全天日程"
+				},
+				"latitude": {
+					"displayName": "纬度",
+					"description": "销售活动签到时的位置纬度"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "销售活动的位置"
+				},
+				"longitude": {
+					"displayName": "经度",
+					"description": "销售活动签到地点的经度"
+				},
+				"outcome_id": {
+					"displayName": "结果名称或ID",
+					"description": "任务结果的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"targetable_id": {
+					"displayName": "目标ID",
+					"description": "创建预约所针对的联系人/账户ID"
+				},
+				"targetable_type": {
+					"displayName": "目标类型",
+					"options": {
+						"Contact": {
+							"displayName": "联系人"
+						},
+						"Deal": {
+							"displayName": "交易"
+						},
+						"SalesAccount": {
+							"displayName": "销售账户"
+						}
+					}
+				},
+				"time_zone": {
+					"displayName": "时区",
+					"description": "联系人所属时区",
+					"options": {
+						"Africa/Abidjan": {
+							"displayName": "非洲/阿比让"
+						},
+						"Africa/Accra": {
+							"displayName": "非洲/阿克拉"
+						},
+						"Africa/Addis_Ababa": {
+							"displayName": "非洲/亚的斯亚贝巴"
+						},
+						"Africa/Algiers": {
+							"displayName": "非洲/阿尔及尔"
+						},
+						"Africa/Asmara": {
+							"displayName": "非洲/阿斯马拉"
+						},
+						"Africa/Asmera": {
+							"displayName": "非洲/阿斯马拉"
+						},
+						"Africa/Bamako": {
+							"displayName": "非洲/巴马科"
+						},
+						"Africa/Bangui": {
+							"displayName": "非洲/班吉"
+						},
+						"Africa/Banjul": {
+							"displayName": "非洲/班珠尔"
+						},
+						"Africa/Bissau": {
+							"displayName": "非洲/比绍"
+						},
+						"Africa/Blantyre": {
+							"displayName": "非洲/布兰太尔"
+						},
+						"Africa/Brazzaville": {
+							"displayName": "非洲/布拉柴维尔"
+						},
+						"Africa/Bujumbura": {
+							"displayName": "非洲/布琼布拉"
+						},
+						"Africa/Cairo": {
+							"displayName": "非洲/开罗"
+						},
+						"Africa/Casablanca": {
+							"displayName": "非洲/卡萨布兰卡"
+						},
+						"Africa/Ceuta": {
+							"displayName": "非洲/休达"
+						},
+						"Africa/Conakry": {
+							"displayName": "非洲/科纳克里"
+						},
+						"Africa/Dakar": {
+							"displayName": "非洲/达喀尔"
+						},
+						"Africa/Dar_es_Salaam": {
+							"displayName": "非洲/达累斯萨拉姆"
+						},
+						"Africa/Djibouti": {
+							"displayName": "非洲/吉布提"
+						},
+						"Africa/Douala": {
+							"displayName": "非洲/杜阿拉"
+						},
+						"Africa/El_Aaiun": {
+							"displayName": "非洲/阿尤恩"
+						},
+						"Africa/Freetown": {
+							"displayName": "非洲/弗里敦"
+						},
+						"Africa/Gaborone": {
+							"displayName": "非洲/哈博罗内"
+						},
+						"Africa/Harare": {
+							"displayName": "非洲/哈拉雷"
+						},
+						"Africa/Johannesburg": {
+							"displayName": "非洲/约翰内斯堡"
+						},
+						"Africa/Juba": {
+							"displayName": "非洲/朱巴"
+						},
+						"Africa/Kampala": {
+							"displayName": "非洲/坎帕拉"
+						},
+						"Africa/Khartoum": {
+							"displayName": "非洲/喀土穆"
+						},
+						"Africa/Kigali": {
+							"displayName": "非洲/基加利"
+						},
+						"Africa/Kinshasa": {
+							"displayName": "非洲/金沙萨"
+						},
+						"Africa/Lagos": {
+							"displayName": "非洲/拉各斯"
+						},
+						"Africa/Libreville": {
+							"displayName": "非洲/利伯维尔"
+						},
+						"Africa/Lome": {
+							"displayName": "非洲/洛美"
+						},
+						"Africa/Luanda": {
+							"displayName": "非洲/罗安达"
+						},
+						"Africa/Lubumbashi": {
+							"displayName": "非洲/卢本巴希"
+						},
+						"Africa/Lusaka": {
+							"displayName": "非洲/卢萨卡"
+						},
+						"Africa/Malabo": {
+							"displayName": "非洲/马拉博"
+						},
+						"Africa/Maputo": {
+							"displayName": "非洲/马普托"
+						},
+						"Africa/Maseru": {
+							"displayName": "非洲/马塞卢"
+						},
+						"Africa/Mbabane": {
+							"displayName": "非洲/姆巴巴内"
+						},
+						"Africa/Mogadishu": {
+							"displayName": "非洲/摩加迪沙"
+						},
+						"Africa/Monrovia": {
+							"displayName": "非洲/蒙罗维亚"
+						},
+						"Africa/Nairobi": {
+							"displayName": "非洲/内罗毕"
+						},
+						"Africa/Ndjamena": {
+							"displayName": "非洲/恩贾梅纳"
+						},
+						"Africa/Niamey": {
+							"displayName": "非洲/尼亚美"
+						},
+						"Africa/Nouakchott": {
+							"displayName": "非洲/努瓦克肖特"
+						},
+						"Africa/Ouagadougou": {
+							"displayName": "非洲/瓦加杜古"
+						},
+						"Africa/Porto-Novo": {
+							"displayName": "非洲/波多诺伏"
+						},
+						"Africa/Sao_Tome": {
+							"displayName": "非洲/圣多美"
+						},
+						"Africa/Timbuktu": {
+							"displayName": "非洲/廷巴克图"
+						},
+						"Africa/Tripoli": {
+							"displayName": "非洲/的黎波里"
+						},
+						"Africa/Tunis": {
+							"displayName": "非洲/突尼斯"
+						},
+						"Africa/Windhoek": {
+							"displayName": "非洲/温得和克"
+						},
+						"America/Adak": {
+							"displayName": "美国/阿达克"
+						},
+						"America/Anchorage": {
+							"displayName": "美洲/安克雷奇"
+						},
+						"America/Anguilla": {
+							"displayName": "美洲/安圭拉"
+						},
+						"America/Antigua": {
+							"displayName": "美洲/安提瓜"
+						},
+						"America/Araguaina": {
+							"displayName": "美洲/阿拉瓜伊纳"
+						},
+						"America/Argentina/Buenos_Aires": {
+							"displayName": "美洲/阿根廷/布宜诺斯艾利斯"
+						},
+						"America/Argentina/Catamarca": {
+							"displayName": "美洲/阿根廷/卡塔马卡"
+						},
+						"America/Argentina/ComodRivadavia": {
+							"displayName": "美洲/阿根廷/科摩多罗里瓦达维亚"
+						},
+						"America/Argentina/Cordoba": {
+							"displayName": "美洲/阿根廷/科尔多瓦"
+						},
+						"America/Argentina/Jujuy": {
+							"displayName": "美洲/阿根廷/胡胡伊"
+						},
+						"America/Argentina/La_Rioja": {
+							"displayName": "美洲/阿根廷/拉里奥哈"
+						},
+						"America/Argentina/Mendoza": {
+							"displayName": "美洲/阿根廷/门多萨"
+						},
+						"America/Argentina/Rio_Gallegos": {
+							"displayName": "美洲/阿根廷/里奥加耶戈斯"
+						},
+						"America/Argentina/Salta": {
+							"displayName": "美洲/阿根廷/萨尔塔"
+						},
+						"America/Argentina/San_Juan": {
+							"displayName": "美洲/阿根廷/圣胡安"
+						},
+						"America/Argentina/San_Luis": {
+							"displayName": "美洲/阿根廷/圣路易斯"
+						},
+						"America/Argentina/Tucuman": {
+							"displayName": "美洲/阿根廷/图库曼"
+						},
+						"America/Argentina/Ushuaia": {
+							"displayName": "美洲/阿根廷/乌斯怀亚"
+						},
+						"America/Aruba": {
+							"displayName": "美洲/阿鲁巴"
+						},
+						"America/Asuncion": {
+							"displayName": "亚松森/美国"
+						},
+						"America/Atikokan": {
+							"displayName": "America/Atikokan"
+						},
+						"America/Atka": {
+							"displayName": "美国/阿特卡"
+						},
+						"America/Bahia": {
+							"displayName": "美洲/巴伊亚"
+						},
+						"America/Bahia_Banderas": {
+							"displayName": "美洲/巴伊亚班德拉斯"
+						},
+						"America/Barbados": {
+							"displayName": "美洲/巴巴多斯"
+						},
+						"America/Belem": {
+							"displayName": "美洲/贝伦"
+						},
+						"America/Belize": {
+							"displayName": "美洲/伯利兹"
+						},
+						"America/Blanc-Sablon": {
+							"displayName": "美洲/布朗萨布隆"
+						},
+						"America/Boa_Vista": {
+							"displayName": "美洲/博阿维斯塔"
+						},
+						"America/Bogota": {
+							"displayName": "美洲/波哥大"
+						},
+						"America/Boise": {
+							"displayName": "美国/博伊西"
+						},
+						"America/Buenos_Aires": {
+							"displayName": "美洲/布宜诺斯艾利斯"
+						},
+						"America/Cambridge_Bay": {
+							"displayName": "美洲/剑桥湾"
+						},
+						"America/Campo_Grande": {
+							"displayName": "美洲/大坎普"
+						},
+						"America/Cancun": {
+							"displayName": "美洲/坎昆"
+						},
+						"America/Caracas": {
+							"displayName": "美洲/加拉加斯"
+						},
+						"America/Catamarca": {
+							"displayName": "美洲/卡塔马卡"
+						},
+						"America/Cayenne": {
+							"displayName": "美洲/卡宴"
+						},
+						"America/Cayman": {
+							"displayName": "美洲/开曼"
+						},
+						"America/Chicago": {
+							"displayName": "美洲/芝加哥"
+						},
+						"America/Chihuahua": {
+							"displayName": "美洲/奇瓦瓦"
+						},
+						"America/Ciudad_Juarez": {
+							"displayName": "美洲/华雷斯城"
+						},
+						"America/Coral_Harbour": {
+							"displayName": "美洲/珊瑚港"
+						},
+						"America/Cordoba": {
+							"displayName": "美洲/科尔多瓦"
+						},
+						"America/Costa_Rica": {
+							"displayName": "美洲/哥斯达黎加"
+						},
+						"America/Coyhaique": {
+							"displayName": "美洲/科伊艾克"
+						},
+						"America/Creston": {
+							"displayName": "美洲/克雷斯顿"
+						},
+						"America/Cuiaba": {
+							"displayName": "美洲/库亚巴"
+						},
+						"America/Curacao": {
+							"displayName": "库拉索（美洲/库拉索）"
+						},
+						"America/Danmarkshavn": {
+							"displayName": "美洲/丹马沙文"
+						},
+						"America/Dawson": {
+							"displayName": "道森（美洲）"
+						},
+						"America/Dawson_Creek": {
+							"displayName": "美国/道森克里克"
+						},
+						"America/Denver": {
+							"displayName": "美国/丹佛"
+						},
+						"America/Detroit": {
+							"displayName": "美国/底特律"
+						},
+						"America/Dominica": {
+							"displayName": "美洲/多米尼克"
+						},
+						"America/Edmonton": {
+							"displayName": "美洲/埃德蒙顿"
+						},
+						"America/Eirunepe": {
+							"displayName": "美洲/埃鲁内佩"
+						},
+						"America/El_Salvador": {
+							"displayName": "美洲/萨尔瓦多"
+						},
+						"America/Ensenada": {
+							"displayName": "美洲/恩塞纳达"
+						},
+						"America/Fort_Nelson": {
+							"displayName": "美洲/纳尔逊堡"
+						},
+						"America/Fort_Wayne": {
+							"displayName": "美国/韦恩堡"
+						},
+						"America/Fortaleza": {
+							"displayName": "美洲/福塔莱萨"
+						},
+						"America/Glace_Bay": {
+							"displayName": "美洲/格莱斯贝"
+						},
+						"America/Godthab": {
+							"displayName": "美洲/戈特霍布"
+						},
+						"America/Goose_Bay": {
+							"displayName": "美洲/鹅湾"
+						},
+						"America/Grand_Turk": {
+							"displayName": "美洲/大特克"
+						},
+						"America/Grenada": {
+							"displayName": "美洲/格林纳达"
+						},
+						"America/Guadeloupe": {
+							"displayName": "美洲/瓜德罗普"
+						},
+						"America/Guatemala": {
+							"displayName": "美洲/危地马拉"
+						},
+						"America/Guayaquil": {
+							"displayName": "美洲/瓜亚基尔"
+						},
+						"America/Guyana": {
+							"displayName": "美洲/圭亚那"
+						},
+						"America/Halifax": {
+							"displayName": "美洲/哈利法克斯"
+						},
+						"America/Havana": {
+							"displayName": "美洲/哈瓦那"
+						},
+						"America/Hermosillo": {
+							"displayName": "美国/埃莫西约"
+						},
+						"America/Indiana/Indianapolis": {
+							"displayName": "美国/印第安纳/印第安纳波利斯"
+						},
+						"America/Indiana/Knox": {
+							"displayName": "美国/印第安纳/诺克斯"
+						},
+						"America/Indiana/Marengo": {
+							"displayName": "美国/印第安纳/马伦戈"
+						},
+						"America/Indiana/Petersburg": {
+							"displayName": "美国/印第安纳/彼得斯堡"
+						},
+						"America/Indiana/Tell_City": {
+							"displayName": "美国/印第安纳州/特尔城"
+						},
+						"America/Indiana/Vevay": {
+							"displayName": "美国/印第安纳/维维"
+						},
+						"America/Indiana/Vincennes": {
+							"displayName": "美国/印第安纳/文森斯"
+						},
+						"America/Indiana/Winamac": {
+							"displayName": "美国/印第安纳/威纳马克"
+						},
+						"America/Indianapolis": {
+							"displayName": "美国/印第安纳波利斯"
+						},
+						"America/Inuvik": {
+							"displayName": "美洲/伊努维克"
+						},
+						"America/Iqaluit": {
+							"displayName": "美洲/伊魁特"
+						},
+						"America/Jamaica": {
+							"displayName": "美洲/牙买加"
+						},
+						"America/Jujuy": {
+							"displayName": "美洲/胡胡伊"
+						},
+						"America/Juneau": {
+							"displayName": "美洲/朱诺"
+						},
+						"America/Kentucky/Louisville": {
+							"displayName": "美国/肯塔基州/路易斯维尔"
+						},
+						"America/Kentucky/Monticello": {
+							"displayName": "美国/肯塔基/蒙蒂塞洛"
+						},
+						"America/Knox_IN": {
+							"displayName": "美国/印第安纳州诺克斯"
+						},
+						"America/Kralendijk": {
+							"displayName": "美洲/克拉伦代克"
+						},
+						"America/La_Paz": {
+							"displayName": "美洲/拉巴斯"
+						},
+						"America/Lima": {
+							"displayName": "美洲/利马"
+						},
+						"America/Los_Angeles": {
+							"displayName": "America/Los_Angeles"
+						},
+						"America/Louisville": {
+							"displayName": "美国/路易斯维尔"
+						},
+						"America/Lower_Princes": {
+							"displayName": "美洲/下太子区"
+						},
+						"America/Maceio": {
+							"displayName": "美洲/马塞约"
+						},
+						"America/Managua": {
+							"displayName": "美洲/马那瓜"
+						},
+						"America/Manaus": {
+							"displayName": "美洲/马瑙斯"
+						},
+						"America/Marigot": {
+							"displayName": "美洲/马里戈特"
+						},
+						"America/Martinique": {
+							"displayName": "美洲/马提尼克"
+						},
+						"America/Matamoros": {
+							"displayName": "美洲/马塔莫罗斯"
+						},
+						"America/Mazatlan": {
+							"displayName": "美洲/马萨特兰"
+						},
+						"America/Mendoza": {
+							"displayName": "美洲/门多萨"
+						},
+						"America/Menominee": {
+							"displayName": "美国/梅诺米尼"
+						},
+						"America/Merida": {
+							"displayName": "美洲/梅里达"
+						},
+						"America/Metlakatla": {
+							"displayName": "美洲/梅特拉卡特拉"
+						},
+						"America/Mexico_City": {
+							"displayName": "美洲/墨西哥城"
+						},
+						"America/Miquelon": {
+							"displayName": "美洲/密克隆"
+						},
+						"America/Moncton": {
+							"displayName": "美洲/蒙克顿"
+						},
+						"America/Monterrey": {
+							"displayName": "美洲/蒙特雷"
+						},
+						"America/Montevideo": {
+							"displayName": "美洲/蒙得维的亚"
+						},
+						"America/Montreal": {
+							"displayName": "美洲/蒙特利尔"
+						},
+						"America/Montserrat": {
+							"displayName": "美洲/蒙特塞拉特"
+						},
+						"America/Nassau": {
+							"displayName": "美洲/拿骚"
+						},
+						"America/New_York": {
+							"displayName": "美国/纽约"
+						},
+						"America/Nipigon": {
+							"displayName": "美洲/尼皮贡"
+						},
+						"America/Nome": {
+							"displayName": "美洲/诺姆"
+						},
+						"America/Noronha": {
+							"displayName": "美洲/诺罗尼亚"
+						},
+						"America/North_Dakota/Beulah": {
+							"displayName": "美国/北达科他/比尤拉"
+						},
+						"America/North_Dakota/Center": {
+							"displayName": "美国/北达科他/森特"
+						},
+						"America/North_Dakota/New_Salem": {
+							"displayName": "美国/北达科他州/新塞勒姆"
+						},
+						"America/Nuuk": {
+							"displayName": "美洲/努克"
+						},
+						"America/Ojinaga": {
+							"displayName": "美国/奥希纳加"
+						},
+						"America/Panama": {
+							"displayName": "巴拿马/巴拿马城"
+						},
+						"America/Pangnirtung": {
+							"displayName": "美洲/庞纳唐"
+						},
+						"America/Paramaribo": {
+							"displayName": "美洲/帕拉马里博"
+						},
+						"America/Phoenix": {
+							"displayName": "美国/凤凰城"
+						},
+						"America/Port-au-Prince": {
+							"displayName": "美洲/太子港"
+						},
+						"America/Port_of_Spain": {
+							"displayName": "美洲/西班牙港"
+						},
+						"America/Porto_Acre": {
+							"displayName": "美洲/阿克里港"
+						},
+						"America/Porto_Velho": {
+							"displayName": "美洲/韦柳港"
+						},
+						"America/Puerto_Rico": {
+							"displayName": "美洲/波多黎各"
+						},
+						"America/Punta_Arenas": {
+							"displayName": "美洲/蓬塔阿雷纳斯"
+						},
+						"America/Rainy_River": {
+							"displayName": "美洲/雷尼里弗"
+						},
+						"America/Rankin_Inlet": {
+							"displayName": "美洲/兰金因莱特"
+						},
+						"America/Recife": {
+							"displayName": "美洲/累西腓"
+						},
+						"America/Regina": {
+							"displayName": "美洲/里贾纳"
+						},
+						"America/Resolute": {
+							"displayName": "美洲/雷索卢特"
+						},
+						"America/Rio_Branco": {
+							"displayName": "美洲/里奥布兰科"
+						},
+						"America/Rosario": {
+							"displayName": "美洲/罗萨里奥"
+						},
+						"America/Santa_Isabel": {
+							"displayName": "美洲/圣伊莎贝尔"
+						},
+						"America/Santarem": {
+							"displayName": "美洲/圣塔伦"
+						},
+						"America/Santiago": {
+							"displayName": "美洲/圣地亚哥"
+						},
+						"America/Santo_Domingo": {
+							"displayName": "美洲/圣多明各"
+						},
+						"America/Sao_Paulo": {
+							"displayName": "America/Sao_Paulo"
+						},
+						"America/Scoresbysund": {
+							"displayName": "美国/斯科斯比松"
+						},
+						"America/Shiprock": {
+							"displayName": "美国/希普罗克"
+						},
+						"America/Sitka": {
+							"displayName": "美洲/锡特卡"
+						},
+						"America/St_Barthelemy": {
+							"displayName": "美洲/圣巴泰勒米"
+						},
+						"America/St_Johns": {
+							"displayName": "美洲/圣约翰斯"
+						},
+						"America/St_Kitts": {
+							"displayName": "美洲/圣基茨"
+						},
+						"America/St_Lucia": {
+							"displayName": "美洲/圣卢西亚"
+						},
+						"America/St_Thomas": {
+							"displayName": "美洲/圣托马斯"
+						},
+						"America/St_Vincent": {
+							"displayName": "美洲/圣文森特"
+						},
+						"America/Swift_Current": {
+							"displayName": "美洲/斯威夫特卡伦特"
+						},
+						"America/Tegucigalpa": {
+							"displayName": "美洲/特古西加尔巴"
+						},
+						"America/Thule": {
+							"displayName": "美国/图勒"
+						},
+						"America/Thunder_Bay": {
+							"displayName": "美洲/桑德贝"
+						},
+						"America/Tijuana": {
+							"displayName": "美洲/蒂华纳"
+						},
+						"America/Toronto": {
+							"displayName": "美洲/多伦多"
+						},
+						"America/Tortola": {
+							"displayName": "美洲/托尔托拉"
+						},
+						"America/Vancouver": {
+							"displayName": "美洲/温哥华"
+						},
+						"America/Virgin": {
+							"displayName": "美属维尔京群岛"
+						},
+						"America/Whitehorse": {
+							"displayName": "美洲/怀特霍斯"
+						},
+						"America/Winnipeg": {
+							"displayName": "美洲/温尼伯"
+						},
+						"America/Yakutat": {
+							"displayName": "亚库塔特"
+						},
+						"America/Yellowknife": {
+							"displayName": "美洲/耶洛奈夫"
+						},
+						"Antarctica/Casey": {
+							"displayName": "南极洲/凯西站"
+						},
+						"Antarctica/Davis": {
+							"displayName": "南极洲/戴维斯"
+						},
+						"Antarctica/DumontDUrville": {
+							"displayName": "南极洲/迪蒙迪维尔"
+						},
+						"Antarctica/Macquarie": {
+							"displayName": "南极洲/麦夸里"
+						},
+						"Antarctica/Mawson": {
+							"displayName": "南极洲/莫森"
+						},
+						"Antarctica/McMurdo": {
+							"displayName": "南极洲/麦克默多"
+						},
+						"Antarctica/Palmer": {
+							"displayName": "南极洲/帕尔默"
+						},
+						"Antarctica/Rothera": {
+							"displayName": "南极洲/罗瑟拉"
+						},
+						"Antarctica/South_Pole": {
+							"displayName": "南极/南极点"
+						},
+						"Antarctica/Syowa": {
+							"displayName": "南极洲/昭和"
+						},
+						"Antarctica/Troll": {
+							"displayName": "南极洲/特罗尔"
+						},
+						"Antarctica/Vostok": {
+							"displayName": "南极洲/沃斯托克"
+						},
+						"Arctic/Longyearbyen": {
+							"displayName": "北极/朗伊尔城"
+						},
+						"Asia/Aden": {
+							"displayName": "亚洲/亚丁"
+						},
+						"Asia/Almaty": {
+							"displayName": "亚洲/阿拉木图"
+						},
+						"Asia/Amman": {
+							"displayName": "亚洲/安曼"
+						},
+						"Asia/Anadyr": {
+							"displayName": "亚洲/阿纳德尔"
+						},
+						"Asia/Aqtau": {
+							"displayName": "亚洲/阿克套"
+						},
+						"Asia/Aqtobe": {
+							"displayName": "亚洲/阿克托比"
+						},
+						"Asia/Ashgabat": {
+							"displayName": "亚洲/阿什哈巴德"
+						},
+						"Asia/Ashkhabad": {
+							"displayName": "亚洲/阿什哈巴德"
+						},
+						"Asia/Atyrau": {
+							"displayName": "亚洲/阿特劳"
+						},
+						"Asia/Baghdad": {
+							"displayName": "亚洲/巴格达"
+						},
+						"Asia/Bahrain": {
+							"displayName": "亚洲/巴林"
+						},
+						"Asia/Baku": {
+							"displayName": "亚洲/巴库"
+						},
+						"Asia/Bangkok": {
+							"displayName": "亚洲/曼谷"
+						},
+						"Asia/Barnaul": {
+							"displayName": "亚洲/巴尔瑙尔"
+						},
+						"Asia/Beirut": {
+							"displayName": "亚洲/贝鲁特"
+						},
+						"Asia/Bishkek": {
+							"displayName": "亚洲/比什凯克"
+						},
+						"Asia/Brunei": {
+							"displayName": "亚洲/文莱"
+						},
+						"Asia/Calcutta": {
+							"displayName": "亚洲/加尔各答"
+						},
+						"Asia/Chita": {
+							"displayName": "亚洲/赤塔"
+						},
+						"Asia/Choibalsan": {
+							"displayName": "亚洲/乔巴山"
+						},
+						"Asia/Chongqing": {
+							"displayName": "亚洲/重庆"
+						},
+						"Asia/Chungking": {
+							"displayName": "亚洲/重庆"
+						},
+						"Asia/Colombo": {
+							"displayName": "亚洲/科伦坡"
+						},
+						"Asia/Dacca": {
+							"displayName": "亚洲/达卡"
+						},
+						"Asia/Damascus": {
+							"displayName": "亚洲/大马士革"
+						},
+						"Asia/Dhaka": {
+							"displayName": "亚洲/达卡"
+						},
+						"Asia/Dili": {
+							"displayName": "亚洲/帝力"
+						},
+						"Asia/Dubai": {
+							"displayName": "亚洲/迪拜"
+						},
+						"Asia/Dushanbe": {
+							"displayName": "亚洲/杜尚别"
+						},
+						"Asia/Famagusta": {
+							"displayName": "亚洲/法马古斯塔"
+						},
+						"Asia/Gaza": {
+							"displayName": "亚洲/加沙"
+						},
+						"Asia/Harbin": {
+							"displayName": "亚洲/哈尔滨"
+						},
+						"Asia/Hebron": {
+							"displayName": "亚洲/希伯伦"
+						},
+						"Asia/Ho_Chi_Minh": {
+							"displayName": "亚洲/胡志明市"
+						},
+						"Asia/Hong_Kong": {
+							"displayName": "亚洲/香港"
+						},
+						"Asia/Hovd": {
+							"displayName": "亚洲/科布多"
+						},
+						"Asia/Irkutsk": {
+							"displayName": "伊尔库茨克"
+						},
+						"Asia/Istanbul": {
+							"displayName": "亚洲/伊斯坦布尔"
+						},
+						"Asia/Jakarta": {
+							"displayName": "亚洲/雅加达"
+						},
+						"Asia/Jayapura": {
+							"displayName": "亚洲/查亚普拉"
+						},
+						"Asia/Jerusalem": {
+							"displayName": "亚洲/耶路撒冷"
+						},
+						"Asia/Kabul": {
+							"displayName": "亚洲/喀布尔"
+						},
+						"Asia/Kamchatka": {
+							"displayName": "亚洲/堪察加"
+						},
+						"Asia/Karachi": {
+							"displayName": "亚洲/卡拉奇"
+						},
+						"Asia/Kashgar": {
+							"displayName": "亚洲/喀什"
+						},
+						"Asia/Kathmandu": {
+							"displayName": "亚洲/加德满都"
+						},
+						"Asia/Katmandu": {
+							"displayName": "亚洲/加德满都"
+						},
+						"Asia/Khandyga": {
+							"displayName": "亚洲/汉德加"
+						},
+						"Asia/Kolkata": {
+							"displayName": "亚洲/加尔各答"
+						},
+						"Asia/Krasnoyarsk": {
+							"displayName": "亚洲/克拉斯诺亚尔斯克"
+						},
+						"Asia/Kuala_Lumpur": {
+							"displayName": "亚洲/吉隆坡"
+						},
+						"Asia/Kuching": {
+							"displayName": "亚洲/古晋"
+						},
+						"Asia/Kuwait": {
+							"displayName": "亚洲/科威特"
+						},
+						"Asia/Macao": {
+							"displayName": "亚洲/澳门"
+						},
+						"Asia/Macau": {
+							"displayName": "亚洲/澳门"
+						},
+						"Asia/Magadan": {
+							"displayName": "亚洲/马加丹"
+						},
+						"Asia/Makassar": {
+							"displayName": "亚洲/望加锡"
+						},
+						"Asia/Manila": {
+							"displayName": "亚洲/马尼拉"
+						},
+						"Asia/Muscat": {
+							"displayName": "亚洲/马斯喀特"
+						},
+						"Asia/Nicosia": {
+							"displayName": "亚洲/尼科西亚"
+						},
+						"Asia/Novokuznetsk": {
+							"displayName": "亚洲/新库兹涅茨克"
+						},
+						"Asia/Novosibirsk": {
+							"displayName": "亚洲/新西伯利亚"
+						},
+						"Asia/Omsk": {
+							"displayName": "亚洲/鄂木斯克"
+						},
+						"Asia/Oral": {
+							"displayName": "亚洲/乌拉尔"
+						},
+						"Asia/Phnom_Penh": {
+							"displayName": "亚洲/金边"
+						},
+						"Asia/Pontianak": {
+							"displayName": "亚洲/坤甸"
+						},
+						"Asia/Pyongyang": {
+							"displayName": "亚洲/平壤"
+						},
+						"Asia/Qatar": {
+							"displayName": "亚洲/卡塔尔"
+						},
+						"Asia/Qostanay": {
+							"displayName": "亚洲/科斯塔奈"
+						},
+						"Asia/Qyzylorda": {
+							"displayName": "亚洲/克孜勒奥尔达"
+						},
+						"Asia/Rangoon": {
+							"displayName": "亚洲/仰光"
+						},
+						"Asia/Riyadh": {
+							"displayName": "亚洲/利雅得"
+						},
+						"Asia/Saigon": {
+							"displayName": "亚洲/西贡"
+						},
+						"Asia/Sakhalin": {
+							"displayName": "亚洲/萨哈林"
+						},
+						"Asia/Samarkand": {
+							"displayName": "亚洲/撒马尔罕"
+						},
+						"Asia/Seoul": {
+							"displayName": "亚洲/首尔"
+						},
+						"Asia/Shanghai": {
+							"displayName": "亚洲/上海"
+						},
+						"Asia/Singapore": {
+							"displayName": "亚洲/新加坡"
+						},
+						"Asia/Srednekolymsk": {
+							"displayName": "亚洲/中科雷姆斯克"
+						},
+						"Asia/Taipei": {
+							"displayName": "亚洲/台北"
+						},
+						"Asia/Tashkent": {
+							"displayName": "亚洲/塔什干"
+						},
+						"Asia/Tbilisi": {
+							"displayName": "亚洲/第比利斯"
+						},
+						"Asia/Tehran": {
+							"displayName": "亚洲/德黑兰"
+						},
+						"Asia/Tel_Aviv": {
+							"displayName": "亚洲/特拉维夫"
+						},
+						"Asia/Thimbu": {
+							"displayName": "亚洲/廷布"
+						},
+						"Asia/Thimphu": {
+							"displayName": "亚洲/廷布"
+						},
+						"Asia/Tokyo": {
+							"displayName": "亚洲/东京"
+						},
+						"Asia/Tomsk": {
+							"displayName": "亚洲/托木斯克"
+						},
+						"Asia/Ujung_Pandang": {
+							"displayName": "亚洲/乌戎潘当"
+						},
+						"Asia/Ulaanbaatar": {
+							"displayName": "亚洲/乌兰巴托"
+						},
+						"Asia/Ulan_Bator": {
+							"displayName": "亚洲/乌兰巴托"
+						},
+						"Asia/Urumqi": {
+							"displayName": "亚洲/乌鲁木齐"
+						},
+						"Asia/Ust-Nera": {
+							"displayName": "亚洲/乌斯季涅拉"
+						},
+						"Asia/Vientiane": {
+							"displayName": "亚洲/万象"
+						},
+						"Asia/Vladivostok": {
+							"displayName": "亚洲/符拉迪沃斯托克"
+						},
+						"Asia/Yakutsk": {
+							"displayName": "亚洲/雅库茨克"
+						},
+						"Asia/Yangon": {
+							"displayName": "亚洲/仰光"
+						},
+						"Asia/Yekaterinburg": {
+							"displayName": "亚洲/叶卡捷琳堡"
+						},
+						"Asia/Yerevan": {
+							"displayName": "亚洲/埃里温"
+						},
+						"Atlantic/Azores": {
+							"displayName": "亚速尔群岛"
+						},
+						"Atlantic/Bermuda": {
+							"displayName": "大西洋/百慕大"
+						},
+						"Atlantic/Canary": {
+							"displayName": "大西洋/加那利"
+						},
+						"Atlantic/Cape_Verde": {
+							"displayName": "大西洋/佛得角"
+						},
+						"Atlantic/Faeroe": {
+							"displayName": "大西洋/法罗群岛"
+						},
+						"Atlantic/Faroe": {
+							"displayName": "大西洋/法罗群岛"
+						},
+						"Atlantic/Jan_Mayen": {
+							"displayName": "大西洋/扬马延"
+						},
+						"Atlantic/Madeira": {
+							"displayName": "大西洋/马德拉"
+						},
+						"Atlantic/Reykjavik": {
+							"displayName": "大西洋/雷克雅未克"
+						},
+						"Atlantic/South_Georgia": {
+							"displayName": "大西洋/南乔治亚"
+						},
+						"Atlantic/St_Helena": {
+							"displayName": "大西洋/圣赫勒拿"
+						},
+						"Atlantic/Stanley": {
+							"displayName": "大西洋/斯坦利"
+						},
+						"Australia/ACT": {
+							"displayName": "澳大利亚/首都领地"
+						},
+						"Australia/Adelaide": {
+							"displayName": "澳大利亚/阿德莱德"
+						},
+						"Australia/Brisbane": {
+							"displayName": "澳大利亚/布里斯班"
+						},
+						"Australia/Broken_Hill": {
+							"displayName": "澳大利亚/布罗肯希尔"
+						},
+						"Australia/Canberra": {
+							"displayName": "澳大利亚/堪培拉"
+						},
+						"Australia/Currie": {
+							"displayName": "澳大利亚/库里"
+						},
+						"Australia/Darwin": {
+							"displayName": "澳大利亚/达尔文"
+						},
+						"Australia/Eucla": {
+							"displayName": "澳大利亚/尤克拉"
+						},
+						"Australia/Hobart": {
+							"displayName": "澳大利亚/霍巴特"
+						},
+						"Australia/LHI": {
+							"displayName": "澳大利亚/豪勋爵岛"
+						},
+						"Australia/Lindeman": {
+							"displayName": "澳大利亚/林德曼"
+						},
+						"Australia/Lord_Howe": {
+							"displayName": "澳大利亚/豪勋爵岛"
+						},
+						"Australia/Melbourne": {
+							"displayName": "澳大利亚/墨尔本"
+						},
+						"Australia/NSW": {
+							"displayName": "澳大利亚/新南威尔士州"
+						},
+						"Australia/North": {
+							"displayName": "澳大利亚/北部"
+						},
+						"Australia/Perth": {
+							"displayName": "澳大利亚/珀斯"
+						},
+						"Australia/Queensland": {
+							"displayName": "澳大利亚/昆士兰州"
+						},
+						"Australia/South": {
+							"displayName": "澳大利亚/南部"
+						},
+						"Australia/Sydney": {
+							"displayName": "澳大利亚/悉尼"
+						},
+						"Australia/Tasmania": {
+							"displayName": "澳大利亚/塔斯马尼亚州"
+						},
+						"Australia/Victoria": {
+							"displayName": "澳大利亚/维多利亚州"
+						},
+						"Australia/West": {
+							"displayName": "澳大利亚/西部"
+						},
+						"Australia/Yancowinna": {
+							"displayName": "澳大利亚/扬科温纳"
+						},
+						"Brazil/Acre": {
+							"displayName": "巴西/阿克里"
+						},
+						"Brazil/DeNoronha": {
+							"displayName": "巴西/德诺罗尼亚"
+						},
+						"Brazil/East": {
+							"displayName": "巴西/东部"
+						},
+						"Brazil/West": {
+							"displayName": "巴西/西区"
+						},
+						"CET": {
+							"displayName": "CET"
+						},
+						"CST6CDT": {
+							"displayName": "CST6CDT"
+						},
+						"Canada/Atlantic": {
+							"displayName": "加拿大/大西洋"
+						},
+						"Canada/Central": {
+							"displayName": "加拿大/中部"
+						},
+						"Canada/Eastern": {
+							"displayName": "加拿大/东部"
+						},
+						"Canada/Mountain": {
+							"displayName": "加拿大/山区"
+						},
+						"Canada/Newfoundland": {
+							"displayName": "加拿大/纽芬兰"
+						},
+						"Canada/Pacific": {
+							"displayName": "加拿大/太平洋时区"
+						},
+						"Canada/Saskatchewan": {
+							"displayName": "加拿大/萨斯喀彻温省"
+						},
+						"Canada/Yukon": {
+							"displayName": "加拿大/育空"
+						},
+						"Chile/Continental": {
+							"displayName": "智利/大陆"
+						},
+						"Chile/EasterIsland": {
+							"displayName": "智利/复活节岛"
+						},
+						"Cuba": {
+							"displayName": "古巴"
+						},
+						"EET": {
+							"displayName": "东欧时间"
+						},
+						"EST": {
+							"displayName": "东部标准时间"
+						},
+						"EST5EDT": {
+							"displayName": "美国东部时间(夏令时)"
+						},
+						"Egypt": {
+							"displayName": "埃及"
+						},
+						"Eire": {
+							"displayName": "爱尔兰"
+						},
+						"Etc/GMT": {
+							"displayName": "Etc/GMT"
+						},
+						"Etc/GMT+0": {
+							"displayName": "Etc/GMT+0"
+						},
+						"Etc/GMT+1": {
+							"displayName": "Etc/GMT+1"
+						},
+						"Etc/GMT+10": {
+							"displayName": "Etc/GMT+10"
+						},
+						"Etc/GMT+11": {
+							"displayName": "Etc/GMT+11"
+						},
+						"Etc/GMT+12": {
+							"displayName": "Etc/GMT+12"
+						},
+						"Etc/GMT+2": {
+							"displayName": "Etc/GMT+2"
+						},
+						"Etc/GMT+3": {
+							"displayName": "Etc/GMT+3"
+						},
+						"Etc/GMT+4": {
+							"displayName": "Etc/GMT+4"
+						},
+						"Etc/GMT+5": {
+							"displayName": "Etc/GMT+5"
+						},
+						"Etc/GMT+6": {
+							"displayName": "Etc/GMT+6"
+						},
+						"Etc/GMT+7": {
+							"displayName": "Etc/GMT+7"
+						},
+						"Etc/GMT+8": {
+							"displayName": "Etc/GMT+8"
+						},
+						"Etc/GMT+9": {
+							"displayName": "Etc/GMT+9"
+						},
+						"Etc/GMT-0": {
+							"displayName": "Etc/GMT-0"
+						},
+						"Etc/GMT-1": {
+							"displayName": "Etc/GMT-1"
+						},
+						"Etc/GMT-10": {
+							"displayName": "Etc/GMT-10"
+						},
+						"Etc/GMT-11": {
+							"displayName": "Etc/GMT-11"
+						},
+						"Etc/GMT-12": {
+							"displayName": "Etc/GMT-12"
+						},
+						"Etc/GMT-13": {
+							"displayName": "Etc/GMT-13"
+						},
+						"Etc/GMT-14": {
+							"displayName": "Etc/GMT-14"
+						},
+						"Etc/GMT-2": {
+							"displayName": "Etc/GMT-2"
+						},
+						"Etc/GMT-3": {
+							"displayName": "Etc/GMT-3"
+						},
+						"Etc/GMT-4": {
+							"displayName": "Etc/GMT-4"
+						},
+						"Etc/GMT-5": {
+							"displayName": "Etc/GMT-5"
+						},
+						"Etc/GMT-6": {
+							"displayName": "Etc/GMT-6"
+						},
+						"Etc/GMT-7": {
+							"displayName": "Etc/GMT-7"
+						},
+						"Etc/GMT-8": {
+							"displayName": "Etc/GMT-8"
+						},
+						"Etc/GMT-9": {
+							"displayName": "Etc/GMT-9"
+						},
+						"Etc/GMT0": {
+							"displayName": "Etc/GMT0"
+						},
+						"Etc/Greenwich": {
+							"displayName": "格林威治标准时间"
+						},
+						"Etc/UCT": {
+							"displayName": "Etc/UTC"
+						},
+						"Etc/UTC": {
+							"displayName": "Etc/UTC"
+						},
+						"Etc/Universal": {
+							"displayName": "Etc/通用"
+						},
+						"Etc/Zulu": {
+							"displayName": "祖鲁时间"
+						},
+						"Europe/Amsterdam": {
+							"displayName": "欧洲/阿姆斯特丹"
+						},
+						"Europe/Andorra": {
+							"displayName": "欧洲/安道尔"
+						},
+						"Europe/Astrakhan": {
+							"displayName": "欧洲/阿斯特拉罕"
+						},
+						"Europe/Athens": {
+							"displayName": "欧洲/雅典"
+						},
+						"Europe/Belfast": {
+							"displayName": "欧洲/贝尔法斯特"
+						},
+						"Europe/Belgrade": {
+							"displayName": "欧洲/贝尔格莱德"
+						},
+						"Europe/Berlin": {
+							"displayName": "欧洲/柏林"
+						},
+						"Europe/Bratislava": {
+							"displayName": "欧洲/布拉迪斯拉发"
+						},
+						"Europe/Brussels": {
+							"displayName": "欧洲/布鲁塞尔"
+						},
+						"Europe/Bucharest": {
+							"displayName": "欧洲/布加勒斯特"
+						},
+						"Europe/Budapest": {
+							"displayName": "欧洲/布达佩斯"
+						},
+						"Europe/Busingen": {
+							"displayName": "欧洲/布辛根"
+						},
+						"Europe/Chisinau": {
+							"displayName": "欧洲/基希讷乌"
+						},
+						"Europe/Copenhagen": {
+							"displayName": "欧洲/哥本哈根"
+						},
+						"Europe/Dublin": {
+							"displayName": "欧洲/都柏林"
+						},
+						"Europe/Gibraltar": {
+							"displayName": "欧洲/直布罗陀"
+						},
+						"Europe/Guernsey": {
+							"displayName": "欧洲/根西岛"
+						},
+						"Europe/Helsinki": {
+							"displayName": "欧洲/赫尔辛基"
+						},
+						"Europe/Isle_of_Man": {
+							"displayName": "欧洲/马恩岛"
+						},
+						"Europe/Istanbul": {
+							"displayName": "欧洲/伊斯坦布尔"
+						},
+						"Europe/Jersey": {
+							"displayName": "欧洲/泽西岛"
+						},
+						"Europe/Kaliningrad": {
+							"displayName": "欧洲/加里宁格勒"
+						},
+						"Europe/Kiev": {
+							"displayName": "欧洲/基辅"
+						},
+						"Europe/Kirov": {
+							"displayName": "欧洲/基洛夫"
+						},
+						"Europe/Kyiv": {
+							"displayName": "欧洲/基辅"
+						},
+						"Europe/Lisbon": {
+							"displayName": "欧洲/里斯本"
+						},
+						"Europe/Ljubljana": {
+							"displayName": "欧洲/卢布尔雅那"
+						},
+						"Europe/London": {
+							"displayName": "欧洲/伦敦"
+						},
+						"Europe/Luxembourg": {
+							"displayName": "欧洲/卢森堡"
+						},
+						"Europe/Madrid": {
+							"displayName": "欧洲/马德里"
+						},
+						"Europe/Malta": {
+							"displayName": "欧洲/马耳他"
+						},
+						"Europe/Mariehamn": {
+							"displayName": "欧洲/玛丽港"
+						},
+						"Europe/Minsk": {
+							"displayName": "欧洲/明斯克"
+						},
+						"Europe/Monaco": {
+							"displayName": "欧洲/摩纳哥"
+						},
+						"Europe/Moscow": {
+							"displayName": "欧洲/莫斯科"
+						},
+						"Europe/Nicosia": {
+							"displayName": "欧洲/尼科西亚"
+						},
+						"Europe/Oslo": {
+							"displayName": "欧洲/奥斯陆"
+						},
+						"Europe/Paris": {
+							"displayName": "欧洲/巴黎"
+						},
+						"Europe/Podgorica": {
+							"displayName": "欧洲/波德戈里察"
+						},
+						"Europe/Prague": {
+							"displayName": "欧洲/布拉格"
+						},
+						"Europe/Riga": {
+							"displayName": "欧洲/里加"
+						},
+						"Europe/Rome": {
+							"displayName": "欧洲/罗马"
+						},
+						"Europe/Samara": {
+							"displayName": "欧洲/萨马拉"
+						},
+						"Europe/San_Marino": {
+							"displayName": "欧洲/圣马力诺"
+						},
+						"Europe/Sarajevo": {
+							"displayName": "欧洲/萨拉热窝"
+						},
+						"Europe/Saratov": {
+							"displayName": "欧洲/萨拉托夫"
+						},
+						"Europe/Simferopol": {
+							"displayName": "欧洲/辛菲罗波尔"
+						},
+						"Europe/Skopje": {
+							"displayName": "欧洲/斯科普里"
+						},
+						"Europe/Sofia": {
+							"displayName": "欧洲/索非亚"
+						},
+						"Europe/Stockholm": {
+							"displayName": "欧洲/斯德哥尔摩"
+						},
+						"Europe/Tallinn": {
+							"displayName": "欧洲/塔林"
+						},
+						"Europe/Tirane": {
+							"displayName": "欧洲/地拉那"
+						},
+						"Europe/Tiraspol": {
+							"displayName": "欧洲/蒂拉斯波尔"
+						},
+						"Europe/Ulyanovsk": {
+							"displayName": "欧洲/乌里扬诺夫斯克"
+						},
+						"Europe/Uzhgorod": {
+							"displayName": "欧洲/乌日哥罗德"
+						},
+						"Europe/Vaduz": {
+							"displayName": "欧洲/瓦杜兹"
+						},
+						"Europe/Vatican": {
+							"displayName": "欧洲/梵蒂冈"
+						},
+						"Europe/Vienna": {
+							"displayName": "欧洲/维也纳"
+						},
+						"Europe/Vilnius": {
+							"displayName": "欧洲/维尔纽斯"
+						},
+						"Europe/Volgograd": {
+							"displayName": "欧洲/伏尔加格勒"
+						},
+						"Europe/Warsaw": {
+							"displayName": "欧洲/华沙"
+						},
+						"Europe/Zagreb": {
+							"displayName": "欧洲/萨格勒布"
+						},
+						"Europe/Zaporozhye": {
+							"displayName": "欧洲/扎波罗热"
+						},
+						"Europe/Zurich": {
+							"displayName": "欧洲/苏黎世"
+						},
+						"GB": {
+							"displayName": "GB"
+						},
+						"GB-Eire": {
+							"displayName": "英国-爱尔兰"
+						},
+						"GMT": {
+							"displayName": "GMT"
+						},
+						"GMT+0": {
+							"displayName": "GMT+0"
+						},
+						"GMT-0": {
+							"displayName": "GMT-0"
+						},
+						"GMT0": {
+							"displayName": "GMT0"
+						},
+						"Greenwich": {
+							"displayName": "格林威治"
+						},
+						"HST": {
+							"displayName": "HST"
+						},
+						"Hongkong": {
+							"displayName": "香港"
+						},
+						"Iceland": {
+							"displayName": "冰岛"
+						},
+						"Indian/Antananarivo": {
+							"displayName": "印度洋/安塔那那利佛"
+						},
+						"Indian/Chagos": {
+							"displayName": "印度/查戈斯"
+						},
+						"Indian/Christmas": {
+							"displayName": "印度/圣诞节"
+						},
+						"Indian/Cocos": {
+							"displayName": "科科斯（基林）群岛"
+						},
+						"Indian/Comoro": {
+							"displayName": "印度/科摩罗"
+						},
+						"Indian/Kerguelen": {
+							"displayName": "印度洋/凯尔盖朗群岛"
+						},
+						"Indian/Mahe": {
+							"displayName": "印度/马埃"
+						},
+						"Indian/Maldives": {
+							"displayName": "印度/马尔代夫"
+						},
+						"Indian/Mauritius": {
+							"displayName": "印度/毛里求斯"
+						},
+						"Indian/Mayotte": {
+							"displayName": "印度/马约特"
+						},
+						"Indian/Reunion": {
+							"displayName": "印度/留尼汪"
+						},
+						"Iran": {
+							"displayName": "伊朗"
+						},
+						"Israel": {
+							"displayName": "以色列"
+						},
+						"Jamaica": {
+							"displayName": "牙买加"
+						},
+						"Japan": {
+							"displayName": "日本"
+						},
+						"Kwajalein": {
+							"displayName": "夸贾林"
+						},
+						"Libya": {
+							"displayName": "利比亚"
+						},
+						"MET": {
+							"displayName": "元"
+						},
+						"MST": {
+							"displayName": "MST"
+						},
+						"MST7MDT": {
+							"displayName": "MST7MDT"
+						},
+						"Mexico/BajaNorte": {
+							"displayName": "墨西哥/下加利福尼亚北部"
+						},
+						"Mexico/BajaSur": {
+							"displayName": "墨西哥/南下加利福尼亚州"
+						},
+						"Mexico/General": {
+							"displayName": "墨西哥/通用"
+						},
+						"NZ": {
+							"displayName": "新西兰"
+						},
+						"NZ-CHAT": {
+							"displayName": "NZ-CHAT"
+						},
+						"Navajo": {
+							"displayName": "导航栏"
+						},
+						"PRC": {
+							"displayName": "中华人民共和国"
+						},
+						"PST8PDT": {
+							"displayName": "太平洋夏令时"
+						},
+						"Pacific/Apia": {
+							"displayName": "太平洋/阿皮亚"
+						},
+						"Pacific/Auckland": {
+							"displayName": "太平洋/奥克兰"
+						},
+						"Pacific/Bougainville": {
+							"displayName": "太平洋/布干维尔"
+						},
+						"Pacific/Chatham": {
+							"displayName": "太平洋/查塔姆"
+						},
+						"Pacific/Chuuk": {
+							"displayName": "太平洋/楚克"
+						},
+						"Pacific/Easter": {
+							"displayName": "复活节岛时间"
+						},
+						"Pacific/Efate": {
+							"displayName": "太平洋/埃法特"
+						},
+						"Pacific/Enderbury": {
+							"displayName": "太平洋/恩德伯里"
+						},
+						"Pacific/Fakaofo": {
+							"displayName": "太平洋/法考福"
+						},
+						"Pacific/Fiji": {
+							"displayName": "太平洋/斐济"
+						},
+						"Pacific/Funafuti": {
+							"displayName": "太平洋/富纳富提"
+						},
+						"Pacific/Galapagos": {
+							"displayName": "太平洋/加拉帕戈斯"
+						},
+						"Pacific/Gambier": {
+							"displayName": "太平洋/甘比尔"
+						},
+						"Pacific/Guadalcanal": {
+							"displayName": "太平洋/瓜达尔卡纳尔"
+						},
+						"Pacific/Guam": {
+							"displayName": "太平洋/关岛"
+						},
+						"Pacific/Honolulu": {
+							"displayName": "太平洋/檀香山"
+						},
+						"Pacific/Johnston": {
+							"displayName": "太平洋/约翰斯顿"
+						},
+						"Pacific/Kanton": {
+							"displayName": "太平洋/坎顿"
+						},
+						"Pacific/Kiritimati": {
+							"displayName": "太平洋/基里蒂马蒂"
+						},
+						"Pacific/Kosrae": {
+							"displayName": "太平洋/科斯雷"
+						},
+						"Pacific/Kwajalein": {
+							"displayName": "太平洋/夸贾林"
+						},
+						"Pacific/Majuro": {
+							"displayName": "太平洋/马朱罗"
+						},
+						"Pacific/Marquesas": {
+							"displayName": "太平洋/马克萨斯"
+						},
+						"Pacific/Midway": {
+							"displayName": "太平洋/中途岛"
+						},
+						"Pacific/Nauru": {
+							"displayName": "太平洋/瑙鲁"
+						},
+						"Pacific/Niue": {
+							"displayName": "太平洋/纽埃"
+						},
+						"Pacific/Norfolk": {
+							"displayName": "太平洋/诺福克岛"
+						},
+						"Pacific/Noumea": {
+							"displayName": "太平洋/努美阿"
+						},
+						"Pacific/Pago_Pago": {
+							"displayName": "太平洋/帕果帕果"
+						},
+						"Pacific/Palau": {
+							"displayName": "太平洋/帕劳"
+						},
+						"Pacific/Pitcairn": {
+							"displayName": "太平洋/皮特凯恩"
+						},
+						"Pacific/Pohnpei": {
+							"displayName": "太平洋/波纳佩"
+						},
+						"Pacific/Ponape": {
+							"displayName": "太平洋/波纳佩"
+						},
+						"Pacific/Port_Moresby": {
+							"displayName": "太平洋/莫尔兹比港"
+						},
+						"Pacific/Rarotonga": {
+							"displayName": "太平洋/拉罗汤加"
+						},
+						"Pacific/Saipan": {
+							"displayName": "太平洋/塞班岛"
+						},
+						"Pacific/Samoa": {
+							"displayName": "太平洋/萨摩亚"
+						},
+						"Pacific/Tahiti": {
+							"displayName": "太平洋/塔希提"
+						},
+						"Pacific/Tarawa": {
+							"displayName": "太平洋/塔拉瓦"
+						},
+						"Pacific/Tongatapu": {
+							"displayName": "太平洋/汤加塔布"
+						},
+						"Pacific/Truk": {
+							"displayName": "楚克/太平洋"
+						},
+						"Pacific/Wake": {
+							"displayName": "太平洋/威克岛"
+						},
+						"Pacific/Wallis": {
+							"displayName": "太平洋/瓦利斯"
+						},
+						"Pacific/Yap": {
+							"displayName": "太平洋/雅浦"
+						},
+						"Poland": {
+							"displayName": "波兰"
+						},
+						"Portugal": {
+							"displayName": "葡萄牙"
+						},
+						"ROC": {
+							"displayName": "ROC"
+						},
+						"ROK": {
+							"displayName": "ROK"
+						},
+						"Singapore": {
+							"displayName": "新加坡"
+						},
+						"Turkey": {
+							"displayName": "土耳其"
+						},
+						"UCT": {
+							"displayName": "UCT"
+						},
+						"US/Alaska": {
+							"displayName": "美国/阿拉斯加"
+						},
+						"US/Aleutian": {
+							"displayName": "美国/阿留申"
+						},
+						"US/Arizona": {
+							"displayName": "美国/亚利桑那州"
+						},
+						"US/Central": {
+							"displayName": "美国/中部"
+						},
+						"US/East-Indiana": {
+							"displayName": "美国/东印第安纳"
+						},
+						"US/Eastern": {
+							"displayName": "美国/东部"
+						},
+						"US/Hawaii": {
+							"displayName": "美国/夏威夷"
+						},
+						"US/Indiana-Starke": {
+							"displayName": "美国/印第安纳州-斯塔克县"
+						},
+						"US/Michigan": {
+							"displayName": "美国/密歇根州"
+						},
+						"US/Mountain": {
+							"displayName": "美国/山地时区"
+						},
+						"US/Pacific": {
+							"displayName": "美国/太平洋时间"
+						},
+						"US/Samoa": {
+							"displayName": "美属萨摩亚"
+						},
+						"UTC": {
+							"displayName": "协调世界时"
+						},
+						"Universal": {
+							"displayName": "通用"
+						},
+						"W-SU": {
+							"displayName": "W-周日"
+						},
+						"WET": {
+							"displayName": "工作流执行触发器"
+						},
+						"Zulu": {
+							"displayName": "祖鲁语"
+						}
+					}
+				},
+				"campaign_id": {
+					"displayName": "活动名称或ID",
+					"description": "促成此交易的营销活动ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"contact_status_id": {
+					"displayName": "联系人状态名称或ID",
+					"description": "联系人所属状态ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"external_id": {
+					"displayName": "外部ID",
+					"description": "联系人的外部ID"
+				},
+				"job_title": {
+					"displayName": "职位名称",
+					"description": "所属账户中的联系人职务"
+				},
+				"keyword": {
+					"displayName": "关键词",
+					"description": "联系人用于访问您网站/网络应用的关键词"
+				},
+				"lead_source_id": {
+					"displayName": "潜在客户来源ID",
+					"description": "交易来源的ID"
+				},
+				"lifecycle_stage_id": {
+					"displayName": "生命周期阶段名称或ID",
+					"description": "联系人所属的生命周期阶段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"medium": {
+					"displayName": "中等",
+					"description": "引导您的联系人访问您网站/网络应用的媒介"
+				},
+				"mobile_number": {
+					"displayName": "手机号码",
+					"description": "联系人的手机号码"
+				},
+				"sales_accounts": {
+					"displayName": "销售账户名称或ID",
+					"description": "联系人所属的账户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"subscription_status": {
+					"displayName": "订阅状态",
+					"description": "联系人所在的订阅状态"
+				},
+				"subscription_types": {
+					"displayName": "订阅类型",
+					"description": "联系人所属的订阅类型"
+				},
+				"work_number": {
+					"displayName": "工作编号",
+					"description": "联系人的工作电话号码"
+				},
+				"base_currency_amount": {
+					"displayName": "基础货币金额",
+					"description": "交易的基础货币价值"
+				},
+				"currency_id": {
+					"displayName": "货币名称或ID",
+					"description": "交易所属货币的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_payment_status_id": {
+					"displayName": "交易付款状态名称或ID",
+					"description": "交易的付款方式ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_pipeline_id": {
+					"displayName": "交易管道名称或ID",
+					"description": "所属交易管道的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_product_id": {
+					"displayName": "交易产品名称或ID",
+					"description": "交易所属产品的ID（在多产品公司中）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_reason_id": {
+					"displayName": "交易失败原因名称或ID",
+					"description": "交易失败的原因ID。仅当交易处于'失败'阶段时可设置。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_stage_id": {
+					"displayName": "交易阶段名称或ID",
+					"description": "交易所属阶段的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_type_id": {
+					"displayName": "交易类型名称或ID",
+					"description": "交易所属的交易类型ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"probability": {
+					"displayName": "概率",
+					"description": "赢得交易的概率，以0到100之间的数字表示"
+				},
+				"sales_account_id": {
+					"displayName": "销售账户名称或ID",
+					"description": "交易所属账户的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "销售活动描述"
+				},
+				"sales_activity_outcome_id": {
+					"displayName": "销售活动结果名称或ID",
+					"description": "销售活动结果的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"task_type_id": {
+					"displayName": "任务类型ID",
+					"description": "任务类型的ID"
+				}
+			}
+		},
+		"accountId": {
+			"displayName": "账户ID",
+			"description": "要更新的账户ID"
+		},
+		"view": {
+			"displayName": "视图名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"description": "联系人的地址"
+				},
+				"annual_revenue": {
+					"displayName": "年度营收",
+					"description": "账户年度营收"
+				},
+				"business_type_id": {
+					"displayName": "业务类型名称或ID",
+					"description": "账户所属业务的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "联系人所属城市"
+				},
+				"country": {
+					"displayName": "国家",
+					"description": "联系人所属国家"
+				},
+				"facebook": {
+					"displayName": "Facebook",
+					"description": "联系人的Facebook用户名"
+				},
+				"industry_type_id": {
+					"displayName": "行业类型名称或ID",
+					"description": "账户所属行业的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"linkedin": {
+					"displayName": "LinkedIn",
+					"description": "联系人的LinkedIn账户"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "交易名称"
+				},
+				"number_of_employees": {
+					"displayName": "员工数量",
+					"description": "账户中的员工数量"
+				},
+				"owner_id": {
+					"displayName": "所有者姓名或ID",
+					"description": "任务分配的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"parent_sales_account_id": {
+					"displayName": "父级销售账户ID",
+					"description": "账户的父级账户ID"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "账户的电话号码"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "说明联系人所属的州/省"
+				},
+				"territory_id": {
+					"displayName": "区域名称或ID",
+					"description": "交易所属区域的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"twitter": {
+					"displayName": "Twitter",
+					"description": "联系人的Twitter用户名"
+				},
+				"website": {
+					"displayName": "网站",
+					"description": "账户网站"
+				},
+				"zipcode": {
+					"displayName": "邮政编码",
+					"description": "联系人所属区域的邮政编码"
+				},
+				"attendees": {
+					"displayName": "参会者",
+					"placeholder": "添加参会者",
+					"multipleValueButtonText": "添加参会者",
+					"options": {
+						"attendee": {
+							"displayName": "参会者",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"contact": {
+											"displayName": "联系人"
+										},
+										"user": {
+											"displayName": "用户"
+										}
+									}
+								},
+								"userId": {
+									"displayName": "用户名或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"contactId": {
+									"displayName": "联系人ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"attendee": {
+							"displayName": "参会者",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"contact": {
+											"displayName": "联系人"
+										},
+										"user": {
+											"displayName": "用户"
+										}
+									}
+								},
+								"userId": {
+									"displayName": "用户名或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"contactId": {
+									"displayName": "联系人ID"
+								}
+							}
+						},
+						"attendees": {
+							"displayName": "参会者",
+							"placeholder": "添加参会者"
+						}
+					}
+				},
+				"creater_id": {
+					"displayName": "创建者名称或ID",
+					"description": "创建销售活动的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"endDate": {
+					"displayName": "结束日期",
+					"description": "表示预约结束的时间戳。如果是全天预约，则为结束日期。"
+				},
+				"is_allday": {
+					"displayName": "全天",
+					"description": "是否为全天日程"
+				},
+				"latitude": {
+					"displayName": "纬度",
+					"description": "销售活动签到时的位置纬度"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "销售活动的位置"
+				},
+				"longitude": {
+					"displayName": "经度",
+					"description": "销售活动签到地点的经度"
+				},
+				"outcome_id": {
+					"displayName": "结果名称或ID",
+					"description": "任务结果的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"fromDate": {
+					"displayName": "开始日期",
+					"description": "表示预约开始的时间戳。如果是全天预约，则为开始日期。"
+				},
+				"targetable_id": {
+					"displayName": "目标ID",
+					"description": "任务所更新的实体ID。实体类型在\"目标类型\"中选择。"
+				},
+				"targetable_type": {
+					"displayName": "目标类型",
+					"options": {
+						"Contact": {
+							"displayName": "联系人"
+						},
+						"Deal": {
+							"displayName": "交易"
+						},
+						"SalesAccount": {
+							"displayName": "销售账户"
+						}
+					},
+					"description": "任务所更新的实体类型"
+				},
+				"time_zone": {
+					"displayName": "时区",
+					"description": "联系人所属时区",
+					"options": {
+						"Africa/Abidjan": {
+							"displayName": "非洲/阿比让"
+						},
+						"Africa/Accra": {
+							"displayName": "非洲/阿克拉"
+						},
+						"Africa/Addis_Ababa": {
+							"displayName": "非洲/亚的斯亚贝巴"
+						},
+						"Africa/Algiers": {
+							"displayName": "非洲/阿尔及尔"
+						},
+						"Africa/Asmara": {
+							"displayName": "非洲/阿斯马拉"
+						},
+						"Africa/Asmera": {
+							"displayName": "非洲/阿斯马拉"
+						},
+						"Africa/Bamako": {
+							"displayName": "非洲/巴马科"
+						},
+						"Africa/Bangui": {
+							"displayName": "非洲/班吉"
+						},
+						"Africa/Banjul": {
+							"displayName": "非洲/班珠尔"
+						},
+						"Africa/Bissau": {
+							"displayName": "非洲/比绍"
+						},
+						"Africa/Blantyre": {
+							"displayName": "非洲/布兰太尔"
+						},
+						"Africa/Brazzaville": {
+							"displayName": "非洲/布拉柴维尔"
+						},
+						"Africa/Bujumbura": {
+							"displayName": "非洲/布琼布拉"
+						},
+						"Africa/Cairo": {
+							"displayName": "非洲/开罗"
+						},
+						"Africa/Casablanca": {
+							"displayName": "非洲/卡萨布兰卡"
+						},
+						"Africa/Ceuta": {
+							"displayName": "非洲/休达"
+						},
+						"Africa/Conakry": {
+							"displayName": "非洲/科纳克里"
+						},
+						"Africa/Dakar": {
+							"displayName": "非洲/达喀尔"
+						},
+						"Africa/Dar_es_Salaam": {
+							"displayName": "非洲/达累斯萨拉姆"
+						},
+						"Africa/Djibouti": {
+							"displayName": "非洲/吉布提"
+						},
+						"Africa/Douala": {
+							"displayName": "非洲/杜阿拉"
+						},
+						"Africa/El_Aaiun": {
+							"displayName": "非洲/阿尤恩"
+						},
+						"Africa/Freetown": {
+							"displayName": "非洲/弗里敦"
+						},
+						"Africa/Gaborone": {
+							"displayName": "非洲/哈博罗内"
+						},
+						"Africa/Harare": {
+							"displayName": "非洲/哈拉雷"
+						},
+						"Africa/Johannesburg": {
+							"displayName": "非洲/约翰内斯堡"
+						},
+						"Africa/Juba": {
+							"displayName": "非洲/朱巴"
+						},
+						"Africa/Kampala": {
+							"displayName": "非洲/坎帕拉"
+						},
+						"Africa/Khartoum": {
+							"displayName": "非洲/喀土穆"
+						},
+						"Africa/Kigali": {
+							"displayName": "非洲/基加利"
+						},
+						"Africa/Kinshasa": {
+							"displayName": "非洲/金沙萨"
+						},
+						"Africa/Lagos": {
+							"displayName": "非洲/拉各斯"
+						},
+						"Africa/Libreville": {
+							"displayName": "非洲/利伯维尔"
+						},
+						"Africa/Lome": {
+							"displayName": "非洲/洛美"
+						},
+						"Africa/Luanda": {
+							"displayName": "非洲/罗安达"
+						},
+						"Africa/Lubumbashi": {
+							"displayName": "非洲/卢本巴希"
+						},
+						"Africa/Lusaka": {
+							"displayName": "非洲/卢萨卡"
+						},
+						"Africa/Malabo": {
+							"displayName": "非洲/马拉博"
+						},
+						"Africa/Maputo": {
+							"displayName": "非洲/马普托"
+						},
+						"Africa/Maseru": {
+							"displayName": "非洲/马塞卢"
+						},
+						"Africa/Mbabane": {
+							"displayName": "非洲/姆巴巴内"
+						},
+						"Africa/Mogadishu": {
+							"displayName": "非洲/摩加迪沙"
+						},
+						"Africa/Monrovia": {
+							"displayName": "非洲/蒙罗维亚"
+						},
+						"Africa/Nairobi": {
+							"displayName": "非洲/内罗毕"
+						},
+						"Africa/Ndjamena": {
+							"displayName": "非洲/恩贾梅纳"
+						},
+						"Africa/Niamey": {
+							"displayName": "非洲/尼亚美"
+						},
+						"Africa/Nouakchott": {
+							"displayName": "非洲/努瓦克肖特"
+						},
+						"Africa/Ouagadougou": {
+							"displayName": "非洲/瓦加杜古"
+						},
+						"Africa/Porto-Novo": {
+							"displayName": "非洲/波多诺伏"
+						},
+						"Africa/Sao_Tome": {
+							"displayName": "非洲/圣多美"
+						},
+						"Africa/Timbuktu": {
+							"displayName": "非洲/廷巴克图"
+						},
+						"Africa/Tripoli": {
+							"displayName": "非洲/的黎波里"
+						},
+						"Africa/Tunis": {
+							"displayName": "非洲/突尼斯"
+						},
+						"Africa/Windhoek": {
+							"displayName": "非洲/温得和克"
+						},
+						"America/Adak": {
+							"displayName": "美国/阿达克"
+						},
+						"America/Anchorage": {
+							"displayName": "美洲/安克雷奇"
+						},
+						"America/Anguilla": {
+							"displayName": "美洲/安圭拉"
+						},
+						"America/Antigua": {
+							"displayName": "美洲/安提瓜"
+						},
+						"America/Araguaina": {
+							"displayName": "美洲/阿拉瓜伊纳"
+						},
+						"America/Argentina/Buenos_Aires": {
+							"displayName": "美洲/阿根廷/布宜诺斯艾利斯"
+						},
+						"America/Argentina/Catamarca": {
+							"displayName": "美洲/阿根廷/卡塔马卡"
+						},
+						"America/Argentina/ComodRivadavia": {
+							"displayName": "美洲/阿根廷/科摩多罗里瓦达维亚"
+						},
+						"America/Argentina/Cordoba": {
+							"displayName": "美洲/阿根廷/科尔多瓦"
+						},
+						"America/Argentina/Jujuy": {
+							"displayName": "美洲/阿根廷/胡胡伊"
+						},
+						"America/Argentina/La_Rioja": {
+							"displayName": "美洲/阿根廷/拉里奥哈"
+						},
+						"America/Argentina/Mendoza": {
+							"displayName": "美洲/阿根廷/门多萨"
+						},
+						"America/Argentina/Rio_Gallegos": {
+							"displayName": "美洲/阿根廷/里奥加耶戈斯"
+						},
+						"America/Argentina/Salta": {
+							"displayName": "美洲/阿根廷/萨尔塔"
+						},
+						"America/Argentina/San_Juan": {
+							"displayName": "美洲/阿根廷/圣胡安"
+						},
+						"America/Argentina/San_Luis": {
+							"displayName": "美洲/阿根廷/圣路易斯"
+						},
+						"America/Argentina/Tucuman": {
+							"displayName": "美洲/阿根廷/图库曼"
+						},
+						"America/Argentina/Ushuaia": {
+							"displayName": "美洲/阿根廷/乌斯怀亚"
+						},
+						"America/Aruba": {
+							"displayName": "美洲/阿鲁巴"
+						},
+						"America/Asuncion": {
+							"displayName": "亚松森/美国"
+						},
+						"America/Atikokan": {
+							"displayName": "America/Atikokan"
+						},
+						"America/Atka": {
+							"displayName": "美国/阿特卡"
+						},
+						"America/Bahia": {
+							"displayName": "美洲/巴伊亚"
+						},
+						"America/Bahia_Banderas": {
+							"displayName": "美洲/巴伊亚班德拉斯"
+						},
+						"America/Barbados": {
+							"displayName": "美洲/巴巴多斯"
+						},
+						"America/Belem": {
+							"displayName": "美洲/贝伦"
+						},
+						"America/Belize": {
+							"displayName": "美洲/伯利兹"
+						},
+						"America/Blanc-Sablon": {
+							"displayName": "美洲/布朗萨布隆"
+						},
+						"America/Boa_Vista": {
+							"displayName": "美洲/博阿维斯塔"
+						},
+						"America/Bogota": {
+							"displayName": "美洲/波哥大"
+						},
+						"America/Boise": {
+							"displayName": "美国/博伊西"
+						},
+						"America/Buenos_Aires": {
+							"displayName": "美洲/布宜诺斯艾利斯"
+						},
+						"America/Cambridge_Bay": {
+							"displayName": "美洲/剑桥湾"
+						},
+						"America/Campo_Grande": {
+							"displayName": "美洲/大坎普"
+						},
+						"America/Cancun": {
+							"displayName": "美洲/坎昆"
+						},
+						"America/Caracas": {
+							"displayName": "美洲/加拉加斯"
+						},
+						"America/Catamarca": {
+							"displayName": "美洲/卡塔马卡"
+						},
+						"America/Cayenne": {
+							"displayName": "美洲/卡宴"
+						},
+						"America/Cayman": {
+							"displayName": "美洲/开曼"
+						},
+						"America/Chicago": {
+							"displayName": "美洲/芝加哥"
+						},
+						"America/Chihuahua": {
+							"displayName": "美洲/奇瓦瓦"
+						},
+						"America/Ciudad_Juarez": {
+							"displayName": "美洲/华雷斯城"
+						},
+						"America/Coral_Harbour": {
+							"displayName": "美洲/珊瑚港"
+						},
+						"America/Cordoba": {
+							"displayName": "美洲/科尔多瓦"
+						},
+						"America/Costa_Rica": {
+							"displayName": "美洲/哥斯达黎加"
+						},
+						"America/Coyhaique": {
+							"displayName": "美洲/科伊艾克"
+						},
+						"America/Creston": {
+							"displayName": "美洲/克雷斯顿"
+						},
+						"America/Cuiaba": {
+							"displayName": "美洲/库亚巴"
+						},
+						"America/Curacao": {
+							"displayName": "库拉索（美洲/库拉索）"
+						},
+						"America/Danmarkshavn": {
+							"displayName": "美洲/丹马沙文"
+						},
+						"America/Dawson": {
+							"displayName": "道森（美洲）"
+						},
+						"America/Dawson_Creek": {
+							"displayName": "美国/道森克里克"
+						},
+						"America/Denver": {
+							"displayName": "美国/丹佛"
+						},
+						"America/Detroit": {
+							"displayName": "美国/底特律"
+						},
+						"America/Dominica": {
+							"displayName": "美洲/多米尼克"
+						},
+						"America/Edmonton": {
+							"displayName": "美洲/埃德蒙顿"
+						},
+						"America/Eirunepe": {
+							"displayName": "美洲/埃鲁内佩"
+						},
+						"America/El_Salvador": {
+							"displayName": "美洲/萨尔瓦多"
+						},
+						"America/Ensenada": {
+							"displayName": "美洲/恩塞纳达"
+						},
+						"America/Fort_Nelson": {
+							"displayName": "美洲/纳尔逊堡"
+						},
+						"America/Fort_Wayne": {
+							"displayName": "美国/韦恩堡"
+						},
+						"America/Fortaleza": {
+							"displayName": "美洲/福塔莱萨"
+						},
+						"America/Glace_Bay": {
+							"displayName": "美洲/格莱斯贝"
+						},
+						"America/Godthab": {
+							"displayName": "美洲/戈特霍布"
+						},
+						"America/Goose_Bay": {
+							"displayName": "美洲/鹅湾"
+						},
+						"America/Grand_Turk": {
+							"displayName": "美洲/大特克"
+						},
+						"America/Grenada": {
+							"displayName": "美洲/格林纳达"
+						},
+						"America/Guadeloupe": {
+							"displayName": "美洲/瓜德罗普"
+						},
+						"America/Guatemala": {
+							"displayName": "美洲/危地马拉"
+						},
+						"America/Guayaquil": {
+							"displayName": "美洲/瓜亚基尔"
+						},
+						"America/Guyana": {
+							"displayName": "美洲/圭亚那"
+						},
+						"America/Halifax": {
+							"displayName": "美洲/哈利法克斯"
+						},
+						"America/Havana": {
+							"displayName": "美洲/哈瓦那"
+						},
+						"America/Hermosillo": {
+							"displayName": "美国/埃莫西约"
+						},
+						"America/Indiana/Indianapolis": {
+							"displayName": "美国/印第安纳/印第安纳波利斯"
+						},
+						"America/Indiana/Knox": {
+							"displayName": "美国/印第安纳/诺克斯"
+						},
+						"America/Indiana/Marengo": {
+							"displayName": "美国/印第安纳/马伦戈"
+						},
+						"America/Indiana/Petersburg": {
+							"displayName": "美国/印第安纳/彼得斯堡"
+						},
+						"America/Indiana/Tell_City": {
+							"displayName": "美国/印第安纳州/特尔城"
+						},
+						"America/Indiana/Vevay": {
+							"displayName": "美国/印第安纳/维维"
+						},
+						"America/Indiana/Vincennes": {
+							"displayName": "美国/印第安纳/文森斯"
+						},
+						"America/Indiana/Winamac": {
+							"displayName": "美国/印第安纳/威纳马克"
+						},
+						"America/Indianapolis": {
+							"displayName": "美国/印第安纳波利斯"
+						},
+						"America/Inuvik": {
+							"displayName": "美洲/伊努维克"
+						},
+						"America/Iqaluit": {
+							"displayName": "美洲/伊魁特"
+						},
+						"America/Jamaica": {
+							"displayName": "美洲/牙买加"
+						},
+						"America/Jujuy": {
+							"displayName": "美洲/胡胡伊"
+						},
+						"America/Juneau": {
+							"displayName": "美洲/朱诺"
+						},
+						"America/Kentucky/Louisville": {
+							"displayName": "美国/肯塔基州/路易斯维尔"
+						},
+						"America/Kentucky/Monticello": {
+							"displayName": "美国/肯塔基/蒙蒂塞洛"
+						},
+						"America/Knox_IN": {
+							"displayName": "美国/印第安纳州诺克斯"
+						},
+						"America/Kralendijk": {
+							"displayName": "美洲/克拉伦代克"
+						},
+						"America/La_Paz": {
+							"displayName": "美洲/拉巴斯"
+						},
+						"America/Lima": {
+							"displayName": "美洲/利马"
+						},
+						"America/Los_Angeles": {
+							"displayName": "America/Los_Angeles"
+						},
+						"America/Louisville": {
+							"displayName": "美国/路易斯维尔"
+						},
+						"America/Lower_Princes": {
+							"displayName": "美洲/下太子区"
+						},
+						"America/Maceio": {
+							"displayName": "美洲/马塞约"
+						},
+						"America/Managua": {
+							"displayName": "美洲/马那瓜"
+						},
+						"America/Manaus": {
+							"displayName": "美洲/马瑙斯"
+						},
+						"America/Marigot": {
+							"displayName": "美洲/马里戈特"
+						},
+						"America/Martinique": {
+							"displayName": "美洲/马提尼克"
+						},
+						"America/Matamoros": {
+							"displayName": "美洲/马塔莫罗斯"
+						},
+						"America/Mazatlan": {
+							"displayName": "美洲/马萨特兰"
+						},
+						"America/Mendoza": {
+							"displayName": "美洲/门多萨"
+						},
+						"America/Menominee": {
+							"displayName": "美国/梅诺米尼"
+						},
+						"America/Merida": {
+							"displayName": "美洲/梅里达"
+						},
+						"America/Metlakatla": {
+							"displayName": "美洲/梅特拉卡特拉"
+						},
+						"America/Mexico_City": {
+							"displayName": "美洲/墨西哥城"
+						},
+						"America/Miquelon": {
+							"displayName": "美洲/密克隆"
+						},
+						"America/Moncton": {
+							"displayName": "美洲/蒙克顿"
+						},
+						"America/Monterrey": {
+							"displayName": "美洲/蒙特雷"
+						},
+						"America/Montevideo": {
+							"displayName": "美洲/蒙得维的亚"
+						},
+						"America/Montreal": {
+							"displayName": "美洲/蒙特利尔"
+						},
+						"America/Montserrat": {
+							"displayName": "美洲/蒙特塞拉特"
+						},
+						"America/Nassau": {
+							"displayName": "美洲/拿骚"
+						},
+						"America/New_York": {
+							"displayName": "美国/纽约"
+						},
+						"America/Nipigon": {
+							"displayName": "美洲/尼皮贡"
+						},
+						"America/Nome": {
+							"displayName": "美洲/诺姆"
+						},
+						"America/Noronha": {
+							"displayName": "美洲/诺罗尼亚"
+						},
+						"America/North_Dakota/Beulah": {
+							"displayName": "美国/北达科他/比尤拉"
+						},
+						"America/North_Dakota/Center": {
+							"displayName": "美国/北达科他/森特"
+						},
+						"America/North_Dakota/New_Salem": {
+							"displayName": "美国/北达科他州/新塞勒姆"
+						},
+						"America/Nuuk": {
+							"displayName": "美洲/努克"
+						},
+						"America/Ojinaga": {
+							"displayName": "美国/奥希纳加"
+						},
+						"America/Panama": {
+							"displayName": "巴拿马/巴拿马城"
+						},
+						"America/Pangnirtung": {
+							"displayName": "美洲/庞纳唐"
+						},
+						"America/Paramaribo": {
+							"displayName": "美洲/帕拉马里博"
+						},
+						"America/Phoenix": {
+							"displayName": "美国/凤凰城"
+						},
+						"America/Port-au-Prince": {
+							"displayName": "美洲/太子港"
+						},
+						"America/Port_of_Spain": {
+							"displayName": "美洲/西班牙港"
+						},
+						"America/Porto_Acre": {
+							"displayName": "美洲/阿克里港"
+						},
+						"America/Porto_Velho": {
+							"displayName": "美洲/韦柳港"
+						},
+						"America/Puerto_Rico": {
+							"displayName": "美洲/波多黎各"
+						},
+						"America/Punta_Arenas": {
+							"displayName": "美洲/蓬塔阿雷纳斯"
+						},
+						"America/Rainy_River": {
+							"displayName": "美洲/雷尼里弗"
+						},
+						"America/Rankin_Inlet": {
+							"displayName": "美洲/兰金因莱特"
+						},
+						"America/Recife": {
+							"displayName": "美洲/累西腓"
+						},
+						"America/Regina": {
+							"displayName": "美洲/里贾纳"
+						},
+						"America/Resolute": {
+							"displayName": "美洲/雷索卢特"
+						},
+						"America/Rio_Branco": {
+							"displayName": "美洲/里奥布兰科"
+						},
+						"America/Rosario": {
+							"displayName": "美洲/罗萨里奥"
+						},
+						"America/Santa_Isabel": {
+							"displayName": "美洲/圣伊莎贝尔"
+						},
+						"America/Santarem": {
+							"displayName": "美洲/圣塔伦"
+						},
+						"America/Santiago": {
+							"displayName": "美洲/圣地亚哥"
+						},
+						"America/Santo_Domingo": {
+							"displayName": "美洲/圣多明各"
+						},
+						"America/Sao_Paulo": {
+							"displayName": "America/Sao_Paulo"
+						},
+						"America/Scoresbysund": {
+							"displayName": "美国/斯科斯比松"
+						},
+						"America/Shiprock": {
+							"displayName": "美国/希普罗克"
+						},
+						"America/Sitka": {
+							"displayName": "美洲/锡特卡"
+						},
+						"America/St_Barthelemy": {
+							"displayName": "美洲/圣巴泰勒米"
+						},
+						"America/St_Johns": {
+							"displayName": "美洲/圣约翰斯"
+						},
+						"America/St_Kitts": {
+							"displayName": "美洲/圣基茨"
+						},
+						"America/St_Lucia": {
+							"displayName": "美洲/圣卢西亚"
+						},
+						"America/St_Thomas": {
+							"displayName": "美洲/圣托马斯"
+						},
+						"America/St_Vincent": {
+							"displayName": "美洲/圣文森特"
+						},
+						"America/Swift_Current": {
+							"displayName": "美洲/斯威夫特卡伦特"
+						},
+						"America/Tegucigalpa": {
+							"displayName": "美洲/特古西加尔巴"
+						},
+						"America/Thule": {
+							"displayName": "美国/图勒"
+						},
+						"America/Thunder_Bay": {
+							"displayName": "美洲/桑德贝"
+						},
+						"America/Tijuana": {
+							"displayName": "美洲/蒂华纳"
+						},
+						"America/Toronto": {
+							"displayName": "美洲/多伦多"
+						},
+						"America/Tortola": {
+							"displayName": "美洲/托尔托拉"
+						},
+						"America/Vancouver": {
+							"displayName": "美洲/温哥华"
+						},
+						"America/Virgin": {
+							"displayName": "美属维尔京群岛"
+						},
+						"America/Whitehorse": {
+							"displayName": "美洲/怀特霍斯"
+						},
+						"America/Winnipeg": {
+							"displayName": "美洲/温尼伯"
+						},
+						"America/Yakutat": {
+							"displayName": "亚库塔特"
+						},
+						"America/Yellowknife": {
+							"displayName": "美洲/耶洛奈夫"
+						},
+						"Antarctica/Casey": {
+							"displayName": "南极洲/凯西站"
+						},
+						"Antarctica/Davis": {
+							"displayName": "南极洲/戴维斯"
+						},
+						"Antarctica/DumontDUrville": {
+							"displayName": "南极洲/迪蒙迪维尔"
+						},
+						"Antarctica/Macquarie": {
+							"displayName": "南极洲/麦夸里"
+						},
+						"Antarctica/Mawson": {
+							"displayName": "南极洲/莫森"
+						},
+						"Antarctica/McMurdo": {
+							"displayName": "南极洲/麦克默多"
+						},
+						"Antarctica/Palmer": {
+							"displayName": "南极洲/帕尔默"
+						},
+						"Antarctica/Rothera": {
+							"displayName": "南极洲/罗瑟拉"
+						},
+						"Antarctica/South_Pole": {
+							"displayName": "南极/南极点"
+						},
+						"Antarctica/Syowa": {
+							"displayName": "南极洲/昭和"
+						},
+						"Antarctica/Troll": {
+							"displayName": "南极洲/特罗尔"
+						},
+						"Antarctica/Vostok": {
+							"displayName": "南极洲/沃斯托克"
+						},
+						"Arctic/Longyearbyen": {
+							"displayName": "北极/朗伊尔城"
+						},
+						"Asia/Aden": {
+							"displayName": "亚洲/亚丁"
+						},
+						"Asia/Almaty": {
+							"displayName": "亚洲/阿拉木图"
+						},
+						"Asia/Amman": {
+							"displayName": "亚洲/安曼"
+						},
+						"Asia/Anadyr": {
+							"displayName": "亚洲/阿纳德尔"
+						},
+						"Asia/Aqtau": {
+							"displayName": "亚洲/阿克套"
+						},
+						"Asia/Aqtobe": {
+							"displayName": "亚洲/阿克托比"
+						},
+						"Asia/Ashgabat": {
+							"displayName": "亚洲/阿什哈巴德"
+						},
+						"Asia/Ashkhabad": {
+							"displayName": "亚洲/阿什哈巴德"
+						},
+						"Asia/Atyrau": {
+							"displayName": "亚洲/阿特劳"
+						},
+						"Asia/Baghdad": {
+							"displayName": "亚洲/巴格达"
+						},
+						"Asia/Bahrain": {
+							"displayName": "亚洲/巴林"
+						},
+						"Asia/Baku": {
+							"displayName": "亚洲/巴库"
+						},
+						"Asia/Bangkok": {
+							"displayName": "亚洲/曼谷"
+						},
+						"Asia/Barnaul": {
+							"displayName": "亚洲/巴尔瑙尔"
+						},
+						"Asia/Beirut": {
+							"displayName": "亚洲/贝鲁特"
+						},
+						"Asia/Bishkek": {
+							"displayName": "亚洲/比什凯克"
+						},
+						"Asia/Brunei": {
+							"displayName": "亚洲/文莱"
+						},
+						"Asia/Calcutta": {
+							"displayName": "亚洲/加尔各答"
+						},
+						"Asia/Chita": {
+							"displayName": "亚洲/赤塔"
+						},
+						"Asia/Choibalsan": {
+							"displayName": "亚洲/乔巴山"
+						},
+						"Asia/Chongqing": {
+							"displayName": "亚洲/重庆"
+						},
+						"Asia/Chungking": {
+							"displayName": "亚洲/重庆"
+						},
+						"Asia/Colombo": {
+							"displayName": "亚洲/科伦坡"
+						},
+						"Asia/Dacca": {
+							"displayName": "亚洲/达卡"
+						},
+						"Asia/Damascus": {
+							"displayName": "亚洲/大马士革"
+						},
+						"Asia/Dhaka": {
+							"displayName": "亚洲/达卡"
+						},
+						"Asia/Dili": {
+							"displayName": "亚洲/帝力"
+						},
+						"Asia/Dubai": {
+							"displayName": "亚洲/迪拜"
+						},
+						"Asia/Dushanbe": {
+							"displayName": "亚洲/杜尚别"
+						},
+						"Asia/Famagusta": {
+							"displayName": "亚洲/法马古斯塔"
+						},
+						"Asia/Gaza": {
+							"displayName": "亚洲/加沙"
+						},
+						"Asia/Harbin": {
+							"displayName": "亚洲/哈尔滨"
+						},
+						"Asia/Hebron": {
+							"displayName": "亚洲/希伯伦"
+						},
+						"Asia/Ho_Chi_Minh": {
+							"displayName": "亚洲/胡志明市"
+						},
+						"Asia/Hong_Kong": {
+							"displayName": "亚洲/香港"
+						},
+						"Asia/Hovd": {
+							"displayName": "亚洲/科布多"
+						},
+						"Asia/Irkutsk": {
+							"displayName": "伊尔库茨克"
+						},
+						"Asia/Istanbul": {
+							"displayName": "亚洲/伊斯坦布尔"
+						},
+						"Asia/Jakarta": {
+							"displayName": "亚洲/雅加达"
+						},
+						"Asia/Jayapura": {
+							"displayName": "亚洲/查亚普拉"
+						},
+						"Asia/Jerusalem": {
+							"displayName": "亚洲/耶路撒冷"
+						},
+						"Asia/Kabul": {
+							"displayName": "亚洲/喀布尔"
+						},
+						"Asia/Kamchatka": {
+							"displayName": "亚洲/堪察加"
+						},
+						"Asia/Karachi": {
+							"displayName": "亚洲/卡拉奇"
+						},
+						"Asia/Kashgar": {
+							"displayName": "亚洲/喀什"
+						},
+						"Asia/Kathmandu": {
+							"displayName": "亚洲/加德满都"
+						},
+						"Asia/Katmandu": {
+							"displayName": "亚洲/加德满都"
+						},
+						"Asia/Khandyga": {
+							"displayName": "亚洲/汉德加"
+						},
+						"Asia/Kolkata": {
+							"displayName": "亚洲/加尔各答"
+						},
+						"Asia/Krasnoyarsk": {
+							"displayName": "亚洲/克拉斯诺亚尔斯克"
+						},
+						"Asia/Kuala_Lumpur": {
+							"displayName": "亚洲/吉隆坡"
+						},
+						"Asia/Kuching": {
+							"displayName": "亚洲/古晋"
+						},
+						"Asia/Kuwait": {
+							"displayName": "亚洲/科威特"
+						},
+						"Asia/Macao": {
+							"displayName": "亚洲/澳门"
+						},
+						"Asia/Macau": {
+							"displayName": "亚洲/澳门"
+						},
+						"Asia/Magadan": {
+							"displayName": "亚洲/马加丹"
+						},
+						"Asia/Makassar": {
+							"displayName": "亚洲/望加锡"
+						},
+						"Asia/Manila": {
+							"displayName": "亚洲/马尼拉"
+						},
+						"Asia/Muscat": {
+							"displayName": "亚洲/马斯喀特"
+						},
+						"Asia/Nicosia": {
+							"displayName": "亚洲/尼科西亚"
+						},
+						"Asia/Novokuznetsk": {
+							"displayName": "亚洲/新库兹涅茨克"
+						},
+						"Asia/Novosibirsk": {
+							"displayName": "亚洲/新西伯利亚"
+						},
+						"Asia/Omsk": {
+							"displayName": "亚洲/鄂木斯克"
+						},
+						"Asia/Oral": {
+							"displayName": "亚洲/乌拉尔"
+						},
+						"Asia/Phnom_Penh": {
+							"displayName": "亚洲/金边"
+						},
+						"Asia/Pontianak": {
+							"displayName": "亚洲/坤甸"
+						},
+						"Asia/Pyongyang": {
+							"displayName": "亚洲/平壤"
+						},
+						"Asia/Qatar": {
+							"displayName": "亚洲/卡塔尔"
+						},
+						"Asia/Qostanay": {
+							"displayName": "亚洲/科斯塔奈"
+						},
+						"Asia/Qyzylorda": {
+							"displayName": "亚洲/克孜勒奥尔达"
+						},
+						"Asia/Rangoon": {
+							"displayName": "亚洲/仰光"
+						},
+						"Asia/Riyadh": {
+							"displayName": "亚洲/利雅得"
+						},
+						"Asia/Saigon": {
+							"displayName": "亚洲/西贡"
+						},
+						"Asia/Sakhalin": {
+							"displayName": "亚洲/萨哈林"
+						},
+						"Asia/Samarkand": {
+							"displayName": "亚洲/撒马尔罕"
+						},
+						"Asia/Seoul": {
+							"displayName": "亚洲/首尔"
+						},
+						"Asia/Shanghai": {
+							"displayName": "亚洲/上海"
+						},
+						"Asia/Singapore": {
+							"displayName": "亚洲/新加坡"
+						},
+						"Asia/Srednekolymsk": {
+							"displayName": "亚洲/中科雷姆斯克"
+						},
+						"Asia/Taipei": {
+							"displayName": "亚洲/台北"
+						},
+						"Asia/Tashkent": {
+							"displayName": "亚洲/塔什干"
+						},
+						"Asia/Tbilisi": {
+							"displayName": "亚洲/第比利斯"
+						},
+						"Asia/Tehran": {
+							"displayName": "亚洲/德黑兰"
+						},
+						"Asia/Tel_Aviv": {
+							"displayName": "亚洲/特拉维夫"
+						},
+						"Asia/Thimbu": {
+							"displayName": "亚洲/廷布"
+						},
+						"Asia/Thimphu": {
+							"displayName": "亚洲/廷布"
+						},
+						"Asia/Tokyo": {
+							"displayName": "亚洲/东京"
+						},
+						"Asia/Tomsk": {
+							"displayName": "亚洲/托木斯克"
+						},
+						"Asia/Ujung_Pandang": {
+							"displayName": "亚洲/乌戎潘当"
+						},
+						"Asia/Ulaanbaatar": {
+							"displayName": "亚洲/乌兰巴托"
+						},
+						"Asia/Ulan_Bator": {
+							"displayName": "亚洲/乌兰巴托"
+						},
+						"Asia/Urumqi": {
+							"displayName": "亚洲/乌鲁木齐"
+						},
+						"Asia/Ust-Nera": {
+							"displayName": "亚洲/乌斯季涅拉"
+						},
+						"Asia/Vientiane": {
+							"displayName": "亚洲/万象"
+						},
+						"Asia/Vladivostok": {
+							"displayName": "亚洲/符拉迪沃斯托克"
+						},
+						"Asia/Yakutsk": {
+							"displayName": "亚洲/雅库茨克"
+						},
+						"Asia/Yangon": {
+							"displayName": "亚洲/仰光"
+						},
+						"Asia/Yekaterinburg": {
+							"displayName": "亚洲/叶卡捷琳堡"
+						},
+						"Asia/Yerevan": {
+							"displayName": "亚洲/埃里温"
+						},
+						"Atlantic/Azores": {
+							"displayName": "亚速尔群岛"
+						},
+						"Atlantic/Bermuda": {
+							"displayName": "大西洋/百慕大"
+						},
+						"Atlantic/Canary": {
+							"displayName": "大西洋/加那利"
+						},
+						"Atlantic/Cape_Verde": {
+							"displayName": "大西洋/佛得角"
+						},
+						"Atlantic/Faeroe": {
+							"displayName": "大西洋/法罗群岛"
+						},
+						"Atlantic/Faroe": {
+							"displayName": "大西洋/法罗群岛"
+						},
+						"Atlantic/Jan_Mayen": {
+							"displayName": "大西洋/扬马延"
+						},
+						"Atlantic/Madeira": {
+							"displayName": "大西洋/马德拉"
+						},
+						"Atlantic/Reykjavik": {
+							"displayName": "大西洋/雷克雅未克"
+						},
+						"Atlantic/South_Georgia": {
+							"displayName": "大西洋/南乔治亚"
+						},
+						"Atlantic/St_Helena": {
+							"displayName": "大西洋/圣赫勒拿"
+						},
+						"Atlantic/Stanley": {
+							"displayName": "大西洋/斯坦利"
+						},
+						"Australia/ACT": {
+							"displayName": "澳大利亚/首都领地"
+						},
+						"Australia/Adelaide": {
+							"displayName": "澳大利亚/阿德莱德"
+						},
+						"Australia/Brisbane": {
+							"displayName": "澳大利亚/布里斯班"
+						},
+						"Australia/Broken_Hill": {
+							"displayName": "澳大利亚/布罗肯希尔"
+						},
+						"Australia/Canberra": {
+							"displayName": "澳大利亚/堪培拉"
+						},
+						"Australia/Currie": {
+							"displayName": "澳大利亚/库里"
+						},
+						"Australia/Darwin": {
+							"displayName": "澳大利亚/达尔文"
+						},
+						"Australia/Eucla": {
+							"displayName": "澳大利亚/尤克拉"
+						},
+						"Australia/Hobart": {
+							"displayName": "澳大利亚/霍巴特"
+						},
+						"Australia/LHI": {
+							"displayName": "澳大利亚/豪勋爵岛"
+						},
+						"Australia/Lindeman": {
+							"displayName": "澳大利亚/林德曼"
+						},
+						"Australia/Lord_Howe": {
+							"displayName": "澳大利亚/豪勋爵岛"
+						},
+						"Australia/Melbourne": {
+							"displayName": "澳大利亚/墨尔本"
+						},
+						"Australia/NSW": {
+							"displayName": "澳大利亚/新南威尔士州"
+						},
+						"Australia/North": {
+							"displayName": "澳大利亚/北部"
+						},
+						"Australia/Perth": {
+							"displayName": "澳大利亚/珀斯"
+						},
+						"Australia/Queensland": {
+							"displayName": "澳大利亚/昆士兰州"
+						},
+						"Australia/South": {
+							"displayName": "澳大利亚/南部"
+						},
+						"Australia/Sydney": {
+							"displayName": "澳大利亚/悉尼"
+						},
+						"Australia/Tasmania": {
+							"displayName": "澳大利亚/塔斯马尼亚州"
+						},
+						"Australia/Victoria": {
+							"displayName": "澳大利亚/维多利亚州"
+						},
+						"Australia/West": {
+							"displayName": "澳大利亚/西部"
+						},
+						"Australia/Yancowinna": {
+							"displayName": "澳大利亚/扬科温纳"
+						},
+						"Brazil/Acre": {
+							"displayName": "巴西/阿克里"
+						},
+						"Brazil/DeNoronha": {
+							"displayName": "巴西/德诺罗尼亚"
+						},
+						"Brazil/East": {
+							"displayName": "巴西/东部"
+						},
+						"Brazil/West": {
+							"displayName": "巴西/西区"
+						},
+						"CET": {
+							"displayName": "CET"
+						},
+						"CST6CDT": {
+							"displayName": "CST6CDT"
+						},
+						"Canada/Atlantic": {
+							"displayName": "加拿大/大西洋"
+						},
+						"Canada/Central": {
+							"displayName": "加拿大/中部"
+						},
+						"Canada/Eastern": {
+							"displayName": "加拿大/东部"
+						},
+						"Canada/Mountain": {
+							"displayName": "加拿大/山区"
+						},
+						"Canada/Newfoundland": {
+							"displayName": "加拿大/纽芬兰"
+						},
+						"Canada/Pacific": {
+							"displayName": "加拿大/太平洋时区"
+						},
+						"Canada/Saskatchewan": {
+							"displayName": "加拿大/萨斯喀彻温省"
+						},
+						"Canada/Yukon": {
+							"displayName": "加拿大/育空"
+						},
+						"Chile/Continental": {
+							"displayName": "智利/大陆"
+						},
+						"Chile/EasterIsland": {
+							"displayName": "智利/复活节岛"
+						},
+						"Cuba": {
+							"displayName": "古巴"
+						},
+						"EET": {
+							"displayName": "东欧时间"
+						},
+						"EST": {
+							"displayName": "东部标准时间"
+						},
+						"EST5EDT": {
+							"displayName": "美国东部时间(夏令时)"
+						},
+						"Egypt": {
+							"displayName": "埃及"
+						},
+						"Eire": {
+							"displayName": "爱尔兰"
+						},
+						"Etc/GMT": {
+							"displayName": "Etc/GMT"
+						},
+						"Etc/GMT+0": {
+							"displayName": "Etc/GMT+0"
+						},
+						"Etc/GMT+1": {
+							"displayName": "Etc/GMT+1"
+						},
+						"Etc/GMT+10": {
+							"displayName": "Etc/GMT+10"
+						},
+						"Etc/GMT+11": {
+							"displayName": "Etc/GMT+11"
+						},
+						"Etc/GMT+12": {
+							"displayName": "Etc/GMT+12"
+						},
+						"Etc/GMT+2": {
+							"displayName": "Etc/GMT+2"
+						},
+						"Etc/GMT+3": {
+							"displayName": "Etc/GMT+3"
+						},
+						"Etc/GMT+4": {
+							"displayName": "Etc/GMT+4"
+						},
+						"Etc/GMT+5": {
+							"displayName": "Etc/GMT+5"
+						},
+						"Etc/GMT+6": {
+							"displayName": "Etc/GMT+6"
+						},
+						"Etc/GMT+7": {
+							"displayName": "Etc/GMT+7"
+						},
+						"Etc/GMT+8": {
+							"displayName": "Etc/GMT+8"
+						},
+						"Etc/GMT+9": {
+							"displayName": "Etc/GMT+9"
+						},
+						"Etc/GMT-0": {
+							"displayName": "Etc/GMT-0"
+						},
+						"Etc/GMT-1": {
+							"displayName": "Etc/GMT-1"
+						},
+						"Etc/GMT-10": {
+							"displayName": "Etc/GMT-10"
+						},
+						"Etc/GMT-11": {
+							"displayName": "Etc/GMT-11"
+						},
+						"Etc/GMT-12": {
+							"displayName": "Etc/GMT-12"
+						},
+						"Etc/GMT-13": {
+							"displayName": "Etc/GMT-13"
+						},
+						"Etc/GMT-14": {
+							"displayName": "Etc/GMT-14"
+						},
+						"Etc/GMT-2": {
+							"displayName": "Etc/GMT-2"
+						},
+						"Etc/GMT-3": {
+							"displayName": "Etc/GMT-3"
+						},
+						"Etc/GMT-4": {
+							"displayName": "Etc/GMT-4"
+						},
+						"Etc/GMT-5": {
+							"displayName": "Etc/GMT-5"
+						},
+						"Etc/GMT-6": {
+							"displayName": "Etc/GMT-6"
+						},
+						"Etc/GMT-7": {
+							"displayName": "Etc/GMT-7"
+						},
+						"Etc/GMT-8": {
+							"displayName": "Etc/GMT-8"
+						},
+						"Etc/GMT-9": {
+							"displayName": "Etc/GMT-9"
+						},
+						"Etc/GMT0": {
+							"displayName": "Etc/GMT0"
+						},
+						"Etc/Greenwich": {
+							"displayName": "格林威治标准时间"
+						},
+						"Etc/UCT": {
+							"displayName": "Etc/UTC"
+						},
+						"Etc/UTC": {
+							"displayName": "Etc/UTC"
+						},
+						"Etc/Universal": {
+							"displayName": "Etc/通用"
+						},
+						"Etc/Zulu": {
+							"displayName": "祖鲁时间"
+						},
+						"Europe/Amsterdam": {
+							"displayName": "欧洲/阿姆斯特丹"
+						},
+						"Europe/Andorra": {
+							"displayName": "欧洲/安道尔"
+						},
+						"Europe/Astrakhan": {
+							"displayName": "欧洲/阿斯特拉罕"
+						},
+						"Europe/Athens": {
+							"displayName": "欧洲/雅典"
+						},
+						"Europe/Belfast": {
+							"displayName": "欧洲/贝尔法斯特"
+						},
+						"Europe/Belgrade": {
+							"displayName": "欧洲/贝尔格莱德"
+						},
+						"Europe/Berlin": {
+							"displayName": "欧洲/柏林"
+						},
+						"Europe/Bratislava": {
+							"displayName": "欧洲/布拉迪斯拉发"
+						},
+						"Europe/Brussels": {
+							"displayName": "欧洲/布鲁塞尔"
+						},
+						"Europe/Bucharest": {
+							"displayName": "欧洲/布加勒斯特"
+						},
+						"Europe/Budapest": {
+							"displayName": "欧洲/布达佩斯"
+						},
+						"Europe/Busingen": {
+							"displayName": "欧洲/布辛根"
+						},
+						"Europe/Chisinau": {
+							"displayName": "欧洲/基希讷乌"
+						},
+						"Europe/Copenhagen": {
+							"displayName": "欧洲/哥本哈根"
+						},
+						"Europe/Dublin": {
+							"displayName": "欧洲/都柏林"
+						},
+						"Europe/Gibraltar": {
+							"displayName": "欧洲/直布罗陀"
+						},
+						"Europe/Guernsey": {
+							"displayName": "欧洲/根西岛"
+						},
+						"Europe/Helsinki": {
+							"displayName": "欧洲/赫尔辛基"
+						},
+						"Europe/Isle_of_Man": {
+							"displayName": "欧洲/马恩岛"
+						},
+						"Europe/Istanbul": {
+							"displayName": "欧洲/伊斯坦布尔"
+						},
+						"Europe/Jersey": {
+							"displayName": "欧洲/泽西岛"
+						},
+						"Europe/Kaliningrad": {
+							"displayName": "欧洲/加里宁格勒"
+						},
+						"Europe/Kiev": {
+							"displayName": "欧洲/基辅"
+						},
+						"Europe/Kirov": {
+							"displayName": "欧洲/基洛夫"
+						},
+						"Europe/Kyiv": {
+							"displayName": "欧洲/基辅"
+						},
+						"Europe/Lisbon": {
+							"displayName": "欧洲/里斯本"
+						},
+						"Europe/Ljubljana": {
+							"displayName": "欧洲/卢布尔雅那"
+						},
+						"Europe/London": {
+							"displayName": "欧洲/伦敦"
+						},
+						"Europe/Luxembourg": {
+							"displayName": "欧洲/卢森堡"
+						},
+						"Europe/Madrid": {
+							"displayName": "欧洲/马德里"
+						},
+						"Europe/Malta": {
+							"displayName": "欧洲/马耳他"
+						},
+						"Europe/Mariehamn": {
+							"displayName": "欧洲/玛丽港"
+						},
+						"Europe/Minsk": {
+							"displayName": "欧洲/明斯克"
+						},
+						"Europe/Monaco": {
+							"displayName": "欧洲/摩纳哥"
+						},
+						"Europe/Moscow": {
+							"displayName": "欧洲/莫斯科"
+						},
+						"Europe/Nicosia": {
+							"displayName": "欧洲/尼科西亚"
+						},
+						"Europe/Oslo": {
+							"displayName": "欧洲/奥斯陆"
+						},
+						"Europe/Paris": {
+							"displayName": "欧洲/巴黎"
+						},
+						"Europe/Podgorica": {
+							"displayName": "欧洲/波德戈里察"
+						},
+						"Europe/Prague": {
+							"displayName": "欧洲/布拉格"
+						},
+						"Europe/Riga": {
+							"displayName": "欧洲/里加"
+						},
+						"Europe/Rome": {
+							"displayName": "欧洲/罗马"
+						},
+						"Europe/Samara": {
+							"displayName": "欧洲/萨马拉"
+						},
+						"Europe/San_Marino": {
+							"displayName": "欧洲/圣马力诺"
+						},
+						"Europe/Sarajevo": {
+							"displayName": "欧洲/萨拉热窝"
+						},
+						"Europe/Saratov": {
+							"displayName": "欧洲/萨拉托夫"
+						},
+						"Europe/Simferopol": {
+							"displayName": "欧洲/辛菲罗波尔"
+						},
+						"Europe/Skopje": {
+							"displayName": "欧洲/斯科普里"
+						},
+						"Europe/Sofia": {
+							"displayName": "欧洲/索非亚"
+						},
+						"Europe/Stockholm": {
+							"displayName": "欧洲/斯德哥尔摩"
+						},
+						"Europe/Tallinn": {
+							"displayName": "欧洲/塔林"
+						},
+						"Europe/Tirane": {
+							"displayName": "欧洲/地拉那"
+						},
+						"Europe/Tiraspol": {
+							"displayName": "欧洲/蒂拉斯波尔"
+						},
+						"Europe/Ulyanovsk": {
+							"displayName": "欧洲/乌里扬诺夫斯克"
+						},
+						"Europe/Uzhgorod": {
+							"displayName": "欧洲/乌日哥罗德"
+						},
+						"Europe/Vaduz": {
+							"displayName": "欧洲/瓦杜兹"
+						},
+						"Europe/Vatican": {
+							"displayName": "欧洲/梵蒂冈"
+						},
+						"Europe/Vienna": {
+							"displayName": "欧洲/维也纳"
+						},
+						"Europe/Vilnius": {
+							"displayName": "欧洲/维尔纽斯"
+						},
+						"Europe/Volgograd": {
+							"displayName": "欧洲/伏尔加格勒"
+						},
+						"Europe/Warsaw": {
+							"displayName": "欧洲/华沙"
+						},
+						"Europe/Zagreb": {
+							"displayName": "欧洲/萨格勒布"
+						},
+						"Europe/Zaporozhye": {
+							"displayName": "欧洲/扎波罗热"
+						},
+						"Europe/Zurich": {
+							"displayName": "欧洲/苏黎世"
+						},
+						"GB": {
+							"displayName": "GB"
+						},
+						"GB-Eire": {
+							"displayName": "英国-爱尔兰"
+						},
+						"GMT": {
+							"displayName": "GMT"
+						},
+						"GMT+0": {
+							"displayName": "GMT+0"
+						},
+						"GMT-0": {
+							"displayName": "GMT-0"
+						},
+						"GMT0": {
+							"displayName": "GMT0"
+						},
+						"Greenwich": {
+							"displayName": "格林威治"
+						},
+						"HST": {
+							"displayName": "HST"
+						},
+						"Hongkong": {
+							"displayName": "香港"
+						},
+						"Iceland": {
+							"displayName": "冰岛"
+						},
+						"Indian/Antananarivo": {
+							"displayName": "印度洋/安塔那那利佛"
+						},
+						"Indian/Chagos": {
+							"displayName": "印度/查戈斯"
+						},
+						"Indian/Christmas": {
+							"displayName": "印度/圣诞节"
+						},
+						"Indian/Cocos": {
+							"displayName": "科科斯（基林）群岛"
+						},
+						"Indian/Comoro": {
+							"displayName": "印度/科摩罗"
+						},
+						"Indian/Kerguelen": {
+							"displayName": "印度洋/凯尔盖朗群岛"
+						},
+						"Indian/Mahe": {
+							"displayName": "印度/马埃"
+						},
+						"Indian/Maldives": {
+							"displayName": "印度/马尔代夫"
+						},
+						"Indian/Mauritius": {
+							"displayName": "印度/毛里求斯"
+						},
+						"Indian/Mayotte": {
+							"displayName": "印度/马约特"
+						},
+						"Indian/Reunion": {
+							"displayName": "印度/留尼汪"
+						},
+						"Iran": {
+							"displayName": "伊朗"
+						},
+						"Israel": {
+							"displayName": "以色列"
+						},
+						"Jamaica": {
+							"displayName": "牙买加"
+						},
+						"Japan": {
+							"displayName": "日本"
+						},
+						"Kwajalein": {
+							"displayName": "夸贾林"
+						},
+						"Libya": {
+							"displayName": "利比亚"
+						},
+						"MET": {
+							"displayName": "元"
+						},
+						"MST": {
+							"displayName": "MST"
+						},
+						"MST7MDT": {
+							"displayName": "MST7MDT"
+						},
+						"Mexico/BajaNorte": {
+							"displayName": "墨西哥/下加利福尼亚北部"
+						},
+						"Mexico/BajaSur": {
+							"displayName": "墨西哥/南下加利福尼亚州"
+						},
+						"Mexico/General": {
+							"displayName": "墨西哥/通用"
+						},
+						"NZ": {
+							"displayName": "新西兰"
+						},
+						"NZ-CHAT": {
+							"displayName": "NZ-CHAT"
+						},
+						"Navajo": {
+							"displayName": "导航栏"
+						},
+						"PRC": {
+							"displayName": "中华人民共和国"
+						},
+						"PST8PDT": {
+							"displayName": "太平洋夏令时"
+						},
+						"Pacific/Apia": {
+							"displayName": "太平洋/阿皮亚"
+						},
+						"Pacific/Auckland": {
+							"displayName": "太平洋/奥克兰"
+						},
+						"Pacific/Bougainville": {
+							"displayName": "太平洋/布干维尔"
+						},
+						"Pacific/Chatham": {
+							"displayName": "太平洋/查塔姆"
+						},
+						"Pacific/Chuuk": {
+							"displayName": "太平洋/楚克"
+						},
+						"Pacific/Easter": {
+							"displayName": "复活节岛时间"
+						},
+						"Pacific/Efate": {
+							"displayName": "太平洋/埃法特"
+						},
+						"Pacific/Enderbury": {
+							"displayName": "太平洋/恩德伯里"
+						},
+						"Pacific/Fakaofo": {
+							"displayName": "太平洋/法考福"
+						},
+						"Pacific/Fiji": {
+							"displayName": "太平洋/斐济"
+						},
+						"Pacific/Funafuti": {
+							"displayName": "太平洋/富纳富提"
+						},
+						"Pacific/Galapagos": {
+							"displayName": "太平洋/加拉帕戈斯"
+						},
+						"Pacific/Gambier": {
+							"displayName": "太平洋/甘比尔"
+						},
+						"Pacific/Guadalcanal": {
+							"displayName": "太平洋/瓜达尔卡纳尔"
+						},
+						"Pacific/Guam": {
+							"displayName": "太平洋/关岛"
+						},
+						"Pacific/Honolulu": {
+							"displayName": "太平洋/檀香山"
+						},
+						"Pacific/Johnston": {
+							"displayName": "太平洋/约翰斯顿"
+						},
+						"Pacific/Kanton": {
+							"displayName": "太平洋/坎顿"
+						},
+						"Pacific/Kiritimati": {
+							"displayName": "太平洋/基里蒂马蒂"
+						},
+						"Pacific/Kosrae": {
+							"displayName": "太平洋/科斯雷"
+						},
+						"Pacific/Kwajalein": {
+							"displayName": "太平洋/夸贾林"
+						},
+						"Pacific/Majuro": {
+							"displayName": "太平洋/马朱罗"
+						},
+						"Pacific/Marquesas": {
+							"displayName": "太平洋/马克萨斯"
+						},
+						"Pacific/Midway": {
+							"displayName": "太平洋/中途岛"
+						},
+						"Pacific/Nauru": {
+							"displayName": "太平洋/瑙鲁"
+						},
+						"Pacific/Niue": {
+							"displayName": "太平洋/纽埃"
+						},
+						"Pacific/Norfolk": {
+							"displayName": "太平洋/诺福克岛"
+						},
+						"Pacific/Noumea": {
+							"displayName": "太平洋/努美阿"
+						},
+						"Pacific/Pago_Pago": {
+							"displayName": "太平洋/帕果帕果"
+						},
+						"Pacific/Palau": {
+							"displayName": "太平洋/帕劳"
+						},
+						"Pacific/Pitcairn": {
+							"displayName": "太平洋/皮特凯恩"
+						},
+						"Pacific/Pohnpei": {
+							"displayName": "太平洋/波纳佩"
+						},
+						"Pacific/Ponape": {
+							"displayName": "太平洋/波纳佩"
+						},
+						"Pacific/Port_Moresby": {
+							"displayName": "太平洋/莫尔兹比港"
+						},
+						"Pacific/Rarotonga": {
+							"displayName": "太平洋/拉罗汤加"
+						},
+						"Pacific/Saipan": {
+							"displayName": "太平洋/塞班岛"
+						},
+						"Pacific/Samoa": {
+							"displayName": "太平洋/萨摩亚"
+						},
+						"Pacific/Tahiti": {
+							"displayName": "太平洋/塔希提"
+						},
+						"Pacific/Tarawa": {
+							"displayName": "太平洋/塔拉瓦"
+						},
+						"Pacific/Tongatapu": {
+							"displayName": "太平洋/汤加塔布"
+						},
+						"Pacific/Truk": {
+							"displayName": "楚克/太平洋"
+						},
+						"Pacific/Wake": {
+							"displayName": "太平洋/威克岛"
+						},
+						"Pacific/Wallis": {
+							"displayName": "太平洋/瓦利斯"
+						},
+						"Pacific/Yap": {
+							"displayName": "太平洋/雅浦"
+						},
+						"Poland": {
+							"displayName": "波兰"
+						},
+						"Portugal": {
+							"displayName": "葡萄牙"
+						},
+						"ROC": {
+							"displayName": "ROC"
+						},
+						"ROK": {
+							"displayName": "ROK"
+						},
+						"Singapore": {
+							"displayName": "新加坡"
+						},
+						"Turkey": {
+							"displayName": "土耳其"
+						},
+						"UCT": {
+							"displayName": "UCT"
+						},
+						"US/Alaska": {
+							"displayName": "美国/阿拉斯加"
+						},
+						"US/Aleutian": {
+							"displayName": "美国/阿留申"
+						},
+						"US/Arizona": {
+							"displayName": "美国/亚利桑那州"
+						},
+						"US/Central": {
+							"displayName": "美国/中部"
+						},
+						"US/East-Indiana": {
+							"displayName": "美国/东印第安纳"
+						},
+						"US/Eastern": {
+							"displayName": "美国/东部"
+						},
+						"US/Hawaii": {
+							"displayName": "美国/夏威夷"
+						},
+						"US/Indiana-Starke": {
+							"displayName": "美国/印第安纳州-斯塔克县"
+						},
+						"US/Michigan": {
+							"displayName": "美国/密歇根州"
+						},
+						"US/Mountain": {
+							"displayName": "美国/山地时区"
+						},
+						"US/Pacific": {
+							"displayName": "美国/太平洋时间"
+						},
+						"US/Samoa": {
+							"displayName": "美属萨摩亚"
+						},
+						"UTC": {
+							"displayName": "协调世界时"
+						},
+						"Universal": {
+							"displayName": "通用"
+						},
+						"W-SU": {
+							"displayName": "W-周日"
+						},
+						"WET": {
+							"displayName": "工作流执行触发器"
+						},
+						"Zulu": {
+							"displayName": "祖鲁语"
+						}
+					}
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "任务标题"
+				},
+				"campaign_id": {
+					"displayName": "活动名称或ID",
+					"description": "促成此交易的营销活动ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"contact_status_id": {
+					"displayName": "联系人状态名称或ID",
+					"description": "联系人所属状态ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"external_id": {
+					"displayName": "外部ID",
+					"description": "联系人的外部ID"
+				},
+				"first_name": {
+					"displayName": "名字",
+					"description": "联系人的名字"
+				},
+				"job_title": {
+					"displayName": "职位名称",
+					"description": "所属账户中的联系人职务"
+				},
+				"keyword": {
+					"displayName": "关键词",
+					"description": "联系人用于访问您网站/网络应用的关键词"
+				},
+				"last_name": {
+					"displayName": "姓氏",
+					"description": "联系人的姓氏"
+				},
+				"lead_source_id": {
+					"displayName": "潜在客户来源ID",
+					"description": "交易来源的ID"
+				},
+				"lifecycle_stage_id": {
+					"displayName": "生命周期阶段名称或ID",
+					"description": "联系人所属的生命周期阶段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"medium": {
+					"displayName": "中等",
+					"description": "引导您的联系人访问您网站/网络应用的媒介"
+				},
+				"mobile_number": {
+					"displayName": "手机号码",
+					"description": "联系人的手机号码"
+				},
+				"sales_accounts": {
+					"displayName": "销售账户名称或ID",
+					"description": "联系人所属的账户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"subscription_status": {
+					"displayName": "订阅状态名称或ID",
+					"description": "联系人所属的订阅状态。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"subscription_types": {
+					"displayName": "订阅类型名称或ID",
+					"description": "联系人所属的订阅类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"work_number": {
+					"displayName": "工作编号",
+					"description": "联系人的工作电话号码"
+				},
+				"amount": {
+					"displayName": "金额",
+					"description": "交易金额"
+				},
+				"base_currency_amount": {
+					"displayName": "基础货币金额",
+					"description": "交易的基础货币价值"
+				},
+				"currency_id": {
+					"displayName": "货币名称或ID",
+					"description": "交易所属货币的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_payment_status_id": {
+					"displayName": "交易付款状态名称或ID",
+					"description": "交易的付款方式ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_pipeline_id": {
+					"displayName": "交易管道名称或ID",
+					"description": "所属交易管道的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_product_id": {
+					"displayName": "交易产品名称或ID",
+					"description": "交易所属产品的ID（在多产品公司中）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_reason_id": {
+					"displayName": "交易失败原因名称或ID",
+					"description": "交易失败的原因ID。仅当交易处于'失败'阶段时可设置。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_stage_id": {
+					"displayName": "交易阶段名称或ID",
+					"description": "交易所属阶段的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"deal_type_id": {
+					"displayName": "交易类型名称或ID",
+					"description": "交易所属的交易类型ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"probability": {
+					"displayName": "概率",
+					"description": "赢得交易的概率，以0到100之间的数字表示"
+				},
+				"sales_account_id": {
+					"displayName": "销售账户名称或ID",
+					"description": "交易所属账户的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "内容",
+					"description": "笔记内容"
+				},
+				"end_date": {
+					"displayName": "开始日期",
+					"description": "表示销售活动开始的时间戳"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "销售活动描述"
+				},
+				"sales_activity_outcome_id": {
+					"displayName": "销售活动结果名称或ID",
+					"description": "销售活动结果的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"sales_activity_type_id": {
+					"displayName": "销售活动类型名称或ID",
+					"description": "要更新的销售活动对应的销售活动类型ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"from_date": {
+					"displayName": "开始日期",
+					"description": "表示销售活动开始的时间戳"
+				},
+				"dueDate": {
+					"displayName": "截止日期",
+					"description": "表示任务应完成时间的时间戳"
+				},
+				"task_type_id": {
+					"displayName": "任务类型ID",
+					"description": "任务类型的ID"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "任务标题"
+		},
+		"fromDate": {
+			"displayName": "开始日期",
+			"description": "表示预约开始的时间戳。如果是全天预约，则为开始日期。"
+		},
+		"endDate": {
+			"displayName": "结束日期",
+			"description": "表示预约结束的时间戳。如果是全天预约，则为结束日期。"
+		},
+		"attendees": {
+			"displayName": "参会者",
+			"placeholder": "添加参会者",
+			"multipleValueButtonText": "添加参会者",
+			"options": {
+				"attendee": {
+					"displayName": "参会者",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"contact": {
+									"displayName": "联系人"
+								},
+								"user": {
+									"displayName": "用户"
+								}
+							}
+						},
+						"userId": {
+							"displayName": "用户名或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"contactId": {
+							"displayName": "联系人ID"
+						}
+					}
+				}
+			},
+			"values": {
+				"attendee": {
+					"displayName": "参会者",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"contact": {
+									"displayName": "联系人"
+								},
+								"user": {
+									"displayName": "用户"
+								}
+							}
+						},
+						"userId": {
+							"displayName": "用户名或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"contactId": {
+							"displayName": "联系人ID"
+						}
+					}
+				},
+				"attendees": {
+					"displayName": "参会者",
+					"placeholder": "添加参会者"
+				}
+			}
+		},
+		"appointmentId": {
+			"displayName": "预约ID",
+			"description": "要更新的预约ID"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"include": {
+					"displayName": "包含",
+					"options": {
+						"appointment_attendees": {
+							"displayName": "预约参与者"
+						},
+						"creater": {
+							"displayName": "创建者"
+						},
+						"targetable": {
+							"displayName": "目标"
+						},
+						"owner": {
+							"displayName": "所有者"
+						},
+						"users": {
+							"displayName": "用户"
+						}
+					}
+				},
+				"filter": {
+					"displayName": "状态",
+					"options": {
+						"past": {
+							"displayName": "过去"
+						},
+						"upcoming": {
+							"displayName": "即将到来"
+						},
+						"completed": {
+							"displayName": "已完成"
+						},
+						"due_today": {
+							"displayName": "今日到期"
+						},
+						"due_tomorrow": {
+							"displayName": "明天到期"
+						},
+						"open": {
+							"displayName": "打开"
+						},
+						"overdue": {
+							"displayName": "已逾期"
+						}
+					}
+				}
+			}
+		},
+		"firstName": {
+			"displayName": "名字",
+			"description": "联系人的名字"
+		},
+		"lastName": {
+			"displayName": "姓氏",
+			"description": "联系人的姓氏"
+		},
+		"emails": {
+			"displayName": "邮箱地址",
+			"description": "联系人的邮箱地址"
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "要更新的联系人ID"
+		},
+		"amount": {
+			"displayName": "金额",
+			"description": "交易金额"
+		},
+		"dealId": {
+			"displayName": "交易ID",
+			"description": "要更新的交易ID"
+		},
+		"description": {
+			"displayName": "内容",
+			"description": "笔记内容"
+		},
+		"targetableType": {
+			"displayName": "目标类型",
+			"description": "任务更新的实体类型",
+			"options": {
+				"Contact": {
+					"displayName": "联系人"
+				},
+				"Deal": {
+					"displayName": "交易"
+				},
+				"SalesAccount": {
+					"displayName": "销售账户"
+				}
+			}
+		},
+		"targetable_id": {
+			"displayName": "目标ID",
+			"description": "为其创建任务的实体ID。实体类型在“目标类型”中选择。"
+		},
+		"noteId": {
+			"displayName": "笔记ID",
+			"description": "要更新的笔记ID"
+		},
+		"sales_activity_type_id": {
+			"displayName": "销售活动类型名称或ID",
+			"description": "要为其创建销售活动的销售活动类型ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"ownerId": {
+			"displayName": "所有者名称或ID",
+			"description": "任务分配的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"from_date": {
+			"displayName": "开始日期",
+			"description": "表示销售活动结束的时间戳"
+		},
+		"end_date": {
+			"displayName": "结束日期",
+			"description": "表示销售活动结束的时间戳"
+		},
+		"salesActivityId": {
+			"displayName": "销售活动ID",
+			"description": "要更新的销售活动ID"
+		},
+		"query": {
+			"displayName": "搜索词",
+			"description": "输入用于搜索实体的词"
+		},
+		"entities": {
+			"displayName": "在实体上搜索",
+			"description": "输入用于搜索实体的术语"
+		},
+		"searchField": {
+			"displayName": "搜索字段",
+			"description": "用于搜索实体的字段",
+			"options": {
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"customField": {
+					"displayName": "自定义字段",
+					"description": "仅允许类型为“文本字段”、“数字”、“下拉菜单”或“单选按钮”的自定义字段"
+				}
+			}
+		},
+		"customFieldName": {
+			"displayName": "自定义字段名称"
+		},
+		"customFieldValue": {
+			"displayName": "自定义字段值"
+		},
+		"fieldValue": {
+			"displayName": "字段值"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"entities": {
+					"displayName": "实体",
+					"description": "使用'entities'查询相关实体。只要字段在多个实体中都可用，您可以同时包含多个实体，否则会收到错误响应。"
+				}
+			}
+		},
+		"dueDate": {
+			"displayName": "截止日期",
+			"description": "表示任务应何时完成的时间戳"
+		},
+		"taskId": {
+			"displayName": "任务ID",
+			"description": "要更新的任务ID"
+		}
+	}
+}

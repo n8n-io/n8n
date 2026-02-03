@@ -1,0 +1,42 @@
+{
+	"header": {
+		"displayName": "SearXNG",
+		"description": "Search in SearXNG"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"numResults": {
+					"displayName": "Number of Results"
+				},
+				"pageNumber": {
+					"displayName": "Search Page Number"
+				},
+				"language": {
+					"displayName": "Language",
+					"description": "Defines the language to use. It's a two-letter language code. (e.g., `en` for English, `es` for Spanish, or `fr` for French). Head to <a href=\"https://docs.searxng.org/user/search-syntax.html#select-language\">SearXNG search syntax page</a> for more info."
+				},
+				"safesearch": {
+					"displayName": "Safe Search",
+					"description": "Filter search results of engines which support safe search",
+					"options": {
+						"0": {
+							"displayName": "None"
+						},
+						"1": {
+							"displayName": "Moderate"
+						},
+						"2": {
+							"displayName": "Strict"
+						}
+					}
+				}
+			}
+		}
+	}
+}

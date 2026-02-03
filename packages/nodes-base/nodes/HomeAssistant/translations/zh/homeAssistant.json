@@ -1,0 +1,259 @@
+{
+	"header": {
+		"displayName": "Home Assistant",
+		"description": "使用 Home Assistant API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"cameraProxy": {
+					"displayName": "相机代理"
+				},
+				"config": {
+					"displayName": "配置"
+				},
+				"event": {
+					"displayName": "事件"
+				},
+				"log": {
+					"displayName": "日志"
+				},
+				"service": {
+					"displayName": "服务"
+				},
+				"state": {
+					"displayName": "状态"
+				},
+				"template": {
+					"displayName": "模板"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getScreenshot": {
+					"displayName": "获取屏幕截图",
+					"description": "获取摄像头截图"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取特定实体的状态"
+				},
+				"check": {
+					"displayName": "检查配置",
+					"description": "检查配置"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建模板"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个状态"
+				},
+				"getErroLogs": {
+					"displayName": "获取错误日志",
+					"description": "获取特定实体的日志"
+				},
+				"getLogbookEntries": {
+					"displayName": "获取日志条目",
+					"description": "获取所有日志"
+				},
+				"call": {
+					"displayName": "调用",
+					"description": "调用特定域内的服务"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新记录，如果已存在则更新当前记录（upsert）"
+				}
+			}
+		},
+		"cameraEntityId": {
+			"displayName": "相机实体名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"eventType": {
+			"displayName": "事件类型",
+			"description": "将为其创建事件的实体ID"
+		},
+		"eventAttributes": {
+			"displayName": "事件属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"attributes": {
+					"displayName": "属性",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "属性的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributes": {
+					"displayName": "属性",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "属性的值"
+						}
+					}
+				},
+				"eventAttributes": {
+					"displayName": "事件属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"endTime": {
+					"displayName": "结束时间",
+					"description": "周期结束"
+				},
+				"entityIds": {
+					"displayName": "实体ID",
+					"description": "实体ID，以逗号分隔"
+				},
+				"minimalResponse": {
+					"displayName": "最小响应",
+					"description": "是否仅返回状态的<code>last_changed</code>和state"
+				},
+				"significantChangesOnly": {
+					"displayName": "仅重大变更",
+					"description": "是否仅返回重大状态变更"
+				},
+				"startTime": {
+					"displayName": "开始时间",
+					"description": "周期开始时间"
+				},
+				"entityId": {
+					"displayName": "实体ID"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "域名或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"service": {
+			"displayName": "服务名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"serviceAttributes": {
+			"displayName": "服务属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"attributes": {
+					"displayName": "属性",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "字段名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "字段的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributes": {
+					"displayName": "属性",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "字段名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "字段的值"
+						}
+					}
+				},
+				"serviceAttributes": {
+					"displayName": "服务属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"entityId": {
+			"displayName": "实体名称或ID",
+			"description": "要为其创建状态的实体ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"state": {
+			"displayName": "状态"
+		},
+		"stateAttributes": {
+			"displayName": "状态属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"attributes": {
+					"displayName": "属性",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "属性的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributes": {
+					"displayName": "属性",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "属性的值"
+						}
+					}
+				},
+				"stateAttributes": {
+					"displayName": "状态属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"template": {
+			"displayName": "模板",
+			"description": "渲染Home Assistant模板。<a href=\"https://www.home-assistant.io/docs/configuration/templating/\">查看模板文档获取更多信息。</a>"
+		}
+	}
+}

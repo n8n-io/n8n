@@ -1,0 +1,491 @@
+{
+	"header": {
+		"displayName": "Asana",
+		"description": "使用 Asana REST API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"project": {
+					"displayName": "项目"
+				},
+				"subtask": {
+					"displayName": "子任务"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"taskComment": {
+					"displayName": "任务评论"
+				},
+				"taskProject": {
+					"displayName": "任务项目"
+				},
+				"taskTag": {
+					"displayName": "任务标签"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新项目"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个项目"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除项目"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取项目"
+				},
+				"move": {
+					"displayName": "移动",
+					"description": "移动任务"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索任务"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新项目"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "为任务添加标签"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从任务中移除标签"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "父任务ID",
+			"description": "要操作的任务"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的项目名称"
+		},
+		"otherProperties": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assignee": {
+					"displayName": "负责人姓名或ID",
+					"description": "设置任务负责人。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"assignee_status": {
+					"displayName": "负责人状态",
+					"description": "设置任务负责人状态（需要指定负责人）",
+					"options": {
+						"inbox": {
+							"displayName": "收件箱"
+						},
+						"today": {
+							"displayName": "今天"
+						},
+						"upcoming": {
+							"displayName": "即将到来"
+						},
+						"later": {
+							"displayName": "稍后"
+						}
+					}
+				},
+				"completed": {
+					"displayName": "已完成",
+					"description": "是否应将任务标记为已完成"
+				},
+				"due_on": {
+					"displayName": "截止日期",
+					"description": "时间截止的日期"
+				},
+				"liked": {
+					"displayName": "已点赞",
+					"description": "该任务是否已被授权用户点赞"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "任务备注"
+				},
+				"workspace": {
+					"displayName": "工作区名称或ID",
+					"description": "要在其中创建子任务的工作区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "任务的新名称"
+				},
+				"projects": {
+					"displayName": "项目名称或ID",
+					"description": "用于筛选任务的项目。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"opt_fields": {
+					"displayName": "字段名称或ID",
+					"description": "定义要返回的字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"opt_pretty": {
+					"displayName": "美观",
+					"description": "是否提供“美观”的输出"
+				}
+			}
+		},
+		"workspace": {
+			"displayName": "工作区名称或ID",
+			"description": "要获取用户的工作空间。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"id": {
+			"displayName": "项目ID",
+			"description": "要更新数据的项目ID"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"description": "要搜索的属性",
+			"placeholder": "添加筛选器",
+			"options": {
+				"assignee": {
+					"displayName": "负责人姓名或ID",
+					"description": "用于筛选任务的负责人。注意：如果指定了负责人，还必须指定要筛选的工作空间。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"opt_fields": {
+					"displayName": "字段名称或ID",
+					"description": "定义要返回的字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"opt_pretty": {
+					"displayName": "美观",
+					"description": "是否提供“美观”的输出"
+				},
+				"project": {
+					"displayName": "项目名称或ID",
+					"description": "用于筛选任务的项目。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"section": {
+					"displayName": "分区名称或ID",
+					"description": "用于筛选任务的分区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"workspace": {
+					"displayName": "工作区名称或ID",
+					"description": "要筛选任务的工作区。注意：如果指定工作区，则必须同时指定要筛选的分配对象。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"completed_since": {
+					"displayName": "完成时间",
+					"description": "仅返回未完成任务或在此时间之后完成的任务"
+				},
+				"modified_since": {
+					"displayName": "修改时间晚于",
+					"description": "仅返回在指定时间之后被修改的任务"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "项目名称或ID",
+			"description": "要显示其分区的项目。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"section": {
+			"displayName": "分区名称或ID",
+			"description": "要将任务移动到的分区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"searchTaskProperties": {
+			"displayName": "筛选器",
+			"description": "要搜索的属性",
+			"placeholder": "添加筛选器",
+			"options": {
+				"completed": {
+					"displayName": "已完成",
+					"description": "任务是否标记为已完成"
+				},
+				"text": {
+					"displayName": "文本",
+					"description": "在名称或备注中搜索的文本"
+				}
+			}
+		},
+		"isTextHtml": {
+			"displayName": "是否为HTML文本",
+			"description": "正文是HTML还是纯文本"
+		},
+		"text": {
+			"displayName": "HTML文本",
+			"description": "以HTML字符串形式添加注释。请勿与纯文本同时使用。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"description": "要设置的其他属性",
+			"placeholder": "添加属性",
+			"options": {
+				"is_pinned": {
+					"displayName": "已置顶",
+					"description": "是否置顶评论"
+				},
+				"insert_after": {
+					"displayName": "插入到之后",
+					"description": "要在此任务之后插入的任务，或留空以插入到列表开头"
+				},
+				"insert_before": {
+					"displayName": "插入到前面",
+					"description": "要插入任务之前的项目任务，或设为 null 以插入到列表末尾"
+				},
+				"section": {
+					"displayName": "部分",
+					"description": "项目中用于插入任务的部分。任务将被插入到该部分的底部。"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "项目颜色",
+					"options": {
+						"dark-blue": {
+							"displayName": "深蓝色"
+						},
+						"dark-brown": {
+							"displayName": "深棕色"
+						},
+						"dark-green": {
+							"displayName": "深绿色"
+						},
+						"dark-orange": {
+							"displayName": "深橙色"
+						},
+						"dark-pink": {
+							"displayName": "深粉色"
+						},
+						"dark-purple": {
+							"displayName": "深紫色"
+						},
+						"dark-red": {
+							"displayName": "深红色"
+						},
+						"dark-teal": {
+							"displayName": "深青色"
+						},
+						"dark-warm-gray": {
+							"displayName": "深暖灰"
+						},
+						"light-blue": {
+							"displayName": "浅蓝色"
+						},
+						"light-green": {
+							"displayName": "浅绿色"
+						},
+						"light-orange": {
+							"displayName": "浅橙色"
+						},
+						"light-pink": {
+							"displayName": "浅粉色"
+						},
+						"light-purple": {
+							"displayName": "浅紫色"
+						},
+						"light-red": {
+							"displayName": "浅红色"
+						},
+						"light-teal": {
+							"displayName": "浅青色"
+						},
+						"light-warm-gray": {
+							"displayName": "浅暖灰色"
+						},
+						"light-yellow": {
+							"displayName": "浅黄色"
+						},
+						"none": {
+							"displayName": "无"
+						}
+					}
+				},
+				"due_on": {
+					"displayName": "截止日期",
+					"description": "项目的截止日期。请使用YYYY-MM-DD格式的日期。"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "项目的基本描述或备注"
+				},
+				"privacy_setting": {
+					"displayName": "隐私设置",
+					"description": "项目的隐私设置",
+					"options": {
+						"private": {
+							"displayName": "私有"
+						},
+						"private_to_team": {
+							"displayName": "团队私有"
+						},
+						"public_to_workspace": {
+							"displayName": "公开到工作区"
+						}
+					}
+				},
+				"archived": {
+					"displayName": "已归档",
+					"description": "是否仅返回归档字段值与此参数匹配的项目"
+				},
+				"team": {
+					"displayName": "团队名称或ID",
+					"description": "任务的新名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"project": {
+			"displayName": "项目名称或ID",
+			"description": "将从中移除任务的项目。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"tag": {
+			"displayName": "标签名称或ID",
+			"description": "要添加的标签。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "要获取数据的用户的标识符。可以是电子邮件地址、用户的全局唯一标识符，或关键字 me 表示发出请求的当前用户。"
+		},
+		"team": {
+			"displayName": "团队名称或ID",
+			"description": "此项目将分配给的团队。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"description": "设置其他属性",
+			"placeholder": "添加属性",
+			"options": {
+				"color": {
+					"displayName": "颜色",
+					"description": "项目颜色",
+					"options": {
+						"dark-blue": {
+							"displayName": "深蓝色"
+						},
+						"dark-brown": {
+							"displayName": "深棕色"
+						},
+						"dark-green": {
+							"displayName": "深绿色"
+						},
+						"dark-orange": {
+							"displayName": "深橙色"
+						},
+						"dark-pink": {
+							"displayName": "深粉色"
+						},
+						"dark-purple": {
+							"displayName": "深紫色"
+						},
+						"dark-red": {
+							"displayName": "深红色"
+						},
+						"dark-teal": {
+							"displayName": "深青色"
+						},
+						"dark-warm-gray": {
+							"displayName": "深暖灰"
+						},
+						"light-blue": {
+							"displayName": "浅蓝色"
+						},
+						"light-green": {
+							"displayName": "浅绿色"
+						},
+						"light-orange": {
+							"displayName": "浅橙色"
+						},
+						"light-pink": {
+							"displayName": "浅粉色"
+						},
+						"light-purple": {
+							"displayName": "浅紫色"
+						},
+						"light-red": {
+							"displayName": "浅红色"
+						},
+						"light-teal": {
+							"displayName": "浅青色"
+						},
+						"light-warm-gray": {
+							"displayName": "浅暖灰色"
+						},
+						"light-yellow": {
+							"displayName": "浅黄色"
+						},
+						"none": {
+							"displayName": "无"
+						}
+					}
+				},
+				"due_on": {
+					"displayName": "截止日期",
+					"description": "项目的截止日期。请使用YYYY-MM-DD格式的日期。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "项目名称"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "项目的基本描述或备注"
+				},
+				"owner": {
+					"displayName": "所有者",
+					"description": "此项目的新负责人/主要成员"
+				},
+				"privacy_setting": {
+					"displayName": "隐私设置",
+					"description": "项目的隐私设置",
+					"options": {
+						"private": {
+							"displayName": "私有"
+						},
+						"private_to_team": {
+							"displayName": "团队私有"
+						},
+						"public_to_workspace": {
+							"displayName": "公开到工作区"
+						}
+					}
+				},
+				"team": {
+					"displayName": "团队名称或ID",
+					"description": "此项目将被分配到的团队。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		}
+	}
+}

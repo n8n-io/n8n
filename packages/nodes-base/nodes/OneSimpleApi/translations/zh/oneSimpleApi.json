@@ -1,0 +1,211 @@
+{
+	"header": {
+		"displayName": "一个简单的API",
+		"description": "无代码实用工具箱"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"information": {
+					"displayName": "信息"
+				},
+				"socialProfile": {
+					"displayName": "社交资料"
+				},
+				"utility": {
+					"displayName": "实用工具"
+				},
+				"website": {
+					"displayName": "网站"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"pdf": {
+					"displayName": "生成PDF",
+					"description": "从网页生成PDF"
+				},
+				"seo": {
+					"displayName": "获取SEO数据",
+					"description": "从网站获取SEO信息"
+				},
+				"screenshot": {
+					"displayName": "截取屏幕截图",
+					"description": "从网页创建屏幕截图"
+				},
+				"instagramProfile": {
+					"displayName": "Instagram",
+					"description": "获取Instagram个人资料详情"
+				},
+				"spotifyArtistProfile": {
+					"displayName": "Spotify",
+					"description": "获取Spotify艺术家详情"
+				},
+				"exchangeRate": {
+					"displayName": "汇率",
+					"description": "在货币之间转换数值"
+				},
+				"imageMetadata": {
+					"displayName": "图像元数据",
+					"description": "从URL获取图像元数据"
+				},
+				"expandURL": {
+					"displayName": "展开URL",
+					"description": "展开短链接"
+				},
+				"qrCode": {
+					"displayName": "生成二维码",
+					"description": "生成二维码"
+				},
+				"validateEmail": {
+					"displayName": "验证邮箱",
+					"description": "验证邮箱地址"
+				}
+			}
+		},
+		"link": {
+			"displayName": "URL",
+			"description": "要还原的短链接URL"
+		},
+		"download": {
+			"displayName": "下载截图？",
+			"description": "是下载截图还是返回截图链接"
+		},
+		"output": {
+			"displayName": "将输出放入字段",
+			"description": "用于存放二进制文件数据的输出字段名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"page": {
+					"displayName": "页面大小",
+					"options": {
+						"A0": {
+							"displayName": "A0"
+						},
+						"A1": {
+							"displayName": "A1"
+						},
+						"A2": {
+							"displayName": "A2"
+						},
+						"A3": {
+							"displayName": "A3"
+						},
+						"A4": {
+							"displayName": "A4"
+						},
+						"A5": {
+							"displayName": "A5"
+						},
+						"A6": {
+							"displayName": "A6"
+						},
+						"Ledger": {
+							"displayName": "分类账"
+						},
+						"Legal": {
+							"displayName": "法律"
+						},
+						"Letter": {
+							"displayName": "信件"
+						},
+						"Tabloid": {
+							"displayName": "小报"
+						}
+					}
+				},
+				"force": {
+					"displayName": "强制刷新",
+					"description": "通常API会复用先前获取的URL截图以提供更快的响应。此选项允许您在必要时立即重新截取该时刻的截图。"
+				},
+				"size": {
+					"displayName": "规模",
+					"description": "二维码尺寸",
+					"options": {
+						"Small": {
+							"displayName": "小"
+						},
+						"Medium": {
+							"displayName": "中等"
+						},
+						"Large": {
+							"displayName": "大型"
+						}
+					}
+				},
+				"format": {
+					"displayName": "格式",
+					"description": "二维码格式",
+					"options": {
+						"PNG": {
+							"displayName": "PNG"
+						},
+						"SVG": {
+							"displayName": "SVG"
+						}
+					}
+				},
+				"screen": {
+					"displayName": "屏幕尺寸",
+					"options": {
+						"phone": {
+							"displayName": "电话"
+						},
+						"phone-landscape": {
+							"displayName": "手机横屏"
+						},
+						"retina": {
+							"displayName": "视网膜"
+						},
+						"tablet": {
+							"displayName": "平板电脑"
+						},
+						"tablet-landscape": {
+							"displayName": "平板横屏"
+						}
+					}
+				},
+				"fullpage": {
+					"displayName": "完整页面",
+					"description": "API会截取指定屏幕尺寸下可见区域的截图。如需获取页面完整长度的截图，请使用此选项。"
+				},
+				"headers": {
+					"displayName": "包含请求头？"
+				}
+			}
+		},
+		"message": {
+			"displayName": "二维码内容",
+			"description": "应转换为二维码的文本 - 例如网站URL"
+		},
+		"profileName": {
+			"displayName": "配置文件名称",
+			"description": "要获取详情的配置文件名称"
+		},
+		"artistName": {
+			"displayName": "艺术家名称",
+			"description": "要获取详情的艺术家名称"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "要转换的值"
+		},
+		"fromCurrency": {
+			"displayName": "源货币",
+			"placeholder": "美元"
+		},
+		"toCurrency": {
+			"displayName": "目标货币",
+			"placeholder": "欧元"
+		},
+		"emailAddress": {
+			"displayName": "邮箱地址"
+		}
+	}
+}

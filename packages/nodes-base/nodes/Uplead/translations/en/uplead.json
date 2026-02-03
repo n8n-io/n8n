@@ -1,0 +1,50 @@
+{
+	"header": {
+		"displayName": "Uplead",
+		"description": "Consume Uplead API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"company": {
+					"displayName": "Company",
+					"description": "Company API lets you lookup company data via a domain name or company name"
+				},
+				"person": {
+					"displayName": "Person",
+					"description": "Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"enrich": {
+					"displayName": "Enrich"
+				}
+			}
+		},
+		"company": {
+			"displayName": "Company",
+			"description": "The name of the company (e.g – amazon)"
+		},
+		"domain": {
+			"displayName": "Domain",
+			"description": "The domain name (e.g – salesforce.com)"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email address (e.g – mbenioff@salesforce.com)",
+			"placeholder": "name@email.com"
+		},
+		"firstname": {
+			"displayName": "First Name",
+			"description": "First name of the person (e.g – Marc)"
+		},
+		"lastname": {
+			"displayName": "Last Name",
+			"description": "Last name of the person (e.g – Benioff)"
+		}
+	}
+}

@@ -1,0 +1,74 @@
+{
+	"header": {
+		"displayName": "递归字符文本分割器",
+		"description": "通过字符递归地将文本分割成块，推荐用于大多数用例"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到文档加载器。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_document'>插入一个</a>"
+		},
+		"chunkSize": {
+			"displayName": "分块大小"
+		},
+		"chunkOverlap": {
+			"displayName": "分块重叠"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"splitCode": {
+					"displayName": "拆分代码",
+					"options": {
+						"cpp": {
+							"displayName": "cpp"
+						},
+						"go": {
+							"displayName": "开始"
+						},
+						"java": {
+							"displayName": "java"
+						},
+						"js": {
+							"displayName": "js"
+						},
+						"php": {
+							"displayName": "PHP"
+						},
+						"proto": {
+							"displayName": "原型"
+						},
+						"python": {
+							"displayName": "python"
+						},
+						"rst": {
+							"displayName": "RST"
+						},
+						"ruby": {
+							"displayName": "Ruby"
+						},
+						"rust": {
+							"displayName": "[0]Rust"
+						},
+						"scala": {
+							"displayName": "scala"
+						},
+						"swift": {
+							"displayName": "快速"
+						},
+						"markdown": {
+							"displayName": "markdown"
+						},
+						"latex": {
+							"displayName": "乳胶"
+						},
+						"html": {
+							"displayName": "html"
+						}
+					}
+				}
+			}
+		}
+	}
+}

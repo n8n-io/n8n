@@ -1,0 +1,53 @@
+{
+	"header": {
+		"displayName": "Telegram Trigger",
+		"description": "Starts the workflow on a Telegram update"
+	},
+	"nodeView": {
+		"telegramTriggerNotice": {
+			"displayName": "Due to Telegram API limitations, you can use just one Telegram trigger for each bot at a time"
+		},
+		"updates": {
+			"displayName": "Trigger On"
+		},
+		"attachmentNotice": {
+			"displayName": "Every uploaded attachment, even if sent in a group, will trigger a separate event. You can identify that an attachment belongs to a certain group by <code>media_group_id</code> ."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"download": {
+					"displayName": "Download Images/Files",
+					"description": "Telegram delivers the image in multiple sizes. By default, just the large image would be downloaded. If you want to change the size, set the field 'Image Size'."
+				},
+				"imageSize": {
+					"displayName": "Image Size",
+					"description": "The size of the image to be downloaded",
+					"options": {
+						"small": {
+							"displayName": "Small"
+						},
+						"medium": {
+							"displayName": "Medium"
+						},
+						"large": {
+							"displayName": "Large"
+						},
+						"extraLarge": {
+							"displayName": "Extra Large"
+						}
+					}
+				},
+				"chatIds": {
+					"displayName": "Restrict to Chat IDs",
+					"description": "The chat IDs to restrict the trigger to. Multiple can be defined separated by comma."
+				},
+				"userIds": {
+					"displayName": "Restrict to User IDs",
+					"description": "The user IDs to restrict the trigger to. Multiple can be defined separated by comma."
+				}
+			}
+		}
+	}
+}

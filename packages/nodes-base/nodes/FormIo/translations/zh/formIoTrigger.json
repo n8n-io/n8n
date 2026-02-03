@@ -1,0 +1,23 @@
+{
+	"header": {
+		"displayName": "Form.io 触发器",
+		"description": "通过 Webhook 处理 Form.io 事件"
+	},
+	"nodeView": {
+		"projectId": {
+			"displayName": "项目名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"formId": {
+			"displayName": "表单名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"events": {
+			"displayName": "触发事件"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		}
+	}
+}

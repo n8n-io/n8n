@@ -1,0 +1,143 @@
+{
+	"header": {
+		"displayName": "Jenkins",
+		"description": "使用 Jenkins API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"build": {
+					"displayName": "构建"
+				},
+				"instance": {
+					"displayName": "实例"
+				},
+				"job": {
+					"displayName": "作业"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"description": "Jenkins实例操作",
+			"options": {
+				"copy": {
+					"displayName": "复制",
+					"description": "复制特定作业"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新作业"
+				},
+				"trigger": {
+					"displayName": "触发器",
+					"description": "触发特定作业"
+				},
+				"triggerParams": {
+					"displayName": "带参数的触发器",
+					"description": "触发特定作业"
+				},
+				"cancelQuietDown": {
+					"displayName": "取消静默状态",
+					"description": "取消静默状态"
+				},
+				"quietDown": {
+					"displayName": "静默模式",
+					"description": "将Jenkins置于静默模式，无法启动任何构建，Jenkins已准备关闭"
+				},
+				"restart": {
+					"displayName": "重新启动",
+					"description": "在可能的环境中立即重启Jenkins"
+				},
+				"safeRestart": {
+					"displayName": "安全重启",
+					"description": "在无作业运行的环境下重启Jenkins"
+				},
+				"safeExit": {
+					"displayName": "安全关机",
+					"description": "无任务运行时关机"
+				},
+				"exit": {
+					"displayName": "关机",
+					"description": "立即关闭Jenkins"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "列出构建"
+				}
+			}
+		},
+		"triggerParamsNotice": {
+			"displayName": "确保作业已配置为支持带参数触发。<a href=\"https://wiki.jenkins.io/display/JENKINS/Parameterized+Build\" target=\"_blank\">更多信息</a>"
+		},
+		"job": {
+			"displayName": "作业名称或ID",
+			"description": "作业名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"param": {
+			"displayName": "参数",
+			"description": "Jenkins作业参数",
+			"placeholder": "添加参数",
+			"multipleValueButtonText": "添加参数",
+			"options": {
+				"params": {
+					"displayName": "参数",
+					"options": {
+						"name": {
+							"displayName": "名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"params": {
+					"displayName": "参数",
+					"options": {
+						"name": {
+							"displayName": "名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"param": {
+					"displayName": "参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"newJob": {
+			"displayName": "新作业名称",
+			"description": "新Jenkins作业的名称"
+		},
+		"xml": {
+			"displayName": "XML",
+			"description": "Jenkins配置XML"
+		},
+		"createNotice": {
+			"displayName": "要获取现有作业的XML，请在作业URL末尾添加‘config.xml’"
+		},
+		"reason": {
+			"displayName": "原因",
+			"description": "静默模式的自定义原因"
+		},
+		"instanceNotice": {
+			"displayName": "实例操作可以关闭Jenkins实例并使其无响应。某些命令可能因实例实现方式而不可用。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

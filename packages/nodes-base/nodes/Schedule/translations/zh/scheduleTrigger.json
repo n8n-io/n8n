@@ -1,0 +1,326 @@
+{
+	"header": {
+		"displayName": "计划触发器",
+		"description": "在指定计划上触发工作流"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此工作流将在您发布后按照此处定义的计划运行。<br><br>如需测试，您也可以手动触发：返回画布并点击“执行工作流”"
+		},
+		"rule": {
+			"displayName": "触发规则",
+			"placeholder": "添加规则",
+			"multipleValueButtonText": "添加规则",
+			"options": {
+				"interval": {
+					"displayName": "触发器间隔",
+					"options": {
+						"field": {
+							"displayName": "触发器间隔",
+							"options": {
+								"seconds": {
+									"displayName": "秒"
+								},
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								},
+								"days": {
+									"displayName": "天"
+								},
+								"weeks": {
+									"displayName": "周"
+								},
+								"months": {
+									"displayName": "月"
+								},
+								"cronExpression": {
+									"displayName": "自定义（Cron）"
+								}
+							}
+						},
+						"secondsInterval": {
+							"displayName": "触发器间隔秒数",
+							"description": "每个工作流触发器之间的秒数"
+						},
+						"minutesInterval": {
+							"displayName": "触发器间隔分钟数",
+							"description": "每次工作流触发器之间的分钟数"
+						},
+						"hoursInterval": {
+							"displayName": "触发器间隔小时数",
+							"description": "每个工作流触发器之间的间隔小时数"
+						},
+						"daysInterval": {
+							"displayName": "触发器间隔天数",
+							"description": "每次工作流触发器之间的天数"
+						},
+						"weeksInterval": {
+							"displayName": "触发器间隔周数",
+							"description": "除非另有指定，否则每周运行"
+						},
+						"monthsInterval": {
+							"displayName": "触发器间隔月数",
+							"description": "除非另有指定，否则每月运行"
+						},
+						"triggerAtDayOfMonth": {
+							"displayName": "在每月指定日期触发",
+							"description": "触发日期（1-31）"
+						},
+						"triggerAtDay": {
+							"displayName": "在工作日触发"
+						},
+						"triggerAtHour": {
+							"displayName": "在指定小时触发",
+							"description": "触发的小时时间",
+							"options": {
+								"0": {
+									"displayName": "午夜"
+								},
+								"1": {
+									"displayName": "凌晨1点"
+								},
+								"2": {
+									"displayName": "凌晨2点"
+								},
+								"3": {
+									"displayName": "凌晨3点"
+								},
+								"4": {
+									"displayName": "凌晨4点"
+								},
+								"5": {
+									"displayName": "凌晨5点"
+								},
+								"6": {
+									"displayName": "早上6点"
+								},
+								"7": {
+									"displayName": "上午7点"
+								},
+								"8": {
+									"displayName": "上午8点"
+								},
+								"9": {
+									"displayName": "上午9点"
+								},
+								"10": {
+									"displayName": "上午10点"
+								},
+								"11": {
+									"displayName": "上午11点"
+								},
+								"12": {
+									"displayName": "正午"
+								},
+								"13": {
+									"displayName": "下午1点"
+								},
+								"14": {
+									"displayName": "下午2点"
+								},
+								"15": {
+									"displayName": "下午3点"
+								},
+								"16": {
+									"displayName": "下午4点"
+								},
+								"17": {
+									"displayName": "下午5点"
+								},
+								"18": {
+									"displayName": "下午6点"
+								},
+								"19": {
+									"displayName": "晚上7点"
+								},
+								"20": {
+									"displayName": "晚上8点"
+								},
+								"21": {
+									"displayName": "晚上9点"
+								},
+								"22": {
+									"displayName": "晚上10点"
+								},
+								"23": {
+									"displayName": "晚上11点"
+								}
+							}
+						},
+						"triggerAtMinute": {
+							"displayName": "分钟触发",
+							"description": "触发的小时分钟数（0-59）"
+						},
+						"notice": {
+							"displayName": "您可以在<a href=\"https://crontab.guru/examples.html\" target=\"_blank\">此处</a>获取生成cron表达式的帮助"
+						},
+						"expression": {
+							"displayName": "表达式",
+							"placeholder": "例如：0 15 * 1 sun"
+						}
+					}
+				}
+			},
+			"values": {
+				"interval": {
+					"displayName": "触发器间隔",
+					"options": {
+						"field": {
+							"displayName": "触发器间隔",
+							"options": {
+								"seconds": {
+									"displayName": "秒"
+								},
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								},
+								"days": {
+									"displayName": "天"
+								},
+								"weeks": {
+									"displayName": "周"
+								},
+								"months": {
+									"displayName": "月"
+								},
+								"cronExpression": {
+									"displayName": "自定义（Cron）"
+								}
+							}
+						},
+						"secondsInterval": {
+							"displayName": "触发器间隔秒数",
+							"description": "每个工作流触发器之间的秒数"
+						},
+						"minutesInterval": {
+							"displayName": "触发器间隔分钟数",
+							"description": "每次工作流触发器之间的分钟数"
+						},
+						"hoursInterval": {
+							"displayName": "触发器间隔小时数",
+							"description": "每个工作流触发器之间的间隔小时数"
+						},
+						"daysInterval": {
+							"displayName": "触发器间隔天数",
+							"description": "每次工作流触发器之间的天数"
+						},
+						"weeksInterval": {
+							"displayName": "触发器间隔周数",
+							"description": "除非另有指定，否则每周运行"
+						},
+						"monthsInterval": {
+							"displayName": "触发器间隔月数",
+							"description": "除非另有指定，否则每月运行"
+						},
+						"triggerAtDayOfMonth": {
+							"displayName": "在每月指定日期触发",
+							"description": "触发日期（1-31）"
+						},
+						"triggerAtDay": {
+							"displayName": "在工作日触发"
+						},
+						"triggerAtHour": {
+							"displayName": "在指定小时触发",
+							"description": "触发的小时时间",
+							"options": {
+								"0": {
+									"displayName": "午夜"
+								},
+								"1": {
+									"displayName": "凌晨1点"
+								},
+								"2": {
+									"displayName": "凌晨2点"
+								},
+								"3": {
+									"displayName": "凌晨3点"
+								},
+								"4": {
+									"displayName": "凌晨4点"
+								},
+								"5": {
+									"displayName": "凌晨5点"
+								},
+								"6": {
+									"displayName": "早上6点"
+								},
+								"7": {
+									"displayName": "上午7点"
+								},
+								"8": {
+									"displayName": "上午8点"
+								},
+								"9": {
+									"displayName": "上午9点"
+								},
+								"10": {
+									"displayName": "上午10点"
+								},
+								"11": {
+									"displayName": "上午11点"
+								},
+								"12": {
+									"displayName": "正午"
+								},
+								"13": {
+									"displayName": "下午1点"
+								},
+								"14": {
+									"displayName": "下午2点"
+								},
+								"15": {
+									"displayName": "下午3点"
+								},
+								"16": {
+									"displayName": "下午4点"
+								},
+								"17": {
+									"displayName": "下午5点"
+								},
+								"18": {
+									"displayName": "下午6点"
+								},
+								"19": {
+									"displayName": "晚上7点"
+								},
+								"20": {
+									"displayName": "晚上8点"
+								},
+								"21": {
+									"displayName": "晚上9点"
+								},
+								"22": {
+									"displayName": "晚上10点"
+								},
+								"23": {
+									"displayName": "晚上11点"
+								}
+							}
+						},
+						"triggerAtMinute": {
+							"displayName": "分钟触发",
+							"description": "触发的小时分钟数（0-59）"
+						},
+						"notice": {
+							"displayName": "您可以在<a href=\"https://crontab.guru/examples.html\" target=\"_blank\">此处</a>获取生成cron表达式的帮助"
+						},
+						"expression": {
+							"displayName": "表达式",
+							"placeholder": "例如：0 15 * 1 sun"
+						}
+					}
+				},
+				"rule": {
+					"displayName": "触发器规则",
+					"placeholder": "添加规则"
+				}
+			}
+		}
+	}
+}

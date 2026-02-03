@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "Taiga Trigger",
+		"description": "Handle Taiga events via webhook"
+	},
+	"nodeView": {
+		"projectId": {
+			"displayName": "Project Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"resources": {
+			"displayName": "Resources",
+			"description": "Resources to listen to"
+		},
+		"operations": {
+			"displayName": "Operations",
+			"description": "Operations to listen to"
+		}
+	}
+}

@@ -1,0 +1,158 @@
+{
+	"header": {
+		"displayName": "聊天触发器",
+		"description": "当提交n8n生成的网页聊天时运行工作流"
+	},
+	"nodeView": {
+		"public": {
+			"displayName": "设为公开聊天",
+			"description": "聊天应设为公开还是仅通过手动聊天界面访问"
+		},
+		"mode": {
+			"displayName": "模式",
+			"options": {
+				"hostedChat": {
+					"displayName": "托管聊天",
+					"description": "在n8n托管的页面上聊天"
+				},
+				"webhook": {
+					"displayName": "嵌入式聊天",
+					"description": "通过嵌入其他页面的小部件或调用Webhook进行聊天"
+				}
+			}
+		},
+		"hostedChatNotice": {
+			"displayName": "此工作流发布后，聊天将在上方URL处生效。实时执行将显示在‘执行’标签页中"
+		},
+		"embeddedChatNotice": {
+			"displayName": "按照<a href=\"https://www.npmjs.com/package/@n8n/chat\" target=\"_blank\">此处</a>的说明将聊天嵌入网页（或直接调用本节顶部的Webhook URL）。发布此工作流后聊天即可生效"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "身份验证方式",
+			"options": {
+				"basicAuth": {
+					"displayName": "基础认证",
+					"description": "简单的用户名和密码（所有用户使用同一个）"
+				},
+				"n8nUserAuth": {
+					"displayName": "n8n 用户认证",
+					"description": "要求用户使用其 n8n 账户登录"
+				},
+				"none": {
+					"displayName": "无"
+				}
+			}
+		},
+		"initialMessages": {
+			"displayName": "初始消息",
+			"description": "聊天开始时显示的默认消息，每行一条"
+		},
+		"availableInChat": {
+			"displayName": "在n8n聊天中心中可用",
+			"description": "是否在n8n聊天中心中提供此智能体，供n8n实例用户进行对话"
+		},
+		"availableInChatNotice": {
+			"displayName": "发布此工作流后，您的n8n用户将能够在<a href=\"/home/chat/\" target=\"_blank\">聊天</a>中使用此智能体。请确保将此工作流分享给所有需要使用它的用户，并授予至少项目聊天用户访问权限。"
+		},
+		"agentIcon": {
+			"displayName": "代理图标",
+			"description": "n8n聊天中代理的图标"
+		},
+		"agentName": {
+			"displayName": "代理名称",
+			"description": "n8n聊天中代理的名称。留空则使用工作流名称。"
+		},
+		"agentDescription": {
+			"displayName": "代理描述",
+			"description": "n8n Chat 中代理的描述"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"allowFileUploads": {
+					"displayName": "允许文件上传",
+					"description": "是否允许在聊天中上传文件"
+				},
+				"allowedFilesMimeTypes": {
+					"displayName": "允许的文件MIME类型",
+					"description": "允许上传的文件类型。以逗号分隔的<a href=\"https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types\" target=\"_blank\">MIME类型</a>列表。",
+					"placeholder": "例如：image/*, text/*, application/pdf"
+				},
+				"allowedOrigins": {
+					"displayName": "允许的来源（CORS）",
+					"description": "允许跨域非预检请求的URL列表（逗号分隔）。使用 *（默认值）允许所有来源。"
+				},
+				"inputPlaceholder": {
+					"displayName": "输入占位符",
+					"description": "在聊天输入框中显示的占位文本",
+					"placeholder": "例如：在此输入您的消息"
+				},
+				"loadPreviousSession": {
+					"displayName": "加载先前会话",
+					"description": "是否应启用加载先前会话的消息",
+					"options": {
+						"notSupported": {
+							"displayName": "关闭",
+							"description": "已关闭加载先前会话消息功能"
+						},
+						"memory": {
+							"displayName": "[0]从记忆加载",
+							"description": "[1]从记忆加载会话消息"
+						},
+						"manually": {
+							"displayName": "手动",
+							"description": "手动返回会话消息"
+						}
+					}
+				},
+				"showWelcomeScreen": {
+					"displayName": "需要点击按钮开始聊天",
+					"description": "是否在聊天开始时显示欢迎界面"
+				},
+				"getStarted": {
+					"displayName": "开始对话按钮文本",
+					"description": "显示为欢迎界面的一部分，位于聊天窗口中央",
+					"placeholder": "例如：新对话"
+				},
+				"subtitle": {
+					"displayName": "副标题",
+					"description": "显示在聊天界面顶部，标题下方",
+					"placeholder": "例如：我们随时为您服务"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "显示在聊天顶部",
+					"placeholder": "例如：欢迎"
+				},
+				"customCss": {
+					"displayName": "自定义聊天样式",
+					"description": "使用CSS覆盖公共聊天界面的默认样式"
+				},
+				"responseMode": {
+					"displayName": "响应模式",
+					"description": "何时以及如何响应聊天",
+					"options": {
+						"lastNode": {
+							"displayName": "当最后一个节点完成时",
+							"description": "返回最后执行节点的数据"
+						},
+						"responseNode": {
+							"displayName": "使用'响应Webhook'节点",
+							"description": "在该节点中定义的响应"
+						},
+						"streaming": {
+							"displayName": "流式传输",
+							"description": "从指定节点（如代理）获取流式响应"
+						},
+						"responseNodes": {
+							"displayName": "使用响应节点",
+							"description": "通过一个或多个聊天节点发送响应到聊天"
+						}
+					}
+				}
+			}
+		}
+	}
+}

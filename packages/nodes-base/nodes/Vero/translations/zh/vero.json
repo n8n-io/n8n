@@ -1,0 +1,180 @@
+{
+	"header": {
+		"displayName": "Vero",
+		"description": "使用Vero API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"user": {
+					"displayName": "用户",
+					"description": "创建、更新和管理用户的订阅状态"
+				},
+				"event": {
+					"displayName": "事件",
+					"description": "基于客户实时操作追踪事件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"addTags": {
+					"displayName": "添加标签",
+					"description": "向用户资料添加标签"
+				},
+				"alias": {
+					"displayName": "别名",
+					"description": "更改用户标识符"
+				},
+				"create": {
+					"displayName": "创建或更新",
+					"description": "创建或更新用户资料"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"resubscribe": {
+					"displayName": "重新订阅",
+					"description": "重新订阅用户"
+				},
+				"removeTags": {
+					"displayName": "移除标签",
+					"description": "从用户个人资料中移除一个标签"
+				},
+				"unsubscribe": {
+					"displayName": "取消订阅",
+					"description": "取消订阅用户"
+				},
+				"track": {
+					"displayName": "追踪",
+					"description": "为特定客户追踪事件"
+				}
+			}
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "客户的唯一标识符"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"email": {
+					"displayName": "电子邮件",
+					"description": "要在其中创建行的表格",
+					"placeholder": "name@email.com"
+				}
+			}
+		},
+		"dataAttributesUi": {
+			"displayName": "数据",
+			"description": "表示要与此事件一起跟踪的任何属性的键值对",
+			"placeholder": "添加数据",
+			"multipleValueButtonText": "添加数据",
+			"options": {
+				"dataAttributesValues": {
+					"displayName": "数据",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要设置的属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的属性值"
+						}
+					}
+				}
+			},
+			"values": {
+				"dataAttributesValues": {
+					"displayName": "数据",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要设置的属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的属性值"
+						}
+					}
+				},
+				"dataAttributesUi": {
+					"displayName": "数据",
+					"placeholder": "添加数据"
+				}
+			}
+		},
+		"dataAttributesJson": {
+			"displayName": "数据",
+			"description": "表示要更新的自定义用户属性的键值对"
+		},
+		"newId": {
+			"displayName": "新ID",
+			"description": "用户的新唯一标识符"
+		},
+		"tags": {
+			"displayName": "标签",
+			"description": "要移除的标签，用逗号分隔"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"eventName": {
+			"displayName": "事件名称",
+			"description": "所追踪事件的名称"
+		},
+		"extraAttributesUi": {
+			"displayName": "额外参数",
+			"description": "表示Vero特定保留运算符的键值对。请参考下方关于“去重”的说明。",
+			"placeholder": "添加额外参数",
+			"multipleValueButtonText": "添加额外",
+			"options": {
+				"extraAttributesValues": {
+					"displayName": "额外",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要设置的属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的属性值"
+						}
+					}
+				}
+			},
+			"values": {
+				"extraAttributesValues": {
+					"displayName": "额外",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要设置的属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的属性值"
+						}
+					}
+				},
+				"extraAttributesUi": {
+					"displayName": "额外",
+					"placeholder": "添加额外"
+				}
+			}
+		},
+		"extraAttributesJson": {
+			"displayName": "额外",
+			"description": "表示Vero特定保留运算符的键值对。请参考下方关于“去重”的说明。"
+		}
+	}
+}

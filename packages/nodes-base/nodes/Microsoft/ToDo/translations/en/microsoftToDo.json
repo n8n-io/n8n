@@ -1,0 +1,212 @@
+{
+	"header": {
+		"displayName": "Microsoft To Do",
+		"description": "Consume Microsoft To Do API."
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"linkedResource": {
+					"displayName": "Linked Resource"
+				},
+				"list": {
+					"displayName": "List"
+				},
+				"task": {
+					"displayName": "Task"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"taskListId": {
+			"displayName": "List Name or ID",
+			"description": "The identifier of the list, unique in the user's mailbox. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"taskId": {
+			"displayName": "Task ID"
+		},
+		"displayName": {
+			"displayName": "New List Name",
+			"description": "List display name"
+		},
+		"applicationName": {
+			"displayName": "Application Name",
+			"description": "App name of the source that is sending the linked entity"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"externalId": {
+					"displayName": "External ID",
+					"description": "ID of the object that is associated with this task on the third-party/partner system"
+				},
+				"webUrl": {
+					"displayName": "Web URL",
+					"description": "Deeplink to the linked entity"
+				},
+				"content": {
+					"displayName": "Content",
+					"description": "The content of the task"
+				},
+				"dueDateTime": {
+					"displayName": "Due",
+					"description": "The date in the specified time zone that the task is to be finished"
+				},
+				"reminderDateTime": {
+					"displayName": "Reminder",
+					"description": "The date in the specified time zone that the task is to be reminded"
+				},
+				"importance": {
+					"displayName": "Importance",
+					"description": "The importance of the task",
+					"options": {
+						"low": {
+							"displayName": "Low"
+						},
+						"normal": {
+							"displayName": "Normal"
+						},
+						"high": {
+							"displayName": "High"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Indicates the state or progress of the task",
+					"options": {
+						"notStarted": {
+							"displayName": "Not Started"
+						},
+						"inProgress": {
+							"displayName": "In Progress"
+						},
+						"completed": {
+							"displayName": "Completed"
+						},
+						"waitingOnOthers": {
+							"displayName": "Waiting On Others"
+						},
+						"deferred": {
+							"displayName": "Deferred"
+						}
+					}
+				}
+			}
+		},
+		"linkedResourceId": {
+			"displayName": "Linked Resource ID"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"applicationName": {
+					"displayName": "Application Name",
+					"description": "App name of the source that is sending the linked entity"
+				},
+				"displayName": {
+					"displayName": "Name",
+					"description": "Field indicating title of the linked entity"
+				},
+				"externalId": {
+					"displayName": "External ID",
+					"description": "ID of the object that is associated with this task on the third-party/partner system"
+				},
+				"webUrl": {
+					"displayName": "Web URL",
+					"description": "Deeplink to the linked entity"
+				},
+				"content": {
+					"displayName": "Content",
+					"description": "The content of the task"
+				},
+				"dueDateTime": {
+					"displayName": "Due Date Time",
+					"description": "The date in the specified time zone that the task is to be finished"
+				},
+				"reminderDateTime": {
+					"displayName": "Reminder",
+					"description": "The date in the specified time zone that the task is to be reminded"
+				},
+				"importance": {
+					"displayName": "Importance",
+					"description": "The importance of the task",
+					"options": {
+						"low": {
+							"displayName": "Low"
+						},
+						"normal": {
+							"displayName": "Normal"
+						},
+						"high": {
+							"displayName": "High"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Indicates the state or progress of the task",
+					"options": {
+						"notStarted": {
+							"displayName": "Not Started"
+						},
+						"inProgress": {
+							"displayName": "In Progress"
+						},
+						"completed": {
+							"displayName": "Completed"
+						},
+						"waitingOnOthers": {
+							"displayName": "Waiting On Others"
+						},
+						"deferred": {
+							"displayName": "Deferred"
+						}
+					}
+				},
+				"title": {
+					"displayName": "Subject",
+					"description": "A brief description of the task"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Subject",
+			"description": "A brief description of the task"
+		},
+		"listId": {
+			"displayName": "List ID",
+			"description": "The identifier of the list, unique in the user's mailbox"
+		}
+	}
+}

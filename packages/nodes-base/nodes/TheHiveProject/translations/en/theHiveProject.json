@@ -1,0 +1,658 @@
+{
+	"header": {
+		"displayName": "TheHive 5",
+		"description": "Consume TheHive 5 API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"alert": {
+					"displayName": "Alert"
+				},
+				"case": {
+					"displayName": "Case"
+				},
+				"comment": {
+					"displayName": "Comment"
+				},
+				"observable": {
+					"displayName": "Observable"
+				},
+				"page": {
+					"displayName": "Page"
+				},
+				"query": {
+					"displayName": "Query"
+				},
+				"task": {
+					"displayName": "Task"
+				},
+				"log": {
+					"displayName": "Task Log"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"deleteAlert": {
+					"displayName": "Delete"
+				},
+				"executeResponder": {
+					"displayName": "Execute Responder"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"merge": {
+					"displayName": "Merge Into Case"
+				},
+				"promote": {
+					"displayName": "Promote to Case"
+				},
+				"search": {
+					"displayName": "Search"
+				},
+				"update": {
+					"displayName": "Update"
+				},
+				"status": {
+					"displayName": "Update Status"
+				},
+				"addAttachment": {
+					"displayName": "Add Attachment"
+				},
+				"deleteAttachment": {
+					"displayName": "Delete Attachment"
+				},
+				"deleteCase": {
+					"displayName": "Delete Case"
+				},
+				"getAttachment": {
+					"displayName": "Get Attachment"
+				},
+				"getTimeline": {
+					"displayName": "Get Timeline"
+				},
+				"add": {
+					"displayName": "Create"
+				},
+				"deleteComment": {
+					"displayName": "Delete"
+				},
+				"deleteLog": {
+					"displayName": "Delete"
+				},
+				"deleteObservable": {
+					"displayName": "Delete"
+				},
+				"executeAnalyzer": {
+					"displayName": "Execute Analyzer"
+				},
+				"deletePage": {
+					"displayName": "Delete"
+				},
+				"executeQuery": {
+					"displayName": "Execute Query"
+				},
+				"deleteTask": {
+					"displayName": "Delete"
+				}
+			}
+		},
+		"alertFields": {
+			"displayName": "Fields"
+		},
+		"observableUi": {
+			"displayName": "Observables",
+			"placeholder": "Add Observable",
+			"multipleValueButtonText": "Add Observable",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"dataType": {
+							"displayName": "Data Type",
+							"description": "Type of the observable. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"data": {
+							"displayName": "Data"
+						},
+						"binaryProperty": {
+							"displayName": "Input Binary Field"
+						},
+						"message": {
+							"displayName": "Message"
+						},
+						"tags": {
+							"displayName": "Tags"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"dataType": {
+							"displayName": "Data Type",
+							"description": "Type of the observable. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"data": {
+							"displayName": "Data"
+						},
+						"binaryProperty": {
+							"displayName": "Input Binary Field"
+						},
+						"message": {
+							"displayName": "Message"
+						},
+						"tags": {
+							"displayName": "Tags"
+						}
+					}
+				},
+				"observableUi": {
+					"displayName": "Observables",
+					"placeholder": "Add Observable"
+				}
+			}
+		},
+		"alertId": {
+			"displayName": "Alert"
+		},
+		"id": {
+			"displayName": "Task"
+		},
+		"responder": {
+			"displayName": "Responder Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"includeSimilarAlerts": {
+					"displayName": "Include Similar Alerts",
+					"description": "Whether to include similar cases"
+				},
+				"includeSimilarCases": {
+					"displayName": "Include Similar Cases",
+					"description": "Whether to include similar cases"
+				},
+				"returnCount": {
+					"displayName": "Return Count",
+					"description": "Whether to return only the count of results"
+				},
+				"extraData": {
+					"displayName": "Extra Data",
+					"description": "Additional data to include in the response"
+				},
+				"caseTemplate": {
+					"displayName": "Case Template Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"canRename": {
+					"displayName": "Rename Files",
+					"description": "Whether to rename the file in case a file with the same name already exists"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "Rename the file when downloading"
+				},
+				"dataPropertyName": {
+					"displayName": "Data Property Name",
+					"description": "Name of the binary property to which write the data of the attachment"
+				},
+				"category": {
+					"displayName": "Category"
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"order": {
+					"displayName": "Order"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"multipleValueButtonText": "Add Filter",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"category": {
+									"displayName": "Category"
+								},
+								"content": {
+									"displayName": "Content"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						},
+						"operator": {
+							"displayName": "Operator",
+							"options": {
+								"_between": {
+									"displayName": "Between",
+									"description": "Field is between two values ('From' is inclusive, 'To' is exclusive)"
+								},
+								"_like": {
+									"displayName": "Contains",
+									"description": "Field contains the substring from value"
+								},
+								"_endsWith": {
+									"displayName": "Ends With",
+									"description": "Field ends with value"
+								},
+								"_eq": {
+									"displayName": "Equal",
+									"description": "Field is equal to value"
+								},
+								"_gt": {
+									"displayName": "Greater Than",
+									"description": "Field is greater than value"
+								},
+								"_gte": {
+									"displayName": "Greater Than Or Equal To",
+									"description": "Field is greater than or equal to value"
+								},
+								"_in": {
+									"displayName": "In",
+									"description": "Field is one of the values"
+								},
+								"_lt": {
+									"displayName": "Less Than",
+									"description": "Field is less than value"
+								},
+								"_lte": {
+									"displayName": "Less Than Or Equal To",
+									"description": "Field is less than or equal to value"
+								},
+								"_match": {
+									"displayName": "Match Word",
+									"description": "Field contains the value as a word"
+								},
+								"_ne": {
+									"displayName": "Not Equal",
+									"description": "Field is not equal to value"
+								},
+								"_startsWith": {
+									"displayName": "Starts With",
+									"description": "Field starts with value"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						},
+						"values": {
+							"displayName": "Values",
+							"description": "Comma-separated list of values",
+							"placeholder": "e.g. value1,value2"
+						},
+						"from": {
+							"displayName": "From"
+						},
+						"to": {
+							"displayName": "To"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"category": {
+									"displayName": "Category"
+								},
+								"content": {
+									"displayName": "Content"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						},
+						"operator": {
+							"displayName": "Operator",
+							"options": {
+								"_between": {
+									"displayName": "Between",
+									"description": "Field is between two values ('From' is inclusive, 'To' is exclusive)"
+								},
+								"_like": {
+									"displayName": "Contains",
+									"description": "Field contains the substring from value"
+								},
+								"_endsWith": {
+									"displayName": "Ends With",
+									"description": "Field ends with value"
+								},
+								"_eq": {
+									"displayName": "Equal",
+									"description": "Field is equal to value"
+								},
+								"_gt": {
+									"displayName": "Greater Than",
+									"description": "Field is greater than value"
+								},
+								"_gte": {
+									"displayName": "Greater Than Or Equal To",
+									"description": "Field is greater than or equal to value"
+								},
+								"_in": {
+									"displayName": "In",
+									"description": "Field is one of the values"
+								},
+								"_lt": {
+									"displayName": "Less Than",
+									"description": "Field is less than value"
+								},
+								"_lte": {
+									"displayName": "Less Than Or Equal To",
+									"description": "Field is less than or equal to value"
+								},
+								"_match": {
+									"displayName": "Match Word",
+									"description": "Field contains the value as a word"
+								},
+								"_ne": {
+									"displayName": "Not Equal",
+									"description": "Field is not equal to value"
+								},
+								"_startsWith": {
+									"displayName": "Starts With",
+									"description": "Field starts with value"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						},
+						"values": {
+							"displayName": "Values",
+							"description": "Comma-separated list of values",
+							"placeholder": "e.g. value1,value2"
+						},
+						"from": {
+							"displayName": "From"
+						},
+						"to": {
+							"displayName": "To"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "Filters",
+					"placeholder": "Add Filter"
+				}
+			}
+		},
+		"sort": {
+			"displayName": "Sort",
+			"placeholder": "Add Sort Rule",
+			"multipleValueButtonText": "Add Sort Rule",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"options": {
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"category": {
+									"displayName": "Category"
+								},
+								"content": {
+									"displayName": "Content"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						},
+						"direction": {
+							"displayName": "Direction",
+							"options": {
+								"asc": {
+									"displayName": "Ascending"
+								},
+								"desc": {
+									"displayName": "Descending"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "Fields",
+					"options": {
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"category": {
+									"displayName": "Category"
+								},
+								"content": {
+									"displayName": "Content"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						},
+						"direction": {
+							"displayName": "Direction",
+							"options": {
+								"asc": {
+									"displayName": "Ascending"
+								},
+								"desc": {
+									"displayName": "Descending"
+								}
+							}
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort Rule"
+				}
+			}
+		},
+		"status": {
+			"displayName": "Status Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"caseId": {
+			"displayName": "Case"
+		},
+		"alertUpdateFields": {
+			"displayName": "Fields"
+		},
+		"attachmentsUi": {
+			"displayName": "Attachments",
+			"description": "Array of supported attachments to add to the message",
+			"placeholder": "Add Attachment",
+			"multipleValueButtonText": "Add Attachment",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field": {
+							"displayName": "Attachment Field Name",
+							"description": "Add the field name from the input node"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"field": {
+							"displayName": "Attachment Field Name",
+							"description": "Add the field name from the input node"
+						}
+					}
+				},
+				"attachmentsUi": {
+					"displayName": "Attachments",
+					"placeholder": "Add Attachment"
+				}
+			}
+		},
+		"caseFields": {
+			"displayName": "Fields"
+		},
+		"attachmentId": {
+			"displayName": "Attachment Name or ID",
+			"description": "ID of the attachment. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"caseUpdateFields": {
+			"displayName": "Fields"
+		},
+		"addTo": {
+			"displayName": "Add to",
+			"options": {
+				"alert": {
+					"displayName": "Alert"
+				},
+				"case": {
+					"displayName": "Case"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message"
+		},
+		"commentId": {
+			"displayName": "Comment"
+		},
+		"searchIn": {
+			"displayName": "Search in",
+			"description": "Whether to search for observables in all alerts and cases or in a specific case or alert",
+			"options": {
+				"all": {
+					"displayName": "Alerts and Cases"
+				},
+				"alert": {
+					"displayName": "Alert"
+				},
+				"case": {
+					"displayName": "Case"
+				}
+			}
+		},
+		"logId": {
+			"displayName": "Task Log"
+		},
+		"taskId": {
+			"displayName": "Task"
+		},
+		"logFields": {
+			"displayName": "Fields"
+		},
+		"allTasks": {
+			"displayName": "Search in All Tasks",
+			"description": "Whether to search in all tasks or only in selected task"
+		},
+		"createIn": {
+			"displayName": "Create in",
+			"options": {
+				"case": {
+					"displayName": "Case"
+				},
+				"alert": {
+					"displayName": "Alert"
+				}
+			}
+		},
+		"dataType": {
+			"displayName": "Data Type",
+			"description": "Type of the observable. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"data": {
+			"displayName": "Data"
+		},
+		"observableFields": {
+			"displayName": "Fields"
+		},
+		"observableId": {
+			"displayName": "Observable"
+		},
+		"analyzers": {
+			"displayName": "Analyzer Names or IDs",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"observableUpdateFields": {
+			"displayName": "Fields"
+		},
+		"location": {
+			"displayName": "Update in",
+			"options": {
+				"case": {
+					"displayName": "Case"
+				},
+				"knowledgeBase": {
+					"displayName": "Knowledge Base"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title"
+		},
+		"category": {
+			"displayName": "Category"
+		},
+		"content": {
+			"displayName": "Content"
+		},
+		"pageId": {
+			"displayName": "Page"
+		},
+		"searchInKnowledgeBase": {
+			"displayName": "Search in Knowledge Base",
+			"description": "Whether to search in knowledge base or only in the selected case"
+		},
+		"queryJson": {
+			"displayName": "Query",
+			"description": "Search for objects with filtering and sorting capabilities"
+		},
+		"taskFields": {
+			"displayName": "Fields"
+		},
+		"allCases": {
+			"displayName": "Search in All Cases",
+			"description": "Whether to search in all cases or only in a selected case"
+		},
+		"taskUpdateFields": {
+			"displayName": "Fields"
+		}
+	}
+}

@@ -1,0 +1,204 @@
+{
+	"header": {
+		"displayName": "HTML",
+		"description": "Work with HTML"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"generateHtmlTemplate": {
+					"displayName": "Generate HTML Template"
+				},
+				"extractHtmlContent": {
+					"displayName": "Extract HTML Content"
+				},
+				"convertToHtmlTable": {
+					"displayName": "Convert to HTML Table"
+				}
+			}
+		},
+		"html": {
+			"displayName": "HTML Template",
+			"description": "HTML template to render"
+		},
+		"notice": {
+			"displayName": "<b>Tips</b>: Type ctrl+space for completions. Use <code>{{ }}</code> for expressions and <code>&lt;style&gt;</code> tags for CSS. JS in <code>&lt;script&gt;</code> tags is included but not executed in n8n."
+		},
+		"sourceData": {
+			"displayName": "Source Data",
+			"description": "If HTML should be read from binary or JSON data",
+			"options": {
+				"binary": {
+					"displayName": "Binary"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"dataPropertyName": {
+			"displayName": "JSON Property",
+			"description": "Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings."
+		},
+		"extractionValues": {
+			"displayName": "Extraction Values",
+			"placeholder": "Add Value",
+			"multipleValueButtonText": "Add Value",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"key": {
+							"displayName": "Key",
+							"description": "The key under which the extracted value should be saved"
+						},
+						"cssSelector": {
+							"displayName": "CSS Selector",
+							"description": "The CSS selector to use",
+							"placeholder": ".price"
+						},
+						"returnValue": {
+							"displayName": "Return Value",
+							"description": "What kind of data should be returned",
+							"options": {
+								"attribute": {
+									"displayName": "Attribute",
+									"description": "Get an attribute value like \"class\" from an element"
+								},
+								"html": {
+									"displayName": "HTML",
+									"description": "Get the HTML the element contains"
+								},
+								"text": {
+									"displayName": "Text",
+									"description": "Get only the text content of the element"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Get value of an input, select or textarea"
+								}
+							}
+						},
+						"attribute": {
+							"displayName": "Attribute",
+							"description": "The name of the attribute to return the value off",
+							"placeholder": "class"
+						},
+						"skipSelectors": {
+							"displayName": "Skip Selectors",
+							"description": "Comma-separated list of selectors to skip in the text extraction",
+							"placeholder": "e.g. img, .className, #ItemId"
+						},
+						"returnArray": {
+							"displayName": "Return Array",
+							"description": "Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string."
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"key": {
+							"displayName": "Key",
+							"description": "The key under which the extracted value should be saved"
+						},
+						"cssSelector": {
+							"displayName": "CSS Selector",
+							"description": "The CSS selector to use",
+							"placeholder": ".price"
+						},
+						"returnValue": {
+							"displayName": "Return Value",
+							"description": "What kind of data should be returned",
+							"options": {
+								"attribute": {
+									"displayName": "Attribute",
+									"description": "Get an attribute value like \"class\" from an element"
+								},
+								"html": {
+									"displayName": "HTML",
+									"description": "Get the HTML the element contains"
+								},
+								"text": {
+									"displayName": "Text",
+									"description": "Get only the text content of the element"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Get value of an input, select or textarea"
+								}
+							}
+						},
+						"attribute": {
+							"displayName": "Attribute",
+							"description": "The name of the attribute to return the value off",
+							"placeholder": "class"
+						},
+						"skipSelectors": {
+							"displayName": "Skip Selectors",
+							"description": "Comma-separated list of selectors to skip in the text extraction",
+							"placeholder": "e.g. img, .className, #ItemId"
+						},
+						"returnArray": {
+							"displayName": "Return Array",
+							"description": "Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string."
+						}
+					}
+				},
+				"extractionValues": {
+					"displayName": "Extraction Values",
+					"placeholder": "Add Value"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"trimValues": {
+					"displayName": "Trim Values",
+					"description": "Whether to remove automatically all spaces and newlines from the beginning and end of the values"
+				},
+				"cleanUpText": {
+					"displayName": "Clean Up Text",
+					"description": "Whether to remove leading and trailing whitespaces, line breaks (newlines) and condense multiple consecutive whitespaces into a single space"
+				},
+				"capitalize": {
+					"displayName": "Capitalize Headers",
+					"description": "Whether to capitalize the headers"
+				},
+				"customStyling": {
+					"displayName": "Custom Styling",
+					"description": "Whether to use custom styling"
+				},
+				"caption": {
+					"displayName": "Caption",
+					"description": "Caption to add to the table"
+				},
+				"tableAttributes": {
+					"displayName": "Table Attributes",
+					"description": "Attributes to attach to the table",
+					"placeholder": "e.g. style=\"padding:10px\""
+				},
+				"headerAttributes": {
+					"displayName": "Header Attributes",
+					"description": "Attributes to attach to the table header",
+					"placeholder": "e.g. style=\"padding:10px\""
+				},
+				"rowAttributes": {
+					"displayName": "Row Attributes",
+					"description": "Attributes to attach to the table row",
+					"placeholder": "e.g. style=\"padding:10px\""
+				},
+				"cellAttributes": {
+					"displayName": "Cell Attributes",
+					"description": "Attributes to attach to the table cell",
+					"placeholder": "e.g. style=\"padding:10px\""
+				}
+			}
+		}
+	}
+}

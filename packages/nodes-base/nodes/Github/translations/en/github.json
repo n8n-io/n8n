@@ -1,0 +1,689 @@
+{
+	"header": {
+		"displayName": "GitHub",
+		"description": "Consume GitHub API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"file": {
+					"displayName": "File"
+				},
+				"issue": {
+					"displayName": "Issue"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"release": {
+					"displayName": "Release"
+				},
+				"repository": {
+					"displayName": "Repository"
+				},
+				"review": {
+					"displayName": "Review"
+				},
+				"user": {
+					"displayName": "User"
+				},
+				"workflow": {
+					"displayName": "Workflow"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getRepositories": {
+					"displayName": "Get Repositories",
+					"description": "Returns the repositories of a user"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Creates a new review"
+				},
+				"createComment": {
+					"displayName": "Create Comment",
+					"description": "Create a new comment on an issue"
+				},
+				"edit": {
+					"displayName": "Edit",
+					"description": "Edit a file in repository"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a workflow"
+				},
+				"lock": {
+					"displayName": "Lock",
+					"description": "Lock an issue"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a release"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "List workflows"
+				},
+				"getIssues": {
+					"displayName": "Get Issues",
+					"description": "Returns issues of a repository"
+				},
+				"getLicense": {
+					"displayName": "Get License",
+					"description": "Returns the contents of the repository's license file, if one is detected"
+				},
+				"getProfile": {
+					"displayName": "Get Profile",
+					"description": "Get the community profile of a repository with metrics, health score, description, license, etc"
+				},
+				"getPullRequests": {
+					"displayName": "Get Pull Requests",
+					"description": "Returns pull requests of a repository"
+				},
+				"listPopularPaths": {
+					"displayName": "List Popular Paths",
+					"description": "Get the top 10 popular content paths over the last 14 days"
+				},
+				"listReferrers": {
+					"displayName": "List Referrers",
+					"description": "Get the top 10 referrering domains over the last 14 days"
+				},
+				"getUserIssues": {
+					"displayName": "Get Issues",
+					"description": "Returns the issues assigned to the user"
+				},
+				"invite": {
+					"displayName": "Invite",
+					"description": "Invites a user to an organization"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many reviews for a pull request"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a review"
+				},
+				"disable": {
+					"displayName": "Disable",
+					"description": "Disable a workflow"
+				},
+				"dispatch": {
+					"displayName": "Dispatch",
+					"description": "Dispatch a workflow event"
+				},
+				"dispatchAndWait": {
+					"displayName": "Dispatch and Wait for Completion",
+					"description": "Dispatch a workflow event and wait for a webhook to be called before proceeding"
+				},
+				"enable": {
+					"displayName": "Enable",
+					"description": "Enable a workflow"
+				},
+				"getUsage": {
+					"displayName": "Get Usage",
+					"description": "Get the usage of a workflow"
+				}
+			}
+		},
+		"webhookNotice": {
+			"displayName": "Your execution will pause until a webhook is called. This URL will be generated at runtime and passed to your Github workflow as a resumeUrl input."
+		},
+		"owner": {
+			"displayName": "Repository Owner"
+		},
+		"repository": {
+			"displayName": "Repository Name"
+		},
+		"workflowId": {
+			"displayName": "Workflow",
+			"description": "The workflow to dispatch"
+		},
+		"ref": {
+			"displayName": "Ref",
+			"description": "The git reference for the workflow dispatch (branch, tag, or commit SHA)"
+		},
+		"inputs": {
+			"displayName": "Inputs",
+			"description": "JSON object with input parameters for the workflow"
+		},
+		"filePath": {
+			"displayName": "Path",
+			"description": "The path of the folder to list",
+			"placeholder": "docs/"
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the data to upload should be taken from binary field"
+		},
+		"fileContent": {
+			"displayName": "File Content",
+			"description": "The text content of the file"
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field"
+		},
+		"commitMessage": {
+			"displayName": "Commit Message"
+		},
+		"additionalParameters": {
+			"displayName": "Additional Parameters",
+			"description": "Additional fields to add",
+			"placeholder": "Add Parameter",
+			"options": {
+				"author": {
+					"displayName": "Author",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the author of the commit"
+						},
+						"email": {
+							"displayName": "Email",
+							"description": "The email of the author of the commit",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"branch": {
+					"displayName": "Branch",
+					"options": {
+						"branch": {
+							"displayName": "Branch",
+							"description": "The branch to commit to. If not set the repository’s default branch (usually master) is used."
+						}
+					}
+				},
+				"committer": {
+					"displayName": "Committer",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the committer of the commit"
+						},
+						"email": {
+							"displayName": "Email",
+							"description": "The email of the committer of the commit",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"reference": {
+					"displayName": "Reference",
+					"description": "The name of the commit/branch/tag. Default: the repository’s default branch (usually master).",
+					"placeholder": "master"
+				}
+			},
+			"values": {
+				"author": {
+					"displayName": "Author",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the author of the commit"
+						},
+						"email": {
+							"displayName": "Email",
+							"description": "The email of the author of the commit",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"branch": {
+					"displayName": "Branch",
+					"options": {
+						"branch": {
+							"displayName": "Branch",
+							"description": "The branch to commit to. If not set the repository’s default branch (usually master) is used."
+						}
+					}
+				},
+				"committer": {
+					"displayName": "Committer",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the committer of the commit"
+						},
+						"email": {
+							"displayName": "Email",
+							"description": "The email of the committer of the commit",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"additionalParameters": {
+					"displayName": "Additional Parameters",
+					"placeholder": "Add Parameter"
+				}
+			}
+		},
+		"asBinaryProperty": {
+			"displayName": "As Binary Property",
+			"description": "Whether to set the data of the file as binary property instead of returning the raw API response"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The title of the issue"
+		},
+		"body": {
+			"displayName": "Body",
+			"description": "The body of the review"
+		},
+		"labels": {
+			"displayName": "Labels",
+			"multipleValueButtonText": "Add Label",
+			"options": {
+				"label": {
+					"displayName": "Label",
+					"description": "Label to add to issue"
+				}
+			}
+		},
+		"assignees": {
+			"displayName": "Assignees",
+			"multipleValueButtonText": "Add Assignee",
+			"options": {
+				"assignee": {
+					"displayName": "Assignee",
+					"description": "User to assign issue too"
+				}
+			}
+		},
+		"issueNumber": {
+			"displayName": "Issue Number",
+			"description": "The issue number to lock"
+		},
+		"editFields": {
+			"displayName": "Edit Fields",
+			"options": {
+				"assignees": {
+					"displayName": "Assignees",
+					"multipleValueButtonText": "Add Assignee",
+					"options": {
+						"assignee": {
+							"displayName": "Assignees",
+							"description": "User to assign issue to"
+						}
+					}
+				},
+				"body": {
+					"displayName": "Body",
+					"description": "The body of the issue"
+				},
+				"labels": {
+					"displayName": "Labels",
+					"multipleValueButtonText": "Add Label",
+					"options": {
+						"label": {
+							"displayName": "Label",
+							"description": "Label to add to issue"
+						}
+					}
+				},
+				"state": {
+					"displayName": "State",
+					"description": "The state to set",
+					"options": {
+						"closed": {
+							"displayName": "Closed",
+							"description": "Set the state to \"closed\""
+						},
+						"open": {
+							"displayName": "Open",
+							"description": "Set the state to \"open\""
+						}
+					}
+				},
+				"state_reason": {
+					"displayName": "State Reason",
+					"description": "The reason for the state change",
+					"options": {
+						"completed": {
+							"displayName": "Completed",
+							"description": "Issue is completed"
+						},
+						"not_planned": {
+							"displayName": "Not Planned",
+							"description": "Issue is not planned"
+						},
+						"reopened": {
+							"displayName": "Reopened",
+							"description": "Issue is reopened"
+						}
+					}
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "The title of the issue"
+				}
+			}
+		},
+		"lockReason": {
+			"displayName": "Lock Reason",
+			"description": "The reason for locking the issue",
+			"options": {
+				"off-topic": {
+					"displayName": "Off-Topic",
+					"description": "The issue is Off-Topic"
+				},
+				"too heated": {
+					"displayName": "Too Heated",
+					"description": "The discussion is too heated"
+				},
+				"resolved": {
+					"displayName": "Resolved",
+					"description": "The issue got resolved"
+				},
+				"spam": {
+					"displayName": "Spam",
+					"description": "The issue is spam"
+				}
+			}
+		},
+		"releaseTag": {
+			"displayName": "Tag",
+			"description": "The tag of the release"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the release"
+				},
+				"body": {
+					"displayName": "Body",
+					"description": "The body of the release"
+				},
+				"draft": {
+					"displayName": "Draft",
+					"description": "Whether to create a draft (unpublished) release, \"false\" to create a published one"
+				},
+				"prerelease": {
+					"displayName": "Prerelease",
+					"description": "Whether to point out that the release is non-production ready"
+				},
+				"target_commitish": {
+					"displayName": "Target Commitish",
+					"description": "Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository's default branch(usually master)."
+				},
+				"tag_name": {
+					"displayName": "Tag Name",
+					"description": "The name of the tag"
+				},
+				"commitId": {
+					"displayName": "Commit ID",
+					"description": "The SHA of the commit that needs a review, if different from the latest"
+				}
+			},
+			"placeholder": "Add Field"
+		},
+		"release_id": {
+			"displayName": "Release ID"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"getRepositoryIssuesFilters": {
+			"displayName": "Filters",
+			"options": {
+				"assignee": {
+					"displayName": "Assignee",
+					"description": "Return only issues which are assigned to a specific user"
+				},
+				"creator": {
+					"displayName": "Creator",
+					"description": "Return only issues which were created by a specific user"
+				},
+				"mentioned": {
+					"displayName": "Mentioned",
+					"description": "Return only issues in which a specific user was mentioned"
+				},
+				"labels": {
+					"displayName": "Labels",
+					"description": "Return only issues with the given labels. Multiple labels can be separated by comma."
+				},
+				"since": {
+					"displayName": "Updated Since",
+					"description": "Return only issues updated at or after this time"
+				},
+				"state": {
+					"displayName": "State",
+					"description": "The state to set",
+					"options": {
+						"all": {
+							"displayName": "All",
+							"description": "Returns issues with any state"
+						},
+						"closed": {
+							"displayName": "Closed",
+							"description": "Return issues with \"closed\" state"
+						},
+						"open": {
+							"displayName": "Open",
+							"description": "Return issues with \"open\" state"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The order the issues should be returned in",
+					"options": {
+						"created": {
+							"displayName": "Created",
+							"description": "Sort by created date"
+						},
+						"updated": {
+							"displayName": "Updated",
+							"description": "Sort by updated date"
+						},
+						"comments": {
+							"displayName": "Comments",
+							"description": "Sort by comments"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "Direction",
+					"description": "The sort order",
+					"options": {
+						"asc": {
+							"displayName": "Ascending",
+							"description": "Sort in ascending order"
+						},
+						"desc": {
+							"displayName": "Descending",
+							"description": "Sort in descending order"
+						}
+					}
+				}
+			}
+		},
+		"getRepositoryPullRequestsFilters": {
+			"displayName": "Filters",
+			"options": {
+				"state": {
+					"displayName": "State",
+					"description": "The state to set",
+					"options": {
+						"all": {
+							"displayName": "All",
+							"description": "Returns pull requests with any state"
+						},
+						"closed": {
+							"displayName": "Closed",
+							"description": "Return pull requests with \"closed\" state"
+						},
+						"open": {
+							"displayName": "Open",
+							"description": "Return pull requests with \"open\" state"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The order the pull requests should be returned in",
+					"options": {
+						"created": {
+							"displayName": "Created",
+							"description": "Sort by created date"
+						},
+						"updated": {
+							"displayName": "Updated",
+							"description": "Sort by updated date"
+						},
+						"popularity": {
+							"displayName": "Popularity",
+							"description": "Sort by number of comments"
+						},
+						"long-running": {
+							"displayName": "Long-Running",
+							"description": "Sort by date created and will limit the results to pull requests that have been open for more than a month and have had activity within the past month"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "Direction",
+					"description": "The sort order",
+					"options": {
+						"asc": {
+							"displayName": "Ascending",
+							"description": "Sort in ascending order"
+						},
+						"desc": {
+							"displayName": "Descending",
+							"description": "Sort in descending order"
+						}
+					}
+				}
+			}
+		},
+		"pullRequestNumber": {
+			"displayName": "PR Number",
+			"description": "The number of the pull request to review"
+		},
+		"reviewId": {
+			"displayName": "Review ID",
+			"description": "ID of the review"
+		},
+		"event": {
+			"displayName": "Event",
+			"description": "The review action you want to perform",
+			"options": {
+				"approve": {
+					"displayName": "Approve",
+					"description": "Approve the pull request"
+				},
+				"requestChanges": {
+					"displayName": "Request Change",
+					"description": "Request code changes"
+				},
+				"comment": {
+					"displayName": "Comment",
+					"description": "Add a comment without approval or change requests"
+				},
+				"pending": {
+					"displayName": "Pending",
+					"description": "You will need to submit the pull request review when you are ready"
+				}
+			}
+		},
+		"organization": {
+			"displayName": "Organization",
+			"description": "The GitHub organization that the user is being invited to"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email address of the invited user",
+			"placeholder": "name@email.com"
+		},
+		"getUserIssuesFilters": {
+			"displayName": "Filters",
+			"options": {
+				"mentioned": {
+					"displayName": "Mentioned",
+					"description": "Return only issues in which a specific user was mentioned"
+				},
+				"labels": {
+					"displayName": "Labels",
+					"description": "Return only issues with the given labels. Multiple labels can be separated by comma."
+				},
+				"since": {
+					"displayName": "Updated Since",
+					"description": "Return only issues updated at or after this time"
+				},
+				"state": {
+					"displayName": "State",
+					"description": "The state to set",
+					"options": {
+						"all": {
+							"displayName": "All",
+							"description": "Returns issues with any state"
+						},
+						"closed": {
+							"displayName": "Closed",
+							"description": "Return issues with \"closed\" state"
+						},
+						"open": {
+							"displayName": "Open",
+							"description": "Return issues with \"open\" state"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The order the issues should be returned in",
+					"options": {
+						"created": {
+							"displayName": "Created",
+							"description": "Sort by created date"
+						},
+						"updated": {
+							"displayName": "Updated",
+							"description": "Sort by updated date"
+						},
+						"comments": {
+							"displayName": "Comments",
+							"description": "Sort by comments"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "Direction",
+					"description": "The sort order",
+					"options": {
+						"asc": {
+							"displayName": "Ascending",
+							"description": "Sort in ascending order"
+						},
+						"desc": {
+							"displayName": "Descending",
+							"description": "Sort in descending order"
+						}
+					}
+				}
+			}
+		}
+	}
+}

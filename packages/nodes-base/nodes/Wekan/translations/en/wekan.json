@@ -1,0 +1,357 @@
+{
+	"header": {
+		"displayName": "Wekan",
+		"description": "Consume Wekan API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"board": {
+					"displayName": "Board"
+				},
+				"card": {
+					"displayName": "Card"
+				},
+				"cardComment": {
+					"displayName": "Card Comment"
+				},
+				"checklist": {
+					"displayName": "Checklist"
+				},
+				"checklistItem": {
+					"displayName": "Checklist Item"
+				},
+				"list": {
+					"displayName": "List"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new list"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a list"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get the data of a list"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many board lists"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a checklist item"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The title of the list",
+			"placeholder": "My list"
+		},
+		"owner": {
+			"displayName": "Owner Name or ID",
+			"description": "The user ID in Wekan. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"isActive": {
+					"displayName": "Active",
+					"description": "Whether to set the board active"
+				},
+				"isAdmin": {
+					"displayName": "Admin",
+					"description": "Whether to set the owner an admin of the board"
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "The color of the board",
+					"options": {
+						"belize": {
+							"displayName": "Belize"
+						},
+						"midnight": {
+							"displayName": "Midnight"
+						},
+						"nephritis": {
+							"displayName": "Nephritis"
+						},
+						"pomegranate": {
+							"displayName": "Pomegranate"
+						},
+						"pumpkin": {
+							"displayName": "Pumpkin"
+						},
+						"wisteria": {
+							"displayName": "Wisteria"
+						}
+					}
+				},
+				"isCommentOnly": {
+					"displayName": "Comment Only",
+					"description": "Whether to enable comments"
+				},
+				"isNoComments": {
+					"displayName": "No Comments",
+					"description": "Whether to disable comments"
+				},
+				"permission": {
+					"displayName": "Permission",
+					"description": "Set the board permission",
+					"options": {
+						"private": {
+							"displayName": "Private"
+						},
+						"public": {
+							"displayName": "Public"
+						}
+					}
+				},
+				"isWorker": {
+					"displayName": "Worker",
+					"description": "Whether to only move cards, assign himself to card and comment"
+				},
+				"assignees": {
+					"displayName": "Assignee Names or IDs",
+					"description": "The new list of assignee IDs attached to the card. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The new description of the card"
+				},
+				"members": {
+					"displayName": "Member Names or IDs",
+					"description": "The new list of member IDs attached to the card. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"boardId": {
+			"displayName": "Board Name or ID",
+			"description": "ID of the board where the lists are in. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"IdUser": {
+			"displayName": "User Name or ID",
+			"description": "The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"listId": {
+			"displayName": "List ID",
+			"description": "The ID of the list to get"
+		},
+		"swimlaneId": {
+			"displayName": "Swimlane Name or ID",
+			"description": "The ID of the swimlane that card belongs to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"authorId": {
+			"displayName": "Author Name or ID",
+			"description": "The user who posted the comment. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"cardId": {
+			"displayName": "Card Name or ID",
+			"description": "The ID of the card that checklistItem belongs to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"fromObject": {
+			"displayName": "From Object",
+			"options": {
+				"list": {
+					"displayName": "List"
+				},
+				"swimlane": {
+					"displayName": "Swimlane"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"authorId": {
+					"displayName": "Author Name or ID",
+					"description": "Update the owner of the card. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"assignees": {
+					"displayName": "Assignee Names or IDs",
+					"description": "The new list of assignee IDs attached to the card. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "The new color of the card",
+					"options": {
+						"black": {
+							"displayName": "Black"
+						},
+						"blue": {
+							"displayName": "Blue"
+						},
+						"crimson": {
+							"displayName": "Crimson"
+						},
+						"darkgreen": {
+							"displayName": "Darkgreen"
+						},
+						"gold": {
+							"displayName": "Gold"
+						},
+						"gray": {
+							"displayName": "Gray"
+						},
+						"green": {
+							"displayName": "Green"
+						},
+						"indigo": {
+							"displayName": "Indigo"
+						},
+						"lime": {
+							"displayName": "Lime"
+						},
+						"magenta": {
+							"displayName": "Magenta"
+						},
+						"mistyrose": {
+							"displayName": "Mistyrose"
+						},
+						"navy": {
+							"displayName": "Navy"
+						},
+						"orange": {
+							"displayName": "Orange"
+						},
+						"paleturquoise": {
+							"displayName": "Paleturquoise"
+						},
+						"peachpuff": {
+							"displayName": "Peachpuff"
+						},
+						"pink": {
+							"displayName": "Pink"
+						},
+						"plum": {
+							"displayName": "Plum"
+						},
+						"purple": {
+							"displayName": "Purple"
+						},
+						"red": {
+							"displayName": "Red"
+						},
+						"saddlebrown": {
+							"displayName": "Saddlebrown"
+						},
+						"silver": {
+							"displayName": "Silver"
+						},
+						"sky": {
+							"displayName": "Sky"
+						},
+						"slateblue": {
+							"displayName": "Slateblue"
+						},
+						"white": {
+							"displayName": "White"
+						},
+						"yellow": {
+							"displayName": "Yellow"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The new description of the card"
+				},
+				"dueAt": {
+					"displayName": "Due At",
+					"description": "The new due at field of the card"
+				},
+				"endAt": {
+					"displayName": "End At",
+					"description": "The new end at field of the card"
+				},
+				"labelIds": {
+					"displayName": "Label IDs",
+					"description": "The label IDs attached to the card"
+				},
+				"listId": {
+					"displayName": "List Name or ID",
+					"description": "The new list ID of the card (move operation). Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"members": {
+					"displayName": "Member Names or IDs",
+					"description": "The new list of member IDs attached to the card. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"isOverTime": {
+					"displayName": "Over Time",
+					"description": "The new over time field of the card"
+				},
+				"parentId": {
+					"displayName": "Parent Name or ID",
+					"description": "The parent of the card. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"receivedAt": {
+					"displayName": "Received At",
+					"description": "The new received at field of the card"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The internally used sort value of a card"
+				},
+				"spentTime": {
+					"displayName": "Spent Time",
+					"description": "The new spent time field of the card"
+				},
+				"startAt": {
+					"displayName": "Start At",
+					"description": "The new start at field of the card"
+				},
+				"swimlaneId": {
+					"displayName": "Swimlane Name or ID",
+					"description": "The new swimlane ID of the card. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "The new title for the checklistItem item"
+				},
+				"isFinished": {
+					"displayName": "Finished",
+					"description": "Whether the item is checked"
+				}
+			}
+		},
+		"comment": {
+			"displayName": "Comment",
+			"description": "The comment text"
+		},
+		"commentId": {
+			"displayName": "Comment ID",
+			"description": "The ID of the comment to get"
+		},
+		"items": {
+			"displayName": "Items",
+			"description": "Items to be added to the checklist"
+		},
+		"checklistId": {
+			"displayName": "CheckList Name or ID",
+			"description": "The ID of the checklistItem that card belongs to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"checklistItemId": {
+			"displayName": "Checklist Item Name or ID",
+			"description": "The ID of the checklistItem item to update. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

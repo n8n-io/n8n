@@ -1,0 +1,39 @@
+{
+	"header": {
+		"displayName": "MSG91",
+		"description": "通过MSG91发送交易短信"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"sms": {
+					"displayName": "短信"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "发送短信"
+				}
+			}
+		},
+		"from": {
+			"displayName": "发送方ID",
+			"description": "发送消息的号码",
+			"placeholder": "4155238886"
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"description": "要发送消息的号码（含国家代码）",
+			"placeholder": "+14155238886"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息"
+		}
+	}
+}

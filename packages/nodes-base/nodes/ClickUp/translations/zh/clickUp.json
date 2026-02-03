@@ -1,0 +1,727 @@
+{
+	"header": {
+		"displayName": "ClickUp",
+		"description": "使用 ClickUp API (Beta)"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"checklist": {
+					"displayName": "检查清单"
+				},
+				"checklistItem": {
+					"displayName": "清单项"
+				},
+				"comment": {
+					"displayName": "评论"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				},
+				"goal": {
+					"displayName": "目标"
+				},
+				"goalKeyResult": {
+					"displayName": "目标关键结果"
+				},
+				"list": {
+					"displayName": "列表"
+				},
+				"spaceTag": {
+					"displayName": "空间标签"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"taskDependency": {
+					"displayName": "任务依赖"
+				},
+				"taskList": {
+					"displayName": "任务列表"
+				},
+				"taskTag": {
+					"displayName": "任务标签"
+				},
+				"timeEntry": {
+					"displayName": "时间记录"
+				},
+				"timeEntryTag": {
+					"displayName": "时间记录标签"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建列表"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除列表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新列表"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个列表"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取列表"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "为时间条目添加标签"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从时间条目中移除标签"
+				},
+				"member": {
+					"displayName": "成员",
+					"description": "获取列表成员"
+				},
+				"setCustomField": {
+					"displayName": "设置自定义字段",
+					"description": "设置自定义字段"
+				},
+				"start": {
+					"displayName": "开始",
+					"description": "开始计时条目"
+				},
+				"stop": {
+					"displayName": "停止",
+					"description": "停止当前运行的计时器"
+				},
+				"customFields": {
+					"displayName": "自定义字段",
+					"description": "检索列表的自定义字段"
+				}
+			}
+		},
+		"task": {
+			"displayName": "任务ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "任务上的第一个名字"
+		},
+		"checklist": {
+			"displayName": "清单ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称"
+				},
+				"position": {
+					"displayName": "位置"
+				},
+				"assignee": {
+					"displayName": "负责人姓名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"parent": {
+					"displayName": "父级清单项ID",
+					"description": "要将目标清单项嵌套于其下的清单项"
+				},
+				"resolved": {
+					"displayName": "已解析"
+				},
+				"commentText": {
+					"displayName": "评论内容"
+				},
+				"addOwners": {
+					"displayName": "添加所有者"
+				},
+				"color": {
+					"displayName": "颜色"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "时间条目的描述"
+				},
+				"dueDate": {
+					"displayName": "截止日期"
+				},
+				"removeOwners": {
+					"displayName": "移除所有者"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"stepsCurrent": {
+					"displayName": "当前步骤"
+				},
+				"stepsEnd": {
+					"displayName": "步骤结束"
+				},
+				"stepsStart": {
+					"displayName": "步骤开始"
+				},
+				"unit": {
+					"displayName": "单位",
+					"description": "仅对数字和货币类型有效。对于货币类型，单位必须是有效的货币代码。"
+				},
+				"addAssignees": {
+					"displayName": "添加受理人",
+					"description": "受理人ID。多个ID可用逗号分隔添加。"
+				},
+				"content": {
+					"displayName": "内容"
+				},
+				"dueDateTime": {
+					"displayName": "到期日期时间"
+				},
+				"markdownContent": {
+					"displayName": "是否为Markdown内容"
+				},
+				"notifyAll": {
+					"displayName": "通知所有人"
+				},
+				"parentId": {
+					"displayName": "父级ID"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"description": "整数映射：1：紧急，2：高，3：正常，4：低"
+				},
+				"removeAssignees": {
+					"displayName": "移除分配人",
+					"description": "受理人ID。多个ID可用逗号分隔添加。"
+				},
+				"status": {
+					"displayName": "状态"
+				},
+				"startDate": {
+					"displayName": "开始日期"
+				},
+				"startDateTime": {
+					"displayName": "开始日期时间"
+				},
+				"timeEstimate": {
+					"displayName": "时间估算",
+					"description": "时间估算（分钟）"
+				},
+				"billable": {
+					"displayName": "计费"
+				},
+				"duration": {
+					"displayName": "持续时间（分钟）",
+					"description": "持续时间（分钟）"
+				},
+				"start": {
+					"displayName": "开始"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"task": {
+					"displayName": "任务名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"unsetStatus": {
+					"displayName": "取消设置状态"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assignee": {
+					"displayName": "分配对象",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"notifyAll": {
+					"displayName": "通知所有人",
+					"description": "是否将创建通知发送给所有人，包括评论创建者"
+				},
+				"color": {
+					"displayName": "颜色"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "时间条目的描述"
+				},
+				"dueDate": {
+					"displayName": "截止日期"
+				},
+				"multipleOwners": {
+					"displayName": "多个所有者"
+				},
+				"owners": {
+					"displayName": "所有者"
+				},
+				"listIds": {
+					"displayName": "列出ID"
+				},
+				"stepsStart": {
+					"displayName": "步骤开始",
+					"description": "百分比、自动、数字和货币类型所需"
+				},
+				"stepsEnd": {
+					"displayName": "步骤结束",
+					"description": "百分比、自动、数字和货币类型所需"
+				},
+				"taskIds": {
+					"displayName": "任务ID"
+				},
+				"unit": {
+					"displayName": "单位",
+					"description": "仅对数字和货币类型有效。对于货币类型，单位必须是有效的货币代码。"
+				},
+				"custom_task_ids": {
+					"displayName": "自定义任务ID",
+					"description": "是否通过自定义任务ID引用任务"
+				},
+				"team_id": {
+					"displayName": "团队名称或ID",
+					"description": "仅当参数设置为 custom_task_ids=true 时使用。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"assignees": {
+					"displayName": "分配人名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"customFieldsJson": {
+					"displayName": "自定义字段 JSON",
+					"description": "要设置为JSON格式的自定义字段：<code>[ {\"id\": \"\", \"value\": \"\"} ]</code>"
+				},
+				"content": {
+					"displayName": "内容"
+				},
+				"dueDateTime": {
+					"displayName": "到期日期时间"
+				},
+				"markdownContent": {
+					"displayName": "是否为Markdown内容"
+				},
+				"parentId": {
+					"displayName": "父级ID"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"description": "整数映射：1：紧急，2：高，3：正常，4：低"
+				},
+				"startDate": {
+					"displayName": "开始日期"
+				},
+				"startDateTime": {
+					"displayName": "开始日期时间"
+				},
+				"status": {
+					"displayName": "状态名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"timeEstimate": {
+					"displayName": "时间估算",
+					"description": "时间估算（分钟）"
+				},
+				"billable": {
+					"displayName": "计费"
+				}
+			}
+		},
+		"checklistItem": {
+			"displayName": "清单项ID"
+		},
+		"commentOn": {
+			"displayName": "评论",
+			"options": {
+				"list": {
+					"displayName": "列表"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"view": {
+					"displayName": "查看"
+				}
+			}
+		},
+		"id": {
+			"displayName": "列表ID",
+			"description": "任务ID"
+		},
+		"commentText": {
+			"displayName": "评论文本"
+		},
+		"comment": {
+			"displayName": "评论ID"
+		},
+		"commentsOn": {
+			"displayName": "评论开启",
+			"options": {
+				"list": {
+					"displayName": "列表"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"view": {
+					"displayName": "查看"
+				}
+			}
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"team": {
+			"displayName": "团队名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"space": {
+			"displayName": "空间名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"folder": {
+			"displayName": "文件夹名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"archived": {
+					"displayName": "已归档"
+				},
+				"assignees": {
+					"displayName": "分配人名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"description": "按自定义字段筛选",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"operator": {
+									"displayName": "操作员",
+									"description": "要设置在自定义字段上的值",
+									"options": {
+										"!=": {
+											"displayName": "[0]!="
+										},
+										"<": {
+											"displayName": "<"
+										},
+										"<=": {
+											"displayName": "工作流"
+										},
+										">": {
+											"displayName": "[0]>"
+										},
+										">=": {
+											"displayName": "大于或等于"
+										},
+										"equal": {
+											"displayName": "等于"
+										},
+										"IS NOT NULL": {
+											"displayName": "不为空"
+										},
+										"IS NULL": {
+											"displayName": "为空"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"operator": {
+									"displayName": "操作员",
+									"description": "要设置在自定义字段上的值",
+									"options": {
+										"!=": {
+											"displayName": "[0]!="
+										},
+										"<": {
+											"displayName": "<"
+										},
+										"<=": {
+											"displayName": "工作流"
+										},
+										">": {
+											"displayName": "[0]>"
+										},
+										">=": {
+											"displayName": "大于或等于"
+										},
+										"equal": {
+											"displayName": "等于"
+										},
+										"IS NOT NULL": {
+											"displayName": "不为空"
+										},
+										"IS NULL": {
+											"displayName": "为空"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"dateCreatedGt": {
+					"displayName": "创建日期晚于",
+					"description": "筛选创建日期晚于"
+				},
+				"dateCreatedLt": {
+					"displayName": "创建日期早于",
+					"description": "筛选创建日期早于POSIX时间"
+				},
+				"dateUpdatedGt": {
+					"displayName": "更新日期晚于",
+					"description": "筛选更新日期晚于"
+				},
+				"dateUpdatedLt": {
+					"displayName": "更新日期早于",
+					"description": "筛选更新日期早于"
+				},
+				"dueDateGt": {
+					"displayName": "截止日期大于",
+					"description": "筛选截止日期大于"
+				},
+				"dueDateLt": {
+					"displayName": "截止日期早于",
+					"description": "筛选截止日期早于"
+				},
+				"includeClosed": {
+					"displayName": "包含已关闭",
+					"description": "默认响应不包含已关闭的任务。将此设为 true 且不发送状态筛选器即可包含已关闭的任务。"
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"options": {
+						"id": {
+							"displayName": "ID"
+						},
+						"created": {
+							"displayName": "已创建"
+						},
+						"updated": {
+							"displayName": "已更新"
+						},
+						"dueDate": {
+							"displayName": "截止日期"
+						}
+					}
+				},
+				"statuses": {
+					"displayName": "状态名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"subtasks": {
+					"displayName": "子任务",
+					"description": "是否包含子任务，默认 false"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "应用于此任务的标签数组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"end_date": {
+					"displayName": "结束日期"
+				},
+				"start_date": {
+					"displayName": "开始日期"
+				}
+			}
+		},
+		"goal": {
+			"displayName": "目标ID"
+		},
+		"type": {
+			"displayName": "类型",
+			"options": {
+				"automatic": {
+					"displayName": "自动"
+				},
+				"boolean": {
+					"displayName": "布尔值"
+				},
+				"currency": {
+					"displayName": "货币"
+				},
+				"number": {
+					"displayName": "数字"
+				},
+				"percentage": {
+					"displayName": "百分比"
+				}
+			}
+		},
+		"keyResult": {
+			"displayName": "关键结果ID"
+		},
+		"taskId": {
+			"displayName": "任务ID"
+		},
+		"tagName": {
+			"displayName": "标签名称"
+		},
+		"listId": {
+			"displayName": "列表ID"
+		},
+		"newName": {
+			"displayName": "新名称",
+			"description": "为标签设置的新名称"
+		},
+		"foregroundColor": {
+			"displayName": "前景色"
+		},
+		"backgroundColor": {
+			"displayName": "背景颜色"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"folderless": {
+			"displayName": "无文件夹列表"
+		},
+		"list": {
+			"displayName": "列表ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"includeSubtasks": {
+			"displayName": "包含子任务",
+			"description": "是否同时获取并包含此任务的子任务"
+		},
+		"includeMarkdownDescription": {
+			"displayName": "包含Markdown描述",
+			"description": "是否在响应中包含markdown_description字段。这对于保留描述中的链接很重要。"
+		},
+		"field": {
+			"displayName": "字段ID",
+			"description": "要添加自定义字段的目标字段ID"
+		},
+		"jsonParse": {
+			"displayName": "值为JSON格式",
+			"description": "该值为JSON格式并将被解析。例如，当标签期望值为数组时需要使用此选项。"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "要在自定义字段上设置的值"
+		},
+		"dependsOnTask": {
+			"displayName": "依赖任务ID"
+		},
+		"running": {
+			"displayName": "运行中",
+			"description": "是否仅返回当前运行中的时间条目"
+		},
+		"timeEntry": {
+			"displayName": "时间条目ID"
+		},
+		"start": {
+			"displayName": "开始"
+		},
+		"duration": {
+			"displayName": "持续时间（分钟）",
+			"description": "持续时间（分钟）"
+		},
+		"archived": {
+			"displayName": "已归档"
+		},
+		"timeEntryIds": {
+			"displayName": "时间条目ID"
+		},
+		"tagsUi": {
+			"displayName": "标签",
+			"placeholder": "添加标签",
+			"multipleValueButtonText": "添加标签",
+			"options": {
+				"tagsValues": {
+					"displayName": "标签",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"tag_bg": {
+							"displayName": "背景颜色"
+						},
+						"tag_fg": {
+							"displayName": "前景色"
+						}
+					}
+				}
+			},
+			"values": {
+				"tagsValues": {
+					"displayName": "标签",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"tag_bg": {
+							"displayName": "背景颜色"
+						},
+						"tag_fg": {
+							"displayName": "前景色"
+						}
+					}
+				},
+				"tagsUi": {
+					"displayName": "标签",
+					"placeholder": "添加标签"
+				}
+			}
+		},
+		"tagNames": {
+			"displayName": "标签名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		}
+	}
+}

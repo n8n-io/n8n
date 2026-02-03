@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "Embeddings Lemonade",
+		"description": "Use Lemonade Embeddings"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a vector store. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>Insert one</a>"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will generate the completion. Models are loaded and managed through the Lemonade server."
+		}
+	}
+}

@@ -1,0 +1,49 @@
+{
+	"header": {
+		"displayName": "结构化输出解析器",
+		"description": "以定义的JSON格式返回数据"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "所有属性都将设为必填项。如需设为可选，请改用'JSON Schema'架构类型"
+		},
+		"schemaType": {
+			"displayName": "Schema类型",
+			"description": "如何为函数指定Schema",
+			"options": {
+				"fromJson": {
+					"displayName": "从JSON示例生成",
+					"description": "从示例JSON对象生成模式"
+				},
+				"manual": {
+					"displayName": "使用JSON Schema定义",
+					"description": "手动定义JSON模式"
+				}
+			}
+		},
+		"jsonSchemaExample": {
+			"displayName": "JSON示例",
+			"description": "用于生成模式的示例JSON对象"
+		},
+		"inputSchema": {
+			"displayName": "输入模式",
+			"description": "函数使用的模式"
+		},
+		"jsonSchema": {
+			"displayName": "JSON模式",
+			"description": "JSON模式，用于构建输出并验证其结构"
+		},
+		"autoFix": {
+			"displayName": "自动修复格式",
+			"description": "当输出格式不正确时是否自动修复。将导致另一次LLM调用。"
+		},
+		"customizeRetryPrompt": {
+			"displayName": "自定义重试提示",
+			"description": "是否自定义用于重试输出解析的提示。如果禁用，将使用默认提示。"
+		},
+		"prompt": {
+			"displayName": "自定义提示",
+			"description": "用于修复输出的提示模板。使用占位符：\"{instructions}\"表示解析规则，\"{completion}\"表示失败的尝试，\"{error}\"表示验证错误信息。"
+		}
+	}
+}

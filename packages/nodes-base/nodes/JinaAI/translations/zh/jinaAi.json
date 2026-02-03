@@ -1,0 +1,182 @@
+{
+	"header": {
+		"displayName": "Jina AI",
+		"description": "与Jina AI API交互"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"reader": {
+					"displayName": "读取器"
+				},
+				"research": {
+					"displayName": "研究"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"read": {
+					"displayName": "读取",
+					"description": "从URL获取内容并转换为干净、LLM友好的格式"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "通过Jina AI执行网络搜索，并以简洁、LLM友好的格式返回顶部结果"
+				},
+				"deepResearch": {
+					"displayName": "深度研究",
+					"description": "研究一个主题并生成结构化研究报告"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "要从中获取内容的URL",
+			"placeholder": "https://jina.ai/"
+		},
+		"simplify": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"outputFormat": {
+					"displayName": "输出格式",
+					"description": "指定期望的输出格式",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"": {
+							"displayName": "JSON"
+						},
+						"markdown": {
+							"displayName": "Markdown"
+						},
+						"screenshot": {
+							"displayName": "截图"
+						},
+						"text": {
+							"displayName": "文本"
+						}
+					}
+				},
+				"targetSelector": {
+					"displayName": "目标CSS选择器",
+					"description": "用于聚焦特定页面元素的CSS选择器",
+					"placeholder": "例如：#main-content .article"
+				},
+				"excludeSelector": {
+					"displayName": "排除CSS选择器",
+					"description": "要排除元素的CSS选择器",
+					"placeholder": "例如：header, footer, .ads"
+				},
+				"enableImageCaptioning": {
+					"displayName": "启用图像描述生成",
+					"description": "是否为内容中的图像生成描述"
+				},
+				"waitForSelector": {
+					"displayName": "等待CSS选择器",
+					"description": "等待特定元素出现后再提取内容（针对动态页面）",
+					"placeholder": "例如：#results-loaded"
+				},
+				"siteFilter": {
+					"displayName": "网站筛选",
+					"description": "将搜索限制在特定网站",
+					"placeholder": "例如：jina.ai, github.com"
+				},
+				"pageNumber": {
+					"displayName": "页码",
+					"description": "要检索的搜索结果页码",
+					"placeholder": "1"
+				},
+				"maxReturnedSources": {
+					"displayName": "最大返回来源数",
+					"description": "最终答案中包含的最大URL数量",
+					"placeholder": "例如：5"
+				},
+				"prioritizeSources": {
+					"displayName": "优先来源",
+					"description": "一个域名列表，这些域名在内容检索时会被赋予更高优先级",
+					"placeholder": "例如：jina.ai, github.com"
+				},
+				"excludeSources": {
+					"displayName": "排除来源",
+					"description": "严格排除在内容获取之外的域名列表",
+					"placeholder": "例如：jina.ai, github.com"
+				}
+			}
+		},
+		"searchQuery": {
+			"displayName": "搜索查询",
+			"placeholder": "例如 Jina AI"
+		},
+		"researchQuery": {
+			"displayName": "研究查询",
+			"description": "AI要研究的主题或问题",
+			"placeholder": "例如：分析可再生能源对缓解气候变化的影响"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

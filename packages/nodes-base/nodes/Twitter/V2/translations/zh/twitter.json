@@ -1,0 +1,153 @@
+{
+	"header": {
+		"displayName": "X（原Twitter）",
+		"description": "发布、点赞和搜索推文，发送消息，搜索用户，以及将用户添加到列表"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"directMessage": {
+					"displayName": "私信",
+					"description": "向用户发送私信"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "将用户添加到列表"
+				},
+				"tweet": {
+					"displayName": "推文",
+					"description": "创建、点赞、搜索或删除一条推文"
+				},
+				"user": {
+					"displayName": "用户",
+					"description": "按用户名搜索用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "Create, quote, or reply to a tweet"
+				},
+				"add": {
+					"displayName": "添加成员",
+					"description": "向列表中添加成员"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一条推文"
+				},
+				"like": {
+					"displayName": "点赞",
+					"description": "点赞推文"
+				},
+				"retweet": {
+					"displayName": "转推",
+					"description": "转推推文"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索最近七天的推文"
+				},
+				"searchUser": {
+					"displayName": "获取",
+					"description": "通过用户名检索用户"
+				}
+			}
+		},
+		"user": {
+			"displayName": "用户",
+			"description": "您要搜索的用户"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "状态更新的文本内容。URL必须进行编码。使用t.co短链接服务包装的链接会影响字符计数。"
+		},
+		"additionalFields": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"attachments": {
+					"displayName": "媒体ID",
+					"description": "要与消息关联的附件ID",
+					"placeholder": "1664279886239010824"
+				},
+				"location": {
+					"displayName": "位置ID",
+					"description": "推文的位置信息",
+					"placeholder": "4e696bef7e24d378"
+				},
+				"inQuoteToStatusId": {
+					"displayName": "引用推文",
+					"description": "被引用的推文"
+				},
+				"inReplyToStatusId": {
+					"displayName": "[0]回复推文",
+					"description": "被回复的推文"
+				},
+				"sortOrder": {
+					"displayName": "排序顺序",
+					"description": "返回结果的顺序",
+					"options": {
+						"recency": {
+							"displayName": "最近"
+						},
+						"relevancy": {
+							"displayName": "相关"
+						}
+					}
+				},
+				"startTime": {
+					"displayName": "之后",
+					"description": "此日期之前的推文将不会被返回。如果您没有学术研究访问权限，此日期必须在过去7天内。"
+				},
+				"endTime": {
+					"displayName": "之前",
+					"description": "此日期之后的推文将不会被返回。如果您没有学术研究访问权限，此日期必须在过去7天内。"
+				},
+				"tweetFieldsObject": {
+					"displayName": "推文字段",
+					"description": "要添加到每个返回推文对象的字段。默认字段包括：ID、文本、编辑历史推文ID。"
+				}
+			}
+		},
+		"list": {
+			"displayName": "列表",
+			"description": "您想要将用户添加到的列表"
+		},
+		"noticeLocation": {
+			"displayName": "由于Twitter V2 API限制，不支持位置信息"
+		},
+		"noticeAttachments": {
+			"displayName": "由于Twitter V2 API限制，不支持附件功能"
+		},
+		"tweetDeleteId": {
+			"displayName": "推文",
+			"description": "要删除的推文"
+		},
+		"tweetId": {
+			"displayName": "推文",
+			"description": "要转发的推文"
+		},
+		"searchText": {
+			"displayName": "搜索词",
+			"description": "一个最多500字符的UTF-8 URL编码搜索查询，可包含运算符。查询可能还会受到复杂度的限制。查看搜索示例请<a href=\"https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators\">点击此处</a>。",
+			"placeholder": "例如：自动化"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"me": {
+			"displayName": "我",
+			"description": "是否要搜索已认证用户"
+		}
+	}
+}

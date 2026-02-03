@@ -1,0 +1,419 @@
+{
+	"header": {
+		"displayName": "MISP",
+		"description": "Consume the MISP API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"attribute": {
+					"displayName": "Attribute"
+				},
+				"event": {
+					"displayName": "Event"
+				},
+				"eventTag": {
+					"displayName": "Event Tag"
+				},
+				"feed": {
+					"displayName": "Feed"
+				},
+				"galaxy": {
+					"displayName": "Galaxy"
+				},
+				"noticelist": {
+					"displayName": "Noticelist"
+				},
+				"object": {
+					"displayName": "Object"
+				},
+				"organisation": {
+					"displayName": "Organisation"
+				},
+				"tag": {
+					"displayName": "Tag"
+				},
+				"user": {
+					"displayName": "User"
+				},
+				"warninglist": {
+					"displayName": "Warninglist"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"search": {
+					"displayName": "Search"
+				},
+				"update": {
+					"displayName": "Update"
+				},
+				"publish": {
+					"displayName": "Publish"
+				},
+				"unpublish": {
+					"displayName": "Unpublish"
+				},
+				"add": {
+					"displayName": "Add"
+				},
+				"remove": {
+					"displayName": "Remove"
+				},
+				"disable": {
+					"displayName": "Disable"
+				},
+				"enable": {
+					"displayName": "Enable"
+				}
+			}
+		},
+		"eventId": {
+			"displayName": "Event ID",
+			"description": "UUID or numeric ID of the event"
+		},
+		"type": {
+			"displayName": "Type",
+			"options": {
+				"text": {
+					"displayName": "Text"
+				},
+				"url": {
+					"displayName": "URL"
+				},
+				"comment": {
+					"displayName": "Comment"
+				}
+			}
+		},
+		"value": {
+			"displayName": "Value",
+			"placeholder": "e.g. 127.0.0.1"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"distribution": {
+					"displayName": "Distribution",
+					"description": "Who will be able to see this event once published",
+					"options": {
+						"0": {
+							"displayName": "Your Organization Only"
+						},
+						"1": {
+							"displayName": "This Community Only"
+						},
+						"2": {
+							"displayName": "Connected Communities"
+						},
+						"3": {
+							"displayName": "All Communities"
+						},
+						"4": {
+							"displayName": "Sharing Group"
+						},
+						"5": {
+							"displayName": "Inherit Event"
+						}
+					}
+				},
+				"sharing_group_id": {
+					"displayName": "Sharing Group Name or ID",
+					"description": "Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"category": {
+					"displayName": "Category",
+					"placeholder": "e.g. Internal reference"
+				},
+				"deleted": {
+					"displayName": "Deleted"
+				},
+				"searchall": {
+					"displayName": "Search All",
+					"description": "Search by matching any tag names, event descriptions, attribute values or attribute comments"
+				},
+				"tags": {
+					"displayName": "Tags",
+					"placeholder": "e.g. tag1,tag2"
+				},
+				"type": {
+					"displayName": "Type",
+					"placeholder": "e.g. text"
+				},
+				"published": {
+					"displayName": "Published"
+				},
+				"analysis": {
+					"displayName": "Analysis",
+					"description": "Analysis maturity level of the event",
+					"options": {
+						"0": {
+							"displayName": "Initial"
+						},
+						"1": {
+							"displayName": "Ongoing"
+						},
+						"2": {
+							"displayName": "Complete"
+						}
+					}
+				},
+				"threat_level_id": {
+					"displayName": "Threat Level ID",
+					"options": {
+						"1": {
+							"displayName": "High"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "Low"
+						},
+						"4": {
+							"displayName": "Undefined"
+						}
+					}
+				},
+				"json": {
+					"displayName": "Rules",
+					"description": "Filter rules for the feed"
+				},
+				"created_by_email": {
+					"displayName": "Created by Email"
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"nationality": {
+					"displayName": "Nationality"
+				},
+				"sector": {
+					"displayName": "Sector"
+				},
+				"usercount": {
+					"displayName": "User Count"
+				},
+				"colour": {
+					"displayName": "Color",
+					"description": "Hex color code for the tag"
+				},
+				"gpgkey": {
+					"displayName": "GPG Key"
+				},
+				"invited_by": {
+					"displayName": "Inviter Email or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"org_id": {
+					"displayName": "Organization Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				}
+			}
+		},
+		"attributeId": {
+			"displayName": "Attribute ID",
+			"description": "ID of the attribute to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"useJson": {
+			"displayName": "Use JSON to Specify Fields",
+			"description": "Whether to use JSON to specify the fields for the search request"
+		},
+		"jsonOutput": {
+			"displayName": "JSON",
+			"description": "Get more info at {YOUR_BASE_URL_SPECIFIED_IN_CREDENTIALS}/api/openapi#operation/restSearchAttributes"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"distribution": {
+					"displayName": "Distribution",
+					"description": "Who will be able to see this event once published",
+					"options": {
+						"0": {
+							"displayName": "Your Organization Only"
+						},
+						"1": {
+							"displayName": "This Community Only"
+						},
+						"2": {
+							"displayName": "Connected Communities"
+						},
+						"3": {
+							"displayName": "All Communities"
+						},
+						"4": {
+							"displayName": "Sharing Group"
+						},
+						"5": {
+							"displayName": "Inherit Event"
+						}
+					}
+				},
+				"sharing_group_id": {
+					"displayName": "Sharing Group Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>."
+				},
+				"analysis": {
+					"displayName": "Analysis",
+					"description": "Analysis maturity level of the event",
+					"options": {
+						"0": {
+							"displayName": "Initial"
+						},
+						"1": {
+							"displayName": "Ongoing"
+						},
+						"2": {
+							"displayName": "Complete"
+						}
+					}
+				},
+				"information": {
+					"displayName": "Information",
+					"description": "Information on the event - max 65535 characters"
+				},
+				"threat_level_id": {
+					"displayName": "Threat Level ID",
+					"options": {
+						"1": {
+							"displayName": "High"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "Low"
+						},
+						"4": {
+							"displayName": "Undefined"
+						}
+					}
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"provider": {
+					"displayName": "Provider"
+				},
+				"rules": {
+					"displayName": "Rules",
+					"description": "Filter rules for the feed"
+				},
+				"url": {
+					"displayName": "URL"
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"nationality": {
+					"displayName": "Nationality"
+				},
+				"sector": {
+					"displayName": "Sector"
+				},
+				"type": {
+					"displayName": "Type"
+				},
+				"colour": {
+					"displayName": "Color",
+					"description": "Hex color code for the tag"
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"gpgkey": {
+					"displayName": "GPG Key"
+				},
+				"invited_by": {
+					"displayName": "Inviter Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"org_id": {
+					"displayName": "Organization Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				}
+			}
+		},
+		"org_id": {
+			"displayName": "Organization Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"information": {
+			"displayName": "Information",
+			"description": "Information on the event - max 65535 characters"
+		},
+		"tagId": {
+			"displayName": "Tag ID",
+			"description": "ID of the tag to update"
+		},
+		"name": {
+			"displayName": "Name"
+		},
+		"provider": {
+			"displayName": "Provider"
+		},
+		"url": {
+			"displayName": "URL",
+			"placeholder": "https://example.com"
+		},
+		"feedId": {
+			"displayName": "Feed ID",
+			"description": "ID of the feed to update"
+		},
+		"galaxyId": {
+			"displayName": "Galaxy ID",
+			"description": "UUID or numeric ID of the galaxy"
+		},
+		"noticelistId": {
+			"displayName": "Noticelist ID",
+			"description": "Numeric ID of the noticelist"
+		},
+		"organisationId": {
+			"displayName": "Organisation ID",
+			"description": "ID of the organisation to update"
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "name@email.com"
+		},
+		"role_id": {
+			"displayName": "Role ID",
+			"description": "Role IDs are available in the MISP dashboard at /roles/index"
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "ID of the user to update"
+		},
+		"warninglistId": {
+			"displayName": "Warninglist ID",
+			"description": "Numeric ID of the warninglist"
+		}
+	}
+}

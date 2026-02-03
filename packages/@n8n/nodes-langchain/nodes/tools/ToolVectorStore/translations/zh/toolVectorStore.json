@@ -1,0 +1,25 @@
+{
+	"header": {
+		"displayName": "向量存储问答工具",
+		"description": "使用向量存储回答问题"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"name": {
+			"displayName": "数据名称",
+			"description": "向量存储中数据的名称。这将用于填充此工具描述：当您需要回答关于[name]的问题时非常有用。每当您需要有关[data description]的信息时，您应始终使用此工具。输入应为一个完整的问题。",
+			"placeholder": "例如：users_info"
+		},
+		"description": {
+			"displayName": "数据描述",
+			"description": "描述向量存储中的数据。这将用于填充此工具描述：当你需要回答关于[name]的问题时非常有用。每当需要关于[数据描述]的信息时，你应该始终使用此工具。输入应为一个完整的问题。",
+			"placeholder": "[在此处描述你的数据，例如用户姓名、电子邮件等]"
+		},
+		"topK": {
+			"displayName": "限制",
+			"description": "要返回的最大结果数量"
+		}
+	}
+}

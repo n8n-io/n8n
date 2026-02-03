@@ -1,0 +1,252 @@
+{
+	"header": {
+		"displayName": "HaloPSA",
+		"description": "使用HaloPSA API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"client": {
+					"displayName": "客户端"
+				},
+				"site": {
+					"displayName": "站点"
+				},
+				"ticket": {
+					"displayName": "工单"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户"
+				}
+			}
+		},
+		"clientName": {
+			"displayName": "名称",
+			"description": "输入客户端名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"inactive": {
+					"displayName": "用户未激活",
+					"options": {
+						"false": {
+							"displayName": "激活状态"
+						},
+						"true": {
+							"displayName": "未激活"
+						}
+					}
+				},
+				"notes": {
+					"displayName": "备注"
+				},
+				"is_vip": {
+					"displayName": "VIP",
+					"description": "客户是否为VIP"
+				},
+				"website": {
+					"displayName": "网站"
+				},
+				"agent_id": {
+					"displayName": "指定代理名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"startdate": {
+					"displayName": "开始日期"
+				},
+				"targetdate": {
+					"displayName": "目标日期"
+				},
+				"maincontact_name": {
+					"displayName": "主要联系人"
+				},
+				"phonenumber": {
+					"displayName": "电话号码"
+				},
+				"emailaddress": {
+					"displayName": "电子邮件"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "您的新密码必须至少8个字符，且包含至少一个字母、一个数字或符号、一个大写字符和一个小写字符"
+				},
+				"surname": {
+					"displayName": "姓氏"
+				}
+			}
+		},
+		"clientId": {
+			"displayName": "客户端名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"simplify": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"activeStatus": {
+					"displayName": "激活状态",
+					"options": {
+						"active": {
+							"displayName": "仅限活跃",
+							"description": "是否在响应中包含活跃客户"
+						},
+						"all": {
+							"displayName": "全部",
+							"description": "是否在响应中包含活跃和非活跃客户"
+						},
+						"inactive": {
+							"displayName": "仅非活跃",
+							"description": "响应中是否包含非活跃客户"
+						}
+					}
+				},
+				"search": {
+					"displayName": "筛选依据文本",
+					"description": "按搜索字符串筛选用户"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"inactive": {
+					"displayName": "用户未激活",
+					"options": {
+						"false": {
+							"displayName": "激活状态"
+						},
+						"true": {
+							"displayName": "未激活"
+						}
+					}
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "输入用户名"
+				},
+				"notes": {
+					"displayName": "备注"
+				},
+				"is_vip": {
+					"displayName": "VIP",
+					"description": "客户是否为VIP"
+				},
+				"website": {
+					"displayName": "网站"
+				},
+				"agent_id": {
+					"displayName": "指定代理名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"details": {
+					"displayName": "详细信息"
+				},
+				"startdate": {
+					"displayName": "开始日期"
+				},
+				"summary": {
+					"displayName": "摘要"
+				},
+				"targetdate": {
+					"displayName": "目标日期"
+				},
+				"client_id": {
+					"displayName": "客户端ID"
+				},
+				"maincontact_name": {
+					"displayName": "主要联系人"
+				},
+				"phonenumber": {
+					"displayName": "电话号码"
+				},
+				"emailaddress": {
+					"displayName": "电子邮件"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "您的新密码必须至少8个字符，且包含至少一个字母、一个数字或符号、一个大写字符和一个小写字符"
+				},
+				"site_id": {
+					"displayName": "站点名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"surname": {
+					"displayName": "姓氏"
+				}
+			}
+		},
+		"ticketType": {
+			"displayName": "工单类型名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"summary": {
+			"displayName": "摘要"
+		},
+		"details": {
+			"displayName": "详细信息"
+		},
+		"ticketId": {
+			"displayName": "工单ID"
+		},
+		"siteName": {
+			"displayName": "名称",
+			"description": "输入站点名称"
+		},
+		"selectOption": {
+			"displayName": "按ID选择客户端",
+			"description": "是否可按ID选择客户端"
+		},
+		"siteId": {
+			"displayName": "站点名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"userName": {
+			"displayName": "名称",
+			"description": "输入用户名"
+		},
+		"userId": {
+			"displayName": "用户ID"
+		}
+	}
+}

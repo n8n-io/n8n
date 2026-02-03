@@ -1,0 +1,52 @@
+{
+	"header": {
+		"displayName": "Sentiment Analysis",
+		"description": "Analyze the sentiment of your text"
+	},
+	"nodeView": {
+		"inputText": {
+			"displayName": "Text to Analyze",
+			"description": "Use an expression to reference data in previous nodes or enter static text"
+		},
+		"detailedResultsNotice": {
+			"displayName": "Sentiment scores are LLM-generated estimates, not statistically rigorous measurements. They may be inconsistent across runs and should be used as rough indicators only."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"categories": {
+					"displayName": "Sentiment Categories",
+					"description": "A comma-separated list of categories to analyze"
+				},
+				"systemPromptTemplate": {
+					"displayName": "System Prompt Template",
+					"description": "String to use directly as the system prompt template"
+				},
+				"includeDetailedResults": {
+					"displayName": "Include Detailed Results",
+					"description": "Whether to include sentiment strength and confidence scores in the output"
+				},
+				"enableAutoFixing": {
+					"displayName": "Enable Auto-Fixing",
+					"description": "Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)"
+				},
+				"batching": {
+					"displayName": "Batch Processing",
+					"description": "Batch processing options for rate limiting",
+					"placeholder": "Add Batch Processing Option",
+					"options": {
+						"batchSize": {
+							"displayName": "Batch Size",
+							"description": "How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering."
+						},
+						"delayBetweenBatches": {
+							"displayName": "Delay Between Batches",
+							"description": "Delay in milliseconds between batches. This is useful for rate limiting."
+						}
+					}
+				}
+			}
+		}
+	}
+}

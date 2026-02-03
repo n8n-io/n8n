@@ -1,0 +1,346 @@
+{
+	"header": {
+		"displayName": "Lemlist",
+		"description": "使用 Lemlist API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"activity": {
+					"displayName": "活动"
+				},
+				"campaign": {
+					"displayName": "营销活动"
+				},
+				"enrich": {
+					"displayName": "数据增强"
+				},
+				"lead": {
+					"displayName": "潜在客户"
+				},
+				"team": {
+					"displayName": "团队"
+				},
+				"unsubscribe": {
+					"displayName": "取消订阅"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"getStats": {
+					"displayName": "获取统计信息"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"enrichLead": {
+					"displayName": "丰富潜在客户"
+				},
+				"enrichPerson": {
+					"displayName": "完善人员信息"
+				},
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"unsubscribe": {
+					"displayName": "取消订阅"
+				},
+				"getCredits": {
+					"displayName": "获取积分"
+				},
+				"add": {
+					"displayName": "添加"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"campaignId": {
+					"displayName": "活动名称或ID",
+					"description": "要获取活动的营销活动ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"isFirst": {
+					"displayName": "是否首次"
+				},
+				"leadId": {
+					"displayName": "潜在客户ID"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "要检索的活动类型",
+					"options": {
+						"aircallCreated": {
+							"displayName": "Aircall 已创建"
+						},
+						"aircallDone": {
+							"displayName": "Aircall 已完成"
+						},
+						"aircallEnded": {
+							"displayName": "Aircall通话结束"
+						},
+						"aircallInterested": {
+							"displayName": "Aircall 感兴趣"
+						},
+						"aircallNotInterested": {
+							"displayName": "Aircall 不感兴趣"
+						},
+						"apiDone": {
+							"displayName": "API完成"
+						},
+						"apiFailed": {
+							"displayName": "API 失败"
+						},
+						"apiInterested": {
+							"displayName": "API 感兴趣"
+						},
+						"apiNotInterested": {
+							"displayName": "API 不感兴趣"
+						},
+						"attracted": {
+							"displayName": "已吸引"
+						},
+						"connectionIssue": {
+							"displayName": "连接问题"
+						},
+						"contacted": {
+							"displayName": "已联系"
+						},
+						"customDomainErrors": {
+							"displayName": "自定义域名错误"
+						},
+						"emailsBounced": {
+							"displayName": "邮件退回"
+						},
+						"emailsClicked": {
+							"displayName": "邮件点击"
+						},
+						"emailsFailed": {
+							"displayName": "邮件发送失败"
+						},
+						"emailsInterested": {
+							"displayName": "感兴趣的邮件"
+						},
+						"emailsNotInterested": {
+							"displayName": "不感兴趣的邮件"
+						},
+						"emailsOpened": {
+							"displayName": "已打开邮件"
+						},
+						"emailsReplied": {
+							"displayName": "已回复邮件"
+						},
+						"emailsSendFailed": {
+							"displayName": "邮件发送失败"
+						},
+						"emailsSent": {
+							"displayName": "已发送邮件"
+						},
+						"emailsUnsubscribed": {
+							"displayName": "邮件退订"
+						},
+						"hooked": {
+							"displayName": "已连接"
+						},
+						"interested": {
+							"displayName": "感兴趣"
+						},
+						"lemwarmPaused": {
+							"displayName": "Lemwarm 已暂停"
+						},
+						"linkedinInterested": {
+							"displayName": "LinkedIn 感兴趣"
+						},
+						"linkedinInviteAccepted": {
+							"displayName": "LinkedIn 邀请已接受"
+						},
+						"linkedinInviteDone": {
+							"displayName": "LinkedIn 邀请完成"
+						},
+						"linkedinInviteFailed": {
+							"displayName": "LinkedIn 邀请发送失败"
+						},
+						"linkedinNotInterested": {
+							"displayName": "LinkedIn 不感兴趣"
+						},
+						"linkedinReplied": {
+							"displayName": "LinkedIn 已回复"
+						},
+						"linkedinSendFailed": {
+							"displayName": "LinkedIn 发送失败"
+						},
+						"linkedinSent": {
+							"displayName": "LinkedIn 已发送"
+						},
+						"linkedinVisitDone": {
+							"displayName": "LinkedIn访问完成"
+						},
+						"linkedinVisitFailed": {
+							"displayName": "LinkedIn 访问失败"
+						},
+						"linkedinVoiceNoteDone": {
+							"displayName": "LinkedIn语音笔记完成"
+						},
+						"linkedinVoiceNoteFailed": {
+							"displayName": "LinkedIn语音笔记发送失败"
+						},
+						"manualInterested": {
+							"displayName": "手动关注"
+						},
+						"manualNotInterested": {
+							"displayName": "手动不感兴趣"
+						},
+						"notInterested": {
+							"displayName": "不感兴趣"
+						},
+						"opportunitiesDone": {
+							"displayName": "机会已完成"
+						},
+						"paused": {
+							"displayName": "已暂停"
+						},
+						"resumed": {
+							"displayName": "已恢复"
+						},
+						"sendLimitReached": {
+							"displayName": "发送限制已达上限"
+						},
+						"skipped": {
+							"displayName": "已跳过"
+						},
+						"warmed": {
+							"displayName": "已预热"
+						}
+					}
+				},
+				"version": {
+					"displayName": "版本"
+				}
+			}
+		},
+		"campaignId": {
+			"displayName": "活动名称或ID",
+			"description": "要从中取消订阅潜在客户的营销活动ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"startDate": {
+			"displayName": "开始日期",
+			"placeholder": "例如 2024-09-03 00:00:00Z"
+		},
+		"endDate": {
+			"displayName": "结束日期",
+			"placeholder": "例如 2024-09-03 00:00:00Z"
+		},
+		"timezone": {
+			"displayName": "时区",
+			"placeholder": "例如：Europe/Paris"
+		},
+		"enrichId": {
+			"displayName": "丰富化ID",
+			"description": "要检索的丰富化ID"
+		},
+		"leadId": {
+			"displayName": "潜在客户ID"
+		},
+		"findEmail": {
+			"displayName": "查找邮件"
+		},
+		"verifyEmail": {
+			"displayName": "验证邮箱"
+		},
+		"linkedinEnrichment": {
+			"displayName": "LinkedIn信息丰富"
+		},
+		"findPhone": {
+			"displayName": "查找手机"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "要创建的潜在客户的名字"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "要创建的潜在客户姓氏"
+				},
+				"linkedinUrl": {
+					"displayName": "LinkedIn URL",
+					"description": "LinkedIn URL of the lead to create"
+				},
+				"companyName": {
+					"displayName": "公司名称",
+					"description": "要创建的潜在客户公司名称"
+				},
+				"companyDomain": {
+					"displayName": "公司域名",
+					"description": "Company domain of the lead to create"
+				},
+				"deduplicate": {
+					"displayName": "去重",
+					"description": "如果此邮件已存在于其他营销活动中，是否不插入"
+				},
+				"findEmail": {
+					"displayName": "查找邮箱",
+					"description": "是否查找已验证邮箱"
+				},
+				"findPhone": {
+					"displayName": "查找手机",
+					"description": "是否查找手机号码"
+				},
+				"icebreaker": {
+					"displayName": "破冰环节",
+					"description": "为潜在客户创建破冰环节"
+				},
+				"jobTitle": {
+					"displayName": "职位名称",
+					"description": "Job title of the lead to create"
+				},
+				"linkedinEnrichment": {
+					"displayName": "LinkedIn 信息丰富",
+					"description": "是否运行 LinkedIn 信息丰富"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "要创建的潜在客户电话号码"
+				},
+				"picture": {
+					"displayName": "图片URL",
+					"description": "待创建线索的图片URL"
+				},
+				"verifyEmail": {
+					"displayName": "验证邮箱",
+					"description": "是否验证现有邮箱（防抖）"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要从退订列表中删除的电子邮件",
+			"placeholder": "name@email.com"
+		}
+	}
+}

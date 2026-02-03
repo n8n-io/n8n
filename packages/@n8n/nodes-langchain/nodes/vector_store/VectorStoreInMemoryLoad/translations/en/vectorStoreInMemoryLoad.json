@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "In Memory Vector Store Load",
+		"description": "Load embedded data from an in-memory vector store"
+	},
+	"nodeView": {
+		"memoryKey": {
+			"displayName": "Memory Key",
+			"description": "The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions."
+		}
+	}
+}

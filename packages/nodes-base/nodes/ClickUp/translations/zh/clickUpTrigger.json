@@ -1,0 +1,44 @@
+{
+	"header": {
+		"displayName": "ClickUp触发器",
+		"description": "通过Webhook处理ClickUp事件（测试版）"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"team": {
+			"displayName": "团队名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"events": {
+			"displayName": "事件"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"folderId": {
+					"displayName": "文件夹ID"
+				},
+				"listId": {
+					"displayName": "列表ID"
+				},
+				"spaceId": {
+					"displayName": "空间ID"
+				},
+				"taskId": {
+					"displayName": "任务ID"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,368 @@
+{
+	"header": {
+		"displayName": "n8n 表单触发器",
+		"description": "在n8n中生成Web表单，并将其响应传递到工作流"
+	},
+	"nodeView": {
+		"path": {
+			"displayName": "表单路径",
+			"description": "表单URL的最后一段，适用于测试和生产环境",
+			"placeholder": "webhook"
+		},
+		"formTitle": {
+			"displayName": "表单标题",
+			"description": "显示在表单顶部",
+			"placeholder": "例如：联系我们"
+		},
+		"formDescription": {
+			"displayName": "表单描述",
+			"description": "显示在表单标题下方。可用于提示用户如何填写表单。支持HTML。不接受<code>&lt;script&gt;</code>、<code>&lt;style&gt;</code>或<code>&lt;input&gt;</code>标签。",
+			"placeholder": "例如：我们会尽快回复您"
+		},
+		"formFields": {
+			"displayName": "表单元素",
+			"placeholder": "添加表单元素",
+			"multipleValueButtonText": "添加表单元素",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "表单元素",
+					"placeholder": "添加表单元素"
+				}
+			}
+		},
+		"responseMode": {
+			"displayName": "响应时机",
+			"description": "何时响应表单提交",
+			"options": {
+				"onReceived": {
+					"displayName": "表单已提交",
+					"description": "当此节点接收到表单提交时"
+				},
+				"lastNode": {
+					"displayName": "工作流完成",
+					"description": "当工作流的最后一个节点执行时"
+				},
+				"responseNode": {
+					"displayName": "使用'响应Webhook'节点",
+					"description": "当'响应Webhook'节点执行时"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"formSubmittedText": {
+					"displayName": "表单提交文本",
+					"description": "用户在填写表单后看到的文本"
+				}
+			}
+		}
+	}
+}

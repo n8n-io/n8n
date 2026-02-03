@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "错误触发器",
+		"description": "当其他工作流发生错误时触发此工作流"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "当其他工作流发生错误时（前提是该工作流已配置为触发错误），此节点将被触发。<a href=\"https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.errortrigger\" target=\"_blank\">更多信息</a>"
+		}
+	}
+}

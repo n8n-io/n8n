@@ -1,0 +1,510 @@
+{
+	"header": {
+		"displayName": "Jira Software",
+		"description": "Consume Jira Software API"
+	},
+	"nodeView": {
+		"jiraVersion": {
+			"displayName": "Jira Version",
+			"options": {
+				"cloud": {
+					"displayName": "Cloud"
+				},
+				"server": {
+					"displayName": "Server (Self Hosted)"
+				},
+				"serverPat": {
+					"displayName": "Server Pat (Self Hosted)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"issue": {
+					"displayName": "Issue",
+					"description": "Creates an issue or, where the option to create subtasks is enabled in Jira, a subtask"
+				},
+				"issueAttachment": {
+					"displayName": "Issue Attachment",
+					"description": "Add, remove, and get an attachment from an issue"
+				},
+				"issueComment": {
+					"displayName": "Issue Comment",
+					"description": "Get, create, update, and delete a comment from an issue"
+				},
+				"user": {
+					"displayName": "User",
+					"description": "Get, create and delete a user"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"changelog": {
+					"displayName": "Changelog",
+					"description": "Get issue changelog"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new user"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many comments"
+				},
+				"notify": {
+					"displayName": "Notify",
+					"description": "Create an email notification for an issue and add it to the mail queue"
+				},
+				"transitions": {
+					"displayName": "Status",
+					"description": "Return either all transitions or a transition that can be performed by the user on an issue, based on the issue's status"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a comment"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add comment to issue"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a comment"
+				}
+			}
+		},
+		"project": {
+			"displayName": "Project"
+		},
+		"issueType": {
+			"displayName": "Issue Type"
+		},
+		"summary": {
+			"displayName": "Summary"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assignee": {
+					"displayName": "Assignee"
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"componentIds": {
+					"displayName": "Component Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field"
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field"
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"labels": {
+					"displayName": "Label Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"serverLabels": {
+					"displayName": "Labels"
+				},
+				"parentIssueKey": {
+					"displayName": "Parent Issue Key"
+				},
+				"priority": {
+					"displayName": "Priority"
+				},
+				"reporter": {
+					"displayName": "Reporter"
+				},
+				"updateHistory": {
+					"displayName": "Update History",
+					"description": "Whether the project in which the issue is created is added to the user's Recently viewed project list, as shown under Projects in Jira. This also populates the JQL issues search lastViewed field."
+				},
+				"expand": {
+					"displayName": "Expand",
+					"description": "Include more information about the user"
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude."
+				},
+				"fieldsByKey": {
+					"displayName": "Fields By Key",
+					"description": "Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID."
+				},
+				"properties": {
+					"displayName": "Properties",
+					"description": "A list of issue properties to return for the issue. This parameter accepts a comma-separated list. Allowed values: <code>*all</code> Returns all issue properties. Any issue property key, prefixed with a minus to exclude. Examples: <code>*all</code> Returns all properties. <code>*all</code>,-prop1 Returns all properties except prop1. <code>prop1,prop2</code> Returns prop1 and prop2 properties. This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3."
+				},
+				"htmlBody": {
+					"displayName": "HTML Body",
+					"description": "The HTML body of the email notification for the issue"
+				},
+				"subject": {
+					"displayName": "Subject",
+					"description": "The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary."
+				},
+				"textBody": {
+					"displayName": "Text Body",
+					"description": "The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary."
+				},
+				"transitionId": {
+					"displayName": "Transition ID",
+					"description": "The ID of the transition"
+				},
+				"skipRemoteOnlyCondition": {
+					"displayName": "Skip Remote Only Condition",
+					"description": "Whether transitions with the condition Hide From User Condition are included in the response"
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "Password for the user. If a password is not set, a random password is generated."
+				},
+				"notification": {
+					"displayName": "Notification",
+					"description": "Whether to send the user an email confirmation that they have been added to Jira"
+				}
+			}
+		},
+		"issueKey": {
+			"displayName": "Issue Key",
+			"description": "The Issue Comment key"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assignee": {
+					"displayName": "Assignee"
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field"
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field"
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"issueType": {
+					"displayName": "Issue Type",
+					"description": "Issue Types"
+				},
+				"labels": {
+					"displayName": "Label Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"serverLabels": {
+					"displayName": "Labels"
+				},
+				"parentIssueKey": {
+					"displayName": "Parent Issue Key"
+				},
+				"priority": {
+					"displayName": "Priority"
+				},
+				"reporter": {
+					"displayName": "Reporter"
+				},
+				"summary": {
+					"displayName": "Summary"
+				},
+				"statusId": {
+					"displayName": "Status"
+				}
+			}
+		},
+		"deleteSubtasks": {
+			"displayName": "Delete Subtasks"
+		},
+		"simplifyOutput": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"expand": {
+					"displayName": "Expand",
+					"description": "Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.",
+					"options": {
+						"renderedBody": {
+							"displayName": "Rendered Body"
+						}
+					}
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude."
+				},
+				"fieldsByKey": {
+					"displayName": "Fields By Key",
+					"description": "Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID."
+				},
+				"jql": {
+					"displayName": "JQL",
+					"description": "A JQL expression"
+				},
+				"wikiMarkup": {
+					"displayName": "Use Wiki Markup",
+					"description": "Whether to enable parsing of wikiformatting for this comment. Default is false."
+				},
+				"orderBy": {
+					"displayName": "Order By",
+					"description": "Order comments by the created date",
+					"options": {
+						"+created": {
+							"displayName": "Created Ascending"
+						},
+						"-created": {
+							"displayName": "Created Descending"
+						}
+					}
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"notificationRecipientsUi": {
+			"displayName": "Notification Recipients",
+			"description": "The recipients of the email notification for the issue",
+			"placeholder": "Add Recipients",
+			"options": {
+				"notificationRecipientsValues": {
+					"displayName": "Recipients",
+					"options": {
+						"reporter": {
+							"displayName": "Reporter",
+							"description": "Whether the notification should be sent to the issue's reporter"
+						},
+						"assignee": {
+							"displayName": "Assignee",
+							"description": "Whether the notification should be sent to the issue's assignees"
+						},
+						"watchers": {
+							"displayName": "Watchers",
+							"description": "Whether the notification should be sent to the issue's assignees"
+						},
+						"voters": {
+							"displayName": "Voters",
+							"description": "Whether the notification should be sent to the issue's voters"
+						},
+						"users": {
+							"displayName": "User Names or IDs",
+							"description": "List of users to receive the notification. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"groups": {
+							"displayName": "Group Names or IDs",
+							"description": "List of groups to receive the notification. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				}
+			},
+			"values": {
+				"notificationRecipientsValues": {
+					"displayName": "Recipients",
+					"options": {
+						"reporter": {
+							"displayName": "Reporter",
+							"description": "Whether the notification should be sent to the issue's reporter"
+						},
+						"assignee": {
+							"displayName": "Assignee",
+							"description": "Whether the notification should be sent to the issue's assignees"
+						},
+						"watchers": {
+							"displayName": "Watchers",
+							"description": "Whether the notification should be sent to the issue's assignees"
+						},
+						"voters": {
+							"displayName": "Voters",
+							"description": "Whether the notification should be sent to the issue's voters"
+						},
+						"users": {
+							"displayName": "User Names or IDs",
+							"description": "List of users to receive the notification. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"groups": {
+							"displayName": "Group Names or IDs",
+							"description": "List of groups to receive the notification. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				},
+				"notificationRecipientsUi": {
+					"displayName": "Notification Recipients",
+					"placeholder": "Add Recipients"
+				}
+			}
+		},
+		"notificationRecipientsJson": {
+			"displayName": "Notification Recipients",
+			"description": "The recipients of the email notification for the issue"
+		},
+		"notificationRecipientsRestrictionsUi": {
+			"displayName": "Notification Recipients Restrictions",
+			"description": "Restricts the notifications to users with the specified permissions",
+			"placeholder": "Add Recipients Restriction",
+			"options": {
+				"notificationRecipientsRestrictionsValues": {
+					"displayName": "Recipients Restrictions",
+					"options": {
+						"users": {
+							"displayName": "User Names or IDs",
+							"description": "List of users to receive the notification. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"groups": {
+							"displayName": "Group Names or IDs",
+							"description": "List of groups to receive the notification. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				}
+			},
+			"values": {
+				"notificationRecipientsRestrictionsValues": {
+					"displayName": "Recipients Restrictions",
+					"options": {
+						"users": {
+							"displayName": "User Names or IDs",
+							"description": "List of users to receive the notification. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"groups": {
+							"displayName": "Group Names or IDs",
+							"description": "List of groups to receive the notification. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				},
+				"notificationRecipientsRestrictionsUi": {
+					"displayName": "Notification Recipients Restrictions",
+					"placeholder": "Add Recipients Restriction"
+				}
+			}
+		},
+		"notificationRecipientsRestrictionsJson": {
+			"displayName": "Notification Recipients Restrictions",
+			"description": "Restricts the notifications to users with the specified permissions"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"attachmentId": {
+			"displayName": "Attachment ID",
+			"description": "The ID of the attachment"
+		},
+		"download": {
+			"displayName": "Download"
+		},
+		"binaryProperty": {
+			"displayName": "Put Output File in Field"
+		},
+		"comment": {
+			"displayName": "Comment",
+			"description": "Comment's text"
+		},
+		"commentJson": {
+			"displayName": "Document Format (JSON)",
+			"description": "The Atlassian Document Format (ADF). Online builder can be found <a href=\"https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/\">here</a>."
+		},
+		"commentId": {
+			"displayName": "Comment ID",
+			"description": "The ID of the comment"
+		},
+		"username": {
+			"displayName": "Username"
+		},
+		"emailAddress": {
+			"displayName": "Email Address"
+		},
+		"displayName": {
+			"displayName": "Display Name"
+		},
+		"accountId": {
+			"displayName": "Account ID",
+			"description": "Account ID of the user to retrieve"
+		}
+	}
+}

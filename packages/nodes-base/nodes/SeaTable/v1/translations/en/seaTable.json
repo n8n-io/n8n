@@ -1,0 +1,156 @@
+{
+	"header": {
+		"displayName": "SeaTable",
+		"description": "Consume the SeaTable API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"row": {
+					"displayName": "Row"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"description": "The operation being performed",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a row"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a row"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a row"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many rows"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a row"
+				}
+			}
+		},
+		"tableName": {
+			"displayName": "Table Name",
+			"description": "The name of SeaTable table to access. Choose from the list, or specify the name using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>.",
+			"placeholder": "Name of the table"
+		},
+		"tableId": {
+			"displayName": "Table ID",
+			"description": "The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "ID of the table"
+		},
+		"rowId": {
+			"displayName": "Row ID"
+		},
+		"fieldsToSend": {
+			"displayName": "Data to Send",
+			"description": "Whether to insert the input data this node receives in the new row",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties match destination column names"
+				},
+				"defineBelow": {
+					"displayName": "Define Below for Each Column",
+					"description": "Set the value for each destination column"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "Inputs to Ignore",
+			"description": "List of input properties to avoid sending, separated by commas. Leave empty to send all properties.",
+			"placeholder": "Enter properties..."
+		},
+		"columnsUi": {
+			"displayName": "Columns to Send",
+			"description": "Add destination column with its value",
+			"placeholder": "Add Column",
+			"multipleValueButtonText": "Add Column to Send",
+			"options": {
+				"columnValues": {
+					"displayName": "Column",
+					"options": {
+						"columnName": {
+							"displayName": "Column Name",
+							"description": "Choose from the list, or specify the name using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>"
+						},
+						"columnValue": {
+							"displayName": "Column Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"columnValues": {
+					"displayName": "Column",
+					"options": {
+						"columnName": {
+							"displayName": "Column Name",
+							"description": "Choose from the list, or specify the name using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>"
+						},
+						"columnValue": {
+							"displayName": "Column Value"
+						}
+					}
+				},
+				"columnsUi": {
+					"displayName": "Columns to Send",
+					"placeholder": "Add Column"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"view_name": {
+					"displayName": "View Name",
+					"description": "Choose from the list, or specify an View Name using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"convert_link_id": {
+					"displayName": "Convert Link ID",
+					"description": "Whether the ID of the linked row is returned in the link column (true). Otherwise, it return the name of the linked row (false)."
+				},
+				"direction": {
+					"displayName": "Direction",
+					"description": "The direction of the sort, ascending (asc) or descending (desc)",
+					"options": {
+						"asc": {
+							"displayName": "Ascending"
+						},
+						"desc": {
+							"displayName": "Descending"
+						}
+					}
+				},
+				"order_by": {
+					"displayName": "Order By Column",
+					"description": "Choose from the list, or specify a Column using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>"
+				}
+			}
+		}
+	}
+}

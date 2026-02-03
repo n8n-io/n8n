@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "Chargebee Trigger",
+		"description": "Starts the workflow when Chargebee events occur"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events"
+		}
+	}
+}

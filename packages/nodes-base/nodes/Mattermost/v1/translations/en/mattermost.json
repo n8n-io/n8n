@@ -1,0 +1,892 @@
+{
+	"header": {
+		"displayName": "Mattermost",
+		"description": "Sends data to Mattermost"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"channel": {
+					"displayName": "Channel"
+				},
+				"message": {
+					"displayName": "Message"
+				},
+				"reaction": {
+					"displayName": "Reaction"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"addUser": {
+					"displayName": "Add User",
+					"description": "Add a user to a channel"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new user"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Remove a reaction from a post"
+				},
+				"members": {
+					"displayName": "Member",
+					"description": "Get a page of members for a channel"
+				},
+				"restore": {
+					"displayName": "Restore",
+					"description": "Restores a soft deleted channel"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search for a channel"
+				},
+				"statistics": {
+					"displayName": "Statistics",
+					"description": "Get statistics for a channel"
+				},
+				"post": {
+					"displayName": "Post",
+					"description": "Post a message into a channel"
+				},
+				"postEphemeral": {
+					"displayName": "Post Ephemeral",
+					"description": "Post an ephemeral message into a channel"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many users"
+				},
+				"deactive": {
+					"displayName": "Deactive",
+					"description": "Deactivates the user and revokes all its sessions by archiving its user object"
+				},
+				"getByEmail": {
+					"displayName": "Get By Email",
+					"description": "Get a user by email"
+				},
+				"getById": {
+					"displayName": "Get By ID",
+					"description": "Get a user by ID"
+				},
+				"invite": {
+					"displayName": "Invite",
+					"description": "Invite user to team"
+				}
+			}
+		},
+		"teamId": {
+			"displayName": "Team Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+			"options": {}
+		},
+		"displayName": {
+			"displayName": "Display Name",
+			"description": "The non-unique UI name for the channel",
+			"placeholder": "Announcements"
+		},
+		"channel": {
+			"displayName": "Name",
+			"description": "The unique handle for the channel, will be present in the channel URL",
+			"placeholder": "announcements"
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "The type of channel to create",
+			"options": {
+				"private": {
+					"displayName": "Private"
+				},
+				"public": {
+					"displayName": "Public"
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "Channel Name or ID",
+			"description": "ID of the channel to send the ephemeral message in. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "By default the response only contain the ID of the user. If this option gets activated, it will resolve the user automatically."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "User GUID",
+			"options": {}
+		},
+		"term": {
+			"displayName": "Search Term",
+			"description": "The search term for Channels in a Team",
+			"placeholder": "General"
+		},
+		"postId": {
+			"displayName": "Post ID",
+			"description": "One or more (comma-separated) posts to retrieve reactions from",
+			"placeholder": "3moacfqxmbdw38r38fjprh6zsr"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "Text to send in the ephemeral message"
+		},
+		"attachments": {
+			"displayName": "Attachments",
+			"description": "The attachment to add",
+			"placeholder": "Add attachment item",
+			"multipleValueButtonText": "Add attachment",
+			"options": {
+				"actions": {
+					"displayName": "Actions",
+					"description": "Actions to add to message. More information can be found <a href=\"https://docs.mattermost.com/developer/interactive-messages.html\" target=\"_blank\">here</a>.",
+					"placeholder": "Add Actions",
+					"multipleValueButtonText": "Add Actions",
+					"options": {
+						"item": {
+							"displayName": "Item",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the action",
+									"options": {
+										"button": {
+											"displayName": "Button"
+										},
+										"select": {
+											"displayName": "Select"
+										}
+									}
+								},
+								"data_source": {
+									"displayName": "Data Source",
+									"description": "The type of the action",
+									"options": {
+										"channels": {
+											"displayName": "Channels"
+										},
+										"custom": {
+											"displayName": "Custom"
+										},
+										"users": {
+											"displayName": "Users"
+										}
+									}
+								},
+								"options": {
+									"displayName": "Options",
+									"description": "Adds a new option to select field",
+									"placeholder": "Add option",
+									"multipleValueButtonText": "Add option",
+									"options": {
+										"option": {
+											"displayName": "Option",
+											"options": {
+												"text": {
+													"displayName": "Option Text",
+													"description": "Text of the option"
+												},
+												"value": {
+													"displayName": "Option Value",
+													"description": "Value of the option"
+												}
+											}
+										}
+									},
+									"values": {
+										"option": {
+											"displayName": "Option",
+											"options": {
+												"text": {
+													"displayName": "Option Text",
+													"description": "Text of the option"
+												},
+												"value": {
+													"displayName": "Option Value",
+													"description": "Value of the option"
+												}
+											}
+										},
+										"options": {
+											"displayName": "Options",
+											"placeholder": "Add option"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the Action"
+								},
+								"integration": {
+									"displayName": "Integration",
+									"description": "Integration to add to message",
+									"placeholder": "Add Integration",
+									"options": {
+										"item": {
+											"displayName": "Item",
+											"options": {
+												"url": {
+													"displayName": "URL",
+													"description": "URL of the Integration"
+												},
+												"context": {
+													"displayName": "Context",
+													"description": "Adds a Context values set",
+													"placeholder": "Add Context to Integration",
+													"multipleValueButtonText": "Add Context to Integration",
+													"options": {
+														"property": {
+															"displayName": "Property",
+															"options": {
+																"name": {
+																	"displayName": "Property Name",
+																	"description": "Name of the property to set"
+																},
+																"value": {
+																	"displayName": "Property Value",
+																	"description": "Value of the property to set"
+																}
+															}
+														}
+													},
+													"values": {
+														"property": {
+															"displayName": "Property",
+															"options": {
+																"name": {
+																	"displayName": "Property Name",
+																	"description": "Name of the property to set"
+																},
+																"value": {
+																	"displayName": "Property Value",
+																	"description": "Value of the property to set"
+																}
+															}
+														},
+														"context": {
+															"displayName": "Context",
+															"placeholder": "Add Context to Integration"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"item": {
+											"displayName": "Item",
+											"options": {
+												"url": {
+													"displayName": "URL",
+													"description": "URL of the Integration"
+												},
+												"context": {
+													"displayName": "Context",
+													"description": "Adds a Context values set",
+													"placeholder": "Add Context to Integration",
+													"multipleValueButtonText": "Add Context to Integration",
+													"options": {
+														"property": {
+															"displayName": "Property",
+															"options": {
+																"name": {
+																	"displayName": "Property Name",
+																	"description": "Name of the property to set"
+																},
+																"value": {
+																	"displayName": "Property Value",
+																	"description": "Value of the property to set"
+																}
+															}
+														}
+													},
+													"values": {
+														"property": {
+															"displayName": "Property",
+															"options": {
+																"name": {
+																	"displayName": "Property Name",
+																	"description": "Name of the property to set"
+																},
+																"value": {
+																	"displayName": "Property Value",
+																	"description": "Value of the property to set"
+																}
+															}
+														},
+														"context": {
+															"displayName": "Context",
+															"placeholder": "Add Context to Integration"
+														}
+													}
+												}
+											}
+										},
+										"integration": {
+											"displayName": "Integration",
+											"placeholder": "Add Integration"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"item": {
+							"displayName": "Item",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the action",
+									"options": {
+										"button": {
+											"displayName": "Button"
+										},
+										"select": {
+											"displayName": "Select"
+										}
+									}
+								},
+								"data_source": {
+									"displayName": "Data Source",
+									"description": "The type of the action",
+									"options": {
+										"channels": {
+											"displayName": "Channels"
+										},
+										"custom": {
+											"displayName": "Custom"
+										},
+										"users": {
+											"displayName": "Users"
+										}
+									}
+								},
+								"options": {
+									"displayName": "Options",
+									"description": "Adds a new option to select field",
+									"placeholder": "Add option",
+									"multipleValueButtonText": "Add option",
+									"options": {
+										"option": {
+											"displayName": "Option",
+											"options": {
+												"text": {
+													"displayName": "Option Text",
+													"description": "Text of the option"
+												},
+												"value": {
+													"displayName": "Option Value",
+													"description": "Value of the option"
+												}
+											}
+										}
+									},
+									"values": {
+										"option": {
+											"displayName": "Option",
+											"options": {
+												"text": {
+													"displayName": "Option Text",
+													"description": "Text of the option"
+												},
+												"value": {
+													"displayName": "Option Value",
+													"description": "Value of the option"
+												}
+											}
+										},
+										"options": {
+											"displayName": "Options",
+											"placeholder": "Add option"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the Action"
+								},
+								"integration": {
+									"displayName": "Integration",
+									"description": "Integration to add to message",
+									"placeholder": "Add Integration",
+									"options": {
+										"item": {
+											"displayName": "Item",
+											"options": {
+												"url": {
+													"displayName": "URL",
+													"description": "URL of the Integration"
+												},
+												"context": {
+													"displayName": "Context",
+													"description": "Adds a Context values set",
+													"placeholder": "Add Context to Integration",
+													"multipleValueButtonText": "Add Context to Integration",
+													"options": {
+														"property": {
+															"displayName": "Property",
+															"options": {
+																"name": {
+																	"displayName": "Property Name",
+																	"description": "Name of the property to set"
+																},
+																"value": {
+																	"displayName": "Property Value",
+																	"description": "Value of the property to set"
+																}
+															}
+														}
+													},
+													"values": {
+														"property": {
+															"displayName": "Property",
+															"options": {
+																"name": {
+																	"displayName": "Property Name",
+																	"description": "Name of the property to set"
+																},
+																"value": {
+																	"displayName": "Property Value",
+																	"description": "Value of the property to set"
+																}
+															}
+														},
+														"context": {
+															"displayName": "Context",
+															"placeholder": "Add Context to Integration"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"item": {
+											"displayName": "Item",
+											"options": {
+												"url": {
+													"displayName": "URL",
+													"description": "URL of the Integration"
+												},
+												"context": {
+													"displayName": "Context",
+													"description": "Adds a Context values set",
+													"placeholder": "Add Context to Integration",
+													"multipleValueButtonText": "Add Context to Integration",
+													"options": {
+														"property": {
+															"displayName": "Property",
+															"options": {
+																"name": {
+																	"displayName": "Property Name",
+																	"description": "Name of the property to set"
+																},
+																"value": {
+																	"displayName": "Property Value",
+																	"description": "Value of the property to set"
+																}
+															}
+														}
+													},
+													"values": {
+														"property": {
+															"displayName": "Property",
+															"options": {
+																"name": {
+																	"displayName": "Property Name",
+																	"description": "Name of the property to set"
+																},
+																"value": {
+																	"displayName": "Property Value",
+																	"description": "Value of the property to set"
+																}
+															}
+														},
+														"context": {
+															"displayName": "Context",
+															"placeholder": "Add Context to Integration"
+														}
+													}
+												}
+											}
+										},
+										"integration": {
+											"displayName": "Integration",
+											"placeholder": "Add Integration"
+										}
+									}
+								}
+							}
+						},
+						"actions": {
+							"displayName": "Actions",
+							"placeholder": "Add Actions"
+						}
+					}
+				},
+				"author_icon": {
+					"displayName": "Author Icon",
+					"description": "Icon which should appear for the user"
+				},
+				"author_link": {
+					"displayName": "Author Link",
+					"description": "Link for the author"
+				},
+				"author_name": {
+					"displayName": "Author Name",
+					"description": "Name that should appear"
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "Color of the line left of text"
+				},
+				"fallback": {
+					"displayName": "Fallback Text",
+					"description": "Required plain-text summary of the attachment"
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields to add to message",
+					"placeholder": "Add Fields",
+					"multipleValueButtonText": "Add Fields",
+					"options": {
+						"item": {
+							"displayName": "Item",
+							"options": {
+								"title": {
+									"displayName": "Title",
+									"description": "Title of the item"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the item"
+								},
+								"short": {
+									"displayName": "Short",
+									"description": "Whether items can be displayed next to each other"
+								}
+							}
+						}
+					},
+					"values": {
+						"item": {
+							"displayName": "Item",
+							"options": {
+								"title": {
+									"displayName": "Title",
+									"description": "Title of the item"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the item"
+								},
+								"short": {
+									"displayName": "Short",
+									"description": "Whether items can be displayed next to each other"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "Fields",
+							"placeholder": "Add Fields"
+						}
+					}
+				},
+				"footer": {
+					"displayName": "Footer",
+					"description": "Text of footer to add"
+				},
+				"footer_icon": {
+					"displayName": "Footer Icon",
+					"description": "Icon which should appear next to footer"
+				},
+				"image_url": {
+					"displayName": "Image URL",
+					"description": "URL of image"
+				},
+				"pretext": {
+					"displayName": "Pretext",
+					"description": "Text which appears before the message block"
+				},
+				"text": {
+					"displayName": "Text",
+					"description": "Text to send"
+				},
+				"thumb_url": {
+					"displayName": "Thumbnail URL",
+					"description": "URL of thumbnail"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the message"
+				},
+				"title_link": {
+					"displayName": "Title Link",
+					"description": "Link of the title"
+				}
+			}
+		},
+		"otherOptions": {
+			"displayName": "Other Options",
+			"description": "Other options to set",
+			"placeholder": "Add option",
+			"options": {
+				"root_id": {
+					"displayName": "Parent Post ID",
+					"description": "If set, the created message will be a threaded reply to the specified parent post ID"
+				}
+			}
+		},
+		"emojiName": {
+			"displayName": "Emoji Name",
+			"description": "Name of the emoji to delete"
+		},
+		"username": {
+			"displayName": "Username"
+		},
+		"authService": {
+			"displayName": "Auth Service",
+			"options": {
+				"email": {
+					"displayName": "Email"
+				},
+				"gitlab": {
+					"displayName": "Gitlab"
+				},
+				"google": {
+					"displayName": "Google"
+				},
+				"ldap": {
+					"displayName": "LDAP"
+				},
+				"office365": {
+					"displayName": "Office365"
+				},
+				"saml": {
+					"displayName": "SAML"
+				}
+			}
+		},
+		"authData": {
+			"displayName": "Auth Data"
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "name@email.com",
+			"description": "User's email"
+		},
+		"password": {
+			"displayName": "Password",
+			"description": "The password used for email authentication"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"first_name": {
+					"displayName": "First Name"
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"locale": {
+					"displayName": "Locale"
+				},
+				"nickname": {
+					"displayName": "Nickname"
+				},
+				"notificationUi": {
+					"displayName": "Notification Settings",
+					"placeholder": "Add Notification Setting",
+					"options": {
+						"notificationValues": {
+							"displayName": "Notify",
+							"options": {
+								"channel": {
+									"displayName": "Channel",
+									"description": "Whether to enable channel-wide notifications (@channel, @all, etc.), \"false\" to disable. Defaults to \"true\"."
+								},
+								"desktop": {
+									"displayName": "Desktop",
+									"options": {
+										"all": {
+											"displayName": "All",
+											"description": "Notifications for all activity"
+										},
+										"mention": {
+											"displayName": "Mention",
+											"description": "Mentions and direct messages only"
+										},
+										"none": {
+											"displayName": "None",
+											"description": "Mentions and direct messages only"
+										}
+									}
+								},
+								"desktop_sound": {
+									"displayName": "Desktop Sound",
+									"description": "Whether to enable sound on desktop notifications, \"false\" to disable. Defaults to \"true\"."
+								},
+								"email": {
+									"displayName": "Email",
+									"description": "Whether to enable email notifications, \"false\" to disable. Defaults to \"false\"."
+								},
+								"first_name": {
+									"displayName": "First Name",
+									"description": "Whether to enable mentions for first name. Defaults to \"true\" if a first name is set, \"false\" otherwise."
+								},
+								"mention_keys": {
+									"displayName": "Mention Keys",
+									"description": "A comma-separated list of words to count as mentions. Defaults to username and @username."
+								},
+								"push": {
+									"displayName": "Push",
+									"options": {
+										"all": {
+											"displayName": "All",
+											"description": "Notifications for all activity"
+										},
+										"mention": {
+											"displayName": "Mention",
+											"description": "Mentions and direct messages only"
+										},
+										"none": {
+											"displayName": "None",
+											"description": "Mentions and direct messages only"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"notificationValues": {
+							"displayName": "Notify",
+							"options": {
+								"channel": {
+									"displayName": "Channel",
+									"description": "Whether to enable channel-wide notifications (@channel, @all, etc.), \"false\" to disable. Defaults to \"true\"."
+								},
+								"desktop": {
+									"displayName": "Desktop",
+									"options": {
+										"all": {
+											"displayName": "All",
+											"description": "Notifications for all activity"
+										},
+										"mention": {
+											"displayName": "Mention",
+											"description": "Mentions and direct messages only"
+										},
+										"none": {
+											"displayName": "None",
+											"description": "Mentions and direct messages only"
+										}
+									}
+								},
+								"desktop_sound": {
+									"displayName": "Desktop Sound",
+									"description": "Whether to enable sound on desktop notifications, \"false\" to disable. Defaults to \"true\"."
+								},
+								"email": {
+									"displayName": "Email",
+									"description": "Whether to enable email notifications, \"false\" to disable. Defaults to \"false\"."
+								},
+								"first_name": {
+									"displayName": "First Name",
+									"description": "Whether to enable mentions for first name. Defaults to \"true\" if a first name is set, \"false\" otherwise."
+								},
+								"mention_keys": {
+									"displayName": "Mention Keys",
+									"description": "A comma-separated list of words to count as mentions. Defaults to username and @username."
+								},
+								"push": {
+									"displayName": "Push",
+									"options": {
+										"all": {
+											"displayName": "All",
+											"description": "Notifications for all activity"
+										},
+										"mention": {
+											"displayName": "Mention",
+											"description": "Mentions and direct messages only"
+										},
+										"none": {
+											"displayName": "None",
+											"description": "Mentions and direct messages only"
+										}
+									}
+								}
+							}
+						},
+						"notificationUi": {
+							"displayName": "Notification Settings",
+							"placeholder": "Add Notification Setting"
+						}
+					}
+				},
+				"inChannel": {
+					"displayName": "In Channel",
+					"description": "The ID of the channel to get users for"
+				},
+				"inTeam": {
+					"displayName": "In Team",
+					"description": "The ID of the team to get users for"
+				},
+				"notInTeam": {
+					"displayName": "Not In Team",
+					"description": "The ID of the team to exclude users for"
+				},
+				"notInChannel": {
+					"displayName": "Not In Channel",
+					"description": "The ID of the channel to exclude users for"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The ID of the channel to exclude users for",
+					"options": {
+						"createdAt": {
+							"displayName": "Created At"
+						},
+						"lastActivityAt": {
+							"displayName": "Last Activity At"
+						},
+						"status": {
+							"displayName": "Status"
+						},
+						"username": {
+							"displayName": "Username"
+						}
+					}
+				},
+				"since": {
+					"displayName": "Since",
+					"description": "Only return users that have been modified since the given Unix timestamp (in milliseconds)"
+				}
+			}
+		},
+		"userIds": {
+			"displayName": "User IDs",
+			"description": "User's ID"
+		},
+		"emails": {
+			"displayName": "Emails",
+			"description": "User's email. Multiple emails can be set separated by comma."
+		}
+	}
+}

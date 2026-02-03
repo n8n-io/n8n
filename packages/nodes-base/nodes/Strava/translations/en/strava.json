@@ -1,0 +1,457 @@
+{
+	"header": {
+		"displayName": "Strava",
+		"description": "Consume Strava API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"activity": {
+					"displayName": "Activity"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new activity"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get an activity"
+				},
+				"getComments": {
+					"displayName": "Get Comments",
+					"description": "Get all activity comments"
+				},
+				"getKudos": {
+					"displayName": "Get Kudos",
+					"description": "Get all activity kudos"
+				},
+				"getLaps": {
+					"displayName": "Get Laps",
+					"description": "Get all activity laps"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many activities"
+				},
+				"getStreams": {
+					"displayName": "Get Streams",
+					"description": "Get activity streams"
+				},
+				"getZones": {
+					"displayName": "Get Zones",
+					"description": "Get all activity zones"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update an activity"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the activity"
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "Type of activity. For example - Run, Ride etc."
+		},
+		"sport_type": {
+			"displayName": "Sport Type",
+			"description": "Type of sport",
+			"options": {
+				"AlpineSki": {
+					"displayName": "Alpine Ski"
+				},
+				"BackcountrySki": {
+					"displayName": "Backcountry Ski"
+				},
+				"Badminton": {
+					"displayName": "Badminton"
+				},
+				"Canoeing": {
+					"displayName": "Canoeing"
+				},
+				"Crossfit": {
+					"displayName": "Crossfit"
+				},
+				"EBikeRide": {
+					"displayName": "EBike Ride"
+				},
+				"Elliptical": {
+					"displayName": "Elliptical"
+				},
+				"EMountainBikeRide": {
+					"displayName": "EMountain Bike Ride"
+				},
+				"Golf": {
+					"displayName": "Golf"
+				},
+				"GravelRide": {
+					"displayName": "Gravel Ride"
+				},
+				"Handcycle": {
+					"displayName": "Handcycle"
+				},
+				"HighIntensityIntervalTraining": {
+					"displayName": "HIIT"
+				},
+				"Hike": {
+					"displayName": "Hike"
+				},
+				"IceSkate": {
+					"displayName": "Ice Skate"
+				},
+				"InlineSkate": {
+					"displayName": "Inline Skate"
+				},
+				"Kayaking": {
+					"displayName": "Kayaking"
+				},
+				"Kitesurf": {
+					"displayName": "Kitesurf"
+				},
+				"MountainBikeRide": {
+					"displayName": "Mountain Bike Ride"
+				},
+				"NordicSki": {
+					"displayName": "Nordic Ski"
+				},
+				"Pickleball": {
+					"displayName": "Pickleball"
+				},
+				"Pilates": {
+					"displayName": "Pilates"
+				},
+				"Racquetball": {
+					"displayName": "Racquetball"
+				},
+				"Ride": {
+					"displayName": "Ride"
+				},
+				"RockClimbing": {
+					"displayName": "Rock Climbing"
+				},
+				"RollerSki": {
+					"displayName": "Roller Ski"
+				},
+				"Rowing": {
+					"displayName": "Rowing"
+				},
+				"Run": {
+					"displayName": "Run"
+				},
+				"Sail": {
+					"displayName": "Sail"
+				},
+				"Skateboard": {
+					"displayName": "Skateboard"
+				},
+				"Snowboard": {
+					"displayName": "Snowboard"
+				},
+				"Snowshoe": {
+					"displayName": "Snowshoe"
+				},
+				"Soccer": {
+					"displayName": "Soccer"
+				},
+				"Squash": {
+					"displayName": "Squash"
+				},
+				"StairStepper": {
+					"displayName": "Stair Stepper"
+				},
+				"StandUpPaddling": {
+					"displayName": "Stand Up Paddling"
+				},
+				"Surfing": {
+					"displayName": "Surfing"
+				},
+				"Swim": {
+					"displayName": "Swim"
+				},
+				"TableTennis": {
+					"displayName": "Table Tennis"
+				},
+				"Tennis": {
+					"displayName": "Tennis"
+				},
+				"TrailRun": {
+					"displayName": "Trail Run"
+				},
+				"Velomobile": {
+					"displayName": "Velomobile"
+				},
+				"VirtualRide": {
+					"displayName": "Virtual Ride"
+				},
+				"VirtualRow": {
+					"displayName": "Virtual Row"
+				},
+				"VirtualRun": {
+					"displayName": "Virtual Run"
+				},
+				"Walk": {
+					"displayName": "Walk"
+				},
+				"WeightTraining": {
+					"displayName": "Weight Training"
+				},
+				"Wheelchair": {
+					"displayName": "Wheelchair"
+				},
+				"Windsurf": {
+					"displayName": "Windsurf"
+				},
+				"Workout": {
+					"displayName": "Workout"
+				},
+				"Yoga": {
+					"displayName": "Yoga"
+				}
+			}
+		},
+		"startDate": {
+			"displayName": "Start Date",
+			"description": "ISO 8601 formatted date time"
+		},
+		"elapsedTime": {
+			"displayName": "Elapsed Time (Seconds)",
+			"description": "In seconds"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"commute": {
+					"displayName": "Commute",
+					"description": "Whether to mark as commute"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description of the activity"
+				},
+				"distance": {
+					"displayName": "Distance",
+					"description": "In meters"
+				},
+				"trainer": {
+					"displayName": "Trainer",
+					"description": "Whether to mark as a trainer activity"
+				}
+			}
+		},
+		"activityId": {
+			"displayName": "Activity ID",
+			"description": "ID or email of activity"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"commute": {
+					"displayName": "Commute",
+					"description": "Whether to mark as commute"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description of the activity"
+				},
+				"gear_id": {
+					"displayName": "Gear ID",
+					"description": "Identifier for the gear associated with the activity. ‘none’ clears gear from activity."
+				},
+				"hide_from_home": {
+					"displayName": "Mute Activity",
+					"description": "Do not publish to Home or Club feeds"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the activity"
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Type of activity. For example - Run, Ride etc."
+				},
+				"sport_type": {
+					"displayName": "Sport Type",
+					"description": "Type of sport",
+					"options": {
+						"AlpineSki": {
+							"displayName": "Alpine Ski"
+						},
+						"BackcountrySki": {
+							"displayName": "Backcountry Ski"
+						},
+						"Badminton": {
+							"displayName": "Badminton"
+						},
+						"Canoeing": {
+							"displayName": "Canoeing"
+						},
+						"Crossfit": {
+							"displayName": "Crossfit"
+						},
+						"EBikeRide": {
+							"displayName": "EBike Ride"
+						},
+						"Elliptical": {
+							"displayName": "Elliptical"
+						},
+						"EMountainBikeRide": {
+							"displayName": "EMountain Bike Ride"
+						},
+						"Golf": {
+							"displayName": "Golf"
+						},
+						"GravelRide": {
+							"displayName": "Gravel Ride"
+						},
+						"Handcycle": {
+							"displayName": "Handcycle"
+						},
+						"HighIntensityIntervalTraining": {
+							"displayName": "HIIT"
+						},
+						"Hike": {
+							"displayName": "Hike"
+						},
+						"IceSkate": {
+							"displayName": "Ice Skate"
+						},
+						"InlineSkate": {
+							"displayName": "Inline Skate"
+						},
+						"Kayaking": {
+							"displayName": "Kayaking"
+						},
+						"Kitesurf": {
+							"displayName": "Kitesurf"
+						},
+						"MountainBikeRide": {
+							"displayName": "Mountain Bike Ride"
+						},
+						"NordicSki": {
+							"displayName": "Nordic Ski"
+						},
+						"Pickleball": {
+							"displayName": "Pickleball"
+						},
+						"Pilates": {
+							"displayName": "Pilates"
+						},
+						"Racquetball": {
+							"displayName": "Racquetball"
+						},
+						"Ride": {
+							"displayName": "Ride"
+						},
+						"RockClimbing": {
+							"displayName": "Rock Climbing"
+						},
+						"RollerSki": {
+							"displayName": "Roller Ski"
+						},
+						"Rowing": {
+							"displayName": "Rowing"
+						},
+						"Run": {
+							"displayName": "Run"
+						},
+						"Sail": {
+							"displayName": "Sail"
+						},
+						"Skateboard": {
+							"displayName": "Skateboard"
+						},
+						"Snowboard": {
+							"displayName": "Snowboard"
+						},
+						"Snowshoe": {
+							"displayName": "Snowshoe"
+						},
+						"Soccer": {
+							"displayName": "Soccer"
+						},
+						"Squash": {
+							"displayName": "Squash"
+						},
+						"StairStepper": {
+							"displayName": "Stair Stepper"
+						},
+						"StandUpPaddling": {
+							"displayName": "Stand Up Paddling"
+						},
+						"Surfing": {
+							"displayName": "Surfing"
+						},
+						"Swim": {
+							"displayName": "Swim"
+						},
+						"TableTennis": {
+							"displayName": "Table Tennis"
+						},
+						"Tennis": {
+							"displayName": "Tennis"
+						},
+						"TrailRun": {
+							"displayName": "Trail Run"
+						},
+						"Velomobile": {
+							"displayName": "Velomobile"
+						},
+						"VirtualRide": {
+							"displayName": "Virtual Ride"
+						},
+						"VirtualRow": {
+							"displayName": "Virtual Row"
+						},
+						"VirtualRun": {
+							"displayName": "Virtual Run"
+						},
+						"Walk": {
+							"displayName": "Walk"
+						},
+						"WeightTraining": {
+							"displayName": "Weight Training"
+						},
+						"Wheelchair": {
+							"displayName": "Wheelchair"
+						},
+						"Windsurf": {
+							"displayName": "Windsurf"
+						},
+						"Workout": {
+							"displayName": "Workout"
+						},
+						"Yoga": {
+							"displayName": "Yoga"
+						}
+					}
+				},
+				"trainer": {
+					"displayName": "Trainer",
+					"description": "Whether to mark as a trainer activity"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"keys": {
+			"displayName": "Keys",
+			"description": "Desired stream types to return"
+		}
+	}
+}

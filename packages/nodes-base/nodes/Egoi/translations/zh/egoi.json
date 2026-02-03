@@ -1,0 +1,245 @@
+{
+	"header": {
+		"displayName": "E-goi",
+		"description": "使用E-goi API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建成员"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取成员"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个成员"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新成员"
+				}
+			}
+		},
+		"list": {
+			"displayName": "列表名称或ID",
+			"description": "要操作的列表ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "订阅者邮箱地址",
+			"placeholder": "name@email.com"
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "订阅者的联系人ID"
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，响应仅包含联系人ID。如果激活此选项，系统将自动解析数据。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"birth_date": {
+					"displayName": "出生日期",
+					"description": "订阅者的出生日期"
+				},
+				"cellphone": {
+					"displayName": "手机",
+					"description": "订阅者的手机"
+				},
+				"extraFieldsUi": {
+					"displayName": "额外字段",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"extraFieldValues": {
+							"displayName": "额外字段",
+							"options": {
+								"field_id": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"extraFieldValues": {
+							"displayName": "额外字段",
+							"options": {
+								"field_id": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"extraFieldsUi": {
+							"displayName": "额外字段",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"first_name": {
+					"displayName": "名字",
+					"description": "订阅者名称"
+				},
+				"last_name": {
+					"displayName": "姓氏",
+					"description": "订阅者名称"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "订阅者当前状态",
+					"options": {
+						"unconfirmed": {
+							"displayName": "未确认"
+						},
+						"active": {
+							"displayName": "激活状态"
+						},
+						"inactive": {
+							"displayName": "未激活"
+						},
+						"removed": {
+							"displayName": "已移除"
+						}
+					}
+				},
+				"tagIds": {
+					"displayName": "标签名称或ID",
+					"description": "要添加的标签ID列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"birth_date": {
+					"displayName": "出生日期",
+					"description": "订阅者出生日期"
+				},
+				"cellphone": {
+					"displayName": "手机",
+					"description": "订阅者的手机"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "订阅者邮箱地址",
+					"placeholder": "name@email.com"
+				},
+				"extraFieldsUi": {
+					"displayName": "额外字段",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"extraFieldValues": {
+							"displayName": "额外字段",
+							"options": {
+								"field_id": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"extraFieldValues": {
+							"displayName": "额外字段",
+							"options": {
+								"field_id": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"extraFieldsUi": {
+							"displayName": "额外字段",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"first_name": {
+					"displayName": "名字",
+					"description": "订阅者姓名"
+				},
+				"last_name": {
+					"displayName": "姓氏",
+					"description": "订阅者姓名"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "订阅者当前状态",
+					"options": {
+						"unconfirmed": {
+							"displayName": "未确认"
+						},
+						"active": {
+							"displayName": "激活状态"
+						},
+						"inactive": {
+							"displayName": "未激活"
+						},
+						"removed": {
+							"displayName": "已移除"
+						}
+					}
+				},
+				"tagIds": {
+					"displayName": "标签名称或ID",
+					"description": "要添加的标签ID列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"by": {
+			"displayName": "按",
+			"description": "搜索",
+			"options": {
+				"id": {
+					"displayName": "联系人ID"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		}
+	}
+}

@@ -1,0 +1,102 @@
+{
+	"header": {
+		"displayName": "Kafka",
+		"description": "将消息发送到Kafka主题"
+	},
+	"nodeView": {
+		"topic": {
+			"displayName": "主题",
+			"description": "要发布到的主题队列名称",
+			"placeholder": "主题名称"
+		},
+		"sendInputData": {
+			"displayName": "发送输入数据",
+			"description": "是否将节点接收的数据作为JSON发送到Kafka"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"useSchemaRegistry": {
+			"displayName": "使用Schema注册表",
+			"description": "是否使用Confluent Schema注册表"
+		},
+		"schemaRegistryUrl": {
+			"displayName": "Schema Registry URL",
+			"description": "Schema Registry的URL",
+			"placeholder": "https://schema-registry-domain:8081"
+		},
+		"useKey": {
+			"displayName": "使用密钥",
+			"description": "是否使用消息密钥"
+		},
+		"key": {
+			"displayName": "键",
+			"description": "消息键"
+		},
+		"eventName": {
+			"displayName": "事件名称",
+			"description": "Schema注册表中的命名空间和Schema名称（命名空间.名称）"
+		},
+		"headersUi": {
+			"displayName": "请求头",
+			"placeholder": "添加请求头",
+			"multipleValueButtonText": "添加请求头",
+			"options": {
+				"headerValues": {
+					"displayName": "页眉",
+					"options": {
+						"key": {
+							"displayName": "键"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"headerValues": {
+					"displayName": "页眉",
+					"options": {
+						"key": {
+							"displayName": "键"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"headersUi": {
+					"displayName": "请求头",
+					"placeholder": "添加请求头"
+				}
+			}
+		},
+		"headerParametersJson": {
+			"displayName": "Headers (JSON)",
+			"description": "Header参数 (JSON扁平对象)"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"acks": {
+					"displayName": "确认机制",
+					"description": "生产者是否必须等待所有副本的确认"
+				},
+				"compression": {
+					"displayName": "压缩",
+					"description": "是否使用GZIP编解码器以压缩格式发送数据"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待响应的超时时间（毫秒）"
+				}
+			}
+		}
+	}
+}

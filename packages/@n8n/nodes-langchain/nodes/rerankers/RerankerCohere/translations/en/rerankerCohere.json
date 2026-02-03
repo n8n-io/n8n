@@ -1,0 +1,27 @@
+{
+	"header": {
+		"displayName": "Reranker Cohere",
+		"description": "Use Cohere Reranker to reorder documents after retrieval from a vector store by relevance to the given query."
+	},
+	"nodeView": {
+		"modelName": {
+			"displayName": "Model",
+			"description": "The model that should be used to rerank the documents. <a href=\"https://docs.cohere.com/docs/models\">Learn more</a>.",
+			"options": {
+				"rerank-v3.5": {
+					"displayName": "rerank-v3.5"
+				},
+				"rerank-english-v3.0": {
+					"displayName": "rerank-english-v3.0"
+				},
+				"rerank-multilingual-v3.0": {
+					"displayName": "rerank-multilingual-v3.0"
+				}
+			}
+		},
+		"topN": {
+			"displayName": "Top N",
+			"description": "The maximum number of documents to return after reranking"
+		}
+	}
+}

@@ -1,0 +1,517 @@
+{
+	"header": {
+		"displayName": "从文件提取",
+		"description": "将二进制数据转换为JSON"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"csv": {
+					"displayName": "从CSV提取",
+					"description": "将CSV文件转换为输出项"
+				},
+				"html": {
+					"displayName": "从HTML提取",
+					"description": "将HTML文件中的表格转换为输出项"
+				},
+				"fromIcs": {
+					"displayName": "从ICS提取",
+					"description": "将ICS文件转换为输出项"
+				},
+				"fromJson": {
+					"displayName": "从JSON提取",
+					"description": "将JSON文件转换为输出项"
+				},
+				"ods": {
+					"displayName": "从ODS提取",
+					"description": "将ODS文件转换为输出项"
+				},
+				"pdf": {
+					"displayName": "从PDF提取",
+					"description": "从PDF文件中提取内容和元数据"
+				},
+				"rtf": {
+					"displayName": "从RTF提取",
+					"description": "将RTF文件中的表格转换为输出项"
+				},
+				"text": {
+					"displayName": "从文本文件提取",
+					"description": "提取文本文件的内容"
+				},
+				"xml": {
+					"displayName": "从XML提取",
+					"description": "提取XML文件的内容"
+				},
+				"xls": {
+					"displayName": "从XLS提取",
+					"description": "将Excel文件转换为输出项"
+				},
+				"xlsx": {
+					"displayName": "从XLSX提取",
+					"description": "将Excel文件转换为输出项"
+				},
+				"binaryToPropery": {
+					"displayName": "移动文件至Base64字符串",
+					"description": "将文件转换为base64编码字符串"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段",
+			"placeholder": "例如 数据"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"delimiter": {
+					"displayName": "分隔符",
+					"description": "设置字段分隔符，通常为逗号",
+					"placeholder": "例如 ,"
+				},
+				"encoding": {
+					"displayName": "文件编码",
+					"options": {
+						"ascii": {
+							"displayName": "ascii"
+						},
+						"latin1": {
+							"displayName": "拉丁1编码"
+						},
+						"ucs-2": {
+							"displayName": "UCS-2"
+						},
+						"ucs2": {
+							"displayName": "UCS2"
+						},
+						"utf-8": {
+							"displayName": "UTF-8"
+						},
+						"utf16le": {
+							"displayName": "UTF16LE"
+						},
+						"utf8": {
+							"displayName": "utf8"
+						},
+						"armscii8": {
+							"displayName": "armscii8"
+						},
+						"base64": {
+							"displayName": "base64"
+						},
+						"big5hkscs": {
+							"displayName": "big5hkscs"
+						},
+						"binary": {
+							"displayName": "二进制"
+						},
+						"cesu8": {
+							"displayName": "cesu8"
+						},
+						"cp1046": {
+							"displayName": "cp1046"
+						},
+						"cp1124": {
+							"displayName": "代码页1124"
+						},
+						"cp1125": {
+							"displayName": "cp1125"
+						},
+						"cp1129": {
+							"displayName": "复制1129"
+						},
+						"cp1133": {
+							"displayName": "cp1133"
+						},
+						"cp1161": {
+							"displayName": "cp1161"
+						},
+						"cp1162": {
+							"displayName": "cp1162"
+						},
+						"cp1163": {
+							"displayName": "cp1163"
+						},
+						"cp437": {
+							"displayName": "cp437"
+						},
+						"cp720": {
+							"displayName": "cp720"
+						},
+						"cp737": {
+							"displayName": "cp737"
+						},
+						"cp775": {
+							"displayName": "cp775"
+						},
+						"cp808": {
+							"displayName": "cp808"
+						},
+						"cp850": {
+							"displayName": "cp850"
+						},
+						"cp852": {
+							"displayName": "代码页852"
+						},
+						"cp855": {
+							"displayName": "cp855"
+						},
+						"cp856": {
+							"displayName": "cp856"
+						},
+						"cp857": {
+							"displayName": "cp857"
+						},
+						"cp858": {
+							"displayName": "代码页858"
+						},
+						"cp860": {
+							"displayName": "cp860"
+						},
+						"cp861": {
+							"displayName": "cp861"
+						},
+						"cp862": {
+							"displayName": "cp862"
+						},
+						"cp863": {
+							"displayName": "cp863"
+						},
+						"cp864": {
+							"displayName": "cp864"
+						},
+						"cp865": {
+							"displayName": "cp865"
+						},
+						"cp866": {
+							"displayName": "cp866"
+						},
+						"cp869": {
+							"displayName": "cp869"
+						},
+						"cp922": {
+							"displayName": "cp922"
+						},
+						"cp936": {
+							"displayName": "cp936"
+						},
+						"cp949": {
+							"displayName": "CP949"
+						},
+						"cp950": {
+							"displayName": "cp950"
+						},
+						"eucjp": {
+							"displayName": "eucjp"
+						},
+						"gb18030": {
+							"displayName": "gb18030"
+						},
+						"gbk": {
+							"displayName": "GBK"
+						},
+						"georgianacademy": {
+							"displayName": "格鲁吉亚学院"
+						},
+						"georgianps": {
+							"displayName": "格鲁吉亚语"
+						},
+						"hex": {
+							"displayName": "十六进制"
+						},
+						"hproman8": {
+							"displayName": "hproman8"
+						},
+						"iso646cn": {
+							"displayName": "iso646cn"
+						},
+						"iso646jp": {
+							"displayName": "iso646jp"
+						},
+						"iso88591": {
+							"displayName": "iso88591"
+						},
+						"iso885910": {
+							"displayName": "iso885910"
+						},
+						"iso885911": {
+							"displayName": "iso885911"
+						},
+						"iso885913": {
+							"displayName": "iso885913"
+						},
+						"iso885914": {
+							"displayName": "iso885914"
+						},
+						"iso885915": {
+							"displayName": "iso885915"
+						},
+						"iso885916": {
+							"displayName": "iso885916"
+						},
+						"iso88592": {
+							"displayName": "iso88592"
+						},
+						"iso88593": {
+							"displayName": "iso88593"
+						},
+						"iso88594": {
+							"displayName": "iso88594"
+						},
+						"iso88595": {
+							"displayName": "iso88595"
+						},
+						"iso88596": {
+							"displayName": "iso88596"
+						},
+						"iso88597": {
+							"displayName": "iso88597"
+						},
+						"iso88598": {
+							"displayName": "iso88598"
+						},
+						"iso88599": {
+							"displayName": "iso88599"
+						},
+						"koi8r": {
+							"displayName": "koi8r"
+						},
+						"koi8ru": {
+							"displayName": "koi8ru"
+						},
+						"koi8t": {
+							"displayName": "koi8t"
+						},
+						"koi8u": {
+							"displayName": "koi8u"
+						},
+						"maccenteuro": {
+							"displayName": "maccenteuro"
+						},
+						"maccroatian": {
+							"displayName": "克罗地亚语"
+						},
+						"maccyrillic": {
+							"displayName": "Mac西里尔编码"
+						},
+						"macgreek": {
+							"displayName": "macgreek"
+						},
+						"maciceland": {
+							"displayName": "maciceland"
+						},
+						"macintosh": {
+							"displayName": "Macintosh"
+						},
+						"macroman": {
+							"displayName": "宏管理"
+						},
+						"macromania": {
+							"displayName": "macromania"
+						},
+						"macthai": {
+							"displayName": "macthai"
+						},
+						"macturkish": {
+							"displayName": "macturkish"
+						},
+						"macukraine": {
+							"displayName": "macukraine"
+						},
+						"mik": {
+							"displayName": "mik"
+						},
+						"pt154": {
+							"displayName": "pt154"
+						},
+						"rk1048": {
+							"displayName": "rk1048"
+						},
+						"shiftjis": {
+							"displayName": "Shift_JIS"
+						},
+						"tcvn": {
+							"displayName": "TCVN"
+						},
+						"tis620": {
+							"displayName": "tis620"
+						},
+						"utf16": {
+							"displayName": "utf16"
+						},
+						"utf16be": {
+							"displayName": "utf16be"
+						},
+						"utf32": {
+							"displayName": "utf32"
+						},
+						"utf32be": {
+							"displayName": "UTF-32BE"
+						},
+						"utf32le": {
+							"displayName": "utf32le"
+						},
+						"utf7": {
+							"displayName": "utf7"
+						},
+						"utf7imap": {
+							"displayName": "utf7imap"
+						},
+						"viscii": {
+							"displayName": "VISCII"
+						},
+						"windows1250": {
+							"displayName": "Windows 1250"
+						},
+						"windows1251": {
+							"displayName": "Windows-1251"
+						},
+						"windows1252": {
+							"displayName": "Windows 1252"
+						},
+						"windows1253": {
+							"displayName": "windows1253"
+						},
+						"windows1254": {
+							"displayName": "Windows 1254"
+						},
+						"windows1255": {
+							"displayName": "Windows 1255"
+						},
+						"windows1256": {
+							"displayName": "Windows 1256"
+						},
+						"windows1257": {
+							"displayName": "Windows 1257"
+						},
+						"windows1258": {
+							"displayName": "Windows 1258"
+						},
+						"windows874": {
+							"displayName": "Windows874"
+						}
+					},
+					"description": "指定文件的编码格式，默认为 UTF-8"
+				},
+				"enableBOM": {
+					"displayName": "排除字节顺序标记(BOM)",
+					"description": "是否从CSV输入中检测并排除字节顺序标记(如果存在)"
+				},
+				"relaxQuotes": {
+					"displayName": "保留引号",
+					"description": "是否将CSV字段中未闭合的引号作为字段内容处理，而不是抛出解析错误"
+				},
+				"headerRow": {
+					"displayName": "标题行",
+					"description": "文件首行是否包含标题名称"
+				},
+				"includeEmptyCells": {
+					"displayName": "包含空单元格",
+					"description": "从文件读取时是否包含空单元格。空单元格将填充为空字符串。"
+				},
+				"maxRowCount": {
+					"displayName": "最大加载行数",
+					"description": "读取指定行数后停止处理记录。如需加载所有行请使用-1。",
+					"placeholder": "例如：10"
+				},
+				"range": {
+					"displayName": "范围",
+					"description": "要从表中读取的范围。如果设置为数字，则作为起始行。如果设置为字符串，则用作A1样式表示法的范围。"
+				},
+				"rawData": {
+					"displayName": "原始数据",
+					"description": "是否返回原始数据，而非解析后的数据"
+				},
+				"readAsString": {
+					"displayName": "读取为字符串",
+					"description": "在某些情况和文件格式中，需要以字符串形式读取以确保特殊字符被正确解析"
+				},
+				"sheetName": {
+					"displayName": "工作表名称",
+					"description": "要从电子表格中读取的工作表名称",
+					"placeholder": "例如：mySheet"
+				},
+				"fromLine": {
+					"displayName": "起始行",
+					"description": "从请求的行号开始处理记录。从0开始计数。",
+					"placeholder": "例如：0"
+				},
+				"skipRecordsWithErrors": {
+					"displayName": "跳过错误记录",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"enabled": {
+									"displayName": "已启用",
+									"description": "从文件读取时是否跳过错误记录"
+								},
+								"maxSkippedRecords": {
+									"displayName": "最大跳过记录数",
+									"description": "可跳过的最大记录数，超过此限制将抛出错误。设置为-1可取消限制。"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "值",
+							"options": {
+								"enabled": {
+									"displayName": "已启用",
+									"description": "从文件读取时是否跳过错误记录"
+								},
+								"maxSkippedRecords": {
+									"displayName": "最大跳过记录数",
+									"description": "可跳过的最大记录数，超过此限制将抛出错误。设置为-1可取消限制。"
+								}
+							}
+						},
+						"skipRecordsWithErrors": {
+							"displayName": "跳过出错记录"
+						}
+					}
+				},
+				"stripBOM": {
+					"displayName": "移除BOM",
+					"description": "是否从文件中去除BOM（字节顺序标记），这在BOM存在导致问题或不一致的环境中可能有所帮助"
+				},
+				"keepSource": {
+					"displayName": "保留源键",
+					"options": {
+						"json": {
+							"displayName": "JSON",
+							"description": "包含输入项的JSON数据"
+						},
+						"binary": {
+							"displayName": "二进制",
+							"description": "Include binary data of the input item"
+						},
+						"both": {
+							"displayName": "两者",
+							"description": "Include both JSON and binary data of the input item"
+						}
+					}
+				},
+				"joinPages": {
+					"displayName": "合并页面",
+					"description": "是否合并所有页面的文本，还是返回每个页面的文本数组"
+				},
+				"maxPages": {
+					"displayName": "最大页数",
+					"description": "要包含的最大页数"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "如果PDF已加密，请提供密码"
+				}
+			}
+		},
+		"destinationKey": {
+			"displayName": "目标输出字段",
+			"description": "将包含提取数据的输出字段名称",
+			"placeholder": "例如 data"
+		}
+	}
+}

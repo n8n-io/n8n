@@ -1,0 +1,496 @@
+{
+	"header": {
+		"displayName": "Google Docs",
+		"description": "Consume Google Docs API."
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"serviceAccount": {
+					"displayName": "Service Account"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"document": {
+					"displayName": "Document"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"driveId": {
+			"displayName": "Drive Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"folderId": {
+			"displayName": "Folder Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"title": {
+			"displayName": "Title"
+		},
+		"documentURL": {
+			"displayName": "Doc ID or URL",
+			"description": "The ID in the document URL (or just paste the whole URL)"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"actionsUi": {
+			"displayName": "Actions",
+			"description": "Actions applied to update the document",
+			"placeholder": "Add Action",
+			"multipleValueButtonText": "Add Action",
+			"options": {
+				"actionFields": {
+					"displayName": "Action Fields",
+					"options": {
+						"object": {
+							"displayName": "Object",
+							"description": "The update object",
+							"options": {
+								"footer": {
+									"displayName": "Footer"
+								},
+								"header": {
+									"displayName": "Header"
+								},
+								"namedRange": {
+									"displayName": "Named Range"
+								},
+								"pageBreak": {
+									"displayName": "Page Break"
+								},
+								"paragraphBullets": {
+									"displayName": "Paragraph Bullets"
+								},
+								"positionedObject": {
+									"displayName": "Positioned Object"
+								},
+								"table": {
+									"displayName": "Table"
+								},
+								"tableColumn": {
+									"displayName": "Table Column"
+								},
+								"tableRow": {
+									"displayName": "Table Row"
+								},
+								"text": {
+									"displayName": "Text"
+								}
+							}
+						},
+						"action": {
+							"displayName": "Action",
+							"description": "The update action",
+							"options": {
+								"delete": {
+									"displayName": "Delete"
+								}
+							}
+						},
+						"insertSegment": {
+							"displayName": "Insert Segment",
+							"description": "The location where to create the object",
+							"options": {
+								"header": {
+									"displayName": "Header"
+								},
+								"body": {
+									"displayName": "Body"
+								},
+								"footer": {
+									"displayName": "Footer"
+								}
+							}
+						},
+						"segmentId": {
+							"displayName": "Segment ID",
+							"description": "The ID of the header, footer or footnote. The <code>Document → Get</code> operation lists all segment IDs (make sure you disable the <code>simple</code> toggle)."
+						},
+						"index": {
+							"displayName": "Index",
+							"description": "The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer to a table)"
+						},
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the Named Range. Names do not need to be unique."
+						},
+						"startIndex": {
+							"displayName": "Start Index",
+							"description": "The zero-based start index of this range"
+						},
+						"endIndex": {
+							"displayName": "End Index",
+							"description": "The zero-based end index of this range"
+						},
+						"bulletPreset": {
+							"displayName": "Style",
+							"description": "The Preset pattern of bullet glyphs for list",
+							"options": {
+								"BULLET_DISC_CIRCLE_SQUARE": {
+									"displayName": "Bullet List",
+									"description": "A bulleted list with a <code>DISC</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels"
+								},
+								"BULLET_CHECKBOX": {
+									"displayName": "Checkbox List",
+									"description": "A bulleted list with CHECKBOX bullet glyphs for all list nesting levels"
+								},
+								"NUMBERED_DECIMAL_NESTED": {
+									"displayName": "Numbered List",
+									"description": "A numbered list with <code>DECIMAL</code> numeric glyphs separated by periods, where each nesting level uses the previous nesting level's glyph as a prefix. For example: 1., 1.1., 2., 2.2 ."
+								}
+							}
+						},
+						"footerId": {
+							"displayName": "Footer ID",
+							"description": "The ID of the footer to delete. To retrieve it, use the <code>get document</code> where you can find under <code>footers</code> attribute."
+						},
+						"headerId": {
+							"displayName": "Header ID",
+							"description": "The ID of the header to delete. To retrieve it, use the <code>get document</code> where you can find under <code>headers</code> attribute."
+						},
+						"namedRangeReference": {
+							"displayName": "Specify Range By",
+							"description": "The value determines which range or ranges to delete",
+							"options": {
+								"namedRangeId": {
+									"displayName": "ID"
+								},
+								"name": {
+									"displayName": "Name"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Name",
+							"description": "The name of the range"
+						},
+						"objectId": {
+							"displayName": "Object ID",
+							"description": "The ID of the positioned object to delete (An object that is tied to a paragraph and positioned relative to its beginning), See the Google <a href=\"https://developers.google.com/docs/api/reference/rest/v1/documents#positionedobject\" target=\"_blank\">documentation</a>"
+						},
+						"locationChoice": {
+							"displayName": "Insert Location",
+							"description": "The location where the text will be inserted",
+							"options": {
+								"endOfSegmentLocation": {
+									"displayName": "At End of Specific Position",
+									"description": "Inserts the text at the end of a header, footer, footnote, or document body"
+								},
+								"location": {
+									"displayName": "At Index"
+								}
+							}
+						},
+						"rows": {
+							"displayName": "Rows",
+							"description": "The number of rows in the table"
+						},
+						"columns": {
+							"displayName": "Columns",
+							"description": "The number of columns in the table"
+						},
+						"text": {
+							"displayName": "Old Text",
+							"description": "The text to search for in the document"
+						},
+						"replaceText": {
+							"displayName": "New Text",
+							"description": "The text that will replace the matched text"
+						},
+						"matchCase": {
+							"displayName": "Match Case",
+							"description": "Whether the search should respect case sensitivity"
+						},
+						"insertPosition": {
+							"displayName": "Insert Position",
+							"options": {
+								"false": {
+									"displayName": "Before Content at Index"
+								},
+								"true": {
+									"displayName": "After Content at Index"
+								}
+							}
+						},
+						"rowIndex": {
+							"displayName": "Row Index",
+							"description": "The zero-based row index"
+						},
+						"columnIndex": {
+							"displayName": "Column Index",
+							"description": "The zero-based column index"
+						}
+					}
+				}
+			},
+			"values": {
+				"actionFields": {
+					"displayName": "Action Fields",
+					"options": {
+						"object": {
+							"displayName": "Object",
+							"description": "The update object",
+							"options": {
+								"footer": {
+									"displayName": "Footer"
+								},
+								"header": {
+									"displayName": "Header"
+								},
+								"namedRange": {
+									"displayName": "Named Range"
+								},
+								"pageBreak": {
+									"displayName": "Page Break"
+								},
+								"paragraphBullets": {
+									"displayName": "Paragraph Bullets"
+								},
+								"positionedObject": {
+									"displayName": "Positioned Object"
+								},
+								"table": {
+									"displayName": "Table"
+								},
+								"tableColumn": {
+									"displayName": "Table Column"
+								},
+								"tableRow": {
+									"displayName": "Table Row"
+								},
+								"text": {
+									"displayName": "Text"
+								}
+							}
+						},
+						"action": {
+							"displayName": "Action",
+							"description": "The update action",
+							"options": {
+								"delete": {
+									"displayName": "Delete"
+								}
+							}
+						},
+						"insertSegment": {
+							"displayName": "Insert Segment",
+							"description": "The location where to create the object",
+							"options": {
+								"header": {
+									"displayName": "Header"
+								},
+								"body": {
+									"displayName": "Body"
+								},
+								"footer": {
+									"displayName": "Footer"
+								}
+							}
+						},
+						"segmentId": {
+							"displayName": "Segment ID",
+							"description": "The ID of the header, footer or footnote. The <code>Document → Get</code> operation lists all segment IDs (make sure you disable the <code>simple</code> toggle)."
+						},
+						"index": {
+							"displayName": "Index",
+							"description": "The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer to a table)"
+						},
+						"name": {
+							"displayName": "Name",
+							"description": "The name of the Named Range. Names do not need to be unique."
+						},
+						"startIndex": {
+							"displayName": "Start Index",
+							"description": "The zero-based start index of this range"
+						},
+						"endIndex": {
+							"displayName": "End Index",
+							"description": "The zero-based end index of this range"
+						},
+						"bulletPreset": {
+							"displayName": "Style",
+							"description": "The Preset pattern of bullet glyphs for list",
+							"options": {
+								"BULLET_DISC_CIRCLE_SQUARE": {
+									"displayName": "Bullet List",
+									"description": "A bulleted list with a <code>DISC</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels"
+								},
+								"BULLET_CHECKBOX": {
+									"displayName": "Checkbox List",
+									"description": "A bulleted list with CHECKBOX bullet glyphs for all list nesting levels"
+								},
+								"NUMBERED_DECIMAL_NESTED": {
+									"displayName": "Numbered List",
+									"description": "A numbered list with <code>DECIMAL</code> numeric glyphs separated by periods, where each nesting level uses the previous nesting level's glyph as a prefix. For example: 1., 1.1., 2., 2.2 ."
+								}
+							}
+						},
+						"footerId": {
+							"displayName": "Footer ID",
+							"description": "The ID of the footer to delete. To retrieve it, use the <code>get document</code> where you can find under <code>footers</code> attribute."
+						},
+						"headerId": {
+							"displayName": "Header ID",
+							"description": "The ID of the header to delete. To retrieve it, use the <code>get document</code> where you can find under <code>headers</code> attribute."
+						},
+						"namedRangeReference": {
+							"displayName": "Specify Range By",
+							"description": "The value determines which range or ranges to delete",
+							"options": {
+								"namedRangeId": {
+									"displayName": "ID"
+								},
+								"name": {
+									"displayName": "Name"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Name",
+							"description": "The name of the range"
+						},
+						"objectId": {
+							"displayName": "Object ID",
+							"description": "The ID of the positioned object to delete (An object that is tied to a paragraph and positioned relative to its beginning), See the Google <a href=\"https://developers.google.com/docs/api/reference/rest/v1/documents#positionedobject\" target=\"_blank\">documentation</a>"
+						},
+						"locationChoice": {
+							"displayName": "Insert Location",
+							"description": "The location where the text will be inserted",
+							"options": {
+								"endOfSegmentLocation": {
+									"displayName": "At End of Specific Position",
+									"description": "Inserts the text at the end of a header, footer, footnote, or document body"
+								},
+								"location": {
+									"displayName": "At Index"
+								}
+							}
+						},
+						"rows": {
+							"displayName": "Rows",
+							"description": "The number of rows in the table"
+						},
+						"columns": {
+							"displayName": "Columns",
+							"description": "The number of columns in the table"
+						},
+						"text": {
+							"displayName": "Old Text",
+							"description": "The text to search for in the document"
+						},
+						"replaceText": {
+							"displayName": "New Text",
+							"description": "The text that will replace the matched text"
+						},
+						"matchCase": {
+							"displayName": "Match Case",
+							"description": "Whether the search should respect case sensitivity"
+						},
+						"insertPosition": {
+							"displayName": "Insert Position",
+							"options": {
+								"false": {
+									"displayName": "Before Content at Index"
+								},
+								"true": {
+									"displayName": "After Content at Index"
+								}
+							}
+						},
+						"rowIndex": {
+							"displayName": "Row Index",
+							"description": "The zero-based row index"
+						},
+						"columnIndex": {
+							"displayName": "Column Index",
+							"description": "The zero-based column index"
+						}
+					}
+				},
+				"actionsUi": {
+					"displayName": "Actions",
+					"placeholder": "Add Action"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"writeControlObject": {
+					"displayName": "Write Control Object",
+					"options": {
+						"control": {
+							"displayName": "Revision Mode",
+							"description": "Determines how the changes are applied to the revision",
+							"options": {
+								"targetRevisionId": {
+									"displayName": "Target",
+									"description": "Apply changes to the latest revision. Otherwise changes will not be processed."
+								},
+								"requiredRevisionId": {
+									"displayName": "Required",
+									"description": "Apply changes to the provided revision while incorporating other collaborators' changes. This mode is used for the recent revision, Otherwise changes will not be processed."
+								}
+							}
+						},
+						"value": {
+							"displayName": "Revision ID"
+						}
+					}
+				}
+			},
+			"values": {
+				"writeControlObject": {
+					"displayName": "Write Control Object",
+					"options": {
+						"control": {
+							"displayName": "Revision Mode",
+							"description": "Determines how the changes are applied to the revision",
+							"options": {
+								"targetRevisionId": {
+									"displayName": "Target",
+									"description": "Apply changes to the latest revision. Otherwise changes will not be processed."
+								},
+								"requiredRevisionId": {
+									"displayName": "Required",
+									"description": "Apply changes to the provided revision while incorporating other collaborators' changes. This mode is used for the recent revision, Otherwise changes will not be processed."
+								}
+							}
+						},
+						"value": {
+							"displayName": "Revision ID"
+						}
+					}
+				},
+				"updateFields": {
+					"displayName": "Update Fields",
+					"placeholder": "Add Field"
+				}
+			}
+		}
+	}
+}

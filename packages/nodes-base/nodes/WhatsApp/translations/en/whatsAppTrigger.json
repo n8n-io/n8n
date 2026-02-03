@@ -1,0 +1,24 @@
+{
+	"header": {
+		"displayName": "WhatsApp Trigger",
+		"description": "Handle WhatsApp events via webhooks"
+	},
+	"nodeView": {
+		"whatsAppNotice": {
+			"displayName": "Due to Facebook API limitations, you can use just one WhatsApp trigger for each Facebook App"
+		},
+		"updates": {
+			"displayName": "Trigger On"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"messageStatusUpdates": {
+					"displayName": "Receive Message Status Updates",
+					"description": "WhatsApp sends notifications to the Trigger when the status of a message changes (for example from Sent to Delivered and from Delivered to Read). To avoid multiple executions for one WhatsApp message, you can set the Trigger to execute only on selected message status updates."
+				}
+			}
+		}
+	}
+}

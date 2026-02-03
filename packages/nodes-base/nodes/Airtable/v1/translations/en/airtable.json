@@ -1,0 +1,193 @@
+{
+	"header": {
+		"displayName": "Airtable",
+		"description": "Read, update, write and delete data from Airtable"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"airtableTokenApi": {
+					"displayName": "Access Token"
+				},
+				"airtableOAuth2Api": {
+					"displayName": "OAuth2"
+				},
+				"airtableApi": {
+					"displayName": "API Key (Deprecated)"
+				}
+			}
+		},
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"deprecated": {
+			"displayName": "This type of connection (API Key) was deprecated and can't be used anymore. Please create a new credential of type 'Access Token' instead."
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"append": {
+					"displayName": "Append",
+					"description": "Append the data to a table"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete data from a table"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "List data from a table"
+				},
+				"read": {
+					"displayName": "Read",
+					"description": "Read data from a table"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update data in a table"
+				}
+			}
+		},
+		"application": {
+			"displayName": "Base",
+			"description": "The Airtable Base in which to operate on"
+		},
+		"table": {
+			"displayName": "Table"
+		},
+		"addAllFields": {
+			"displayName": "Add All Fields",
+			"description": "Whether all fields should be sent to Airtable or only specific ones"
+		},
+		"fields": {
+			"displayName": "Fields",
+			"description": "The name of fields for which data should be sent to Airtable",
+			"placeholder": "Name"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "ID of the record to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"downloadAttachments": {
+			"displayName": "Download Attachments",
+			"description": "Whether the attachment fields define in 'Download Fields' will be downloaded"
+		},
+		"downloadFieldNames": {
+			"displayName": "Download Fields",
+			"description": "Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma."
+		},
+		"additionalOptions": {
+			"displayName": "Additional Options",
+			"description": "Additional options which decide which records should be returned",
+			"placeholder": "Add option",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "Only data for fields whose names are in this list will be included in the records",
+					"placeholder": "Name"
+				},
+				"filterByFormula": {
+					"displayName": "Filter By Formula",
+					"description": "A formula used to filter records. The formula will be evaluated for each record, and if the result is not 0, false, \"\", NaN, [], or #Error! the record will be included in the response.",
+					"placeholder": "NOT({Name} = '')"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "Defines how the returned records should be ordered",
+					"placeholder": "Add Sort Rule",
+					"multipleValueButtonText": "Add Sort Rule",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"field": {
+									"displayName": "Field",
+									"description": "Name of the field to sort on"
+								},
+								"direction": {
+									"displayName": "Direction",
+									"description": "The sort direction",
+									"options": {
+										"asc": {
+											"displayName": "ASC",
+											"description": "Sort in ascending order (small -> large)"
+										},
+										"desc": {
+											"displayName": "DESC",
+											"description": "Sort in descending order (large -> small)"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "Property",
+							"options": {
+								"field": {
+									"displayName": "Field",
+									"description": "Name of the field to sort on"
+								},
+								"direction": {
+									"displayName": "Direction",
+									"description": "The sort direction",
+									"options": {
+										"asc": {
+											"displayName": "ASC",
+											"description": "Sort in ascending order (small -> large)"
+										},
+										"desc": {
+											"displayName": "DESC",
+											"description": "Sort in descending order (large -> small)"
+										}
+									}
+								}
+							}
+						},
+						"sort": {
+							"displayName": "Sort",
+							"placeholder": "Add Sort Rule"
+						}
+					}
+				},
+				"view": {
+					"displayName": "View",
+					"description": "The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.",
+					"placeholder": "All Stories"
+				}
+			}
+		},
+		"updateAllFields": {
+			"displayName": "Update All Fields",
+			"description": "Whether all fields should be sent to Airtable or only specific ones"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"bulkSize": {
+					"displayName": "Bulk Size",
+					"description": "Number of records to process at once"
+				},
+				"ignoreFields": {
+					"displayName": "Ignore Fields",
+					"description": "Comma-separated list of fields to ignore"
+				},
+				"typecast": {
+					"displayName": "Typecast",
+					"description": "Whether the Airtable API should attempt mapping of string values for linked records & select options"
+				}
+			}
+		}
+	}
+}

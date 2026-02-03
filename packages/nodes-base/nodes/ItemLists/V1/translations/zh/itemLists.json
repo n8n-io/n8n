@@ -1,0 +1,535 @@
+{
+	"header": {
+		"displayName": "项目列表",
+		"description": "用于处理项目列表和转换数组的辅助工具"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"aggregateItems": {
+					"displayName": "连接项目",
+					"description": "将字段合并到单个新项目的列表中"
+				},
+				"limit": {
+					"displayName": "限制",
+					"description": "如果项目过多则移除"
+				},
+				"removeDuplicates": {
+					"displayName": "移除重复项",
+					"description": "移除相似的多余项"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "更改项目顺序"
+				},
+				"splitOutItems": {
+					"displayName": "拆分输出项",
+					"description": "将项目内的列表转换为独立项"
+				},
+				"summarize": {
+					"displayName": "汇总",
+					"description": "聚合项目（数据透视表）"
+				}
+			}
+		},
+		"fieldToSplitOut": {
+			"displayName": "要拆分出的字段",
+			"description": "要拆分为独立项目的输入字段名称"
+		},
+		"include": {
+			"displayName": "包含",
+			"description": "是否将任何其他字段复制到新项目中",
+			"options": {
+				"noOtherFields": {
+					"displayName": "无其他字段"
+				},
+				"allOtherFields": {
+					"displayName": "所有其他字段"
+				},
+				"selectedOtherFields": {
+					"displayName": "已选择其他字段"
+				},
+				"allFields": {
+					"displayName": "所有字段"
+				},
+				"specifiedFields": {
+					"displayName": "指定字段"
+				},
+				"allFieldsExcept": {
+					"displayName": "除以下字段外的所有字段"
+				}
+			}
+		},
+		"fieldsToInclude": {
+			"displayName": "要包含的字段",
+			"placeholder": "添加要包含的字段",
+			"multipleValueButtonText": "添加要包含的字段",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "指定将包含在输出数组中的字段",
+							"placeholder": "例如 id"
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "指定将包含在输出数组中的字段",
+							"placeholder": "例如 id"
+						}
+					}
+				},
+				"fieldsToInclude": {
+					"displayName": "要包含的字段",
+					"placeholder": "添加要包含的字段"
+				}
+			}
+		},
+		"aggregate": {
+			"displayName": "聚合",
+			"options": {
+				"aggregateIndividualFields": {
+					"displayName": "单个字段"
+				},
+				"aggregateAllItemData": {
+					"displayName": "所有项目数据（合并为单一列表）"
+				}
+			}
+		},
+		"fieldsToAggregate": {
+			"displayName": "待聚合字段",
+			"placeholder": "添加待聚合字段",
+			"multipleValueButtonText": "添加字段到聚合",
+			"options": {
+				"fieldToAggregate": {
+					"displayName": "聚合字段",
+					"options": {
+						"fieldToAggregate": {
+							"displayName": "输入字段名称",
+							"description": "输入项中要聚合在一起的字段名称",
+							"placeholder": "例如 id"
+						},
+						"renameField": {
+							"displayName": "重命名字段",
+							"description": "是否在输出中为字段指定不同名称"
+						},
+						"outputFieldName": {
+							"displayName": "输出字段名称",
+							"description": "存放聚合数据的字段名称。留空则使用输入字段名称。"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldToAggregate": {
+					"displayName": "聚合字段",
+					"options": {
+						"fieldToAggregate": {
+							"displayName": "输入字段名称",
+							"description": "输入项中要聚合在一起的字段名称",
+							"placeholder": "例如 id"
+						},
+						"renameField": {
+							"displayName": "重命名字段",
+							"description": "是否在输出中为字段指定不同名称"
+						},
+						"outputFieldName": {
+							"displayName": "输出字段名称",
+							"description": "存放聚合数据的字段名称。留空则使用输入字段名称。"
+						}
+					}
+				},
+				"fieldsToAggregate": {
+					"displayName": "要聚合的字段",
+					"placeholder": "添加聚合字段"
+				}
+			}
+		},
+		"destinationFieldName": {
+			"displayName": "输出到字段",
+			"description": "用于存放数据的输出字段名称"
+		},
+		"fieldsToExclude": {
+			"displayName": "要排除的字段",
+			"placeholder": "添加要排除的字段",
+			"multipleValueButtonText": "添加要排除的字段",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "要从比较中排除的输入字段",
+							"placeholder": "例如 id"
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "要从比较中排除的输入字段",
+							"placeholder": "例如 id"
+						}
+					}
+				},
+				"fieldsToExclude": {
+					"displayName": "排除字段",
+					"placeholder": "添加排除字段"
+				}
+			}
+		},
+		"compare": {
+			"displayName": "比较",
+			"description": "要比较的输入项字段，以检查它们是否相同",
+			"options": {
+				"allFields": {
+					"displayName": "所有字段"
+				},
+				"allFieldsExcept": {
+					"displayName": "除以下字段外的所有字段"
+				},
+				"selectedFields": {
+					"displayName": "选定字段"
+				}
+			}
+		},
+		"fieldsToCompare": {
+			"displayName": "要比较的字段",
+			"placeholder": "添加要比较的字段",
+			"multipleValueButtonText": "添加要比较的字段",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "要添加到比较的输入字段",
+							"placeholder": "例如 id"
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "要添加到比较的输入字段",
+							"placeholder": "例如 id"
+						}
+					}
+				},
+				"fieldsToCompare": {
+					"displayName": "要比较的字段",
+					"placeholder": "添加要比较的字段"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "要比较的输入项字段，以查看它们是否相同",
+			"options": {
+				"simple": {
+					"displayName": "简单"
+				},
+				"random": {
+					"displayName": "随机"
+				},
+				"code": {
+					"displayName": "代码"
+				}
+			}
+		},
+		"sortFieldsUi": {
+			"displayName": "排序字段",
+			"description": "要比较的输入项字段，以查看它们是否相同",
+			"placeholder": "添加排序字段",
+			"multipleValueButtonText": "添加排序字段",
+			"options": {
+				"sortField": {
+					"displayName": "排序字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "排序依据字段",
+							"placeholder": "例如 id"
+						},
+						"order": {
+							"displayName": "排序",
+							"description": "排序依据的顺序",
+							"options": {
+								"ascending": {
+									"displayName": "升序"
+								},
+								"descending": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"sortField": {
+					"displayName": "排序字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称",
+							"description": "排序依据字段",
+							"placeholder": "例如 id"
+						},
+						"order": {
+							"displayName": "排序",
+							"description": "排序依据的顺序",
+							"options": {
+								"ascending": {
+									"displayName": "升序"
+								},
+								"descending": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				},
+				"sortFieldsUi": {
+					"displayName": "排序字段",
+					"placeholder": "添加排序字段"
+				}
+			}
+		},
+		"code": {
+			"displayName": "代码",
+			"description": "确定任意两个项目顺序的Javascript代码"
+		},
+		"maxItems": {
+			"displayName": "最大项目数",
+			"description": "如果项目数超过此限制，部分项目将被移除"
+		},
+		"keep": {
+			"displayName": "保留",
+			"description": "移除项目时，是保留开头的项目还是末尾的项目",
+			"options": {
+				"firstItems": {
+					"displayName": "首个项目"
+				},
+				"lastItems": {
+					"displayName": "最后项目"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"removeOtherFields": {
+					"displayName": "移除其他字段",
+					"description": "是否移除未被比较的任何字段。如果禁用，将保留重复项中第一个条目的值。"
+				},
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				},
+				"destinationFieldName": {
+					"displayName": "目标字段名称",
+					"description": "输出中用于存放拆分字段内容的字段"
+				},
+				"mergeLists": {
+					"displayName": "合并列表",
+					"description": "如果聚合字段是列表，是否将输出合并为单个扁平列表（而非列表的列表）"
+				},
+				"keepMissing": {
+					"displayName": "保留缺失值和空值",
+					"description": "当存在缺失值或空值时，是否在聚合列表中添加空条目"
+				},
+				"outputFormat": {
+					"displayName": "输出格式",
+					"options": {
+						"separateItems": {
+							"displayName": "每个拆分项单独处理"
+						},
+						"singleItem": {
+							"displayName": "所有分割项合并为单个条目"
+						}
+					}
+				},
+				"skipEmptySplitFields": {
+					"displayName": "忽略没有有效分组字段的项"
+				}
+			}
+		},
+		"fieldsToSummarize": {
+			"displayName": "要汇总的字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"aggregation": {
+							"displayName": "聚合",
+							"description": "如何合并要汇总字段的值",
+							"options": {
+								"append": {
+									"displayName": "追加"
+								},
+								"average": {
+									"displayName": "平均值"
+								},
+								"concatenate": {
+									"displayName": "连接"
+								},
+								"count": {
+									"displayName": "计数"
+								},
+								"countUnique": {
+									"displayName": "统计唯一值"
+								},
+								"max": {
+									"displayName": "最大值"
+								},
+								"min": {
+									"displayName": "最小"
+								},
+								"sum": {
+									"displayName": "求和"
+								}
+							}
+						},
+						"field": {
+							"displayName": "字段",
+							"description": "要汇总的输入字段名称；null、undefined、空字符串将被忽略",
+							"placeholder": "例如：cost"
+						},
+						"includeEmpty": {
+							"displayName": "包含空值"
+						},
+						"separateBy": {
+							"displayName": "分隔符",
+							"options": {
+								",": {
+									"displayName": "逗号"
+								},
+								", ": {
+									"displayName": "逗号和空格"
+								},
+								"\n": {
+									"displayName": "新行"
+								},
+								"": {
+									"displayName": "无"
+								},
+								" ": {
+									"displayName": "空间"
+								},
+								"other": {
+									"displayName": "其他"
+								}
+							}
+						},
+						"customSeparator": {
+							"displayName": "自定义分隔符"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"aggregation": {
+							"displayName": "聚合",
+							"description": "如何合并要汇总字段的值",
+							"options": {
+								"append": {
+									"displayName": "追加"
+								},
+								"average": {
+									"displayName": "平均值"
+								},
+								"concatenate": {
+									"displayName": "连接"
+								},
+								"count": {
+									"displayName": "计数"
+								},
+								"countUnique": {
+									"displayName": "统计唯一值"
+								},
+								"max": {
+									"displayName": "最大值"
+								},
+								"min": {
+									"displayName": "最小"
+								},
+								"sum": {
+									"displayName": "求和"
+								}
+							}
+						},
+						"field": {
+							"displayName": "字段",
+							"description": "要汇总的输入字段名称；null、undefined、空字符串将被忽略",
+							"placeholder": "例如：cost"
+						},
+						"includeEmpty": {
+							"displayName": "包含空值"
+						},
+						"separateBy": {
+							"displayName": "分隔符",
+							"options": {
+								",": {
+									"displayName": "逗号"
+								},
+								", ": {
+									"displayName": "逗号和空格"
+								},
+								"\n": {
+									"displayName": "新行"
+								},
+								"": {
+									"displayName": "无"
+								},
+								" ": {
+									"displayName": "空间"
+								},
+								"other": {
+									"displayName": "其他"
+								}
+							}
+						},
+						"customSeparator": {
+							"displayName": "自定义分隔符"
+						}
+					}
+				},
+				"fieldsToSummarize": {
+					"displayName": "要汇总的字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"fieldsToSplitBy": {
+			"displayName": "分组依据字段",
+			"description": "您希望按哪些输入字段拆分汇总",
+			"placeholder": "例如：国家, 城市"
+		}
+	}
+}

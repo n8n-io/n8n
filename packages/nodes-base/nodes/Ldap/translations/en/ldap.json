@@ -1,0 +1,234 @@
+{
+	"header": {
+		"displayName": "Ldap",
+		"description": "Interact with LDAP servers"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"compare": {
+					"displayName": "Compare",
+					"description": "Compare an attribute"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new entry"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an entry"
+				},
+				"rename": {
+					"displayName": "Rename",
+					"description": "Rename the DN of an existing entry"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search LDAP"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update attributes"
+				}
+			}
+		},
+		"nodeDebug": {
+			"displayName": "Debug"
+		},
+		"dn": {
+			"displayName": "DN",
+			"description": "The distinguished name of the entry to update",
+			"placeholder": "e.g. ou=users,dc=n8n,dc=io"
+		},
+		"id": {
+			"displayName": "Attribute ID",
+			"description": "The ID of the attribute to compare"
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "The value to compare"
+		},
+		"targetDn": {
+			"displayName": "New DN",
+			"description": "The new distinguished name for the entry",
+			"placeholder": "e.g. cn=nathan,ou=users,dc=n8n,dc=io"
+		},
+		"attributes": {
+			"displayName": "Update Attributes",
+			"description": "Update entry attributes",
+			"placeholder": "Update Attributes",
+			"multipleValueButtonText": "Update Attributes",
+			"options": {
+				"attribute": {
+					"displayName": "Attribute",
+					"options": {
+						"id": {
+							"displayName": "Attribute ID",
+							"description": "The ID of the attribute to add"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute to set"
+						}
+					}
+				},
+				"add": {
+					"displayName": "Add",
+					"options": {
+						"id": {
+							"displayName": "Attribute ID",
+							"description": "The ID of the attribute to add"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute to set"
+						}
+					}
+				},
+				"replace": {
+					"displayName": "Replace",
+					"options": {
+						"id": {
+							"displayName": "Attribute ID",
+							"description": "The ID of the attribute to replace"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute to replace"
+						}
+					}
+				},
+				"delete": {
+					"displayName": "Remove",
+					"options": {
+						"id": {
+							"displayName": "Attribute ID",
+							"description": "The ID of the attribute to remove"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute to remove"
+						}
+					}
+				}
+			},
+			"values": {
+				"attribute": {
+					"displayName": "Attribute",
+					"options": {
+						"id": {
+							"displayName": "Attribute ID",
+							"description": "The ID of the attribute to add"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute to set"
+						}
+					}
+				},
+				"attributes": {
+					"displayName": "Update Attributes",
+					"placeholder": "Update Attributes"
+				},
+				"add": {
+					"displayName": "Add",
+					"options": {
+						"id": {
+							"displayName": "Attribute ID",
+							"description": "The ID of the attribute to add"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute to set"
+						}
+					}
+				},
+				"replace": {
+					"displayName": "Replace",
+					"options": {
+						"id": {
+							"displayName": "Attribute ID",
+							"description": "The ID of the attribute to replace"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute to replace"
+						}
+					}
+				},
+				"delete": {
+					"displayName": "Remove",
+					"options": {
+						"id": {
+							"displayName": "Attribute ID",
+							"description": "The ID of the attribute to remove"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute to remove"
+						}
+					}
+				}
+			}
+		},
+		"baseDN": {
+			"displayName": "Base DN",
+			"description": "The distinguished name of the subtree to search in",
+			"placeholder": "e.g. ou=users, dc=n8n, dc=io"
+		},
+		"searchFor": {
+			"displayName": "Search For",
+			"description": "Directory object class to search for"
+		},
+		"customFilter": {
+			"displayName": "Custom Filter",
+			"description": "Custom LDAP filter. Escape these chars * ( ) \\ with a backslash \"\\\"."
+		},
+		"attribute": {
+			"displayName": "Attribute",
+			"description": "Attribute to search for"
+		},
+		"searchText": {
+			"displayName": "Search Text",
+			"description": "Text to search for, Use * for a wildcard"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"attributes": {
+					"displayName": "Attribute Names or IDs",
+					"description": "Comma-separated list of attributes to return. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"pageSize": {
+					"displayName": "Page Size",
+					"description": "Maximum number of results to request at one time. Set to 0 to disable paging."
+				},
+				"scope": {
+					"displayName": "Scope",
+					"description": "The set of entries at or below the BaseDN that may be considered potential matches",
+					"options": {
+						"base": {
+							"displayName": "Base Object"
+						},
+						"one": {
+							"displayName": "Single Level"
+						},
+						"sub": {
+							"displayName": "Whole Subtree"
+						}
+					}
+				}
+			}
+		}
+	}
+}

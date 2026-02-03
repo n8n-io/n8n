@@ -1,0 +1,50 @@
+{
+	"header": {
+		"displayName": "Copper 触发器",
+		"description": "通过 Webhook 处理 Copper 事件"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"description": "将触发事件的资源",
+			"options": {
+				"company": {
+					"displayName": "公司"
+				},
+				"lead": {
+					"displayName": "潜在客户"
+				},
+				"opportunity": {
+					"displayName": "商机"
+				},
+				"person": {
+					"displayName": "人员"
+				},
+				"project": {
+					"displayName": "项目"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"event": {
+			"displayName": "事件",
+			"description": "要监听的事件",
+			"options": {
+				"delete": {
+					"displayName": "删除",
+					"description": "现有记录已被移除"
+				},
+				"new": {
+					"displayName": "新建",
+					"description": "创建新记录"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "现有实体记录中的任何字段发生更改"
+				}
+			}
+		}
+	}
+}

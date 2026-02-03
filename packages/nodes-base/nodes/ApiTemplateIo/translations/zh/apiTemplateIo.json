@@ -1,0 +1,209 @@
+{
+	"header": {
+		"displayName": "APITemplate.io",
+		"description": "使用 APITemplate.io API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"account": {
+					"displayName": "账户"
+				},
+				"image": {
+					"displayName": "图片"
+				},
+				"pdf": {
+					"displayName": "PDF"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"get": {
+					"displayName": "获取"
+				}
+			}
+		},
+		"imageTemplateId": {
+			"displayName": "模板名称或ID",
+			"description": "要使用的镜像模板ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"pdfTemplateId": {
+			"displayName": "模板名称或ID",
+			"description": "要使用的PDF模板ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"download": {
+			"displayName": "下载",
+			"description": "要将读取文件的数据写入的二进制属性名称"
+		},
+		"binaryProperty": {
+			"displayName": "将输出文件放入字段"
+		},
+		"overridesJson": {
+			"displayName": "覆盖项 (JSON)",
+			"placeholder": "[ {\"name\": \"text_1\", \"text\": \"hello world\", \"textBackgroundColor\": \"rgba(246, 243, 243, 0)\" } ]"
+		},
+		"propertiesJson": {
+			"displayName": "属性 (JSON)",
+			"placeholder": "{ \"name\": \"text_1\" }"
+		},
+		"overridesUi": {
+			"displayName": "覆盖设置",
+			"placeholder": "添加覆盖",
+			"multipleValueButtonText": "添加覆盖",
+			"options": {
+				"overrideValues": {
+					"displayName": "覆盖",
+					"options": {
+						"propertiesUi": {
+							"displayName": "属性",
+							"placeholder": "添加属性",
+							"multipleValueButtonText": "添加属性",
+							"options": {
+								"propertyValues": {
+									"displayName": "属性",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "属性名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "属性的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"propertyValues": {
+									"displayName": "属性",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "属性名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "属性的值"
+										}
+									}
+								},
+								"propertiesUi": {
+									"displayName": "属性",
+									"placeholder": "添加属性"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"overrideValues": {
+					"displayName": "覆盖",
+					"options": {
+						"propertiesUi": {
+							"displayName": "属性",
+							"placeholder": "添加属性",
+							"multipleValueButtonText": "添加属性",
+							"options": {
+								"propertyValues": {
+									"displayName": "属性",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "属性名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "属性的值"
+										}
+									}
+								}
+							},
+							"values": {
+								"propertyValues": {
+									"displayName": "属性",
+									"options": {
+										"key": {
+											"displayName": "键",
+											"description": "属性名称"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "属性的值"
+										}
+									}
+								},
+								"propertiesUi": {
+									"displayName": "属性",
+									"placeholder": "添加属性"
+								}
+							}
+						}
+					}
+				},
+				"overridesUi": {
+					"displayName": "覆盖设置",
+					"placeholder": "添加覆盖"
+				}
+			}
+		},
+		"propertiesUi": {
+			"displayName": "属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"propertyValues": {
+					"displayName": "属性",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "属性的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"propertyValues": {
+					"displayName": "属性",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "属性名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "属性的值"
+						}
+					}
+				},
+				"propertiesUi": {
+					"displayName": "属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"fileName": {
+					"displayName": "文件名",
+					"description": "下载的图像/PDF的名称。必须包含扩展名。例如：report.pdf"
+				}
+			}
+		}
+	}
+}

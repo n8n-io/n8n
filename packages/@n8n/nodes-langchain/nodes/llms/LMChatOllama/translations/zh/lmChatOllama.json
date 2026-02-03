@@ -1,0 +1,106 @@
+{
+	"header": {
+		"displayName": "Ollama聊天模型",
+		"description": "语言模型 Ollama"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI链。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"model": {
+			"displayName": "模型",
+			"description": "用于生成补全的模型。要下载模型，请访问<a href=\"https://ollama.ai/library\">Ollama模型库</a>。"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"temperature": {
+					"displayName": "采样温度",
+					"description": "控制生成文本的随机性。较低值使输出更集中和确定，较高值使输出更多样和随机。"
+				},
+				"topK": {
+					"displayName": "Top K",
+					"description": "限制每一步考虑的最高概率词汇标记数量。数值越高多样性越强，但可能降低连贯性。设为-1可禁用此限制。"
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "Chooses from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p. Helps generate more human-like text by reducing repetitions."
+				},
+				"frequencyPenalty": {
+					"displayName": "频率惩罚",
+					"description": "Adjusts the penalty for tokens that have already appeared in the generated text. Higher values discourage repetition."
+				},
+				"keepAlive": {
+					"displayName": "保持活动",
+					"description": "指定使用后模型在内存中保留的时长。适用于频繁使用的模型。格式：1h30m（1小时30分钟）。"
+				},
+				"lowVram": {
+					"displayName": "低显存模式",
+					"description": "是否启用低显存模式，该模式会降低内存使用量，但生成速度会变慢。适用于显存有限的GPU。"
+				},
+				"mainGpu": {
+					"displayName": "主GPU ID",
+					"description": "指定用于主计算的GPU ID。仅在拥有多个GPU时更改此项。"
+				},
+				"numBatch": {
+					"displayName": "上下文批处理大小",
+					"description": "设置提示处理的批处理大小。较大的批处理大小可能提高生成速度，但会增加内存使用量。"
+				},
+				"numCtx": {
+					"displayName": "上下文长度",
+					"description": "用于生成下一个token的最大token数量。较小的值可减少内存使用，较大的值则为模型提供更多上下文。"
+				},
+				"numGpu": {
+					"displayName": "GPU数量",
+					"description": "指定用于并行处理的GPU数量。设置为-1可自动检测。"
+				},
+				"numPredict": {
+					"displayName": "生成的最大令牌数",
+					"description": "要生成的最大令牌数量。设置为-1表示无限制。设置为较大值时需谨慎，因为这可能导致输出非常冗长。"
+				},
+				"numThread": {
+					"displayName": "CPU线程数",
+					"description": "指定用于处理的CPU线程数量。设置为0以自动检测。"
+				},
+				"penalizeNewline": {
+					"displayName": "惩罚换行符",
+					"description": "是否降低模型生成换行符的概率，以鼓励生成更长的连续文本序列"
+				},
+				"presencePenalty": {
+					"displayName": "存在惩罚",
+					"description": "Adjusts the penalty for tokens based on their presence in the generated text so far. Positive values penalize tokens that have already appeared, encouraging diversity."
+				},
+				"repeatPenalty": {
+					"displayName": "重复惩罚",
+					"description": "调整重复标记的惩罚因子。数值越高越能有效抑制重复。设为1.0可禁用重复惩罚。"
+				},
+				"useMLock": {
+					"displayName": "使用内存锁定",
+					"description": "是否将模型锁定在内存中以防止交换。这可以提高性能，但需要足够的可用内存。"
+				},
+				"useMMap": {
+					"displayName": "使用内存映射",
+					"description": "是否使用内存映射加载模型。这可以减少内存使用，但可能影响性能。建议保持启用。"
+				},
+				"vocabOnly": {
+					"displayName": "[0]仅加载词汇表\n[1]是否仅加载模型词汇表而不加载权重。适用于快速测试分词功能。",
+					"description": "Whether to only load the model vocabulary without the weights. Useful for quickly testing tokenization."
+				},
+				"format": {
+					"displayName": "输出格式",
+					"description": "指定API响应的格式",
+					"options": {
+						"default": {
+							"displayName": "默认"
+						},
+						"json": {
+							"displayName": "JSON"
+						}
+					}
+				}
+			}
+		}
+	}
+}

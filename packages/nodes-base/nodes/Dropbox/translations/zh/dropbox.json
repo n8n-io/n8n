@@ -1,0 +1,156 @@
+{
+	"header": {
+		"displayName": "Dropbox",
+		"description": "访问Dropbox上的数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "与服务进行身份验证的方式",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				},
+				"search": {
+					"displayName": "搜索"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"copy": {
+					"displayName": "复制",
+					"description": "复制文件夹"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文件夹"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"move": {
+					"displayName": "移动",
+					"description": "移动文件夹"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传文件"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建文件夹"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "返回指定文件夹中的文件和文件夹"
+				},
+				"query": {
+					"displayName": "查询"
+				}
+			}
+		},
+		"path": {
+			"displayName": "文件夹路径",
+			"description": "要列出内容的路径",
+			"placeholder": "/invoices/2019/"
+		},
+		"toPath": {
+			"displayName": "目标路径",
+			"description": "文件或文件夹的新路径",
+			"placeholder": "/invoices/new_name.txt"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "要上传文件的文本内容"
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "要搜索的字符串。根据请求参数，可能跨多个字段匹配。"
+		},
+		"fileStatus": {
+			"displayName": "文件状态",
+			"description": "要搜索的字符串。根据请求参数，可能跨多个字段匹配。",
+			"options": {
+				"active": {
+					"displayName": "激活状态"
+				},
+				"deleted": {
+					"displayName": "已删除"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"file_categories": {
+					"displayName": "文件分类"
+				},
+				"file_extensions": {
+					"displayName": "文件扩展名",
+					"description": "可设置多个文件扩展名，用逗号分隔。例如：jpg,pdf。"
+				},
+				"path": {
+					"displayName": "文件夹",
+					"description": "如果未指定此字段，此模块将搜索整个 Dropbox"
+				},
+				"include_deleted": {
+					"displayName": "包含已删除项",
+					"description": "结果是否包含曾经存在但已被删除的文件和文件夹条目。此字段默认值为 False。"
+				},
+				"include_has_explicit_shared_members": {
+					"displayName": "包含共享成员",
+					"description": "结果是否包含每个文件的标志，指示该文件是否有任何显式成员。此字段的默认值为 False。"
+				},
+				"include_mounted_folders": {
+					"displayName": "包含已挂载文件夹",
+					"description": "是否在结果中包含已挂载文件夹下的条目，包括应用文件夹、共享文件夹和团队文件夹。此字段的默认值为True。"
+				},
+				"include_non_downloadable_files": {
+					"displayName": "包含不可下载文件",
+					"description": "是否包含不可下载的文件，例如Google文档。此字段默认值为True。"
+				},
+				"recursive": {
+					"displayName": "递归",
+					"description": "是否将列出文件夹操作递归应用于所有子文件夹，且响应将包含所有子文件夹的内容。此字段的默认值为False。"
+				}
+			}
+		}
+	}
+}

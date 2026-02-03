@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "Wolfram|Alpha",
+		"description": "Connects to WolframAlpha's computational intelligence engine."
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		}
+	}
+}

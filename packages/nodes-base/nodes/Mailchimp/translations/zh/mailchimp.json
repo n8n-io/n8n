@@ -1,0 +1,594 @@
+{
+	"header": {
+		"displayName": "Mailchimp",
+		"description": "使用 Mailchimp API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiKey": {
+					"displayName": "API密钥"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"campaign": {
+					"displayName": "营销活动"
+				},
+				"listGroup": {
+					"displayName": "列出群组"
+				},
+				"member": {
+					"displayName": "成员"
+				},
+				"memberTag": {
+					"displayName": "成员标签"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "从列表成员添加标签"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除营销活动"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取营销活动"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个营销活动"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "在列表中更新新成员"
+				},
+				"replicate": {
+					"displayName": "复制",
+					"description": "复制营销活动"
+				},
+				"resend": {
+					"displayName": "Resend",
+					"description": "为此营销活动创建重发至未打开者版本"
+				},
+				"send": {
+					"displayName": "发送",
+					"description": "发送营销活动"
+				}
+			}
+		},
+		"list": {
+			"displayName": "列表名称或ID",
+			"description": "列表的列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定一个ID。",
+			"options": {}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "订阅者的电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"status": {
+			"displayName": "状态",
+			"description": "订阅者当前状态",
+			"options": {
+				"cleaned": {
+					"displayName": "已清理"
+				},
+				"pending": {
+					"displayName": "待处理"
+				},
+				"subscribed": {
+					"displayName": "已订阅"
+				},
+				"transactional": {
+					"displayName": "事务性"
+				},
+				"unsubscribed": {
+					"displayName": "已取消订阅"
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"emailType": {
+					"displayName": "邮件类型",
+					"description": "该成员要求接收的邮件类型",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"text": {
+							"displayName": "文本"
+						}
+					}
+				},
+				"language": {
+					"displayName": "语言",
+					"description": "如果已设置/检测到，订阅者的语言"
+				},
+				"ipOptIn": {
+					"displayName": "选择加入IP",
+					"description": "订阅者用于确认其选择加入状态的IP地址"
+				},
+				"ipSignup": {
+					"displayName": "注册IP",
+					"description": "订阅者注册时使用的IP地址"
+				},
+				"timestampSignup": {
+					"displayName": "注册时间戳",
+					"description": "订阅者注册列表的日期和时间，采用ISO 8601格式"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "与成员关联的标签，以逗号分隔"
+				},
+				"vip": {
+					"displayName": "VIP",
+					"description": "订阅者的VIP状态"
+				},
+				"timestampOpt": {
+					"displayName": "选择加入时间戳",
+					"description": "订阅者确认选择加入状态的日期和时间，采用 ISO 8601 格式"
+				},
+				"fields": {
+					"displayName": "字段名称或ID",
+					"description": "要返回的字段列表，以逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"excludeFields": {
+					"displayName": "排除字段名称或ID",
+					"description": "要排除的字段列表，以逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"beforeLastChanged": {
+					"displayName": "上次更改之前",
+					"description": "将结果限制为信息在设定时间范围之前发生更改的订阅者"
+				},
+				"beforeTimestampOpt": {
+					"displayName": "选择时间戳之前",
+					"description": "将结果限制在设定时间段前选择加入的订阅者"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "营销活动的状态",
+					"options": {
+						"cleaned": {
+							"displayName": "已清理"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"subscribed": {
+							"displayName": "已订阅"
+						},
+						"transactional": {
+							"displayName": "事务性"
+						},
+						"unsubscribed": {
+							"displayName": "已取消订阅"
+						},
+						"save": {
+							"displayName": "保存"
+						},
+						"sending": {
+							"displayName": "发送中"
+						},
+						"sent": {
+							"displayName": "已发送"
+						},
+						"schedule": {
+							"displayName": "计划"
+						}
+					}
+				},
+				"sinceLastChanged": {
+					"displayName": "自上次更改以来",
+					"description": "将结果限制在设定时间范围后信息发生更改的订阅者"
+				},
+				"isSyncing": {
+					"displayName": "正在同步",
+					"description": "基于请求中标签的自动化是否不会触发"
+				},
+				"beforeCreateTime": {
+					"displayName": "创建时间之前",
+					"description": "将响应限制在设定时间之前创建的营销活动"
+				},
+				"beforeSendTime": {
+					"displayName": "发送时间之前",
+					"description": "将响应限制在设定时间之前发送的营销活动"
+				},
+				"listId": {
+					"displayName": "列表名称或ID",
+					"description": "列表的列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"sinceCreateTime": {
+					"displayName": "自创建时间起",
+					"description": "将响应限制在设定时间之后创建的营销活动"
+				},
+				"sinceSendTime": {
+					"displayName": "自发送时间起",
+					"description": "限制返回在设定时间后发送的营销活动"
+				},
+				"sortDirection": {
+					"displayName": "排序方向",
+					"description": "确定排序结果的顺序方向",
+					"options": {
+						"ASC": {
+							"displayName": "升序"
+						},
+						"DESC": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"sortField": {
+					"displayName": "排序字段",
+					"description": "按指定字段返回排序的文件",
+					"options": {
+						"create_time": {
+							"displayName": "创建时间"
+						},
+						"send_time": {
+							"displayName": "发送时间"
+						}
+					}
+				}
+			}
+		},
+		"locationFieldsUi": {
+			"displayName": "位置",
+			"description": "订阅者位置信息。",
+			"placeholder": "添加位置",
+			"options": {
+				"locationFieldsValues": {
+					"displayName": "位置",
+					"options": {
+						"latitude": {
+							"displayName": "纬度",
+							"description": "位置纬度"
+						},
+						"longitude": {
+							"displayName": "经度",
+							"description": "经度位置"
+						}
+					}
+				}
+			},
+			"values": {
+				"locationFieldsValues": {
+					"displayName": "位置",
+					"options": {
+						"latitude": {
+							"displayName": "纬度",
+							"description": "位置纬度"
+						},
+						"longitude": {
+							"displayName": "经度",
+							"description": "经度位置"
+						}
+					}
+				},
+				"locationFieldsUi": {
+					"displayName": "位置",
+					"placeholder": "添加位置"
+				}
+			}
+		},
+		"mergeFieldsUi": {
+			"displayName": "合并字段",
+			"description": "成员的单个合并变量和值",
+			"placeholder": "添加合并字段",
+			"multipleValueButtonText": "添加合并字段",
+			"options": {
+				"mergeFieldsValues": {
+					"displayName": "字段",
+					"options": {
+						"name": {
+							"displayName": "字段名称或ID",
+							"description": "合并字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"value": {
+							"displayName": "字段值",
+							"description": "合并字段值"
+						}
+					}
+				}
+			},
+			"values": {
+				"mergeFieldsValues": {
+					"displayName": "字段",
+					"options": {
+						"name": {
+							"displayName": "字段名称或ID",
+							"description": "合并字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"value": {
+							"displayName": "字段值",
+							"description": "合并字段值"
+						}
+					}
+				},
+				"mergeFieldsUi": {
+					"displayName": "合并字段",
+					"placeholder": "添加合并字段"
+				}
+			}
+		},
+		"mergeFieldsJson": {
+			"displayName": "合并字段"
+		},
+		"locationJson": {
+			"displayName": "位置"
+		},
+		"groupsUi": {
+			"displayName": "兴趣组",
+			"placeholder": "添加兴趣组",
+			"multipleValueButtonText": "添加兴趣组",
+			"options": {
+				"groupsValues": {
+					"displayName": "分组",
+					"options": {
+						"categoryId": {
+							"displayName": "分类名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"categoryFieldId": {
+							"displayName": "分类字段ID"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"groupsValues": {
+					"displayName": "分组",
+					"options": {
+						"categoryId": {
+							"displayName": "分类名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"categoryFieldId": {
+							"displayName": "分类字段ID"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"groupsUi": {
+					"displayName": "兴趣组",
+					"placeholder": "添加兴趣组"
+				}
+			}
+		},
+		"groupJson": {
+			"displayName": "兴趣组"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"emailType": {
+					"displayName": "邮件类型",
+					"description": "该成员要求接收的邮件类型",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"text": {
+							"displayName": "文本"
+						}
+					}
+				},
+				"groupsUi": {
+					"displayName": "兴趣组",
+					"placeholder": "添加兴趣组",
+					"multipleValueButtonText": "添加兴趣组",
+					"options": {
+						"groupsValues": {
+							"displayName": "分组",
+							"options": {
+								"categoryId": {
+									"displayName": "分类名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"categoryFieldId": {
+									"displayName": "分类字段ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"groupsValues": {
+							"displayName": "分组",
+							"options": {
+								"categoryId": {
+									"displayName": "分类名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"categoryFieldId": {
+									"displayName": "分类字段ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"groupsUi": {
+							"displayName": "兴趣组",
+							"placeholder": "添加兴趣组"
+						}
+					}
+				},
+				"language": {
+					"displayName": "语言",
+					"description": "如果已设置/检测到，订阅者的语言"
+				},
+				"mergeFieldsUi": {
+					"displayName": "合并字段",
+					"description": "成员的单个合并变量和值",
+					"placeholder": "添加合并字段",
+					"multipleValueButtonText": "添加合并字段",
+					"options": {
+						"mergeFieldsValues": {
+							"displayName": "字段",
+							"options": {
+								"name": {
+									"displayName": "字段名称或ID",
+									"description": "合并字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "合并字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"mergeFieldsValues": {
+							"displayName": "字段",
+							"options": {
+								"name": {
+									"displayName": "字段名称或ID",
+									"description": "合并字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "合并字段值"
+								}
+							}
+						},
+						"mergeFieldsUi": {
+							"displayName": "合并字段",
+							"placeholder": "添加合并字段"
+						}
+					}
+				},
+				"ipOptIn": {
+					"displayName": "选择加入IP",
+					"description": "订阅者用于确认其选择加入状态的IP地址"
+				},
+				"ipSignup": {
+					"displayName": "注册IP",
+					"description": "订阅者注册时使用的IP地址"
+				},
+				"timestampSignup": {
+					"displayName": "注册时间戳",
+					"description": "订阅者注册列表的日期和时间，采用ISO 8601格式"
+				},
+				"skipMergeValidation": {
+					"displayName": "跳过合并验证",
+					"description": "是否接受不含合并字段值的成员数据，即使该合并字段通常为必填项"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "订阅者当前状态",
+					"options": {
+						"cleaned": {
+							"displayName": "已清理"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"subscribed": {
+							"displayName": "已订阅"
+						},
+						"transactional": {
+							"displayName": "事务性"
+						},
+						"unsubscribed": {
+							"displayName": "已取消订阅"
+						}
+					}
+				},
+				"vip": {
+					"displayName": "VIP",
+					"description": "订阅者的VIP状态"
+				},
+				"locationFieldsUi": {
+					"displayName": "位置",
+					"description": "订阅者位置信息。",
+					"placeholder": "添加位置",
+					"options": {
+						"locationFieldsValues": {
+							"displayName": "位置",
+							"options": {
+								"latitude": {
+									"displayName": "纬度",
+									"description": "位置纬度"
+								},
+								"longitude": {
+									"displayName": "经度",
+									"description": "经度位置"
+								}
+							}
+						}
+					},
+					"values": {
+						"locationFieldsValues": {
+							"displayName": "位置",
+							"options": {
+								"latitude": {
+									"displayName": "纬度",
+									"description": "位置纬度"
+								},
+								"longitude": {
+									"displayName": "经度",
+									"description": "经度位置"
+								}
+							}
+						},
+						"locationFieldsUi": {
+							"displayName": "位置",
+							"placeholder": "添加位置"
+						}
+					}
+				},
+				"timestampOpt": {
+					"displayName": "选择加入时间戳",
+					"description": "订阅者确认选择加入状态的日期和时间，采用 ISO 8601 格式"
+				}
+			}
+		},
+		"tags": {
+			"displayName": "标签"
+		},
+		"groupCategory": {
+			"displayName": "群组分类名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+			"options": {}
+		},
+		"campaignId": {
+			"displayName": "活动ID",
+			"description": "营销活动列表"
+		}
+	}
+}

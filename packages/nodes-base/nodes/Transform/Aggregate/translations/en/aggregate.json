@@ -1,0 +1,120 @@
+{
+	"header": {
+		"displayName": "Aggregate",
+		"description": "Combine a field from many items into a list in a single item"
+	},
+	"nodeView": {
+		"aggregate": {
+			"displayName": "Aggregate",
+			"options": {
+				"aggregateIndividualFields": {
+					"displayName": "Individual Fields"
+				},
+				"aggregateAllItemData": {
+					"displayName": "All Item Data (Into a Single List)"
+				}
+			}
+		},
+		"fieldsToAggregate": {
+			"displayName": "Fields To Aggregate",
+			"placeholder": "Add Field To Aggregate",
+			"multipleValueButtonText": "Add Field To Aggregate",
+			"options": {
+				"fieldToAggregate": {
+					"displayName": "fieldToAggregate",
+					"options": {
+						"fieldToAggregate": {
+							"displayName": "Input Field Name",
+							"description": "The name of a field in the input items to aggregate together",
+							"placeholder": "e.g. id"
+						},
+						"renameField": {
+							"displayName": "Rename Field",
+							"description": "Whether to give the field a different name in the output"
+						},
+						"outputFieldName": {
+							"displayName": "Output Field Name",
+							"description": "The name of the field to put the aggregated data in. Leave blank to use the input field name."
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldToAggregate": {
+					"displayName": "fieldToAggregate",
+					"options": {
+						"fieldToAggregate": {
+							"displayName": "Input Field Name",
+							"description": "The name of a field in the input items to aggregate together",
+							"placeholder": "e.g. id"
+						},
+						"renameField": {
+							"displayName": "Rename Field",
+							"description": "Whether to give the field a different name in the output"
+						},
+						"outputFieldName": {
+							"displayName": "Output Field Name",
+							"description": "The name of the field to put the aggregated data in. Leave blank to use the input field name."
+						}
+					}
+				},
+				"fieldsToAggregate": {
+					"displayName": "Fields To Aggregate",
+					"placeholder": "Add Field To Aggregate"
+				}
+			}
+		},
+		"destinationFieldName": {
+			"displayName": "Put Output in Field",
+			"description": "The name of the output field to put the data in"
+		},
+		"include": {
+			"displayName": "Include",
+			"options": {
+				"allFields": {
+					"displayName": "All Fields"
+				},
+				"specifiedFields": {
+					"displayName": "Specified Fields"
+				},
+				"allFieldsExcept": {
+					"displayName": "All Fields Except"
+				}
+			}
+		},
+		"fieldsToExclude": {
+			"displayName": "Fields To Exclude",
+			"placeholder": "e.g. email, name"
+		},
+		"fieldsToInclude": {
+			"displayName": "Fields To Include",
+			"placeholder": "e.g. email, name"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "Disable Dot Notation",
+					"description": "Whether to disallow referencing child fields using `parent.child` in the field name"
+				},
+				"mergeLists": {
+					"displayName": "Merge Lists",
+					"description": "Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list"
+				},
+				"includeBinaries": {
+					"displayName": "Include Binaries",
+					"description": "Whether to include the binary data in the new item"
+				},
+				"keepOnlyUnique": {
+					"displayName": "Keep Only Unique Binaries",
+					"description": "Whether to keep only unique binaries by comparing mime types, file types, file sizes and file extensions"
+				},
+				"keepMissing": {
+					"displayName": "Keep Missing And Null Values",
+					"description": "Whether to add a null entry to the aggregated list when there is a missing or null value"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,48 @@
+{
+	"header": {
+		"displayName": "SerpApi (Google搜索)",
+		"description": "使用SerpAPI在Google中搜索"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"gl": {
+					"displayName": "国家",
+					"description": "定义用于搜索的国家。前往<a href=\"https://serpapi.com/google-countries\">Google国家页面</a>查看支持国家的完整列表。"
+				},
+				"device": {
+					"displayName": "设备",
+					"description": "用于获取结果的设备",
+					"options": {
+						"desktop": {
+							"displayName": "桌面版"
+						},
+						"mobile": {
+							"displayName": "移动端"
+						},
+						"tablet": {
+							"displayName": "平板电脑"
+						}
+					}
+				},
+				"no_cache": {
+					"displayName": "显式数组",
+					"description": "是否强制SerpApi获取Google结果，即使已有缓存版本。缓存1小时后过期。缓存搜索免费，不计入每月搜索次数。"
+				},
+				"google_domain": {
+					"displayName": "Google域名",
+					"description": "定义用于搜索的域名。前往<a href=\"https://serpapi.com/google-domains\">Google域名页面</a>查看完整支持域名列表。"
+				},
+				"hl": {
+					"displayName": "语言",
+					"description": "定义要使用的语言。使用两位字母的语言代码（例如，`en`表示英语，`es`表示西班牙语，`fr`表示法语）。前往<a href=\"https://serpapi.com/google-languages\">Google语言页面</a>查看支持语言的完整列表。"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,143 @@
+{
+	"header": {
+		"displayName": "Jenkins",
+		"description": "Consume Jenkins API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"build": {
+					"displayName": "Build"
+				},
+				"instance": {
+					"displayName": "Instance"
+				},
+				"job": {
+					"displayName": "Job"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"description": "Jenkins instance operations",
+			"options": {
+				"copy": {
+					"displayName": "Copy",
+					"description": "Copy a specific job"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new job"
+				},
+				"trigger": {
+					"displayName": "Trigger",
+					"description": "Trigger a specific job"
+				},
+				"triggerParams": {
+					"displayName": "Trigger with Parameters",
+					"description": "Trigger a specific job"
+				},
+				"cancelQuietDown": {
+					"displayName": "Cancel Quiet Down",
+					"description": "Cancel quiet down state"
+				},
+				"quietDown": {
+					"displayName": "Quiet Down",
+					"description": "Put Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown"
+				},
+				"restart": {
+					"displayName": "Restart",
+					"description": "Restart Jenkins immediately on environments where it is possible"
+				},
+				"safeRestart": {
+					"displayName": "Safely Restart",
+					"description": "Restart Jenkins once no jobs are running on environments where it is possible"
+				},
+				"safeExit": {
+					"displayName": "Safely Shutdown",
+					"description": "Shutdown once no jobs are running"
+				},
+				"exit": {
+					"displayName": "Shutdown",
+					"description": "Shutdown Jenkins immediately"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "List Builds"
+				}
+			}
+		},
+		"triggerParamsNotice": {
+			"displayName": "Make sure the job is setup to support triggering with parameters. <a href=\"https://wiki.jenkins.io/display/JENKINS/Parameterized+Build\" target=\"_blank\">More info</a>"
+		},
+		"job": {
+			"displayName": "Job Name or ID",
+			"description": "Name of the job. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"param": {
+			"displayName": "Parameters",
+			"description": "Parameters for Jenkins job",
+			"placeholder": "Add Parameter",
+			"multipleValueButtonText": "Add Parameter",
+			"options": {
+				"params": {
+					"displayName": "Parameters",
+					"options": {
+						"name": {
+							"displayName": "Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"params": {
+					"displayName": "Parameters",
+					"options": {
+						"name": {
+							"displayName": "Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"param": {
+					"displayName": "Parameters",
+					"placeholder": "Add Parameter"
+				}
+			}
+		},
+		"newJob": {
+			"displayName": "New Job Name",
+			"description": "Name of the new Jenkins job"
+		},
+		"xml": {
+			"displayName": "XML",
+			"description": "XML of Jenkins config"
+		},
+		"createNotice": {
+			"displayName": "To get the XML of an existing job, add ‘config.xml’ to the end of the job URL"
+		},
+		"reason": {
+			"displayName": "Reason",
+			"description": "Freeform reason for quiet down mode"
+		},
+		"instanceNotice": {
+			"displayName": "Instance operation can shutdown Jenkins instance and make it unresponsive. Some commands may not be available depending on instance implementation."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		}
+	}
+}

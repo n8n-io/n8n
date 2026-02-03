@@ -1,0 +1,37 @@
+{
+	"header": {
+		"displayName": "Facebook Lead Ads 触发器",
+		"description": "通过 Webhook 处理 Facebook Lead Ads 事件"
+	},
+	"nodeView": {
+		"facebookLeadAdsNotice": {
+			"displayName": "由于Facebook API限制，每个Facebook应用只能使用一个Facebook Lead Ads触发器"
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"newLead": {
+					"displayName": "新线索"
+				}
+			}
+		},
+		"page": {
+			"displayName": "页面",
+			"description": "用于获取新销售线索的表单链接页面"
+		},
+		"form": {
+			"displayName": "表单",
+			"description": "用于在提交时获取潜在客户详情的监控表单"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"simplifyOutput": {
+					"displayName": "简化输出",
+					"description": "是否返回简化版本的Webhook事件，而非所有字段"
+				}
+			}
+		}
+	}
+}

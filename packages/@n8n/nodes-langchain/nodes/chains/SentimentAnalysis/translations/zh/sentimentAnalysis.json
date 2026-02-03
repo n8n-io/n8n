@@ -1,0 +1,52 @@
+{
+	"header": {
+		"displayName": "情感分析",
+		"description": "分析文本的情感倾向"
+	},
+	"nodeView": {
+		"inputText": {
+			"displayName": "文本分析",
+			"description": "使用表达式引用先前节点中的数据或输入静态文本"
+		},
+		"detailedResultsNotice": {
+			"displayName": "情感评分是由LLM生成的估计值，并非严格的统计测量。它们在不同运行中可能不一致，应仅作为粗略指标使用。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"categories": {
+					"displayName": "情感分析类别",
+					"description": "要分析的类别列表（以逗号分隔）"
+				},
+				"systemPromptTemplate": {
+					"displayName": "系统提示词模板",
+					"description": "直接用作系统提示词的字符串"
+				},
+				"includeDetailedResults": {
+					"displayName": "包含详细结果",
+					"description": "是否在输出中包含情感强度和置信度分数"
+				},
+				"enableAutoFixing": {
+					"displayName": "启用自动修复",
+					"description": "是否启用自动修复（若输出损坏可能触发额外的LLM调用）"
+				},
+				"batching": {
+					"displayName": "批量处理",
+					"description": "用于速率限制的批量处理选项",
+					"placeholder": "添加批量处理选项",
+					"options": {
+						"batchSize": {
+							"displayName": "批次大小",
+							"description": "并行处理的项目数量。这对速率限制很有用，但可能会影响日志输出顺序。"
+						},
+						"delayBetweenBatches": {
+							"displayName": "批次间延迟",
+							"description": "批次之间的延迟时间（毫秒）。适用于速率限制场景。"
+						}
+					}
+				}
+			}
+		}
+	}
+}

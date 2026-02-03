@@ -1,0 +1,32 @@
+{
+	"header": {
+		"displayName": "Mailjet Trigger",
+		"description": "Handle Mailjet events via webhooks"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "Event",
+			"description": "Determines which resource events the webhook is triggered for",
+			"options": {
+				"blocked": {
+					"displayName": "email.blocked"
+				},
+				"bounce": {
+					"displayName": "email.bounce"
+				},
+				"open": {
+					"displayName": "email.open"
+				},
+				"sent": {
+					"displayName": "email.sent"
+				},
+				"spam": {
+					"displayName": "email.spam"
+				},
+				"unsub": {
+					"displayName": "email.unsub"
+				}
+			}
+		}
+	}
+}

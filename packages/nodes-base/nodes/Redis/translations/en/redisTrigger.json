@@ -1,0 +1,26 @@
+{
+	"header": {
+		"displayName": "Redis Trigger",
+		"description": "Subscribe to redis channel"
+	},
+	"nodeView": {
+		"channels": {
+			"displayName": "Channels",
+			"description": "Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"jsonParseBody": {
+					"displayName": "JSON Parse Body",
+					"description": "Whether to try to parse the message to an object"
+				},
+				"onlyMessage": {
+					"displayName": "Only Message",
+					"description": "Whether to return only the message property"
+				}
+			}
+		}
+	}
+}

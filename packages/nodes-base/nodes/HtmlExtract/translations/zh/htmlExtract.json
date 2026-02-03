@@ -1,0 +1,137 @@
+{
+	"header": {
+		"displayName": "HTML提取",
+		"description": "从HTML中提取数据"
+	},
+	"nodeView": {
+		"sourceData": {
+			"displayName": "源数据",
+			"description": "是否应从二进制或JSON数据读取HTML",
+			"options": {
+				"binary": {
+					"displayName": "二进制"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"dataPropertyName": {
+			"displayName": "JSON属性",
+			"description": "可从中提取数据的HTML所在的JSON属性名称。该属性可包含字符串或字符串数组。"
+		},
+		"extractionValues": {
+			"displayName": "提取值",
+			"placeholder": "添加值",
+			"multipleValueButtonText": "添加值",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"key": {
+							"displayName": "键",
+							"description": "提取的值应保存的键名"
+						},
+						"cssSelector": {
+							"displayName": "CSS选择器",
+							"description": "要使用的CSS选择器",
+							"placeholder": ".price"
+						},
+						"returnValue": {
+							"displayName": "返回值",
+							"description": "应返回何种类型的数据",
+							"options": {
+								"attribute": {
+									"displayName": "属性",
+									"description": "从元素中获取属性值，例如“class”"
+								},
+								"html": {
+									"displayName": "HTML",
+									"description": "获取元素包含的HTML"
+								},
+								"text": {
+									"displayName": "文本",
+									"description": "仅获取元素的文本内容"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "获取输入框、选择框或文本域的值"
+								}
+							}
+						},
+						"attribute": {
+							"displayName": "属性",
+							"description": "要返回其值的属性名称",
+							"placeholder": "类"
+						},
+						"returnArray": {
+							"displayName": "返回数组",
+							"description": "是否将值作为数组返回，以便找到多个值时也能分别返回。如果未设置，所有值将作为单个字符串返回。"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"key": {
+							"displayName": "键",
+							"description": "提取的值应保存的键名"
+						},
+						"cssSelector": {
+							"displayName": "CSS选择器",
+							"description": "要使用的CSS选择器",
+							"placeholder": ".price"
+						},
+						"returnValue": {
+							"displayName": "返回值",
+							"description": "应返回何种类型的数据",
+							"options": {
+								"attribute": {
+									"displayName": "属性",
+									"description": "从元素中获取属性值，例如“class”"
+								},
+								"html": {
+									"displayName": "HTML",
+									"description": "获取元素包含的HTML"
+								},
+								"text": {
+									"displayName": "文本",
+									"description": "仅获取元素的文本内容"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "获取输入框、选择框或文本域的值"
+								}
+							}
+						},
+						"attribute": {
+							"displayName": "属性",
+							"description": "要返回其值的属性名称",
+							"placeholder": "类"
+						},
+						"returnArray": {
+							"displayName": "返回数组",
+							"description": "是否将值作为数组返回，以便找到多个值时也能分别返回。如果未设置，所有值将作为单个字符串返回。"
+						}
+					}
+				},
+				"extractionValues": {
+					"displayName": "提取值",
+					"placeholder": "添加值"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"trimValues": {
+					"displayName": "修剪值",
+					"description": "是否自动移除值开头和结尾的所有空格和换行符"
+				}
+			}
+		}
+	}
+}

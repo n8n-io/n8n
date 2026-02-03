@@ -1,0 +1,527 @@
+{
+	"header": {
+		"displayName": "Segment",
+		"description": "使用Segment API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"group": {
+					"displayName": "分组",
+					"description": "分组功能允许您将已识别的用户与一个组关联"
+				},
+				"identify": {
+					"displayName": "识别",
+					"description": "识别功能让您能将用户与其操作关联起来"
+				},
+				"track": {
+					"displayName": "追踪",
+					"description": "Track功能可让您记录事件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"add": {
+					"displayName": "添加",
+					"description": "将用户添加到群组"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建身份"
+				},
+				"event": {
+					"displayName": "事件",
+					"description": "记录用户执行的操作。每个操作都会触发一个事件，事件也可以包含相关属性。"
+				},
+				"page": {
+					"displayName": "页面",
+					"description": "记录网站页面浏览量，以及关于被查看页面的可选额外信息"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户ID"
+		},
+		"groupId": {
+			"displayName": "群组ID",
+			"description": "组ID是您在自己数据库中识别组的唯一标识符"
+		},
+		"traits": {
+			"displayName": "特性",
+			"placeholder": "添加特性",
+			"multipleValueButtonText": "添加特征",
+			"options": {
+				"traitsUi": {
+					"displayName": "特性",
+					"options": {
+						"key": {
+							"displayName": "键"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"traitsUi": {
+					"displayName": "特性",
+					"options": {
+						"key": {
+							"displayName": "键"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"traits": {
+					"displayName": "特性",
+					"placeholder": "添加特性"
+				}
+			}
+		},
+		"context": {
+			"displayName": "添加上下文",
+			"placeholder": "添加上下文",
+			"options": {
+				"contextUi": {
+					"displayName": "上下文",
+					"options": {
+						"active": {
+							"displayName": "激活状态",
+							"description": "用户是否活跃"
+						},
+						"ip": {
+							"displayName": "IP",
+							"description": "当前用户的IP地址"
+						},
+						"locate": {
+							"displayName": "语言区域",
+							"description": "当前用户的语言区域字符串，例如 zh-CN"
+						},
+						"page": {
+							"displayName": "页面",
+							"description": "浏览器当前页面的信息字典，包含哈希值、路径、引用来源、搜索参数、标题和URL"
+						},
+						"timezone": {
+							"displayName": "时区",
+							"description": "时区以tzdata字符串形式发送，用于添加可能从时间戳中剥离的用户时区信息，例如America/New_York"
+						},
+						"app": {
+							"displayName": "应用",
+							"placeholder": "添加应用",
+							"options": {
+								"appUi": {
+									"displayName": "应用",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"version": {
+											"displayName": "版本"
+										},
+										"build": {
+											"displayName": "构建"
+										}
+									}
+								}
+							},
+							"values": {
+								"appUi": {
+									"displayName": "应用",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"version": {
+											"displayName": "版本"
+										},
+										"build": {
+											"displayName": "构建"
+										}
+									}
+								},
+								"app": {
+									"displayName": "应用",
+									"placeholder": "添加应用"
+								}
+							}
+						},
+						"campaign": {
+							"displayName": "营销活动",
+							"placeholder": "活动应用",
+							"options": {
+								"campaignUi": {
+									"displayName": "营销活动",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"source": {
+											"displayName": "源"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"term": {
+											"displayName": "术语"
+										},
+										"content": {
+											"displayName": "内容"
+										}
+									}
+								}
+							},
+							"values": {
+								"campaignUi": {
+									"displayName": "营销活动",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"source": {
+											"displayName": "源"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"term": {
+											"displayName": "术语"
+										},
+										"content": {
+											"displayName": "内容"
+										}
+									}
+								},
+								"campaign": {
+									"displayName": "营销活动",
+									"placeholder": "活动应用"
+								}
+							}
+						},
+						"device": {
+							"displayName": "设备",
+							"placeholder": "添加设备",
+							"options": {
+								"deviceUi": {
+									"displayName": "设备",
+									"options": {
+										"id": {
+											"displayName": "ID"
+										},
+										"manufacturer": {
+											"displayName": "制造商"
+										},
+										"model": {
+											"displayName": "模型"
+										},
+										"name": {
+											"displayName": "名称"
+										},
+										"type": {
+											"displayName": "类型"
+										},
+										"version": {
+											"displayName": "版本"
+										}
+									}
+								}
+							},
+							"values": {
+								"deviceUi": {
+									"displayName": "设备",
+									"options": {
+										"id": {
+											"displayName": "ID"
+										},
+										"manufacturer": {
+											"displayName": "制造商"
+										},
+										"model": {
+											"displayName": "模型"
+										},
+										"name": {
+											"displayName": "名称"
+										},
+										"type": {
+											"displayName": "类型"
+										},
+										"version": {
+											"displayName": "版本"
+										}
+									}
+								},
+								"device": {
+									"displayName": "设备",
+									"placeholder": "添加设备"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"contextUi": {
+					"displayName": "上下文",
+					"options": {
+						"active": {
+							"displayName": "激活状态",
+							"description": "用户是否活跃"
+						},
+						"ip": {
+							"displayName": "IP",
+							"description": "当前用户的IP地址"
+						},
+						"locate": {
+							"displayName": "语言区域",
+							"description": "当前用户的语言区域字符串，例如 zh-CN"
+						},
+						"page": {
+							"displayName": "页面",
+							"description": "浏览器当前页面的信息字典，包含哈希值、路径、引用来源、搜索参数、标题和URL"
+						},
+						"timezone": {
+							"displayName": "时区",
+							"description": "时区以tzdata字符串形式发送，用于添加可能从时间戳中剥离的用户时区信息，例如America/New_York"
+						},
+						"app": {
+							"displayName": "应用",
+							"placeholder": "添加应用",
+							"options": {
+								"appUi": {
+									"displayName": "应用",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"version": {
+											"displayName": "版本"
+										},
+										"build": {
+											"displayName": "构建"
+										}
+									}
+								}
+							},
+							"values": {
+								"appUi": {
+									"displayName": "应用",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"version": {
+											"displayName": "版本"
+										},
+										"build": {
+											"displayName": "构建"
+										}
+									}
+								},
+								"app": {
+									"displayName": "应用",
+									"placeholder": "添加应用"
+								}
+							}
+						},
+						"campaign": {
+							"displayName": "营销活动",
+							"placeholder": "活动应用",
+							"options": {
+								"campaignUi": {
+									"displayName": "营销活动",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"source": {
+											"displayName": "源"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"term": {
+											"displayName": "术语"
+										},
+										"content": {
+											"displayName": "内容"
+										}
+									}
+								}
+							},
+							"values": {
+								"campaignUi": {
+									"displayName": "营销活动",
+									"options": {
+										"name": {
+											"displayName": "名称"
+										},
+										"source": {
+											"displayName": "源"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"term": {
+											"displayName": "术语"
+										},
+										"content": {
+											"displayName": "内容"
+										}
+									}
+								},
+								"campaign": {
+									"displayName": "营销活动",
+									"placeholder": "活动应用"
+								}
+							}
+						},
+						"device": {
+							"displayName": "设备",
+							"placeholder": "添加设备",
+							"options": {
+								"deviceUi": {
+									"displayName": "设备",
+									"options": {
+										"id": {
+											"displayName": "ID"
+										},
+										"manufacturer": {
+											"displayName": "制造商"
+										},
+										"model": {
+											"displayName": "模型"
+										},
+										"name": {
+											"displayName": "名称"
+										},
+										"type": {
+											"displayName": "类型"
+										},
+										"version": {
+											"displayName": "版本"
+										}
+									}
+								}
+							},
+							"values": {
+								"deviceUi": {
+									"displayName": "设备",
+									"options": {
+										"id": {
+											"displayName": "ID"
+										},
+										"manufacturer": {
+											"displayName": "制造商"
+										},
+										"model": {
+											"displayName": "模型"
+										},
+										"name": {
+											"displayName": "名称"
+										},
+										"type": {
+											"displayName": "类型"
+										},
+										"version": {
+											"displayName": "版本"
+										}
+									}
+								},
+								"device": {
+									"displayName": "设备",
+									"placeholder": "添加设备"
+								}
+							}
+						}
+					}
+				},
+				"context": {
+					"displayName": "上下文",
+					"placeholder": "添加上下文"
+				}
+			}
+		},
+		"integrations": {
+			"displayName": "集成",
+			"placeholder": "添加集成",
+			"options": {
+				"integrationsUi": {
+					"displayName": "集成",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						},
+						"salesforce": {
+							"displayName": "Salesforce"
+						}
+					}
+				}
+			},
+			"values": {
+				"integrationsUi": {
+					"displayName": "集成",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						},
+						"salesforce": {
+							"displayName": "Salesforce"
+						}
+					}
+				},
+				"integrations": {
+					"displayName": "集成",
+					"placeholder": "添加集成"
+				}
+			}
+		},
+		"event": {
+			"displayName": "事件",
+			"description": "用户执行的操作名称"
+		},
+		"properties": {
+			"displayName": "属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"propertiesUi": {
+					"displayName": "属性",
+					"options": {
+						"key": {
+							"displayName": "键"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"propertiesUi": {
+					"displayName": "属性",
+					"options": {
+						"key": {
+							"displayName": "键"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"properties": {
+					"displayName": "属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "页面名称 例如，大多数网站都有一个“注册”页面，标记它很有用，这样您就可以看到用户在您的漏斗中的移动情况"
+		}
+	}
+}

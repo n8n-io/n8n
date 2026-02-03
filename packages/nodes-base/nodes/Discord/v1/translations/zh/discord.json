@@ -1,0 +1,54 @@
+{
+	"header": {
+		"displayName": "Discord",
+		"description": "发送数据到Discord"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"webhookUri": {
+			"displayName": "Webhook URL",
+			"placeholder": "https://discord.com/api/webhooks/ID/TOKEN"
+		},
+		"text": {
+			"displayName": "内容",
+			"placeholder": "你好世界！"
+		},
+		"options": {
+			"displayName": "附加字段",
+			"placeholder": "添加选项",
+			"options": {
+				"allowedMentions": {
+					"displayName": "允许提及"
+				},
+				"attachments": {
+					"displayName": "附件"
+				},
+				"avatarUrl": {
+					"displayName": "头像URL"
+				},
+				"components": {
+					"displayName": "组件"
+				},
+				"embeds": {
+					"displayName": "嵌入"
+				},
+				"flags": {
+					"displayName": "标志"
+				},
+				"payloadJson": {
+					"displayName": "JSON 载荷"
+				},
+				"username": {
+					"displayName": "用户名",
+					"placeholder": "用户"
+				},
+				"tts": {
+					"displayName": "TTS",
+					"description": "是否将此消息作为文本转语音消息发送"
+				}
+			}
+		}
+	}
+}

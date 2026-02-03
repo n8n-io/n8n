@@ -1,0 +1,790 @@
+{
+	"header": {
+		"displayName": "Mautic",
+		"description": "Consume Mautic API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"credentials": {
+					"displayName": "Credentials"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"campaignContact": {
+					"displayName": "Campaign Contact",
+					"description": "Add/remove contacts to/from a campaign"
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "Create or modify a company"
+				},
+				"companyContact": {
+					"displayName": "Company Contact",
+					"description": "Add/remove contacts to/from a company"
+				},
+				"contact": {
+					"displayName": "Contact",
+					"description": "Create & modify contacts"
+				},
+				"contactSegment": {
+					"displayName": "Contact Segment",
+					"description": "Add/remove contacts to/from a segment"
+				},
+				"segmentEmail": {
+					"displayName": "Segment Email",
+					"description": "Send an email"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new contact"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a contact"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get data of a contact"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get data of many contacts"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a contact"
+				},
+				"editContactPoint": {
+					"displayName": "Edit Contact Points",
+					"description": "Edit contact's points"
+				},
+				"editDoNotContactList": {
+					"displayName": "Edit Do Not Contact List",
+					"description": "Add/remove contacts from/to the do not contact list"
+				},
+				"sendEmail": {
+					"displayName": "Send Email",
+					"description": "Send email to contact"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add contact to a company"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a contact from a company"
+				},
+				"send": {
+					"displayName": "Send"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Company Name",
+			"description": "The name of the company to create"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"addressUi": {
+					"displayName": "Address",
+					"placeholder": "Address",
+					"options": {
+						"addressValues": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"zipCode": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressValues": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"zipCode": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "Address",
+							"placeholder": "Address"
+						}
+					}
+				},
+				"annualRevenue": {
+					"displayName": "Annual Revenue"
+				},
+				"companyEmail": {
+					"displayName": "Company Email"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Adds a custom fields to set also values which have not been predefined",
+					"placeholder": "Add Custom Fields",
+					"multipleValueButtonText": "Add Custom Fields",
+					"options": {
+						"customFieldValues": {
+							"displayName": "Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Fields"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"fax": {
+					"displayName": "Fax"
+				},
+				"industry": {
+					"displayName": "Industry Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"isPublished": {
+					"displayName": "Is Published"
+				},
+				"numberOfEmpoyees": {
+					"displayName": "Number of Employees"
+				},
+				"overwriteWithBlank": {
+					"displayName": "Overwrite With Blank",
+					"description": "Whether empty values are set to fields. Otherwise empty values are skipped."
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"website": {
+					"displayName": "Website"
+				},
+				"orderByDir": {
+					"displayName": "Order Direction",
+					"description": "Sort direction: asc or desc",
+					"options": {
+						"asc": {
+							"displayName": "ASC"
+						},
+						"desc": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"orderBy": {
+					"displayName": "Order By Name or ID",
+					"description": "Column to sort by. Can use any column listed in the response. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "String or search command to filter entities by"
+				},
+				"b2bOrb2c": {
+					"displayName": "B2B or B2C",
+					"options": {
+						"B2B": {
+							"displayName": "B2B"
+						},
+						"B2C": {
+							"displayName": "B2C"
+						}
+					}
+				},
+				"crmId": {
+					"displayName": "CRM ID"
+				},
+				"hasPurchased": {
+					"displayName": "Has Purchased"
+				},
+				"ipAddress": {
+					"displayName": "IP Address",
+					"description": "IP address to associate with the contact"
+				},
+				"lastActive": {
+					"displayName": "Last Active",
+					"description": "Date/time in UTC;"
+				},
+				"mobile": {
+					"displayName": "Mobile"
+				},
+				"ownerId": {
+					"displayName": "Owner ID",
+					"description": "ID of a Mautic user to assign this contact to"
+				},
+				"prospectOrCustomer": {
+					"displayName": "Prospect or Customer",
+					"options": {
+						"Prospect": {
+							"displayName": "Prospect"
+						},
+						"Customer": {
+							"displayName": "Customer"
+						}
+					}
+				},
+				"sandbox": {
+					"displayName": "Sandbox"
+				},
+				"stage": {
+					"displayName": "Stage Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"socialMediaUi": {
+					"displayName": "Social Media",
+					"placeholder": "Social Media",
+					"options": {
+						"socialMediaValues": {
+							"displayName": "Social Media",
+							"options": {
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"foursquare": {
+									"displayName": "Foursquare"
+								},
+								"instagram": {
+									"displayName": "Instagram"
+								},
+								"linkedIn": {
+									"displayName": "LinkedIn"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						}
+					},
+					"values": {
+						"socialMediaValues": {
+							"displayName": "Social Media",
+							"options": {
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"foursquare": {
+									"displayName": "Foursquare"
+								},
+								"instagram": {
+									"displayName": "Instagram"
+								},
+								"linkedIn": {
+									"displayName": "LinkedIn"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						},
+						"socialMediaUi": {
+							"displayName": "Social Media",
+							"placeholder": "Social Media"
+						}
+					}
+				},
+				"reason": {
+					"displayName": "Reason To Do Not Contact",
+					"options": {
+						"1": {
+							"displayName": "Unsubscribed"
+						},
+						"2": {
+							"displayName": "Bounced"
+						},
+						"3": {
+							"displayName": "Manual"
+						}
+					}
+				},
+				"comments": {
+					"displayName": "Comments",
+					"description": "A text describing details of Do Not Contact entry"
+				}
+			}
+		},
+		"companyId": {
+			"displayName": "Company ID",
+			"description": "The ID of the company"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"addressUi": {
+					"displayName": "Address",
+					"placeholder": "Address",
+					"options": {
+						"addressValues": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"zipCode": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressValues": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"zipCode": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "Address",
+							"placeholder": "Address"
+						}
+					}
+				},
+				"annualRevenue": {
+					"displayName": "Annual Revenue"
+				},
+				"companyEmail": {
+					"displayName": "Company Email"
+				},
+				"name": {
+					"displayName": "Company Name"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Adds a custom fields to set also values which have not been predefined",
+					"placeholder": "Add Custom Fields",
+					"multipleValueButtonText": "Add Custom Fields",
+					"options": {
+						"customFieldValues": {
+							"displayName": "Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Fields"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"fax": {
+					"displayName": "Fax"
+				},
+				"industry": {
+					"displayName": "Industry Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"isPublished": {
+					"displayName": "Is Published"
+				},
+				"numberOfEmpoyees": {
+					"displayName": "Number of Employees"
+				},
+				"overwriteWithBlank": {
+					"displayName": "Overwrite With Blank",
+					"description": "Whether empty values are set to fields. Otherwise, empty values are skipped."
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"website": {
+					"displayName": "Website"
+				},
+				"bodyJson": {
+					"displayName": "Body",
+					"description": "Contact parameters"
+				},
+				"b2bOrb2c": {
+					"displayName": "B2B or B2C",
+					"options": {
+						"B2B": {
+							"displayName": "B2B"
+						},
+						"B2C": {
+							"displayName": "B2C"
+						}
+					}
+				},
+				"crmId": {
+					"displayName": "CRM ID"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email address of the contact",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "First Name"
+				},
+				"hasPurchased": {
+					"displayName": "Has Purchased"
+				},
+				"ipAddress": {
+					"displayName": "IP Address",
+					"description": "IP address to associate with the contact"
+				},
+				"lastActive": {
+					"displayName": "Last Active",
+					"description": "Date/time in UTC;"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "LastName"
+				},
+				"mobile": {
+					"displayName": "Mobile"
+				},
+				"ownerId": {
+					"displayName": "Owner ID",
+					"description": "ID of a Mautic user to assign this contact to"
+				},
+				"position": {
+					"displayName": "Position"
+				},
+				"company": {
+					"displayName": "Primary Company Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"prospectOrCustomer": {
+					"displayName": "Prospect or Customer",
+					"options": {
+						"Prospect": {
+							"displayName": "Prospect"
+						},
+						"Customer": {
+							"displayName": "Customer"
+						}
+					}
+				},
+				"sandbox": {
+					"displayName": "Sandbox"
+				},
+				"stage": {
+					"displayName": "Stage Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"socialMediaUi": {
+					"displayName": "Social Media",
+					"placeholder": "Social Media",
+					"options": {
+						"socialMediaValues": {
+							"displayName": "Social Media",
+							"options": {
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"foursquare": {
+									"displayName": "Foursquare"
+								},
+								"instagram": {
+									"displayName": "Instagram"
+								},
+								"linkedIn": {
+									"displayName": "LinkedIn"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						}
+					},
+					"values": {
+						"socialMediaValues": {
+							"displayName": "Social Media",
+							"options": {
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"foursquare": {
+									"displayName": "Foursquare"
+								},
+								"instagram": {
+									"displayName": "Instagram"
+								},
+								"linkedIn": {
+									"displayName": "LinkedIn"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						},
+						"socialMediaUi": {
+							"displayName": "Social Media",
+							"placeholder": "Social Media"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email address of the contact",
+			"placeholder": "name@email.com"
+		},
+		"firstName": {
+			"displayName": "First Name"
+		},
+		"lastName": {
+			"displayName": "Last Name"
+		},
+		"company": {
+			"displayName": "Primary Company Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"position": {
+			"displayName": "Position"
+		},
+		"title": {
+			"displayName": "Title"
+		},
+		"bodyJson": {
+			"displayName": "Body",
+			"description": "Contact parameters"
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "The ID of the contact"
+		},
+		"action": {
+			"displayName": "Action",
+			"options": {
+				"add": {
+					"displayName": "Add"
+				},
+				"remove": {
+					"displayName": "Remove"
+				}
+			}
+		},
+		"channel": {
+			"displayName": "Channel",
+			"options": {
+				"email": {
+					"displayName": "Email"
+				},
+				"sms": {
+					"displayName": "SMS"
+				}
+			}
+		},
+		"points": {
+			"displayName": "Points"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"search": {
+					"displayName": "Search",
+					"description": "String or search command to filter entities by"
+				},
+				"orderBy": {
+					"displayName": "Order By",
+					"description": "Column to sort by. Can use any column listed in the response."
+				},
+				"orderByDir": {
+					"displayName": "Order By Dir",
+					"description": "Sort direction: ASC or DESC",
+					"options": {
+						"asc": {
+							"displayName": "ASC"
+						},
+						"desc": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"publishedOnly": {
+					"displayName": "Published Only",
+					"description": "Whether to return currently published entities"
+				},
+				"minimal": {
+					"displayName": "Minimal",
+					"description": "Whether to return array of entities without additional lists in it"
+				},
+				"rawData": {
+					"displayName": "RAW Data",
+					"description": "By default only the data of the fields get returned. If this options gets set the RAW response with all data gets returned."
+				}
+			}
+		},
+		"campaignEmailId": {
+			"displayName": "Campaign Email Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"segmentId": {
+			"displayName": "Segment Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"campaignId": {
+			"displayName": "Campaign Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"segmentEmailId": {
+			"displayName": "Segment Email Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		}
+	}
+}

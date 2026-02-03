@@ -1,0 +1,7 @@
+{
+	"header": {
+		"displayName": "Contextual Compression Retriever",
+		"description": "Enhances document similarity search by contextual compression."
+	},
+	"nodeView": {}
+}

@@ -1,0 +1,85 @@
+{
+	"header": {
+		"displayName": "Postgres触发器",
+		"description": "监听Postgres消息"
+	},
+	"nodeView": {
+		"triggerMode": {
+			"displayName": "监听",
+			"options": {
+				"createTrigger": {
+					"displayName": "表行变更事件",
+					"description": "插入、更新或删除"
+				},
+				"listenTrigger": {
+					"displayName": "高级",
+					"description": "监听现有Postgres频道"
+				}
+			}
+		},
+		"schema": {
+			"displayName": "架构名称"
+		},
+		"tableName": {
+			"displayName": "表名"
+		},
+		"channelName": {
+			"displayName": "频道名称",
+			"description": "要监听的频道名称",
+			"placeholder": "例如：n8n_channel"
+		},
+		"firesOn": {
+			"displayName": "要监听的事件",
+			"options": {
+				"INSERT": {
+					"displayName": "插入"
+				},
+				"UPDATE": {
+					"displayName": "更新"
+				},
+				"DELETE": {
+					"displayName": "删除"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"channelName": {
+					"displayName": "频道名称",
+					"description": "要监听的频道名称",
+					"placeholder": "例如：n8n_channel"
+				},
+				"functionName": {
+					"displayName": "函数名称",
+					"description": "要创建的函数名称",
+					"placeholder": "例如：n8n_trigger_function()"
+				},
+				"replaceIfExists": {
+					"displayName": "存在时替换",
+					"description": "是否替换同名的现有函数和触发器"
+				},
+				"triggerName": {
+					"displayName": "触发器名称",
+					"description": "要创建的触发器名称",
+					"placeholder": "例如：n8n_trigger"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"connectionTimeout": {
+					"displayName": "连接超时",
+					"description": "为连接到数据库预留的秒数"
+				},
+				"delayClosingIdleConnection": {
+					"displayName": "延迟关闭空闲连接",
+					"description": "空闲连接在符合关闭条件前的等待秒数"
+				}
+			}
+		}
+	}
+}

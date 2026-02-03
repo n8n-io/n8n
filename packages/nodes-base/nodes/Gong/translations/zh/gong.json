@@ -1,0 +1,169 @@
+{
+	"header": {
+		"displayName": "Gong",
+		"description": "与Gong API交互"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"call": {
+					"displayName": "调用"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "检索特定用户的数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取用户列表"
+				}
+			}
+		},
+		"call": {
+			"displayName": "调用Get操作"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"properties": {
+					"displayName": "要包含的通话数据",
+					"description": "要在返回结果中包含的通话属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code-examples/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"fromDateTime": {
+					"displayName": "之后",
+					"description": "返回在指定日期时间或之后开始的通话。如未提供，则从最早的通话开始列出。对于由Gong录制的网络会议通话，该日期表示其预定时间；否则，表示其实际开始时间。",
+					"placeholder": "例如：2018-02-18T02:30:00-07:00 或 2018-02-18T08:00:00Z"
+				},
+				"toDateTime": {
+					"displayName": "之前",
+					"description": "Returns calls that started up to but excluding specified date and time. If not provided, list ends with most recent call. For web-conference calls recorded by Gong, the date denotes its scheduled time, otherwise, it denotes its actual start time.",
+					"placeholder": "例如：2018-02-18T02:30:00-07:00 或 2018-02-18T08:00:00Z"
+				},
+				"workspaceId": {
+					"displayName": "工作区ID",
+					"description": "仅返回属于此工作空间的通话",
+					"placeholder": "例如 623457276584334"
+				},
+				"callIds": {
+					"displayName": "通话ID",
+					"description": "待筛选的通话ID列表",
+					"placeholder": "例如：7782342274025937895"
+				},
+				"primaryUserIds": {
+					"displayName": "组织者",
+					"description": "仅返回指定用户主持的会议"
+				},
+				"createdFromDateTime": {
+					"displayName": "创建时间晚于",
+					"description": "可选的用户创建时间下限，如果提供此参数，API将仅返回在此时间或之后创建的用户",
+					"placeholder": "例如：2018-02-18T02:30:00-07:00 或 2018-02-18T08:00:00Z"
+				},
+				"createdToDateTime": {
+					"displayName": "创建于之前",
+					"description": "可选的用户创建时间上限，如果提供此参数，API将仅返回在此时间之前创建的用户",
+					"placeholder": "例如：2018-02-18T02:30:00-07:00 或 2018-02-18T08:00:00Z"
+				},
+				"userIds": {
+					"displayName": "用户ID",
+					"description": "Gong用户唯一数字标识符集合（最多20位数字）",
+					"placeholder": "例如：7782342274025937895"
+				}
+			}
+		},
+		"user": {
+			"displayName": "要获取的用户"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

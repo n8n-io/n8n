@@ -1,0 +1,85 @@
+{
+	"header": {
+		"displayName": "Embeddings Hugging Face Inference",
+		"description": "Use HuggingFace Inference Embeddings"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings."
+		},
+		"modelName": {
+			"displayName": "Model Name",
+			"description": "The model name to use from HuggingFace library"
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"endpointUrl": {
+					"displayName": "Custom Inference Endpoint",
+					"description": "Custom endpoint URL"
+				},
+				"provider": {
+					"displayName": "Provider",
+					"options": {
+						"black-forest-labs": {
+							"displayName": "black-forest-labs"
+						},
+						"cerebras": {
+							"displayName": "cerebras"
+						},
+						"cohere": {
+							"displayName": "cohere"
+						},
+						"fal-ai": {
+							"displayName": "fal-ai"
+						},
+						"featherless-ai": {
+							"displayName": "featherless-ai"
+						},
+						"fireworks-ai": {
+							"displayName": "fireworks-ai"
+						},
+						"groq": {
+							"displayName": "groq"
+						},
+						"hf-inference": {
+							"displayName": "hf-inference"
+						},
+						"hyperbolic": {
+							"displayName": "hyperbolic"
+						},
+						"nebius": {
+							"displayName": "nebius"
+						},
+						"novita": {
+							"displayName": "novita"
+						},
+						"nscale": {
+							"displayName": "nscale"
+						},
+						"openai": {
+							"displayName": "openai"
+						},
+						"ovhcloud": {
+							"displayName": "ovhcloud"
+						},
+						"replicate": {
+							"displayName": "replicate"
+						},
+						"sambanova": {
+							"displayName": "sambanova"
+						},
+						"together": {
+							"displayName": "together"
+						},
+						"auto": {
+							"displayName": "auto"
+						}
+					}
+				}
+			}
+		}
+	}
+}

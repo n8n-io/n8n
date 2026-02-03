@@ -1,0 +1,194 @@
+{
+	"header": {
+		"displayName": "Quick Base",
+		"description": "与 Quick Base RESTful API 集成"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"field": {
+					"displayName": "字段"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"record": {
+					"displayName": "记录"
+				},
+				"report": {
+					"displayName": "报告"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多条记录"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除记录"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建记录"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新记录，如果已存在则更新当前记录（upsert）"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新记录"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取报告"
+				},
+				"run": {
+					"displayName": "运行",
+					"description": "运行报告"
+				}
+			}
+		},
+		"tableId": {
+			"displayName": "表格ID",
+			"description": "表格标识符"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"includeFieldPerms": {
+					"displayName": "包含字段权限",
+					"description": "是否获取字段的自定义权限"
+				},
+				"fields": {
+					"displayName": "字段名称或ID",
+					"description": "指定一个字段ID数组，用于返回任何更新或新增记录的数据。如果请求了任何字段ID，记录ID（FID 3）将始终返回。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"useFieldIDs": {
+					"displayName": "使用字段ID",
+					"description": "是否在列中使用字段ID而非字段名称"
+				},
+				"select": {
+					"displayName": "选择",
+					"description": "应在响应中返回的字段ID数组。如果为空，将返回表上的默认列。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"sortByUi": {
+					"displayName": "排序方式",
+					"description": "默认情况下，查询将按给定的排序字段排序，如果查询未提供任何排序字段则使用默认排序。当返回数据的顺序不重要时，设置为false可避免排序。返回未排序的数据可提高性能。",
+					"placeholder": "添加排序依据",
+					"multipleValueButtonText": "添加排序依据",
+					"options": {
+						"sortByValues": {
+							"displayName": "排序方式",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "表中字段的唯一标识符。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"order": {
+									"displayName": "排序",
+									"options": {
+										"ASC": {
+											"displayName": "升序"
+										},
+										"DESC": {
+											"displayName": "描述"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"sortByValues": {
+							"displayName": "排序方式",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "表中字段的唯一标识符。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"order": {
+									"displayName": "排序",
+									"options": {
+										"ASC": {
+											"displayName": "升序"
+										},
+										"DESC": {
+											"displayName": "描述"
+										}
+									}
+								}
+							}
+						},
+						"sortByUi": {
+							"displayName": "排序方式",
+							"placeholder": "添加排序依据"
+						}
+					}
+				},
+				"where": {
+					"displayName": "筛选条件",
+					"description": "使用<a href=\"https://help.quickbase.com/api-guide/componentsquery.html\">Quick Base查询语言</a>的过滤器，用于确定要返回的记录"
+				}
+			}
+		},
+		"recordId": {
+			"displayName": "记录ID",
+			"description": "记录的唯一标识符"
+		},
+		"fieldId": {
+			"displayName": "字段ID",
+			"description": "字段的唯一标识符"
+		},
+		"versionNumber": {
+			"displayName": "版本号",
+			"description": "文件附件版本号"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"columns": {
+			"displayName": "列",
+			"description": "逗号分隔的属性列表，将用作新行的列",
+			"placeholder": "id,名称,描述"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"where": {
+			"displayName": "筛选条件",
+			"description": "用于删除记录的筛选条件。要删除所有记录，请指定一个包含所有记录的筛选条件，例如 {3.GT.0}，其中 3 是记录 ID 字段的 ID。"
+		},
+		"updateKey": {
+			"displayName": "更新键",
+			"description": "更新操作可使用数据表的主键字段，或任何其他受支持的唯一字段"
+		},
+		"mergeFieldId": {
+			"displayName": "合并字段名称或ID",
+			"description": "<p>您正在使用外部文件的数据更新Quick Base表中的记录。要使此类合并操作生效，Quick Base需要一种将源数据中的记录与目标表中的对应记录进行匹配的方法。</p><p>您可以通过选择应用表中包含唯一匹配值的字段来实现此功能。该字段称为合并字段。</p>。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"reportId": {
+			"displayName": "报告ID",
+			"description": "报告的标识符，在表中唯一"
+		}
+	}
+}

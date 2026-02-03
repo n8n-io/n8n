@@ -1,0 +1,948 @@
+{
+	"header": {
+		"displayName": "TheHive",
+		"description": "Consume TheHive API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"alert": {
+					"displayName": "Alert"
+				},
+				"case": {
+					"displayName": "Case"
+				},
+				"log": {
+					"displayName": "Log"
+				},
+				"observable": {
+					"displayName": "Observable"
+				},
+				"task": {
+					"displayName": "Task"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create task log"
+				},
+				"executeResponder": {
+					"displayName": "Execute Responder",
+					"description": "Execute a responder on a selected log"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many task logs"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a single log"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"id": {
+			"displayName": "Log ID",
+			"description": "ID of the taks"
+		},
+		"caseId": {
+			"displayName": "Case ID",
+			"description": "ID of the case"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Task details"
+		},
+		"description": {
+			"displayName": "Description",
+			"description": "Description of the case"
+		},
+		"severity": {
+			"displayName": "Severity",
+			"description": "Severity of the alert. Default=Medium.",
+			"options": {
+				"1": {
+					"displayName": "Low"
+				},
+				"2": {
+					"displayName": "Medium"
+				},
+				"3": {
+					"displayName": "High"
+				}
+			}
+		},
+		"date": {
+			"displayName": "Date",
+			"description": "Date and time when the alert was raised default=now"
+		},
+		"tags": {
+			"displayName": "Tags",
+			"description": "Case Tags",
+			"placeholder": "tag,tag2,tag3..."
+		},
+		"tlp": {
+			"displayName": "TLP",
+			"description": "Traffict Light Protocol (TLP). Default=Amber.",
+			"options": {
+				"0": {
+					"displayName": "White"
+				},
+				"1": {
+					"displayName": "Green"
+				},
+				"2": {
+					"displayName": "Amber"
+				},
+				"3": {
+					"displayName": "Red"
+				}
+			}
+		},
+		"status": {
+			"displayName": "Status",
+			"description": "Status of the log (Ok or Deleted) default=Ok",
+			"options": {
+				"New": {
+					"displayName": "New"
+				},
+				"Updated": {
+					"displayName": "Updated"
+				},
+				"Ignored": {
+					"displayName": "Ignored"
+				},
+				"Imported": {
+					"displayName": "Imported"
+				},
+				"Ok": {
+					"displayName": "Ok"
+				},
+				"Deleted": {
+					"displayName": "Deleted"
+				},
+				"Cancel": {
+					"displayName": "Cancel"
+				},
+				"Completed": {
+					"displayName": "Completed"
+				},
+				"InProgress": {
+					"displayName": "InProgress"
+				},
+				"Waiting": {
+					"displayName": "Waiting"
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "Type of the alert"
+		},
+		"source": {
+			"displayName": "Source",
+			"description": "Source of the alert"
+		},
+		"sourceRef": {
+			"displayName": "SourceRef",
+			"description": "Source reference of the alert"
+		},
+		"follow": {
+			"displayName": "Follow",
+			"description": "Whether the alert becomes active when updated default=true"
+		},
+		"artifactUi": {
+			"displayName": "Artifacts",
+			"description": "Artifact attributes",
+			"placeholder": "Add Artifact",
+			"multipleValueButtonText": "Add Artifact",
+			"options": {
+				"artifactValues": {
+					"displayName": "Artifact",
+					"options": {
+						"dataType": {
+							"displayName": "Data Type Name or ID",
+							"description": "Type of the observable. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"data": {
+							"displayName": "Data"
+						},
+						"binaryProperty": {
+							"displayName": "Input Binary Field"
+						},
+						"message": {
+							"displayName": "Message"
+						},
+						"tags": {
+							"displayName": "Case Tags"
+						}
+					}
+				}
+			},
+			"values": {
+				"artifactValues": {
+					"displayName": "Artifact",
+					"options": {
+						"dataType": {
+							"displayName": "Data Type Name or ID",
+							"description": "Type of the observable. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"data": {
+							"displayName": "Data"
+						},
+						"binaryProperty": {
+							"displayName": "Input Binary Field"
+						},
+						"message": {
+							"displayName": "Message"
+						},
+						"tags": {
+							"displayName": "Case Tags"
+						}
+					}
+				},
+				"artifactUi": {
+					"displayName": "Artifacts",
+					"placeholder": "Add Artifact"
+				}
+			}
+		},
+		"responder": {
+			"displayName": "Responder Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"caseTemplate": {
+					"displayName": "Case Template",
+					"description": "Case template to use when a case is created from this alert"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Custom Field value. Use an expression if the type is not a string."
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Custom Field value. Use an expression if the type is not a string."
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"customFieldsJson": {
+					"displayName": "Custom Fields (JSON)",
+					"description": "Custom fields in JSON format. Overrides Custom Fields UI if set."
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"artifactUi": {
+					"displayName": "Artifacts",
+					"placeholder": "Add Artifact",
+					"multipleValueButtonText": "Add Artifact",
+					"options": {
+						"artifactValues": {
+							"displayName": "Artifact",
+							"options": {
+								"dataType": {
+									"displayName": "Data Type Name or ID",
+									"description": "Type of the observable. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"data": {
+									"displayName": "Data"
+								},
+								"binaryProperty": {
+									"displayName": "Input Binary Field"
+								},
+								"message": {
+									"displayName": "Message"
+								},
+								"tags": {
+									"displayName": "Case Tags"
+								}
+							}
+						}
+					},
+					"values": {
+						"artifactValues": {
+							"displayName": "Artifact",
+							"options": {
+								"dataType": {
+									"displayName": "Data Type Name or ID",
+									"description": "Type of the observable. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"data": {
+									"displayName": "Data"
+								},
+								"binaryProperty": {
+									"displayName": "Input Binary Field"
+								},
+								"message": {
+									"displayName": "Message"
+								},
+								"tags": {
+									"displayName": "Case Tags"
+								}
+							}
+						},
+						"artifactUi": {
+							"displayName": "Artifacts",
+							"placeholder": "Add Artifact"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Custom Field value. Use an expression if the type is not a string."
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Custom Field value. Use an expression if the type is not a string."
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"customFieldsJson": {
+					"displayName": "Custom Fields (JSON)",
+					"description": "Custom fields in JSON format. Overrides Custom Fields UI if set."
+				},
+				"caseTemplate": {
+					"displayName": "Case Template",
+					"description": "Case template to use when a case is created from this alert"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Task details"
+				},
+				"follow": {
+					"displayName": "Follow",
+					"description": "Whether the alert becomes active when updated default=true"
+				},
+				"severity": {
+					"displayName": "Severity",
+					"description": "Severity of the alert. Default=Medium.",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"New": {
+							"displayName": "New"
+						},
+						"Updated": {
+							"displayName": "Updated"
+						},
+						"Ignored": {
+							"displayName": "Ignored"
+						},
+						"Imported": {
+							"displayName": "Imported"
+						},
+						"Ok": {
+							"displayName": "Ok"
+						},
+						"Deleted": {
+							"displayName": "Deleted"
+						},
+						"Open": {
+							"displayName": "Open"
+						},
+						"Resolved": {
+							"displayName": "Resolved"
+						},
+						"Cancel": {
+							"displayName": "Cancel"
+						},
+						"Completed": {
+							"displayName": "Completed"
+						},
+						"InProgress": {
+							"displayName": "In Progress"
+						},
+						"Waiting": {
+							"displayName": "Waiting"
+						}
+					},
+					"description": "Status of the task. Default=Waiting."
+				},
+				"tags": {
+					"displayName": "Tags",
+					"placeholder": "tag1,tag2"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Task details"
+				},
+				"tlp": {
+					"displayName": "TLP",
+					"description": "Traffict Light Protocol (TLP). Default=Amber.",
+					"options": {
+						"0": {
+							"displayName": "White"
+						},
+						"1": {
+							"displayName": "Green"
+						},
+						"2": {
+							"displayName": "Amber"
+						},
+						"3": {
+							"displayName": "Red"
+						}
+					}
+				},
+				"message": {
+					"displayName": "Message",
+					"description": "Description of the observable in the context of the case"
+				},
+				"ioc": {
+					"displayName": "IOC",
+					"description": "Whether the observable is an IOC (Indicator of compromise)"
+				},
+				"sighted": {
+					"displayName": "Sighted",
+					"description": "Whether sighted previously"
+				},
+				"endDate": {
+					"displayName": "End Date",
+					"description": "Date of the end of the task. This is automatically set when status is set to Completed."
+				},
+				"flag": {
+					"displayName": "Flag",
+					"description": "Whether to flag the task. Default=false."
+				},
+				"impactStatus": {
+					"displayName": "Impact Status",
+					"description": "Impact status of the case",
+					"options": {
+						"NoImpact": {
+							"displayName": "No Impact"
+						},
+						"WithImpact": {
+							"displayName": "With Impact"
+						},
+						"NotApplicable": {
+							"displayName": "Not Applicable"
+						}
+					}
+				},
+				"metrics": {
+					"displayName": "Metrics (JSON)",
+					"description": "List of metrics"
+				},
+				"owner": {
+					"displayName": "Owner",
+					"description": "User who owns the task. This is automatically set to current user when status is set to InProgress."
+				},
+				"resolutionStatus": {
+					"displayName": "Resolution Status",
+					"description": "Resolution status of the case",
+					"options": {
+						"Duplicated": {
+							"displayName": "Duplicated"
+						},
+						"FalsePositive": {
+							"displayName": "False Positive"
+						},
+						"Indeterminate": {
+							"displayName": "Indeterminate"
+						},
+						"Other": {
+							"displayName": "Other"
+						},
+						"TruePositive": {
+							"displayName": "True Positive"
+						}
+					}
+				},
+				"startDate": {
+					"displayName": "Start Date",
+					"description": "Date of the beginning of the task. This is automatically set when status is set to Open."
+				},
+				"summary": {
+					"displayName": "Summary",
+					"description": "Summary of the case, to be provided when closing a case"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"sort": {
+					"displayName": "Sort",
+					"placeholder": "±Attribut, exp +status",
+					"description": "Specify the sorting attribut, + for asc, - for desc"
+				},
+				"includeSimilar": {
+					"displayName": "Include Similar Cases",
+					"description": "Whether to include similar cases"
+				},
+				"tags": {
+					"displayName": "Observable Tags",
+					"placeholder": "tag1,tag2"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Custom Field value. Use an expression if the type is not a string."
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Custom Field value. Use an expression if the type is not a string."
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"customFieldsJson": {
+					"displayName": "Custom Fields (JSON)",
+					"description": "Custom fields in JSON format. Overrides Custom Fields UI if set."
+				},
+				"endDate": {
+					"displayName": "End Date",
+					"description": "Date of the end of the task. This is automatically set when status is set to Completed."
+				},
+				"summary": {
+					"displayName": "Summary",
+					"description": "Summary of the case, to be provided when closing a case"
+				},
+				"metrics": {
+					"displayName": "Metrics (JSON)",
+					"description": "List of metrics"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Task details"
+				},
+				"owner": {
+					"displayName": "Owner",
+					"description": "User who owns the task. This is automatically set to current user when status is set to InProgress."
+				},
+				"startDate": {
+					"displayName": "Start Date",
+					"description": "Date of the beginning of the task. This is automatically set when status is set to Open."
+				},
+				"attachmentValues": {
+					"displayName": "Attachment",
+					"description": "File attached to the log",
+					"placeholder": "Add Attachment",
+					"options": {
+						"attachmentValues": {
+							"displayName": "Attachment",
+							"options": {
+								"binaryProperty": {
+									"displayName": "Input Binary Field",
+									"description": "The name of the input binary field which holds binary data"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachmentValues": {
+							"displayName": "Attachment",
+							"placeholder": "Add Attachment"
+						}
+					}
+				}
+			}
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Custom Field value. Use an expression if the type is not a string."
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Custom Field value. Use an expression if the type is not a string."
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Task details",
+					"placeholder": "exp,freetext"
+				},
+				"follow": {
+					"displayName": "Follow",
+					"description": "Whether the alert becomes active when updated default=true"
+				},
+				"severity": {
+					"displayName": "Severity",
+					"description": "Severity of the alert. Default=Medium.",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tags",
+					"placeholder": "tag1,tag2"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Task details"
+				},
+				"tlp": {
+					"displayName": "TLP",
+					"description": "Traffict Light Protocol (TLP). Default=Amber.",
+					"options": {
+						"0": {
+							"displayName": "White"
+						},
+						"1": {
+							"displayName": "Green"
+						},
+						"2": {
+							"displayName": "Amber"
+						},
+						"3": {
+							"displayName": "Red"
+						}
+					}
+				},
+				"dataType": {
+					"displayName": "Data Type Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"range": {
+					"displayName": "Date Range",
+					"options": {
+						"dateRange": {
+							"displayName": "Add Date Range Inputs",
+							"options": {
+								"fromDate": {
+									"displayName": "From Date"
+								},
+								"toDate": {
+									"displayName": "To Date"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRange": {
+							"displayName": "Add Date Range Inputs",
+							"options": {
+								"fromDate": {
+									"displayName": "From Date"
+								},
+								"toDate": {
+									"displayName": "To Date"
+								}
+							}
+						},
+						"range": {
+							"displayName": "Date Range"
+						}
+					}
+				},
+				"ioc": {
+					"displayName": "IOC",
+					"description": "Whether the observable is an IOC (Indicator of compromise)"
+				},
+				"keyword": {
+					"displayName": "Keyword",
+					"placeholder": "exp,freetext"
+				},
+				"message": {
+					"displayName": "Message",
+					"description": "Description of the observable in the context of the case"
+				},
+				"sighted": {
+					"displayName": "Sighted"
+				},
+				"Status": {
+					"displayName": "Status",
+					"description": "Status of the observable. Default=Ok.",
+					"options": {
+						"Ok": {
+							"displayName": "Ok"
+						},
+						"Deleted": {
+							"displayName": "Deleted"
+						}
+					}
+				},
+				"data": {
+					"displayName": "Value",
+					"placeholder": "example.com; 8.8.8.8"
+				},
+				"endDate": {
+					"displayName": "End Date",
+					"description": "Date of the end of the task. This is automatically set when status is set to Completed."
+				},
+				"flag": {
+					"displayName": "Flag",
+					"description": "Whether to flag the task. Default=false."
+				},
+				"impactStatus": {
+					"displayName": "Impact Status",
+					"options": {
+						"NoImpact": {
+							"displayName": "No Impact"
+						},
+						"WithImpact": {
+							"displayName": "With Impact"
+						},
+						"NotApplicable": {
+							"displayName": "Not Applicable"
+						}
+					}
+				},
+				"owner": {
+					"displayName": "Owner",
+					"description": "User who owns the task. This is automatically set to current user when status is set to InProgress."
+				},
+				"resolutionStatus": {
+					"displayName": "Resolution Status",
+					"options": {
+						"Duplicated": {
+							"displayName": "Duplicated"
+						},
+						"False Positive": {
+							"displayName": "FalsePositive"
+						},
+						"Indeterminate": {
+							"displayName": "Indeterminate"
+						},
+						"Other": {
+							"displayName": "Other"
+						},
+						"True Positive": {
+							"displayName": "TruePositive"
+						}
+					}
+				},
+				"startDate": {
+					"displayName": "Start Date",
+					"description": "Date of the beginning of the task. This is automatically set when status is set to Open."
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"Open": {
+							"displayName": "Open"
+						},
+						"Resolved": {
+							"displayName": "Resolved"
+						},
+						"Deleted": {
+							"displayName": "Deleted"
+						},
+						"Cancel": {
+							"displayName": "Cancel"
+						},
+						"Completed": {
+							"displayName": "Completed"
+						},
+						"InProgress": {
+							"displayName": "In Progress"
+						},
+						"Waiting": {
+							"displayName": "Waiting"
+						}
+					},
+					"description": "Status of the task. Default=Waiting."
+				},
+				"summary": {
+					"displayName": "Summary",
+					"description": "Summary of the case, to be provided when closing a case"
+				}
+			}
+		},
+		"dataType": {
+			"displayName": "Data Type Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"data": {
+			"displayName": "Data"
+		},
+		"binaryProperty": {
+			"displayName": "Input Binary Field",
+			"description": "The name of the input binary field that represent the attachment file"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "Content of the Log"
+		},
+		"startDate": {
+			"displayName": "Start Date",
+			"description": "Date of the log submission default=now"
+		},
+		"ioc": {
+			"displayName": "IOC",
+			"description": "Whether the observable is an IOC (Indicator of compromise)"
+		},
+		"sighted": {
+			"displayName": "Sighted",
+			"description": "Whether sighted previously"
+		},
+		"analyzers": {
+			"displayName": "Analyzer Names or IDs",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"owner": {
+			"displayName": "Owner"
+		},
+		"flag": {
+			"displayName": "Flag",
+			"description": "Whether to flag the task. Default=false."
+		},
+		"taskId": {
+			"displayName": "Task ID",
+			"description": "ID of the task"
+		}
+	}
+}

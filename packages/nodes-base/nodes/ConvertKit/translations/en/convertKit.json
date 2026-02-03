@@ -1,0 +1,205 @@
+{
+	"header": {
+		"displayName": "ConvertKit",
+		"description": "Consume ConvertKit API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"customField": {
+					"displayName": "Custom Field"
+				},
+				"form": {
+					"displayName": "Form"
+				},
+				"sequence": {
+					"displayName": "Sequence"
+				},
+				"tag": {
+					"displayName": "Tag"
+				},
+				"tagSubscriber": {
+					"displayName": "Tag Subscriber"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a tag"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a tag from a subscriber"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "List subscriptions to a tag including subscriber data"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a field"
+				},
+				"addSubscriber": {
+					"displayName": "Add Subscriber",
+					"description": "Add a subscriber"
+				},
+				"getSubscriptions": {
+					"displayName": "Get Subscriptions",
+					"description": "Get all subscriptions to a sequence including subscriber data"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add a tag to a subscriber"
+				}
+			},
+			"description": "The operations to perform"
+		},
+		"id": {
+			"displayName": "Sequence Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"label": {
+			"displayName": "Label",
+			"description": "The label of the custom field"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Subscriber email address",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"fieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Object of key/value pairs for custom fields (the custom field must exist before you can use it here)",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"fieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Field Key",
+									"description": "The field's key",
+									"placeholder": "last_name"
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value of the field",
+									"placeholder": "Doe"
+								}
+							}
+						}
+					},
+					"values": {
+						"fieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Field Key",
+									"description": "The field's key",
+									"placeholder": "last_name"
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value of the field",
+									"placeholder": "Doe"
+								}
+							}
+						},
+						"fieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "Subscriber first name"
+				},
+				"subscriberState": {
+					"displayName": "Subscriber State",
+					"options": {
+						"active": {
+							"displayName": "Active"
+						},
+						"cancelled": {
+							"displayName": "Cancelled"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Tags. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"fields": {
+					"displayName": "Custom Fields",
+					"description": "Object of key/value pairs for custom fields (the custom field must exist before you can use it here)",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"field": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Field Key",
+									"description": "The field's key",
+									"placeholder": "last_name"
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value of the field",
+									"placeholder": "Doe"
+								}
+							}
+						}
+					},
+					"values": {
+						"field": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Field Key",
+									"description": "The field's key",
+									"placeholder": "last_name"
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value of the field",
+									"placeholder": "Doe"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				}
+			},
+			"description": "Receive only active subscribers or cancelled subscribers"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Tag name, multiple can be added separated by comma"
+		},
+		"tagId": {
+			"displayName": "Tag Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		}
+	}
+}

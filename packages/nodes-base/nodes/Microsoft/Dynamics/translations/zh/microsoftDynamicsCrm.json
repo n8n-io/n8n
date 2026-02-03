@@ -1,0 +1,557 @@
+{
+	"header": {
+		"displayName": "Microsoft Dynamics CRM",
+		"description": "使用 Microsoft Dynamics CRM API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"account": {
+					"displayName": "账户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "公司或企业名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"accountcategorycode": {
+					"displayName": "账户类别名称或ID",
+					"description": "用于指示客户账户是标准账户还是优选账户的类别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"accountratingcode": {
+					"displayName": "账户评级名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"addresses": {
+					"displayName": "地址",
+					"placeholder": "添加地址字段",
+					"multipleValueButtonText": "添加地址字段",
+					"options": {
+						"address": {
+							"displayName": "地址字段",
+							"options": {
+								"addresstypecode": {
+									"displayName": "地址类型名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"line1": {
+									"displayName": "[0]第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"line3": {
+									"displayName": "第3行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"stateorprovince": {
+									"displayName": "省/州"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"name": {
+									"displayName": "名称"
+								},
+								"postalcode": {
+									"displayName": "邮政编码"
+								},
+								"primarycontactname": {
+									"displayName": "主要联系人姓名"
+								},
+								"telephone1": {
+									"displayName": "电话1"
+								},
+								"telephone2": {
+									"displayName": "电话2"
+								},
+								"fax": {
+									"displayName": "传真"
+								}
+							}
+						}
+					},
+					"values": {
+						"address": {
+							"displayName": "地址字段",
+							"options": {
+								"addresstypecode": {
+									"displayName": "地址类型名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"line1": {
+									"displayName": "[0]第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"line3": {
+									"displayName": "第3行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"stateorprovince": {
+									"displayName": "省/州"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"name": {
+									"displayName": "名称"
+								},
+								"postalcode": {
+									"displayName": "邮政编码"
+								},
+								"primarycontactname": {
+									"displayName": "主要联系人姓名"
+								},
+								"telephone1": {
+									"displayName": "电话1"
+								},
+								"telephone2": {
+									"displayName": "电话2"
+								},
+								"fax": {
+									"displayName": "传真"
+								}
+							}
+						},
+						"addresses": {
+							"displayName": "地址",
+							"placeholder": "添加地址字段"
+						}
+					}
+				},
+				"businesstypecode": {
+					"displayName": "业务类型名称或ID",
+					"description": "用于合同或报告目的的账户法定名称或其他业务类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"customersizecode": {
+					"displayName": "客户规模名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"customertypecode": {
+					"displayName": "客户类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "用于描述账户的附加信息，例如公司网站的摘要"
+				},
+				"emailaddress1": {
+					"displayName": "邮箱地址 1",
+					"description": "账户的主要邮箱地址"
+				},
+				"emailaddress2": {
+					"displayName": "备用邮箱地址",
+					"description": "账户的备用电子邮箱地址"
+				},
+				"emailaddress3": {
+					"displayName": "电子邮件地址 3",
+					"description": "账户备用电子邮件地址"
+				},
+				"fax": {
+					"displayName": "传真"
+				},
+				"ftpsiteurl": {
+					"displayName": "FTP站点URL",
+					"description": "账户FTP站点的URL，用于使用户访问数据和共享文档"
+				},
+				"industrycode": {
+					"displayName": "行业名称或ID",
+					"description": "账户的主要行业，用于市场细分和人口统计分析。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "公司或企业名称"
+				},
+				"creditlimit": {
+					"displayName": "信用额度",
+					"description": "账户的信用额度。在与客户处理发票和会计问题时，这是一个有用的参考信息。"
+				},
+				"numberofemployees": {
+					"displayName": "员工数量",
+					"description": "账户员工数量，用于营销细分和人口统计分析"
+				},
+				"paymenttermscode": {
+					"displayName": "付款条款名称或ID",
+					"description": "用于指示客户何时需要支付总金额的付款条款。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"preferredappointmentdaycode": {
+					"displayName": "首选预约日名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"preferredappointmenttimecode": {
+					"displayName": "首选预约时间名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"preferredcontactmethodcode": {
+					"displayName": "首选联系方式名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"primarysatoriid": {
+					"displayName": "主要Satori ID"
+				},
+				"primarytwitterid": {
+					"displayName": "主要Twitter ID"
+				},
+				"revenue": {
+					"displayName": "收入",
+					"description": "该账户的年收入，用作财务绩效分析的指标"
+				},
+				"sharesoutstanding": {
+					"displayName": "流通股数",
+					"description": "该账户可供公众交易的股票数量。此数字用作财务绩效分析的指标。"
+				},
+				"shippingmethodcode": {
+					"displayName": "配送方式名称或ID",
+					"description": "发送到账户地址的配送方式，用于指定首选承运商或其他配送选项。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"sic": {
+					"displayName": "SIC",
+					"description": "标准行业分类（SIC）代码，用于标识账户的主要业务行业，适用于市场细分和人口统计分析"
+				},
+				"stageid": {
+					"displayName": "阶段ID"
+				},
+				"stockexchange": {
+					"displayName": "证券交易所",
+					"description": "账户上市所在的证券交易所，用于追踪公司股票和财务表现"
+				},
+				"telephone1": {
+					"displayName": "电话 1",
+					"description": "此账户的主要电话号码"
+				},
+				"telephone2": {
+					"displayName": "电话2",
+					"description": "此账户的第二个电话号码"
+				},
+				"telephone3": {
+					"displayName": "电话 3",
+					"description": "此账户的第三个电话号码"
+				},
+				"territorycode": {
+					"displayName": "区域名称或ID",
+					"description": "用于细分和分析的账户所在地区或区域。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"tickersymbol": {
+					"displayName": "股票代码",
+					"description": "输入要跟踪公司财务业绩的账户股票交易所代码。您可以点击此字段中输入的代码，从MSN Money访问最新交易信息。"
+				},
+				"websiteurl": {
+					"displayName": "网站URL",
+					"description": "账户网站URL，用于快速获取公司资料详情"
+				},
+				"yominame": {
+					"displayName": "Yomi 名称",
+					"description": "公司名称的日语拼音拼写（如已指定），以确保在电话及其他沟通中发音正确"
+				}
+			}
+		},
+		"accountId": {
+			"displayName": "账户ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"returnFields": {
+					"displayName": "返回字段名称或ID",
+					"description": "响应将包含的字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"expandFields": {
+					"displayName": "展开字段名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"query": {
+					"displayName": "查询",
+					"description": "用于筛选结果的查询。请查看<a href=\"https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api#filter-results\" target=\"_blank\">筛选器</a>。"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"accountcategorycode": {
+					"displayName": "账户类别名称或ID",
+					"description": "用于指示客户账户是标准账户还是优选账户的类别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"accountratingcode": {
+					"displayName": "账户评级名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"addresses": {
+					"displayName": "地址",
+					"placeholder": "添加地址字段",
+					"multipleValueButtonText": "添加地址字段",
+					"options": {
+						"address": {
+							"displayName": "地址字段",
+							"options": {
+								"addresstypecode": {
+									"displayName": "地址类型名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"line1": {
+									"displayName": "[0]第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"line3": {
+									"displayName": "第3行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"stateorprovince": {
+									"displayName": "省/州"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"name": {
+									"displayName": "名称"
+								},
+								"postalcode": {
+									"displayName": "邮政编码"
+								},
+								"primarycontactname": {
+									"displayName": "主要联系人姓名"
+								},
+								"telephone1": {
+									"displayName": "电话1"
+								},
+								"telephone2": {
+									"displayName": "电话2"
+								},
+								"fax": {
+									"displayName": "传真"
+								}
+							}
+						}
+					},
+					"values": {
+						"address": {
+							"displayName": "地址字段",
+							"options": {
+								"addresstypecode": {
+									"displayName": "地址类型名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"line1": {
+									"displayName": "[0]第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"line3": {
+									"displayName": "第3行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"stateorprovince": {
+									"displayName": "省/州"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"name": {
+									"displayName": "名称"
+								},
+								"postalcode": {
+									"displayName": "邮政编码"
+								},
+								"primarycontactname": {
+									"displayName": "主要联系人姓名"
+								},
+								"telephone1": {
+									"displayName": "电话1"
+								},
+								"telephone2": {
+									"displayName": "电话2"
+								},
+								"fax": {
+									"displayName": "传真"
+								}
+							}
+						},
+						"addresses": {
+							"displayName": "地址",
+							"placeholder": "添加地址字段"
+						}
+					}
+				},
+				"businesstypecode": {
+					"displayName": "业务类型名称或ID",
+					"description": "用于合同或报告目的的账户法定名称或其他业务类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"customersizecode": {
+					"displayName": "客户规模名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"customertypecode": {
+					"displayName": "客户类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "用于描述账户的附加信息，例如公司网站的摘要"
+				},
+				"emailaddress1": {
+					"displayName": "邮箱地址 1",
+					"description": "账户的主要邮箱地址"
+				},
+				"emailaddress2": {
+					"displayName": "备用邮箱地址",
+					"description": "账户的备用电子邮箱地址"
+				},
+				"emailaddress3": {
+					"displayName": "电子邮件地址 3",
+					"description": "账户备用电子邮件地址"
+				},
+				"fax": {
+					"displayName": "传真"
+				},
+				"ftpsiteurl": {
+					"displayName": "FTP站点URL",
+					"description": "账户FTP站点的URL，用于使用户访问数据和共享文档"
+				},
+				"industrycode": {
+					"displayName": "行业名称或ID",
+					"description": "账户的主要行业，用于市场细分和人口统计分析。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "公司或企业名称"
+				},
+				"creditlimit": {
+					"displayName": "信用额度",
+					"description": "账户的信用额度。在与客户处理发票和会计问题时，这是一个有用的参考信息。"
+				},
+				"numberofemployees": {
+					"displayName": "员工数量",
+					"description": "账户员工数量，用于营销细分和人口统计分析"
+				},
+				"paymenttermscode": {
+					"displayName": "付款条款名称或ID",
+					"description": "用于指示客户何时需要支付总金额的付款条款。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"preferredappointmentdaycode": {
+					"displayName": "首选预约日名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"preferredappointmenttimecode": {
+					"displayName": "首选预约时间名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"preferredcontactmethodcode": {
+					"displayName": "首选联系方式名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"primarysatoriid": {
+					"displayName": "主要Satori ID"
+				},
+				"primarytwitterid": {
+					"displayName": "主要Twitter ID"
+				},
+				"revenue": {
+					"displayName": "收入",
+					"description": "该账户的年收入，用作财务绩效分析的指标"
+				},
+				"sharesoutstanding": {
+					"displayName": "流通股数",
+					"description": "该账户可供公众交易的股票数量。此数字用作财务绩效分析的指标。"
+				},
+				"shippingmethodcode": {
+					"displayName": "配送方式名称或ID",
+					"description": "发送到账户地址的配送方式，用于指定首选承运商或其他配送选项。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"sic": {
+					"displayName": "SIC",
+					"description": "标准行业分类（SIC）代码，用于标识账户的主要业务行业，适用于市场细分和人口统计分析"
+				},
+				"stageid": {
+					"displayName": "阶段ID"
+				},
+				"stockexchange": {
+					"displayName": "证券交易所",
+					"description": "账户上市所在的证券交易所，用于追踪公司股票和财务表现"
+				},
+				"telephone1": {
+					"displayName": "电话 1",
+					"description": "此账户的主要电话号码"
+				},
+				"telephone2": {
+					"displayName": "电话2",
+					"description": "此账户的第二个电话号码"
+				},
+				"telephone3": {
+					"displayName": "电话 3",
+					"description": "此账户的第三个电话号码"
+				},
+				"territorycode": {
+					"displayName": "区域名称或ID",
+					"description": "用于细分和分析的账户所在地区或区域。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"tickersymbol": {
+					"displayName": "股票代码",
+					"description": "输入要跟踪公司财务业绩的账户股票交易所代码。您可以点击此字段中输入的代码，从MSN Money访问最新交易信息。"
+				},
+				"websiteurl": {
+					"displayName": "网站URL",
+					"description": "账户网站URL，用于快速获取公司资料详情"
+				},
+				"yominame": {
+					"displayName": "Yomi 名称",
+					"description": "公司名称的日语拼音拼写（如已指定），以确保在电话及其他沟通中发音正确"
+				}
+			}
+		}
+	}
+}

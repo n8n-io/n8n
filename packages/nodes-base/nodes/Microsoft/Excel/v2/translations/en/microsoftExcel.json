@@ -1,0 +1,302 @@
+{
+	"header": {
+		"displayName": "Microsoft Excel 365",
+		"description": "Consume Microsoft Excel API"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node connects to the Microsoft 365 cloud platform. Use the 'Extract from File' and 'Convert to File' nodes to directly manipulate spreadsheet files (.xls, .csv, etc). <a href=\"https://n8n.io/workflows/890-read-in-an-excel-spreadsheet-file/\" target=\"_blank\">More info</a>."
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"table": {
+					"displayName": "Table",
+					"description": "Represents an Excel table"
+				},
+				"workbook": {
+					"displayName": "Workbook",
+					"description": "A workbook is the top level object which contains one or more worksheets"
+				},
+				"worksheet": {
+					"displayName": "Sheet",
+					"description": "A sheet is a grid of cells which can contain data, tables, charts, etc"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"append": {
+					"displayName": "Append",
+					"description": "Append data to sheet"
+				},
+				"convertToRange": {
+					"displayName": "Convert to Range",
+					"description": "Convert a table to a range"
+				},
+				"addTable": {
+					"displayName": "Create",
+					"description": "Add a table based on range"
+				},
+				"deleteTable": {
+					"displayName": "Delete",
+					"description": "Delete a table"
+				},
+				"getColumns": {
+					"displayName": "Get Columns",
+					"description": "Retrieve a list of table columns"
+				},
+				"getRows": {
+					"displayName": "Get Rows",
+					"description": "Retrieve a list of table rows"
+				},
+				"lookup": {
+					"displayName": "Lookup",
+					"description": "Look for rows that match a given value in a column"
+				},
+				"addWorksheet": {
+					"displayName": "Add Sheet",
+					"description": "Add a new sheet to the workbook"
+				},
+				"deleteWorkbook": {
+					"displayName": "Delete",
+					"description": "Delete workbook"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get a list of sheets"
+				},
+				"upsert": {
+					"displayName": "Append or Update",
+					"description": "Append a new row or update the current one if it already exists (upsert)"
+				},
+				"clear": {
+					"displayName": "Clear",
+					"description": "Clear sheet"
+				},
+				"deleteWorksheet": {
+					"displayName": "Delete",
+					"description": "Delete sheet"
+				},
+				"readRows": {
+					"displayName": "Get Rows",
+					"description": "Retrieve a list of sheet rows"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update rows of a sheet or sheet range"
+				}
+			}
+		},
+		"workbook": {
+			"displayName": "Workbook"
+		},
+		"worksheet": {
+			"displayName": "Sheet"
+		},
+		"table": {
+			"displayName": "Table"
+		},
+		"dataMode": {
+			"displayName": "Data Mode",
+			"options": {
+				"autoMap": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties match destination column names"
+				},
+				"define": {
+					"displayName": "Map Each Column Below",
+					"description": "Set the value for each destination column"
+				},
+				"raw": {
+					"displayName": "Raw",
+					"description": "Send raw data as JSON, the whole selected range would be updated with the new values"
+				}
+			}
+		},
+		"data": {
+			"displayName": "Data",
+			"description": "Raw values for the specified range as array of string arrays in JSON format. Should match the specified range: one array item for each row.",
+			"placeholder": "e.g. [[\"Sara\",\"1/2/2006\",\"Berlin\"],[\"George\",\"5/3/2010\",\"Paris\"]]"
+		},
+		"fieldsUi": {
+			"displayName": "Values to Send",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field",
+			"options": {
+				"values": {
+					"displayName": "Field",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Field",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "Values to Send",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"index": {
+					"displayName": "Index",
+					"description": "Specifies the relative position of the new row. If not defined, the addition happens at the end. Any row below the inserted row will be shifted downwards. First row index is 0."
+				},
+				"rawData": {
+					"displayName": "RAW Data",
+					"description": "Whether the data should be returned RAW instead of parsed into keys according to their header"
+				},
+				"dataProperty": {
+					"displayName": "Data Property",
+					"description": "The name of the property into which to write the RAW data"
+				},
+				"returnAllMatches": {
+					"displayName": "Return All Matches",
+					"description": "By default only the first result gets returned. If options gets set all found matches get returned."
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields the response will containt. Multiple can be added separated by ,."
+				},
+				"updateAll": {
+					"displayName": "Update All Matches",
+					"description": "Whether to update all matching rows or just the first match"
+				},
+				"appendAfterSelectedRange": {
+					"displayName": "Append After Selected Range",
+					"description": "Whether to append data after the selected range or used range"
+				}
+			}
+		},
+		"selectRange": {
+			"displayName": "Select Range",
+			"options": {
+				"auto": {
+					"displayName": "Automatically",
+					"description": "The whole used range on the selected sheet will be converted into a table"
+				},
+				"manual": {
+					"displayName": "Manually",
+					"description": "Select a range that will be converted into a table"
+				}
+			}
+		},
+		"range": {
+			"displayName": "Range",
+			"description": "The sheet range to read the data from specified using a A1-style notation, has to be specific e.g A1:B5, generic ranges like A:B are not supported. Leave blank to use whole used range in the sheet.",
+			"placeholder": "e.g. A1:B2"
+		},
+		"hasHeaders": {
+			"displayName": "Has Headers",
+			"description": "Whether the range has column labels. When this property set to false Excel will automatically generate header shifting the data down by one row."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"rawData": {
+			"displayName": "RAW Data",
+			"description": "Whether the data should be returned RAW instead of parsed into keys according to their header"
+		},
+		"dataProperty": {
+			"displayName": "Data Property",
+			"description": "The name of the property into which to write the RAW data"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "A comma-separated list of the fields to include in the response"
+				},
+				"column": {
+					"displayName": "Column Names or IDs",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"lookupColumn": {
+			"displayName": "Lookup Column",
+			"description": "The name of the column in which to look for value",
+			"placeholder": "Email"
+		},
+		"lookupValue": {
+			"displayName": "Lookup Value",
+			"description": "The value to look for in column",
+			"placeholder": "frank@example.com"
+		},
+		"additionalFields": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the sheet to be added. The name should be unique. If not specified, Excel will determine the name of the new worksheet."
+				}
+			}
+		},
+		"applyTo": {
+			"displayName": "Apply To",
+			"options": {
+				"All": {
+					"displayName": "All",
+					"description": "Clear data in cells and remove all formatting"
+				},
+				"Formats": {
+					"displayName": "Formats",
+					"description": "Clear formatting(e.g. font size, color) of cells"
+				},
+				"Contents": {
+					"displayName": "Contents",
+					"description": "Clear data contained in cells"
+				}
+			}
+		},
+		"useRange": {
+			"displayName": "Select a Range"
+		},
+		"keyRow": {
+			"displayName": "Header Row",
+			"description": "Relative to selected 'Range', first row index is 0"
+		},
+		"dataStartRow": {
+			"displayName": "First Data Row",
+			"description": "Relative to selected 'Range', first row index is 0"
+		},
+		"columnToMatchOn": {
+			"displayName": "Column to match on",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"valueToMatchOn": {
+			"displayName": "Value of Column to Match On"
+		}
+	}
+}

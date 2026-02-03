@@ -1,0 +1,83 @@
+{
+	"header": {
+		"displayName": "Cloudflare",
+		"description": "使用Cloudflare API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"zoneCertificate": {
+					"displayName": "区域证书"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"delete": {
+					"displayName": "删除",
+					"description": "删除证书"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取证书"
+				},
+				"getMany": {
+					"displayName": "获取多个",
+					"description": "获取多个证书"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传证书"
+				}
+			}
+		},
+		"zoneId": {
+			"displayName": "区域名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"certificate": {
+			"displayName": "证书内容",
+			"description": "区域的叶证书"
+		},
+		"privateKey": {
+			"displayName": "私钥"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"status": {
+					"displayName": "状态",
+					"description": "区域自定义SSL状态",
+					"options": {
+						"active": {
+							"displayName": "激活状态"
+						},
+						"expired": {
+							"displayName": "已过期"
+						},
+						"deleted": {
+							"displayName": "已删除"
+						},
+						"pending": {
+							"displayName": "待处理"
+						}
+					}
+				}
+			}
+		},
+		"certificateId": {
+			"displayName": "证书ID"
+		}
+	}
+}

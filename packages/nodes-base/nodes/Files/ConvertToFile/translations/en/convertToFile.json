@@ -1,0 +1,630 @@
+{
+	"header": {
+		"displayName": "Convert to File",
+		"description": "Convert JSON data to binary data"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"csv": {
+					"displayName": "Convert to CSV",
+					"description": "Transform input data into a CSV file"
+				},
+				"html": {
+					"displayName": "Convert to HTML",
+					"description": "Transform input data into a table in an HTML file"
+				},
+				"iCal": {
+					"displayName": "Convert to ICS",
+					"description": "Converts each input item to an ICS event file"
+				},
+				"toJson": {
+					"displayName": "Convert to JSON",
+					"description": "Transform input data into a single or multiple JSON files"
+				},
+				"ods": {
+					"displayName": "Convert to ODS",
+					"description": "Transform input data into an ODS file"
+				},
+				"rtf": {
+					"displayName": "Convert to RTF",
+					"description": "Transform input data into a table in an RTF file"
+				},
+				"toText": {
+					"displayName": "Convert to Text File",
+					"description": "Transform input data string into a file"
+				},
+				"xls": {
+					"displayName": "Convert to XLS",
+					"description": "Transform input data into an Excel file"
+				},
+				"xlsx": {
+					"displayName": "Convert to XLSX",
+					"description": "Transform input data into an Excel file"
+				},
+				"toBinary": {
+					"displayName": "Move Base64 String to File",
+					"description": "Convert a base64-encoded string into its original file format"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field",
+			"placeholder": "e.g data",
+			"description": "The field that your iCalendar file will be available under in the output"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"compression": {
+					"displayName": "Compression",
+					"description": "Whether to reduce the output file size"
+				},
+				"delimiter": {
+					"displayName": "Delimiter",
+					"description": "The character to use to separate fields"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "Name of the output file",
+					"placeholder": "e.g. myFile.json"
+				},
+				"headerRow": {
+					"displayName": "Header Row",
+					"description": "Whether the first row of the file contains the header names"
+				},
+				"sheetName": {
+					"displayName": "Sheet Name",
+					"description": "Name of the sheet to create in the spreadsheet",
+					"placeholder": "e.g. mySheet"
+				},
+				"addBOM": {
+					"displayName": "Add Byte Order Mark (BOM)",
+					"description": "Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly."
+				},
+				"dataIsBase64": {
+					"displayName": "Data Is Base64",
+					"description": "Whether the data is already base64 encoded"
+				},
+				"encoding": {
+					"displayName": "Encoding",
+					"description": "Choose the character set to use to encode the data",
+					"options": {
+						"armscii8": {
+							"displayName": "armscii8"
+						},
+						"ascii": {
+							"displayName": "ascii"
+						},
+						"base64": {
+							"displayName": "base64"
+						},
+						"big5hkscs": {
+							"displayName": "big5hkscs"
+						},
+						"binary": {
+							"displayName": "binary"
+						},
+						"cesu8": {
+							"displayName": "cesu8"
+						},
+						"cp1046": {
+							"displayName": "cp1046"
+						},
+						"cp1124": {
+							"displayName": "cp1124"
+						},
+						"cp1125": {
+							"displayName": "cp1125"
+						},
+						"cp1129": {
+							"displayName": "cp1129"
+						},
+						"cp1133": {
+							"displayName": "cp1133"
+						},
+						"cp1161": {
+							"displayName": "cp1161"
+						},
+						"cp1162": {
+							"displayName": "cp1162"
+						},
+						"cp1163": {
+							"displayName": "cp1163"
+						},
+						"cp437": {
+							"displayName": "cp437"
+						},
+						"cp720": {
+							"displayName": "cp720"
+						},
+						"cp737": {
+							"displayName": "cp737"
+						},
+						"cp775": {
+							"displayName": "cp775"
+						},
+						"cp808": {
+							"displayName": "cp808"
+						},
+						"cp850": {
+							"displayName": "cp850"
+						},
+						"cp852": {
+							"displayName": "cp852"
+						},
+						"cp855": {
+							"displayName": "cp855"
+						},
+						"cp856": {
+							"displayName": "cp856"
+						},
+						"cp857": {
+							"displayName": "cp857"
+						},
+						"cp858": {
+							"displayName": "cp858"
+						},
+						"cp860": {
+							"displayName": "cp860"
+						},
+						"cp861": {
+							"displayName": "cp861"
+						},
+						"cp862": {
+							"displayName": "cp862"
+						},
+						"cp863": {
+							"displayName": "cp863"
+						},
+						"cp864": {
+							"displayName": "cp864"
+						},
+						"cp865": {
+							"displayName": "cp865"
+						},
+						"cp866": {
+							"displayName": "cp866"
+						},
+						"cp869": {
+							"displayName": "cp869"
+						},
+						"cp922": {
+							"displayName": "cp922"
+						},
+						"cp936": {
+							"displayName": "cp936"
+						},
+						"cp949": {
+							"displayName": "cp949"
+						},
+						"cp950": {
+							"displayName": "cp950"
+						},
+						"eucjp": {
+							"displayName": "eucjp"
+						},
+						"gb18030": {
+							"displayName": "gb18030"
+						},
+						"gbk": {
+							"displayName": "gbk"
+						},
+						"georgianacademy": {
+							"displayName": "georgianacademy"
+						},
+						"georgianps": {
+							"displayName": "georgianps"
+						},
+						"hex": {
+							"displayName": "hex"
+						},
+						"hproman8": {
+							"displayName": "hproman8"
+						},
+						"iso646cn": {
+							"displayName": "iso646cn"
+						},
+						"iso646jp": {
+							"displayName": "iso646jp"
+						},
+						"iso88591": {
+							"displayName": "iso88591"
+						},
+						"iso885910": {
+							"displayName": "iso885910"
+						},
+						"iso885911": {
+							"displayName": "iso885911"
+						},
+						"iso885913": {
+							"displayName": "iso885913"
+						},
+						"iso885914": {
+							"displayName": "iso885914"
+						},
+						"iso885915": {
+							"displayName": "iso885915"
+						},
+						"iso885916": {
+							"displayName": "iso885916"
+						},
+						"iso88592": {
+							"displayName": "iso88592"
+						},
+						"iso88593": {
+							"displayName": "iso88593"
+						},
+						"iso88594": {
+							"displayName": "iso88594"
+						},
+						"iso88595": {
+							"displayName": "iso88595"
+						},
+						"iso88596": {
+							"displayName": "iso88596"
+						},
+						"iso88597": {
+							"displayName": "iso88597"
+						},
+						"iso88598": {
+							"displayName": "iso88598"
+						},
+						"iso88599": {
+							"displayName": "iso88599"
+						},
+						"koi8r": {
+							"displayName": "koi8r"
+						},
+						"koi8ru": {
+							"displayName": "koi8ru"
+						},
+						"koi8t": {
+							"displayName": "koi8t"
+						},
+						"koi8u": {
+							"displayName": "koi8u"
+						},
+						"maccenteuro": {
+							"displayName": "maccenteuro"
+						},
+						"maccroatian": {
+							"displayName": "maccroatian"
+						},
+						"maccyrillic": {
+							"displayName": "maccyrillic"
+						},
+						"macgreek": {
+							"displayName": "macgreek"
+						},
+						"maciceland": {
+							"displayName": "maciceland"
+						},
+						"macintosh": {
+							"displayName": "macintosh"
+						},
+						"macroman": {
+							"displayName": "macroman"
+						},
+						"macromania": {
+							"displayName": "macromania"
+						},
+						"macthai": {
+							"displayName": "macthai"
+						},
+						"macturkish": {
+							"displayName": "macturkish"
+						},
+						"macukraine": {
+							"displayName": "macukraine"
+						},
+						"mik": {
+							"displayName": "mik"
+						},
+						"pt154": {
+							"displayName": "pt154"
+						},
+						"rk1048": {
+							"displayName": "rk1048"
+						},
+						"shiftjis": {
+							"displayName": "shiftjis"
+						},
+						"tcvn": {
+							"displayName": "tcvn"
+						},
+						"tis620": {
+							"displayName": "tis620"
+						},
+						"ucs2": {
+							"displayName": "ucs2"
+						},
+						"utf16": {
+							"displayName": "utf16"
+						},
+						"utf16be": {
+							"displayName": "utf16be"
+						},
+						"utf32": {
+							"displayName": "utf32"
+						},
+						"utf32be": {
+							"displayName": "utf32be"
+						},
+						"utf32le": {
+							"displayName": "utf32le"
+						},
+						"utf7": {
+							"displayName": "utf7"
+						},
+						"utf7imap": {
+							"displayName": "utf7imap"
+						},
+						"utf8": {
+							"displayName": "utf8"
+						},
+						"viscii": {
+							"displayName": "viscii"
+						},
+						"windows1250": {
+							"displayName": "windows1250"
+						},
+						"windows1251": {
+							"displayName": "windows1251"
+						},
+						"windows1252": {
+							"displayName": "windows1252"
+						},
+						"windows1253": {
+							"displayName": "windows1253"
+						},
+						"windows1254": {
+							"displayName": "windows1254"
+						},
+						"windows1255": {
+							"displayName": "windows1255"
+						},
+						"windows1256": {
+							"displayName": "windows1256"
+						},
+						"windows1257": {
+							"displayName": "windows1257"
+						},
+						"windows1258": {
+							"displayName": "windows1258"
+						},
+						"windows874": {
+							"displayName": "windows874"
+						}
+					}
+				},
+				"mimeType": {
+					"displayName": "MIME Type",
+					"description": "The MIME type of the output file. <a href=\"https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types\" target=\"_blank\">Common MIME types</a>.",
+					"placeholder": "e.g text/plain"
+				},
+				"format": {
+					"displayName": "Format",
+					"description": "Whether to format the JSON data for easier reading"
+				}
+			}
+		},
+		"sourceProperty": {
+			"displayName": "Text Input Field",
+			"description": "The name of the input field that contains a string to convert to a file. Use dot-notation for deep fields (e.g. 'level1.level2.currentKey').",
+			"placeholder": "e.g data"
+		},
+		"mode": {
+			"displayName": "Mode",
+			"options": {
+				"once": {
+					"displayName": "All Items to One File"
+				},
+				"each": {
+					"displayName": "Each Item to Separate File"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Event Title",
+			"placeholder": "e.g. New Event"
+		},
+		"start": {
+			"displayName": "Start",
+			"description": "Date and time at which the event begins. (For all-day events, the time will be ignored.)."
+		},
+		"end": {
+			"displayName": "End",
+			"description": "Date and time at which the event ends. (For all-day events, the time will be ignored.)."
+		},
+		"allDay": {
+			"displayName": "All Day",
+			"description": "Whether the event lasts all day or not"
+		},
+		"additionalFields": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"attendeesUi": {
+					"displayName": "Attendees",
+					"placeholder": "Add Attendee",
+					"multipleValueButtonText": "Add Attendee",
+					"options": {
+						"attendeeValues": {
+							"displayName": "Attendees",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "e.g. name@email.com"
+								},
+								"rsvp": {
+									"displayName": "RSVP",
+									"description": "Whether the attendee has to confirm attendance or not"
+								}
+							}
+						}
+					},
+					"values": {
+						"attendeeValues": {
+							"displayName": "Attendees",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "e.g. name@email.com"
+								},
+								"rsvp": {
+									"displayName": "RSVP",
+									"description": "Whether the attendee has to confirm attendance or not"
+								}
+							}
+						},
+						"attendeesUi": {
+							"displayName": "Attendees",
+							"placeholder": "Add Attendee"
+						}
+					}
+				},
+				"busyStatus": {
+					"displayName": "Busy Status",
+					"description": "Used to specify busy status for Microsoft applications, like Outlook",
+					"options": {
+						"BUSY": {
+							"displayName": "Busy"
+						},
+						"TENTATIVE": {
+							"displayName": "Tentative"
+						}
+					}
+				},
+				"calName": {
+					"displayName": "Calendar Name",
+					"description": "Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook. <a href=\"https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d\">More info</a>."
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "The name of the file to be generated. Default name is event.ics.",
+					"placeholder": "e.g. event.ics"
+				},
+				"geolocationUi": {
+					"displayName": "Geolocation",
+					"placeholder": "Add Geolocation",
+					"options": {
+						"geolocationValues": {
+							"displayName": "Geolocation",
+							"options": {
+								"lat": {
+									"displayName": "Latitude"
+								},
+								"lon": {
+									"displayName": "Longitude"
+								}
+							}
+						}
+					},
+					"values": {
+						"geolocationValues": {
+							"displayName": "Geolocation",
+							"options": {
+								"lat": {
+									"displayName": "Latitude"
+								},
+								"lon": {
+									"displayName": "Longitude"
+								}
+							}
+						},
+						"geolocationUi": {
+							"displayName": "Geolocation",
+							"placeholder": "Add Geolocation"
+						}
+					}
+				},
+				"location": {
+					"displayName": "Location",
+					"description": "The intended venue"
+				},
+				"recurrenceRule": {
+					"displayName": "Recurrence Rule",
+					"description": "A rule to define the repeat pattern of the event (RRULE). (<a href=\"https://icalendar.org/rrule-tool.html\">Rule generator</a>)."
+				},
+				"organizerUi": {
+					"displayName": "Organizer",
+					"placeholder": "Add Organizer",
+					"options": {
+						"organizerValues": {
+							"displayName": "Organizer",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "e.g. name@email.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"organizerValues": {
+							"displayName": "Organizer",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "e.g. name@email.com"
+								}
+							}
+						},
+						"organizerUi": {
+							"displayName": "Organizer",
+							"placeholder": "Add Organizer"
+						}
+					}
+				},
+				"sequence": {
+					"displayName": "Sequence",
+					"description": "When sending an update for an event (with the same uid), defines the revision sequence number"
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"CONFIRMED": {
+							"displayName": "Confirmed"
+						},
+						"CANCELLED": {
+							"displayName": "Cancelled"
+						},
+						"TENTATIVE": {
+							"displayName": "Tentative"
+						}
+					}
+				},
+				"uid": {
+					"displayName": "UID",
+					"description": "Universally unique ID for the event (will be auto-generated if not specified here). Should be globally unique."
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "URL associated with event"
+				},
+				"useWorkflowTimezone": {
+					"displayName": "Use Workflow Timezone",
+					"description": "Whether to use the workflow timezone set in node's settings rather than UTC"
+				}
+			}
+		}
+	}
+}

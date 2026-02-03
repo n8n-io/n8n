@@ -1,0 +1,1456 @@
+{
+	"header": {
+		"displayName": "Salesforce",
+		"description": "Consume Salesforce API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "OAuth Authorization Flow",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2"
+				},
+				"jwt": {
+					"displayName": "OAuth2 JWT"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"account": {
+					"displayName": "Account",
+					"description": "Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners)"
+				},
+				"attachment": {
+					"displayName": "Attachment",
+					"description": "Represents a file that a has uploaded and attached to a parent object"
+				},
+				"case": {
+					"displayName": "Case",
+					"description": "Represents a case, which is a customer issue or problem"
+				},
+				"contact": {
+					"displayName": "Contact",
+					"description": "Represents a contact, which is an individual associated with an account"
+				},
+				"customObject": {
+					"displayName": "Custom Object",
+					"description": "Represents a custom object"
+				},
+				"document": {
+					"displayName": "Document",
+					"description": "Represents a document"
+				},
+				"flow": {
+					"displayName": "Flow",
+					"description": "Represents an autolaunched flow"
+				},
+				"lead": {
+					"displayName": "Lead",
+					"description": "Represents a prospect or potential"
+				},
+				"opportunity": {
+					"displayName": "Opportunity",
+					"description": "Represents an opportunity, which is a sale or pending deal"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search records"
+				},
+				"task": {
+					"displayName": "Task",
+					"description": "Represents a business activity such as making a phone call or other to-do items. In the user interface, and records are collectively referred to as activities."
+				},
+				"user": {
+					"displayName": "User",
+					"description": "Represents a person, which is one user in system"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"addToCampaign": {
+					"displayName": "Add Contact To Campaign",
+					"description": "Add contact to a campaign"
+				},
+				"addNote": {
+					"displayName": "Add Note",
+					"description": "Add note to an account"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a attachment"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new account, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a attachment"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many flows"
+				},
+				"getSummary": {
+					"displayName": "Get Summary",
+					"description": "Returns an overview of attachment's metadata"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a attachment"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a document"
+				},
+				"query": {
+					"displayName": "Query",
+					"description": "Execute a SOQL query that returns all the results in a single response"
+				},
+				"addComment": {
+					"displayName": "Add Comment",
+					"description": "Add a comment to a case"
+				},
+				"invoke": {
+					"displayName": "Invoke",
+					"description": "Invoke a flow"
+				}
+			}
+		},
+		"externalId": {
+			"displayName": "Match Against",
+			"description": "The field to check to see if the account already exists. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"externalIdValue": {
+			"displayName": "Value to Match",
+			"description": "If this value exists in the 'match against' field, update the account. Otherwise create a new one."
+		},
+		"company": {
+			"displayName": "Company",
+			"description": "Company of the lead. If person account record types have been enabled, and if the value of Company is null, the lead converts to a person account."
+		},
+		"lastname": {
+			"displayName": "Last Name",
+			"description": "Required. Last name of the contact. Limited to 80 characters."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"annualRevenue": {
+					"displayName": "Annual Revenue",
+					"description": "Estimated annual revenue of the account"
+				},
+				"city": {
+					"displayName": "City",
+					"description": "City for the address of the lead"
+				},
+				"country": {
+					"displayName": "Country",
+					"description": "Country of the lead"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Filter by custom fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Text description of the Document. Limit: 255 characters."
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email address for the contact",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "Fax",
+					"description": "Fax number for the account"
+				},
+				"firstname": {
+					"displayName": "First Name",
+					"description": "First name of the lead. Limited to 40 characters."
+				},
+				"hasOptedOutOfEmail": {
+					"displayName": "Has Opted Out of Email",
+					"description": "Whether the lead doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out."
+				},
+				"hasOptedOutOfFax": {
+					"displayName": "Has Opted Out of Fax",
+					"description": "Whether the lead doesn’t want to receive fax from Salesforce (true) or does (false). Label is Email Opt Out."
+				},
+				"industry": {
+					"displayName": "Industry",
+					"description": "The website of this account. Maximum of 255 characters."
+				},
+				"IsUnreadByOwner": {
+					"displayName": "Is Unread By Owner",
+					"description": "Whether true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner."
+				},
+				"jigsaw": {
+					"displayName": "Jigsaw",
+					"description": "References the ID of a company in Data.com"
+				},
+				"leadSource": {
+					"displayName": "Lead Source Name or ID",
+					"description": "Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"mobilePhone": {
+					"displayName": "Mobile Phone",
+					"description": "Contact’s mobile phone number"
+				},
+				"numberOfEmployees": {
+					"displayName": "Number Of Employees",
+					"description": "Number of employees at the lead’s company. Label is Employees."
+				},
+				"owner": {
+					"displayName": "Owner Name or ID",
+					"description": "ID of the User who owns the attachment. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "Phone number for the account"
+				},
+				"postalCode": {
+					"displayName": "Postal Code",
+					"description": "Postal code for the address of the lead. Label is Zip/Postal Code."
+				},
+				"recordTypeId": {
+					"displayName": "Record Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"rating": {
+					"displayName": "Rating",
+					"description": "Rating of the lead"
+				},
+				"salutation": {
+					"displayName": "Salutation",
+					"description": "Honorific abbreviation, word, or phrase to be used in front of name in greetings, such as Dr. or Mrs."
+				},
+				"state": {
+					"displayName": "State",
+					"description": "State for the address of the lead"
+				},
+				"status": {
+					"displayName": "Status Name or ID",
+					"description": "The status of the case, such as “New,” “Closed,” or “Escalated.” This field directly controls the IsClosed flag. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"street": {
+					"displayName": "Street",
+					"description": "Street number and name for the address of the lead"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the contact such as CEO or Vice President"
+				},
+				"website": {
+					"displayName": "Website",
+					"description": "The website of this account. Maximum of 255 characters."
+				},
+				"acconuntId": {
+					"displayName": "Account Name or ID",
+					"description": "ID of the account that is the parent of this contact. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"assistantName": {
+					"displayName": "Assistant Name",
+					"description": "The name of the assistant"
+				},
+				"Assistant Phone": {
+					"displayName": "Assistant Phone",
+					"description": "The telephone number of the assistant"
+				},
+				"birthdate": {
+					"displayName": "Birth Date",
+					"description": "The birth date of the contact"
+				},
+				"department": {
+					"displayName": "Department",
+					"description": "The department of the contact"
+				},
+				"otherPostalCode": {
+					"displayName": "Other Postal Code"
+				},
+				"emailBouncedReason": {
+					"displayName": "Email Bounced Reason",
+					"description": "If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred"
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "First name of the contact. Maximum size is 40 characters."
+				},
+				"homePhone": {
+					"displayName": "Home Phone",
+					"description": "Home telephone number for the contact"
+				},
+				"mailingCity": {
+					"displayName": "Mailing City"
+				},
+				"mailingCountry": {
+					"displayName": "Mailing Country"
+				},
+				"mailingPostalCode": {
+					"displayName": "Mailing Postal Code"
+				},
+				"mailingState": {
+					"displayName": "Mailing State"
+				},
+				"mailingStreet": {
+					"displayName": "Mailing Street",
+					"description": "Street address for mailing address"
+				},
+				"otherCity": {
+					"displayName": "Other City"
+				},
+				"otherCountry": {
+					"displayName": "Other Country"
+				},
+				"otherPhone": {
+					"displayName": "Other Phone",
+					"description": "Telephone for alternate address"
+				},
+				"otherState": {
+					"displayName": "Other State"
+				},
+				"otherStreet": {
+					"displayName": "Other Street",
+					"description": "Street for alternate address"
+				},
+				"fileExtension": {
+					"displayName": "File Extension",
+					"description": "File extension to use. If none is set, the value from the binary data will be used.",
+					"placeholder": "pdf"
+				},
+				"linkToObjectId": {
+					"displayName": "Link To Object ID",
+					"description": "ID of the object you want to link this document to"
+				},
+				"ownerId": {
+					"displayName": "Owner Name or ID",
+					"description": "ID of the owner of this document. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"accountId": {
+					"displayName": "Account ID",
+					"description": "ID of the account associated with this case"
+				},
+				"amount": {
+					"displayName": "Amount",
+					"description": "Estimated total sale amount"
+				},
+				"campaignId": {
+					"displayName": "Campaign Name or ID",
+					"description": "ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"forecastCategoryName": {
+					"displayName": "Forecast Category Name",
+					"description": "It is implied, but not directly controlled, by the StageName field"
+				},
+				"nextStep": {
+					"displayName": "Next Step",
+					"description": "Description of next task in closing opportunity. Limit: 255 characters."
+				},
+				"pricebook2Id": {
+					"displayName": "Pricebook2 ID",
+					"description": "ID of a related Pricebook2 object"
+				},
+				"probability": {
+					"displayName": "Probability",
+					"description": "Percentage of estimated confidence in closing the opportunity"
+				},
+				"type": {
+					"displayName": "Type Name or ID",
+					"description": "Represents Type of the task, such as Call or Meeting. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+					"options": {
+						"Business": {
+							"displayName": "Business"
+						},
+						"New Business": {
+							"displayName": "New Business"
+						}
+					}
+				},
+				"accountNumber": {
+					"displayName": "Account Number",
+					"description": "Account number assigned to this account (not the unique ID). Maximum size is 40 characters."
+				},
+				"accountSource": {
+					"displayName": "Account Source Name or ID",
+					"description": "The source of the account record. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"billingCity": {
+					"displayName": "Billing City",
+					"description": "Details for the billing address of this account. Maximum size is 40 characters."
+				},
+				"billingCountry": {
+					"displayName": "Billing Country",
+					"description": "Details for the billing address of this account. Maximum size is 80 characters."
+				},
+				"billingPostalCode": {
+					"displayName": "Billing Postal Code",
+					"description": "Details for the billing address of this account. Maximum size is 20 characters."
+				},
+				"billingState": {
+					"displayName": "Billing State",
+					"description": "Details for the billing address of this account. Maximum size is 80 characters."
+				},
+				"billingStreet": {
+					"displayName": "Billing Street",
+					"description": "Street address for the billing address of this account"
+				},
+				"parentId": {
+					"displayName": "Parent ID",
+					"description": "ID of the parent object, if any"
+				},
+				"sicDesc": {
+					"displayName": "SicDesc",
+					"description": "A brief description of an organization’s line of business, based on its SIC code"
+				},
+				"shippingCity": {
+					"displayName": "Shipping City",
+					"description": "Details of the shipping address for this account. City maximum size is 40 characters."
+				},
+				"shippingCountry": {
+					"displayName": "Shipping Country",
+					"description": "Details of the shipping address for this account. Country maximum size is 80 characters."
+				},
+				"shippingPostalCode": {
+					"displayName": "Shipping Postal Code",
+					"description": "Details of the shipping address for this account. Postal code maximum size is 20 characters."
+				},
+				"shippingState": {
+					"displayName": "Shipping State",
+					"description": "Details of the shipping address for this account. State maximum size is 80 characters."
+				},
+				"shippingStreet": {
+					"displayName": "Shipping Street",
+					"description": "The street address of the shipping address for this account. Maximum of 255 characters."
+				},
+				"contactId": {
+					"displayName": "Contact ID",
+					"description": "ID of the associated Contact"
+				},
+				"isEscalated": {
+					"displayName": "Is Escalated",
+					"description": "Whether indicates whether the case has been escalated (true) or not"
+				},
+				"origin": {
+					"displayName": "Origin Name or ID",
+					"description": "The source of the case, such as Email, Phone, or Web. Label is Case Origin. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"ParentId": {
+					"displayName": "Parent ID",
+					"description": "The ID of the parent case in the hierarchy. The label is Parent Case."
+				},
+				"priority": {
+					"displayName": "Priority Name or ID",
+					"description": "Indicates the importance or urgency of a task, such as high or low. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"reason": {
+					"displayName": "Reason Name or ID",
+					"description": "The reason why the case was created, such as Instructions not clear, or User didn’t attend training. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"subject": {
+					"displayName": "Subject Name or ID",
+					"description": "The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"suppliedCompany": {
+					"displayName": "Supplied Company",
+					"description": "The company name that was entered when the case was created. This field can't be updated after the case has been created.."
+				},
+				"suppliedEmail": {
+					"displayName": "Supplied Email",
+					"description": "The email address that was entered when the case was created. This field can't be updated after the case has been created."
+				},
+				"suppliedName": {
+					"displayName": "Supplied Name",
+					"description": "The name that was entered when the case was created. This field can't be updated after the case has been created."
+				},
+				"suppliedPhone": {
+					"displayName": "Supplied Phone",
+					"description": "The phone number that was entered when the case was created. This field can't be updated after the case has been created."
+				},
+				"activityDate": {
+					"displayName": "Activity Date",
+					"description": "Represents the due date of the task. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone."
+				},
+				"callDisposition": {
+					"displayName": "Call Disposition",
+					"description": "Represents the result of a given call, for example, “we'll call back,” or “call unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center."
+				},
+				"callDurationInSeconds": {
+					"displayName": "Call Duration In Seconds",
+					"description": "Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center."
+				},
+				"callObject": {
+					"displayName": "Call Object",
+					"description": "Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center."
+				},
+				"callType": {
+					"displayName": "Call Type Name or ID",
+					"description": "The type of call being answered: Inbound, Internal, or Outbound. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"isReminderSet": {
+					"displayName": "Is ReminderSet",
+					"description": "Whether a popup reminder has been set for the task (true) or not (false)"
+				},
+				"recurrenceType": {
+					"displayName": "Recurrence Type Name or ID",
+					"description": "Recurrence Type of the task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"recurrenceInstance": {
+					"displayName": "Recurrence Instance Name or ID",
+					"description": "The frequency of the recurring task. For example, “2nd” or “3rd.”. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"recurrenceInterval": {
+					"displayName": "Recurrence Interval",
+					"description": "The interval between recurring tasks"
+				},
+				"recurrenceDayOfMonth": {
+					"displayName": "Recurrence Day Of Month",
+					"description": "The day of the month in which the task repeats"
+				},
+				"recurrenceDayOfWeekMask": {
+					"displayName": "Recurrence Day Of Week Mask",
+					"description": "The day or days of the week on which the task repeats. This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2 Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64 Multiple days are represented as the sum of their numerical values. For example, Tuesday and Thursday = 4 + 16 = 20."
+				},
+				"recurrenceEndDateOnly": {
+					"displayName": "Recurrence Start Date Only",
+					"description": "The date when the recurring task begins. Must be a date and time before RecurrenceEndDateOnly."
+				},
+				"recurrenceMonthOfYear": {
+					"displayName": "Recurrence Month Of Year",
+					"description": "The month of the year in which the task repeats",
+					"options": {
+						"January": {
+							"displayName": "January"
+						},
+						"February": {
+							"displayName": "February"
+						},
+						"March": {
+							"displayName": "March"
+						},
+						"April": {
+							"displayName": "April"
+						},
+						"May": {
+							"displayName": "May"
+						},
+						"June": {
+							"displayName": "June"
+						},
+						"July": {
+							"displayName": "July"
+						},
+						"August": {
+							"displayName": "August"
+						},
+						"September": {
+							"displayName": "September"
+						},
+						"October": {
+							"displayName": "October"
+						},
+						"November": {
+							"displayName": "November"
+						},
+						"December": {
+							"displayName": "December"
+						}
+					}
+				},
+				"recurrenceRegeneratedType": {
+					"displayName": "Recurrence Regenerated Type",
+					"description": "Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.",
+					"options": {
+						"RecurrenceRegenerateAfterDueDate": {
+							"displayName": "After Due Date"
+						},
+						"RecurrenceRegenerateAfterToday": {
+							"displayName": "After Date Completed"
+						},
+						"RecurrenceRegenerated": {
+							"displayName": "(Task Closed)"
+						}
+					}
+				},
+				"recurrenceTimeZoneSidKey": {
+					"displayName": "Recurrence TimeZone SidKey",
+					"description": "The time zone associated with the recurring task. For example, “UTC-8:00” for Pacific Standard Time."
+				},
+				"reminderDateTime": {
+					"displayName": "Reminder Date Time",
+					"description": "Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value."
+				},
+				"whatId": {
+					"displayName": "What ID",
+					"description": "The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object."
+				},
+				"whoId": {
+					"displayName": "Who ID",
+					"description": "The WhoId represents a human such as a lead or a contact. WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID."
+				},
+				"isPrivate": {
+					"displayName": "Is Private",
+					"description": "Whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false)"
+				}
+			}
+		},
+		"leadId": {
+			"displayName": "Lead ID",
+			"description": "ID of lead that needs to be fetched"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"annualRevenue": {
+					"displayName": "Annual Revenue",
+					"description": "Estimated annual revenue of the account"
+				},
+				"city": {
+					"displayName": "City",
+					"description": "City for the address of the lead"
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "Company of the lead. If person account record types have been enabled, and if the value of Company is null, the lead converts to a person account."
+				},
+				"country": {
+					"displayName": "Country",
+					"description": "Country of the lead"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Filter by custom fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Text description of the Document. Limit: 255 characters."
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email address for the contact",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "Fax",
+					"description": "Fax number for the account"
+				},
+				"firstname": {
+					"displayName": "First Name",
+					"description": "First name of the lead. Limited to 40 characters."
+				},
+				"hasOptedOutOfEmail": {
+					"displayName": "Has Opted Out of Email",
+					"description": "Whether the lead doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out."
+				},
+				"HasOptedOutOfFax": {
+					"displayName": "Has Opted Out of Fax",
+					"description": "Whether the lead doesn’t want to receive fax from Salesforce (true) or does (false). Label is Fax Opt Out."
+				},
+				"industry": {
+					"displayName": "Industry",
+					"description": "The website of this account. Maximum of 255 characters."
+				},
+				"IsUnreadByOwner": {
+					"displayName": "Is Unread By Owner",
+					"description": "Whether true, lead has been assigned, but not yet viewed. See Unread Leads for more information. Label is Unread By Owner."
+				},
+				"jigsaw": {
+					"displayName": "Jigsaw",
+					"description": "References the ID of a company in Data.com"
+				},
+				"lastname": {
+					"displayName": "Last Name",
+					"description": "Required. Last name of the lead. Limited to 80 characters."
+				},
+				"leadSource": {
+					"displayName": "Lead Source Name or ID",
+					"description": "Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"mobilePhone": {
+					"displayName": "Mobile Phone",
+					"description": "Contact’s mobile phone number"
+				},
+				"numberOfEmployees": {
+					"displayName": "Number Of Employees",
+					"description": "Number of employees at the lead’s company. Label is Employees."
+				},
+				"owner": {
+					"displayName": "Owner Name or ID",
+					"description": "ID of the User who owns the attachment. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"postalCode": {
+					"displayName": "Postal Code",
+					"description": "Postal code for the address of the lead. Label is Zip/Postal Code."
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "Phone number for the account"
+				},
+				"recordTypeId": {
+					"displayName": "Record Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"rating": {
+					"displayName": "Rating",
+					"description": "Rating of the lead"
+				},
+				"salutation": {
+					"displayName": "Salutation",
+					"description": "Honorific abbreviation, word, or phrase to be used in front of name in greetings, such as Dr. or Mrs."
+				},
+				"state": {
+					"displayName": "State",
+					"description": "State for the address of the lead"
+				},
+				"status": {
+					"displayName": "Status Name or ID",
+					"description": "The current status of the task, such as In Progress or Completed. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"street": {
+					"displayName": "Street",
+					"description": "Street number and name for the address of the lead"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the contact such as CEO or Vice President"
+				},
+				"website": {
+					"displayName": "Website",
+					"description": "The website of this account. Maximum of 255 characters."
+				},
+				"acconuntId": {
+					"displayName": "Account Name or ID",
+					"description": "ID of the account that is the parent of this contact. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"assistantName": {
+					"displayName": "Assistant Name",
+					"description": "The name of the assistant"
+				},
+				"Assistant Phone": {
+					"displayName": "Assistant Phone",
+					"description": "The telephone number of the assistant"
+				},
+				"birthdate": {
+					"displayName": "Birth Date",
+					"description": "The birth date of the contact"
+				},
+				"department": {
+					"displayName": "Department",
+					"description": "The department of the contact"
+				},
+				"emailBouncedDate": {
+					"displayName": "Email Bounced Date",
+					"description": "If bounce management is activated and an email sent to the contact bounces, the date and time the bounce occurred"
+				},
+				"emailBouncedReason": {
+					"displayName": "Email Bounced Reason",
+					"description": "If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred"
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "First name of the contact. Maximum size is 40 characters."
+				},
+				"homePhone": {
+					"displayName": "Home Phone",
+					"description": "Home telephone number for the contact"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "Last name of the contact. Limited to 80 characters."
+				},
+				"mailingCity": {
+					"displayName": "Mailing City"
+				},
+				"mailingCountry": {
+					"displayName": "Mailing Country"
+				},
+				"mailingState": {
+					"displayName": "Mailing State"
+				},
+				"mailingStreet": {
+					"displayName": "Mailing Street",
+					"description": "Street address for mailing address"
+				},
+				"mailingPostalCode": {
+					"displayName": "Mailing Postal Code"
+				},
+				"otherCity": {
+					"displayName": "Other City"
+				},
+				"otherCountry": {
+					"displayName": "Other Country"
+				},
+				"otherPhone": {
+					"displayName": "Other Phone",
+					"description": "Telephone for alternate address"
+				},
+				"otherPostalCode": {
+					"displayName": "Other Postal Code"
+				},
+				"otherState": {
+					"displayName": "Other State"
+				},
+				"otherStreet": {
+					"displayName": "Other Street",
+					"description": "Street for alternate address"
+				},
+				"accountId": {
+					"displayName": "Account ID",
+					"description": "ID of the account associated with this case"
+				},
+				"amount": {
+					"displayName": "Amount",
+					"description": "Estimated total sale amount"
+				},
+				"campaignId": {
+					"displayName": "Campaign Name or ID",
+					"description": "ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"closeDate": {
+					"displayName": "Close Date",
+					"description": "Required. Date when the opportunity is expected to close."
+				},
+				"forecastCategoryName": {
+					"displayName": "Forecast Category Name",
+					"description": "It is implied, but not directly controlled, by the StageName field"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Required. Name of the attached file. Maximum size is 255 characters. Label is File Name."
+				},
+				"nextStep": {
+					"displayName": "Next Step",
+					"description": "Description of next task in closing opportunity. Limit: 255 characters."
+				},
+				"pricebook2Id": {
+					"displayName": "Pricebook2 ID",
+					"description": "ID of a related Pricebook2 object"
+				},
+				"probability": {
+					"displayName": "Probability",
+					"description": "Percentage of estimated confidence in closing the opportunity"
+				},
+				"stageName": {
+					"displayName": "Stage Name or ID",
+					"description": "Required. Date when the opportunity is expected to close. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"type": {
+					"displayName": "Type Name or ID",
+					"description": "Represents Type of the task, such as Call or Meeting. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+					"options": {
+						"Business": {
+							"displayName": "Business"
+						},
+						"New Business": {
+							"displayName": "New Business"
+						}
+					}
+				},
+				"accountNumber": {
+					"displayName": "Account Number",
+					"description": "Account number assigned to this account (not the unique ID). Maximum size is 40 characters."
+				},
+				"accountSource": {
+					"displayName": "Account Source Name or ID",
+					"description": "The source of the account record. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"billingCity": {
+					"displayName": "Billing City",
+					"description": "Details for the billing address of this account. Maximum size is 40 characters."
+				},
+				"billingCountry": {
+					"displayName": "Billing Country",
+					"description": "Details for the billing address of this account. Maximum size is 80 characters."
+				},
+				"billingPostalCode": {
+					"displayName": "Billing Postal Code",
+					"description": "Details for the billing address of this account. Maximum size is 20 characters."
+				},
+				"billingState": {
+					"displayName": "Billing State",
+					"description": "Details for the billing address of this account. Maximum size is 80 characters."
+				},
+				"billingStreet": {
+					"displayName": "Billing Street",
+					"description": "Street address for the billing address of this account"
+				},
+				"ownerId": {
+					"displayName": "Owner Name or ID",
+					"description": "The owner of the account. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"parentId": {
+					"displayName": "Parent ID",
+					"description": "ID of the parent object, if any"
+				},
+				"sicDesc": {
+					"displayName": "SicDesc",
+					"description": "A brief description of an organization’s line of business, based on its SIC code"
+				},
+				"shippingCity": {
+					"displayName": "Shipping City",
+					"description": "Details of the shipping address for this account. City maximum size is 40 characters."
+				},
+				"shippingCountry": {
+					"displayName": "Shipping Country",
+					"description": "Details of the shipping address for this account. Country maximum size is 80 characters."
+				},
+				"shippingPostalCode": {
+					"displayName": "Shipping Postal Code",
+					"description": "Details of the shipping address for this account. Postal code maximum size is 20 characters."
+				},
+				"shippingState": {
+					"displayName": "Shipping State",
+					"description": "Details of the shipping address for this account. State maximum size is 80 characters."
+				},
+				"shippingStreet": {
+					"displayName": "Shipping Street",
+					"description": "The street address of the shipping address for this account. Maximum of 255 characters."
+				},
+				"contactId": {
+					"displayName": "Contact ID",
+					"description": "ID of the associated Contact"
+				},
+				"isEscalated": {
+					"displayName": "Is Escalated",
+					"description": "Whether the case has been escalated (true) or not"
+				},
+				"origin": {
+					"displayName": "Origin Name or ID",
+					"description": "The source of the case, such as Email, Phone, or Web. Label is Case Origin. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"ParentId": {
+					"displayName": "Parent ID",
+					"description": "The ID of the parent case in the hierarchy. The label is Parent Case."
+				},
+				"priority": {
+					"displayName": "Priority Name or ID",
+					"description": "Indicates the importance or urgency of a task, such as high or low. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"reason": {
+					"displayName": "Reason Name or ID",
+					"description": "The reason why the case was created, such as Instructions not clear, or User didn’t attend training. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"subject": {
+					"displayName": "Subject Name or ID",
+					"description": "The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"suppliedCompany": {
+					"displayName": "Supplied Company",
+					"description": "The company name that was entered when the case was created. This field can't be updated after the case has been created.."
+				},
+				"suppliedEmail": {
+					"displayName": "Supplied Email",
+					"description": "The email address that was entered when the case was created. This field can't be updated after the case has been created."
+				},
+				"suppliedName": {
+					"displayName": "Supplied Name",
+					"description": "The name that was entered when the case was created. This field can't be updated after the case has been created."
+				},
+				"suppliedPhone": {
+					"displayName": "Supplied Phone",
+					"description": "The phone number that was entered when the case was created. This field can't be updated after the case has been created."
+				},
+				"activityDate": {
+					"displayName": "Activity Date",
+					"description": "Represents the due date of the task. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone."
+				},
+				"callDisposition": {
+					"displayName": "Call Disposition",
+					"description": "Represents the result of a given call, for example, “we'll call back,” or “call unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center."
+				},
+				"callDurationInSeconds": {
+					"displayName": "Call Duration In Seconds",
+					"description": "Duration of the call in seconds. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center."
+				},
+				"callObject": {
+					"displayName": "Call Object",
+					"description": "Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center."
+				},
+				"callType": {
+					"displayName": "Call Type Name or ID",
+					"description": "The type of call being answered: Inbound, Internal, or Outbound. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"isReminderSet": {
+					"displayName": "Is ReminderSet",
+					"description": "Whether a popup reminder has been set for the task (true) or not (false)"
+				},
+				"recurrenceDayOfMonth": {
+					"displayName": "Recurrence Day Of Month",
+					"description": "The day of the month in which the task repeats"
+				},
+				"recurrenceDayOfWeekMask": {
+					"displayName": "Recurrence Day Of Week Mask",
+					"description": "The day or days of the week on which the task repeats. This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2 Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64. Multiple days are represented as the sum of their numerical values. For example, Tuesday and Thursday = 4 + 16 = 20."
+				},
+				"recurrenceEndDateOnly": {
+					"displayName": "Recurrence Start Date Only",
+					"description": "The date when the recurring task begins. Must be a date and time before RecurrenceEndDateOnly."
+				},
+				"recurrenceInstance": {
+					"displayName": "Recurrence Instance Name or ID",
+					"description": "The frequency of the recurring task. For example, “2nd” or “3rd.”. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"recurrenceInterval": {
+					"displayName": "Recurrence Interval",
+					"description": "The interval between recurring tasks"
+				},
+				"recurrenceMonthOfYear": {
+					"displayName": "Recurrence Month Of Year",
+					"description": "The month of the year in which the task repeats",
+					"options": {
+						"January": {
+							"displayName": "January"
+						},
+						"February": {
+							"displayName": "February"
+						},
+						"March": {
+							"displayName": "March"
+						},
+						"April": {
+							"displayName": "April"
+						},
+						"May": {
+							"displayName": "May"
+						},
+						"June": {
+							"displayName": "June"
+						},
+						"July": {
+							"displayName": "July"
+						},
+						"August": {
+							"displayName": "August"
+						},
+						"September": {
+							"displayName": "September"
+						},
+						"October": {
+							"displayName": "October"
+						},
+						"November": {
+							"displayName": "November"
+						},
+						"December": {
+							"displayName": "December"
+						}
+					}
+				},
+				"recurrenceRegeneratedType": {
+					"displayName": "Recurrence Regenerated Type",
+					"description": "Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.",
+					"options": {
+						"RecurrenceRegenerateAfterDueDate": {
+							"displayName": "After Due Date"
+						},
+						"RecurrenceRegenerateAfterToday": {
+							"displayName": "After Date Completed"
+						},
+						"RecurrenceRegenerated": {
+							"displayName": "(Task Closed)"
+						}
+					}
+				},
+				"recurrenceType": {
+					"displayName": "Recurrence Type Name or ID",
+					"description": "Website for the task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"recurrenceTimeZoneSidKey": {
+					"displayName": "Recurrence TimeZone SidKey",
+					"description": "The time zone associated with the recurring task. For example, “UTC-8:00” for Pacific Standard Time."
+				},
+				"reminderDateTime": {
+					"displayName": "Reminder Date Time",
+					"description": "Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value."
+				},
+				"whatId": {
+					"displayName": "What ID",
+					"description": "The WhatId represents nonhuman objects such as accounts, opportunities, campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a WhatId is equivalent to the ID of a related object."
+				},
+				"whoId": {
+					"displayName": "Who ID",
+					"description": "The WhoId represents a human such as a lead or a contact. WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID."
+				},
+				"binaryPropertyName": {
+					"displayName": "Input Binary Field"
+				},
+				"isPrivate": {
+					"displayName": "Is Private",
+					"description": "Whether this record is viewable only by the owner and administrators (true) or viewable by all otherwise-allowed users (false)"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"conditionsUi": {
+					"displayName": "Conditions",
+					"description": "The condition to set",
+					"placeholder": "Add Condition",
+					"multipleValueButtonText": "Add Condition",
+					"options": {
+						"conditionValues": {
+							"displayName": "Condition",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"operation": {
+									"displayName": "Operation",
+									"options": {
+										"<": {
+											"displayName": "<"
+										},
+										"<=": {
+											"displayName": "<="
+										},
+										"equal": {
+											"displayName": "="
+										},
+										">": {
+											"displayName": ">"
+										},
+										">=": {
+											"displayName": ">="
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"conditionValues": {
+							"displayName": "Condition",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"operation": {
+									"displayName": "Operation",
+									"options": {
+										"<": {
+											"displayName": "<"
+										},
+										"<=": {
+											"displayName": "<="
+										},
+										"equal": {
+											"displayName": "="
+										},
+										">": {
+											"displayName": ">"
+										},
+										">=": {
+											"displayName": ">="
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"conditionsUi": {
+							"displayName": "Conditions",
+							"placeholder": "Add Condition"
+						}
+					}
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields to include separated by ,"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Controls the HasResponded flag on this object"
+				},
+				"body": {
+					"displayName": "Body",
+					"description": "Body of the note. Limited to 32 KB."
+				},
+				"isPrivate": {
+					"displayName": "Is Private",
+					"description": "Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API"
+				},
+				"owner": {
+					"displayName": "Owner Name or ID",
+					"description": "ID of the user who owns the note. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"ownerId": {
+					"displayName": "Owner Name or ID",
+					"description": "ID of the user who owns the note. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"commentBody": {
+					"displayName": "Comment Body",
+					"description": "Text of the CaseComment. The maximum size of the comment body is 4,000 bytes. Label is Body."
+				},
+				"isPublished": {
+					"displayName": "Is Published",
+					"description": "Whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false)"
+				}
+			}
+		},
+		"campaignId": {
+			"displayName": "Campaign Name or ID",
+			"description": "ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the note"
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "ID of contact that needs to be fetched"
+		},
+		"customObject": {
+			"displayName": "Custom Object Name or ID",
+			"description": "Name of the custom object. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"customFieldsUi": {
+			"displayName": "Fields",
+			"description": "Filter by custom fields",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field",
+			"options": {
+				"customFieldsValues": {
+					"displayName": "Custom Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "The ID of the field. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "The value to set on custom field"
+						}
+					}
+				}
+			},
+			"values": {
+				"customFieldsValues": {
+					"displayName": "Custom Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "The ID of the field. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "The value to set on custom field"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "Fields",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"recordId": {
+			"displayName": "Record ID",
+			"description": "Record ID to be deleted"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Required. Name of the attached file. Maximum size is 255 characters. Label is File Name."
+		},
+		"closeDate": {
+			"displayName": "Close Date",
+			"description": "Required. Date when the opportunity is expected to close."
+		},
+		"stageName": {
+			"displayName": "Stage Name or ID",
+			"description": "Required. Date when the opportunity is expected to close. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"opportunityId": {
+			"displayName": "Opportunity ID",
+			"description": "ID of opportunity that needs to be fetched"
+		},
+		"accountId": {
+			"displayName": "Account ID",
+			"description": "ID of account that needs to be fetched"
+		},
+		"query": {
+			"displayName": "Query",
+			"description": "A SOQL query. An example query parameter string might look like: “SELECT+Name+FROM+MyObject”. If the SOQL query string is invalid, a MALFORMED_QUERY response is returned."
+		},
+		"type": {
+			"displayName": "Type Name or ID",
+			"description": "The type of case. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"caseId": {
+			"displayName": "Case ID",
+			"description": "ID of case that needs to be fetched"
+		},
+		"status": {
+			"displayName": "Status Name or ID",
+			"description": "The current status of the task, such as In Progress or Completed. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"taskId": {
+			"displayName": "Task ID",
+			"description": "ID of task that needs to be fetched"
+		},
+		"parentId": {
+			"displayName": "Parent ID"
+		},
+		"attachmentId": {
+			"displayName": "Attachment ID",
+			"description": "ID of attachment that needs to be fetched"
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "ID of user that needs to be fetched"
+		},
+		"apiName": {
+			"displayName": "API Name",
+			"description": "Required. API name of the flow."
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters",
+			"description": "Whether the input variables should be set via the value-key pair UI or JSON/RAW"
+		},
+		"variablesJson": {
+			"displayName": "Variables",
+			"description": "Input variables as JSON object"
+		},
+		"variablesUi": {
+			"displayName": "Variables",
+			"description": "The input variable to send",
+			"placeholder": "Add Variable",
+			"multipleValueButtonText": "Add Variable",
+			"options": {
+				"variablesValues": {
+					"displayName": "Variable",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the input variable"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the input variable"
+						}
+					}
+				}
+			},
+			"values": {
+				"variablesValues": {
+					"displayName": "Variable",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the input variable"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the input variable"
+						}
+					}
+				},
+				"variablesUi": {
+					"displayName": "Variables",
+					"placeholder": "Add Variable"
+				}
+			}
+		}
+	}
+}

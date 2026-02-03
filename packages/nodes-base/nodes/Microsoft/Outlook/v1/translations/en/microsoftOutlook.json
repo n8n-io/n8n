@@ -1,0 +1,448 @@
+{
+	"header": {
+		"displayName": "Microsoft Outlook",
+		"description": "Consume Microsoft Outlook API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"draft": {
+					"displayName": "Draft"
+				},
+				"folder": {
+					"displayName": "Folder"
+				},
+				"folderMessage": {
+					"displayName": "Folder Message"
+				},
+				"message": {
+					"displayName": "Message"
+				},
+				"messageAttachment": {
+					"displayName": "Message Attachment"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new mail folder in the root folder of the user's mailbox"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a folder"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a single folder details"
+				},
+				"send": {
+					"displayName": "Send",
+					"description": "Send a message"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a message"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many messages in a folder"
+				},
+				"getMime": {
+					"displayName": "Get MIME Content",
+					"description": "Get MIME content of a message"
+				},
+				"move": {
+					"displayName": "Move",
+					"description": "Move a message"
+				},
+				"reply": {
+					"displayName": "Reply",
+					"description": "Create reply to a message"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add an attachment to a message"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download attachment content"
+				},
+				"getChildren": {
+					"displayName": "Get Children",
+					"description": "Lists all child folders under the folder"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "Message ID"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "The subject of the message"
+		},
+		"bodyContent": {
+			"displayName": "Body Content",
+			"description": "Message body content"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"attachments": {
+					"displayName": "Attachments",
+					"placeholder": "Add Attachment",
+					"multipleValueButtonText": "Add Attachment",
+					"options": {
+						"attachments": {
+							"displayName": "Attachment",
+							"options": {
+								"binaryPropertyName": {
+									"displayName": "Binary Property Name",
+									"description": "Name of the binary property containing the data to be added to the email as an attachment"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachments": {
+							"displayName": "Attachments",
+							"placeholder": "Add Attachment"
+						}
+					}
+				},
+				"bccRecipients": {
+					"displayName": "BCC Recipients",
+					"description": "Email addresses of BCC recipients"
+				},
+				"bodyContentType": {
+					"displayName": "Body Content Type",
+					"description": "Message body content type",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"Text": {
+							"displayName": "Text"
+						}
+					}
+				},
+				"categories": {
+					"displayName": "Category Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"ccRecipients": {
+					"displayName": "CC Recipients",
+					"description": "Email addresses of CC recipients"
+				},
+				"internetMessageHeaders": {
+					"displayName": "Custom Headers",
+					"placeholder": "Add Header",
+					"multipleValueButtonText": "Add Header",
+					"options": {
+						"headers": {
+							"displayName": "Header",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the header"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the header"
+								}
+							}
+						}
+					},
+					"values": {
+						"headers": {
+							"displayName": "Header",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the header"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the header"
+								}
+							}
+						},
+						"internetMessageHeaders": {
+							"displayName": "Custom Headers",
+							"placeholder": "Add Header"
+						}
+					}
+				},
+				"from": {
+					"displayName": "From",
+					"description": "The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used."
+				},
+				"importance": {
+					"displayName": "Importance",
+					"description": "The importance of the message",
+					"options": {
+						"Low": {
+							"displayName": "Low"
+						},
+						"Normal": {
+							"displayName": "Normal"
+						},
+						"High": {
+							"displayName": "High"
+						}
+					}
+				},
+				"isReadReceiptRequested": {
+					"displayName": "Read Receipt Requested",
+					"description": "Whether a read receipt is requested for the message"
+				},
+				"toRecipients": {
+					"displayName": "Recipients",
+					"description": "Email addresses of recipients. Multiple can be added separated by comma."
+				},
+				"replyTo": {
+					"displayName": "Reply To",
+					"description": "Email addresses to use when replying"
+				},
+				"recipients": {
+					"displayName": "Recipients",
+					"description": "Email addresses of recipients. Mutiple can be set separated by comma."
+				},
+				"bodyContent": {
+					"displayName": "Body Content",
+					"description": "Message body content"
+				},
+				"subject": {
+					"displayName": "Subject",
+					"description": "The subject of the message"
+				},
+				"saveToSentItems": {
+					"displayName": "Save To Sent Items",
+					"description": "Whether to save the message in Sent Items"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "Filename of the attachment. If not set will the file-name of the binary property be used, if it exists."
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields the response will contain. Multiple can be added separated by comma."
+				},
+				"filter": {
+					"displayName": "Filter",
+					"description": "Microsoft Graph API OData $filter query. Information about the syntax can be found <a href=\"https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter\">here</a>.",
+					"placeholder": "isRead eq false"
+				},
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "Attachments Prefix",
+					"description": "Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is \"attachment_\" the first attachment is saved to \"attachment_0\""
+				}
+			}
+		},
+		"replyType": {
+			"displayName": "Reply Type",
+			"options": {
+				"reply": {
+					"displayName": "Reply"
+				},
+				"replyAll": {
+					"displayName": "Reply All"
+				}
+			}
+		},
+		"comment": {
+			"displayName": "Comment",
+			"description": "A comment to include. Can be an empty string."
+		},
+		"send": {
+			"displayName": "Send",
+			"description": "Whether to send the reply message directly. If not set, it will be saved as draft."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"toRecipients": {
+			"displayName": "Recipients",
+			"description": "Email addresses of recipients. Multiple can be added separated by comma."
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field"
+		},
+		"folderId": {
+			"displayName": "Folder ID",
+			"description": "Target Folder ID"
+		},
+		"attachmentId": {
+			"displayName": "Attachment ID"
+		},
+		"folderType": {
+			"displayName": "Type",
+			"description": "Folder Type",
+			"options": {
+				"folder": {
+					"displayName": "Folder"
+				},
+				"searchFolder": {
+					"displayName": "Search Folder"
+				}
+			}
+		},
+		"displayName": {
+			"displayName": "Display Name",
+			"description": "Name of the folder"
+		},
+		"includeNestedFolders": {
+			"displayName": "Include Nested Folders",
+			"description": "Whether to include child folders in the search"
+		},
+		"sourceFolderIds": {
+			"displayName": "Source Folder IDs",
+			"description": "The mailbox folders that should be mined"
+		},
+		"filterQuery": {
+			"displayName": "Filter Query",
+			"description": "The OData query to filter the messages"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"description": "Fields to update",
+			"options": {
+				"displayName": {
+					"displayName": "Display Name",
+					"description": "Name of the folder"
+				},
+				"filterQuery": {
+					"displayName": "Filter Query",
+					"description": "The OData query to filter the messages. Only for search folders."
+				},
+				"includeNestedFolders": {
+					"displayName": "Include Nested Folders",
+					"description": "Whether to include child folders in the search. Only for search folders."
+				},
+				"sourceFolderIds": {
+					"displayName": "Source Folder IDs",
+					"description": "The mailbox folders that should be mined. Only for search folders."
+				},
+				"bccRecipients": {
+					"displayName": "BCC Recipients",
+					"description": "Email addresses of BCC recipients"
+				},
+				"bodyContent": {
+					"displayName": "Body Content",
+					"description": "Message body content"
+				},
+				"bodyContentType": {
+					"displayName": "Body Content Type",
+					"description": "Message body content type",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"Text": {
+							"displayName": "Text"
+						}
+					}
+				},
+				"categories": {
+					"displayName": "Category Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"ccRecipients": {
+					"displayName": "CC Recipients",
+					"description": "Email addresses of CC recipients"
+				},
+				"internetMessageHeaders": {
+					"displayName": "Custom Headers",
+					"placeholder": "Add Header",
+					"multipleValueButtonText": "Add Header",
+					"options": {
+						"headers": {
+							"displayName": "Header",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the header"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the header"
+								}
+							}
+						}
+					},
+					"values": {
+						"headers": {
+							"displayName": "Header",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the header"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the header"
+								}
+							}
+						},
+						"internetMessageHeaders": {
+							"displayName": "Custom Headers",
+							"placeholder": "Add Header"
+						}
+					}
+				},
+				"from": {
+					"displayName": "From",
+					"description": "The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used."
+				},
+				"importance": {
+					"displayName": "Importance",
+					"description": "The importance of the message",
+					"options": {
+						"Low": {
+							"displayName": "Low"
+						},
+						"Normal": {
+							"displayName": "Normal"
+						},
+						"High": {
+							"displayName": "High"
+						}
+					}
+				},
+				"isRead": {
+					"displayName": "Is Read",
+					"description": "Whether the message has been read"
+				},
+				"isReadReceiptRequested": {
+					"displayName": "Read Receipt Requested",
+					"description": "Whether a read receipt is requested for the message"
+				},
+				"toRecipients": {
+					"displayName": "Recipients",
+					"description": "Email addresses of recipients. Multiple can be added separated by comma."
+				},
+				"replyTo": {
+					"displayName": "Reply To",
+					"description": "Email addresses to use when replying"
+				},
+				"subject": {
+					"displayName": "Subject",
+					"description": "The subject of the message"
+				}
+			},
+			"placeholder": "Add Field"
+		}
+	}
+}

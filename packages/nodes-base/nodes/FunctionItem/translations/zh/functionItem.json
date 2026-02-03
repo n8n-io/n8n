@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "函数项",
+		"description": "运行自定义函数代码，每个项目执行一次"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点类型有更新版本，名为‘代码’节点"
+		},
+		"functionCode": {
+			"displayName": "JavaScript代码",
+			"description": "为每个项目执行的JavaScript代码"
+		}
+	}
+}

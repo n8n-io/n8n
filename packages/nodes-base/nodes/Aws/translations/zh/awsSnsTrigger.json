@@ -1,0 +1,22 @@
+{
+	"header": {
+		"displayName": "AWS SNS 触发器",
+		"description": "通过 Webhook 处理 AWS SNS 事件"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (代入角色)"
+				}
+			}
+		},
+		"topic": {
+			"displayName": "主题"
+		}
+	}
+}

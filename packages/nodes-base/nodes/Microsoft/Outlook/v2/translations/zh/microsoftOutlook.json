@@ -1,0 +1,3482 @@
+{
+	"header": {
+		"displayName": "Microsoft Outlook",
+		"description": "使用 Microsoft Outlook API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"calendar": {
+					"displayName": "日历"
+				},
+				"contact": {
+					"displayName": "联系人"
+				},
+				"draft": {
+					"displayName": "草稿"
+				},
+				"event": {
+					"displayName": "事件"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				},
+				"folderMessage": {
+					"displayName": "文件夹消息"
+				},
+				"message": {
+					"displayName": "消息"
+				},
+				"messageAttachment": {
+					"displayName": "消息附件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "在用户邮箱的根文件夹中创建邮件文件夹"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除消息"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取消息附件信息"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索消息附件信息"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新消息"
+				},
+				"send": {
+					"displayName": "发送",
+					"description": "发送消息"
+				},
+				"move": {
+					"displayName": "移动",
+					"description": "将消息移动到文件夹"
+				},
+				"reply": {
+					"displayName": "回复",
+					"description": "创建消息回复"
+				},
+				"sendAndWait": {
+					"displayName": "发送并等待响应",
+					"description": "发送消息并等待响应"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "向消息添加附件"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "从消息中下载附件"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的日历名称",
+			"placeholder": "例如：我的日历"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"calendarGroup": {
+					"displayName": "日历组",
+					"description": "如果设置，日历将在指定的日历组中创建。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "指定颜色以区分此日历与其他日历",
+					"options": {
+						"lightBlue": {
+							"displayName": "浅蓝色"
+						},
+						"lightBrown": {
+							"displayName": "浅棕色"
+						},
+						"lightGray": {
+							"displayName": "浅灰色"
+						},
+						"lightGreen": {
+							"displayName": "浅绿色"
+						},
+						"lightOrange": {
+							"displayName": "浅橙色"
+						},
+						"lightPink": {
+							"displayName": "浅粉色"
+						},
+						"lightRed": {
+							"displayName": "浅红色"
+						},
+						"lightTeal": {
+							"displayName": "浅青色"
+						},
+						"lightYellow": {
+							"displayName": "浅黄色"
+						}
+					}
+				},
+				"assistantName": {
+					"displayName": "助手名称",
+					"description": "联系人助理的姓名"
+				},
+				"birthday": {
+					"displayName": "生日"
+				},
+				"businessAddress": {
+					"displayName": "业务地址",
+					"placeholder": "添加地址",
+					"options": {
+						"values": {
+							"displayName": "地址",
+							"values": {
+								"city": {
+									"displayName": "城市"
+								},
+								"countryOrRegion": {
+									"displayName": "国家/地区"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"street": {
+									"displayName": "街道"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "地址",
+							"values": {
+								"city": {
+									"displayName": "城市"
+								},
+								"countryOrRegion": {
+									"displayName": "国家/地区"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"street": {
+									"displayName": "街道"
+								}
+							}
+						},
+						"businessAddress": {
+							"displayName": "公司地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"businessHomePage": {
+					"displayName": "业务主页"
+				},
+				"businessPhones": {
+					"displayName": "商务电话",
+					"description": "商务电话号码列表（逗号分隔）"
+				},
+				"categories": {
+					"displayName": "分类名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"children": {
+					"displayName": "子节点",
+					"description": "联系人子女姓名列表（逗号分隔）"
+				},
+				"companyName": {
+					"displayName": "公司名称"
+				},
+				"department": {
+					"displayName": "部门"
+				},
+				"displayName": {
+					"displayName": "显示名称"
+				},
+				"emailAddresses": {
+					"displayName": "邮箱地址",
+					"placeholder": "添加邮箱",
+					"multipleValueButtonText": "添加邮箱",
+					"options": {
+						"values": {
+							"displayName": "电子邮件",
+							"values": {
+								"name": {
+									"displayName": "名称"
+								},
+								"address": {
+									"displayName": "地址"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "电子邮件",
+							"values": {
+								"name": {
+									"displayName": "名称"
+								},
+								"address": {
+									"displayName": "地址"
+								}
+							}
+						},
+						"emailAddresses": {
+							"displayName": "邮箱地址",
+							"placeholder": "添加邮箱"
+						}
+					}
+				},
+				"fileAs": {
+					"displayName": "文件命名",
+					"description": "联系人归档名称"
+				},
+				"homeAddress": {
+					"displayName": "家庭住址",
+					"placeholder": "添加地址",
+					"options": {
+						"values": {
+							"displayName": "地址",
+							"values": {
+								"city": {
+									"displayName": "城市"
+								},
+								"countryOrRegion": {
+									"displayName": "国家/地区"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"street": {
+									"displayName": "街道"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "地址",
+							"values": {
+								"city": {
+									"displayName": "城市"
+								},
+								"countryOrRegion": {
+									"displayName": "国家/地区"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"street": {
+									"displayName": "街道"
+								}
+							}
+						},
+						"homeAddress": {
+							"displayName": "家庭地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"homePhones": {
+					"displayName": "家庭电话"
+				},
+				"imAddresses": {
+					"displayName": "即时通讯地址",
+					"description": "联系人的即时通讯地址"
+				},
+				"initials": {
+					"displayName": "首字母"
+				},
+				"jobTitle": {
+					"displayName": "职位名称"
+				},
+				"manager": {
+					"displayName": "管理员",
+					"description": "联系人经理的姓名"
+				},
+				"middleName": {
+					"displayName": "中间名"
+				},
+				"mobilePhone": {
+					"displayName": "手机"
+				},
+				"givenName": {
+					"displayName": "名称"
+				},
+				"nickName": {
+					"displayName": "昵称"
+				},
+				"officeLocation": {
+					"displayName": "办公地点"
+				},
+				"otherAddress": {
+					"displayName": "其他地址",
+					"placeholder": "添加地址",
+					"options": {
+						"values": {
+							"displayName": "地址",
+							"values": {
+								"city": {
+									"displayName": "城市"
+								},
+								"countryOrRegion": {
+									"displayName": "国家/地区"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"street": {
+									"displayName": "街道"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "地址",
+							"values": {
+								"city": {
+									"displayName": "城市"
+								},
+								"countryOrRegion": {
+									"displayName": "国家/地区"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"street": {
+									"displayName": "街道"
+								}
+							}
+						},
+						"otherAddress": {
+							"displayName": "其他地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"personalNotes": {
+					"displayName": "个人笔记"
+				},
+				"profession": {
+					"displayName": "专业"
+				},
+				"spouseName": {
+					"displayName": "配偶姓名"
+				},
+				"surname": {
+					"displayName": "姓氏"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"attachments": {
+					"displayName": "附件",
+					"placeholder": "添加附件",
+					"multipleValueButtonText": "添加附件",
+					"options": {
+						"attachments": {
+							"displayName": "附件",
+							"options": {
+								"binaryPropertyName": {
+									"displayName": "输入数据字段名称",
+									"placeholder": "例如：data"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachments": {
+							"displayName": "附件",
+							"placeholder": "添加附件"
+						}
+					}
+				},
+				"bccRecipients": {
+					"displayName": "密送收件人",
+					"description": "密件抄送收件人邮箱地址列表（以逗号分隔）",
+					"placeholder": "例如：john@example.com"
+				},
+				"ccRecipients": {
+					"displayName": "抄送收件人",
+					"description": "抄送收件人邮箱地址的逗号分隔列表",
+					"placeholder": "例如：john@example.com"
+				},
+				"internetMessageHeaders": {
+					"displayName": "自定义请求头",
+					"placeholder": "添加请求头",
+					"multipleValueButtonText": "添加请求头",
+					"options": {
+						"headers": {
+							"displayName": "页眉",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为标头设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"headers": {
+							"displayName": "页眉",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为标头设置的值"
+								}
+							}
+						},
+						"internetMessageHeaders": {
+							"displayName": "自定义请求头",
+							"placeholder": "添加请求头"
+						}
+					}
+				},
+				"from": {
+					"displayName": "从",
+					"description": "发送邮件的邮箱所有者。必须与实际使用的邮箱对应。",
+					"placeholder": "例如：john@example.com"
+				},
+				"importance": {
+					"displayName": "重要性",
+					"description": "消息的重要性",
+					"options": {
+						"Low": {
+							"displayName": "低"
+						},
+						"Normal": {
+							"displayName": "普通"
+						},
+						"High": {
+							"displayName": "高"
+						},
+						"low": {
+							"displayName": "低"
+						},
+						"normal": {
+							"displayName": "普通"
+						},
+						"high": {
+							"displayName": "高"
+						}
+					}
+				},
+				"bodyContentType": {
+					"displayName": "消息类型",
+					"description": "消息正文内容类型",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"Text": {
+							"displayName": "文本"
+						}
+					}
+				},
+				"isReadReceiptRequested": {
+					"displayName": "已请求阅读回执",
+					"description": "是否为该消息请求阅读回执"
+				},
+				"replyTo": {
+					"displayName": "回复至",
+					"description": "回复时使用的邮箱地址",
+					"placeholder": "例如：replyto@example.com"
+				},
+				"toRecipients": {
+					"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。",
+					"description": "收件人邮箱地址列表（以逗号分隔）",
+					"placeholder": "例如：john@example.com"
+				},
+				"body": {
+					"displayName": "描述"
+				},
+				"bodyPreview": {
+					"displayName": "描述预览"
+				},
+				"hideAttendees": {
+					"displayName": "隐藏与会者",
+					"description": "是否允许每个与会者仅在会议请求和会议跟踪列表中看到自己"
+				},
+				"isAllDay": {
+					"displayName": "全天"
+				},
+				"isCancelled": {
+					"displayName": "已取消"
+				},
+				"isDraft": {
+					"displayName": "是否为草稿"
+				},
+				"isOnlineMeeting": {
+					"displayName": "是否在线会议"
+				},
+				"sensitivity": {
+					"displayName": "敏感度",
+					"options": {
+						"normal": {
+							"displayName": "普通"
+						},
+						"personal": {
+							"displayName": "个人"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"confidential": {
+							"displayName": "保密"
+						}
+					}
+				},
+				"showAs": {
+					"displayName": "显示为",
+					"options": {
+						"busy": {
+							"displayName": "忙碌中"
+						},
+						"free": {
+							"displayName": "免费"
+						},
+						"oof": {
+							"displayName": "哎呀"
+						},
+						"tentative": {
+							"displayName": "暂定"
+						},
+						"workingElsewhere": {
+							"displayName": "在其他地方工作"
+						}
+					}
+				},
+				"timeZone": {
+					"displayName": "时区",
+					"options": {
+						"Africa/Abidjan": {
+							"displayName": "非洲/阿比让"
+						},
+						"Africa/Accra": {
+							"displayName": "非洲/阿克拉"
+						},
+						"Africa/Addis_Ababa": {
+							"displayName": "非洲/亚的斯亚贝巴"
+						},
+						"Africa/Algiers": {
+							"displayName": "非洲/阿尔及尔"
+						},
+						"Africa/Asmara": {
+							"displayName": "非洲/阿斯马拉"
+						},
+						"Africa/Asmera": {
+							"displayName": "非洲/阿斯马拉"
+						},
+						"Africa/Bamako": {
+							"displayName": "非洲/巴马科"
+						},
+						"Africa/Bangui": {
+							"displayName": "非洲/班吉"
+						},
+						"Africa/Banjul": {
+							"displayName": "非洲/班珠尔"
+						},
+						"Africa/Bissau": {
+							"displayName": "非洲/比绍"
+						},
+						"Africa/Blantyre": {
+							"displayName": "非洲/布兰太尔"
+						},
+						"Africa/Brazzaville": {
+							"displayName": "非洲/布拉柴维尔"
+						},
+						"Africa/Bujumbura": {
+							"displayName": "非洲/布琼布拉"
+						},
+						"Africa/Cairo": {
+							"displayName": "非洲/开罗"
+						},
+						"Africa/Casablanca": {
+							"displayName": "非洲/卡萨布兰卡"
+						},
+						"Africa/Ceuta": {
+							"displayName": "非洲/休达"
+						},
+						"Africa/Conakry": {
+							"displayName": "非洲/科纳克里"
+						},
+						"Africa/Dakar": {
+							"displayName": "非洲/达喀尔"
+						},
+						"Africa/Dar_es_Salaam": {
+							"displayName": "非洲/达累斯萨拉姆"
+						},
+						"Africa/Djibouti": {
+							"displayName": "非洲/吉布提"
+						},
+						"Africa/Douala": {
+							"displayName": "非洲/杜阿拉"
+						},
+						"Africa/El_Aaiun": {
+							"displayName": "非洲/阿尤恩"
+						},
+						"Africa/Freetown": {
+							"displayName": "非洲/弗里敦"
+						},
+						"Africa/Gaborone": {
+							"displayName": "非洲/哈博罗内"
+						},
+						"Africa/Harare": {
+							"displayName": "非洲/哈拉雷"
+						},
+						"Africa/Johannesburg": {
+							"displayName": "非洲/约翰内斯堡"
+						},
+						"Africa/Juba": {
+							"displayName": "非洲/朱巴"
+						},
+						"Africa/Kampala": {
+							"displayName": "非洲/坎帕拉"
+						},
+						"Africa/Khartoum": {
+							"displayName": "非洲/喀土穆"
+						},
+						"Africa/Kigali": {
+							"displayName": "非洲/基加利"
+						},
+						"Africa/Kinshasa": {
+							"displayName": "非洲/金沙萨"
+						},
+						"Africa/Lagos": {
+							"displayName": "非洲/拉各斯"
+						},
+						"Africa/Libreville": {
+							"displayName": "非洲/利伯维尔"
+						},
+						"Africa/Lome": {
+							"displayName": "非洲/洛美"
+						},
+						"Africa/Luanda": {
+							"displayName": "非洲/罗安达"
+						},
+						"Africa/Lubumbashi": {
+							"displayName": "非洲/卢本巴希"
+						},
+						"Africa/Lusaka": {
+							"displayName": "非洲/卢萨卡"
+						},
+						"Africa/Malabo": {
+							"displayName": "非洲/马拉博"
+						},
+						"Africa/Maputo": {
+							"displayName": "非洲/马普托"
+						},
+						"Africa/Maseru": {
+							"displayName": "非洲/马塞卢"
+						},
+						"Africa/Mbabane": {
+							"displayName": "非洲/姆巴巴内"
+						},
+						"Africa/Mogadishu": {
+							"displayName": "非洲/摩加迪沙"
+						},
+						"Africa/Monrovia": {
+							"displayName": "非洲/蒙罗维亚"
+						},
+						"Africa/Nairobi": {
+							"displayName": "非洲/内罗毕"
+						},
+						"Africa/Ndjamena": {
+							"displayName": "非洲/恩贾梅纳"
+						},
+						"Africa/Niamey": {
+							"displayName": "非洲/尼亚美"
+						},
+						"Africa/Nouakchott": {
+							"displayName": "非洲/努瓦克肖特"
+						},
+						"Africa/Ouagadougou": {
+							"displayName": "非洲/瓦加杜古"
+						},
+						"Africa/Porto-Novo": {
+							"displayName": "非洲/波多诺伏"
+						},
+						"Africa/Sao_Tome": {
+							"displayName": "非洲/圣多美"
+						},
+						"Africa/Timbuktu": {
+							"displayName": "非洲/廷巴克图"
+						},
+						"Africa/Tripoli": {
+							"displayName": "非洲/的黎波里"
+						},
+						"Africa/Tunis": {
+							"displayName": "非洲/突尼斯"
+						},
+						"Africa/Windhoek": {
+							"displayName": "非洲/温得和克"
+						},
+						"America/Adak": {
+							"displayName": "美国/阿达克"
+						},
+						"America/Anchorage": {
+							"displayName": "美洲/安克雷奇"
+						},
+						"America/Anguilla": {
+							"displayName": "美洲/安圭拉"
+						},
+						"America/Antigua": {
+							"displayName": "美洲/安提瓜"
+						},
+						"America/Araguaina": {
+							"displayName": "美洲/阿拉瓜伊纳"
+						},
+						"America/Argentina/Buenos_Aires": {
+							"displayName": "美洲/阿根廷/布宜诺斯艾利斯"
+						},
+						"America/Argentina/Catamarca": {
+							"displayName": "美洲/阿根廷/卡塔马卡"
+						},
+						"America/Argentina/ComodRivadavia": {
+							"displayName": "美洲/阿根廷/科摩多罗里瓦达维亚"
+						},
+						"America/Argentina/Cordoba": {
+							"displayName": "美洲/阿根廷/科尔多瓦"
+						},
+						"America/Argentina/Jujuy": {
+							"displayName": "美洲/阿根廷/胡胡伊"
+						},
+						"America/Argentina/La_Rioja": {
+							"displayName": "美洲/阿根廷/拉里奥哈"
+						},
+						"America/Argentina/Mendoza": {
+							"displayName": "美洲/阿根廷/门多萨"
+						},
+						"America/Argentina/Rio_Gallegos": {
+							"displayName": "美洲/阿根廷/里奥加耶戈斯"
+						},
+						"America/Argentina/Salta": {
+							"displayName": "美洲/阿根廷/萨尔塔"
+						},
+						"America/Argentina/San_Juan": {
+							"displayName": "美洲/阿根廷/圣胡安"
+						},
+						"America/Argentina/San_Luis": {
+							"displayName": "美洲/阿根廷/圣路易斯"
+						},
+						"America/Argentina/Tucuman": {
+							"displayName": "美洲/阿根廷/图库曼"
+						},
+						"America/Argentina/Ushuaia": {
+							"displayName": "美洲/阿根廷/乌斯怀亚"
+						},
+						"America/Aruba": {
+							"displayName": "美洲/阿鲁巴"
+						},
+						"America/Asuncion": {
+							"displayName": "亚松森/美国"
+						},
+						"America/Atikokan": {
+							"displayName": "America/Atikokan"
+						},
+						"America/Atka": {
+							"displayName": "美国/阿特卡"
+						},
+						"America/Bahia": {
+							"displayName": "美洲/巴伊亚"
+						},
+						"America/Bahia_Banderas": {
+							"displayName": "美洲/巴伊亚班德拉斯"
+						},
+						"America/Barbados": {
+							"displayName": "美洲/巴巴多斯"
+						},
+						"America/Belem": {
+							"displayName": "美洲/贝伦"
+						},
+						"America/Belize": {
+							"displayName": "美洲/伯利兹"
+						},
+						"America/Blanc-Sablon": {
+							"displayName": "美洲/布朗萨布隆"
+						},
+						"America/Boa_Vista": {
+							"displayName": "美洲/博阿维斯塔"
+						},
+						"America/Bogota": {
+							"displayName": "美洲/波哥大"
+						},
+						"America/Boise": {
+							"displayName": "美国/博伊西"
+						},
+						"America/Buenos_Aires": {
+							"displayName": "美洲/布宜诺斯艾利斯"
+						},
+						"America/Cambridge_Bay": {
+							"displayName": "美洲/剑桥湾"
+						},
+						"America/Campo_Grande": {
+							"displayName": "美洲/大坎普"
+						},
+						"America/Cancun": {
+							"displayName": "美洲/坎昆"
+						},
+						"America/Caracas": {
+							"displayName": "美洲/加拉加斯"
+						},
+						"America/Catamarca": {
+							"displayName": "美洲/卡塔马卡"
+						},
+						"America/Cayenne": {
+							"displayName": "美洲/卡宴"
+						},
+						"America/Cayman": {
+							"displayName": "美洲/开曼"
+						},
+						"America/Chicago": {
+							"displayName": "美洲/芝加哥"
+						},
+						"America/Chihuahua": {
+							"displayName": "美洲/奇瓦瓦"
+						},
+						"America/Ciudad_Juarez": {
+							"displayName": "美洲/华雷斯城"
+						},
+						"America/Coral_Harbour": {
+							"displayName": "美洲/珊瑚港"
+						},
+						"America/Cordoba": {
+							"displayName": "美洲/科尔多瓦"
+						},
+						"America/Costa_Rica": {
+							"displayName": "美洲/哥斯达黎加"
+						},
+						"America/Coyhaique": {
+							"displayName": "美洲/科伊艾克"
+						},
+						"America/Creston": {
+							"displayName": "美洲/克雷斯顿"
+						},
+						"America/Cuiaba": {
+							"displayName": "美洲/库亚巴"
+						},
+						"America/Curacao": {
+							"displayName": "库拉索（美洲/库拉索）"
+						},
+						"America/Danmarkshavn": {
+							"displayName": "美洲/丹马沙文"
+						},
+						"America/Dawson": {
+							"displayName": "道森（美洲）"
+						},
+						"America/Dawson_Creek": {
+							"displayName": "美国/道森克里克"
+						},
+						"America/Denver": {
+							"displayName": "美国/丹佛"
+						},
+						"America/Detroit": {
+							"displayName": "美国/底特律"
+						},
+						"America/Dominica": {
+							"displayName": "美洲/多米尼克"
+						},
+						"America/Edmonton": {
+							"displayName": "美洲/埃德蒙顿"
+						},
+						"America/Eirunepe": {
+							"displayName": "美洲/埃鲁内佩"
+						},
+						"America/El_Salvador": {
+							"displayName": "美洲/萨尔瓦多"
+						},
+						"America/Ensenada": {
+							"displayName": "美洲/恩塞纳达"
+						},
+						"America/Fort_Nelson": {
+							"displayName": "美洲/纳尔逊堡"
+						},
+						"America/Fort_Wayne": {
+							"displayName": "美国/韦恩堡"
+						},
+						"America/Fortaleza": {
+							"displayName": "美洲/福塔莱萨"
+						},
+						"America/Glace_Bay": {
+							"displayName": "美洲/格莱斯贝"
+						},
+						"America/Godthab": {
+							"displayName": "美洲/戈特霍布"
+						},
+						"America/Goose_Bay": {
+							"displayName": "美洲/鹅湾"
+						},
+						"America/Grand_Turk": {
+							"displayName": "美洲/大特克"
+						},
+						"America/Grenada": {
+							"displayName": "美洲/格林纳达"
+						},
+						"America/Guadeloupe": {
+							"displayName": "美洲/瓜德罗普"
+						},
+						"America/Guatemala": {
+							"displayName": "美洲/危地马拉"
+						},
+						"America/Guayaquil": {
+							"displayName": "美洲/瓜亚基尔"
+						},
+						"America/Guyana": {
+							"displayName": "美洲/圭亚那"
+						},
+						"America/Halifax": {
+							"displayName": "美洲/哈利法克斯"
+						},
+						"America/Havana": {
+							"displayName": "美洲/哈瓦那"
+						},
+						"America/Hermosillo": {
+							"displayName": "美国/埃莫西约"
+						},
+						"America/Indiana/Indianapolis": {
+							"displayName": "美国/印第安纳/印第安纳波利斯"
+						},
+						"America/Indiana/Knox": {
+							"displayName": "美国/印第安纳/诺克斯"
+						},
+						"America/Indiana/Marengo": {
+							"displayName": "美国/印第安纳/马伦戈"
+						},
+						"America/Indiana/Petersburg": {
+							"displayName": "美国/印第安纳/彼得斯堡"
+						},
+						"America/Indiana/Tell_City": {
+							"displayName": "美国/印第安纳州/特尔城"
+						},
+						"America/Indiana/Vevay": {
+							"displayName": "美国/印第安纳/维维"
+						},
+						"America/Indiana/Vincennes": {
+							"displayName": "美国/印第安纳/文森斯"
+						},
+						"America/Indiana/Winamac": {
+							"displayName": "美国/印第安纳/威纳马克"
+						},
+						"America/Indianapolis": {
+							"displayName": "美国/印第安纳波利斯"
+						},
+						"America/Inuvik": {
+							"displayName": "美洲/伊努维克"
+						},
+						"America/Iqaluit": {
+							"displayName": "美洲/伊魁特"
+						},
+						"America/Jamaica": {
+							"displayName": "美洲/牙买加"
+						},
+						"America/Jujuy": {
+							"displayName": "美洲/胡胡伊"
+						},
+						"America/Juneau": {
+							"displayName": "美洲/朱诺"
+						},
+						"America/Kentucky/Louisville": {
+							"displayName": "美国/肯塔基州/路易斯维尔"
+						},
+						"America/Kentucky/Monticello": {
+							"displayName": "美国/肯塔基/蒙蒂塞洛"
+						},
+						"America/Knox_IN": {
+							"displayName": "美国/印第安纳州诺克斯"
+						},
+						"America/Kralendijk": {
+							"displayName": "美洲/克拉伦代克"
+						},
+						"America/La_Paz": {
+							"displayName": "美洲/拉巴斯"
+						},
+						"America/Lima": {
+							"displayName": "美洲/利马"
+						},
+						"America/Los_Angeles": {
+							"displayName": "America/Los_Angeles"
+						},
+						"America/Louisville": {
+							"displayName": "美国/路易斯维尔"
+						},
+						"America/Lower_Princes": {
+							"displayName": "美洲/下太子区"
+						},
+						"America/Maceio": {
+							"displayName": "美洲/马塞约"
+						},
+						"America/Managua": {
+							"displayName": "美洲/马那瓜"
+						},
+						"America/Manaus": {
+							"displayName": "美洲/马瑙斯"
+						},
+						"America/Marigot": {
+							"displayName": "美洲/马里戈特"
+						},
+						"America/Martinique": {
+							"displayName": "美洲/马提尼克"
+						},
+						"America/Matamoros": {
+							"displayName": "美洲/马塔莫罗斯"
+						},
+						"America/Mazatlan": {
+							"displayName": "美洲/马萨特兰"
+						},
+						"America/Mendoza": {
+							"displayName": "美洲/门多萨"
+						},
+						"America/Menominee": {
+							"displayName": "美国/梅诺米尼"
+						},
+						"America/Merida": {
+							"displayName": "美洲/梅里达"
+						},
+						"America/Metlakatla": {
+							"displayName": "美洲/梅特拉卡特拉"
+						},
+						"America/Mexico_City": {
+							"displayName": "美洲/墨西哥城"
+						},
+						"America/Miquelon": {
+							"displayName": "美洲/密克隆"
+						},
+						"America/Moncton": {
+							"displayName": "美洲/蒙克顿"
+						},
+						"America/Monterrey": {
+							"displayName": "美洲/蒙特雷"
+						},
+						"America/Montevideo": {
+							"displayName": "美洲/蒙得维的亚"
+						},
+						"America/Montreal": {
+							"displayName": "美洲/蒙特利尔"
+						},
+						"America/Montserrat": {
+							"displayName": "美洲/蒙特塞拉特"
+						},
+						"America/Nassau": {
+							"displayName": "美洲/拿骚"
+						},
+						"America/New_York": {
+							"displayName": "美国/纽约"
+						},
+						"America/Nipigon": {
+							"displayName": "美洲/尼皮贡"
+						},
+						"America/Nome": {
+							"displayName": "美洲/诺姆"
+						},
+						"America/Noronha": {
+							"displayName": "美洲/诺罗尼亚"
+						},
+						"America/North_Dakota/Beulah": {
+							"displayName": "美国/北达科他/比尤拉"
+						},
+						"America/North_Dakota/Center": {
+							"displayName": "美国/北达科他/森特"
+						},
+						"America/North_Dakota/New_Salem": {
+							"displayName": "美国/北达科他州/新塞勒姆"
+						},
+						"America/Nuuk": {
+							"displayName": "美洲/努克"
+						},
+						"America/Ojinaga": {
+							"displayName": "美国/奥希纳加"
+						},
+						"America/Panama": {
+							"displayName": "巴拿马/巴拿马城"
+						},
+						"America/Pangnirtung": {
+							"displayName": "美洲/庞纳唐"
+						},
+						"America/Paramaribo": {
+							"displayName": "美洲/帕拉马里博"
+						},
+						"America/Phoenix": {
+							"displayName": "美国/凤凰城"
+						},
+						"America/Port-au-Prince": {
+							"displayName": "美洲/太子港"
+						},
+						"America/Port_of_Spain": {
+							"displayName": "美洲/西班牙港"
+						},
+						"America/Porto_Acre": {
+							"displayName": "美洲/阿克里港"
+						},
+						"America/Porto_Velho": {
+							"displayName": "美洲/韦柳港"
+						},
+						"America/Puerto_Rico": {
+							"displayName": "美洲/波多黎各"
+						},
+						"America/Punta_Arenas": {
+							"displayName": "美洲/蓬塔阿雷纳斯"
+						},
+						"America/Rainy_River": {
+							"displayName": "美洲/雷尼里弗"
+						},
+						"America/Rankin_Inlet": {
+							"displayName": "美洲/兰金因莱特"
+						},
+						"America/Recife": {
+							"displayName": "美洲/累西腓"
+						},
+						"America/Regina": {
+							"displayName": "美洲/里贾纳"
+						},
+						"America/Resolute": {
+							"displayName": "美洲/雷索卢特"
+						},
+						"America/Rio_Branco": {
+							"displayName": "美洲/里奥布兰科"
+						},
+						"America/Rosario": {
+							"displayName": "美洲/罗萨里奥"
+						},
+						"America/Santa_Isabel": {
+							"displayName": "美洲/圣伊莎贝尔"
+						},
+						"America/Santarem": {
+							"displayName": "美洲/圣塔伦"
+						},
+						"America/Santiago": {
+							"displayName": "美洲/圣地亚哥"
+						},
+						"America/Santo_Domingo": {
+							"displayName": "美洲/圣多明各"
+						},
+						"America/Sao_Paulo": {
+							"displayName": "America/Sao_Paulo"
+						},
+						"America/Scoresbysund": {
+							"displayName": "美国/斯科斯比松"
+						},
+						"America/Shiprock": {
+							"displayName": "美国/希普罗克"
+						},
+						"America/Sitka": {
+							"displayName": "美洲/锡特卡"
+						},
+						"America/St_Barthelemy": {
+							"displayName": "美洲/圣巴泰勒米"
+						},
+						"America/St_Johns": {
+							"displayName": "美洲/圣约翰斯"
+						},
+						"America/St_Kitts": {
+							"displayName": "美洲/圣基茨"
+						},
+						"America/St_Lucia": {
+							"displayName": "美洲/圣卢西亚"
+						},
+						"America/St_Thomas": {
+							"displayName": "美洲/圣托马斯"
+						},
+						"America/St_Vincent": {
+							"displayName": "美洲/圣文森特"
+						},
+						"America/Swift_Current": {
+							"displayName": "美洲/斯威夫特卡伦特"
+						},
+						"America/Tegucigalpa": {
+							"displayName": "美洲/特古西加尔巴"
+						},
+						"America/Thule": {
+							"displayName": "美国/图勒"
+						},
+						"America/Thunder_Bay": {
+							"displayName": "美洲/桑德贝"
+						},
+						"America/Tijuana": {
+							"displayName": "美洲/蒂华纳"
+						},
+						"America/Toronto": {
+							"displayName": "美洲/多伦多"
+						},
+						"America/Tortola": {
+							"displayName": "美洲/托尔托拉"
+						},
+						"America/Vancouver": {
+							"displayName": "美洲/温哥华"
+						},
+						"America/Virgin": {
+							"displayName": "美属维尔京群岛"
+						},
+						"America/Whitehorse": {
+							"displayName": "美洲/怀特霍斯"
+						},
+						"America/Winnipeg": {
+							"displayName": "美洲/温尼伯"
+						},
+						"America/Yakutat": {
+							"displayName": "亚库塔特"
+						},
+						"America/Yellowknife": {
+							"displayName": "美洲/耶洛奈夫"
+						},
+						"Antarctica/Casey": {
+							"displayName": "南极洲/凯西站"
+						},
+						"Antarctica/Davis": {
+							"displayName": "南极洲/戴维斯"
+						},
+						"Antarctica/DumontDUrville": {
+							"displayName": "南极洲/迪蒙迪维尔"
+						},
+						"Antarctica/Macquarie": {
+							"displayName": "南极洲/麦夸里"
+						},
+						"Antarctica/Mawson": {
+							"displayName": "南极洲/莫森"
+						},
+						"Antarctica/McMurdo": {
+							"displayName": "南极洲/麦克默多"
+						},
+						"Antarctica/Palmer": {
+							"displayName": "南极洲/帕尔默"
+						},
+						"Antarctica/Rothera": {
+							"displayName": "南极洲/罗瑟拉"
+						},
+						"Antarctica/South_Pole": {
+							"displayName": "南极/南极点"
+						},
+						"Antarctica/Syowa": {
+							"displayName": "南极洲/昭和"
+						},
+						"Antarctica/Troll": {
+							"displayName": "南极洲/特罗尔"
+						},
+						"Antarctica/Vostok": {
+							"displayName": "南极洲/沃斯托克"
+						},
+						"Arctic/Longyearbyen": {
+							"displayName": "北极/朗伊尔城"
+						},
+						"Asia/Aden": {
+							"displayName": "亚洲/亚丁"
+						},
+						"Asia/Almaty": {
+							"displayName": "亚洲/阿拉木图"
+						},
+						"Asia/Amman": {
+							"displayName": "亚洲/安曼"
+						},
+						"Asia/Anadyr": {
+							"displayName": "亚洲/阿纳德尔"
+						},
+						"Asia/Aqtau": {
+							"displayName": "亚洲/阿克套"
+						},
+						"Asia/Aqtobe": {
+							"displayName": "亚洲/阿克托比"
+						},
+						"Asia/Ashgabat": {
+							"displayName": "亚洲/阿什哈巴德"
+						},
+						"Asia/Ashkhabad": {
+							"displayName": "亚洲/阿什哈巴德"
+						},
+						"Asia/Atyrau": {
+							"displayName": "亚洲/阿特劳"
+						},
+						"Asia/Baghdad": {
+							"displayName": "亚洲/巴格达"
+						},
+						"Asia/Bahrain": {
+							"displayName": "亚洲/巴林"
+						},
+						"Asia/Baku": {
+							"displayName": "亚洲/巴库"
+						},
+						"Asia/Bangkok": {
+							"displayName": "亚洲/曼谷"
+						},
+						"Asia/Barnaul": {
+							"displayName": "亚洲/巴尔瑙尔"
+						},
+						"Asia/Beirut": {
+							"displayName": "亚洲/贝鲁特"
+						},
+						"Asia/Bishkek": {
+							"displayName": "亚洲/比什凯克"
+						},
+						"Asia/Brunei": {
+							"displayName": "亚洲/文莱"
+						},
+						"Asia/Calcutta": {
+							"displayName": "亚洲/加尔各答"
+						},
+						"Asia/Chita": {
+							"displayName": "亚洲/赤塔"
+						},
+						"Asia/Choibalsan": {
+							"displayName": "亚洲/乔巴山"
+						},
+						"Asia/Chongqing": {
+							"displayName": "亚洲/重庆"
+						},
+						"Asia/Chungking": {
+							"displayName": "亚洲/重庆"
+						},
+						"Asia/Colombo": {
+							"displayName": "亚洲/科伦坡"
+						},
+						"Asia/Dacca": {
+							"displayName": "亚洲/达卡"
+						},
+						"Asia/Damascus": {
+							"displayName": "亚洲/大马士革"
+						},
+						"Asia/Dhaka": {
+							"displayName": "亚洲/达卡"
+						},
+						"Asia/Dili": {
+							"displayName": "亚洲/帝力"
+						},
+						"Asia/Dubai": {
+							"displayName": "亚洲/迪拜"
+						},
+						"Asia/Dushanbe": {
+							"displayName": "亚洲/杜尚别"
+						},
+						"Asia/Famagusta": {
+							"displayName": "亚洲/法马古斯塔"
+						},
+						"Asia/Gaza": {
+							"displayName": "亚洲/加沙"
+						},
+						"Asia/Harbin": {
+							"displayName": "亚洲/哈尔滨"
+						},
+						"Asia/Hebron": {
+							"displayName": "亚洲/希伯伦"
+						},
+						"Asia/Ho_Chi_Minh": {
+							"displayName": "亚洲/胡志明市"
+						},
+						"Asia/Hong_Kong": {
+							"displayName": "亚洲/香港"
+						},
+						"Asia/Hovd": {
+							"displayName": "亚洲/科布多"
+						},
+						"Asia/Irkutsk": {
+							"displayName": "伊尔库茨克"
+						},
+						"Asia/Istanbul": {
+							"displayName": "亚洲/伊斯坦布尔"
+						},
+						"Asia/Jakarta": {
+							"displayName": "亚洲/雅加达"
+						},
+						"Asia/Jayapura": {
+							"displayName": "亚洲/查亚普拉"
+						},
+						"Asia/Jerusalem": {
+							"displayName": "亚洲/耶路撒冷"
+						},
+						"Asia/Kabul": {
+							"displayName": "亚洲/喀布尔"
+						},
+						"Asia/Kamchatka": {
+							"displayName": "亚洲/堪察加"
+						},
+						"Asia/Karachi": {
+							"displayName": "亚洲/卡拉奇"
+						},
+						"Asia/Kashgar": {
+							"displayName": "亚洲/喀什"
+						},
+						"Asia/Kathmandu": {
+							"displayName": "亚洲/加德满都"
+						},
+						"Asia/Katmandu": {
+							"displayName": "亚洲/加德满都"
+						},
+						"Asia/Khandyga": {
+							"displayName": "亚洲/汉德加"
+						},
+						"Asia/Kolkata": {
+							"displayName": "亚洲/加尔各答"
+						},
+						"Asia/Krasnoyarsk": {
+							"displayName": "亚洲/克拉斯诺亚尔斯克"
+						},
+						"Asia/Kuala_Lumpur": {
+							"displayName": "亚洲/吉隆坡"
+						},
+						"Asia/Kuching": {
+							"displayName": "亚洲/古晋"
+						},
+						"Asia/Kuwait": {
+							"displayName": "亚洲/科威特"
+						},
+						"Asia/Macao": {
+							"displayName": "亚洲/澳门"
+						},
+						"Asia/Macau": {
+							"displayName": "亚洲/澳门"
+						},
+						"Asia/Magadan": {
+							"displayName": "亚洲/马加丹"
+						},
+						"Asia/Makassar": {
+							"displayName": "亚洲/望加锡"
+						},
+						"Asia/Manila": {
+							"displayName": "亚洲/马尼拉"
+						},
+						"Asia/Muscat": {
+							"displayName": "亚洲/马斯喀特"
+						},
+						"Asia/Nicosia": {
+							"displayName": "亚洲/尼科西亚"
+						},
+						"Asia/Novokuznetsk": {
+							"displayName": "亚洲/新库兹涅茨克"
+						},
+						"Asia/Novosibirsk": {
+							"displayName": "亚洲/新西伯利亚"
+						},
+						"Asia/Omsk": {
+							"displayName": "亚洲/鄂木斯克"
+						},
+						"Asia/Oral": {
+							"displayName": "亚洲/乌拉尔"
+						},
+						"Asia/Phnom_Penh": {
+							"displayName": "亚洲/金边"
+						},
+						"Asia/Pontianak": {
+							"displayName": "亚洲/坤甸"
+						},
+						"Asia/Pyongyang": {
+							"displayName": "亚洲/平壤"
+						},
+						"Asia/Qatar": {
+							"displayName": "亚洲/卡塔尔"
+						},
+						"Asia/Qostanay": {
+							"displayName": "亚洲/科斯塔奈"
+						},
+						"Asia/Qyzylorda": {
+							"displayName": "亚洲/克孜勒奥尔达"
+						},
+						"Asia/Rangoon": {
+							"displayName": "亚洲/仰光"
+						},
+						"Asia/Riyadh": {
+							"displayName": "亚洲/利雅得"
+						},
+						"Asia/Saigon": {
+							"displayName": "亚洲/西贡"
+						},
+						"Asia/Sakhalin": {
+							"displayName": "亚洲/萨哈林"
+						},
+						"Asia/Samarkand": {
+							"displayName": "亚洲/撒马尔罕"
+						},
+						"Asia/Seoul": {
+							"displayName": "亚洲/首尔"
+						},
+						"Asia/Shanghai": {
+							"displayName": "亚洲/上海"
+						},
+						"Asia/Singapore": {
+							"displayName": "亚洲/新加坡"
+						},
+						"Asia/Srednekolymsk": {
+							"displayName": "亚洲/中科雷姆斯克"
+						},
+						"Asia/Taipei": {
+							"displayName": "亚洲/台北"
+						},
+						"Asia/Tashkent": {
+							"displayName": "亚洲/塔什干"
+						},
+						"Asia/Tbilisi": {
+							"displayName": "亚洲/第比利斯"
+						},
+						"Asia/Tehran": {
+							"displayName": "亚洲/德黑兰"
+						},
+						"Asia/Tel_Aviv": {
+							"displayName": "亚洲/特拉维夫"
+						},
+						"Asia/Thimbu": {
+							"displayName": "亚洲/廷布"
+						},
+						"Asia/Thimphu": {
+							"displayName": "亚洲/廷布"
+						},
+						"Asia/Tokyo": {
+							"displayName": "亚洲/东京"
+						},
+						"Asia/Tomsk": {
+							"displayName": "亚洲/托木斯克"
+						},
+						"Asia/Ujung_Pandang": {
+							"displayName": "亚洲/乌戎潘当"
+						},
+						"Asia/Ulaanbaatar": {
+							"displayName": "亚洲/乌兰巴托"
+						},
+						"Asia/Ulan_Bator": {
+							"displayName": "亚洲/乌兰巴托"
+						},
+						"Asia/Urumqi": {
+							"displayName": "亚洲/乌鲁木齐"
+						},
+						"Asia/Ust-Nera": {
+							"displayName": "亚洲/乌斯季涅拉"
+						},
+						"Asia/Vientiane": {
+							"displayName": "亚洲/万象"
+						},
+						"Asia/Vladivostok": {
+							"displayName": "亚洲/符拉迪沃斯托克"
+						},
+						"Asia/Yakutsk": {
+							"displayName": "亚洲/雅库茨克"
+						},
+						"Asia/Yangon": {
+							"displayName": "亚洲/仰光"
+						},
+						"Asia/Yekaterinburg": {
+							"displayName": "亚洲/叶卡捷琳堡"
+						},
+						"Asia/Yerevan": {
+							"displayName": "亚洲/埃里温"
+						},
+						"Atlantic/Azores": {
+							"displayName": "亚速尔群岛"
+						},
+						"Atlantic/Bermuda": {
+							"displayName": "大西洋/百慕大"
+						},
+						"Atlantic/Canary": {
+							"displayName": "大西洋/加那利"
+						},
+						"Atlantic/Cape_Verde": {
+							"displayName": "大西洋/佛得角"
+						},
+						"Atlantic/Faeroe": {
+							"displayName": "大西洋/法罗群岛"
+						},
+						"Atlantic/Faroe": {
+							"displayName": "大西洋/法罗群岛"
+						},
+						"Atlantic/Jan_Mayen": {
+							"displayName": "大西洋/扬马延"
+						},
+						"Atlantic/Madeira": {
+							"displayName": "大西洋/马德拉"
+						},
+						"Atlantic/Reykjavik": {
+							"displayName": "大西洋/雷克雅未克"
+						},
+						"Atlantic/South_Georgia": {
+							"displayName": "大西洋/南乔治亚"
+						},
+						"Atlantic/St_Helena": {
+							"displayName": "大西洋/圣赫勒拿"
+						},
+						"Atlantic/Stanley": {
+							"displayName": "大西洋/斯坦利"
+						},
+						"Australia/ACT": {
+							"displayName": "澳大利亚/首都领地"
+						},
+						"Australia/Adelaide": {
+							"displayName": "澳大利亚/阿德莱德"
+						},
+						"Australia/Brisbane": {
+							"displayName": "澳大利亚/布里斯班"
+						},
+						"Australia/Broken_Hill": {
+							"displayName": "澳大利亚/布罗肯希尔"
+						},
+						"Australia/Canberra": {
+							"displayName": "澳大利亚/堪培拉"
+						},
+						"Australia/Currie": {
+							"displayName": "澳大利亚/库里"
+						},
+						"Australia/Darwin": {
+							"displayName": "澳大利亚/达尔文"
+						},
+						"Australia/Eucla": {
+							"displayName": "澳大利亚/尤克拉"
+						},
+						"Australia/Hobart": {
+							"displayName": "澳大利亚/霍巴特"
+						},
+						"Australia/LHI": {
+							"displayName": "澳大利亚/豪勋爵岛"
+						},
+						"Australia/Lindeman": {
+							"displayName": "澳大利亚/林德曼"
+						},
+						"Australia/Lord_Howe": {
+							"displayName": "澳大利亚/豪勋爵岛"
+						},
+						"Australia/Melbourne": {
+							"displayName": "澳大利亚/墨尔本"
+						},
+						"Australia/NSW": {
+							"displayName": "澳大利亚/新南威尔士州"
+						},
+						"Australia/North": {
+							"displayName": "澳大利亚/北部"
+						},
+						"Australia/Perth": {
+							"displayName": "澳大利亚/珀斯"
+						},
+						"Australia/Queensland": {
+							"displayName": "澳大利亚/昆士兰州"
+						},
+						"Australia/South": {
+							"displayName": "澳大利亚/南部"
+						},
+						"Australia/Sydney": {
+							"displayName": "澳大利亚/悉尼"
+						},
+						"Australia/Tasmania": {
+							"displayName": "澳大利亚/塔斯马尼亚州"
+						},
+						"Australia/Victoria": {
+							"displayName": "澳大利亚/维多利亚州"
+						},
+						"Australia/West": {
+							"displayName": "澳大利亚/西部"
+						},
+						"Australia/Yancowinna": {
+							"displayName": "澳大利亚/扬科温纳"
+						},
+						"Brazil/Acre": {
+							"displayName": "巴西/阿克里"
+						},
+						"Brazil/DeNoronha": {
+							"displayName": "巴西/德诺罗尼亚"
+						},
+						"Brazil/East": {
+							"displayName": "巴西/东部"
+						},
+						"Brazil/West": {
+							"displayName": "巴西/西区"
+						},
+						"CET": {
+							"displayName": "CET"
+						},
+						"CST6CDT": {
+							"displayName": "CST6CDT"
+						},
+						"Canada/Atlantic": {
+							"displayName": "加拿大/大西洋"
+						},
+						"Canada/Central": {
+							"displayName": "加拿大/中部"
+						},
+						"Canada/Eastern": {
+							"displayName": "加拿大/东部"
+						},
+						"Canada/Mountain": {
+							"displayName": "加拿大/山区"
+						},
+						"Canada/Newfoundland": {
+							"displayName": "加拿大/纽芬兰"
+						},
+						"Canada/Pacific": {
+							"displayName": "加拿大/太平洋时区"
+						},
+						"Canada/Saskatchewan": {
+							"displayName": "加拿大/萨斯喀彻温省"
+						},
+						"Canada/Yukon": {
+							"displayName": "加拿大/育空"
+						},
+						"Chile/Continental": {
+							"displayName": "智利/大陆"
+						},
+						"Chile/EasterIsland": {
+							"displayName": "智利/复活节岛"
+						},
+						"Cuba": {
+							"displayName": "古巴"
+						},
+						"EET": {
+							"displayName": "东欧时间"
+						},
+						"EST": {
+							"displayName": "东部标准时间"
+						},
+						"EST5EDT": {
+							"displayName": "美国东部时间(夏令时)"
+						},
+						"Egypt": {
+							"displayName": "埃及"
+						},
+						"Eire": {
+							"displayName": "爱尔兰"
+						},
+						"Etc/GMT": {
+							"displayName": "Etc/GMT"
+						},
+						"Etc/GMT+0": {
+							"displayName": "Etc/GMT+0"
+						},
+						"Etc/GMT+1": {
+							"displayName": "Etc/GMT+1"
+						},
+						"Etc/GMT+10": {
+							"displayName": "Etc/GMT+10"
+						},
+						"Etc/GMT+11": {
+							"displayName": "Etc/GMT+11"
+						},
+						"Etc/GMT+12": {
+							"displayName": "Etc/GMT+12"
+						},
+						"Etc/GMT+2": {
+							"displayName": "Etc/GMT+2"
+						},
+						"Etc/GMT+3": {
+							"displayName": "Etc/GMT+3"
+						},
+						"Etc/GMT+4": {
+							"displayName": "Etc/GMT+4"
+						},
+						"Etc/GMT+5": {
+							"displayName": "Etc/GMT+5"
+						},
+						"Etc/GMT+6": {
+							"displayName": "Etc/GMT+6"
+						},
+						"Etc/GMT+7": {
+							"displayName": "Etc/GMT+7"
+						},
+						"Etc/GMT+8": {
+							"displayName": "Etc/GMT+8"
+						},
+						"Etc/GMT+9": {
+							"displayName": "Etc/GMT+9"
+						},
+						"Etc/GMT-0": {
+							"displayName": "Etc/GMT-0"
+						},
+						"Etc/GMT-1": {
+							"displayName": "Etc/GMT-1"
+						},
+						"Etc/GMT-10": {
+							"displayName": "Etc/GMT-10"
+						},
+						"Etc/GMT-11": {
+							"displayName": "Etc/GMT-11"
+						},
+						"Etc/GMT-12": {
+							"displayName": "Etc/GMT-12"
+						},
+						"Etc/GMT-13": {
+							"displayName": "Etc/GMT-13"
+						},
+						"Etc/GMT-14": {
+							"displayName": "Etc/GMT-14"
+						},
+						"Etc/GMT-2": {
+							"displayName": "Etc/GMT-2"
+						},
+						"Etc/GMT-3": {
+							"displayName": "Etc/GMT-3"
+						},
+						"Etc/GMT-4": {
+							"displayName": "Etc/GMT-4"
+						},
+						"Etc/GMT-5": {
+							"displayName": "Etc/GMT-5"
+						},
+						"Etc/GMT-6": {
+							"displayName": "Etc/GMT-6"
+						},
+						"Etc/GMT-7": {
+							"displayName": "Etc/GMT-7"
+						},
+						"Etc/GMT-8": {
+							"displayName": "Etc/GMT-8"
+						},
+						"Etc/GMT-9": {
+							"displayName": "Etc/GMT-9"
+						},
+						"Etc/GMT0": {
+							"displayName": "Etc/GMT0"
+						},
+						"Etc/Greenwich": {
+							"displayName": "格林威治标准时间"
+						},
+						"Etc/UCT": {
+							"displayName": "Etc/UTC"
+						},
+						"Etc/UTC": {
+							"displayName": "Etc/UTC"
+						},
+						"Etc/Universal": {
+							"displayName": "Etc/通用"
+						},
+						"Etc/Zulu": {
+							"displayName": "祖鲁时间"
+						},
+						"Europe/Amsterdam": {
+							"displayName": "欧洲/阿姆斯特丹"
+						},
+						"Europe/Andorra": {
+							"displayName": "欧洲/安道尔"
+						},
+						"Europe/Astrakhan": {
+							"displayName": "欧洲/阿斯特拉罕"
+						},
+						"Europe/Athens": {
+							"displayName": "欧洲/雅典"
+						},
+						"Europe/Belfast": {
+							"displayName": "欧洲/贝尔法斯特"
+						},
+						"Europe/Belgrade": {
+							"displayName": "欧洲/贝尔格莱德"
+						},
+						"Europe/Berlin": {
+							"displayName": "欧洲/柏林"
+						},
+						"Europe/Bratislava": {
+							"displayName": "欧洲/布拉迪斯拉发"
+						},
+						"Europe/Brussels": {
+							"displayName": "欧洲/布鲁塞尔"
+						},
+						"Europe/Bucharest": {
+							"displayName": "欧洲/布加勒斯特"
+						},
+						"Europe/Budapest": {
+							"displayName": "欧洲/布达佩斯"
+						},
+						"Europe/Busingen": {
+							"displayName": "欧洲/布辛根"
+						},
+						"Europe/Chisinau": {
+							"displayName": "欧洲/基希讷乌"
+						},
+						"Europe/Copenhagen": {
+							"displayName": "欧洲/哥本哈根"
+						},
+						"Europe/Dublin": {
+							"displayName": "欧洲/都柏林"
+						},
+						"Europe/Gibraltar": {
+							"displayName": "欧洲/直布罗陀"
+						},
+						"Europe/Guernsey": {
+							"displayName": "欧洲/根西岛"
+						},
+						"Europe/Helsinki": {
+							"displayName": "欧洲/赫尔辛基"
+						},
+						"Europe/Isle_of_Man": {
+							"displayName": "欧洲/马恩岛"
+						},
+						"Europe/Istanbul": {
+							"displayName": "欧洲/伊斯坦布尔"
+						},
+						"Europe/Jersey": {
+							"displayName": "欧洲/泽西岛"
+						},
+						"Europe/Kaliningrad": {
+							"displayName": "欧洲/加里宁格勒"
+						},
+						"Europe/Kiev": {
+							"displayName": "欧洲/基辅"
+						},
+						"Europe/Kirov": {
+							"displayName": "欧洲/基洛夫"
+						},
+						"Europe/Kyiv": {
+							"displayName": "欧洲/基辅"
+						},
+						"Europe/Lisbon": {
+							"displayName": "欧洲/里斯本"
+						},
+						"Europe/Ljubljana": {
+							"displayName": "欧洲/卢布尔雅那"
+						},
+						"Europe/London": {
+							"displayName": "欧洲/伦敦"
+						},
+						"Europe/Luxembourg": {
+							"displayName": "欧洲/卢森堡"
+						},
+						"Europe/Madrid": {
+							"displayName": "欧洲/马德里"
+						},
+						"Europe/Malta": {
+							"displayName": "欧洲/马耳他"
+						},
+						"Europe/Mariehamn": {
+							"displayName": "欧洲/玛丽港"
+						},
+						"Europe/Minsk": {
+							"displayName": "欧洲/明斯克"
+						},
+						"Europe/Monaco": {
+							"displayName": "欧洲/摩纳哥"
+						},
+						"Europe/Moscow": {
+							"displayName": "欧洲/莫斯科"
+						},
+						"Europe/Nicosia": {
+							"displayName": "欧洲/尼科西亚"
+						},
+						"Europe/Oslo": {
+							"displayName": "欧洲/奥斯陆"
+						},
+						"Europe/Paris": {
+							"displayName": "欧洲/巴黎"
+						},
+						"Europe/Podgorica": {
+							"displayName": "欧洲/波德戈里察"
+						},
+						"Europe/Prague": {
+							"displayName": "欧洲/布拉格"
+						},
+						"Europe/Riga": {
+							"displayName": "欧洲/里加"
+						},
+						"Europe/Rome": {
+							"displayName": "欧洲/罗马"
+						},
+						"Europe/Samara": {
+							"displayName": "欧洲/萨马拉"
+						},
+						"Europe/San_Marino": {
+							"displayName": "欧洲/圣马力诺"
+						},
+						"Europe/Sarajevo": {
+							"displayName": "欧洲/萨拉热窝"
+						},
+						"Europe/Saratov": {
+							"displayName": "欧洲/萨拉托夫"
+						},
+						"Europe/Simferopol": {
+							"displayName": "欧洲/辛菲罗波尔"
+						},
+						"Europe/Skopje": {
+							"displayName": "欧洲/斯科普里"
+						},
+						"Europe/Sofia": {
+							"displayName": "欧洲/索非亚"
+						},
+						"Europe/Stockholm": {
+							"displayName": "欧洲/斯德哥尔摩"
+						},
+						"Europe/Tallinn": {
+							"displayName": "欧洲/塔林"
+						},
+						"Europe/Tirane": {
+							"displayName": "欧洲/地拉那"
+						},
+						"Europe/Tiraspol": {
+							"displayName": "欧洲/蒂拉斯波尔"
+						},
+						"Europe/Ulyanovsk": {
+							"displayName": "欧洲/乌里扬诺夫斯克"
+						},
+						"Europe/Uzhgorod": {
+							"displayName": "欧洲/乌日哥罗德"
+						},
+						"Europe/Vaduz": {
+							"displayName": "欧洲/瓦杜兹"
+						},
+						"Europe/Vatican": {
+							"displayName": "欧洲/梵蒂冈"
+						},
+						"Europe/Vienna": {
+							"displayName": "欧洲/维也纳"
+						},
+						"Europe/Vilnius": {
+							"displayName": "欧洲/维尔纽斯"
+						},
+						"Europe/Volgograd": {
+							"displayName": "欧洲/伏尔加格勒"
+						},
+						"Europe/Warsaw": {
+							"displayName": "欧洲/华沙"
+						},
+						"Europe/Zagreb": {
+							"displayName": "欧洲/萨格勒布"
+						},
+						"Europe/Zaporozhye": {
+							"displayName": "欧洲/扎波罗热"
+						},
+						"Europe/Zurich": {
+							"displayName": "欧洲/苏黎世"
+						},
+						"GB": {
+							"displayName": "GB"
+						},
+						"GB-Eire": {
+							"displayName": "英国-爱尔兰"
+						},
+						"GMT": {
+							"displayName": "GMT"
+						},
+						"GMT+0": {
+							"displayName": "GMT+0"
+						},
+						"GMT-0": {
+							"displayName": "GMT-0"
+						},
+						"GMT0": {
+							"displayName": "GMT0"
+						},
+						"Greenwich": {
+							"displayName": "格林威治"
+						},
+						"HST": {
+							"displayName": "HST"
+						},
+						"Hongkong": {
+							"displayName": "香港"
+						},
+						"Iceland": {
+							"displayName": "冰岛"
+						},
+						"Indian/Antananarivo": {
+							"displayName": "印度洋/安塔那那利佛"
+						},
+						"Indian/Chagos": {
+							"displayName": "印度/查戈斯"
+						},
+						"Indian/Christmas": {
+							"displayName": "印度/圣诞节"
+						},
+						"Indian/Cocos": {
+							"displayName": "科科斯（基林）群岛"
+						},
+						"Indian/Comoro": {
+							"displayName": "印度/科摩罗"
+						},
+						"Indian/Kerguelen": {
+							"displayName": "印度洋/凯尔盖朗群岛"
+						},
+						"Indian/Mahe": {
+							"displayName": "印度/马埃"
+						},
+						"Indian/Maldives": {
+							"displayName": "印度/马尔代夫"
+						},
+						"Indian/Mauritius": {
+							"displayName": "印度/毛里求斯"
+						},
+						"Indian/Mayotte": {
+							"displayName": "印度/马约特"
+						},
+						"Indian/Reunion": {
+							"displayName": "印度/留尼汪"
+						},
+						"Iran": {
+							"displayName": "伊朗"
+						},
+						"Israel": {
+							"displayName": "以色列"
+						},
+						"Jamaica": {
+							"displayName": "牙买加"
+						},
+						"Japan": {
+							"displayName": "日本"
+						},
+						"Kwajalein": {
+							"displayName": "夸贾林"
+						},
+						"Libya": {
+							"displayName": "利比亚"
+						},
+						"MET": {
+							"displayName": "元"
+						},
+						"MST": {
+							"displayName": "MST"
+						},
+						"MST7MDT": {
+							"displayName": "MST7MDT"
+						},
+						"Mexico/BajaNorte": {
+							"displayName": "墨西哥/下加利福尼亚北部"
+						},
+						"Mexico/BajaSur": {
+							"displayName": "墨西哥/南下加利福尼亚州"
+						},
+						"Mexico/General": {
+							"displayName": "墨西哥/通用"
+						},
+						"NZ": {
+							"displayName": "新西兰"
+						},
+						"NZ-CHAT": {
+							"displayName": "NZ-CHAT"
+						},
+						"Navajo": {
+							"displayName": "导航栏"
+						},
+						"PRC": {
+							"displayName": "中华人民共和国"
+						},
+						"PST8PDT": {
+							"displayName": "太平洋夏令时"
+						},
+						"Pacific/Apia": {
+							"displayName": "太平洋/阿皮亚"
+						},
+						"Pacific/Auckland": {
+							"displayName": "太平洋/奥克兰"
+						},
+						"Pacific/Bougainville": {
+							"displayName": "太平洋/布干维尔"
+						},
+						"Pacific/Chatham": {
+							"displayName": "太平洋/查塔姆"
+						},
+						"Pacific/Chuuk": {
+							"displayName": "太平洋/楚克"
+						},
+						"Pacific/Easter": {
+							"displayName": "复活节岛时间"
+						},
+						"Pacific/Efate": {
+							"displayName": "太平洋/埃法特"
+						},
+						"Pacific/Enderbury": {
+							"displayName": "太平洋/恩德伯里"
+						},
+						"Pacific/Fakaofo": {
+							"displayName": "太平洋/法考福"
+						},
+						"Pacific/Fiji": {
+							"displayName": "太平洋/斐济"
+						},
+						"Pacific/Funafuti": {
+							"displayName": "太平洋/富纳富提"
+						},
+						"Pacific/Galapagos": {
+							"displayName": "太平洋/加拉帕戈斯"
+						},
+						"Pacific/Gambier": {
+							"displayName": "太平洋/甘比尔"
+						},
+						"Pacific/Guadalcanal": {
+							"displayName": "太平洋/瓜达尔卡纳尔"
+						},
+						"Pacific/Guam": {
+							"displayName": "太平洋/关岛"
+						},
+						"Pacific/Honolulu": {
+							"displayName": "太平洋/檀香山"
+						},
+						"Pacific/Johnston": {
+							"displayName": "太平洋/约翰斯顿"
+						},
+						"Pacific/Kanton": {
+							"displayName": "太平洋/坎顿"
+						},
+						"Pacific/Kiritimati": {
+							"displayName": "太平洋/基里蒂马蒂"
+						},
+						"Pacific/Kosrae": {
+							"displayName": "太平洋/科斯雷"
+						},
+						"Pacific/Kwajalein": {
+							"displayName": "太平洋/夸贾林"
+						},
+						"Pacific/Majuro": {
+							"displayName": "太平洋/马朱罗"
+						},
+						"Pacific/Marquesas": {
+							"displayName": "太平洋/马克萨斯"
+						},
+						"Pacific/Midway": {
+							"displayName": "太平洋/中途岛"
+						},
+						"Pacific/Nauru": {
+							"displayName": "太平洋/瑙鲁"
+						},
+						"Pacific/Niue": {
+							"displayName": "太平洋/纽埃"
+						},
+						"Pacific/Norfolk": {
+							"displayName": "太平洋/诺福克岛"
+						},
+						"Pacific/Noumea": {
+							"displayName": "太平洋/努美阿"
+						},
+						"Pacific/Pago_Pago": {
+							"displayName": "太平洋/帕果帕果"
+						},
+						"Pacific/Palau": {
+							"displayName": "太平洋/帕劳"
+						},
+						"Pacific/Pitcairn": {
+							"displayName": "太平洋/皮特凯恩"
+						},
+						"Pacific/Pohnpei": {
+							"displayName": "太平洋/波纳佩"
+						},
+						"Pacific/Ponape": {
+							"displayName": "太平洋/波纳佩"
+						},
+						"Pacific/Port_Moresby": {
+							"displayName": "太平洋/莫尔兹比港"
+						},
+						"Pacific/Rarotonga": {
+							"displayName": "太平洋/拉罗汤加"
+						},
+						"Pacific/Saipan": {
+							"displayName": "太平洋/塞班岛"
+						},
+						"Pacific/Samoa": {
+							"displayName": "太平洋/萨摩亚"
+						},
+						"Pacific/Tahiti": {
+							"displayName": "太平洋/塔希提"
+						},
+						"Pacific/Tarawa": {
+							"displayName": "太平洋/塔拉瓦"
+						},
+						"Pacific/Tongatapu": {
+							"displayName": "太平洋/汤加塔布"
+						},
+						"Pacific/Truk": {
+							"displayName": "楚克/太平洋"
+						},
+						"Pacific/Wake": {
+							"displayName": "太平洋/威克岛"
+						},
+						"Pacific/Wallis": {
+							"displayName": "太平洋/瓦利斯"
+						},
+						"Pacific/Yap": {
+							"displayName": "太平洋/雅浦"
+						},
+						"Poland": {
+							"displayName": "波兰"
+						},
+						"Portugal": {
+							"displayName": "葡萄牙"
+						},
+						"ROC": {
+							"displayName": "ROC"
+						},
+						"ROK": {
+							"displayName": "ROK"
+						},
+						"Singapore": {
+							"displayName": "新加坡"
+						},
+						"Turkey": {
+							"displayName": "土耳其"
+						},
+						"UCT": {
+							"displayName": "UCT"
+						},
+						"US/Alaska": {
+							"displayName": "美国/阿拉斯加"
+						},
+						"US/Aleutian": {
+							"displayName": "美国/阿留申"
+						},
+						"US/Arizona": {
+							"displayName": "美国/亚利桑那州"
+						},
+						"US/Central": {
+							"displayName": "美国/中部"
+						},
+						"US/East-Indiana": {
+							"displayName": "美国/东印第安纳"
+						},
+						"US/Eastern": {
+							"displayName": "美国/东部"
+						},
+						"US/Hawaii": {
+							"displayName": "美国/夏威夷"
+						},
+						"US/Indiana-Starke": {
+							"displayName": "美国/印第安纳州-斯塔克县"
+						},
+						"US/Michigan": {
+							"displayName": "美国/密歇根州"
+						},
+						"US/Mountain": {
+							"displayName": "美国/山地时区"
+						},
+						"US/Pacific": {
+							"displayName": "美国/太平洋时间"
+						},
+						"US/Samoa": {
+							"displayName": "美属萨摩亚"
+						},
+						"UTC": {
+							"displayName": "协调世界时"
+						},
+						"Universal": {
+							"displayName": "通用"
+						},
+						"W-SU": {
+							"displayName": "W-周日"
+						},
+						"WET": {
+							"displayName": "工作流执行触发器"
+						},
+						"Zulu": {
+							"displayName": "祖鲁语"
+						}
+					}
+				},
+				"type": {
+					"displayName": "类型",
+					"options": {
+						"singleInstance": {
+							"displayName": "单实例"
+						},
+						"occurrence": {
+							"displayName": "发生次数"
+						},
+						"exception": {
+							"displayName": "异常"
+						},
+						"seriesMaster": {
+							"displayName": "系列主节点"
+						}
+					}
+				},
+				"end": {
+					"displayName": "结束"
+				},
+				"start": {
+					"displayName": "开始"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "消息主题"
+				},
+				"saveToSentItems": {
+					"displayName": "保存到已发送邮件",
+					"description": "是否将邮件保存到已发送邮件"
+				}
+			}
+		},
+		"calendarId": {
+			"displayName": "日历"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"custom": {
+					"displayName": "过滤查询",
+					"placeholder": "例如：包含(主题,'Hello')"
+				},
+				"emailAddress": {
+					"displayName": "邮箱地址",
+					"description": "如果您要检索的联系人有多个电子邮件地址，可以用逗号分隔输入"
+				},
+				"filter": {
+					"displayName": "过滤查询",
+					"placeholder": "例如：displayName 等于 '我的文件夹'"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"color": {
+					"displayName": "颜色",
+					"description": "指定颜色以区分此日历与其他日历",
+					"options": {
+						"lightBlue": {
+							"displayName": "浅蓝色"
+						},
+						"lightBrown": {
+							"displayName": "浅棕色"
+						},
+						"lightGray": {
+							"displayName": "浅灰色"
+						},
+						"lightGreen": {
+							"displayName": "浅绿色"
+						},
+						"lightOrange": {
+							"displayName": "浅橙色"
+						},
+						"lightPink": {
+							"displayName": "浅粉色"
+						},
+						"lightRed": {
+							"displayName": "浅红色"
+						},
+						"lightTeal": {
+							"displayName": "浅青色"
+						},
+						"lightYellow": {
+							"displayName": "浅黄色"
+						}
+					}
+				},
+				"isDefaultCalendar": {
+					"displayName": "默认日历"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "日历名称",
+					"placeholder": "例如：我的日历"
+				},
+				"bccRecipients": {
+					"displayName": "密送收件人",
+					"description": "密件抄送收件人邮箱地址列表（以逗号分隔）",
+					"placeholder": "例如：john@example.com"
+				},
+				"categories": {
+					"displayName": "分类名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"ccRecipients": {
+					"displayName": "抄送收件人",
+					"description": "抄送收件人邮箱地址的逗号分隔列表",
+					"placeholder": "例如：john@example.com"
+				},
+				"internetMessageHeaders": {
+					"displayName": "自定义请求头",
+					"placeholder": "添加请求头",
+					"multipleValueButtonText": "添加请求头",
+					"options": {
+						"headers": {
+							"displayName": "页眉",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为标头设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"headers": {
+							"displayName": "页眉",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为标头设置的值"
+								}
+							}
+						},
+						"internetMessageHeaders": {
+							"displayName": "自定义请求头",
+							"placeholder": "添加请求头"
+						}
+					}
+				},
+				"from": {
+					"displayName": "从",
+					"description": "发送邮件的邮箱所有者。必须与实际使用的邮箱对应。",
+					"placeholder": "例如：john@example.com"
+				},
+				"importance": {
+					"displayName": "重要性",
+					"description": "消息的重要性",
+					"options": {
+						"Low": {
+							"displayName": "低"
+						},
+						"Normal": {
+							"displayName": "普通"
+						},
+						"High": {
+							"displayName": "高"
+						}
+					}
+				},
+				"isRead": {
+					"displayName": "已读状态",
+					"description": "Whether the message must be marked as read"
+				},
+				"bodyContent": {
+					"displayName": "消息",
+					"description": "消息正文内容"
+				},
+				"bodyContentType": {
+					"displayName": "消息类型",
+					"description": "消息正文内容类型",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"Text": {
+							"displayName": "文本"
+						}
+					}
+				},
+				"isReadReceiptRequested": {
+					"displayName": "已请求阅读回执",
+					"description": "是否为该消息请求阅读回执"
+				},
+				"replyTo": {
+					"displayName": "回复至",
+					"description": "回复时使用的邮箱地址",
+					"placeholder": "例如：replyto@example.com"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "消息主题"
+				},
+				"toRecipients": {
+					"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。",
+					"description": "收件人邮箱地址列表（以逗号分隔）",
+					"placeholder": "例如：john@example.com"
+				},
+				"folderId": {
+					"displayName": "文件夹"
+				}
+			}
+		},
+		"givenName": {
+			"displayName": "名字"
+		},
+		"surname": {
+			"displayName": "姓氏"
+		},
+		"contactId": {
+			"displayName": "联系人"
+		},
+		"output": {
+			"displayName": "输出",
+			"options": {
+				"simple": {
+					"displayName": "仅返回特定字段：kind、ID、primaryEmail、name（含子字段）、isAdmin、lastLoginTime、creationTime 和 suspended"
+				},
+				"raw": {
+					"displayName": "原始"
+				},
+				"fields": {
+					"displayName": "选择包含字段"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "字段",
+			"description": "要添加到输出的字段"
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "消息主题",
+			"placeholder": "例如：需要审批"
+		},
+		"bodyContent": {
+			"displayName": "消息",
+			"description": "消息正文内容"
+		},
+		"draftId": {
+			"displayName": "草稿"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"attachmentsPrefix": {
+					"displayName": "附件前缀",
+					"description": "用于存放二进制文件数据的输出字段名称前缀。将添加从0开始的索引。例如，如果名称为\"attachment_\"，则第一个附件将保存到\"attachment_0\"。"
+				},
+				"downloadAttachments": {
+					"displayName": "下载附件",
+					"description": "是否下载消息附件并包含在输出中"
+				},
+				"folderId": {
+					"displayName": "父文件夹",
+					"description": "要搜索的文件夹"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要添加到输出的字段"
+				},
+				"includeChildFolders": {
+					"displayName": "包含子文件夹",
+					"description": "是否在响应中包含子文件夹"
+				},
+				"getMimeContent": {
+					"displayName": "获取MIME内容",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"binaryPropertyName": {
+									"displayName": "将输出放入字段"
+								},
+								"outputFileName": {
+									"displayName": "文件名",
+									"description": "输出文件的名称（可选），如未设置则使用消息ID",
+									"placeholder": "消息"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"binaryPropertyName": {
+									"displayName": "将输出放入字段"
+								},
+								"outputFileName": {
+									"displayName": "文件名",
+									"description": "输出文件的名称（可选），如未设置则使用消息ID",
+									"placeholder": "消息"
+								}
+							}
+						},
+						"getMimeContent": {
+							"displayName": "获取MIME内容"
+						}
+					}
+				},
+				"saveAsDraft": {
+					"displayName": "保存为草稿",
+					"description": "是否将消息保存为草稿。如果为false，则立即发送消息。"
+				},
+				"limitWaitTime": {
+					"displayName": "等待时间限制",
+					"description": "是否限制此节点在继续执行前等待用户响应的时间",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "等待时间限制"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "添加n8n归属声明",
+					"description": "是否在消息末尾包含短语“此消息由n8n自动发送”"
+				},
+				"messageButtonLabel": {
+					"displayName": "消息按钮标签"
+				},
+				"responseFormTitle": {
+					"displayName": "响应表单标题",
+					"description": "用户可访问以提供其响应的表单标题"
+				},
+				"responseFormDescription": {
+					"displayName": "响应表单描述",
+					"description": "用户可访问以提供其响应的表单描述"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "响应表单按钮标签"
+				},
+				"responseFormCustomCss": {
+					"displayName": "响应表单自定义样式",
+					"description": "使用CSS覆盖响应表单的默认样式"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "附件的文件名。如果未设置，将使用二进制属性的文件名（如果存在）。"
+				}
+			}
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"description": "收件人邮箱地址列表（用逗号分隔）"
+		},
+		"startDateTime": {
+			"displayName": "开始"
+		},
+		"endDateTime": {
+			"displayName": "结束"
+		},
+		"eventId": {
+			"displayName": "事件"
+		},
+		"fromAllCalendars": {
+			"displayName": "来自所有日历"
+		},
+		"displayName": {
+			"displayName": "名称",
+			"description": "文件夹名称",
+			"placeholder": "例如：我的文件夹"
+		},
+		"folderId": {
+			"displayName": "父文件夹"
+		},
+		"filtersNotice": {
+			"displayName": "获取大量消息可能需要较长时间。建议使用过滤器来加快速度"
+		},
+		"filtersUI": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"filterBy": {
+							"displayName": "筛选依据",
+							"options": {
+								"filters": {
+									"displayName": "筛选器"
+								},
+								"search": {
+									"displayName": "搜索"
+								}
+							}
+						},
+						"search": {
+							"displayName": "搜索",
+							"description": "仅返回包含搜索词的消息。未指定消息属性时，搜索将在默认搜索属性（发件人、主题、正文）上进行。<a href=\"https://docs.microsoft.com/en-us/graph/query-parameters#search-parameter\" target=\"_blank\">更多信息</a>",
+							"placeholder": "例如：自动化"
+						},
+						"filters": {
+							"displayName": "筛选器",
+							"placeholder": "添加筛选器",
+							"options": {
+								"custom": {
+									"displayName": "过滤查询",
+									"placeholder": "例如 是否已读 等于 否"
+								},
+								"hasAttachments": {
+									"displayName": "包含附件"
+								},
+								"readStatus": {
+									"displayName": "读取状态",
+									"options": {
+										"both": {
+											"displayName": "未读和已读消息"
+										},
+										"unread": {
+											"displayName": "仅未读消息"
+										},
+										"read": {
+											"displayName": "[0]仅读取消息"
+										}
+									}
+								},
+								"receivedAfter": {
+									"displayName": "接收时间晚于",
+									"description": "Get all messages received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds."
+								},
+								"receivedBefore": {
+									"displayName": "在指定日期前接收",
+									"description": "Get all messages received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds."
+								},
+								"sender": {
+									"displayName": "发送方",
+									"description": "用于筛选的发件人姓名或邮箱"
+								},
+								"foldersToExclude": {
+									"displayName": "排除文件夹",
+									"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+								},
+								"foldersToInclude": {
+									"displayName": "包含的文件夹",
+									"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"filterBy": {
+							"displayName": "筛选依据",
+							"options": {
+								"filters": {
+									"displayName": "筛选器"
+								},
+								"search": {
+									"displayName": "搜索"
+								}
+							}
+						},
+						"search": {
+							"displayName": "搜索",
+							"description": "仅返回包含搜索词的消息。未指定消息属性时，搜索将在默认搜索属性（发件人、主题、正文）上进行。<a href=\"https://docs.microsoft.com/en-us/graph/query-parameters#search-parameter\" target=\"_blank\">更多信息</a>",
+							"placeholder": "例如：自动化"
+						},
+						"filters": {
+							"displayName": "筛选器",
+							"placeholder": "添加筛选器",
+							"options": {
+								"custom": {
+									"displayName": "过滤查询",
+									"placeholder": "例如 是否已读 等于 否"
+								},
+								"hasAttachments": {
+									"displayName": "包含附件"
+								},
+								"readStatus": {
+									"displayName": "读取状态",
+									"options": {
+										"both": {
+											"displayName": "未读和已读消息"
+										},
+										"unread": {
+											"displayName": "仅未读消息"
+										},
+										"read": {
+											"displayName": "[0]仅读取消息"
+										}
+									}
+								},
+								"receivedAfter": {
+									"displayName": "接收时间晚于",
+									"description": "Get all messages received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds."
+								},
+								"receivedBefore": {
+									"displayName": "在指定日期前接收",
+									"description": "获取指定日期前收到的所有消息。在表达式中，您可以使用ISO格式的字符串或毫秒时间戳来设置日期。"
+								},
+								"sender": {
+									"displayName": "发送方",
+									"description": "用于筛选的发件人姓名或邮箱"
+								},
+								"foldersToExclude": {
+									"displayName": "排除文件夹",
+									"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+								},
+								"foldersToInclude": {
+									"displayName": "包含的文件夹",
+									"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+								}
+							}
+						}
+					}
+				},
+				"filtersUI": {
+					"displayName": "筛选器",
+					"placeholder": "添加筛选器"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "消息"
+		},
+		"replyToSenderOnly": {
+			"displayName": "[0]仅回复发件人\n[1]是否仅回复发件人还是回复所有收件人",
+			"description": "Whether to reply to the sender only or to the entire list of recipients"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "消息正文内容"
+		},
+		"toRecipients": {
+			"displayName": "收件人邮箱地址列表（用逗号分隔）",
+			"description": "Comma-separated list of email addresses of recipients"
+		},
+		"responseType": {
+			"displayName": "响应类型",
+			"options": {
+				"approval": {
+					"displayName": "审批",
+					"description": "用户可直接在消息内批准/拒绝"
+				},
+				"freeText": {
+					"displayName": "自由文本",
+					"description": "用户可通过表单提交响应"
+				},
+				"customForm": {
+					"displayName": "自定义表单",
+					"description": "用户可通过自定义表单提交响应"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "定义表单",
+			"options": {
+				"fields": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "表单字段"
+		},
+		"formFields": {
+			"displayName": "表单元素",
+			"placeholder": "添加表单元素",
+			"multipleValueButtonText": "添加表单元素",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "表单元素",
+					"placeholder": "添加表单元素"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "审批选项",
+			"placeholder": "添加选项",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "批准按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "拒绝按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "批准按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "拒绝按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "审批选项",
+					"placeholder": "添加选项"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出放入字段",
+			"placeholder": "例如：data"
+		},
+		"attachmentId": {
+			"displayName": "附件"
+		}
+	}
+}

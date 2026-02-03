@@ -1,0 +1,73 @@
+{
+	"header": {
+		"displayName": "SSH",
+		"description": "通过SSH执行命令"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"password": {
+					"displayName": "密码"
+				},
+				"privateKey": {
+					"displayName": "私钥"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"command": {
+					"displayName": "命令"
+				},
+				"file": {
+					"displayName": "文件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"execute": {
+					"displayName": "执行",
+					"description": "执行命令"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传文件"
+				}
+			}
+		},
+		"command": {
+			"displayName": "命令",
+			"description": "要在远程设备上执行的命令"
+		},
+		"cwd": {
+			"displayName": "工作目录"
+		},
+		"binaryPropertyName": {
+			"displayName": "文件属性",
+			"description": "包含二进制数据的对象属性名称"
+		},
+		"path": {
+			"displayName": "路径",
+			"description": "要下载的文件路径。必须包含完整路径，包括文件名。",
+			"placeholder": "/home/user/invoice.txt"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fileName": {
+					"displayName": "文件名",
+					"description": "覆盖二进制数据文件名"
+				}
+			}
+		}
+	}
+}

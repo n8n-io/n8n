@@ -1,0 +1,157 @@
+{
+	"header": {
+		"displayName": "Summarization Chain",
+		"description": "Transforms text into a concise summary"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "Save time with an <a href=\"/templates/1951\" target=\"_blank\">example</a> of how this node works"
+		},
+		"operationMode": {
+			"displayName": "Data to Summarize",
+			"description": "How to pass data into the summarization chain",
+			"options": {
+				"nodeInputJson": {
+					"displayName": "Use Node Input (JSON)",
+					"description": "Summarize the JSON data coming into this node from the previous one"
+				},
+				"nodeInputBinary": {
+					"displayName": "Use Node Input (Binary)",
+					"description": "Summarize the binary data coming into this node from the previous one"
+				},
+				"documentLoader": {
+					"displayName": "Use Document Loader",
+					"description": "Use a loader sub-node with more configuration options"
+				}
+			}
+		},
+		"chunkingMode": {
+			"displayName": "Chunking Strategy",
+			"description": "Chunk splitting strategy",
+			"options": {
+				"simple": {
+					"displayName": "Simple (Define Below)"
+				},
+				"advanced": {
+					"displayName": "Advanced",
+					"description": "Use a splitter sub-node with more configuration options"
+				}
+			}
+		},
+		"chunkSize": {
+			"displayName": "Characters Per Chunk",
+			"description": "Controls the max size (in terms of number of characters) of the final document chunk"
+		},
+		"chunkOverlap": {
+			"displayName": "Chunk Overlap (Characters)",
+			"description": "Specifies how much characters overlap there should be between chunks"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"binaryDataKey": {
+					"displayName": "Input Data Field Name",
+					"description": "The name of the field in the agent or chain’s input that contains the binary file to be processed"
+				},
+				"summarizationMethodAndPrompts": {
+					"displayName": "Summarization Method and Prompts",
+					"placeholder": "Add Option",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"summarizationMethod": {
+									"displayName": "Summarization Method",
+									"description": "The type of summarization to run",
+									"options": {
+										"map_reduce": {
+											"displayName": "Map Reduce (Recommended)",
+											"description": "Summarize each document (or chunk) individually, then summarize those summaries"
+										},
+										"refine": {
+											"displayName": "Refine",
+											"description": "Summarize the first document (or chunk). Then update that summary based on the next document (or chunk), and repeat."
+										},
+										"stuff": {
+											"displayName": "Stuff",
+											"description": "Pass all documents (or chunks) at once. Ideal for small datasets."
+										}
+									}
+								},
+								"combineMapPrompt": {
+									"displayName": "Individual Summary Prompt"
+								},
+								"prompt": {
+									"displayName": "Prompt"
+								},
+								"refinePrompt": {
+									"displayName": "Subsequent (Refine) Prompt"
+								},
+								"refineQuestionPrompt": {
+									"displayName": "Initial Prompt"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"summarizationMethod": {
+									"displayName": "Summarization Method",
+									"description": "The type of summarization to run",
+									"options": {
+										"map_reduce": {
+											"displayName": "Map Reduce (Recommended)",
+											"description": "Summarize each document (or chunk) individually, then summarize those summaries"
+										},
+										"refine": {
+											"displayName": "Refine",
+											"description": "Summarize the first document (or chunk). Then update that summary based on the next document (or chunk), and repeat."
+										},
+										"stuff": {
+											"displayName": "Stuff",
+											"description": "Pass all documents (or chunks) at once. Ideal for small datasets."
+										}
+									}
+								},
+								"combineMapPrompt": {
+									"displayName": "Individual Summary Prompt"
+								},
+								"prompt": {
+									"displayName": "Prompt"
+								},
+								"refinePrompt": {
+									"displayName": "Subsequent (Refine) Prompt"
+								},
+								"refineQuestionPrompt": {
+									"displayName": "Initial Prompt"
+								}
+							}
+						},
+						"summarizationMethodAndPrompts": {
+							"displayName": "Summarization Method and Prompts",
+							"placeholder": "Add Option"
+						}
+					}
+				},
+				"batching": {
+					"displayName": "Batch Processing",
+					"description": "Batch processing options for rate limiting",
+					"placeholder": "Add Batch Processing Option",
+					"options": {
+						"batchSize": {
+							"displayName": "Batch Size",
+							"description": "How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering."
+						},
+						"delayBetweenBatches": {
+							"displayName": "Delay Between Batches",
+							"description": "Delay in milliseconds between batches. This is useful for rate limiting."
+						}
+					}
+				}
+			}
+		}
+	}
+}

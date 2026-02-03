@@ -1,0 +1,302 @@
+{
+	"header": {
+		"displayName": "HTTP请求",
+		"description": "发起HTTP请求并返回响应数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"predefinedCredentialType": {
+					"displayName": "预定义凭据类型",
+					"description": "我们已为众多服务预先实现认证，您无需手动设置"
+				},
+				"genericCredentialType": {
+					"displayName": "通用凭据类型",
+					"description": "完全可自定义。可在基础认证、Header认证、OAuth2等类型中选择。"
+				}
+			}
+		},
+		"nodeCredentialType": {
+			"displayName": "凭据类型"
+		},
+		"genericAuthType": {
+			"displayName": "通用认证类型"
+		},
+		"requestMethod": {
+			"displayName": "请求方法",
+			"description": "要使用的请求方法",
+			"options": {
+				"DELETE": {
+					"displayName": "删除"
+				},
+				"GET": {
+					"displayName": "获取"
+				},
+				"HEAD": {
+					"displayName": "HEAD"
+				},
+				"OPTIONS": {
+					"displayName": "选项"
+				},
+				"PATCH": {
+					"displayName": "PATCH"
+				},
+				"POST": {
+					"displayName": "POST"
+				},
+				"PUT": {
+					"displayName": "PUT"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "发起请求的URL",
+			"placeholder": "http://example.com/index.html"
+		},
+		"allowUnauthorizedCerts": {
+			"displayName": "忽略SSL问题（不安全）",
+			"description": "是否在无法验证SSL证书时仍下载响应"
+		},
+		"responseFormat": {
+			"displayName": "响应格式",
+			"description": "从URL返回数据的格式",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"json": {
+					"displayName": "JSON"
+				},
+				"string": {
+					"displayName": "字符串"
+				}
+			}
+		},
+		"dataPropertyName": {
+			"displayName": "将输出文件放入字段",
+			"description": "写入响应数据的属性名称"
+		},
+		"jsonParameters": {
+			"displayName": "JSON/RAW参数",
+			"description": "查询和/或正文参数应通过键值对界面还是JSON/RAW方式设置"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batchInterval": {
+					"displayName": "批量间隔",
+					"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+				},
+				"batchSize": {
+					"displayName": "批次大小",
+					"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+				},
+				"bodyContentType": {
+					"displayName": "正文内容类型",
+					"description": "用于发送正文参数的Content-Type",
+					"options": {
+						"json": {
+							"displayName": "JSON"
+						},
+						"raw": {
+							"displayName": "原始/自定义"
+						},
+						"multipart-form-data": {
+							"displayName": "表单数据多部分"
+						},
+						"form-urlencoded": {
+							"displayName": "表单URL编码"
+						}
+					}
+				},
+				"fullResponse": {
+					"displayName": "完整响应",
+					"description": "是否返回完整的响应数据而非仅返回正文"
+				},
+				"followAllRedirects": {
+					"displayName": "跟随所有重定向",
+					"description": "是否跟随所有HTTP 3xx重定向"
+				},
+				"followRedirect": {
+					"displayName": "跟随GET/HEAD重定向",
+					"description": "是否跟随GET或HEAD HTTP 3xx重定向"
+				},
+				"ignoreResponseCode": {
+					"displayName": "忽略响应码",
+					"description": "即使状态码不是2xx也视为成功"
+				},
+				"bodyContentCustomMimeType": {
+					"displayName": "MIME类型",
+					"description": "指定原始/自定义正文类型的MIME类型",
+					"placeholder": "text/xml"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理",
+					"placeholder": "http://我的代理:3128"
+				},
+				"splitIntoItems": {
+					"displayName": "拆分为独立项",
+					"description": "是否将数组的每个元素输出为独立项"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				},
+				"useQueryString": {
+					"displayName": "使用查询字符串",
+					"description": "是否需要将数组序列化为 foo=bar&foo=baz 格式，而非默认的 foo[0]=bar&foo[1]=baz"
+				}
+			}
+		},
+		"sendBinaryData": {
+			"displayName": "发送二进制文件",
+			"description": "是否应将二进制数据作为请求体发送"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段",
+			"description": "对于Form-Data Multipart格式，可按以下格式提供：<code>\"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>"
+		},
+		"bodyParametersJson": {
+			"displayName": "请求体参数",
+			"description": "请求体参数（JSON或原始格式）"
+		},
+		"bodyParametersUi": {
+			"displayName": "Body参数",
+			"description": "要发送的body参数",
+			"placeholder": "添加参数",
+			"multipleValueButtonText": "添加参数",
+			"options": {
+				"parameter": {
+					"displayName": "参数",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "参数名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "参数值"
+						}
+					}
+				}
+			},
+			"values": {
+				"parameter": {
+					"displayName": "参数",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "参数名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "参数值"
+						}
+					}
+				},
+				"bodyParametersUi": {
+					"displayName": "请求体参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"headerParametersJson": {
+			"displayName": "标头",
+			"description": "Header参数作为JSON或RAW"
+		},
+		"headerParametersUi": {
+			"displayName": "请求头",
+			"description": "要发送的请求头",
+			"placeholder": "添加请求头",
+			"multipleValueButtonText": "添加请求头",
+			"options": {
+				"parameter": {
+					"displayName": "页眉",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "标头名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为标头设置的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"parameter": {
+					"displayName": "页眉",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "标头名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为标头设置的值"
+						}
+					}
+				},
+				"headerParametersUi": {
+					"displayName": "请求头",
+					"placeholder": "添加请求头"
+				}
+			}
+		},
+		"queryParametersJson": {
+			"displayName": "查询参数",
+			"description": "查询参数（扁平JSON对象）"
+		},
+		"queryParametersUi": {
+			"displayName": "查询参数",
+			"description": "要发送的查询参数",
+			"placeholder": "添加参数",
+			"multipleValueButtonText": "添加参数",
+			"options": {
+				"parameter": {
+					"displayName": "参数",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "参数名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "参数值"
+						}
+					}
+				}
+			},
+			"values": {
+				"parameter": {
+					"displayName": "参数",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "参数名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "参数值"
+						}
+					}
+				},
+				"queryParametersUi": {
+					"displayName": "查询参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"infoMessage": {
+			"displayName": "您可以在浏览器的开发者控制台中查看此节点发出的原始请求"
+		}
+	}
+}

@@ -1,0 +1,542 @@
+{
+	"header": {
+		"displayName": "Clockify",
+		"description": "使用Clockify REST API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"client": {
+					"displayName": "客户端"
+				},
+				"project": {
+					"displayName": "项目"
+				},
+				"tag": {
+					"displayName": "标签"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"timeEntry": {
+					"displayName": "时间记录"
+				},
+				"user": {
+					"displayName": "用户"
+				},
+				"workspace": {
+					"displayName": "工作区"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建时间记录"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除时间条目"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取时间条目"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个工作空间"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新时间记录"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"workspaceId": {
+			"displayName": "工作区名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"name": {
+			"displayName": "任务名称",
+			"description": "要创建的任务名称"
+		},
+		"clientId": {
+			"displayName": "客户端ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"archived": {
+					"displayName": "已归档"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "如果提供，将获取名称中包含所提供字符串的用户筛选列表"
+				},
+				"sort-order": {
+					"displayName": "排序顺序",
+					"options": {
+						"ASCENDING": {
+							"displayName": "升序"
+						},
+						"DESCENDING": {
+							"displayName": "降序"
+						}
+					}
+				},
+				"billable": {
+					"displayName": "计费"
+				},
+				"color": {
+					"displayName": "颜色"
+				},
+				"clientId": {
+					"displayName": "客户端名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"estimateUi": {
+					"displayName": "估算",
+					"placeholder": "添加估算",
+					"options": {
+						"estimateValues": {
+							"displayName": "估算",
+							"options": {
+								"estimate": {
+									"displayName": "估算"
+								},
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"AUTO": {
+											"displayName": "自动"
+										},
+										"MANUAL": {
+											"displayName": "手动"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"estimateValues": {
+							"displayName": "估算",
+							"options": {
+								"estimate": {
+									"displayName": "估算"
+								},
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"AUTO": {
+											"displayName": "自动"
+										},
+										"MANUAL": {
+											"displayName": "手动"
+										}
+									}
+								}
+							}
+						},
+						"estimateUi": {
+							"displayName": "估算",
+							"placeholder": "添加估算"
+						}
+					}
+				},
+				"isPublic": {
+					"displayName": "是否公开"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "项目说明"
+				},
+				"clients": {
+					"displayName": "客户端名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"contains-client": {
+					"displayName": "包含客户",
+					"description": "是否仅返回有客户的项目"
+				},
+				"client-status": {
+					"displayName": "客户端状态",
+					"description": "如果提供此项，将根据项目是否关联客户端进行筛选",
+					"options": {
+						"ACTIVE": {
+							"displayName": "激活状态"
+						},
+						"ARCHIVED": {
+							"displayName": "已归档"
+						}
+					}
+				},
+				"contains-user": {
+					"displayName": "包含用户",
+					"description": "是否仅返回包含用户的项目"
+				},
+				"is-template": {
+					"displayName": "是否为模板",
+					"description": "是否仅返回作为模板的项目"
+				},
+				"sort-column": {
+					"displayName": "排序列",
+					"options": {
+						"NAME": {
+							"displayName": "名称"
+						},
+						"CLIENT_NAME": {
+							"displayName": "客户端名称"
+						},
+						"DURATION": {
+							"displayName": "持续时间"
+						},
+						"EMAIL": {
+							"displayName": "电子邮件"
+						},
+						"HOURLYRATE": {
+							"displayName": "小时费率"
+						}
+					}
+				},
+				"users": {
+					"displayName": "用户名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"user-status": {
+					"displayName": "用户状态",
+					"description": "如果提供此项，将根据项目是否关联客户端进行筛选",
+					"options": {
+						"ACTIVE": {
+							"displayName": "激活状态"
+						},
+						"ARCHIVED": {
+							"displayName": "已归档"
+						}
+					}
+				},
+				"assigneeIds": {
+					"displayName": "分配人名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"estimate": {
+					"displayName": "估算",
+					"description": "预估任务所需时间，例如：2:30（2小时30分钟）",
+					"placeholder": "2:30"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "如果提供此参数，将获取邮箱地址中包含所提供字符串的筛选用户列表",
+					"placeholder": "name@email.com"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "如果提供，您将获得具有相应状态的用户筛选列表",
+					"options": {
+						"ACTIVE": {
+							"displayName": "激活状态"
+						},
+						"INACTIVE": {
+							"displayName": "未激活"
+						},
+						"PENDING": {
+							"displayName": "待处理"
+						},
+						"DECLINED": {
+							"displayName": "已拒绝"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"description": "按自定义字段筛选",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"end": {
+					"displayName": "结束"
+				},
+				"projectId": {
+					"displayName": "项目名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"tagIds": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"taskId": {
+					"displayName": "任务ID"
+				},
+				"consider-duration-format": {
+					"displayName": "考虑时长格式",
+					"description": "是否根据工作区设置的时长格式（hh:mm 或 hh:mm:ss）将时间条目的时长四舍五入到分钟或秒"
+				},
+				"hydrated": {
+					"displayName": "已水合",
+					"description": "是否完整返回时间条目的项目、任务和标签，而非仅返回其ID"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"description": "创建/更新中的客户端地址"
+				},
+				"archived": {
+					"displayName": "已归档"
+				},
+				"billable": {
+					"displayName": "计费"
+				},
+				"color": {
+					"displayName": "颜色"
+				},
+				"clientId": {
+					"displayName": "客户端名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"estimateUi": {
+					"displayName": "估算",
+					"placeholder": "添加估算",
+					"options": {
+						"estimateValues": {
+							"displayName": "估算",
+							"options": {
+								"estimate": {
+									"displayName": "估算"
+								},
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"AUTO": {
+											"displayName": "自动"
+										},
+										"MANUAL": {
+											"displayName": "手动"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"estimateValues": {
+							"displayName": "估算",
+							"options": {
+								"estimate": {
+									"displayName": "估算"
+								},
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"AUTO": {
+											"displayName": "自动"
+										},
+										"MANUAL": {
+											"displayName": "手动"
+										}
+									}
+								}
+							}
+						},
+						"estimateUi": {
+							"displayName": "估算",
+							"placeholder": "添加估算"
+						}
+					}
+				},
+				"isPublic": {
+					"displayName": "是否公开"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "项目说明"
+				},
+				"assigneeIds": {
+					"displayName": "分配人名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"estimate": {
+					"displayName": "估算",
+					"description": "预估任务所需时间，例如：2:30（2小时30分钟）",
+					"placeholder": "2:30"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"ACTIVE": {
+							"displayName": "激活状态"
+						},
+						"DONE": {
+							"displayName": "完成"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"description": "按自定义字段筛选",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"end": {
+					"displayName": "结束"
+				},
+				"projectId": {
+					"displayName": "项目名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"start": {
+					"displayName": "开始"
+				},
+				"tagIds": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"taskId": {
+					"displayName": "任务ID"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "项目名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"tagId": {
+			"displayName": "标签ID"
+		},
+		"taskId": {
+			"displayName": "任务ID",
+			"description": "要更新的任务ID"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"is-active": {
+					"displayName": "是否激活"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "任务名称中匹配的文本"
+				},
+				"sort-column": {
+					"displayName": "排序列",
+					"options": {
+						"NAME": {
+							"displayName": "名称"
+						}
+					}
+				},
+				"sort-order": {
+					"displayName": "排序顺序",
+					"options": {
+						"ASCENDING": {
+							"displayName": "升序"
+						},
+						"DESCENDING": {
+							"displayName": "降序"
+						}
+					}
+				}
+			}
+		},
+		"start": {
+			"displayName": "开始"
+		},
+		"timeEntryId": {
+			"displayName": "时间记录ID"
+		}
+	}
+}

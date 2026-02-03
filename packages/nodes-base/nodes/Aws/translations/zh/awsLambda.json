@@ -1,0 +1,55 @@
+{
+	"header": {
+		"displayName": "AWS Lambda",
+		"description": "调用 AWS Lambda 上的函数"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (代入角色)"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"invoke": {
+					"displayName": "调用",
+					"description": "调用函数"
+				}
+			}
+		},
+		"function": {
+			"displayName": "函数名称或ID",
+			"description": "要调用的函数。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"qualifier": {
+			"displayName": "限定符",
+			"description": "指定版本或别名以调用已发布版本的函数"
+		},
+		"invocationType": {
+			"displayName": "调用类型",
+			"description": "指定工作流是否应等待函数返回结果",
+			"options": {
+				"RequestResponse": {
+					"displayName": "等待结果",
+					"description": "同步调用函数并等待响应"
+				},
+				"Event": {
+					"displayName": "继续工作流",
+					"description": "调用函数并立即继续工作流"
+				}
+			}
+		},
+		"payload": {
+			"displayName": "JSON输入",
+			"description": "要作为输入提供给Lambda函数的JSON"
+		}
+	}
+}

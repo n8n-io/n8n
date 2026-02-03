@@ -1,0 +1,110 @@
+{
+	"header": {
+		"displayName": "Webflow",
+		"description": "使用Webflow API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"item": {
+					"displayName": "项目"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"siteId": {
+			"displayName": "站点名称或ID",
+			"description": "包含要检索项目集合的站点ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"collectionId": {
+			"displayName": "集合名称或ID",
+			"description": "要检索其项目的集合ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"live": {
+			"displayName": "实时",
+			"description": "是否应在实时站点上发布此项"
+		},
+		"fieldsUi": {
+			"displayName": "字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段名称或ID",
+							"description": "要为更新项设置的字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "要为更新项设置的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段名称或ID",
+							"description": "要为更新项设置的字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "要为更新项设置的值"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"itemId": {
+			"displayName": "项目ID",
+			"description": "要更新项的ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

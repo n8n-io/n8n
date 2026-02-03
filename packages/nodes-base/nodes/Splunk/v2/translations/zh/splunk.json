@@ -1,0 +1,401 @@
+{
+	"header": {
+		"displayName": "Splunk",
+		"description": "使用Splunk Enterprise API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"alert": {
+					"displayName": "警报"
+				},
+				"report": {
+					"displayName": "报告"
+				},
+				"search": {
+					"displayName": "搜索"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getReport": {
+					"displayName": "获取解雇警报",
+					"description": "获取已触发警报报告"
+				},
+				"getMetrics": {
+					"displayName": "获取指标",
+					"description": "检索指标"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户"
+				},
+				"deleteReport": {
+					"displayName": "删除",
+					"description": "删除搜索报告"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个用户"
+				},
+				"deleteJob": {
+					"displayName": "删除",
+					"description": "删除搜索任务"
+				},
+				"getResult": {
+					"displayName": "获取结果",
+					"description": "获取搜索作业的结果"
+				},
+				"deleteUser": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户"
+				}
+			}
+		},
+		"searchJobId": {
+			"displayName": "搜索工作"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "用户登录名"
+		},
+		"reportId": {
+			"displayName": "报告"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"add_orphan_field": {
+					"displayName": "添加孤立字段",
+					"description": "是否为每个已保存的搜索包含一个布尔值，以显示该搜索是否为孤立状态（即没有有效所有者）"
+				},
+				"listDefaultActionArgs": {
+					"displayName": "列出默认操作"
+				},
+				"add_summary_to_metadata": {
+					"displayName": "向元数据添加摘要",
+					"description": "是否在响应中包含字段摘要统计信息"
+				}
+			}
+		},
+		"search": {
+			"displayName": "查询",
+			"description": "要执行的搜索语言字符串，使用Splunk的<a href=\"https://docs.splunk.com/Documentation/Splunk/latest/SearchReference/WhatsInThisManual\">搜索处理语言</a>",
+			"placeholder": "例如：搜索索引=_internal | 按来源统计计数"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"adhoc_search_level": {
+					"displayName": "临时搜索级别",
+					"options": {
+						"fast": {
+							"displayName": "快速"
+						},
+						"smart": {
+							"displayName": "智能"
+						},
+						"verbose": {
+							"displayName": "详细模式"
+						}
+					}
+				},
+				"auto_cancel": {
+					"displayName": "自动取消时间（秒）",
+					"description": "搜索任务自动取消前的等待秒数"
+				},
+				"auto_finalize_ec": {
+					"displayName": "自动完成条件（事件数量）",
+					"description": "当至少处理完指定数量的事件后自动完成搜索"
+				},
+				"auto_pause": {
+					"displayName": "自动暂停时间（秒）",
+					"description": "搜索任务在无活动后自动暂停的秒数"
+				},
+				"index_earliest": {
+					"displayName": "最早索引",
+					"description": "搜索的最早索引时间（包含）"
+				},
+				"earliest_time": {
+					"displayName": "最早时间",
+					"description": "搜索的最早截止时间（包含）"
+				},
+				"exec_mode": {
+					"displayName": "执行模式",
+					"options": {
+						"blocking": {
+							"displayName": "阻塞中"
+						},
+						"normal": {
+							"displayName": "普通"
+						},
+						"oneshot": {
+							"displayName": "单次执行"
+						}
+					}
+				},
+				"indexedRealtimeOffset": {
+					"displayName": "索引实时偏移量",
+					"description": "索引实时搜索的磁盘同步延迟秒数"
+				},
+				"index_latest": {
+					"displayName": "最新索引",
+					"description": "搜索的最新索引时间（包含该时间点）"
+				},
+				"latest_time": {
+					"displayName": "最新时间",
+					"description": "搜索的最晚截止时间（包含该时间点）"
+				},
+				"max_time": {
+					"displayName": "最大时间",
+					"description": "在最终确定前运行此搜索的秒数。输入<code>0</code>表示永不最终确定。"
+				},
+				"namespace": {
+					"displayName": "命名空间",
+					"description": "限制搜索的应用程序命名空间"
+				},
+				"reduce_freq": {
+					"displayName": "降低频率",
+					"description": "对累积的映射值运行MapReduce归约阶段的频率"
+				},
+				"remote_server_list": {
+					"displayName": "远程服务器列表",
+					"description": "以逗号分隔的服务器列表（可能包含通配符），用于从中提取原始事件。该服务器列表将在子搜索中使用。"
+				},
+				"reuse_max_seconds_ago": {
+					"displayName": "重用限制（秒）",
+					"description": "检查相同搜索开始前的秒数，返回该作业的搜索ID而非启动新作业"
+				},
+				"rf": {
+					"displayName": "必填字段",
+					"description": "要添加到搜索中的必填字段名称。即使搜索未直接引用或使用，必填字段仍会包含在事件和摘要端点中。"
+				},
+				"search_mode": {
+					"displayName": "搜索模式",
+					"options": {
+						"normal": {
+							"displayName": "普通"
+						},
+						"realtime": {
+							"displayName": "实时"
+						}
+					}
+				},
+				"status_buckets": {
+					"displayName": "状态桶",
+					"description": "生成的最大状态桶数量。设置为<code>0</code>则不生成时间线信息。"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "处理停止后保留此搜索的秒数"
+				},
+				"workload_pool": {
+					"displayName": "工作负载池",
+					"description": "新工作负载池，现有运行中的搜索应放置于此"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"realname": {
+					"displayName": "全名",
+					"description": "用户全名"
+				}
+			}
+		},
+		"sort": {
+			"displayName": "排序",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"sort_dir": {
+							"displayName": "排序方向",
+							"options": {
+								"asc": {
+									"displayName": "升序"
+								},
+								"desc": {
+									"displayName": "降序"
+								}
+							}
+						},
+						"sort_key": {
+							"displayName": "排序键",
+							"description": "用于排序的键名",
+							"placeholder": "例如：磁盘使用量"
+						},
+						"sort_mode": {
+							"displayName": "排序模式",
+							"options": {
+								"auto": {
+									"displayName": "自动",
+									"description": "如果所有字段值都是数字，则按数字排序。否则，按字母顺序排序。"
+								},
+								"alpha": {
+									"displayName": "字母顺序",
+									"description": "按字母顺序整理，不区分大小写"
+								},
+								"alpha_case": {
+									"displayName": "按字母顺序且区分大小写",
+									"description": "按字母顺序区分大小写排序"
+								},
+								"num": {
+									"displayName": "数值",
+									"description": "按数值排序"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"sort_dir": {
+							"displayName": "排序方向",
+							"options": {
+								"asc": {
+									"displayName": "升序"
+								},
+								"desc": {
+									"displayName": "降序"
+								}
+							}
+						},
+						"sort_key": {
+							"displayName": "排序键",
+							"description": "用于排序的键名",
+							"placeholder": "例如：磁盘使用量"
+						},
+						"sort_mode": {
+							"displayName": "排序模式",
+							"options": {
+								"auto": {
+									"displayName": "自动",
+									"description": "如果所有字段值都是数字，则按数字排序。否则，按字母顺序排序。"
+								},
+								"alpha": {
+									"displayName": "字母顺序",
+									"description": "按字母顺序整理，不区分大小写"
+								},
+								"alpha_case": {
+									"displayName": "按字母顺序且区分大小写",
+									"description": "按字母顺序区分大小写排序"
+								},
+								"num": {
+									"displayName": "数值",
+									"description": "按数值排序"
+								}
+							}
+						}
+					}
+				},
+				"sort": {
+					"displayName": "排序"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"keyValueMatch": {
+					"displayName": "键值匹配",
+					"description": "要匹配的键值对。示例：如果“键”设置为<code>user</code>且“字段”设置为<code>john</code>，则仅返回<code>user</code>为<code>john</code>的结果。",
+					"placeholder": "添加键值对",
+					"options": {
+						"keyValuePair": {
+							"displayName": "键值对",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "用于匹配的键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要匹配的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"keyValuePair": {
+							"displayName": "键值对",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "用于匹配的键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要匹配的值"
+								}
+							}
+						},
+						"keyValueMatch": {
+							"displayName": "键值匹配",
+							"placeholder": "添加键值对"
+						}
+					}
+				}
+			}
+		},
+		"roles": {
+			"displayName": "角色",
+			"description": "分配给用户的角色列表（以逗号分隔）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"password": {
+			"displayName": "密码"
+		},
+		"userId": {
+			"displayName": "用户"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"realname": {
+					"displayName": "全名",
+					"description": "用户全名"
+				},
+				"password": {
+					"displayName": "密码"
+				},
+				"roles": {
+					"displayName": "角色名称或ID",
+					"description": "分配给用户的角色列表（以逗号分隔）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		}
+	}
+}

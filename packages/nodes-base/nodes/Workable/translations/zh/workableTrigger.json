@@ -1,0 +1,33 @@
+{
+	"header": {
+		"displayName": "Workable触发器",
+		"description": "当Workable事件发生时启动工作流"
+	},
+	"nodeView": {
+		"triggerOn": {
+			"displayName": "触发于",
+			"options": {
+				"candidateCreated": {
+					"displayName": "候选人已创建"
+				},
+				"candidateMoved": {
+					"displayName": "候选人已移动"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"job": {
+					"displayName": "作业名称或ID",
+					"description": "仅获取一个作业的通知。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"stage": {
+					"displayName": "阶段名称或ID",
+					"description": "获取特定阶段的通知。例如：'hired'。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		}
+	}
+}

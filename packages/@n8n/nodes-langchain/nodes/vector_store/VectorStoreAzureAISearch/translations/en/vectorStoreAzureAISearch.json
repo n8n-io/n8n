@@ -1,0 +1,119 @@
+{
+	"header": {
+		"displayName": "Azure AI Search Vector Store",
+		"description": "Work with your data in Azure AI Search Vector Store"
+	},
+	"nodeView": {
+		"ragStarterCallout": {
+			"displayName": "Tip: Get a feel for vector stores in n8n with our"
+		},
+		"mode": {
+			"displayName": "Operation Mode",
+			"options": {
+				"load": {
+					"displayName": "Get Many",
+					"description": "Get many ranked documents from vector store for query"
+				},
+				"insert": {
+					"displayName": "Insert Documents",
+					"description": "Insert documents into vector store"
+				},
+				"retrieve": {
+					"displayName": "Retrieve Documents (As Vector Store for Chain/Tool)",
+					"description": "Retrieve documents from vector store to be used as vector store with AI nodes"
+				},
+				"retrieve-as-tool": {
+					"displayName": "Retrieve Documents (As Tool for AI Agent)",
+					"description": "Retrieve documents from vector store to be used as tool with AI nodes"
+				},
+				"update": {
+					"displayName": "Update Documents",
+					"description": "Update documents in vector store by ID"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "This node must be connected to a vector store retriever. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_retriever'>Insert one</a>"
+		},
+		"toolName": {
+			"displayName": "Name",
+			"description": "Name of the vector store",
+			"placeholder": "e.g. company_knowledge_base"
+		},
+		"toolDescription": {
+			"displayName": "Description",
+			"description": "Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often",
+			"placeholder": "e.g. Work with your data in Azure AI Search Vector Store"
+		},
+		"indexName": {
+			"displayName": "Index Name",
+			"description": "The name of the Azure AI Search index. Will be created automatically if it does not exist."
+		},
+		"embeddingBatchSize": {
+			"displayName": "Embedding Batch Size",
+			"description": "Number of documents to embed in a single batch"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"clearIndex": {
+					"displayName": "Clear Index",
+					"description": "Whether to delete and recreate the index before inserting new data. Warning: This will reset any custom index configuration (semantic ranking, analyzers, etc.) to defaults."
+				},
+				"metadataKeysToInsert": {
+					"displayName": "Metadata Keys to Insert",
+					"description": "Comma-separated list of metadata keys to store in Azure AI Search. Leave empty to include all metadata. Azure AI Search stores metadata in an \"attributes\" array format.",
+					"placeholder": "e.g., source,author,category"
+				},
+				"queryType": {
+					"displayName": "Query Type",
+					"description": "The type of search query to perform",
+					"options": {
+						"vector": {
+							"displayName": "Vector",
+							"description": "Vector similarity search only"
+						},
+						"hybrid": {
+							"displayName": "Hybrid",
+							"description": "Combines vector and keyword search (recommended)"
+						},
+						"semanticHybrid": {
+							"displayName": "Semantic Hybrid",
+							"description": "Hybrid search with semantic ranking (requires Basic tier or higher)"
+						}
+					}
+				},
+				"filter": {
+					"displayName": "Filter",
+					"description": "Filter results using OData syntax. Use metadata/fieldName for metadata fields. <a href=\"https://learn.microsoft.com/en-us/azure/search/search-query-odata-filter\" target=\"_blank\">Learn more</a>.",
+					"placeholder": "metadata/category eq 'technology' and metadata/author eq 'John'"
+				},
+				"semanticConfiguration": {
+					"displayName": "Semantic Configuration",
+					"description": "Name of the semantic configuration for semantic ranking (optional)"
+				}
+			}
+		},
+		"prompt": {
+			"displayName": "Prompt",
+			"description": "Search prompt to retrieve matching documents from the vector store using similarity-based ranking"
+		},
+		"topK": {
+			"displayName": "Limit",
+			"description": "Number of top results to fetch from vector store"
+		},
+		"includeDocumentMetadata": {
+			"displayName": "Include Metadata",
+			"description": "Whether or not to include document metadata"
+		},
+		"useReranker": {
+			"displayName": "Rerank Results",
+			"description": "Whether or not to rerank results"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "ID of an embedding entry"
+		}
+	}
+}

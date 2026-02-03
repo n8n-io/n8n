@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "Marketstack",
+		"description": "使用 Marketstack API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"endOfDayData": {
+					"displayName": "日终数据",
+					"description": "股市收盘数据"
+				},
+				"exchange": {
+					"displayName": "交易所",
+					"description": "证券交易所"
+				},
+				"ticker": {
+					"displayName": "代币",
+					"description": "股票市场代码"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"get": {
+					"displayName": "获取"
+				}
+			}
+		},
+		"symbols": {
+			"displayName": "股票代码",
+			"description": "一个或多个逗号分隔的股票代码，例如 <code>AAPL</code> 或 <code>AAPL,MSFT</code>"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"exchange": {
+					"displayName": "交易所",
+					"description": "用于筛选结果的证券交易所，通过<a href=\"https://en.wikipedia.org/wiki/Market_Identifier_Code\">市场识别码</a>指定，例如<code>XNAS</code>"
+				},
+				"latest": {
+					"displayName": "最新",
+					"description": "是否获取最新的股市数据"
+				},
+				"sort": {
+					"displayName": "排序顺序",
+					"description": "结果排序顺序",
+					"options": {
+						"ASC": {
+							"displayName": "升序"
+						},
+						"DESC": {
+							"displayName": "降序"
+						}
+					}
+				},
+				"specificDate": {
+					"displayName": "特定日期",
+					"description": "YYYY-MM-DD格式的日期，例如<code>2020-01-01</code>，或ISO-8601日期格式，例如<code>2020-05-21T00:00:00+0000</code>"
+				},
+				"dateFrom": {
+					"displayName": "时间范围开始日期",
+					"description": "时间范围开始日期，格式为YYYY-MM-DD，例如<code>2020-01-01</code>，或ISO-8601日期格式，例如<code>2020-05-21T00:00:00+0000</code>"
+				},
+				"dateTo": {
+					"displayName": "时间范围结束日期",
+					"description": "时间范围结束日期，格式为YYYY-MM-DD，例如<code>2020-01-01</code>，或ISO-8601日期格式，例如<code>2020-05-21T00:00:00+0000</code>"
+				}
+			}
+		},
+		"exchange": {
+			"displayName": "交易所",
+			"description": "要检索的证券交易所，由<a href=\"https://en.wikipedia.org/wiki/Market_Identifier_Code\">市场识别码</a>指定，例如<code>XNAS</code>"
+		},
+		"symbol": {
+			"displayName": "股票代码",
+			"description": "要检索的股票代码，例如 <code>AAPL</code>"
+		}
+	}
+}

@@ -1,0 +1,279 @@
+{
+	"header": {
+		"displayName": "Ghost",
+		"description": "使用Ghost API"
+	},
+	"nodeView": {
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "选择数据来源，内容API或管理API",
+			"options": {
+				"adminApi": {
+					"displayName": "管理API"
+				},
+				"contentApi": {
+					"displayName": "内容API"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"post": {
+					"displayName": "发布"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取帖子"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多篇文章"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建帖子"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除帖子"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新帖子"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "帖子标题"
+		},
+		"contentFormat": {
+			"displayName": "内容格式",
+			"description": "帖子格式",
+			"options": {
+				"html": {
+					"displayName": "HTML"
+				},
+				"mobileDoc": {
+					"displayName": "移动文档"
+				},
+				"lexical": {
+					"displayName": "词法"
+				}
+			}
+		},
+		"content": {
+			"displayName": "内容 (JSON)",
+			"description": "Lexical 是 Ghost 默认编辑器返回的 JSON 格式"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"authors": {
+					"displayName": "作者姓名或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"canonical_url": {
+					"displayName": "规范URL"
+				},
+				"codeinjection_foot": {
+					"displayName": "代码注入页脚",
+					"description": "代码注入功能允许您向Ghost站点注入小型代码片段"
+				},
+				"codeinjection_head": {
+					"displayName": "代码注入头部",
+					"description": "代码注入功能允许您向Ghost站点注入小型代码片段"
+				},
+				"featured": {
+					"displayName": "精选"
+				},
+				"meta_description": {
+					"displayName": "Meta描述"
+				},
+				"meta_title": {
+					"displayName": "Meta标题"
+				},
+				"og_description": {
+					"displayName": "开放图谱描述"
+				},
+				"og_image": {
+					"displayName": "Open Graph 图片",
+					"description": "图片 URL"
+				},
+				"og_title": {
+					"displayName": "开放图谱标题"
+				},
+				"published_at": {
+					"displayName": "发布时间"
+				},
+				"slug": {
+					"displayName": "标识符"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"draft": {
+							"displayName": "草稿"
+						},
+						"published": {
+							"displayName": "已发布"
+						},
+						"scheduled": {
+							"displayName": "计划执行"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"twitter_description": {
+					"displayName": "Twitter 描述"
+				},
+				"twitter_image": {
+					"displayName": "Twitter图片",
+					"description": "图片 URL"
+				},
+				"twitter_title": {
+					"displayName": "Twitter标题"
+				}
+			}
+		},
+		"postId": {
+			"displayName": "帖子ID",
+			"description": "要更新的帖子ID"
+		},
+		"by": {
+			"displayName": "按",
+			"description": "通过slug或ID获取帖子",
+			"options": {
+				"id": {
+					"displayName": "ID"
+				},
+				"slug": {
+					"displayName": "标识符"
+				}
+			}
+		},
+		"identifier": {
+			"displayName": "标识符",
+			"description": "要获取的文章ID或别名"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "限制响应对象中返回的字段。例如，对于帖子使用 fields=title,url。"
+				},
+				"formats": {
+					"displayName": "格式",
+					"description": "默认情况下仅返回HTML，但Ghost中的每篇文章和页面都有两种可用格式：HTML和纯文本"
+				},
+				"include": {
+					"displayName": "包含",
+					"description": "告诉API返回与您请求的资源相关的额外数据"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"authors": {
+					"displayName": "作者姓名或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"canonical_url": {
+					"displayName": "规范URL"
+				},
+				"codeinjection_foot": {
+					"displayName": "代码注入页脚"
+				},
+				"codeinjection_head": {
+					"displayName": "代码注入头部"
+				},
+				"content": {
+					"displayName": "内容"
+				},
+				"contentJson": {
+					"displayName": "内容 (JSON)",
+					"description": "Lexical 是 Ghost 默认编辑器返回的 JSON 格式"
+				},
+				"featured": {
+					"displayName": "精选"
+				},
+				"meta_description": {
+					"displayName": "Meta描述"
+				},
+				"meta_title": {
+					"displayName": "Meta标题"
+				},
+				"og_description": {
+					"displayName": "开放图谱描述"
+				},
+				"og_image": {
+					"displayName": "Open Graph 图片",
+					"description": "图片 URL"
+				},
+				"og_title": {
+					"displayName": "开放图谱标题"
+				},
+				"published_at": {
+					"displayName": "发布时间"
+				},
+				"slug": {
+					"displayName": "标识符"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"draft": {
+							"displayName": "草稿"
+						},
+						"published": {
+							"displayName": "已发布"
+						},
+						"scheduled": {
+							"displayName": "计划执行"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "帖子标题"
+				},
+				"twitter_description": {
+					"displayName": "Twitter 描述"
+				},
+				"twitter_image": {
+					"displayName": "Twitter图片",
+					"description": "图片 URL"
+				},
+				"twitter_title": {
+					"displayName": "Twitter标题"
+				}
+			}
+		}
+	}
+}

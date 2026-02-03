@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "Function",
+		"description": "Run custom function code which gets executed once and allows you to add, remove, change and replace items"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "A newer version of this node type is available, called the ‘Code’ node"
+		},
+		"functionCode": {
+			"displayName": "JavaScript Code",
+			"description": "The JavaScript code to execute"
+		}
+	}
+}

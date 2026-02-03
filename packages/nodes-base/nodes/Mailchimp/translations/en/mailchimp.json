@@ -1,0 +1,594 @@
+{
+	"header": {
+		"displayName": "Mailchimp",
+		"description": "Consume Mailchimp API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiKey": {
+					"displayName": "API Key"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"campaign": {
+					"displayName": "Campaign"
+				},
+				"listGroup": {
+					"displayName": "List Group"
+				},
+				"member": {
+					"displayName": "Member"
+				},
+				"memberTag": {
+					"displayName": "Member Tag"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Add tags from a list member"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a campaign"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a campaign"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many campaigns"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a new member on list"
+				},
+				"replicate": {
+					"displayName": "Replicate",
+					"description": "Replicate a campaign"
+				},
+				"resend": {
+					"displayName": "Resend",
+					"description": "Creates a Resend to Non-Openers version of this campaign"
+				},
+				"send": {
+					"displayName": "Send",
+					"description": "Send a campaign"
+				}
+			}
+		},
+		"list": {
+			"displayName": "List Name or ID",
+			"description": "List of lists. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email address of the subscriber",
+			"placeholder": "name@email.com"
+		},
+		"status": {
+			"displayName": "Status",
+			"description": "Subscriber's current status",
+			"options": {
+				"cleaned": {
+					"displayName": "Cleaned"
+				},
+				"pending": {
+					"displayName": "Pending"
+				},
+				"subscribed": {
+					"displayName": "Subscribed"
+				},
+				"transactional": {
+					"displayName": "Transactional"
+				},
+				"unsubscribed": {
+					"displayName": "Unsubscribed"
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"emailType": {
+					"displayName": "Email Type",
+					"description": "Type of email this member asked to get",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"text": {
+							"displayName": "Text"
+						}
+					}
+				},
+				"language": {
+					"displayName": "Language",
+					"description": "If set/detected, the subscriber's language"
+				},
+				"ipOptIn": {
+					"displayName": "Opt-in IP",
+					"description": "The IP address the subscriber used to confirm their opt-in status"
+				},
+				"ipSignup": {
+					"displayName": "Signup IP",
+					"description": "IP address the subscriber signed up from"
+				},
+				"timestampSignup": {
+					"displayName": "Signup Timestamp",
+					"description": "The date and time the subscriber signed up for the list in ISO 8601 format"
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "The tags that are associated with a member separeted by ,"
+				},
+				"vip": {
+					"displayName": "Vip",
+					"description": "Vip status for subscribers"
+				},
+				"timestampOpt": {
+					"displayName": "Opt-in Timestamp",
+					"description": "The date and time the subscribe confirmed their opt-in status in ISO 8601 format"
+				},
+				"fields": {
+					"displayName": "Field Names or IDs",
+					"description": "A comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"excludeFields": {
+					"displayName": "Exclude Field Names or IDs",
+					"description": "A comma-separated list of fields to exclude. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"beforeLastChanged": {
+					"displayName": "Before Last Changed",
+					"description": "Restrict results to subscribers whose information changed before the set timeframe"
+				},
+				"beforeTimestampOpt": {
+					"displayName": "Before Timestamp Opt",
+					"description": "Restrict results to subscribers who opted-in before the set timeframe"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "The status of the campaign",
+					"options": {
+						"cleaned": {
+							"displayName": "Cleaned"
+						},
+						"pending": {
+							"displayName": "Pending"
+						},
+						"subscribed": {
+							"displayName": "Subscribed"
+						},
+						"transactional": {
+							"displayName": "Transactional"
+						},
+						"unsubscribed": {
+							"displayName": "Unsubscribed"
+						},
+						"save": {
+							"displayName": "Save"
+						},
+						"sending": {
+							"displayName": "Sending"
+						},
+						"sent": {
+							"displayName": "Sent"
+						},
+						"schedule": {
+							"displayName": "Schedule"
+						}
+					}
+				},
+				"sinceLastChanged": {
+					"displayName": "Since Last Changed",
+					"description": "Restrict results to subscribers whose information changed after the set timeframe"
+				},
+				"isSyncing": {
+					"displayName": "Is Syncing",
+					"description": "Whether automations based on the tags in the request will not fire"
+				},
+				"beforeCreateTime": {
+					"displayName": "Before Create Time",
+					"description": "Restrict the response to campaigns created before the set time"
+				},
+				"beforeSendTime": {
+					"displayName": "Before Send Time",
+					"description": "Restrict the response to campaigns sent before the set time"
+				},
+				"listId": {
+					"displayName": "List Name or ID",
+					"description": "List of lists. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"sinceCreateTime": {
+					"displayName": "Since Create Time",
+					"description": "Restrict the response to campaigns created after the set time"
+				},
+				"sinceSendTime": {
+					"displayName": "Since Send Time",
+					"description": "Restrict the response to campaigns sent after the set time"
+				},
+				"sortDirection": {
+					"displayName": "Sort Direction",
+					"description": "Determines the order direction for sorted results",
+					"options": {
+						"ASC": {
+							"displayName": "ASC"
+						},
+						"DESC": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"sortField": {
+					"displayName": "Sort Field",
+					"description": "Returns files sorted by the specified field",
+					"options": {
+						"create_time": {
+							"displayName": "Create Time"
+						},
+						"send_time": {
+							"displayName": "Send Time"
+						}
+					}
+				}
+			}
+		},
+		"locationFieldsUi": {
+			"displayName": "Location",
+			"description": "Subscriber location information.n",
+			"placeholder": "Add Location",
+			"options": {
+				"locationFieldsValues": {
+					"displayName": "Location",
+					"options": {
+						"latitude": {
+							"displayName": "Latitude",
+							"description": "The location latitude"
+						},
+						"longitude": {
+							"displayName": "Longitude",
+							"description": "The location longitude"
+						}
+					}
+				}
+			},
+			"values": {
+				"locationFieldsValues": {
+					"displayName": "Location",
+					"options": {
+						"latitude": {
+							"displayName": "Latitude",
+							"description": "The location latitude"
+						},
+						"longitude": {
+							"displayName": "Longitude",
+							"description": "The location longitude"
+						}
+					}
+				},
+				"locationFieldsUi": {
+					"displayName": "Location",
+					"placeholder": "Add Location"
+				}
+			}
+		},
+		"mergeFieldsUi": {
+			"displayName": "Merge Fields",
+			"description": "An individual merge var and value for a member",
+			"placeholder": "Add Merge Fields",
+			"multipleValueButtonText": "Add Merge Fields",
+			"options": {
+				"mergeFieldsValues": {
+					"displayName": "Field",
+					"options": {
+						"name": {
+							"displayName": "Field Name or ID",
+							"description": "Merge Field name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"value": {
+							"displayName": "Field Value",
+							"description": "Merge field value"
+						}
+					}
+				}
+			},
+			"values": {
+				"mergeFieldsValues": {
+					"displayName": "Field",
+					"options": {
+						"name": {
+							"displayName": "Field Name or ID",
+							"description": "Merge Field name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"value": {
+							"displayName": "Field Value",
+							"description": "Merge field value"
+						}
+					}
+				},
+				"mergeFieldsUi": {
+					"displayName": "Merge Fields",
+					"placeholder": "Add Merge Fields"
+				}
+			}
+		},
+		"mergeFieldsJson": {
+			"displayName": "Merge Fields"
+		},
+		"locationJson": {
+			"displayName": "Location"
+		},
+		"groupsUi": {
+			"displayName": "Interest Groups",
+			"placeholder": "Add Interest Group",
+			"multipleValueButtonText": "Add Interest Group",
+			"options": {
+				"groupsValues": {
+					"displayName": "Group",
+					"options": {
+						"categoryId": {
+							"displayName": "Category Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"categoryFieldId": {
+							"displayName": "Category Field ID"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"groupsValues": {
+					"displayName": "Group",
+					"options": {
+						"categoryId": {
+							"displayName": "Category Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"categoryFieldId": {
+							"displayName": "Category Field ID"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"groupsUi": {
+					"displayName": "Interest Groups",
+					"placeholder": "Add Interest Group"
+				}
+			}
+		},
+		"groupJson": {
+			"displayName": "Interest Groups"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"emailType": {
+					"displayName": "Email Type",
+					"description": "Type of email this member asked to get",
+					"options": {
+						"html": {
+							"displayName": "HTML"
+						},
+						"text": {
+							"displayName": "Text"
+						}
+					}
+				},
+				"groupsUi": {
+					"displayName": "Interest Groups",
+					"placeholder": "Add Interest Group",
+					"multipleValueButtonText": "Add Interest Group",
+					"options": {
+						"groupsValues": {
+							"displayName": "Group",
+							"options": {
+								"categoryId": {
+									"displayName": "Category Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"categoryFieldId": {
+									"displayName": "Category Field ID"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"groupsValues": {
+							"displayName": "Group",
+							"options": {
+								"categoryId": {
+									"displayName": "Category Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"categoryFieldId": {
+									"displayName": "Category Field ID"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"groupsUi": {
+							"displayName": "Interest Groups",
+							"placeholder": "Add Interest Group"
+						}
+					}
+				},
+				"language": {
+					"displayName": "Language",
+					"description": "If set/detected, the subscriber's language"
+				},
+				"mergeFieldsUi": {
+					"displayName": "Merge Fields",
+					"description": "An individual merge var and value for a member",
+					"placeholder": "Add Merge Fields",
+					"multipleValueButtonText": "Add Merge Fields",
+					"options": {
+						"mergeFieldsValues": {
+							"displayName": "Field",
+							"options": {
+								"name": {
+									"displayName": "Field Name or ID",
+									"description": "Merge Field name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Merge field value"
+								}
+							}
+						}
+					},
+					"values": {
+						"mergeFieldsValues": {
+							"displayName": "Field",
+							"options": {
+								"name": {
+									"displayName": "Field Name or ID",
+									"description": "Merge Field name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Merge field value"
+								}
+							}
+						},
+						"mergeFieldsUi": {
+							"displayName": "Merge Fields",
+							"placeholder": "Add Merge Fields"
+						}
+					}
+				},
+				"ipOptIn": {
+					"displayName": "Opt-in IP",
+					"description": "The IP address the subscriber used to confirm their opt-in status"
+				},
+				"ipSignup": {
+					"displayName": "Signup IP",
+					"description": "IP address the subscriber signed up from"
+				},
+				"timestampSignup": {
+					"displayName": "Signup Timestamp",
+					"description": "The date and time the subscriber signed up for the list in ISO 8601 format"
+				},
+				"skipMergeValidation": {
+					"displayName": "Skip Merge Validation",
+					"description": "Whether member data will be accepted without merge field values, even if the merge field is usually required"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Subscriber's current status",
+					"options": {
+						"cleaned": {
+							"displayName": "Cleaned"
+						},
+						"pending": {
+							"displayName": "Pending"
+						},
+						"subscribed": {
+							"displayName": "Subscribed"
+						},
+						"transactional": {
+							"displayName": "Transactional"
+						},
+						"unsubscribed": {
+							"displayName": "Unsubscribed"
+						}
+					}
+				},
+				"vip": {
+					"displayName": "Vip",
+					"description": "Vip status for subscribers"
+				},
+				"locationFieldsUi": {
+					"displayName": "Location",
+					"description": "Subscriber location information.n",
+					"placeholder": "Add Location",
+					"options": {
+						"locationFieldsValues": {
+							"displayName": "Location",
+							"options": {
+								"latitude": {
+									"displayName": "Latitude",
+									"description": "The location latitude"
+								},
+								"longitude": {
+									"displayName": "Longitude",
+									"description": "The location longitude"
+								}
+							}
+						}
+					},
+					"values": {
+						"locationFieldsValues": {
+							"displayName": "Location",
+							"options": {
+								"latitude": {
+									"displayName": "Latitude",
+									"description": "The location latitude"
+								},
+								"longitude": {
+									"displayName": "Longitude",
+									"description": "The location longitude"
+								}
+							}
+						},
+						"locationFieldsUi": {
+							"displayName": "Location",
+							"placeholder": "Add Location"
+						}
+					}
+				},
+				"timestampOpt": {
+					"displayName": "Opt-in Timestamp",
+					"description": "The date and time the subscribe confirmed their opt-in status in ISO 8601 format"
+				}
+			}
+		},
+		"tags": {
+			"displayName": "Tags"
+		},
+		"groupCategory": {
+			"displayName": "Group Category Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+			"options": {}
+		},
+		"campaignId": {
+			"displayName": "Campaign ID",
+			"description": "List of Campaigns"
+		}
+	}
+}

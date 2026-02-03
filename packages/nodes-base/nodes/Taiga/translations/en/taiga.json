@@ -1,0 +1,321 @@
+{
+	"header": {
+		"displayName": "Taiga",
+		"description": "Consume Taiga API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"epic": {
+					"displayName": "Epic"
+				},
+				"issue": {
+					"displayName": "Issue"
+				},
+				"task": {
+					"displayName": "Task"
+				},
+				"userStory": {
+					"displayName": "User Story"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a user story"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user story"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a user story"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many user stories"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a user story"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "Project Name or ID",
+			"description": "ID of the project to set the user story to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"subject": {
+			"displayName": "Subject"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assigned_to": {
+					"displayName": "Assignee Name or ID",
+					"description": "ID of the user to whom the user story is assigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"blocked_note": {
+					"displayName": "Blocked Note",
+					"description": "Reason why the user story is blocked. Requires \"Is Blocked\" toggle to be enabled."
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "Color code in hexadecimal notation"
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"is_blocked": {
+					"displayName": "Is Blocked",
+					"description": "Whether the user story is blocked"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"milestone": {
+					"displayName": "Milestone (Sprint) Name or ID",
+					"description": "ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"priority": {
+					"displayName": "Priority Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"severity": {
+					"displayName": "Severity Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"status": {
+					"displayName": "Status Name or ID",
+					"description": "ID of the status of the user story. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"type": {
+					"displayName": "Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"taskboard_order": {
+					"displayName": "Taskboard Order",
+					"description": "Order of the task in the taskboard"
+				},
+				"user_story": {
+					"displayName": "User Story Name or ID",
+					"description": "ID of the user story of the task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"us_order": {
+					"displayName": "User Story Order",
+					"description": "Order of the task in the user story"
+				},
+				"backlog_order": {
+					"displayName": "Backlog Order",
+					"description": "Order of the user story in the backlog"
+				},
+				"kanban_order": {
+					"displayName": "Kanban Order",
+					"description": "Order of the user story in the kanban"
+				},
+				"sprint_order": {
+					"displayName": "Sprint Order",
+					"description": "Order of the user story in the milestone"
+				}
+			}
+		},
+		"epicId": {
+			"displayName": "Epic ID",
+			"description": "ID of the epic to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"assigned_to": {
+					"displayName": "Assignee Name or ID",
+					"description": "ID of the user whom the user story is assigned to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"statusIsClosed": {
+					"displayName": "Is Closed",
+					"description": "Whether the user story is closed"
+				},
+				"orderBy": {
+					"displayName": "Order By",
+					"description": "Field to order the issues by",
+					"options": {
+						"assigned_to": {
+							"displayName": "Assigned To"
+						},
+						"created_date": {
+							"displayName": "Created Date"
+						},
+						"modified_date": {
+							"displayName": "Modified Date"
+						},
+						"owner": {
+							"displayName": "Owner"
+						},
+						"priority": {
+							"displayName": "Priority"
+						},
+						"severity": {
+							"displayName": "Severity"
+						},
+						"status": {
+							"displayName": "Status"
+						},
+						"subject": {
+							"displayName": "Subject"
+						},
+						"type": {
+							"displayName": "Type"
+						}
+					}
+				},
+				"owner": {
+					"displayName": "Owner Name or ID",
+					"description": "ID of the owner of the task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"priority": {
+					"displayName": "Priority Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"role": {
+					"displayName": "Role Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"severity": {
+					"displayName": "Severity Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"status": {
+					"displayName": "Status Name or ID",
+					"description": "ID of the status of the user story. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"type": {
+					"displayName": "Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"milestone": {
+					"displayName": "Milestone (Sprint) Name or ID",
+					"description": "ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"userStory": {
+					"displayName": "User Story Name or ID",
+					"description": "ID of the user story to which the task belongs. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"epic": {
+					"displayName": "Epic Name or ID",
+					"description": "ID of the epic to which the user story belongs. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"statusIsArchived": {
+					"displayName": "Is Archived",
+					"description": "Whether the user story has been archived"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assigned_to": {
+					"displayName": "Assignee Name or ID",
+					"description": "ID of the user to assign the the user story to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"blocked_note": {
+					"displayName": "Blocked Note",
+					"description": "Reason why the user story is blocked. Requires \"Is Blocked\" toggle to be enabled."
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "Color code in hexadecimal notation"
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"is_blocked": {
+					"displayName": "Is Blocked",
+					"description": "Whether the user story is blocked"
+				},
+				"subject": {
+					"displayName": "Subject"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"milestone": {
+					"displayName": "Milestone (Sprint) Name or ID",
+					"description": "ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"priority": {
+					"displayName": "Priority Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"severity": {
+					"displayName": "Severity Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"status": {
+					"displayName": "Status Name or ID",
+					"description": "ID of the status of the user story. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"type": {
+					"displayName": "Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"user_story": {
+					"displayName": "User Story Name or ID",
+					"description": "ID of the user story of the task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"us_order": {
+					"displayName": "User Story Order",
+					"description": "Order of the task in the user story"
+				},
+				"taskboard_order": {
+					"displayName": "Taskboard Order",
+					"description": "Order of the task in the taskboard"
+				},
+				"backlog_order": {
+					"displayName": "Backlog Order",
+					"description": "Order of the user story in the backlog"
+				},
+				"kanban_order": {
+					"displayName": "Kanban Order",
+					"description": "Order of the user story in the kanban"
+				},
+				"sprint_order": {
+					"displayName": "Sprint Order",
+					"description": "Order of the user story in the milestone"
+				}
+			}
+		},
+		"issueId": {
+			"displayName": "Issue ID",
+			"description": "ID of the issue to update"
+		},
+		"taskId": {
+			"displayName": "Task ID",
+			"description": "ID of the task to update"
+		},
+		"userStoryId": {
+			"displayName": "User Story ID",
+			"description": "ID of the user story to update"
+		}
+	}
+}

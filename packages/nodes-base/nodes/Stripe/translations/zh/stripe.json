@@ -1,0 +1,865 @@
+{
+	"header": {
+		"displayName": "Stripe",
+		"description": "使用Stripe API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"balance": {
+					"displayName": "余额"
+				},
+				"charge": {
+					"displayName": "收费"
+				},
+				"coupon": {
+					"displayName": "优惠券"
+				},
+				"customer": {
+					"displayName": "客户"
+				},
+				"customerCard": {
+					"displayName": "客户卡片"
+				},
+				"meterEvent": {
+					"displayName": "Meter 事件"
+				},
+				"source": {
+					"displayName": "源"
+				},
+				"token": {
+					"displayName": "令牌"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取源数据"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "添加客户卡片"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "移除客户卡片"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建令牌"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个客户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新客户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一个源"
+				}
+			}
+		},
+		"customerId": {
+			"displayName": "客户ID",
+			"description": "要删除其来源的客户ID"
+		},
+		"token": {
+			"displayName": "卡牌令牌",
+			"description": "代表敏感卡信息的令牌",
+			"placeholder": "tok_1IMfKdJhRTnqS5TKQVG1LI9o"
+		},
+		"cardId": {
+			"displayName": "卡片ID",
+			"description": "要移除的卡片ID"
+		},
+		"sourceId": {
+			"displayName": "源ID",
+			"description": "要检索的源ID"
+		},
+		"amount": {
+			"displayName": "金额",
+			"description": "此收费的金额（以分为单位），例如输入 <code>100</code> 表示 $1.00"
+		},
+		"currency": {
+			"displayName": "货币名称或ID",
+			"description": "三位ISO货币代码，例如<code>USD</code>或<code>EUR</code>。必须是<a href=\"https://stripe.com/docs/currencies\">Stripe支持的货币</a>。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"source": {
+			"displayName": "源ID",
+			"description": "要扣款的客户支付源ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述",
+					"description": "用于描述要创建客户的任意文本"
+				},
+				"metadata": {
+					"displayName": "元数据",
+					"description": "要附加到源以创建的一组键值对",
+					"placeholder": "添加元数据项",
+					"multipleValueButtonText": "添加元数据项",
+					"options": {
+						"metadataProperties": {
+							"displayName": "元数据属性",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataProperties": {
+							"displayName": "元数据属性",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "元数据",
+							"placeholder": "添加元数据项"
+						}
+					}
+				},
+				"receipt_email": {
+					"displayName": "收据邮件",
+					"description": "此收费收据的发送邮箱地址"
+				},
+				"shipping": {
+					"displayName": "运输",
+					"description": "客户的运输信息",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"shippingProperties": {
+							"displayName": "发货属性",
+							"options": {
+								"name": {
+									"displayName": "收件人姓名",
+									"description": "收货人姓名"
+								},
+								"address": {
+									"displayName": "收件人地址",
+									"placeholder": "添加地址详情",
+									"options": {
+										"details": {
+											"displayName": "详细信息",
+											"options": {
+												"line1": {
+													"displayName": "第1行",
+													"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+												},
+												"line2": {
+													"displayName": "第2行",
+													"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+												},
+												"city": {
+													"displayName": "城市",
+													"description": "城市、区、郊区、镇或村"
+												},
+												"state": {
+													"displayName": "状态",
+													"description": "州、县、省或地区"
+												},
+												"country": {
+													"displayName": "国家",
+													"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "邮政编码",
+													"description": "邮政编码"
+												}
+											}
+										}
+									},
+									"values": {
+										"details": {
+											"displayName": "详细信息",
+											"options": {
+												"line1": {
+													"displayName": "第1行",
+													"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+												},
+												"line2": {
+													"displayName": "第2行",
+													"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+												},
+												"city": {
+													"displayName": "城市",
+													"description": "城市、区、郊区、镇或村"
+												},
+												"state": {
+													"displayName": "状态",
+													"description": "州、县、省或地区"
+												},
+												"country": {
+													"displayName": "国家",
+													"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "邮政编码",
+													"description": "邮政编码"
+												}
+											}
+										},
+										"address": {
+											"displayName": "收件人地址",
+											"placeholder": "添加地址详情"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "收件人电话"
+								}
+							}
+						}
+					},
+					"values": {
+						"shippingProperties": {
+							"displayName": "发货属性",
+							"options": {
+								"name": {
+									"displayName": "收件人姓名",
+									"description": "收货人姓名"
+								},
+								"address": {
+									"displayName": "收件人地址",
+									"placeholder": "添加地址详情",
+									"options": {
+										"details": {
+											"displayName": "详细信息",
+											"options": {
+												"line1": {
+													"displayName": "第1行",
+													"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+												},
+												"line2": {
+													"displayName": "第2行",
+													"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+												},
+												"city": {
+													"displayName": "城市",
+													"description": "城市、区、郊区、镇或村"
+												},
+												"state": {
+													"displayName": "状态",
+													"description": "州、县、省或地区"
+												},
+												"country": {
+													"displayName": "国家",
+													"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "邮政编码",
+													"description": "邮政编码"
+												}
+											}
+										}
+									},
+									"values": {
+										"details": {
+											"displayName": "详细信息",
+											"options": {
+												"line1": {
+													"displayName": "第1行",
+													"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+												},
+												"line2": {
+													"displayName": "第2行",
+													"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+												},
+												"city": {
+													"displayName": "城市",
+													"description": "城市、区、郊区、镇或村"
+												},
+												"state": {
+													"displayName": "状态",
+													"description": "州、县、省或地区"
+												},
+												"country": {
+													"displayName": "国家",
+													"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "邮政编码",
+													"description": "邮政编码"
+												}
+											}
+										},
+										"address": {
+											"displayName": "收件人地址",
+											"placeholder": "添加地址详情"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "收件人电话"
+								}
+							}
+						},
+						"shipping": {
+							"displayName": "运输",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"address": {
+					"displayName": "地址",
+					"description": "要创建客户的地址",
+					"placeholder": "添加字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"line1": {
+									"displayName": "第1行",
+									"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+								},
+								"line2": {
+									"displayName": "第2行",
+									"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+								},
+								"city": {
+									"displayName": "城市",
+									"description": "城市、区、郊区、镇或村"
+								},
+								"state": {
+									"displayName": "状态",
+									"description": "州、县、省或地区"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "邮政编码"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"line1": {
+									"displayName": "第1行",
+									"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+								},
+								"line2": {
+									"displayName": "第2行",
+									"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+								},
+								"city": {
+									"displayName": "城市",
+									"description": "城市、区、郊区、镇或村"
+								},
+								"state": {
+									"displayName": "状态",
+									"description": "州、县、省或地区"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "邮政编码"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "要创建客户的电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "要创建的客户的电话号码"
+				},
+				"identifier": {
+					"displayName": "标识符",
+					"description": "事件的唯一标识符。如未提供，系统将自动生成。在24小时滚动窗口内强制保持唯一性。"
+				},
+				"timestamp": {
+					"displayName": "时间戳",
+					"description": "事件时间。以Unix纪元以来的秒数计量。必须在过去35个日历日内或未来5分钟内。如果未指定，默认为当前时间。"
+				},
+				"customPayload": {
+					"displayName": "自定义载荷属性",
+					"description": "要包含在事件载荷中的额外自定义属性。用于具有非默认载荷键的自定义计量配置。",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"properties": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "属性键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"properties": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "属性键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						},
+						"customPayload": {
+							"displayName": "自定义载荷属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				},
+				"statement_descriptor": {
+					"displayName": "账单描述符",
+					"description": "显示在客户账单上的任意文本"
+				}
+			}
+		},
+		"chargeId": {
+			"displayName": "费用ID",
+			"description": "要更新的费用ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述",
+					"description": "用于描述要创建客户的任意文本"
+				},
+				"metadata": {
+					"displayName": "元数据",
+					"description": "用于创建客户的键值对集合",
+					"placeholder": "添加元数据项",
+					"multipleValueButtonText": "添加元数据项",
+					"options": {
+						"metadataProperties": {
+							"displayName": "元数据属性",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataProperties": {
+							"displayName": "元数据属性",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "元数据",
+							"placeholder": "添加元数据项"
+						}
+					}
+				},
+				"receipt_email": {
+					"displayName": "收据邮件",
+					"description": "此费用收据将发送到的电子邮件地址"
+				},
+				"shipping": {
+					"displayName": "运输",
+					"description": "客户的运输信息",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"shippingProperties": {
+							"displayName": "发货属性",
+							"options": {
+								"name": {
+									"displayName": "收件人姓名",
+									"description": "收货人姓名"
+								},
+								"address": {
+									"displayName": "收件人地址",
+									"placeholder": "添加地址详情",
+									"options": {
+										"details": {
+											"displayName": "详细信息",
+											"options": {
+												"line1": {
+													"displayName": "第1行",
+													"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+												},
+												"line2": {
+													"displayName": "第2行",
+													"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+												},
+												"city": {
+													"displayName": "城市",
+													"description": "城市、区、郊区、镇或村"
+												},
+												"state": {
+													"displayName": "状态",
+													"description": "州、县、省或地区"
+												},
+												"country": {
+													"displayName": "国家",
+													"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "邮政编码",
+													"description": "邮政编码"
+												}
+											}
+										}
+									},
+									"values": {
+										"details": {
+											"displayName": "详细信息",
+											"options": {
+												"line1": {
+													"displayName": "第1行",
+													"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+												},
+												"line2": {
+													"displayName": "第2行",
+													"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+												},
+												"city": {
+													"displayName": "城市",
+													"description": "城市、区、郊区、镇或村"
+												},
+												"state": {
+													"displayName": "状态",
+													"description": "州、县、省或地区"
+												},
+												"country": {
+													"displayName": "国家",
+													"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "邮政编码",
+													"description": "邮政编码"
+												}
+											}
+										},
+										"address": {
+											"displayName": "收件人地址",
+											"placeholder": "添加地址详情"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "收件人电话",
+									"description": "收货人电话号码"
+								}
+							}
+						}
+					},
+					"values": {
+						"shippingProperties": {
+							"displayName": "发货属性",
+							"options": {
+								"name": {
+									"displayName": "收件人姓名",
+									"description": "收货人姓名"
+								},
+								"address": {
+									"displayName": "收件人地址",
+									"placeholder": "添加地址详情",
+									"options": {
+										"details": {
+											"displayName": "详细信息",
+											"options": {
+												"line1": {
+													"displayName": "第1行",
+													"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+												},
+												"line2": {
+													"displayName": "第2行",
+													"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+												},
+												"city": {
+													"displayName": "城市",
+													"description": "城市、区、郊区、镇或村"
+												},
+												"state": {
+													"displayName": "状态",
+													"description": "州、县、省或地区"
+												},
+												"country": {
+													"displayName": "国家",
+													"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "邮政编码",
+													"description": "邮政编码"
+												}
+											}
+										}
+									},
+									"values": {
+										"details": {
+											"displayName": "详细信息",
+											"options": {
+												"line1": {
+													"displayName": "第1行",
+													"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+												},
+												"line2": {
+													"displayName": "第2行",
+													"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+												},
+												"city": {
+													"displayName": "城市",
+													"description": "城市、区、郊区、镇或村"
+												},
+												"state": {
+													"displayName": "状态",
+													"description": "州、县、省或地区"
+												},
+												"country": {
+													"displayName": "国家",
+													"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "邮政编码",
+													"description": "邮政编码"
+												}
+											}
+										},
+										"address": {
+											"displayName": "收件人地址",
+											"placeholder": "添加地址详情"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "收件人电话",
+									"description": "收货人电话号码"
+								}
+							}
+						},
+						"shipping": {
+							"displayName": "运输",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"address": {
+					"displayName": "地址",
+					"description": "要更新的客户地址",
+					"placeholder": "添加字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"line1": {
+									"displayName": "第1行",
+									"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+								},
+								"line2": {
+									"displayName": "第2行",
+									"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+								},
+								"city": {
+									"displayName": "城市",
+									"description": "城市、区、郊区、镇或村"
+								},
+								"state": {
+									"displayName": "状态",
+									"description": "州、县、省或地区"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "邮政编码"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"line1": {
+									"displayName": "第1行",
+									"description": "地址行 1（例如：街道、邮政信箱或公司名称）"
+								},
+								"line2": {
+									"displayName": "第2行",
+									"description": "地址第二行（例如：公寓、套房、单元或楼栋）"
+								},
+								"city": {
+									"displayName": "城市",
+									"description": "城市、区、郊区、镇或村"
+								},
+								"state": {
+									"displayName": "状态",
+									"description": "州、县、省或地区"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "两位字母国家代码 (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "邮政编码"
+								}
+							}
+						},
+						"address": {
+							"displayName": "地址",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "要创建客户的电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "要创建的客户全名或公司名称"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "此客户的电话号码"
+				}
+			}
+		},
+		"duration": {
+			"displayName": "应用",
+			"description": "折扣有效期",
+			"options": {
+				"forever": {
+					"displayName": "永久"
+				},
+				"once": {
+					"displayName": "一旦"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "要创建的令牌类型",
+			"options": {
+				"fixedAmount": {
+					"displayName": "固定金额（美分）"
+				},
+				"percent": {
+					"displayName": "百分比"
+				},
+				"wechat": {
+					"displayName": "微信"
+				},
+				"cardToken": {
+					"displayName": "卡片令牌"
+				}
+			}
+		},
+		"amountOff": {
+			"displayName": "减免金额",
+			"description": "从发票总额中减去的金额（以分为单位），例如输入<code>100</code>表示1.00美元"
+		},
+		"percentOff": {
+			"displayName": "折扣百分比",
+			"description": "优惠券适用的百分比"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的客户全名或公司名称"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用于筛选的客户邮箱",
+					"placeholder": "name@email.com"
+				}
+			}
+		},
+		"eventName": {
+			"displayName": "事件名称",
+			"description": "计量事件名称。对应计量器上的 event_name 字段。"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "计量事件的值。必须是整数。可以是正数或负数。"
+		},
+		"number": {
+			"displayName": "卡号",
+			"placeholder": "4242424242424242"
+		},
+		"cvc": {
+			"displayName": "CVC",
+			"description": "卡片背面的安全码",
+			"placeholder": "314"
+		},
+		"expirationMonth": {
+			"displayName": "过期月份",
+			"description": "卡片将过期的月份数字",
+			"placeholder": "10"
+		},
+		"expirationYear": {
+			"displayName": "过期年份",
+			"description": "卡片将过期的年份",
+			"placeholder": "2022"
+		}
+	}
+}

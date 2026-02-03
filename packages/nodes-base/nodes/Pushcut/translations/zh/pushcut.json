@@ -1,0 +1,51 @@
+{
+	"header": {
+		"displayName": "Pushcut",
+		"description": "使用Pushcut API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"notification": {
+					"displayName": "通知"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "发送通知"
+				}
+			}
+		},
+		"notificationName": {
+			"displayName": "通知名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"devices": {
+					"displayName": "设备名称或ID",
+					"description": "接收此通知的设备列表（默认为所有设备）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"input": {
+					"displayName": "输入",
+					"description": "作为输入传递给通知操作的值"
+				},
+				"text": {
+					"displayName": "文本",
+					"description": "用于替代应用中定义的文本"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "替代应用中定义标题的标题"
+				}
+			}
+		}
+	}
+}

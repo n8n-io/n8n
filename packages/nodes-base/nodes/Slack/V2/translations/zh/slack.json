@@ -1,0 +1,1490 @@
+{
+	"header": {
+		"displayName": "Slack",
+		"description": "使用Slack API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"channel": {
+					"displayName": "频道"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"message": {
+					"displayName": "消息"
+				},
+				"reaction": {
+					"displayName": "反应"
+				},
+				"star": {
+					"displayName": "星标"
+				},
+				"user": {
+					"displayName": "用户"
+				},
+				"userGroup": {
+					"displayName": "用户组"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"archive": {
+					"displayName": "归档",
+					"description": "归档对话"
+				},
+				"close": {
+					"displayName": "关闭",
+					"description": "关闭私信或多人私信"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "发起基于公共或私有频道的对话"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取消息的反应"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户列表"
+				},
+				"history": {
+					"displayName": "历史记录",
+					"description": "获取对话的消息和事件历史记录"
+				},
+				"invite": {
+					"displayName": "邀请",
+					"description": "邀请用户加入频道"
+				},
+				"join": {
+					"displayName": "加入",
+					"description": "加入现有对话"
+				},
+				"kick": {
+					"displayName": "踢出",
+					"description": "从频道中移除用户"
+				},
+				"leave": {
+					"displayName": "离开",
+					"description": "离开对话"
+				},
+				"member": {
+					"displayName": "成员",
+					"description": "列出对话成员"
+				},
+				"open": {
+					"displayName": "打开",
+					"description": "打开或恢复私聊或多人私聊"
+				},
+				"rename": {
+					"displayName": "重命名",
+					"description": "重命名对话"
+				},
+				"replies": {
+					"displayName": "回复",
+					"description": "获取频道消息线程"
+				},
+				"setPurpose": {
+					"displayName": "设置对话目的",
+					"description": "为对话设置目的"
+				},
+				"setTopic": {
+					"displayName": "设置主题",
+					"description": "为对话设置主题"
+				},
+				"unarchive": {
+					"displayName": "取消归档",
+					"description": "解档对话"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从项目中删除星标"
+				},
+				"getPermalink": {
+					"displayName": "获取永久链接"
+				},
+				"search": {
+					"displayName": "搜索"
+				},
+				"post": {
+					"displayName": "发送"
+				},
+				"sendAndWait": {
+					"displayName": "发送并等待响应"
+				},
+				"update": {
+					"displayName": "更新"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "向消息添加反应"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "创建或上传现有文件"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "移除消息的反应"
+				},
+				"info": {
+					"displayName": "获取",
+					"description": "获取用户信息"
+				},
+				"getProfile": {
+					"displayName": "获取用户资料",
+					"description": "获取用户资料"
+				},
+				"getPresence": {
+					"displayName": "获取用户状态",
+					"description": "获取用户的在线状态"
+				},
+				"updateProfile": {
+					"displayName": "更新用户资料",
+					"description": "更新用户资料"
+				},
+				"updateUsers": {
+					"displayName": "添加用户"
+				},
+				"disable": {
+					"displayName": "禁用"
+				},
+				"enable": {
+					"displayName": "启用"
+				},
+				"getUsers": {
+					"displayName": "获取用户"
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "频道",
+			"description": "要获取反应的Slack频道",
+			"placeholder": "选择频道..."
+		},
+		"channelVisibility": {
+			"displayName": "频道可见性",
+			"description": "选择创建公开还是私密Slack频道。<a href=\"https://slack.com/help/articles/360017938993-What-is-a-channel\">更多信息</a>。",
+			"options": {
+				"public": {
+					"displayName": "公共频道"
+				},
+				"private": {
+					"displayName": "私有频道"
+				}
+			}
+		},
+		"userIds": {
+			"displayName": "用户名称或ID",
+			"description": "要邀请加入频道的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"includeNumMembers": {
+					"displayName": "包含成员数量"
+				},
+				"channelId": {
+					"displayName": "频道名称或ID",
+					"description": "发送文件的目标频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"returnIm": {
+					"displayName": "返回即时通讯",
+					"description": "是否需要在响应中包含完整的即时通讯通道定义"
+				},
+				"users": {
+					"displayName": "用户名称或ID",
+					"description": "如果只包含一个用户，这将创建一个1:1私信。返回多人私信时，用户顺序会被保留。不提供用户时需提供频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"searchChannel": {
+					"displayName": "在频道中搜索",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"limitWaitTime": {
+					"displayName": "等待时间限制",
+					"description": "是否限制此节点在继续执行前等待用户响应的时间",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "等待时间限制"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "添加n8n归属声明",
+					"description": "是否在消息末尾包含短语“此消息由n8n自动发送”"
+				},
+				"thread_ts": {
+					"displayName": "回复消息",
+					"description": "提供另一条消息的时间戳值，使此消息成为回复",
+					"placeholder": "回复消息",
+					"options": {
+						"replyValues": {
+							"displayName": "Reply to a Message",
+							"options": {
+								"thread_ts": {
+									"displayName": "要回复的消息时间戳",
+									"description": "消息时间戳包含在Slack节点的输出数据中,缩写为ts",
+									"placeholder": "1663233118.856619"
+								},
+								"reply_broadcast": {
+									"displayName": "同时发送到频道",
+									"description": "回复是否应对频道或对话中的所有成员可见"
+								}
+							}
+						}
+					},
+					"values": {
+						"replyValues": {
+							"displayName": "Reply to a Message",
+							"options": {
+								"thread_ts": {
+									"displayName": "要回复的消息时间戳",
+									"description": "消息时间戳包含在Slack节点的输出数据中,缩写为ts",
+									"placeholder": "1663233118.856619"
+								},
+								"reply_broadcast": {
+									"displayName": "同时发送到频道",
+									"description": "回复是否应对频道或对话中的所有成员可见"
+								}
+							}
+						},
+						"thread_ts": {
+							"displayName": "Reply to a Message",
+							"placeholder": "Reply to a Message"
+						}
+					}
+				},
+				"messageButtonLabel": {
+					"displayName": "消息按钮标签"
+				},
+				"responseFormTitle": {
+					"displayName": "响应表单标题",
+					"description": "用户可访问以提供其响应的表单标题"
+				},
+				"responseFormDescription": {
+					"displayName": "响应表单描述",
+					"description": "用户可访问以提供其响应的表单描述"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "响应表单按钮标签"
+				},
+				"responseFormCustomCss": {
+					"displayName": "响应表单自定义样式",
+					"description": "使用CSS覆盖响应表单的默认样式"
+				},
+				"fileComment": {
+					"displayName": "文件注释",
+					"description": "添加星标文件注释"
+				},
+				"fileId": {
+					"displayName": "文件ID",
+					"description": "要添加星标的文件"
+				},
+				"timestamp": {
+					"displayName": "消息时间戳",
+					"description": "要删除消息的时间戳",
+					"placeholder": "1663233118.856619"
+				},
+				"channelIds": {
+					"displayName": "频道名称或ID",
+					"description": "发送文件的目标频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"fileName": {
+					"displayName": "文件名"
+				},
+				"initialComment": {
+					"displayName": "初始评论",
+					"description": "在指定频道中介绍文件的消息文本"
+				},
+				"threadTs": {
+					"displayName": "线程时间戳",
+					"description": "提供另一条消息的时间戳值，将此文件作为回复上传。切勿使用回复的时间戳值；请使用其父级消息的时间戳。"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"customFieldUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"id": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								},
+								"alt": {
+									"displayName": "Alt"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"id": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								},
+								"alt": {
+									"displayName": "Alt"
+								}
+							}
+						},
+						"customFieldUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "此字段仅可由管理员为付费团队中的用户更改",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "名字"
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"status": {
+					"displayName": "设置状态",
+					"placeholder": "设置状态",
+					"multipleValueButtonText": "设置状态",
+					"options": {
+						"set_status": {
+							"displayName": "设置状态",
+							"options": {
+								"status_emoji": {
+									"displayName": "状态表情符号",
+									"description": "引用Slack团队启用的表情符号字符串，例如:mountain_railway:"
+								},
+								"status_expiration": {
+									"displayName": "状态过期时间",
+									"description": "此状态过期并被清除前等待的分钟数。可选。"
+								},
+								"status_text": {
+									"displayName": "状态文本",
+									"description": "最多允许100个字符，但我们强烈建议保持简洁"
+								}
+							}
+						}
+					},
+					"values": {
+						"set_status": {
+							"displayName": "设置状态",
+							"options": {
+								"status_emoji": {
+									"displayName": "状态表情符号",
+									"description": "引用Slack团队启用的表情符号字符串，例如:mountain_railway:"
+								},
+								"status_expiration": {
+									"displayName": "状态过期时间",
+									"description": "此状态过期并被清除前等待的分钟数。可选。"
+								},
+								"status_text": {
+									"displayName": "状态文本",
+									"description": "最多允许100个字符，但我们强烈建议保持简洁"
+								}
+							}
+						},
+						"status": {
+							"displayName": "设置状态",
+							"placeholder": "设置状态"
+						}
+					}
+				},
+				"user": {
+					"displayName": "用户ID",
+					"description": "要更改的用户ID。此参数仅可由付费团队的团队管理员指定。"
+				},
+				"include_count": {
+					"displayName": "包含计数",
+					"description": "是否在用户组中包含用户数量"
+				},
+				"include_disabled": {
+					"displayName": "包含已停用",
+					"description": "是否包含已停用的用户组"
+				},
+				"include_users": {
+					"displayName": "包含用户",
+					"description": "是否包含每个用户组的用户列表"
+				},
+				"resolveData": {
+					"displayName": "解析数据",
+					"description": "是否返回完整的用户对象而不仅仅是用户ID"
+				}
+			},
+			"description": "其他选项设置"
+		},
+		"userId": {
+			"displayName": "用户名或ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量",
+			"placeholder": "限制"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"excludeArchived": {
+					"displayName": "排除已归档",
+					"description": "是否从列表中排除已归档的频道"
+				},
+				"types": {
+					"displayName": "类型",
+					"description": "按文件类型筛选文件"
+				},
+				"inclusive": {
+					"displayName": "包含",
+					"description": "是否仅在指定时间戳时包含最新或最旧时间戳的消息"
+				},
+				"latest": {
+					"displayName": "最新",
+					"description": "要包含在结果中的消息时间范围结束时间"
+				},
+				"oldest": {
+					"displayName": "最旧",
+					"description": "包含在结果中的消息起始时间范围"
+				},
+				"channelId": {
+					"displayName": "频道名称或ID",
+					"description": "包含待列出文件的频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"showFilesHidden": {
+					"displayName": "显示因限制隐藏的文件",
+					"description": "是否显示因文件过旧且所属团队超出文件限制而被截断的文件信息"
+				},
+				"tsFrom": {
+					"displayName": "消息时间戳来源",
+					"description": "筛选在此时间戳之后（含）创建的文件"
+				},
+				"tsTo": {
+					"displayName": "消息时间戳转换",
+					"description": "筛选在此时间戳之前（含）创建的文件"
+				},
+				"userId": {
+					"displayName": "用户名或ID",
+					"description": "筛选由单个用户创建的文件。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "是否自动解析数据。默认情况下响应仅包含资源的ID。"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "用户组的名称。必须在所有用户组中保持唯一。",
+			"placeholder": "[0]+1"
+		},
+		"ts": {
+			"displayName": "消息时间戳",
+			"description": "要更新的消息时间戳",
+			"placeholder": "1663233118.856619"
+		},
+		"purpose": {
+			"displayName": "用途",
+			"description": "一个新的、更特殊的用途"
+		},
+		"topic": {
+			"displayName": "主题"
+		},
+		"timestamp": {
+			"displayName": "消息时间戳",
+			"description": "要添加、获取或删除的消息的时间戳",
+			"placeholder": "1663233118.856619"
+		},
+		"select": {
+			"displayName": "发送消息至",
+			"placeholder": "选择...",
+			"options": {
+				"channel": {
+					"displayName": "频道"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"user": {
+			"displayName": "用户",
+			"placeholder": "选择用户...",
+			"description": "要获取在线状态的用户ID"
+		},
+		"messageType": {
+			"displayName": "消息类型",
+			"description": "是发送简单文本消息，还是使用Slack的Blocks UI构建器来创建包含表单字段、分区等更复杂的消息",
+			"options": {
+				"text": {
+					"displayName": "简单文本消息",
+					"description": "支持基础Markdown"
+				},
+				"block": {
+					"displayName": "区块",
+					"description": "在Slack的可视化构建器中组合文本、按钮、表单元素、分隔线等"
+				},
+				"attachment": {
+					"displayName": "附件"
+				}
+			}
+		},
+		"text": {
+			"displayName": "消息文本",
+			"description": "要更新的消息文本。默认支持<a href=\"https://api.slack.com/reference/surfaces/formatting/\">Markdown</a>格式 - 可在“选项”中禁用此功能。"
+		},
+		"blocksUi": {
+			"displayName": "区块",
+			"description": "在此输入来自Slack可视化Block Kit Builder的JSON输出。然后您可以使用表达式为区块添加变量内容。要创建区块，请使用<a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack的Block Kit Builder</a>"
+		},
+		"noticeAttachments": {
+			"displayName": "这是Slack的遗留功能。Slack建议改用Blocks。"
+		},
+		"attachments": {
+			"displayName": "附件",
+			"placeholder": "添加附件项",
+			"multipleValueButtonText": "添加附件",
+			"options": {
+				"fallback": {
+					"displayName": "备用文本",
+					"description": "附件的必需纯文本摘要"
+				},
+				"text": {
+					"displayName": "文本"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"title_link": {
+					"displayName": "标题链接"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "文本左侧线条颜色"
+				},
+				"pretext": {
+					"displayName": "前置文本",
+					"description": "消息块前显示的文本"
+				},
+				"author_name": {
+					"displayName": "作者姓名",
+					"description": "应显示的名称"
+				},
+				"author_link": {
+					"displayName": "作者链接"
+				},
+				"author_icon": {
+					"displayName": "作者图标",
+					"description": "应为用户显示的图标"
+				},
+				"image_url": {
+					"displayName": "图片URL"
+				},
+				"thumb_url": {
+					"displayName": "缩略图URL"
+				},
+				"footer": {
+					"displayName": "页脚",
+					"description": "要添加的页脚文本"
+				},
+				"footer_icon": {
+					"displayName": "页脚图标",
+					"description": "应显示在页脚旁的图标"
+				},
+				"ts": {
+					"displayName": "消息时间戳",
+					"description": "要发布消息的时间戳",
+					"placeholder": "1663233118.856619"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要添加到消息的字段",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"item": {
+							"displayName": "项目",
+							"options": {
+								"title": {
+									"displayName": "标题"
+								},
+								"value": {
+									"displayName": "值"
+								},
+								"short": {
+									"displayName": "简短",
+									"description": "项目是否可以并排显示"
+								}
+							}
+						}
+					},
+					"values": {
+						"item": {
+							"displayName": "项目",
+							"options": {
+								"title": {
+									"displayName": "标题"
+								},
+								"value": {
+									"displayName": "值"
+								},
+								"short": {
+									"displayName": "简短",
+									"description": "项目是否可以并排显示"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "字段",
+							"placeholder": "添加字段"
+						}
+					}
+				}
+			}
+		},
+		"otherOptions": {
+			"displayName": "选项",
+			"description": "其他要设置的选项",
+			"placeholder": "添加选项",
+			"options": {
+				"includeLinkToWorkflow": {
+					"displayName": "包含工作流链接",
+					"description": "是否在消息末尾附加此工作流的链接。如果您有多个工作流发送Slack消息，这会很有帮助。"
+				},
+				"botProfile": {
+					"displayName": "自定义机器人头像",
+					"description": "设置图片或表情符号作为发送消息的机器人头像。如果以用户身份发送消息则不会使用。",
+					"options": {
+						"imageValues": {
+							"displayName": "添加机器人个人资料照片",
+							"options": {
+								"profilePhotoType": {
+									"displayName": "个人资料照片类型",
+									"placeholder": "选择类型…",
+									"options": {
+										"image": {
+											"displayName": "图片URL"
+										},
+										"emoji": {
+											"displayName": "表情符号代码"
+										}
+									}
+								},
+								"icon_emoji": {
+									"displayName": "表情符号代码",
+									"description": "仅在以机器人身份发送消息时使用。请使用表情符号代码如+1，而非实际表情符号如👍。<a target=\"_blank\" href=\"https://www.webfx.com/tools/emoji-cheat-sheet/\">常见表情符号代码列表</a>"
+								},
+								"icon_url": {
+									"displayName": "图片URL",
+									"description": "仅在以机器人身份发送消息时使用"
+								}
+							}
+						}
+					},
+					"values": {
+						"imageValues": {
+							"displayName": "添加机器人个人资料照片",
+							"options": {
+								"profilePhotoType": {
+									"displayName": "个人资料照片类型",
+									"placeholder": "选择类型…",
+									"options": {
+										"image": {
+											"displayName": "图片URL"
+										},
+										"emoji": {
+											"displayName": "表情符号代码"
+										}
+									}
+								},
+								"icon_emoji": {
+									"displayName": "表情符号代码",
+									"description": "仅在以机器人身份发送消息时使用。请使用表情符号代码如+1，而非实际表情符号如👍。<a target=\"_blank\" href=\"https://www.webfx.com/tools/emoji-cheat-sheet/\">常见表情符号代码列表</a>"
+								},
+								"icon_url": {
+									"displayName": "图片URL",
+									"description": "仅在以机器人身份发送消息时使用"
+								}
+							}
+						},
+						"botProfile": {
+							"displayName": "自定义机器人头像"
+						}
+					}
+				},
+				"link_names": {
+					"displayName": "关联用户和频道名称",
+					"description": "是否将消息文本中的@用户和#频道转换为可点击链接"
+				},
+				"thread_ts": {
+					"displayName": "回复消息",
+					"description": "提供另一条消息的时间戳值，使此消息成为回复",
+					"placeholder": "回复消息",
+					"options": {
+						"replyValues": {
+							"displayName": "回复消息",
+							"options": {
+								"thread_ts": {
+									"displayName": "要回复的消息时间戳",
+									"description": "消息时间戳包含在Slack节点的输出数据中,缩写为ts",
+									"placeholder": "1663233118.856619"
+								},
+								"reply_broadcast": {
+									"displayName": "同时发送到频道",
+									"description": "回复是否应对频道或对话中的所有成员可见"
+								}
+							}
+						}
+					},
+					"values": {
+						"replyValues": {
+							"displayName": "回复消息",
+							"options": {
+								"thread_ts": {
+									"displayName": "要回复的消息时间戳",
+									"description": "消息时间戳包含在Slack节点的输出数据中,缩写为ts",
+									"placeholder": "1663233118.856619"
+								},
+								"reply_broadcast": {
+									"displayName": "同时发送到频道",
+									"description": "回复是否应对频道或对话中的所有成员可见"
+								}
+							}
+						},
+						"thread_ts": {
+							"displayName": "回复消息",
+							"placeholder": "回复消息"
+						}
+					}
+				},
+				"mrkdwn": {
+					"displayName": "使用Markdown格式？",
+					"description": "是否使用Slack Markdown格式化消息"
+				},
+				"unfurl_links": {
+					"displayName": "链接预览",
+					"description": "是否启用以文本为主的内容预览"
+				},
+				"unfurl_media": {
+					"displayName": "媒体内容展开",
+					"description": "是否禁用媒体内容的自动展开"
+				},
+				"ephemeral": {
+					"displayName": "发送为临时消息",
+					"description": "是否发送临时性、短暂的消息"
+				},
+				"sendAsUser": {
+					"displayName": "以用户身份发送",
+					"description": "消息将从此用户名发送（即显示为此人发送的消息）。请在Slack API中添加chat:write.customize范围"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"link_names": {
+					"displayName": "关联用户和频道名称",
+					"description": "是否查找并链接频道名称和用户名"
+				},
+				"parse": {
+					"displayName": "解析",
+					"description": "更改消息处理方式",
+					"options": {
+						"client": {
+							"displayName": "客户端"
+						},
+						"full": {
+							"displayName": "完整"
+						},
+						"none": {
+							"displayName": "无"
+						}
+					}
+				},
+				"channels": {
+					"displayName": "频道名称或ID",
+					"description": "用户组用作默认设置的编码频道ID的逗号分隔字符串。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "用户组的简短描述"
+				},
+				"handle": {
+					"displayName": "处理",
+					"description": "提及句柄。必须在频道、用户和用户组中保持唯一。"
+				},
+				"include_count": {
+					"displayName": "包含计数",
+					"description": "是否包含每个用户组中的用户数量"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "用户组的名称。必须在所有用户组中保持唯一。"
+				}
+			}
+		},
+		"query": {
+			"displayName": "搜索查询",
+			"description": "在消息中搜索的文本"
+		},
+		"sort": {
+			"displayName": "排序方式",
+			"description": "搜索结果应如何排序。您可以按以下方式排序：",
+			"options": {
+				"desc": {
+					"displayName": "最新"
+				},
+				"asc": {
+					"displayName": "最旧"
+				},
+				"relevance": {
+					"displayName": "相关度分数"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息"
+		},
+		"responseType": {
+			"displayName": "响应类型",
+			"options": {
+				"approval": {
+					"displayName": "审批",
+					"description": "用户可直接在消息内批准/拒绝"
+				},
+				"freeText": {
+					"displayName": "自由文本",
+					"description": "用户可通过表单提交响应"
+				},
+				"customForm": {
+					"displayName": "自定义表单",
+					"description": "用户可通过自定义表单提交响应"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "定义表单",
+			"options": {
+				"fields": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "表单字段"
+		},
+		"formFields": {
+			"displayName": "表单元素",
+			"placeholder": "添加表单元素",
+			"multipleValueButtonText": "添加表单元素",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "表单元素",
+					"placeholder": "添加表单元素"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "审批选项",
+			"placeholder": "添加选项",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "批准按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "拒绝按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "批准按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "拒绝按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "审批选项",
+					"placeholder": "添加选项"
+				}
+			}
+		},
+		"target": {
+			"displayName": "添加星标项目",
+			"description": "选择是为消息还是文件添加星标",
+			"placeholder": "选择...",
+			"options": {
+				"message": {
+					"displayName": "消息"
+				},
+				"file": {
+					"displayName": "文件"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "文件ID",
+			"description": "要添加星标的文件"
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"fileContent": {
+			"displayName": "文件内容"
+		},
+		"binaryPropertyName": {
+			"displayName": "文件属性",
+			"description": "包含待上传文件数据的二进制属性名称"
+		},
+		"Options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"channelIds": {
+					"displayName": "频道名称或ID",
+					"description": "用户组用作默认设置的编码频道ID的逗号分隔字符串。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "用户组的简短描述"
+				},
+				"handle": {
+					"displayName": "处理",
+					"description": "提及句柄。必须在频道、用户和用户组中保持唯一。"
+				},
+				"include_count": {
+					"displayName": "包含计数",
+					"description": "是否包含每个用户组中的用户数量"
+				}
+			}
+		},
+		"userGroupId": {
+			"displayName": "用户组ID",
+			"description": "用户组的编码ID"
+		},
+		"option": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"include_count": {
+					"displayName": "包含计数",
+					"description": "是否包含每个用户组中的用户数量"
+				}
+			}
+		},
+		"users": {
+			"displayName": "用户名或ID",
+			"description": "要添加到用户组的用户。现有用户将保留。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

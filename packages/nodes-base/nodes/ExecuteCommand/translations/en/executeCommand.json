@@ -1,0 +1,17 @@
+{
+	"header": {
+		"displayName": "Execute Command",
+		"description": "Executes a command on the host"
+	},
+	"nodeView": {
+		"executeOnce": {
+			"displayName": "Execute Once",
+			"description": "Whether to execute only once instead of once for each entry"
+		},
+		"command": {
+			"displayName": "Command",
+			"description": "The command to execute",
+			"placeholder": "echo \"test\""
+		}
+	}
+}

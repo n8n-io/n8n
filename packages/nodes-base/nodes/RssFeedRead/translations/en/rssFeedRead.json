@@ -1,0 +1,26 @@
+{
+	"header": {
+		"displayName": "RSS Read",
+		"description": "Reads data from an RSS Feed"
+	},
+	"nodeView": {
+		"url": {
+			"displayName": "URL",
+			"description": "URL of the RSS feed"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"customFields": {
+					"displayName": "Custom Fields",
+					"description": "A comma-separated list of custom fields to include in the output. For example, \"author, contentSnippet\"."
+				},
+				"ignoreSSL": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to ignore SSL/TLS certificate issues or not"
+				}
+			}
+		}
+	}
+}

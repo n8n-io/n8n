@@ -1,0 +1,25 @@
+{
+	"header": {
+		"displayName": "项目列表输出解析器",
+		"description": "将结果作为独立项目返回"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI链。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"numberOfItems": {
+					"displayName": "项目数量",
+					"description": "定义最多应返回多少项目。如果设置为 -1，则表示无限制。"
+				},
+				"separator": {
+					"displayName": "分隔符",
+					"description": "定义用于将结果拆分为单独项目的分隔符。默认为换行符，但可根据需要返回的数据进行更改。"
+				}
+			}
+		}
+	}
+}

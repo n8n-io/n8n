@@ -1,0 +1,791 @@
+{
+	"header": {
+		"displayName": "Invoice Ninja",
+		"description": "Consume Invoice Ninja API"
+	},
+	"nodeView": {
+		"apiVersion": {
+			"displayName": "API Version",
+			"options": {
+				"v4": {
+					"displayName": "Version 4"
+				},
+				"v5": {
+					"displayName": "Version 5"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"bank_transaction": {
+					"displayName": "Bank Transaction"
+				},
+				"client": {
+					"displayName": "Client"
+				},
+				"expense": {
+					"displayName": "Expense"
+				},
+				"invoice": {
+					"displayName": "Invoice"
+				},
+				"payment": {
+					"displayName": "Payment"
+				},
+				"quote": {
+					"displayName": "Quote"
+				},
+				"task": {
+					"displayName": "Task"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new bank transaction"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a bank transaction"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get data of a bank transaction"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get data of many bank transactions"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email a quote"
+				},
+				"matchPayment": {
+					"displayName": "Match Payment",
+					"description": "Match payment to a bank transaction"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"clientName": {
+					"displayName": "Client Name"
+				},
+				"idNumber": {
+					"displayName": "ID Number"
+				},
+				"privateNotes": {
+					"displayName": "Private Notes"
+				},
+				"vatNumber": {
+					"displayName": "VAT Number"
+				},
+				"workPhone": {
+					"displayName": "Work Phone"
+				},
+				"website": {
+					"displayName": "Website"
+				},
+				"client": {
+					"displayName": "Client Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"autoBill": {
+					"displayName": "Auto Bill"
+				},
+				"customValue1": {
+					"displayName": "Custom Value 1"
+				},
+				"customValue2": {
+					"displayName": "Custom Value 2"
+				},
+				"discount": {
+					"displayName": "Discount"
+				},
+				"dueDate": {
+					"displayName": "Due Date"
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"emailInvoice": {
+					"displayName": "Email Invoice"
+				},
+				"invoiceDate": {
+					"displayName": "Invoice Date"
+				},
+				"invoiceNumber": {
+					"displayName": "Invoice Number"
+				},
+				"invoiceStatus": {
+					"displayName": "Invoice Status",
+					"options": {
+						"1": {
+							"displayName": "Draft"
+						},
+						"2": {
+							"displayName": "Sent"
+						}
+					}
+				},
+				"isAmountDiscount": {
+					"displayName": "Is Amount Discount"
+				},
+				"markSent": {
+					"displayName": "Mark Sent"
+				},
+				"paid": {
+					"displayName": "Paid"
+				},
+				"partial": {
+					"displayName": "Partial"
+				},
+				"partialDueDate": {
+					"displayName": "Partial Due Date"
+				},
+				"poNumber": {
+					"displayName": "Po Number"
+				},
+				"publicNotes": {
+					"displayName": "Public Notes"
+				},
+				"taxName1": {
+					"displayName": "Tax Name 1"
+				},
+				"taxName2": {
+					"displayName": "Tax Name 2"
+				},
+				"taxRate1": {
+					"displayName": "Tax Rate 1"
+				},
+				"taxRate2": {
+					"displayName": "Tax Rate 2"
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"project": {
+					"displayName": "Project Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"paymentType": {
+					"displayName": "Payment Type",
+					"options": {
+						"1": {
+							"displayName": "Bank Transfer"
+						},
+						"2": {
+							"displayName": "Cash"
+						},
+						"3": {
+							"displayName": "Cash"
+						},
+						"4": {
+							"displayName": "ACH"
+						},
+						"5": {
+							"displayName": "Visa"
+						},
+						"6": {
+							"displayName": "Mastercard"
+						},
+						"7": {
+							"displayName": "American Express"
+						},
+						"8": {
+							"displayName": "Discover"
+						},
+						"9": {
+							"displayName": "Diners"
+						},
+						"10": {
+							"displayName": "Eurocard"
+						},
+						"11": {
+							"displayName": "Nova"
+						},
+						"12": {
+							"displayName": "Credit Card Other"
+						},
+						"13": {
+							"displayName": "PayPal"
+						},
+						"14": {
+							"displayName": "Paypal"
+						},
+						"15": {
+							"displayName": "Check"
+						},
+						"16": {
+							"displayName": "Carte Blanche"
+						},
+						"17": {
+							"displayName": "UnionPay"
+						},
+						"18": {
+							"displayName": "JCB"
+						},
+						"19": {
+							"displayName": "Laser"
+						},
+						"20": {
+							"displayName": "Maestro"
+						},
+						"21": {
+							"displayName": "Solo"
+						},
+						"22": {
+							"displayName": "Switch"
+						},
+						"23": {
+							"displayName": "Swich"
+						},
+						"24": {
+							"displayName": "Venmo"
+						},
+						"25": {
+							"displayName": "Swish"
+						},
+						"26": {
+							"displayName": "Venmo"
+						},
+						"27": {
+							"displayName": "Alipay"
+						},
+						"28": {
+							"displayName": "Sofort"
+						},
+						"29": {
+							"displayName": "SEPA"
+						},
+						"30": {
+							"displayName": "GoCardless"
+						},
+						"31": {
+							"displayName": "Crypto"
+						},
+						"32": {
+							"displayName": "Credit"
+						},
+						"33": {
+							"displayName": "Zelle"
+						},
+						"34": {
+							"displayName": "Mollie Bank Transfer"
+						},
+						"35": {
+							"displayName": "KBC"
+						},
+						"36": {
+							"displayName": "Bancontact"
+						},
+						"37": {
+							"displayName": "iDEAL"
+						},
+						"38": {
+							"displayName": "Hosted Page"
+						},
+						"39": {
+							"displayName": "Giropay"
+						},
+						"40": {
+							"displayName": "Przelewy24"
+						},
+						"41": {
+							"displayName": "EPS"
+						},
+						"42": {
+							"displayName": "Direct Debit"
+						},
+						"43": {
+							"displayName": "BECS"
+						},
+						"44": {
+							"displayName": "ACSS"
+						},
+						"45": {
+							"displayName": "Instant Bank Pay"
+						},
+						"46": {
+							"displayName": "FPX"
+						},
+						"47": {
+							"displayName": "Klarna"
+						},
+						"48": {
+							"displayName": "Interac E-Transfer"
+						},
+						"49": {
+							"displayName": "BACS"
+						},
+						"50": {
+							"displayName": "Stripe Bank Transfer"
+						},
+						"51": {
+							"displayName": "Cash App"
+						},
+						"52": {
+							"displayName": "Pay Later"
+						}
+					}
+				},
+				"transferReference": {
+					"displayName": "Transfer Reference"
+				},
+				"amount": {
+					"displayName": "Amount"
+				},
+				"billable": {
+					"displayName": "Billable"
+				},
+				"category": {
+					"displayName": "Category Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"expenseDate": {
+					"displayName": "Expense Date"
+				},
+				"paymentDate": {
+					"displayName": "Payment Date"
+				},
+				"transactionReference": {
+					"displayName": "Transaction Reference"
+				},
+				"vendor": {
+					"displayName": "Vendor Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"emailQuote": {
+					"displayName": "Email Quote"
+				},
+				"quoteDate": {
+					"displayName": "Quote Date"
+				},
+				"quoteNumber": {
+					"displayName": "Quote Number"
+				},
+				"quoteStatus": {
+					"displayName": "Quote Status",
+					"options": {
+						"1": {
+							"displayName": "Draft"
+						},
+						"2": {
+							"displayName": "Sent"
+						}
+					}
+				},
+				"bankIntegrationId": {
+					"displayName": "Bank Integration Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"baseType": {
+					"displayName": "Base Type",
+					"options": {
+						"CREDIT": {
+							"displayName": "Deposit"
+						},
+						"DEBIT": {
+							"displayName": "Withdrawal"
+						}
+					}
+				},
+				"currencyId": {
+					"displayName": "Currency Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"date": {
+					"displayName": "Date"
+				}
+			}
+		},
+		"billingAddressUi": {
+			"displayName": "Billing Address",
+			"placeholder": "Add Billing Address",
+			"options": {
+				"billingAddressValue": {
+					"displayName": "Billing Address",
+					"options": {
+						"streetAddress": {
+							"displayName": "Street Address"
+						},
+						"aptSuite": {
+							"displayName": "Apt/Suite"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						},
+						"countryCode": {
+							"displayName": "Country Code Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				}
+			},
+			"values": {
+				"billingAddressValue": {
+					"displayName": "Billing Address",
+					"options": {
+						"streetAddress": {
+							"displayName": "Street Address"
+						},
+						"aptSuite": {
+							"displayName": "Apt/Suite"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						},
+						"countryCode": {
+							"displayName": "Country Code Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				},
+				"billingAddressUi": {
+					"displayName": "Billing Address",
+					"placeholder": "Add Billing Address"
+				}
+			}
+		},
+		"contactsUi": {
+			"displayName": "Contacts",
+			"placeholder": "Add Contact",
+			"multipleValueButtonText": "Add Contact",
+			"options": {
+				"contacstValues": {
+					"displayName": "Contact",
+					"options": {
+						"firstName": {
+							"displayName": "First Name"
+						},
+						"lastName": {
+							"displayName": "Last Name"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "Phone"
+						}
+					}
+				}
+			},
+			"values": {
+				"contacstValues": {
+					"displayName": "Contact",
+					"options": {
+						"firstName": {
+							"displayName": "First Name"
+						},
+						"lastName": {
+							"displayName": "Last Name"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "Phone"
+						}
+					}
+				},
+				"contactsUi": {
+					"displayName": "Contacts",
+					"placeholder": "Add Contact"
+				}
+			}
+		},
+		"shippingAddressUi": {
+			"displayName": "Shipping Address",
+			"placeholder": "Add Shipping Address",
+			"options": {
+				"shippingAddressValue": {
+					"displayName": "Shipping Address",
+					"options": {
+						"streetAddress": {
+							"displayName": "Street Address"
+						},
+						"aptSuite": {
+							"displayName": "Apt/Suite"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						},
+						"countryCode": {
+							"displayName": "Country Code Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				}
+			},
+			"values": {
+				"shippingAddressValue": {
+					"displayName": "Shipping Address",
+					"options": {
+						"streetAddress": {
+							"displayName": "Street Address"
+						},
+						"aptSuite": {
+							"displayName": "Apt/Suite"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						},
+						"countryCode": {
+							"displayName": "Country Code Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				},
+				"shippingAddressUi": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Shipping Address"
+				}
+			}
+		},
+		"clientId": {
+			"displayName": "Client ID"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"include": {
+					"displayName": "Include",
+					"options": {
+						"invoices": {
+							"displayName": "Invoices"
+						},
+						"client": {
+							"displayName": "Client"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"active": {
+							"displayName": "Active"
+						},
+						"archived": {
+							"displayName": "Archived"
+						},
+						"deleted": {
+							"displayName": "Deleted"
+						}
+					}
+				},
+				"createdAt": {
+					"displayName": "Created At"
+				},
+				"updatedAt": {
+					"displayName": "Updated At"
+				},
+				"isDeleted": {
+					"displayName": "Is Deleted"
+				},
+				"invoiceNumber": {
+					"displayName": "Invoice Number"
+				},
+				"clientStatus": {
+					"displayName": "Client Status",
+					"options": {
+						"all": {
+							"displayName": "All"
+						},
+						"paid": {
+							"displayName": "Paid"
+						},
+						"unpaid": {
+							"displayName": "Unpaid"
+						},
+						"overdue": {
+							"displayName": "Overdue"
+						}
+					}
+				},
+				"quoteNumber": {
+					"displayName": "Quote Number"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"invoiceItemsUi": {
+			"displayName": "Invoice Items",
+			"placeholder": "Add Invoice Item",
+			"multipleValueButtonText": "Add Invoice Item",
+			"options": {
+				"invoiceItemsValues": {
+					"displayName": "Invoice Item",
+					"options": {
+						"cost": {
+							"displayName": "Cost"
+						},
+						"description": {
+							"displayName": "Description"
+						},
+						"service": {
+							"displayName": "Service"
+						},
+						"hours": {
+							"displayName": "Hours"
+						},
+						"taxName1": {
+							"displayName": "Tax Name 1"
+						},
+						"taxName2": {
+							"displayName": "Tax Name 2"
+						},
+						"taxRate1": {
+							"displayName": "Tax Rate 1"
+						},
+						"taxRate2": {
+							"displayName": "Tax Rate 2"
+						}
+					}
+				}
+			},
+			"values": {
+				"invoiceItemsValues": {
+					"displayName": "Invoice Item",
+					"options": {
+						"cost": {
+							"displayName": "Cost"
+						},
+						"description": {
+							"displayName": "Description"
+						},
+						"service": {
+							"displayName": "Service"
+						},
+						"hours": {
+							"displayName": "Hours"
+						},
+						"taxName1": {
+							"displayName": "Tax Name 1"
+						},
+						"taxName2": {
+							"displayName": "Tax Name 2"
+						},
+						"taxRate1": {
+							"displayName": "Tax Rate 1"
+						},
+						"taxRate2": {
+							"displayName": "Tax Rate 2"
+						}
+					}
+				},
+				"invoiceItemsUi": {
+					"displayName": "Invoice Items",
+					"placeholder": "Add Invoice Item"
+				}
+			}
+		},
+		"invoiceId": {
+			"displayName": "Invoice ID"
+		},
+		"timeLogsUi": {
+			"displayName": "Time Logs",
+			"placeholder": "Add Time Log",
+			"multipleValueButtonText": "Add Time Log",
+			"options": {
+				"timeLogsValues": {
+					"displayName": "Time Log",
+					"options": {
+						"startDate": {
+							"displayName": "Start Date"
+						},
+						"endDate": {
+							"displayName": "End Date"
+						},
+						"duration": {
+							"displayName": "Duration (Hours)"
+						}
+					}
+				}
+			},
+			"values": {
+				"timeLogsValues": {
+					"displayName": "Time Log",
+					"options": {
+						"startDate": {
+							"displayName": "Start Date"
+						},
+						"endDate": {
+							"displayName": "End Date"
+						},
+						"duration": {
+							"displayName": "Duration (Hours)"
+						}
+					}
+				},
+				"timeLogsUi": {
+					"displayName": "Time Logs",
+					"placeholder": "Add Time Log"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "Task ID"
+		},
+		"invoice": {
+			"displayName": "Invoice Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"amount": {
+			"displayName": "Amount"
+		},
+		"paymentId": {
+			"displayName": "Payment Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"expenseId": {
+			"displayName": "Expense ID"
+		},
+		"quoteId": {
+			"displayName": "Quote ID"
+		},
+		"bankTransactionId": {
+			"displayName": "Bank Transaction ID"
+		}
+	}
+}

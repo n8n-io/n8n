@@ -1,0 +1,724 @@
+{
+	"header": {
+		"displayName": "Sentry.io",
+		"description": "Consume Sentry.io API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token (Cloud)"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2 (Cloud)"
+				},
+				"accessTokenServer": {
+					"displayName": "Access Token (Self Hosted)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"event": {
+					"displayName": "Event"
+				},
+				"issue": {
+					"displayName": "Issue"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"project": {
+					"displayName": "Project"
+				},
+				"release": {
+					"displayName": "Release"
+				},
+				"team": {
+					"displayName": "Team"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get team by slug"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many teams"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a team"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a team"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new team"
+				}
+			}
+		},
+		"organizationSlug": {
+			"displayName": "Organization Slug Name or ID",
+			"description": "The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"projectSlug": {
+			"displayName": "Project Slug Name or ID",
+			"description": "The slug of the project to delete. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"full": {
+			"displayName": "Full",
+			"description": "Whether the event payload will include the full event body, including the stack trace"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"eventId": {
+			"displayName": "Event ID",
+			"description": "The ID of the event to retrieve (either the numeric primary-key or the hexadecimal ID as reported by the raven client)"
+		},
+		"issueId": {
+			"displayName": "Issue ID",
+			"description": "ID of issue to get",
+			"placeholder": "1234"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"query": {
+					"displayName": "Query",
+					"description": "This parameter can be used to create a “starts with” filter for the version"
+				},
+				"statsPeriod": {
+					"displayName": "Stats Period",
+					"description": "Time period of stats",
+					"options": {
+						"14d": {
+							"displayName": "14 Days"
+						},
+						"24h": {
+							"displayName": "24 Hours"
+						}
+					}
+				},
+				"shortIdLookUp": {
+					"displayName": "Short ID Lookup",
+					"description": "Whether short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in."
+				},
+				"assignedTo": {
+					"displayName": "Assigned To",
+					"description": "The actor ID (or username) of the user or team that should be assigned to this issue"
+				},
+				"hasSeen": {
+					"displayName": "Has Seen",
+					"description": "Whether this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event"
+				},
+				"isBookmarked": {
+					"displayName": "Is Bookmarked",
+					"description": "Whether this API call is invoked with a user context this allows changing of the bookmark flag"
+				},
+				"isPublic": {
+					"displayName": "Is Public",
+					"description": "Whether to set the issue to public or private"
+				},
+				"isSubscribed": {
+					"displayName": "Is Subscribed"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "The new status for the issue",
+					"options": {
+						"ignored": {
+							"displayName": "Ignored"
+						},
+						"resolved": {
+							"displayName": "Resolved"
+						},
+						"resolvedInNextRelease": {
+							"displayName": "Resolved Next Release"
+						},
+						"unresolved": {
+							"displayName": "Unresolved"
+						}
+					}
+				},
+				"member": {
+					"displayName": "Member",
+					"description": "Whether to restrict results to organizations which you have membership"
+				},
+				"owner": {
+					"displayName": "Owner",
+					"description": "Whether to restrict results to organizations which you are the owner"
+				},
+				"slug": {
+					"displayName": "Slug",
+					"description": "The optional slug for this team. If not provided it will be auto generated from the name."
+				},
+				"dateReleased": {
+					"displayName": "Date Released",
+					"description": "An optional date that indicates when the release went live. If not provided the current time is assumed."
+				},
+				"commits": {
+					"displayName": "Commits",
+					"description": "An optional list of commit data to be associated with the release",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"commitProperties": {
+							"displayName": "Commit Properties",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "The sha of the commit"
+								},
+								"authorEmail": {
+									"displayName": "Author Email",
+									"description": "Authors email"
+								},
+								"authorName": {
+									"displayName": "Author Name",
+									"description": "Name of author"
+								},
+								"message": {
+									"displayName": "Message",
+									"description": "Message of commit"
+								},
+								"patchSet": {
+									"displayName": "Patch Set",
+									"description": "A list of the files that have been changed in the commit. Specifying the patch_set is necessary to power suspect commits and suggested assignees.",
+									"multipleValueButtonText": "Add",
+									"options": {
+										"patchSetProperties": {
+											"displayName": "Patch Set Properties",
+											"options": {
+												"path": {
+													"displayName": "Path",
+													"description": "The path to the file. Both forward and backward slashes are supported."
+												},
+												"type": {
+													"displayName": "Type",
+													"description": "The types of changes that happened in that commit",
+													"options": {
+														"add": {
+															"displayName": "Add"
+														},
+														"modify": {
+															"displayName": "Modify"
+														},
+														"delete": {
+															"displayName": "Delete"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"patchSetProperties": {
+											"displayName": "Patch Set Properties",
+											"options": {
+												"path": {
+													"displayName": "Path",
+													"description": "The path to the file. Both forward and backward slashes are supported."
+												},
+												"type": {
+													"displayName": "Type",
+													"description": "The types of changes that happened in that commit",
+													"options": {
+														"add": {
+															"displayName": "Add"
+														},
+														"modify": {
+															"displayName": "Modify"
+														},
+														"delete": {
+															"displayName": "Delete"
+														}
+													}
+												}
+											}
+										},
+										"patchSet": {
+											"displayName": "Patch Set"
+										}
+									}
+								},
+								"repository": {
+									"displayName": "Repository",
+									"description": "Repository name"
+								},
+								"timestamp": {
+									"displayName": "Timestamp",
+									"description": "Timestamp of commit"
+								}
+							}
+						}
+					},
+					"values": {
+						"commitProperties": {
+							"displayName": "Commit Properties",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "The sha of the commit"
+								},
+								"authorEmail": {
+									"displayName": "Author Email",
+									"description": "Authors email"
+								},
+								"authorName": {
+									"displayName": "Author Name",
+									"description": "Name of author"
+								},
+								"message": {
+									"displayName": "Message",
+									"description": "Message of commit"
+								},
+								"patchSet": {
+									"displayName": "Patch Set",
+									"description": "A list of the files that have been changed in the commit. Specifying the patch_set is necessary to power suspect commits and suggested assignees.",
+									"multipleValueButtonText": "Add",
+									"options": {
+										"patchSetProperties": {
+											"displayName": "Patch Set Properties",
+											"options": {
+												"path": {
+													"displayName": "Path",
+													"description": "The path to the file. Both forward and backward slashes are supported."
+												},
+												"type": {
+													"displayName": "Type",
+													"description": "The types of changes that happened in that commit",
+													"options": {
+														"add": {
+															"displayName": "Add"
+														},
+														"modify": {
+															"displayName": "Modify"
+														},
+														"delete": {
+															"displayName": "Delete"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"patchSetProperties": {
+											"displayName": "Patch Set Properties",
+											"options": {
+												"path": {
+													"displayName": "Path",
+													"description": "The path to the file. Both forward and backward slashes are supported."
+												},
+												"type": {
+													"displayName": "Type",
+													"description": "The types of changes that happened in that commit",
+													"options": {
+														"add": {
+															"displayName": "Add"
+														},
+														"modify": {
+															"displayName": "Modify"
+														},
+														"delete": {
+															"displayName": "Delete"
+														}
+													}
+												}
+											}
+										},
+										"patchSet": {
+											"displayName": "Patch Set"
+										}
+									}
+								},
+								"repository": {
+									"displayName": "Repository",
+									"description": "Repository name"
+								},
+								"timestamp": {
+									"displayName": "Timestamp",
+									"description": "Timestamp of commit"
+								}
+							}
+						},
+						"commits": {
+							"displayName": "Commits"
+						}
+					}
+				},
+				"refs": {
+					"displayName": "Refs",
+					"description": "An optional way to indicate the start and end commits for each repository included in a release",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"refProperties": {
+							"displayName": "Ref Properties",
+							"options": {
+								"commit": {
+									"displayName": "Commit",
+									"description": "The head sha of the commit"
+								},
+								"repository": {
+									"displayName": "Repository",
+									"description": "Repository name"
+								},
+								"previousCommit": {
+									"displayName": "Previous Commit",
+									"description": "The sha of the HEAD of the previous release"
+								}
+							}
+						}
+					},
+					"values": {
+						"refProperties": {
+							"displayName": "Ref Properties",
+							"options": {
+								"commit": {
+									"displayName": "Commit",
+									"description": "The head sha of the commit"
+								},
+								"repository": {
+									"displayName": "Repository",
+									"description": "Repository name"
+								},
+								"previousCommit": {
+									"displayName": "Previous Commit",
+									"description": "The sha of the HEAD of the previous release"
+								}
+							}
+						},
+						"refs": {
+							"displayName": "Refs"
+						}
+					}
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the team"
+		},
+		"agreeTerms": {
+			"displayName": "Agree to Terms",
+			"description": "Whether you agree to the applicable terms of service and privacy policy of Sentry.io"
+		},
+		"organization_slug": {
+			"displayName": "Slug Name or ID",
+			"description": "The slug of the organization to update. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "The new name of the team"
+				},
+				"slug": {
+					"displayName": "Slug",
+					"description": "The new slug of the team. Must be unique and available."
+				},
+				"isBookmarked": {
+					"displayName": "Bookmarked",
+					"description": "The new platform for the updated project"
+				},
+				"digestsMaxDelay": {
+					"displayName": "Digests Maximum Delay",
+					"description": "Maximum interval to digest alerts"
+				},
+				"digestsMinDelay": {
+					"displayName": "Digests Minimun Delay",
+					"description": "Minium interval to digest alerts"
+				},
+				"team": {
+					"displayName": "Team",
+					"description": "The new team name"
+				},
+				"platform": {
+					"displayName": "Platform",
+					"description": "The new platform for the updated project"
+				},
+				"commits": {
+					"displayName": "Commits",
+					"description": "An optional list of commit data to be associated with the release",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"commitProperties": {
+							"displayName": "Commit Properties",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "The sha of the commit"
+								},
+								"authorEmail": {
+									"displayName": "Author Email",
+									"description": "Authors email"
+								},
+								"authorName": {
+									"displayName": "Author Name",
+									"description": "Name of author"
+								},
+								"message": {
+									"displayName": "Message",
+									"description": "Message of commit"
+								},
+								"patchSet": {
+									"displayName": "Patch Set",
+									"description": "A list of the files that have been changed in the commit. Specifying the patch_set is necessary to power suspect commits and suggested assignees.",
+									"multipleValueButtonText": "Add",
+									"options": {
+										"patchSetProperties": {
+											"displayName": "Patch Set Properties",
+											"options": {
+												"path": {
+													"displayName": "Path",
+													"description": "The path to the file. Both forward and backward slashes are supported."
+												},
+												"type": {
+													"displayName": "Type",
+													"description": "The types of changes that happened in that commit",
+													"options": {
+														"add": {
+															"displayName": "Add"
+														},
+														"modify": {
+															"displayName": "Modify"
+														},
+														"delete": {
+															"displayName": "Delete"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"patchSetProperties": {
+											"displayName": "Patch Set Properties",
+											"options": {
+												"path": {
+													"displayName": "Path",
+													"description": "The path to the file. Both forward and backward slashes are supported."
+												},
+												"type": {
+													"displayName": "Type",
+													"description": "The types of changes that happened in that commit",
+													"options": {
+														"add": {
+															"displayName": "Add"
+														},
+														"modify": {
+															"displayName": "Modify"
+														},
+														"delete": {
+															"displayName": "Delete"
+														}
+													}
+												}
+											}
+										},
+										"patchSet": {
+											"displayName": "Patch Set"
+										}
+									}
+								},
+								"repository": {
+									"displayName": "Repository",
+									"description": "Repository name"
+								},
+								"timestamp": {
+									"displayName": "Timestamp",
+									"description": "Timestamp of commit"
+								}
+							}
+						}
+					},
+					"values": {
+						"commitProperties": {
+							"displayName": "Commit Properties",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "The sha of the commit"
+								},
+								"authorEmail": {
+									"displayName": "Author Email",
+									"description": "Authors email"
+								},
+								"authorName": {
+									"displayName": "Author Name",
+									"description": "Name of author"
+								},
+								"message": {
+									"displayName": "Message",
+									"description": "Message of commit"
+								},
+								"patchSet": {
+									"displayName": "Patch Set",
+									"description": "A list of the files that have been changed in the commit. Specifying the patch_set is necessary to power suspect commits and suggested assignees.",
+									"multipleValueButtonText": "Add",
+									"options": {
+										"patchSetProperties": {
+											"displayName": "Patch Set Properties",
+											"options": {
+												"path": {
+													"displayName": "Path",
+													"description": "The path to the file. Both forward and backward slashes are supported."
+												},
+												"type": {
+													"displayName": "Type",
+													"description": "The types of changes that happened in that commit",
+													"options": {
+														"add": {
+															"displayName": "Add"
+														},
+														"modify": {
+															"displayName": "Modify"
+														},
+														"delete": {
+															"displayName": "Delete"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"patchSetProperties": {
+											"displayName": "Patch Set Properties",
+											"options": {
+												"path": {
+													"displayName": "Path",
+													"description": "The path to the file. Both forward and backward slashes are supported."
+												},
+												"type": {
+													"displayName": "Type",
+													"description": "The types of changes that happened in that commit",
+													"options": {
+														"add": {
+															"displayName": "Add"
+														},
+														"modify": {
+															"displayName": "Modify"
+														},
+														"delete": {
+															"displayName": "Delete"
+														}
+													}
+												}
+											}
+										},
+										"patchSet": {
+											"displayName": "Patch Set"
+										}
+									}
+								},
+								"repository": {
+									"displayName": "Repository",
+									"description": "Repository name"
+								},
+								"timestamp": {
+									"displayName": "Timestamp",
+									"description": "Timestamp of commit"
+								}
+							}
+						},
+						"commits": {
+							"displayName": "Commits"
+						}
+					}
+				},
+				"dateReleased": {
+					"displayName": "Date Released",
+					"description": "An optional date that indicates when the release went live. If not provided the current time is assumed."
+				},
+				"ref": {
+					"displayName": "Ref",
+					"description": "A URL that points to the release. This can be the path to an online interface to the sourcecode for instance."
+				},
+				"refs": {
+					"displayName": "Refs",
+					"description": "An optional way to indicate the start and end commits for each repository included in a release",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"refProperties": {
+							"displayName": "Ref Properties",
+							"options": {
+								"commit": {
+									"displayName": "Commit",
+									"description": "The head sha of the commit"
+								},
+								"repository": {
+									"displayName": "Repository",
+									"description": "Repository name"
+								},
+								"previousCommit": {
+									"displayName": "Previous Commit",
+									"description": "The sha of the HEAD of the previous release"
+								}
+							}
+						}
+					},
+					"values": {
+						"refProperties": {
+							"displayName": "Ref Properties",
+							"options": {
+								"commit": {
+									"displayName": "Commit",
+									"description": "The head sha of the commit"
+								},
+								"repository": {
+									"displayName": "Repository",
+									"description": "Repository name"
+								},
+								"previousCommit": {
+									"displayName": "Previous Commit",
+									"description": "The sha of the HEAD of the previous release"
+								}
+							}
+						},
+						"refs": {
+							"displayName": "Refs"
+						}
+					}
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "A URL that points to the release. This can be the path to an online interface to the sourcecode for instance."
+				}
+			}
+		},
+		"teamSlug": {
+			"displayName": "Team Slug Name or ID",
+			"description": "The slug of the team to delete. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"version": {
+			"displayName": "Version",
+			"description": "A version identifier for this release. Can be a version number, a commit hash etc."
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "A URL that points to the release. This can be the path to an online interface to the sourcecode for instance."
+		},
+		"projects": {
+			"displayName": "Project Names or IDs",
+			"description": "A list of project slugs that are involved in this release. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

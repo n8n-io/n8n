@@ -1,0 +1,60 @@
+{
+	"header": {
+		"displayName": "Jira Trigger",
+		"description": "Starts the workflow when Jira events occur"
+	},
+	"nodeView": {
+		"jiraVersion": {
+			"displayName": "Jira Version",
+			"options": {
+				"cloud": {
+					"displayName": "Cloud"
+				},
+				"server": {
+					"displayName": "Server (Self Hosted)"
+				},
+				"serverPat": {
+					"displayName": "Server (Pat) (Self Hosted)"
+				}
+			}
+		},
+		"authenticateWebhook": {
+			"displayName": "Authenticate Incoming Webhook",
+			"description": "Whether authentication should be activated for the incoming webhooks (makes it more secure)"
+		},
+		"incomingAuthentication": {
+			"displayName": "Authenticate Webhook With",
+			"description": "If authentication should be activated for the webhook (makes it more secure)",
+			"options": {
+				"queryAuth": {
+					"displayName": "Query Auth"
+				},
+				"none": {
+					"displayName": "None"
+				}
+			}
+		},
+		"events": {
+			"displayName": "Events",
+			"description": "The events to listen to"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"excludeBody": {
+					"displayName": "Exclude Body",
+					"description": "Whether a request with empty body will be sent to the URL. Leave unchecked if you want to receive JSON."
+				},
+				"filter": {
+					"displayName": "Filter",
+					"description": "You can specify a JQL query to send only events triggered by matching issues. The JQL filter only applies to events under the Issue and Comment columns.",
+					"placeholder": "Project = JRA AND resolution = Fixed"
+				},
+				"includeFields": {
+					"displayName": "Include Fields"
+				}
+			}
+		}
+	}
+}

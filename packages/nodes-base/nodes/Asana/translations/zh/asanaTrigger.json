@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "Asana触发器",
+		"description": "当Asana事件发生时启动工作流。"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"description": "要订阅的资源ID。资源可以是任务或项目。"
+		},
+		"workspace": {
+			"displayName": "工作区名称或ID",
+			"description": "资源注册所在的工作区ID。仅在需要允许覆盖现有Webhook时必填。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		}
+	}
+}

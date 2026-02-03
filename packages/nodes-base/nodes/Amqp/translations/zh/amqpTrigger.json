@@ -1,0 +1,65 @@
+{
+	"header": {
+		"displayName": "AMQP触发器",
+		"description": "监听AMQP 1.0消息"
+	},
+	"nodeView": {
+		"sink": {
+			"displayName": "队列 / 主题",
+			"description": "要监听的队列或主题名称",
+			"placeholder": "topic://sourcename.something"
+		},
+		"clientname": {
+			"displayName": "客户端名称",
+			"description": "非持久主题订阅或队列请留空",
+			"placeholder": "例如：n8n"
+		},
+		"subscription": {
+			"displayName": "订阅",
+			"description": "非持久主题订阅或队列请留空",
+			"placeholder": "例如：order-worker"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"containerId": {
+					"displayName": "容器ID",
+					"description": "将作为container_id传递给RHEA后端"
+				},
+				"jsonConvertByteArrayToString": {
+					"displayName": "将正文转换为字符串",
+					"description": "是否将JSON正文内容（[\"body\"][\"content\"]）从字节数组转换为字符串。Azure服务总线需要此操作。"
+				},
+				"jsonParseBody": {
+					"displayName": "JSON解析正文",
+					"description": "是否将正文解析为对象"
+				},
+				"pullMessagesNumber": {
+					"displayName": "每周期消息数",
+					"description": "每个周期从总线拉取的消息数量"
+				},
+				"onlyBody": {
+					"displayName": "仅返回正文",
+					"description": "是否仅返回body属性"
+				},
+				"parallelProcessing": {
+					"displayName": "并行处理",
+					"description": "是否并行处理消息"
+				},
+				"reconnect": {
+					"displayName": "重新连接",
+					"description": "断开时是否自动重新连接"
+				},
+				"reconnectLimit": {
+					"displayName": "重连限制",
+					"description": "最大重连尝试次数"
+				},
+				"sleepTime": {
+					"displayName": "休眠时间",
+					"description": "每个循环后休眠的毫秒数"
+				}
+			}
+		}
+	}
+}

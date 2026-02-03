@@ -1,0 +1,256 @@
+{
+	"header": {
+		"displayName": "Discourse",
+		"description": "Consume Discourse API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"category": {
+					"displayName": "Category"
+				},
+				"group": {
+					"displayName": "Group"
+				},
+				"post": {
+					"displayName": "Post"
+				},
+				"user": {
+					"displayName": "User"
+				},
+				"userGroup": {
+					"displayName": "User Group"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"description": "Choose an operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many users"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a post"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a user"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Create a user to group"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove user from group"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the user to create"
+		},
+		"color": {
+			"displayName": "Color",
+			"description": "Color of the category"
+		},
+		"textColor": {
+			"displayName": "Text Color",
+			"description": "Text color of the category"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"categoryId": {
+			"displayName": "Category ID",
+			"description": "ID of the category"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"color": {
+					"displayName": "Color",
+					"description": "Color of the category"
+				},
+				"textColor": {
+					"displayName": "Text Color",
+					"description": "Text color of the category"
+				},
+				"edit_reason": {
+					"displayName": "Edit Reason"
+				},
+				"cooked": {
+					"displayName": "Cooked"
+				}
+			}
+		},
+		"groupId": {
+			"displayName": "Group ID",
+			"description": "ID of the group to remove"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the post"
+		},
+		"content": {
+			"displayName": "Content",
+			"description": "Content of the post. HTML is supported."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"category": {
+					"displayName": "Category Name or ID",
+					"description": "ID of the category. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"reply_to_post_number": {
+					"displayName": "Reply To Post Number",
+					"description": "The number of the post to reply to"
+				},
+				"topic_id": {
+					"displayName": "Topic ID",
+					"description": "ID of the topic"
+				},
+				"active": {
+					"displayName": "Active"
+				},
+				"approved": {
+					"displayName": "Approved"
+				}
+			}
+		},
+		"postId": {
+			"displayName": "Post ID",
+			"description": "ID of the post"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email of the user to create",
+			"placeholder": "name@email.com"
+		},
+		"username": {
+			"displayName": "Username",
+			"description": "The username of the user to return"
+		},
+		"password": {
+			"displayName": "Password",
+			"description": "The password of the user to create"
+		},
+		"by": {
+			"displayName": "By",
+			"description": "What to search by",
+			"options": {
+				"username": {
+					"displayName": "Username"
+				},
+				"externalId": {
+					"displayName": "SSO External ID"
+				}
+			}
+		},
+		"externalId": {
+			"displayName": "SSO External ID",
+			"description": "Discourse SSO external ID"
+		},
+		"flag": {
+			"displayName": "Flag",
+			"description": "User flags to search for",
+			"options": {
+				"active": {
+					"displayName": "Active"
+				},
+				"blocked": {
+					"displayName": "Blocked"
+				},
+				"new": {
+					"displayName": "New"
+				},
+				"staff": {
+					"displayName": "Staff"
+				},
+				"suspect": {
+					"displayName": "Suspect"
+				},
+				"suspended": {
+					"displayName": "Suspended"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"asc": {
+					"displayName": "Ascending",
+					"description": "Whether to sort ascending"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "What to order by",
+					"options": {
+						"created": {
+							"displayName": "Created"
+						},
+						"days_visited": {
+							"displayName": "Days Visited"
+						},
+						"email": {
+							"displayName": "Email"
+						},
+						"last_emailed": {
+							"displayName": "Last Emailed"
+						},
+						"posts": {
+							"displayName": "Posts"
+						},
+						"posts_read": {
+							"displayName": "Posts Read"
+						},
+						"read_time": {
+							"displayName": "Read Time"
+						},
+						"seen": {
+							"displayName": "Seen"
+						},
+						"topics_viewed": {
+							"displayName": "Topics Viewed"
+						},
+						"trust_level": {
+							"displayName": "Trust Level"
+						},
+						"username": {
+							"displayName": "Username"
+						}
+					}
+				},
+				"showEmails": {
+					"displayName": "Show Emails",
+					"description": "Whether to include user email addresses"
+				},
+				"stats": {
+					"displayName": "Stats",
+					"description": "Whether to return user stats"
+				}
+			}
+		},
+		"usernames": {
+			"displayName": "Usernames",
+			"description": "Usernames to remove from group. Multiples can be defined separated by comma."
+		}
+	}
+}

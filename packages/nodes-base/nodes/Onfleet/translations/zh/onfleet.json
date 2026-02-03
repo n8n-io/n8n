@@ -1,0 +1,1234 @@
+{
+	"header": {
+		"displayName": "Onfleet",
+		"description": "使用Onfleet API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"description": "要执行操作的资源",
+			"options": {
+				"admin": {
+					"displayName": "管理员"
+				},
+				"container": {
+					"displayName": "容器"
+				},
+				"destination": {
+					"displayName": "目标"
+				},
+				"hub": {
+					"displayName": "中心"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"recipient": {
+					"displayName": "收件人"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"team": {
+					"displayName": "团队"
+				},
+				"worker": {
+					"displayName": "工作进程"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新的Onfleet工作人员"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一个Onfleet工作人员"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个Onfleet工作人员"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新Onfleet工作人员"
+				},
+				"addTask": {
+					"displayName": "添加任务",
+					"description": "在索引处添加任务（或追加）"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取特定Onfleet工作人员"
+				},
+				"updateTask": {
+					"displayName": "更新任务",
+					"description": "完全替换容器的任务"
+				},
+				"getDelegatee": {
+					"displayName": "获取委托方详情",
+					"description": "检索您已连接组织的详细信息"
+				},
+				"clone": {
+					"displayName": "克隆",
+					"description": "克隆一个Onfleet任务"
+				},
+				"complete": {
+					"displayName": "完成",
+					"description": "强制完成已开始的Onfleet任务"
+				},
+				"autoDispatch": {
+					"displayName": "自动派发",
+					"description": "自动将分配给团队的任务派发给值班司机"
+				},
+				"getTimeEstimates": {
+					"displayName": "获取时间估算",
+					"description": "获取团队即将到来任务的预估时间，返回选定的驱动因素"
+				},
+				"getSchedule": {
+					"displayName": "获取排班",
+					"description": "获取特定Onfleet员工排班"
+				}
+			}
+		},
+		"id": {
+			"displayName": "工作器ID",
+			"description": "用于查找的工作器对象ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "工作者的名称"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "管理员邮箱地址",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"phone": {
+					"displayName": "电话",
+					"description": "管理员电话号码"
+				},
+				"isReadOnly": {
+					"displayName": "只读",
+					"description": "此管理员是否可以执行写入操作"
+				},
+				"addressApartment": {
+					"displayName": "公寓",
+					"description": "套房或公寓号码，或任何其他相关信息"
+				},
+				"addressName": {
+					"displayName": "地址名称",
+					"description": "与此地址关联的名称"
+				},
+				"addressNotes": {
+					"displayName": "地址备注",
+					"description": "目的地备注"
+				},
+				"addressPostalCode": {
+					"displayName": "邮政编码",
+					"description": "邮政编码"
+				},
+				"teams": {
+					"displayName": "团队名称或ID",
+					"description": "这些是将分配此Hub的团队。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"recipientNotes": {
+					"displayName": "收件人备注覆盖",
+					"description": "仅为此任务覆盖收件人备注"
+				},
+				"recipientSkipSMSNotifications": {
+					"displayName": "收件人跳过短信通知覆盖",
+					"description": "是否覆盖此任务的收件人通知设置"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "任务说明"
+				},
+				"completeAfter": {
+					"displayName": "完成后",
+					"description": "任务应完成的最早时间"
+				},
+				"completeBefore": {
+					"displayName": "在此之前完成",
+					"description": "任务应完成的最晚时间"
+				},
+				"executor": {
+					"displayName": "执行器ID",
+					"description": "将负责完成任务的组织ID"
+				},
+				"merchant": {
+					"displayName": "商家ID",
+					"description": "将显示给任务接收方的组织ID"
+				},
+				"pickupTask": {
+					"displayName": "领取任务",
+					"description": "是否为领取任务"
+				},
+				"quantity": {
+					"displayName": "数量",
+					"description": "完成任务时需要卸货的单位数量，用于路线优化"
+				},
+				"recipient": {
+					"displayName": "收件人",
+					"placeholder": "添加收件人",
+					"options": {
+						"recipientProperties": {
+							"displayName": "收件人属性",
+							"options": {
+								"recipientName": {
+									"displayName": "收件人姓名",
+									"description": "收件人完整姓名"
+								},
+								"recipientPhone": {
+									"displayName": "收件人电话",
+									"description": "若无前导+号，需符合组织所在国家/地区的有效唯一电话号码。若电话号码包含前导+号，将忽略组织的国家/地区设置。"
+								},
+								"recipientNotes": {
+									"displayName": "收件人备注",
+									"description": "此收件人的备注：这些是全局备注，不应针对特定任务或目的地"
+								},
+								"recipientSkipSMSNotifications": {
+									"displayName": "跳过收件人短信通知",
+									"description": "此收件人是否要求跳过短信通知"
+								}
+							}
+						}
+					},
+					"values": {
+						"recipientProperties": {
+							"displayName": "收件人属性",
+							"options": {
+								"recipientName": {
+									"displayName": "收件人姓名",
+									"description": "收件人完整姓名"
+								},
+								"recipientPhone": {
+									"displayName": "收件人电话",
+									"description": "若无前导+号，需符合组织所在国家/地区的有效唯一电话号码。若电话号码包含前导+号，将忽略组织的国家/地区设置。"
+								},
+								"recipientNotes": {
+									"displayName": "收件人备注",
+									"description": "此收件人的备注：这些是全局备注，不应针对特定任务或目的地"
+								},
+								"recipientSkipSMSNotifications": {
+									"displayName": "跳过收件人短信通知",
+									"description": "此收件人是否要求跳过短信通知"
+								}
+							}
+						},
+						"recipient": {
+							"displayName": "收件人",
+							"placeholder": "添加收件人"
+						}
+					}
+				},
+				"recipientName": {
+					"displayName": "收件人名称覆盖",
+					"description": "仅为此任务覆盖收件人名称"
+				},
+				"serviceTime": {
+					"displayName": "服务时间",
+					"description": "当任务没有服务时间时，应用的默认服务时间（分钟）"
+				},
+				"useMerchantForProxy": {
+					"displayName": "使用商户代理覆盖",
+					"description": "是否为此任务使用商户组织ID覆盖组织ID"
+				},
+				"hub": {
+					"displayName": "中心名称或ID",
+					"description": "团队的中心。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"enableSelfAssignment": {
+					"displayName": "自助分配",
+					"description": "是否允许司机自行分配团队未分配容器中的任务"
+				},
+				"endingRoute": {
+					"displayName": "结束路由",
+					"placeholder": "添加路由",
+					"options": {
+						"endingRouteProperties": {
+							"displayName": "结束路由属性",
+							"options": {
+								"routeEnd": {
+									"displayName": "路由终点",
+									"description": "路由将在此处结束",
+									"options": {
+										"team_hub": {
+											"displayName": "团队中心"
+										},
+										"worker_routing_address": {
+											"displayName": "工作节点路由地址"
+										},
+										"hub": {
+											"displayName": "中心"
+										},
+										"anywhere": {
+											"displayName": "随处结束"
+										}
+									}
+								},
+								"hub": {
+									"displayName": "中心名称或ID",
+									"description": "团队的中心。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								}
+							}
+						}
+					},
+					"values": {
+						"endingRouteProperties": {
+							"displayName": "结束路由属性",
+							"options": {
+								"routeEnd": {
+									"displayName": "路由终点",
+									"description": "路由将在此处结束",
+									"options": {
+										"team_hub": {
+											"displayName": "团队中心"
+										},
+										"worker_routing_address": {
+											"displayName": "工作节点路由地址"
+										},
+										"hub": {
+											"displayName": "中心"
+										},
+										"anywhere": {
+											"displayName": "随处结束"
+										}
+									}
+								},
+								"hub": {
+									"displayName": "中心名称或ID",
+									"description": "团队的中心。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								}
+							}
+						},
+						"endingRoute": {
+							"displayName": "结束路由",
+							"placeholder": "添加路由"
+						}
+					}
+				},
+				"maxAllowedDelay": {
+					"displayName": "最大允许延迟",
+					"description": "任务允许延迟的最大分钟数"
+				},
+				"maxTasksPerRoute": {
+					"displayName": "每条路由的最大任务数",
+					"description": "路由上允许的总任务数"
+				},
+				"scheduleTimeWindow": {
+					"displayName": "调度时间窗口",
+					"placeholder": "添加时间窗口",
+					"options": {
+						"scheduleTimeWindowProperties": {
+							"displayName": "计划时间窗口属性",
+							"options": {
+								"startTime": {
+									"displayName": "开始时间"
+								},
+								"endTime": {
+									"displayName": "结束时间"
+								}
+							}
+						}
+					},
+					"values": {
+						"scheduleTimeWindowProperties": {
+							"displayName": "计划时间窗口属性",
+							"options": {
+								"startTime": {
+									"displayName": "开始时间"
+								},
+								"endTime": {
+									"displayName": "结束时间"
+								}
+							}
+						},
+						"scheduleTimeWindow": {
+							"displayName": "调度时间窗口",
+							"placeholder": "添加时间窗口"
+						}
+					}
+				},
+				"taskTimeWindow": {
+					"displayName": "任务时间窗口",
+					"placeholder": "添加时间窗口",
+					"options": {
+						"taskTimeWindowProperties": {
+							"displayName": "任务时间窗口属性",
+							"options": {
+								"startTime": {
+									"displayName": "开始时间"
+								},
+								"endTime": {
+									"displayName": "结束时间"
+								}
+							}
+						}
+					},
+					"values": {
+						"taskTimeWindowProperties": {
+							"displayName": "任务时间窗口属性",
+							"options": {
+								"startTime": {
+									"displayName": "开始时间"
+								},
+								"endTime": {
+									"displayName": "结束时间"
+								}
+							}
+						},
+						"taskTimeWindow": {
+							"displayName": "任务时间窗口",
+							"placeholder": "添加时间窗口"
+						}
+					}
+				},
+				"capacity": {
+					"displayName": "容量",
+					"description": "此工作人员可携带的最大单位数，用于路线优化"
+				},
+				"displayName": {
+					"displayName": "显示名称",
+					"description": "该值将在短信通知、配送跟踪页面及跨组织边界时，用于替代配送员的真实姓名"
+				},
+				"vehicle": {
+					"displayName": "车辆",
+					"placeholder": "添加车辆",
+					"options": {
+						"vehicleProperties": {
+							"displayName": "车辆属性",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "该工作人员是否拥有交通工具。如未提供，此工作人员将被视为步行。",
+									"options": {
+										"BICYCLE": {
+											"displayName": "自行车"
+										},
+										"CAR": {
+											"displayName": "汽车"
+										},
+										"MOTORCYCLE": {
+											"displayName": "摩托车"
+										},
+										"TRUCK": {
+											"displayName": "卡车"
+										}
+									}
+								},
+								"description": {
+									"displayName": "描述",
+									"description": "车辆的品牌、型号、年份或其他相关识别信息"
+								},
+								"licensePlate": {
+									"displayName": "车牌号",
+									"description": "车辆的车牌号码"
+								},
+								"color": {
+									"displayName": "颜色",
+									"description": "车辆颜色"
+								}
+							}
+						}
+					},
+					"values": {
+						"vehicleProperties": {
+							"displayName": "车辆属性",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "该工作人员是否拥有交通工具。如未提供，此工作人员将被视为步行。",
+									"options": {
+										"BICYCLE": {
+											"displayName": "自行车"
+										},
+										"CAR": {
+											"displayName": "汽车"
+										},
+										"MOTORCYCLE": {
+											"displayName": "摩托车"
+										},
+										"TRUCK": {
+											"displayName": "卡车"
+										}
+									}
+								},
+								"description": {
+									"displayName": "描述",
+									"description": "车辆的品牌、型号、年份或其他相关识别信息"
+								},
+								"licensePlate": {
+									"displayName": "车牌号",
+									"description": "车辆的车牌号码"
+								},
+								"color": {
+									"displayName": "颜色",
+									"description": "车辆颜色"
+								}
+							}
+						},
+						"vehicle": {
+							"displayName": "车辆",
+							"placeholder": "添加车辆"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "工作者的名称"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "管理员电话号码"
+				},
+				"isReadOnly": {
+					"displayName": "只读",
+					"description": "此管理员是否可以执行写入操作"
+				},
+				"destination": {
+					"displayName": "目标",
+					"placeholder": "添加目标",
+					"options": {
+						"destinationProperties": {
+							"displayName": "目标属性",
+							"options": {
+								"unparsed": {
+									"displayName": "未解析地址",
+									"description": "地址是否以单个未解析字符串形式指定"
+								},
+								"address": {
+									"displayName": "目标地址",
+									"description": "目标街道地址详情"
+								},
+								"addressNumber": {
+									"displayName": "数字",
+									"description": "此地址的数字部分，也可能包含字母"
+								},
+								"addressStreet": {
+									"displayName": "街道",
+									"description": "街道名称"
+								},
+								"addressCity": {
+									"displayName": "城市",
+									"description": "市镇名称"
+								},
+								"addressState": {
+									"displayName": "状态"
+								},
+								"addressCountry": {
+									"displayName": "国家",
+									"description": "国家名称"
+								},
+								"addressPostalCode": {
+									"displayName": "邮政编码",
+									"description": "邮政编码"
+								},
+								"addressName": {
+									"displayName": "地址名称",
+									"description": "与此地址关联的名称"
+								},
+								"addressApartment": {
+									"displayName": "公寓",
+									"description": "套房或公寓号码，或任何其他相关信息"
+								},
+								"addressNotes": {
+									"displayName": "地址备注",
+									"description": "目的地备注"
+								}
+							}
+						}
+					},
+					"values": {
+						"destinationProperties": {
+							"displayName": "目标属性",
+							"options": {
+								"unparsed": {
+									"displayName": "未解析地址",
+									"description": "地址是否以单个未解析字符串形式指定"
+								},
+								"address": {
+									"displayName": "目标地址",
+									"description": "目标街道地址详情"
+								},
+								"addressNumber": {
+									"displayName": "数字",
+									"description": "此地址的数字部分，也可能包含字母"
+								},
+								"addressStreet": {
+									"displayName": "街道",
+									"description": "街道名称"
+								},
+								"addressCity": {
+									"displayName": "城市",
+									"description": "市镇名称"
+								},
+								"addressState": {
+									"displayName": "状态"
+								},
+								"addressCountry": {
+									"displayName": "国家",
+									"description": "国家名称"
+								},
+								"addressPostalCode": {
+									"displayName": "邮政编码",
+									"description": "邮政编码"
+								},
+								"addressName": {
+									"displayName": "地址名称",
+									"description": "与此地址关联的名称"
+								},
+								"addressApartment": {
+									"displayName": "公寓",
+									"description": "套房或公寓号码，或任何其他相关信息"
+								},
+								"addressNotes": {
+									"displayName": "地址备注",
+									"description": "目的地备注"
+								}
+							}
+						},
+						"destination": {
+							"displayName": "目标",
+							"placeholder": "添加目标"
+						}
+					}
+				},
+				"teams": {
+					"displayName": "团队名称或ID",
+					"description": "该工作者所属的一个或多个团队。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"recipientName": {
+					"displayName": "收件人姓名",
+					"description": "收件人完整姓名"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "任务说明"
+				},
+				"recipientPhone": {
+					"displayName": "收件人电话",
+					"description": "若无前导+号，需符合组织所在国家/地区的有效唯一电话号码。若电话号码包含前导+号，将忽略组织的国家/地区设置。"
+				},
+				"skipSMSNotifications": {
+					"displayName": "跳过收件人短信通知",
+					"description": "此收件人是否要求跳过短信通知"
+				},
+				"completeAfter": {
+					"displayName": "完成后",
+					"description": "任务应完成的最早时间"
+				},
+				"completeBefore": {
+					"displayName": "在此之前完成",
+					"description": "任务应完成的最晚时间"
+				},
+				"executor": {
+					"displayName": "执行器ID",
+					"description": "将负责完成任务的组织ID"
+				},
+				"merchant": {
+					"displayName": "商家ID",
+					"description": "将显示给任务接收方的组织ID"
+				},
+				"pickupTask": {
+					"displayName": "领取任务",
+					"description": "是否为领取任务"
+				},
+				"quantity": {
+					"displayName": "数量",
+					"description": "完成任务时需要卸货的单位数量，用于路线优化"
+				},
+				"serviceTime": {
+					"displayName": "服务时间",
+					"description": "为优化路线，工作人员到达此任务目的地后需停留的分钟数"
+				},
+				"managers": {
+					"displayName": "管理员名称或ID",
+					"description": "管理管理员列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"hub": {
+					"displayName": "中心名称或ID",
+					"description": "团队的中心。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"enableSelfAssignment": {
+					"displayName": "自助分配",
+					"description": "是否允许司机自行分配团队未分配容器中的任务"
+				},
+				"workers": {
+					"displayName": "工作器名称或ID",
+					"description": "工作器列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"capacity": {
+					"displayName": "容量",
+					"description": "此工作人员可携带的最大单位数，用于路线优化"
+				},
+				"displayName": {
+					"displayName": "显示名称",
+					"description": "该值将在短信通知、配送跟踪页面及跨组织边界时，用于替代配送员的真实姓名"
+				}
+			}
+		},
+		"containerType": {
+			"displayName": "容器类型",
+			"options": {
+				"organizations": {
+					"displayName": "组织"
+				},
+				"teams": {
+					"displayName": "Teams"
+				},
+				"workers": {
+					"displayName": "工作节点"
+				}
+			}
+		},
+		"containerId": {
+			"displayName": "容器ID",
+			"description": "根据所选容器确定的对象ID"
+		},
+		"type": {
+			"displayName": "插入类型",
+			"options": {
+				"0": {
+					"displayName": "前置"
+				},
+				"1": {
+					"displayName": "在特定索引位置"
+				},
+				"-1": {
+					"displayName": "追加"
+				}
+			}
+		},
+		"index": {
+			"displayName": "索引",
+			"description": "给定的索引表示任务将被插入的位置"
+		},
+		"tasks": {
+			"displayName": "任务ID",
+			"description": "将要使用的任务ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"considerDependencies": {
+					"displayName": "考虑依赖关系",
+					"description": "是否在生成的分配操作中包含目标任务的依赖家族（父任务和子任务）"
+				},
+				"recipientSkipPhoneNumberValidation": {
+					"displayName": "跳过收件人手机号验证",
+					"description": "是否跳过对此收件人手机号的验证"
+				},
+				"filter": {
+					"displayName": "要返回的字段",
+					"description": "如果不需要所有字段，可指定要在响应中显示的字段列表"
+				},
+				"analytics": {
+					"displayName": "分析",
+					"description": "是否需要更详细的响应，包含基本工作职责事件、行驶距离（米）和时间分析"
+				}
+			}
+		},
+		"unparsed": {
+			"displayName": "未解析地址",
+			"description": "地址是否以单个未解析字符串形式指定"
+		},
+		"address": {
+			"displayName": "目标地址",
+			"description": "目标街道地址详情"
+		},
+		"addressNumber": {
+			"displayName": "编号",
+			"description": "此地址的编号部分，也可能包含字母"
+		},
+		"addressStreet": {
+			"displayName": "街道",
+			"description": "街道名称"
+		},
+		"addressCity": {
+			"displayName": "城市",
+			"description": "市政区名称"
+		},
+		"addressCountry": {
+			"displayName": "国家",
+			"description": "国家名称"
+		},
+		"destination": {
+			"displayName": "目标",
+			"placeholder": "添加目标",
+			"options": {
+				"destinationProperties": {
+					"displayName": "目标属性",
+					"options": {
+						"unparsed": {
+							"displayName": "未解析地址",
+							"description": "地址是否以单个未解析字符串形式指定"
+						},
+						"address": {
+							"displayName": "目标地址",
+							"description": "目标街道地址详情"
+						},
+						"addressNumber": {
+							"displayName": "数字",
+							"description": "此地址的数字部分，也可能包含字母"
+						},
+						"addressStreet": {
+							"displayName": "街道",
+							"description": "街道名称"
+						},
+						"addressCity": {
+							"displayName": "城市",
+							"description": "市镇名称"
+						},
+						"addressState": {
+							"displayName": "状态"
+						},
+						"addressCountry": {
+							"displayName": "国家",
+							"description": "国家名称"
+						},
+						"addressPostalCode": {
+							"displayName": "邮政编码",
+							"description": "邮政编码"
+						},
+						"addressName": {
+							"displayName": "地址名称",
+							"description": "与此地址关联的名称"
+						},
+						"addressApartment": {
+							"displayName": "公寓",
+							"description": "套房或公寓号码，或任何其他相关信息"
+						},
+						"addressNotes": {
+							"displayName": "地址备注",
+							"description": "目的地备注"
+						}
+					}
+				}
+			},
+			"values": {
+				"destinationProperties": {
+					"displayName": "目标属性",
+					"options": {
+						"unparsed": {
+							"displayName": "未解析地址",
+							"description": "地址是否以单个未解析字符串形式指定"
+						},
+						"address": {
+							"displayName": "目标地址",
+							"description": "目标街道地址详情"
+						},
+						"addressNumber": {
+							"displayName": "数字",
+							"description": "此地址的数字部分，也可能包含字母"
+						},
+						"addressStreet": {
+							"displayName": "街道",
+							"description": "街道名称"
+						},
+						"addressCity": {
+							"displayName": "城市",
+							"description": "市镇名称"
+						},
+						"addressState": {
+							"displayName": "状态"
+						},
+						"addressCountry": {
+							"displayName": "国家",
+							"description": "国家名称"
+						},
+						"addressPostalCode": {
+							"displayName": "邮政编码",
+							"description": "邮政编码"
+						},
+						"addressName": {
+							"displayName": "地址名称",
+							"description": "与此地址关联的名称"
+						},
+						"addressApartment": {
+							"displayName": "公寓",
+							"description": "套房或公寓号码，或任何其他相关信息"
+						},
+						"addressNotes": {
+							"displayName": "地址备注",
+							"description": "目的地备注"
+						}
+					}
+				},
+				"destination": {
+					"displayName": "目标",
+					"placeholder": "添加目标"
+				}
+			}
+		},
+		"getBy": {
+			"displayName": "获取方式",
+			"description": "用于查找收件人的变量",
+			"options": {
+				"id": {
+					"displayName": "ID"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"name": {
+					"displayName": "名称"
+				}
+			}
+		},
+		"phone": {
+			"displayName": "电话",
+			"description": "员工电话号码列表"
+		},
+		"recipientName": {
+			"displayName": "收件人姓名",
+			"description": "收件人的完整姓名"
+		},
+		"recipientPhone": {
+			"displayName": "收件人电话",
+			"description": "一个唯一且有效的电话号码，需符合组织所在国家/地区格式（若无前导+号）。若电话号码包含前导+号，则将忽略组织的国家/地区设置。"
+		},
+		"success": {
+			"displayName": "作为成功完成",
+			"description": "任务完成是否成功"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"from": {
+					"displayName": "从",
+					"description": "范围开始时间。在此时间或之后创建或完成的任务将被包含。"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "任务的状态"
+				},
+				"to": {
+					"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。",
+					"description": "范围结束时间。如未指定，默认为当前时间。"
+				},
+				"dropOff": {
+					"displayName": "移除",
+					"placeholder": "添加移除",
+					"options": {
+						"dropOffProperties": {
+							"displayName": "DropOff属性",
+							"options": {
+								"dropOffLongitude": {
+									"displayName": "下车经度",
+									"description": "下车地点的经度"
+								},
+								"dropOffLatitude": {
+									"displayName": "下车点纬度",
+									"description": "下车位置的纬度"
+								}
+							}
+						}
+					},
+					"values": {
+						"dropOffProperties": {
+							"displayName": "DropOff属性",
+							"options": {
+								"dropOffLongitude": {
+									"displayName": "下车经度",
+									"description": "下车地点的经度"
+								},
+								"dropOffLatitude": {
+									"displayName": "下车点纬度",
+									"description": "下车位置的纬度"
+								}
+							}
+						},
+						"dropOff": {
+							"displayName": "移除",
+							"placeholder": "添加移除"
+						}
+					}
+				},
+				"pickUp": {
+					"displayName": "拾取",
+					"placeholder": "添加拾取",
+					"options": {
+						"pickUpProperties": {
+							"displayName": "拾取属性",
+							"options": {
+								"pickupLongitude": {
+									"displayName": "取车经度",
+									"description": "取车地点的经度"
+								},
+								"pickupLatitude": {
+									"displayName": "取件纬度",
+									"description": "取件地点的纬度"
+								},
+								"pickupTime": {
+									"displayName": "取件时间",
+									"description": "如果请求包含取件地点，且时间在未来3小时内，则必须提供取件时间"
+								}
+							}
+						}
+					},
+					"values": {
+						"pickUpProperties": {
+							"displayName": "拾取属性",
+							"options": {
+								"pickupLongitude": {
+									"displayName": "取车经度",
+									"description": "取车地点的经度"
+								},
+								"pickupLatitude": {
+									"displayName": "取件纬度",
+									"description": "取件地点的纬度"
+								},
+								"pickupTime": {
+									"displayName": "取件时间",
+									"description": "如果请求包含取件地点，且时间在未来3小时内，则必须提供取件时间"
+								}
+							}
+						},
+						"pickUp": {
+							"displayName": "拾取",
+							"placeholder": "添加拾取"
+						}
+					}
+				},
+				"restrictedVehicleTypes": {
+					"displayName": "受限车辆类型",
+					"description": "查询中忽略的车辆类型",
+					"options": {
+						"CAR": {
+							"displayName": "汽车"
+						},
+						"MOTORCYCLE": {
+							"displayName": "摩托车"
+						},
+						"BICYCLE": {
+							"displayName": "自行车"
+						},
+						"TRUCK": {
+							"displayName": "卡车"
+						}
+					}
+				},
+				"serviceTime": {
+					"displayName": "服务时间",
+					"description": "工作人员在取件地点、送件地点或两者（如适用）的预计停留时间 单位：秒"
+				},
+				"radius": {
+					"displayName": "半径",
+					"description": "搜索工作人员所在球形区域的半径长度（单位：米）。若未提供则默认为1000。最大值为10000。"
+				},
+				"states": {
+					"displayName": "状态",
+					"description": "工作器状态列表"
+				},
+				"teams": {
+					"displayName": "团队名称或ID",
+					"description": "工作人员必须所属的团队列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"phones": {
+					"displayName": "电话",
+					"description": "工人电话号码列表"
+				}
+			}
+		},
+		"overrideFields": {
+			"displayName": "覆盖字段",
+			"placeholder": "添加字段",
+			"options": {
+				"completeAfter": {
+					"displayName": "完成后",
+					"description": "任务应完成的最早时间"
+				},
+				"completeBefore": {
+					"displayName": "在此之前完成",
+					"description": "任务应完成的最晚时间"
+				},
+				"includeBarcodes": {
+					"displayName": "包含条形码"
+				},
+				"includeDependencies": {
+					"displayName": "包含依赖项"
+				},
+				"includeMetadata": {
+					"displayName": "包含元数据"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "任务说明"
+				},
+				"pickupTask": {
+					"displayName": "领取任务",
+					"description": "是否为领取任务"
+				},
+				"serviceTime": {
+					"displayName": "服务时间",
+					"description": "为优化路线，工作人员到达此任务目的地后需停留的分钟数"
+				}
+			}
+		},
+		"workers": {
+			"displayName": "工作者名称或ID",
+			"description": "工作者列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"managers": {
+			"displayName": "管理员名称或ID",
+			"description": "管理管理员列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"byLocation": {
+			"displayName": "按位置搜索",
+			"description": "是否仅搜索当前位于特定目标区域的工作人员"
+		},
+		"teams": {
+			"displayName": "团队名称或ID",
+			"description": "该工作人员所属的一个或多个团队。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"longitude": {
+			"displayName": "经度",
+			"description": "坐标对中的经度分量"
+		},
+		"latitude": {
+			"displayName": "纬度",
+			"description": "坐标对中的纬度分量"
+		},
+		"schedule": {
+			"displayName": "计划",
+			"placeholder": "添加计划",
+			"multipleValueButtonText": "添加计划",
+			"options": {
+				"scheduleProperties": {
+					"displayName": "计划属性",
+					"options": {
+						"date": {
+							"displayName": "日期",
+							"description": "计划日期"
+						},
+						"timezone": {
+							"displayName": "时区名称或ID",
+							"description": "有效的时区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"shifts": {
+							"displayName": "班次",
+							"placeholder": "添加班次",
+							"multipleValueButtonText": "添加班次",
+							"options": {
+								"shiftsProperties": {
+									"displayName": "班次属性",
+									"options": {
+										"start": {
+											"displayName": "开始",
+											"description": "开始时间"
+										},
+										"end": {
+											"displayName": "结束",
+											"description": "结束时间"
+										}
+									}
+								}
+							},
+							"values": {
+								"shiftsProperties": {
+									"displayName": "班次属性",
+									"options": {
+										"start": {
+											"displayName": "开始",
+											"description": "开始时间"
+										},
+										"end": {
+											"displayName": "结束",
+											"description": "结束时间"
+										}
+									}
+								},
+								"shifts": {
+									"displayName": "班次",
+									"placeholder": "添加班次"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"scheduleProperties": {
+					"displayName": "计划属性",
+					"options": {
+						"date": {
+							"displayName": "日期",
+							"description": "计划日期"
+						},
+						"timezone": {
+							"displayName": "时区名称或ID",
+							"description": "有效的时区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"shifts": {
+							"displayName": "班次",
+							"placeholder": "添加班次",
+							"multipleValueButtonText": "添加班次",
+							"options": {
+								"shiftsProperties": {
+									"displayName": "班次属性",
+									"options": {
+										"start": {
+											"displayName": "开始",
+											"description": "开始时间"
+										},
+										"end": {
+											"displayName": "结束",
+											"description": "结束时间"
+										}
+									}
+								}
+							},
+							"values": {
+								"shiftsProperties": {
+									"displayName": "班次属性",
+									"options": {
+										"start": {
+											"displayName": "开始",
+											"description": "开始时间"
+										},
+										"end": {
+											"displayName": "结束",
+											"description": "结束时间"
+										}
+									}
+								},
+								"shifts": {
+									"displayName": "班次",
+									"placeholder": "添加班次"
+								}
+							}
+						}
+					}
+				},
+				"schedule": {
+					"displayName": "计划",
+					"placeholder": "添加计划"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,830 @@
+{
+	"header": {
+		"displayName": "Wordpress",
+		"description": "使用Wordpress API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"post": {
+					"displayName": "发布"
+				},
+				"page": {
+					"displayName": "页面"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "页面标题"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"authorId": {
+					"displayName": "作者名称或ID",
+					"description": "对象作者的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"content": {
+					"displayName": "内容",
+					"description": "页面内容"
+				},
+				"slug": {
+					"displayName": "标识符",
+					"description": "用户的字母数字标识符"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "用于保护内容和摘要访问权限的密码"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "页面的命名状态",
+					"options": {
+						"draft": {
+							"displayName": "草稿"
+						},
+						"future": {
+							"displayName": "未来"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"publish": {
+							"displayName": "发布"
+						}
+					}
+				},
+				"date": {
+					"displayName": "日期",
+					"description": "帖子在站点时区中的发布日期"
+				},
+				"commentStatus": {
+					"displayName": "评论状态",
+					"description": "页面是否开放评论",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"closed": {
+							"displayName": "关闭"
+						}
+					}
+				},
+				"pingStatus": {
+					"displayName": "Ping状态",
+					"description": "是否应发送消息来通知页面",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"closed": {
+							"displayName": "关闭"
+						}
+					}
+				},
+				"format": {
+					"displayName": "格式",
+					"description": "帖子是否开放评论",
+					"options": {
+						"aside": {
+							"displayName": "侧边栏"
+						},
+						"audio": {
+							"displayName": "音频"
+						},
+						"chat": {
+							"displayName": "聊天"
+						},
+						"gallery": {
+							"displayName": "模板库"
+						},
+						"image": {
+							"displayName": "图片"
+						},
+						"link": {
+							"displayName": "链接"
+						},
+						"quote": {
+							"displayName": "引用"
+						},
+						"standard": {
+							"displayName": "标准"
+						},
+						"status": {
+							"displayName": "状态"
+						},
+						"video": {
+							"displayName": "视频"
+						}
+					}
+				},
+				"sticky": {
+					"displayName": "置顶",
+					"description": "是否应将此对象视为置顶项"
+				},
+				"categories": {
+					"displayName": "分类名称或ID",
+					"description": "分配给对象的分类法术语。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "分配给post_tag分类法中对象的术语。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"postTemplate": {
+					"displayName": "模板",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor模板",
+									"description": "站点是否使用Elementor页面构建器"
+								},
+								"template": {
+									"displayName": "模板",
+									"description": "要使用的Elementor模板",
+									"options": {
+										"": {
+											"displayName": "标准"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor画布"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor页眉页脚"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor主题"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor模板",
+									"description": "站点是否使用Elementor页面构建器"
+								},
+								"template": {
+									"displayName": "模板",
+									"description": "要使用的Elementor模板",
+									"options": {
+										"": {
+											"displayName": "标准"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor画布"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor页眉页脚"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor主题"
+										}
+									}
+								}
+							}
+						},
+						"postTemplate": {
+							"displayName": "模板"
+						}
+					}
+				},
+				"parent": {
+					"displayName": "父级ID",
+					"description": "帖子的父级ID"
+				},
+				"pageTemplate": {
+					"displayName": "模板",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor模板",
+									"description": "站点是否使用Elementor页面构建器"
+								},
+								"template": {
+									"displayName": "模板",
+									"description": "要使用的Elementor模板",
+									"options": {
+										"": {
+											"displayName": "标准"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor画布"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor页眉页脚"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor主题"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor模板",
+									"description": "站点是否使用Elementor页面构建器"
+								},
+								"template": {
+									"displayName": "模板",
+									"description": "要使用的Elementor模板",
+									"options": {
+										"": {
+											"displayName": "标准"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor画布"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor页眉页脚"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor主题"
+										}
+									}
+								}
+							}
+						},
+						"pageTemplate": {
+							"displayName": "模板"
+						}
+					}
+				},
+				"menuOrder": {
+					"displayName": "菜单排序",
+					"description": "该页面相对于其他页面的顺序"
+				},
+				"featuredMediaId": {
+					"displayName": "特色媒体ID",
+					"description": "页面的特色媒体ID"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "用户的URL"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "用户描述"
+				},
+				"nickname": {
+					"displayName": "昵称",
+					"description": "用户的昵称"
+				}
+			}
+		},
+		"postId": {
+			"displayName": "帖子ID",
+			"description": "对象的唯一标识符"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"authorId": {
+					"displayName": "作者名称或ID",
+					"description": "对象作者的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "页面标题"
+				},
+				"content": {
+					"displayName": "内容",
+					"description": "页面内容"
+				},
+				"slug": {
+					"displayName": "标识符",
+					"description": "用户的字母数字标识符"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "用户密码（从不包含）"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "页面的命名状态",
+					"options": {
+						"draft": {
+							"displayName": "草稿"
+						},
+						"future": {
+							"displayName": "未来"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"publish": {
+							"displayName": "发布"
+						}
+					}
+				},
+				"date": {
+					"displayName": "日期",
+					"description": "帖子在站点时区中的发布日期"
+				},
+				"commentStatus": {
+					"displayName": "评论状态",
+					"description": "页面是否开放评论",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"closed": {
+							"displayName": "已关闭"
+						}
+					}
+				},
+				"pingStatus": {
+					"displayName": "Ping状态",
+					"description": "页面是否开放评论",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"closed": {
+							"displayName": "关闭"
+						}
+					}
+				},
+				"format": {
+					"displayName": "格式",
+					"description": "帖子的格式",
+					"options": {
+						"aside": {
+							"displayName": "侧边栏"
+						},
+						"audio": {
+							"displayName": "音频"
+						},
+						"chat": {
+							"displayName": "聊天"
+						},
+						"gallery": {
+							"displayName": "模板库"
+						},
+						"image": {
+							"displayName": "图片"
+						},
+						"link": {
+							"displayName": "链接"
+						},
+						"quote": {
+							"displayName": "引用"
+						},
+						"standard": {
+							"displayName": "标准"
+						},
+						"status": {
+							"displayName": "状态"
+						},
+						"video": {
+							"displayName": "视频"
+						}
+					}
+				},
+				"sticky": {
+					"displayName": "置顶",
+					"description": "是否应将此对象视为置顶项"
+				},
+				"categories": {
+					"displayName": "分类名称或ID",
+					"description": "分配给对象的分类法术语。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "分配给post_tag分类法中对象的术语。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"postTemplate": {
+					"displayName": "模板",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor模板",
+									"description": "站点是否使用Elementor页面构建器"
+								},
+								"template": {
+									"displayName": "模板",
+									"description": "要使用的Elementor模板",
+									"options": {
+										"": {
+											"displayName": "标准"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor画布"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor页眉页脚"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor主题"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor模板",
+									"description": "站点是否使用Elementor页面构建器"
+								},
+								"template": {
+									"displayName": "模板",
+									"description": "要使用的Elementor模板",
+									"options": {
+										"": {
+											"displayName": "标准"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor画布"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor页眉页脚"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor主题"
+										}
+									}
+								}
+							}
+						},
+						"postTemplate": {
+							"displayName": "模板"
+						}
+					}
+				},
+				"parent": {
+					"displayName": "父级ID",
+					"description": "帖子的父级ID"
+				},
+				"pageTemplate": {
+					"displayName": "模板",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor模板",
+									"description": "站点是否使用Elementor页面构建器"
+								},
+								"template": {
+									"displayName": "模板",
+									"description": "要使用的Elementor模板",
+									"options": {
+										"": {
+											"displayName": "标准"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor画布"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor页眉页脚"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor主题"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"elementor": {
+									"displayName": "Elementor模板",
+									"description": "站点是否使用Elementor页面构建器"
+								},
+								"template": {
+									"displayName": "模板",
+									"description": "要使用的Elementor模板",
+									"options": {
+										"": {
+											"displayName": "标准"
+										},
+										"elementor_canvas": {
+											"displayName": "Elementor画布"
+										},
+										"elementor_header_footer": {
+											"displayName": "Elementor页眉页脚"
+										},
+										"elementor_theme": {
+											"displayName": "Elementor主题"
+										}
+									}
+								}
+							}
+						},
+						"pageTemplate": {
+							"displayName": "模板"
+						}
+					}
+				},
+				"menuOrder": {
+					"displayName": "菜单排序",
+					"description": "该页面相对于其他页面的顺序"
+				},
+				"featuredMediaId": {
+					"displayName": "特色媒体ID",
+					"description": "页面的特色媒体ID"
+				},
+				"username": {
+					"displayName": "用户名",
+					"description": "用户登录名"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "用户的显示名称"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "用户的名字"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "用户的姓氏"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用户的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "用户的URL"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "用户描述"
+				},
+				"nickname": {
+					"displayName": "昵称",
+					"description": "用户的昵称"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"password": {
+					"displayName": "密码",
+					"description": "如果页面受密码保护，请输入密码"
+				},
+				"context": {
+					"displayName": "上下文",
+					"description": "请求的作用域；决定响应中包含的字段",
+					"options": {
+						"view": {
+							"displayName": "查看"
+						},
+						"embed": {
+							"displayName": "嵌入"
+						},
+						"edit": {
+							"displayName": "编辑"
+						}
+					}
+				},
+				"after": {
+					"displayName": "之后",
+					"description": "将响应限制在指定ISO8601兼容日期之后发布的页面"
+				},
+				"author": {
+					"displayName": "作者姓名或ID",
+					"description": "将结果集限制为分配给特定作者的页面。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"before": {
+					"displayName": "之前",
+					"description": "限制响应为在指定ISO8601兼容日期之前发布的页面"
+				},
+				"categories": {
+					"displayName": "分类名称或ID",
+					"description": "将结果集限制为在分类法中分配了指定术语的所有项目。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"excludedCategories": {
+					"displayName": "排除分类",
+					"description": "将结果集限制为除在分类法中分配了指定术语之外的所有项目。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"excludedTags": {
+					"displayName": "排除标签",
+					"description": "将结果集限制为所有项目，但排除那些在标签分类中分配了指定术语的项目。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "排序属性升序或降序",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"description": "按对象属性排序集合",
+					"options": {
+						"author": {
+							"displayName": "作者"
+						},
+						"date": {
+							"displayName": "日期"
+						},
+						"id": {
+							"displayName": "ID"
+						},
+						"include": {
+							"displayName": "包含"
+						},
+						"include_slugs": {
+							"displayName": "包含Slug"
+						},
+						"modified": {
+							"displayName": "已修改"
+						},
+						"parent": {
+							"displayName": "父级"
+						},
+						"relevance": {
+							"displayName": "相关性"
+						},
+						"slug": {
+							"displayName": "标识符"
+						},
+						"title": {
+							"displayName": "标题"
+						},
+						"email": {
+							"displayName": "电子邮件"
+						},
+						"name": {
+							"displayName": "名称"
+						},
+						"registered_date": {
+							"displayName": "注册日期"
+						},
+						"url": {
+							"displayName": "URL"
+						}
+					}
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "将结果限制为匹配字符串的内容"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "页面状态",
+					"options": {
+						"draft": {
+							"displayName": "草稿"
+						},
+						"future": {
+							"displayName": "未来"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"private": {
+							"displayName": "私有"
+						},
+						"publish": {
+							"displayName": "发布"
+						}
+					}
+				},
+				"sticky": {
+					"displayName": "置顶",
+					"description": "是否将结果集限制为置顶项目"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "将结果集限制为在标签分类中分配了指定术语的所有项目。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"force": {
+					"displayName": "强制",
+					"description": "Whether to bypass trash and force deletion"
+				},
+				"menuOrder": {
+					"displayName": "菜单排序",
+					"description": "将结果集限制为具有特定菜单顺序值的项目"
+				},
+				"page": {
+					"displayName": "页面",
+					"description": "集合的当前页"
+				},
+				"parent": {
+					"displayName": "父页面ID",
+					"description": "将结果集限制为具有特定父页面ID的项目"
+				},
+				"who": {
+					"displayName": "谁",
+					"description": "将结果集限制为被视为作者的用户",
+					"options": {
+						"authors": {
+							"displayName": "作者"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"pageId": {
+			"displayName": "页面ID",
+			"description": "对象的唯一标识符"
+		},
+		"username": {
+			"displayName": "用户名",
+			"description": "用户登录名"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "用户的显示名称"
+		},
+		"firstName": {
+			"displayName": "名字",
+			"description": "用户的名字"
+		},
+		"lastName": {
+			"displayName": "姓氏",
+			"description": "用户的姓氏"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "用户的电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"password": {
+			"displayName": "密码",
+			"description": "用户密码（从不包含）"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "用户的唯一标识符"
+		},
+		"reassign": {
+			"displayName": "重新分配",
+			"description": "将已删除用户的帖子和链接重新分配给此用户ID"
+		}
+	}
+}

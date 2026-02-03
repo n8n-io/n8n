@@ -1,0 +1,641 @@
+{
+	"header": {
+		"displayName": "HTTP请求",
+		"description": "发起HTTP请求并返回响应数据"
+	},
+	"nodeView": {
+		"method": {
+			"displayName": "方法",
+			"description": "要使用的请求方法",
+			"options": {
+				"DELETE": {
+					"displayName": "删除"
+				},
+				"GET": {
+					"displayName": "获取"
+				},
+				"HEAD": {
+					"displayName": "HEAD"
+				},
+				"OPTIONS": {
+					"displayName": "选项"
+				},
+				"PATCH": {
+					"displayName": "PATCH"
+				},
+				"POST": {
+					"displayName": "POST"
+				},
+				"PUT": {
+					"displayName": "PUT"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "发起请求的URL",
+			"placeholder": "http://example.com/index.html"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"predefinedCredentialType": {
+					"displayName": "预定义凭据类型",
+					"description": "我们已为众多服务预先实现认证，您无需手动设置"
+				},
+				"genericCredentialType": {
+					"displayName": "通用凭据类型",
+					"description": "完全可自定义。可在基础认证、Header认证、OAuth2等类型中选择。"
+				}
+			}
+		},
+		"nodeCredentialType": {
+			"displayName": "凭据类型"
+		},
+		"googleApiWarning": {
+			"displayName": "请确保已在凭据中为服务账号指定了作用域"
+		},
+		"genericAuthType": {
+			"displayName": "通用认证类型"
+		},
+		"provideSslCertificates": {
+			"displayName": "SSL证书"
+		},
+		"provideSslCertificatesNotice": {
+			"displayName": "在节点的'SSL证书凭据'参数中提供证书"
+		},
+		"sslCertificate": {
+			"displayName": "SSL证书"
+		},
+		"sendQuery": {
+			"displayName": "发送查询参数",
+			"description": "请求是否包含查询参数"
+		},
+		"specifyQuery": {
+			"displayName": "指定查询参数",
+			"options": {
+				"keypair": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用JSON"
+				}
+			}
+		},
+		"queryParameters": {
+			"displayName": "查询参数",
+			"placeholder": "添加查询参数",
+			"multipleValueButtonText": "添加查询参数",
+			"options": {
+				"parameters": {
+					"displayName": "查询参数",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"parameters": {
+					"displayName": "查询参数",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"queryParameters": {
+					"displayName": "查询参数",
+					"placeholder": "添加查询参数"
+				}
+			}
+		},
+		"jsonQuery": {
+			"displayName": "JSON"
+		},
+		"sendHeaders": {
+			"displayName": "发送请求头",
+			"description": "请求是否包含请求头"
+		},
+		"specifyHeaders": {
+			"displayName": "指定请求头",
+			"options": {
+				"keypair": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用JSON"
+				}
+			}
+		},
+		"headerParameters": {
+			"displayName": "请求头",
+			"placeholder": "添加请求头",
+			"multipleValueButtonText": "添加请求头",
+			"options": {
+				"parameters": {
+					"displayName": "页眉",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"parameters": {
+					"displayName": "页眉",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"headerParameters": {
+					"displayName": "请求头",
+					"placeholder": "添加请求头"
+				}
+			}
+		},
+		"jsonHeaders": {
+			"displayName": "JSON"
+		},
+		"sendBody": {
+			"displayName": "发送正文",
+			"description": "请求是否包含正文"
+		},
+		"contentType": {
+			"displayName": "正文内容类型",
+			"description": "用于发送正文参数的Content-Type",
+			"options": {
+				"form-urlencoded": {
+					"displayName": "表单URL编码"
+				},
+				"multipart-form-data": {
+					"displayName": "表单数据"
+				},
+				"json": {
+					"displayName": "JSON"
+				},
+				"binaryData": {
+					"displayName": "n8n二进制文件"
+				},
+				"raw": {
+					"displayName": "原始"
+				}
+			}
+		},
+		"specifyBody": {
+			"displayName": "指定请求体",
+			"description": "请求体可通过显式字段（<code>keypair</code>）或JavaScript对象（<code>json</code>）指定",
+			"options": {
+				"keypair": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用JSON"
+				},
+				"string": {
+					"displayName": "使用单个字段"
+				}
+			}
+		},
+		"bodyParameters": {
+			"displayName": "正文字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"parameters": {
+					"displayName": "字段",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的字段值"
+						},
+						"parameterType": {
+							"displayName": "类型",
+							"options": {
+								"formBinaryData": {
+									"displayName": "n8n二进制文件"
+								},
+								"formData": {
+									"displayName": "表单数据"
+								}
+							}
+						},
+						"inputDataFieldName": {
+							"displayName": "输入数据字段名称",
+							"description": "包含待处理二进制文件数据的传入字段名称"
+						}
+					}
+				}
+			},
+			"values": {
+				"parameters": {
+					"displayName": "字段",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的字段值"
+						},
+						"parameterType": {
+							"displayName": "类型",
+							"options": {
+								"formBinaryData": {
+									"displayName": "n8n二进制文件"
+								},
+								"formData": {
+									"displayName": "表单数据"
+								}
+							}
+						},
+						"inputDataFieldName": {
+							"displayName": "输入数据字段名称",
+							"description": "包含待处理二进制文件数据的传入字段名称"
+						}
+					}
+				},
+				"bodyParameters": {
+					"displayName": "正文字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"jsonBody": {
+			"displayName": "JSON"
+		},
+		"body": {
+			"displayName": "正文",
+			"placeholder": "field1=value1&field2=value2"
+		},
+		"inputDataFieldName": {
+			"displayName": "输入数据字段名称",
+			"description": "传入字段的名称，该字段包含要处理的二进制文件数据"
+		},
+		"rawContentType": {
+			"displayName": "内容类型",
+			"placeholder": "text/html"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍下载响应"
+				},
+				"queryParameterArrays": {
+					"displayName": "查询参数中的数组格式",
+					"options": {
+						"repeat": {
+							"displayName": "无括号",
+							"description": "例如 foo=bar&foo=qux"
+						},
+						"brackets": {
+							"displayName": "仅使用方括号",
+							"description": "例如 foo[]=bar&foo[]=qux"
+						},
+						"indices": {
+							"displayName": "带索引的括号",
+							"description": "例如 foo[0]=bar&foo[1]=qux"
+						}
+					}
+				},
+				"lowercaseHeaders": {
+					"displayName": "小写请求头",
+					"description": "是否将请求头名称转为小写"
+				},
+				"redirect": {
+					"displayName": "重定向",
+					"placeholder": "添加重定向",
+					"options": {
+						"redirect": {
+							"displayName": "重定向",
+							"options": {
+								"followRedirects": {
+									"displayName": "跟随重定向",
+									"description": "是否跟随所有重定向"
+								},
+								"maxRedirects": {
+									"displayName": "最大重定向次数",
+									"description": "允许跟随的最大重定向次数"
+								}
+							}
+						}
+					},
+					"values": {
+						"redirect": {
+							"displayName": "重定向",
+							"placeholder": "添加重定向"
+						}
+					}
+				},
+				"response": {
+					"displayName": "响应",
+					"placeholder": "添加响应",
+					"options": {
+						"response": {
+							"displayName": "响应",
+							"options": {
+								"fullResponse": {
+									"displayName": "包含响应头和状态码",
+									"description": "是否返回完整响应数据（包括响应头和状态码）而不仅是响应体"
+								},
+								"neverError": {
+									"displayName": "永不报错",
+									"description": "即使状态码不是2xx也视为成功"
+								},
+								"responseFormat": {
+									"displayName": "响应格式",
+									"description": "从URL返回的数据格式",
+									"options": {
+										"autodetect": {
+											"displayName": "自动检测"
+										},
+										"file": {
+											"displayName": "文件"
+										},
+										"json": {
+											"displayName": "JSON"
+										},
+										"text": {
+											"displayName": "文本"
+										}
+									}
+								},
+								"outputPropertyName": {
+									"displayName": "将输出放入字段",
+									"description": "要将读取文件数据写入的二进制属性名称"
+								}
+							}
+						}
+					},
+					"values": {
+						"response": {
+							"displayName": "响应",
+							"placeholder": "添加响应"
+						}
+					}
+				},
+				"pagination": {
+					"displayName": "分页",
+					"placeholder": "添加分页",
+					"options": {
+						"pagination": {
+							"displayName": "分页",
+							"options": {
+								"paginationMode": {
+									"displayName": "分页模式",
+									"description": "是否应使用分页",
+									"options": {
+										"off": {
+											"displayName": "关闭"
+										},
+										"updateAParameterInEachRequest": {
+											"displayName": "在每个请求中更新参数"
+										},
+										"responseContainsNextURL": {
+											"displayName": "响应包含下一个URL"
+										}
+									}
+								},
+								"webhookNotice": {
+									"displayName": "使用 $response 变量访问先前响应的数据。有关分页的更多信息，请参阅<a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httprequest\" target=\"_blank\">文档</a>"
+								},
+								"nextURL": {
+									"displayName": "下一页URL",
+									"description": "应解析为下一页的URL。<a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination\" target=\"_blank\">更多信息</a>。"
+								},
+								"parameters": {
+									"displayName": "参数",
+									"placeholder": "添加参数",
+									"multipleValueButtonText": "添加参数",
+									"options": {
+										"parameters": {
+											"displayName": "参数",
+											"options": {
+												"type": {
+													"displayName": "类型",
+													"description": "应在何处设置参数",
+													"options": {
+														"body": {
+															"displayName": "正文"
+														},
+														"headers": {
+															"displayName": "页眉"
+														},
+														"qs": {
+															"displayName": "查询"
+														}
+													}
+												},
+												"name": {
+													"displayName": "名称",
+													"placeholder": "例如 页面"
+												},
+												"value": {
+													"displayName": "值"
+												}
+											}
+										}
+									},
+									"values": {
+										"parameters": {
+											"displayName": "参数",
+											"placeholder": "添加参数"
+										}
+									}
+								},
+								"paginationCompleteWhen": {
+									"displayName": "分页完成条件",
+									"description": "何时停止继续请求？",
+									"options": {
+										"responseIsEmpty": {
+											"displayName": "响应为空"
+										},
+										"receiveSpecificStatusCodes": {
+											"displayName": "接收特定状态码"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								},
+								"statusCodesWhenComplete": {
+									"displayName": "完成时的状态码",
+									"description": "接受逗号分隔的值"
+								},
+								"completeExpression": {
+									"displayName": "完整表达式",
+									"description": "当分页完成时应评估为真。<a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination\" target=\"_blank\">更多信息</a>。"
+								},
+								"limitPagesFetched": {
+									"displayName": "限制获取页面数",
+									"description": "是否应限制请求数量"
+								},
+								"maxRequests": {
+									"displayName": "最大页数",
+									"description": "最大请求数量"
+								},
+								"requestInterval": {
+									"displayName": "请求间隔时间（毫秒）",
+									"description": "请求之间等待的时间（毫秒）"
+								}
+							}
+						}
+					},
+					"values": {
+						"pagination": {
+							"displayName": "分页",
+							"placeholder": "添加分页"
+						}
+					}
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				},
+				"sendCredentialsOnCrossOriginRedirect": {
+					"displayName": "跨域重定向时发送凭据",
+					"description": "是否在重定向到不同源时发送凭据，例如“Authorization”请求头"
+				}
+			}
+		},
+		"optimizeResponse": {
+			"displayName": "优化响应",
+			"description": "是否优化工具响应以减少传递给LLM的数据量，可能带来更好结果并降低成本"
+		},
+		"responseType": {
+			"displayName": "预期响应类型",
+			"options": {
+				"json": {
+					"displayName": "JSON"
+				},
+				"html": {
+					"displayName": "HTML"
+				},
+				"text": {
+					"displayName": "文本"
+				}
+			}
+		},
+		"dataField": {
+			"displayName": "包含数据的字段",
+			"description": "指定响应中包含数据的字段名称",
+			"placeholder": "例如：records"
+		},
+		"fieldsToInclude": {
+			"displayName": "包含字段",
+			"description": "响应对象应包含哪些字段",
+			"options": {
+				"all": {
+					"displayName": "全部",
+					"description": "包含所有字段"
+				},
+				"selected": {
+					"displayName": "已选择",
+					"description": "仅包含下方指定的字段"
+				},
+				"except": {
+					"displayName": "排除",
+					"description": "排除以下指定字段"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "字段",
+			"description": "字段名称的逗号分隔列表。支持点表示法。您可以从输入面板拖动所选字段。",
+			"placeholder": "例如：field1,field2"
+		},
+		"cssSelector": {
+			"displayName": "选择器 (CSS)",
+			"description": "在响应的HTML中选择特定元素（例如body）或选定类型的多个元素（例如div）。",
+			"placeholder": "例如 body"
+		},
+		"onlyContent": {
+			"displayName": "仅返回内容",
+			"description": "是否仅返回HTML元素的内容，去除HTML标签和属性"
+		},
+		"elementsToOmit": {
+			"displayName": "要忽略的元素",
+			"description": "提取内容时要排除的选择器列表，用逗号分隔",
+			"placeholder": "例如：img, .className, #ItemId"
+		},
+		"truncateResponse": {
+			"displayName": "截断响应"
+		},
+		"maxLength": {
+			"displayName": "最大响应字符数"
+		},
+		"infoMessage": {
+			"displayName": "您可以在浏览器的开发者控制台中查看此节点发出的原始请求"
+		}
+	}
+}

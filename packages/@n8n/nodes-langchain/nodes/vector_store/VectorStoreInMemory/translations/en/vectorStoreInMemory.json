@@ -1,0 +1,77 @@
+{
+	"header": {
+		"displayName": "Simple Vector Store",
+		"description": "The easiest way to experiment with vector stores, without external setup."
+	},
+	"nodeView": {
+		"ragStarterCallout": {
+			"displayName": "Tip: Get a feel for vector stores in n8n with our"
+		},
+		"mode": {
+			"displayName": "Operation Mode",
+			"options": {
+				"load": {
+					"displayName": "Get Many",
+					"description": "Get many ranked documents from vector store for query"
+				},
+				"insert": {
+					"displayName": "Insert Documents",
+					"description": "Insert documents into vector store"
+				},
+				"retrieve": {
+					"displayName": "Retrieve Documents (As Vector Store for Chain/Tool)",
+					"description": "Retrieve documents from vector store to be used as vector store with AI nodes"
+				},
+				"retrieve-as-tool": {
+					"displayName": "Retrieve Documents (As Tool for AI Agent)",
+					"description": "Retrieve documents from vector store to be used as tool with AI nodes"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "<strong>For experimental use only</strong>: Data is stored in memory and will be lost if n8n restarts. Data may also be cleared if available memory gets low, and is accessible to all users of this instance. <a href=\"https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/\">More info</a>"
+		},
+		"toolName": {
+			"displayName": "Name",
+			"description": "Name of the vector store",
+			"placeholder": "e.g. company_knowledge_base"
+		},
+		"toolDescription": {
+			"displayName": "Description",
+			"description": "Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often",
+			"placeholder": "e.g. The easiest way to experiment with vector stores, without external setup."
+		},
+		"memoryKey": {
+			"displayName": "Memory Key",
+			"description": "The key to use to store the vector memory in the workflow data. These keys are shared between workflows."
+		},
+		"embeddingBatchSize": {
+			"displayName": "Embedding Batch Size",
+			"description": "Number of documents to embed in a single batch"
+		},
+		"clearStore": {
+			"displayName": "Clear Store",
+			"description": "Whether to clear the store before inserting new data"
+		},
+		"prompt": {
+			"displayName": "Prompt",
+			"description": "Search prompt to retrieve matching documents from the vector store using similarity-based ranking"
+		},
+		"topK": {
+			"displayName": "Limit",
+			"description": "Number of top results to fetch from vector store"
+		},
+		"includeDocumentMetadata": {
+			"displayName": "Include Metadata",
+			"description": "Whether or not to include document metadata"
+		},
+		"useReranker": {
+			"displayName": "Rerank Results",
+			"description": "Whether or not to rerank results"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "ID of an embedding entry"
+		}
+	}
+}

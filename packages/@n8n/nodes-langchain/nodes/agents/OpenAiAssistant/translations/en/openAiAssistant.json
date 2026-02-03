@@ -1,0 +1,62 @@
+{
+	"header": {
+		"displayName": "OpenAI Assistant",
+		"description": "Utilizes Assistant API from Open AI."
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "Operation",
+			"options": {
+				"new": {
+					"displayName": "Use New Assistant"
+				},
+				"existing": {
+					"displayName": "Use Existing Assistant"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name"
+		},
+		"instructions": {
+			"displayName": "Instructions",
+			"description": "How the Assistant and model should behave or respond"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will be used to power the assistant. <a href=\"https://beta.openai.com/docs/models/overview\">Learn more</a>. The Retrieval tool requires gpt-3.5-turbo-1106 and gpt-4-1106-preview models."
+		},
+		"assistantId": {
+			"displayName": "Assistant",
+			"description": "The assistant to use. <a href=\"https://beta.openai.com/docs/assistants/overview\">Learn more</a>."
+		},
+		"text": {
+			"displayName": "Text"
+		},
+		"nativeTools": {
+			"displayName": "OpenAI Tools"
+		},
+		"noticeTools": {
+			"displayName": "Upload files for retrieval using the <a href=\"https://platform.openai.com/playground\" target=\"_blank\">OpenAI website<a/>"
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"baseURL": {
+					"displayName": "Base URL",
+					"description": "Override the default base URL for the API"
+				},
+				"maxRetries": {
+					"displayName": "Max Retries",
+					"description": "Maximum number of retries to attempt"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Maximum amount of time a request is allowed to take in milliseconds"
+				}
+			}
+		}
+	}
+}

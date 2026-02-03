@@ -1,0 +1,32 @@
+{
+	"header": {
+		"displayName": "DHL",
+		"description": "使用DHL API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取跟踪详情"
+				}
+			}
+		},
+		"trackingNumber": {
+			"displayName": "追踪编号"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"recipientPostalCode": {
+					"displayName": "收件人邮政编码",
+					"description": "当您提供收件人邮政编码时，DHL将返回更详细的货件信息——这作为一个验证步骤"
+				}
+			}
+		}
+	}
+}

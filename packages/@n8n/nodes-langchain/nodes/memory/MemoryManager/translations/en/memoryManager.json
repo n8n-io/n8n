@@ -1,0 +1,137 @@
+{
+	"header": {
+		"displayName": "Chat Memory Manager",
+		"description": "Manage chat messages memory and use it in the workflow"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "Operation Mode",
+			"options": {
+				"load": {
+					"displayName": "Get Many Messages",
+					"description": "Retrieve chat messages from connected memory"
+				},
+				"insert": {
+					"displayName": "Insert Messages",
+					"description": "Insert chat messages into connected memory"
+				},
+				"delete": {
+					"displayName": "Delete Messages",
+					"description": "Delete chat messages from connected memory"
+				}
+			}
+		},
+		"insertMode": {
+			"displayName": "Insert Mode",
+			"description": "Choose how new messages are inserted into the memory",
+			"options": {
+				"insert": {
+					"displayName": "Insert Messages",
+					"description": "Add messages alongside existing ones"
+				},
+				"override": {
+					"displayName": "Override All Messages",
+					"description": "Replace the current memory with new messages"
+				}
+			}
+		},
+		"deleteMode": {
+			"displayName": "Delete Mode",
+			"description": "How messages are deleted from memory",
+			"options": {
+				"lastN": {
+					"displayName": "Last N",
+					"description": "Delete the last N messages"
+				},
+				"all": {
+					"displayName": "All Messages",
+					"description": "Clear all messages from memory"
+				}
+			}
+		},
+		"messages": {
+			"displayName": "Chat Messages",
+			"description": "Chat messages to insert into memory",
+			"placeholder": "Add message",
+			"multipleValueButtonText": "Add message",
+			"options": {
+				"messageValues": {
+					"displayName": "Message",
+					"options": {
+						"type": {
+							"displayName": "Type Name or ID",
+							"options": {
+								"ai": {
+									"displayName": "AI"
+								},
+								"system": {
+									"displayName": "System"
+								},
+								"user": {
+									"displayName": "User"
+								}
+							}
+						},
+						"message": {
+							"displayName": "Message"
+						},
+						"hideFromUI": {
+							"displayName": "Hide Message in Chat",
+							"description": "Whether to hide the message from the chat UI"
+						}
+					}
+				}
+			},
+			"values": {
+				"messageValues": {
+					"displayName": "Message",
+					"options": {
+						"type": {
+							"displayName": "Type Name or ID",
+							"options": {
+								"ai": {
+									"displayName": "AI"
+								},
+								"system": {
+									"displayName": "System"
+								},
+								"user": {
+									"displayName": "User"
+								}
+							}
+						},
+						"message": {
+							"displayName": "Message"
+						},
+						"hideFromUI": {
+							"displayName": "Hide Message in Chat",
+							"description": "Whether to hide the message from the chat UI"
+						}
+					}
+				},
+				"messages": {
+					"displayName": "Chat Messages",
+					"placeholder": "Add message"
+				}
+			}
+		},
+		"lastMessagesCount": {
+			"displayName": "Messages Count",
+			"description": "The amount of last messages to delete"
+		},
+		"simplifyOutput": {
+			"displayName": "Simplify Output",
+			"description": "Whether to simplify the output to only include the sender and the text"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"groupMessages": {
+					"displayName": "Group Messages",
+					"description": "Whether to group messages into a single item or return each message as a separate item"
+				}
+			}
+		}
+	}
+}

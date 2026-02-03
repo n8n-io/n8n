@@ -1,0 +1,165 @@
+{
+	"header": {
+		"displayName": "AWS Rekognition",
+		"description": "Sends data to AWS Rekognition"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"image": {
+					"displayName": "Image"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"analyze": {
+					"displayName": "Analyze"
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"options": {
+				"detectFaces": {
+					"displayName": "Detect Faces"
+				},
+				"detectLabels": {
+					"displayName": "Detect Labels"
+				},
+				"detectModerationLabels": {
+					"displayName": "Detect Moderation Labels"
+				},
+				"detectText": {
+					"displayName": "Detect Text"
+				},
+				"recognizeCelebrity": {
+					"displayName": "Recognize Celebrity"
+				}
+			}
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the image to analyze should be taken from binary field"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"bucket": {
+			"displayName": "Bucket",
+			"description": "Name of the S3 bucket"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "S3 object key name"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"regionsOfInterestUi": {
+					"displayName": "Regions of Interest",
+					"placeholder": "Add Region of Interest",
+					"multipleValueButtonText": "Add Region of Interest",
+					"options": {
+						"regionsOfInterestValues": {
+							"displayName": "Region of Interest",
+							"options": {
+								"height": {
+									"displayName": "Height",
+									"description": "Height of the bounding box as a ratio of the overall image height"
+								},
+								"left": {
+									"displayName": "Left",
+									"description": "Left coordinate of the bounding box as a ratio of overall image width"
+								},
+								"top": {
+									"displayName": "Top",
+									"description": "Top coordinate of the bounding box as a ratio of overall image height"
+								},
+								"Width": {
+									"displayName": "Width",
+									"description": "Width of the bounding box as a ratio of the overall image width"
+								}
+							}
+						}
+					},
+					"values": {
+						"regionsOfInterestValues": {
+							"displayName": "Region of Interest",
+							"options": {
+								"height": {
+									"displayName": "Height",
+									"description": "Height of the bounding box as a ratio of the overall image height"
+								},
+								"left": {
+									"displayName": "Left",
+									"description": "Left coordinate of the bounding box as a ratio of overall image width"
+								},
+								"top": {
+									"displayName": "Top",
+									"description": "Top coordinate of the bounding box as a ratio of overall image height"
+								},
+								"Width": {
+									"displayName": "Width",
+									"description": "Width of the bounding box as a ratio of the overall image width"
+								}
+							}
+						},
+						"regionsOfInterestUi": {
+							"displayName": "Regions of Interest",
+							"placeholder": "Add Region of Interest"
+						}
+					}
+				},
+				"version": {
+					"displayName": "Version",
+					"description": "If the bucket is versioning enabled, you can specify the object version"
+				},
+				"wordFilterUi": {
+					"displayName": "Word Filter",
+					"placeholder": "Add Word Filter",
+					"options": {
+						"MinBoundingBoxHeight": {
+							"displayName": "Min Bounding Box Height",
+							"description": "Sets the minimum height of the word bounding box. Words with bounding box heights lesser than this value will be excluded from the result. Value is relative to the video frame height."
+						},
+						"MinBoundingBoxWidth": {
+							"displayName": "Min Bounding Box Width",
+							"description": "Sets the minimum width of the word bounding box. Words with bounding boxes widths lesser than this value will be excluded from the result. Value is relative to the video frame width."
+						},
+						"MinConfidence": {
+							"displayName": "Min Confidence",
+							"description": "Sets the confidence of word detection. Words with detection confidence below this will be excluded from the result. Values should be between 50 and 100 as Text in Video will not return any result below 50."
+						}
+					}
+				},
+				"maxLabels": {
+					"displayName": "Max Labels",
+					"description": "Maximum number of labels you want the service to return in the response. The service returns the specified number of highest confidence labels."
+				},
+				"minConfidence": {
+					"displayName": "Min Confidence",
+					"description": "Specifies the minimum confidence level for the labels to return. Amazon Rekognition doesn't return any labels with a confidence level lower than this specified value."
+				},
+				"attributes": {
+					"displayName": "Attributes",
+					"description": "An array of facial attributes you want to be returned"
+				}
+			}
+		}
+	}
+}

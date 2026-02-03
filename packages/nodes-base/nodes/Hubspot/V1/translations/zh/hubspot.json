@@ -1,0 +1,1594 @@
+{
+	"header": {
+		"displayName": "HubSpot",
+		"description": "使用HubSpot API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiKey": {
+					"displayName": "API密钥"
+				},
+				"appToken": {
+					"displayName": "应用令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"company": {
+					"displayName": "公司"
+				},
+				"contact": {
+					"displayName": "联系人"
+				},
+				"contactList": {
+					"displayName": "联系人列表"
+				},
+				"deal": {
+					"displayName": "交易"
+				},
+				"engagement": {
+					"displayName": "互动"
+				},
+				"form": {
+					"displayName": "表单"
+				},
+				"ticket": {
+					"displayName": "工单"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新联系人，如果已存在则更新当前联系人（upsert）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除工单"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取工单"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个工单"
+				},
+				"getRecentlyCreatedUpdated": {
+					"displayName": "获取最近创建/更新的",
+					"description": "获取最近创建/更新的联系人"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "Search deals"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "将联系人添加到列表"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从列表中移除联系人"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建工单"
+				},
+				"getRecentlyCreated": {
+					"displayName": "获取最近创建的",
+					"description": "获取最近创建的商机"
+				},
+				"getRecentlyModified": {
+					"displayName": "获取最近修改项",
+					"description": "获取最近修改的交易"
+				},
+				"searchByDomain": {
+					"displayName": "按域名搜索",
+					"description": "按域名搜索公司"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新工单"
+				},
+				"getFields": {
+					"displayName": "获取字段",
+					"description": "从表单获取所有字段"
+				},
+				"submit": {
+					"displayName": "提交",
+					"description": "提交数据到表单"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下响应仅包含ID。如果激活此选项，它将自动解析数据。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"annualRevenue": {
+					"displayName": "年度营收",
+					"description": "公司的实际或预估年收入"
+				},
+				"associatedCompanyId": {
+					"displayName": "关联公司名称或ID",
+					"description": "与工单关联的公司。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "公司所在城市"
+				},
+				"clickedFacebookAd": {
+					"displayName": "点击了Facebook广告"
+				},
+				"closeDate": {
+					"displayName": "关闭日期",
+					"description": "工单关闭日期"
+				},
+				"companyName": {
+					"displayName": "公司名称"
+				},
+				"companySize": {
+					"displayName": "公司规模"
+				},
+				"contactOwner": {
+					"displayName": "联系人所有者姓名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"country": {
+					"displayName": "国家/地区"
+				},
+				"customPropertiesUi": {
+					"displayName": "自定义属性",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"customPropertiesValues": {
+							"displayName": "自定义属性",
+							"options": {
+								"property": {
+									"displayName": "属性名称或ID",
+									"description": "属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customPropertiesValues": {
+							"displayName": "自定义属性",
+							"options": {
+								"property": {
+									"displayName": "属性名称或ID",
+									"description": "属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						},
+						"customPropertiesUi": {
+							"displayName": "自定义属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				},
+				"dateOfBirth": {
+					"displayName": "出生日期"
+				},
+				"degree": {
+					"displayName": "度"
+				},
+				"facebookClickId": {
+					"displayName": "Facebook 点击 ID"
+				},
+				"faxNumber": {
+					"displayName": "传真号码"
+				},
+				"fieldOfStudy": {
+					"displayName": "研究领域",
+					"description": "联系人的研究领域。此属性是Facebook广告集成所必需的。该属性将通过线索广告工具自动同步。"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "联系人的名字"
+				},
+				"gender": {
+					"displayName": "性别"
+				},
+				"googleAdClickId": {
+					"displayName": "Google广告点击ID"
+				},
+				"graduationDate": {
+					"displayName": "毕业日期",
+					"description": "联系人的毕业日期。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。"
+				},
+				"industry": {
+					"displayName": "行业名称或ID",
+					"description": "公司从事的业务类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"jobFunction": {
+					"displayName": "职位职能",
+					"description": "联系人的职位职能。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。"
+				},
+				"jobTitle": {
+					"displayName": "职位名称",
+					"description": "联系人的职位"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "联系人的姓氏"
+				},
+				"leadStatus": {
+					"displayName": "潜在客户状态名称或ID",
+					"description": "公司的销售、潜在客户开发或外联状态。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"processingContactData": {
+					"displayName": "处理联系人数据的法律依据名称或ID",
+					"description": "处理联系人数据的法律依据；选择'不适用'将使联系人免受GDPR保护。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"lifeCycleStage": {
+					"displayName": "生命周期阶段名称或ID",
+					"description": "联系人销售就绪状态的资格认定。可通过导入、表单、工作流以及针对每个联系人手动设置。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"maritalStatus": {
+					"displayName": "婚姻状况",
+					"description": "联系人的婚姻状况。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。"
+				},
+				"membershipNote": {
+					"displayName": "会员备注",
+					"description": "联系人内容会员相关的备注"
+				},
+				"message": {
+					"displayName": "消息",
+					"description": "用于联系人在表单上可能希望留下的任何消息或评论的默认属性"
+				},
+				"mobilePhoneNumber": {
+					"displayName": "手机号码",
+					"description": "联系人的手机号码"
+				},
+				"numberOfEmployees": {
+					"displayName": "员工数量",
+					"description": "为公司或组织工作的员工总数"
+				},
+				"originalSource": {
+					"displayName": "Original Source Name or ID",
+					"description": "The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"phoneNumber": {
+					"displayName": "电话号码",
+					"description": "公司主要电话号码。由HubSpot Insights提供支持。"
+				},
+				"properties": {
+					"displayName": "属性名称或ID",
+					"description": "<p>用于在结果中包含特定的工单属性。默认情况下，结果仅包含工单ID，不包含您公司的任何属性值。</p><p>包含此参数将在结果中包含指定属性的数据。您可以多次使用此参数，通过逗号 <code>,</code> 分隔来请求多个属性。</p>从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"postalCode": {
+					"displayName": "邮政编码",
+					"description": "公司或组织的邮政编码。由HubSpot Insights提供支持。"
+				},
+				"prefferedLanguage": {
+					"displayName": "首选语言名称或ID",
+					"description": "设置联系人偏好的通信语言。此属性可通过导入、表单或集成进行更改。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"relationshipStatus": {
+					"displayName": "关系状态",
+					"description": "联系人的关系状态。此属性为Facebook广告集成所必需。此属性将通过线索广告工具自动同步。"
+				},
+				"salutation": {
+					"displayName": "问候语",
+					"description": "用于称呼联系人的头衔"
+				},
+				"school": {
+					"displayName": "学校",
+					"description": "联系人的学校。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。"
+				},
+				"seniority": {
+					"displayName": "资历",
+					"description": "联系人的资历级别。此属性为Facebook广告集成所必需。此属性将通过线索广告工具自动同步。"
+				},
+				"startDate": {
+					"displayName": "开始日期",
+					"description": "联系人的开始日期。此属性是Facebook广告集成所必需的。此属性将通过线索广告工具自动同步。"
+				},
+				"stateRegion": {
+					"displayName": "州/省",
+					"description": "公司或组织所在的州或省份。由HubSpot Insights提供支持。"
+				},
+				"status": {
+					"displayName": "状态名称或ID",
+					"description": "联系人内容会员资格的状态。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"streetAddress": {
+					"displayName": "街道地址",
+					"description": "公司或组织的街道地址，包含单元号。由HubSpot Insights提供支持。"
+				},
+				"twitterUsername": {
+					"displayName": "Twitter用户名",
+					"description": "联系人的Twitter账号。由HubSpot根据联系人的电子邮件地址自动设置。"
+				},
+				"websiteUrl": {
+					"displayName": "网站URL",
+					"description": "公司或组织的主要网站。此属性用于识别唯一公司。由HubSpot Insights提供支持。"
+				},
+				"workEmail": {
+					"displayName": "工作邮箱",
+					"description": "联系人的工作邮箱。此属性为Facebook广告集成所必需。该属性将通过线索广告工具自动同步。"
+				},
+				"formSubmissionMode": {
+					"displayName": "表单提交模式",
+					"description": "指定应获取哪些表单提交",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						},
+						"none": {
+							"displayName": "无"
+						},
+						"newest": {
+							"displayName": "最新"
+						},
+						"oldest": {
+							"displayName": "最旧"
+						}
+					}
+				},
+				"listMemberships": {
+					"displayName": "列出成员资格",
+					"description": "是否应为联系人获取当前列表成员资格"
+				},
+				"propertyMode": {
+					"displayName": "属性模式",
+					"description": "指定应获取属性的当前值，还是该属性的当前值及所有历史值",
+					"options": {
+						"valueAndHistory": {
+							"displayName": "价值与历史"
+						},
+						"valueOnly": {
+							"displayName": "仅限值"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "方向",
+					"description": "定义搜索结果的排序方向。默认值为DESC。",
+					"options": {
+						"ASCENDING": {
+							"displayName": "升序"
+						},
+						"DESCENDING": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "对对象类型的所有属性值执行文本搜索"
+				},
+				"sortBy": {
+					"displayName": "排序方式",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"aboutUs": {
+					"displayName": "关于我们"
+				},
+				"companyDomainName": {
+					"displayName": "公司域名",
+					"description": "公司或组织的域名"
+				},
+				"companyOwner": {
+					"displayName": "公司所有者姓名或ID",
+					"description": "公司的所有者。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"countryRegion": {
+					"displayName": "国家/地区",
+					"description": "公司或组织所在的国家/地区"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "工单描述"
+				},
+				"facebookFans": {
+					"displayName": "Facebook粉丝数",
+					"description": "Facebook粉丝数量"
+				},
+				"googlePlusPage": {
+					"displayName": "Google+页面",
+					"description": "公司或组织的Google+页面URL"
+				},
+				"isPublic": {
+					"displayName": "是否公开",
+					"description": "Whether that the company is publicly traded"
+				},
+				"lifecycleStatus": {
+					"displayName": "生命周期阶段名称或ID",
+					"description": "与此公司或组织关联的所有联系人中最高的生命周期阶段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"linkedinBio": {
+					"displayName": "LinkedIn简介",
+					"description": "公司或组织的LinkedIn简介"
+				},
+				"linkedInCompanyPage": {
+					"displayName": "LinkedIn公司页面",
+					"description": "公司或组织的LinkedIn公司页面URL"
+				},
+				"originalSourceType": {
+					"displayName": "Original Source Type Name or ID",
+					"description": "Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"streetAddress2": {
+					"displayName": "街道地址 2",
+					"description": "公司或组织的附加地址。由 HubSpot Insights 提供支持。"
+				},
+				"targetAccount": {
+					"displayName": "目标账户名称或ID",
+					"description": "目标账户属性用于标记高优先级公司，如果您正在执行基于账户的策略。请从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"timezone": {
+					"displayName": "时区",
+					"description": "公司或组织所在的时区。由HubSpot Insights提供支持。"
+				},
+				"totalMoneyRaised": {
+					"displayName": "募集资金总额",
+					"description": "公司募集资金总额。由 HubSpot Insights 提供支持。"
+				},
+				"twitterBio": {
+					"displayName": "Twitter简介",
+					"description": "公司或组织的Twitter简介"
+				},
+				"twitterFollowers": {
+					"displayName": "Twitter关注者",
+					"description": "公司或组织的Twitter关注者数量"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter 用户名",
+					"description": "公司或组织的主要推特账号"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "此公司记录的可选分类 - 潜在客户、合作伙伴等。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"webTechnologies": {
+					"displayName": "Web技术名称或ID",
+					"description": "公司或组织使用的Web技术。由HubSpot Insights提供支持。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"yearFounded": {
+					"displayName": "成立年份",
+					"description": "公司创建的年份。由 HubSpot Insights 提供支持。"
+				},
+				"includeMergeAudits": {
+					"displayName": "包含合并审计",
+					"description": "如果公司之前曾与其他公司记录合并，是否返回合并历史。默认为 false。"
+				},
+				"amount": {
+					"displayName": "金额"
+				},
+				"associatedCompany": {
+					"displayName": "关联公司名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"associatedVids": {
+					"displayName": "关联视频名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"dealName": {
+					"displayName": "交易名称"
+				},
+				"dealType": {
+					"displayName": "交易类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"pipeline": {
+					"displayName": "工作流"
+				},
+				"includePropertyVersions": {
+					"displayName": "包含属性版本",
+					"description": "默认情况下，您将只获取“版本”数据中属性的最新版本数据。如果包含此参数，您将获取所有历史版本的数据。"
+				},
+				"associations": {
+					"displayName": "关联关系",
+					"placeholder": "添加字段",
+					"options": {
+						"companyIds": {
+							"displayName": "公司ID"
+						},
+						"contactIds": {
+							"displayName": "联系人ID"
+						},
+						"dealIds": {
+							"displayName": "交易ID"
+						},
+						"ownerIds": {
+							"displayName": "所有者ID"
+						},
+						"ticketIds": {
+							"displayName": "工单ID"
+						}
+					}
+				},
+				"skipValidation": {
+					"displayName": "跳过验证",
+					"description": "是否根据表单设置跳过验证"
+				},
+				"submittedAt": {
+					"displayName": "提交时间",
+					"description": "表单提交时间"
+				},
+				"associatedCompanyIds": {
+					"displayName": "公司名称或ID",
+					"description": "Companies associated with the ticket. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"associatedContactIds": {
+					"displayName": "联系人姓名或ID",
+					"description": "与工单关联的联系人。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"category": {
+					"displayName": "分类名称或ID",
+					"description": "Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"createDate": {
+					"displayName": "创建日期",
+					"description": "工单创建日期"
+				},
+				"priority": {
+					"displayName": "优先级名称或ID",
+					"description": "工单所需的关注级别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"resolution": {
+					"displayName": "解决名称或ID",
+					"description": "为解决工单所采取的操作。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"source": {
+					"displayName": "源名称或ID",
+					"description": "工单最初提交的频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"ticketOwnerId": {
+					"displayName": "工单负责人姓名或ID",
+					"description": "您团队中负责处理该工单的用户。您可以通过创建自定义HubSpot用户属性来为工单记录分配更多用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"includeDeleted": {
+					"displayName": "包含已删除项"
+				},
+				"propertiesWithHistory": {
+					"displayName": "带历史的属性",
+					"description": "功能类似properties=参数，但此参数将包含指定属性的完整历史记录，而不仅仅是当前值。当您需要获取属性值的完整变更历史时，请使用此参数。"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "特定联系人的唯一标识符"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"formSubmissionMode": {
+					"displayName": "表单提交模式",
+					"description": "指定应获取哪些表单提交",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						},
+						"none": {
+							"displayName": "无"
+						},
+						"newest": {
+							"displayName": "最新"
+						},
+						"oldest": {
+							"displayName": "最旧"
+						}
+					}
+				},
+				"listMemberships": {
+					"displayName": "列出成员资格",
+					"description": "是否应为联系人获取当前列表成员资格"
+				},
+				"properties": {
+					"displayName": "属性名称或ID",
+					"description": "<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"propertyMode": {
+					"displayName": "属性模式",
+					"description": "指定应获取属性的当前值，还是该属性的当前值及所有历史值",
+					"options": {
+						"valueAndHistory": {
+							"displayName": "价值与历史"
+						},
+						"valueOnly": {
+							"displayName": "仅限值"
+						}
+					}
+				},
+				"since": {
+					"displayName": "自",
+					"description": "仅返回在时间戳x之后创建的商机"
+				},
+				"includePropertyVersions": {
+					"displayName": "包含属性版本",
+					"description": "默认情况下，您将只获取“版本”数据中属性的最新版本数据。如果包含此参数，您将获取所有历史版本的数据。"
+				},
+				"includeAssociations": {
+					"displayName": "包含关联关系",
+					"description": "是否在结果中包含关联联系人和公司的ID。这将自动包含 num_associated_contacts 属性。"
+				},
+				"propertiesWithHistory": {
+					"displayName": "带历史的属性",
+					"description": "与properties=参数类似，但此参数将包含指定属性的历史记录，而不仅仅是当前值。当您需要属性值的完整变更历史时，请使用此参数。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"filterGroupsUi": {
+			"displayName": "筛选条件组",
+			"description": "当筛选条件组内提供多个筛选条件时，它们将使用逻辑AND运算符组合。当提供多个筛选条件组时，它们将使用逻辑OR运算符组合。系统最多支持三个筛选条件组，每个组最多包含三个筛选条件。更多信息请查看<a href=\"https://developers.hubspot.com/docs/api/crm/search\">此处</a>",
+			"placeholder": "添加筛选条件组",
+			"multipleValueButtonText": "添加筛选组",
+			"options": {
+				"filterGroupsValues": {
+					"displayName": "筛选组",
+					"options": {
+						"filtersUi": {
+							"displayName": "筛选器",
+							"description": "使用过滤器将结果限制为仅包含匹配属性值的CRM对象。更多信息<a href=\"https://developers.hubspot.com/docs/api/crm/search\">请参阅此处</a>。",
+							"placeholder": "添加筛选器",
+							"multipleValueButtonText": "添加筛选器",
+							"options": {
+								"filterValues": {
+									"displayName": "筛选器",
+									"options": {
+										"propertyName": {
+											"displayName": "属性名称或ID",
+											"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+										},
+										"operator": {
+											"displayName": "操作员",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "完全包含"
+												},
+												"EQ": {
+													"displayName": "等于"
+												},
+												"GT": {
+													"displayName": "大于"
+												},
+												"GTE": {
+													"displayName": "大于或等于"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "已知"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "未知"
+												},
+												"LT": {
+													"displayName": "小于"
+												},
+												"LTE": {
+													"displayName": "小于或等于"
+												},
+												"NEQ": {
+													"displayName": "不等于"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								}
+							},
+							"values": {
+								"filterValues": {
+									"displayName": "筛选器",
+									"options": {
+										"propertyName": {
+											"displayName": "属性名称或ID",
+											"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+										},
+										"operator": {
+											"displayName": "操作员",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "完全包含"
+												},
+												"EQ": {
+													"displayName": "等于"
+												},
+												"GT": {
+													"displayName": "大于"
+												},
+												"GTE": {
+													"displayName": "大于或等于"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "已知"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "未知"
+												},
+												"LT": {
+													"displayName": "小于"
+												},
+												"LTE": {
+													"displayName": "小于或等于"
+												},
+												"NEQ": {
+													"displayName": "不等于"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								},
+								"filtersUi": {
+									"displayName": "筛选器",
+									"placeholder": "添加筛选器"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"filterGroupsValues": {
+					"displayName": "筛选组",
+					"options": {
+						"filtersUi": {
+							"displayName": "筛选器",
+							"description": "使用过滤器将结果限制为仅包含匹配属性值的CRM对象。更多信息<a href=\"https://developers.hubspot.com/docs/api/crm/search\">请参阅此处</a>。",
+							"placeholder": "添加筛选器",
+							"multipleValueButtonText": "添加筛选器",
+							"options": {
+								"filterValues": {
+									"displayName": "筛选器",
+									"options": {
+										"propertyName": {
+											"displayName": "属性名称或ID",
+											"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+										},
+										"operator": {
+											"displayName": "操作员",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "完全包含"
+												},
+												"EQ": {
+													"displayName": "等于"
+												},
+												"GT": {
+													"displayName": "大于"
+												},
+												"GTE": {
+													"displayName": "大于或等于"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "已知"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "未知"
+												},
+												"LT": {
+													"displayName": "小于"
+												},
+												"LTE": {
+													"displayName": "小于或等于"
+												},
+												"NEQ": {
+													"displayName": "不等于"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								}
+							},
+							"values": {
+								"filterValues": {
+									"displayName": "筛选器",
+									"options": {
+										"propertyName": {
+											"displayName": "属性名称或ID",
+											"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+										},
+										"operator": {
+											"displayName": "操作员",
+											"options": {
+												"CONTAINS_TOKEN": {
+													"displayName": "完全包含"
+												},
+												"EQ": {
+													"displayName": "等于"
+												},
+												"GT": {
+													"displayName": "大于"
+												},
+												"GTE": {
+													"displayName": "大于或等于"
+												},
+												"HAS_PROPERTY": {
+													"displayName": "已知"
+												},
+												"NOT_HAS_PROPERTY": {
+													"displayName": "未知"
+												},
+												"LT": {
+													"displayName": "小于"
+												},
+												"LTE": {
+													"displayName": "小于或等于"
+												},
+												"NEQ": {
+													"displayName": "不等于"
+												}
+											}
+										},
+										"value": {
+											"displayName": "值"
+										}
+									}
+								},
+								"filtersUi": {
+									"displayName": "筛选器",
+									"placeholder": "添加筛选器"
+								}
+							}
+						}
+					}
+				},
+				"filterGroupsUi": {
+					"displayName": "筛选组",
+					"placeholder": "添加筛选组"
+				}
+			}
+		},
+		"by": {
+			"displayName": "按",
+			"options": {
+				"id": {
+					"displayName": "联系人ID"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				}
+			}
+		},
+		"id": {
+			"displayName": "联系人ID"
+		},
+		"listId": {
+			"displayName": "列表ID"
+		},
+		"name": {
+			"displayName": "名称"
+		},
+		"companyId": {
+			"displayName": "公司ID",
+			"description": "特定公司的唯一标识符"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"aboutUs": {
+					"displayName": "关于我们"
+				},
+				"annualRevenue": {
+					"displayName": "年度营收",
+					"description": "公司的实际或预估年收入"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "公司所在城市"
+				},
+				"closeDate": {
+					"displayName": "关闭日期",
+					"description": "工单关闭日期"
+				},
+				"companyDomainName": {
+					"displayName": "公司域名",
+					"description": "公司或组织的域名"
+				},
+				"companyOwner": {
+					"displayName": "公司所有者名称或ID",
+					"description": "公司的所有者。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"countryRegion": {
+					"displayName": "国家/地区",
+					"description": "公司或组织所在的国家/地区"
+				},
+				"customPropertiesUi": {
+					"displayName": "自定义属性",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"customPropertiesValues": {
+							"displayName": "自定义属性",
+							"options": {
+								"property": {
+									"displayName": "属性名称或ID",
+									"description": "属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customPropertiesValues": {
+							"displayName": "自定义属性",
+							"options": {
+								"property": {
+									"displayName": "属性名称或ID",
+									"description": "属性名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "属性值"
+								}
+							}
+						},
+						"customPropertiesUi": {
+							"displayName": "自定义属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "工单描述"
+				},
+				"facebookFans": {
+					"displayName": "Facebook粉丝数",
+					"description": "Facebook粉丝数量"
+				},
+				"googlePlusPage": {
+					"displayName": "Google+页面",
+					"description": "公司或组织的Google+页面URL"
+				},
+				"industry": {
+					"displayName": "行业名称或ID",
+					"description": "公司从事的业务类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"isPublic": {
+					"displayName": "是否公开",
+					"description": "Whether that the company is publicly traded"
+				},
+				"leadStatus": {
+					"displayName": "潜在客户状态名称或ID",
+					"description": "公司的销售、潜在客户开发或外联状态。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"lifecycleStatus": {
+					"displayName": "生命周期阶段名称或ID",
+					"description": "与此公司或组织关联的所有联系人中最高的生命周期阶段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"linkedinBio": {
+					"displayName": "Linkedin 个人简介",
+					"description": "公司或组织的LinkedIn简介"
+				},
+				"linkedInCompanyPage": {
+					"displayName": "LinkedIn公司页面",
+					"description": "公司或组织的LinkedIn公司页面URL"
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"numberOfEmployees": {
+					"displayName": "员工数量",
+					"description": "为公司或组织工作的员工总数"
+				},
+				"originalSourceType": {
+					"displayName": "Original Source Type Name or ID",
+					"description": "Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"phoneNumber": {
+					"displayName": "电话号码",
+					"description": "公司主要电话号码。由HubSpot Insights提供支持。"
+				},
+				"postalCode": {
+					"displayName": "邮政编码",
+					"description": "公司或组织的邮政编码。由HubSpot Insights提供支持。"
+				},
+				"stateRegion": {
+					"displayName": "州/省",
+					"description": "公司或组织所在的州或省份。由HubSpot Insights提供支持。"
+				},
+				"streetAddress": {
+					"displayName": "街道地址",
+					"description": "公司或组织的街道地址，包含单元号。由HubSpot Insights提供支持。"
+				},
+				"streetAddress2": {
+					"displayName": "街道地址 2",
+					"description": "公司或组织的附加地址。由 HubSpot Insights 提供支持。"
+				},
+				"targetAccount": {
+					"displayName": "目标账户名称或ID",
+					"description": "目标账户属性用于标记高优先级公司，如果您正在执行基于账户的策略。请从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"timezone": {
+					"displayName": "时区",
+					"description": "公司或组织所在的时区。由HubSpot Insights提供支持。"
+				},
+				"totalMoneyRaised": {
+					"displayName": "募集资金总额",
+					"description": "公司募集资金总额。由 HubSpot Insights 提供支持。"
+				},
+				"twitterBio": {
+					"displayName": "Twitter简介",
+					"description": "公司或组织的Twitter简介"
+				},
+				"twitterFollowers": {
+					"displayName": "Twitter关注者",
+					"description": "公司或组织的Twitter关注者数量"
+				},
+				"twitterHandle": {
+					"displayName": "Twitter 用户名",
+					"description": "公司或组织的主要推特账号"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "此公司记录的可选分类 - 潜在客户、合作伙伴等。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"webTechnologies": {
+					"displayName": "Web技术名称或ID",
+					"description": "公司或组织使用的Web技术。由HubSpot Insights提供支持。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"websiteUrl": {
+					"displayName": "网站URL",
+					"description": "公司或组织的主要网站。此属性用于识别唯一公司。由HubSpot Insights提供支持。"
+				},
+				"yearFounded": {
+					"displayName": "成立年份",
+					"description": "公司创建的年份。由 HubSpot Insights 提供支持。"
+				},
+				"amount": {
+					"displayName": "金额"
+				},
+				"dealName": {
+					"displayName": "交易名称"
+				},
+				"stage": {
+					"displayName": "交易阶段名称或ID",
+					"description": "创建交易时必须选择交易阶段。有关管理管道和阶段的详细信息，请参阅CRM管道API。可从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"dealType": {
+					"displayName": "交易类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"pipeline": {
+					"displayName": "工作流"
+				},
+				"associatedCompanyIds": {
+					"displayName": "公司名称或ID",
+					"description": "Companies associated with the ticket. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"associatedContactIds": {
+					"displayName": "联系人姓名或ID",
+					"description": "与此工单关联的联系人。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"category": {
+					"displayName": "分类名称或ID",
+					"description": "Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"createDate": {
+					"displayName": "创建日期",
+					"description": "工单创建日期"
+				},
+				"pipelineId": {
+					"displayName": "工作流名称或ID",
+					"description": "工单所在流水线的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"priority": {
+					"displayName": "优先级名称或ID",
+					"description": "工单所需的关注级别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"resolution": {
+					"displayName": "解决名称或ID",
+					"description": "为解决工单所采取的操作。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"source": {
+					"displayName": "源名称或ID",
+					"description": "工单最初提交的频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"stageId": {
+					"displayName": "阶段名称或ID",
+					"description": "工单所在流水线的阶段ID；取决于流水线ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"ticketName": {
+					"displayName": "工单名称",
+					"description": "工单所在管道的ID"
+				},
+				"ticketOwnerId": {
+					"displayName": "工单负责人姓名或ID",
+					"description": "您团队中负责处理该工单的用户。您可以通过创建自定义HubSpot用户属性来为工单记录分配更多用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"includeMergeAudits": {
+					"displayName": "包含合并审计",
+					"description": "是否返回公司先前与其他公司记录合并的合并历史。默认为 false。"
+				},
+				"properties": {
+					"displayName": "属性名称或ID",
+					"description": "<p>用于在结果中包含特定公司属性。默认情况下，结果仅包含公司ID，不包含任何公司属性的值。</p><p>包含此参数将在结果中包含指定属性的数据。您可以多次使用此参数，用逗号<code>,</code>分隔来请求多个属性。</p><p>从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。</p>"
+				},
+				"propertiesWithHistory": {
+					"displayName": "带历史的属性",
+					"description": "功能类似properties=参数，但此参数将包含指定属性的完整历史记录，而不仅仅是当前值。当您需要获取属性值的完整变更历史时，请使用此参数。"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "域名",
+			"description": "要搜索的公司网站域名，例如 n8n.io"
+		},
+		"stage": {
+			"displayName": "交易阶段名称或ID",
+			"description": "创建交易时必须提供交易阶段。有关管理管道和阶段的详细信息，请参阅CRM管道API。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"dealId": {
+			"displayName": "交易ID",
+			"description": "特定交易的唯一标识符"
+		},
+		"type": {
+			"displayName": "类型",
+			"options": {
+				"call": {
+					"displayName": "调用"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"meeting": {
+					"displayName": "会议"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"metadata": {
+			"displayName": "元数据",
+			"placeholder": "添加字段",
+			"options": {
+				"body": {
+					"displayName": "正文"
+				},
+				"forObjectType": {
+					"displayName": "对象类型",
+					"options": {
+						"COMPANY": {
+							"displayName": "公司"
+						},
+						"CONTACT": {
+							"displayName": "联系人"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"COMPLETED": {
+							"displayName": "已完成"
+						},
+						"DEFERRED": {
+							"displayName": "延迟"
+						},
+						"IN_PROGRESS": {
+							"displayName": "执行中"
+						},
+						"NOT_STARTED": {
+							"displayName": "未开始"
+						},
+						"WAITING": {
+							"displayName": "等待中"
+						},
+						"BUSY": {
+							"displayName": "忙碌中"
+						},
+						"CALLING_CRM_USER": {
+							"displayName": "调用CRM用户"
+						},
+						"CANCELED": {
+							"displayName": "已取消"
+						},
+						"CONNECTING": {
+							"displayName": "连接中"
+						},
+						"FAILED": {
+							"displayName": "失败"
+						},
+						"NO_ANSWER": {
+							"displayName": "无答案"
+						},
+						"QUEUED": {
+							"displayName": "已排队"
+						},
+						"RINGING": {
+							"displayName": "振铃中"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "主题"
+				},
+				"bcc": {
+					"displayName": "密件抄送"
+				},
+				"cc": {
+					"displayName": "抄送"
+				},
+				"fromEmail": {
+					"displayName": "发件邮箱"
+				},
+				"firstName": {
+					"displayName": "来自名字"
+				},
+				"lastName": {
+					"displayName": "从姓氏"
+				},
+				"html": {
+					"displayName": "HTML"
+				},
+				"toEmail": {
+					"displayName": "收件邮箱"
+				},
+				"endTime": {
+					"displayName": "结束时间"
+				},
+				"internalMeetingNotes": {
+					"displayName": "内部会议纪要"
+				},
+				"startTime": {
+					"displayName": "开始时间"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"durationMilliseconds": {
+					"displayName": "持续时间（毫秒）"
+				},
+				"fromNumber": {
+					"displayName": "发件号码"
+				},
+				"recordingUrl": {
+					"displayName": "录制URL"
+				},
+				"toNumber": {
+					"displayName": "转换为数字"
+				}
+			}
+		},
+		"engagementId": {
+			"displayName": "互动ID",
+			"description": "特定互动的唯一标识符"
+		},
+		"formId": {
+			"displayName": "表单名称或ID",
+			"description": "表单ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"contextUi": {
+			"displayName": "添加上下文",
+			"placeholder": "添加上下文",
+			"options": {
+				"contextValue": {
+					"displayName": "上下文",
+					"options": {
+						"hutk": {
+							"displayName": "HubSpot用户令牌",
+							"description": "包含此参数并将其设置为hubspotutk cookie值，以在提交时启用Cookie跟踪"
+						},
+						"ipAddress": {
+							"displayName": "IP地址",
+							"description": "填写表单的访问者IP地址"
+						},
+						"pageUri": {
+							"displayName": "页面URI",
+							"description": "提交发生所在页面的URI"
+						},
+						"pageName": {
+							"displayName": "页面名称",
+							"description": "提交发生所在页面的名称或标题"
+						},
+						"pageId": {
+							"displayName": "页面ID",
+							"description": "在HubSpot CMS上创建的页面ID"
+						},
+						"sfdcCampaignId": {
+							"displayName": "SFDC营销活动ID",
+							"description": "如果表单用于使用HubSpot Salesforce集成的账户，您可以包含Salesforce营销活动的ID，以便将联系人添加到指定的营销活动中"
+						},
+						"goToWebinarWebinarKey": {
+							"displayName": "GoToWebinar 网络研讨会 ID",
+							"description": "如果表单用于使用 HubSpot GoToWebinar 集成的账户，您可以在此处包含网络研讨会 ID，以便联系人提交表单时自动注册该网络研讨会"
+						}
+					}
+				}
+			},
+			"values": {
+				"contextValue": {
+					"displayName": "上下文",
+					"options": {
+						"hutk": {
+							"displayName": "HubSpot用户令牌",
+							"description": "包含此参数并将其设置为hubspotutk cookie值，以在提交时启用Cookie跟踪"
+						},
+						"ipAddress": {
+							"displayName": "IP地址",
+							"description": "填写表单的访问者IP地址"
+						},
+						"pageUri": {
+							"displayName": "页面URI",
+							"description": "提交发生所在页面的URI"
+						},
+						"pageName": {
+							"displayName": "页面名称",
+							"description": "提交发生所在页面的名称或标题"
+						},
+						"pageId": {
+							"displayName": "页面ID",
+							"description": "在HubSpot CMS上创建的页面ID"
+						},
+						"sfdcCampaignId": {
+							"displayName": "SFDC营销活动ID",
+							"description": "如果表单用于使用HubSpot Salesforce集成的账户，您可以包含Salesforce营销活动的ID，以便将联系人添加到指定的营销活动中"
+						},
+						"goToWebinarWebinarKey": {
+							"displayName": "GoToWebinar 网络研讨会 ID",
+							"description": "如果表单用于使用 HubSpot GoToWebinar 集成的账户，您可以在此处包含网络研讨会 ID，以便联系人提交表单时自动注册该网络研讨会"
+						}
+					}
+				},
+				"contextUi": {
+					"displayName": "上下文",
+					"placeholder": "添加上下文"
+				}
+			}
+		},
+		"lengalConsentUi": {
+			"displayName": "法律同意",
+			"placeholder": "添加法律同意",
+			"options": {
+				"lengalConsentValues": {
+					"displayName": "同意",
+					"options": {
+						"consentToProcess": {
+							"displayName": "同意处理",
+							"description": "访客是否勾选了“同意处理”复选框"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "向访客显示的“同意处理”复选框文本"
+						},
+						"communicationsUi": {
+							"displayName": "通讯",
+							"placeholder": "添加通讯",
+							"multipleValueButtonText": "添加通讯",
+							"options": {
+								"communicationValues": {
+									"displayName": "通信",
+									"options": {
+										"subscriptionTypeId": {
+											"displayName": "订阅类型名称或ID",
+											"description": "特定订阅类型的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "访问者是否勾选了此订阅类型的复选框"
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "为此特定订阅复选框向访客显示的文本"
+										}
+									}
+								}
+							},
+							"values": {
+								"communicationValues": {
+									"displayName": "通信",
+									"options": {
+										"subscriptionTypeId": {
+											"displayName": "订阅类型名称或ID",
+											"description": "特定订阅类型的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "访问者是否勾选了此订阅类型的复选框"
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "为此特定订阅复选框向访客显示的文本"
+										}
+									}
+								},
+								"communicationsUi": {
+									"displayName": "通讯",
+									"placeholder": "添加通讯"
+								}
+							}
+						}
+					}
+				},
+				"legitimateInterestValues": {
+					"displayName": "合法利益",
+					"options": {
+						"subscriptionTypeId": {
+							"displayName": "订阅类型名称或ID",
+							"description": "此表单表示感兴趣的特定订阅类型ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "使用'合法利益'选项时必须为真，因为这反映了访客提交表单时表示的同意"
+						},
+						"legalBasis": {
+							"displayName": "法律依据",
+							"description": "向访客显示的隐私文本",
+							"options": {
+								"CUSTOMER": {
+									"displayName": "客户"
+								},
+								"LEAD": {
+									"displayName": "潜在客户"
+								}
+							}
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "向访客显示的隐私文本"
+						}
+					}
+				}
+			},
+			"values": {
+				"lengalConsentValues": {
+					"displayName": "同意",
+					"options": {
+						"consentToProcess": {
+							"displayName": "同意处理",
+							"description": "访客是否勾选了“同意处理”复选框"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "向访客显示的“同意处理”复选框文本"
+						},
+						"communicationsUi": {
+							"displayName": "通讯",
+							"placeholder": "添加通讯",
+							"multipleValueButtonText": "添加通讯",
+							"options": {
+								"communicationValues": {
+									"displayName": "通信",
+									"options": {
+										"subscriptionTypeId": {
+											"displayName": "订阅类型名称或ID",
+											"description": "特定订阅类型的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "访问者是否勾选了此订阅类型的复选框"
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "为此特定订阅复选框向访客显示的文本"
+										}
+									}
+								}
+							},
+							"values": {
+								"communicationValues": {
+									"displayName": "通信",
+									"options": {
+										"subscriptionTypeId": {
+											"displayName": "订阅类型名称或ID",
+											"description": "特定订阅类型的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "访问者是否勾选了此订阅类型的复选框"
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "为此特定订阅复选框向访客显示的文本"
+										}
+									}
+								},
+								"communicationsUi": {
+									"displayName": "通讯",
+									"placeholder": "添加通讯"
+								}
+							}
+						}
+					}
+				},
+				"legitimateInterestValues": {
+					"displayName": "合法利益",
+					"options": {
+						"subscriptionTypeId": {
+							"displayName": "订阅类型名称或ID",
+							"description": "此表单表示感兴趣的特定订阅类型ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "使用'合法利益'选项时必须为真，因为这反映了访客提交表单时表示的同意"
+						},
+						"legalBasis": {
+							"displayName": "法律依据",
+							"description": "向访客显示的隐私文本",
+							"options": {
+								"CUSTOMER": {
+									"displayName": "客户"
+								},
+								"LEAD": {
+									"displayName": "潜在客户"
+								}
+							}
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "向访客显示的隐私文本"
+						}
+					}
+				},
+				"lengalConsentUi": {
+					"displayName": "法律同意",
+					"placeholder": "添加法律同意"
+				}
+			}
+		},
+		"pipelineId": {
+			"displayName": "工作流名称或ID",
+			"description": "工单所在流水线的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"stageId": {
+			"displayName": "阶段名称或ID",
+			"description": "票据所在的流水线ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"ticketName": {
+			"displayName": "工单名称",
+			"description": "工单所在管道的ID"
+		},
+		"ticketId": {
+			"displayName": "工单ID",
+			"description": "特定工单的唯一标识符"
+		}
+	}
+}

@@ -1,0 +1,96 @@
+{
+	"header": {
+		"displayName": "urlscan.io",
+		"description": "提供各种网站监控实用工具，如健康检查或截图"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"scan": {
+					"displayName": "扫描"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"perform": {
+					"displayName": "执行"
+				}
+			}
+		},
+		"scanId": {
+			"displayName": "扫描ID",
+			"description": "要检索的扫描ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"query": {
+					"displayName": "查询",
+					"description": "使用<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-dsl-query-string-query\">Elastic Search查询字符串语法</a>进行查询。请参阅文档中的<a href=\"https://urlscan.io/docs/search/\">支持字段</a>。",
+					"placeholder": "domain:n8n.io"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "要扫描的URL",
+			"placeholder": "https://n8n.io"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"customAgent": {
+					"displayName": "自定义代理",
+					"description": "为此扫描设置的<code>User-Agent</code>请求头。默认为<code>n8n</code>"
+				},
+				"overrideSafety": {
+					"displayName": "覆盖安全设置",
+					"description": "禁用对包含潜在PII的URL重新分类"
+				},
+				"referer": {
+					"displayName": "Referer",
+					"description": "为此扫描设置的HTTP referer",
+					"placeholder": "https://n8n.io"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "为此扫描添加的用户自定义标签列表（逗号分隔）。最多10个标签。",
+					"placeholder": "钓鱼,恶意"
+				},
+				"visibility": {
+					"displayName": "可见性",
+					"options": {
+						"private": {
+							"displayName": "私有"
+						},
+						"public": {
+							"displayName": "公开"
+						},
+						"unlisted": {
+							"displayName": "未列出"
+						}
+					}
+				}
+			}
+		}
+	}
+}

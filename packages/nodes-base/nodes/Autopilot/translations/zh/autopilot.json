@@ -1,0 +1,216 @@
+{
+	"header": {
+		"displayName": "自动导航",
+		"description": "使用自动导航API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				},
+				"contactJourney": {
+					"displayName": "联系人旅程"
+				},
+				"contactList": {
+					"displayName": "联系人列表"
+				},
+				"list": {
+					"displayName": "列表"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新联系人，如果已存在则更新当前联系人（upsert）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除联系人"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取联系人"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个列表"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "添加联系人至列表"
+				},
+				"exist": {
+					"displayName": "存在",
+					"description": "检查联系人是否在列表中"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从列表中移除联系人"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建列表"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "联系人的电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"Company": {
+					"displayName": "公司"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "键名或ID",
+									"description": "用户自定义数据的用户指定键。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "用户自定义数据的用户指定值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "键名或ID",
+									"description": "用户自定义数据的用户指定键。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "用户自定义数据的用户指定值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"Fax": {
+					"displayName": "传真"
+				},
+				"FirstName": {
+					"displayName": "名字"
+				},
+				"Industry": {
+					"displayName": "行业"
+				},
+				"LastName": {
+					"displayName": "姓氏"
+				},
+				"LeadSource": {
+					"displayName": "潜在客户来源"
+				},
+				"LinkedIn": {
+					"displayName": "LinkedIn URL"
+				},
+				"autopilotList": {
+					"displayName": "列表名称或ID",
+					"description": "创建时将添加此联系人到的列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"MailingCountry": {
+					"displayName": "邮寄国家"
+				},
+				"MailingPostalCode": {
+					"displayName": "邮寄邮政编码"
+				},
+				"MailingState": {
+					"displayName": "邮寄状态"
+				},
+				"MailingStreet": {
+					"displayName": "邮寄街道"
+				},
+				"MailingCity": {
+					"displayName": "邮寄城市"
+				},
+				"MobilePhone": {
+					"displayName": "手机"
+				},
+				"newEmail": {
+					"displayName": "新邮件",
+					"description": "如果提供，将更改由“邮件”字段标识的联系人的电子邮件地址"
+				},
+				"notify": {
+					"displayName": "通知",
+					"description": "默认情况下，当通过API添加新联系人或更新现有联系人时，Autopilot会为contact_added/contact_updated事件通知已注册的REST Webhook端点。禁用此项可跳过通知。"
+				},
+				"NumberOfEmployees": {
+					"displayName": "员工数量"
+				},
+				"owner_name": {
+					"displayName": "所有者名称"
+				},
+				"Phone": {
+					"displayName": "电话"
+				},
+				"Salutation": {
+					"displayName": "问候语"
+				},
+				"autopilotSessionId": {
+					"displayName": "会话ID",
+					"description": "用于将联系人与会话关联"
+				},
+				"Status": {
+					"displayName": "状态"
+				},
+				"Title": {
+					"displayName": "标题"
+				},
+				"unsubscribed": {
+					"displayName": "订阅",
+					"description": "订阅或取消订阅联系人"
+				},
+				"Website": {
+					"displayName": "网站URL"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "可以是ID或邮箱"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"triggerId": {
+			"displayName": "触发器名称或ID",
+			"description": "列表ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"listId": {
+			"displayName": "列表名称或ID",
+			"description": "要操作的列表ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的列表名称"
+		}
+	}
+}

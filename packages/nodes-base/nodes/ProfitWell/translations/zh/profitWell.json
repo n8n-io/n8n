@@ -1,0 +1,72 @@
+{
+	"header": {
+		"displayName": "ProfitWell",
+		"description": "使用 ProfitWell API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"company": {
+					"displayName": "公司"
+				},
+				"metric": {
+					"displayName": "指标"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getSetting": {
+					"displayName": "获取设置",
+					"description": "获取您公司的ProfitWell账户设置"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "按日获取财务指标，可选择当前月或上个月"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"options": {
+				"daily": {
+					"displayName": "每日",
+					"description": "按日获取财务指标，可选择当前月或上个月"
+				},
+				"monthly": {
+					"displayName": "每月",
+					"description": "检索贵公司的所有月度财务指标"
+				}
+			}
+		},
+		"month": {
+			"displayName": "月份",
+			"description": "只能是当前或上个月。格式应为YYYY-MM。",
+			"placeholder": "YYYY-MM"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"plan_id": {
+					"displayName": "计划名称或ID",
+					"description": "仅返回此计划ID的指标。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"dailyMetrics": {
+					"displayName": "指标",
+					"description": "要返回的指标趋势的逗号分隔列表（默认返回所有指标）"
+				},
+				"monthlyMetrics": {
+					"displayName": "指标",
+					"description": "要返回的指标趋势的逗号分隔列表（默认返回所有指标）"
+				}
+			}
+		}
+	}
+}

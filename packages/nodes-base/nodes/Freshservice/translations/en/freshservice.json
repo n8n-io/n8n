@@ -1,0 +1,1610 @@
+{
+	"header": {
+		"displayName": "Freshservice",
+		"description": "Consume the Freshservice API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"agent": {
+					"displayName": "Agent"
+				},
+				"agentGroup": {
+					"displayName": "Agent Group"
+				},
+				"agentRole": {
+					"displayName": "Agent Role"
+				},
+				"announcement": {
+					"displayName": "Announcement"
+				},
+				"assetType": {
+					"displayName": "Asset Type"
+				},
+				"change": {
+					"displayName": "Change"
+				},
+				"department": {
+					"displayName": "Department"
+				},
+				"location": {
+					"displayName": "Location"
+				},
+				"problem": {
+					"displayName": "Problem"
+				},
+				"product": {
+					"displayName": "Product"
+				},
+				"release": {
+					"displayName": "Release"
+				},
+				"requester": {
+					"displayName": "Requester"
+				},
+				"requesterGroup": {
+					"displayName": "Requester Group"
+				},
+				"software": {
+					"displayName": "Software"
+				},
+				"ticket": {
+					"displayName": "Ticket"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a ticket"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a ticket"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a ticket"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many tickets"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a ticket"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "name@email.com",
+			"description": "Email address of the ticket author"
+		},
+		"firstName": {
+			"displayName": "First Name"
+		},
+		"roles": {
+			"displayName": "Roles",
+			"description": "Role to assign to the agent",
+			"placeholder": "Add Role",
+			"multipleValueButtonText": "Add Role",
+			"options": {
+				"roleProperties": {
+					"displayName": "Role Properties",
+					"options": {
+						"role": {
+							"displayName": "Role Name or ID",
+							"description": "Name of the role to assign to the agent. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"assignment_scope": {
+							"displayName": "Scope",
+							"description": "Scope in which the agent may use the permissions granted by the role",
+							"options": {
+								"entire_helpdesk": {
+									"displayName": "Entire Helpdesk"
+								},
+								"member_groups": {
+									"displayName": "Member Groups"
+								},
+								"specified_groups": {
+									"displayName": "Specified Groups"
+								},
+								"assigned_items": {
+									"displayName": "Assigned Items"
+								}
+							}
+						},
+						"groups": {
+							"displayName": "Group Names or IDs",
+							"description": "Groups in which the permissions granted by the role apply. Required only when Scope is Specified Groups - ignored otherwise. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				}
+			},
+			"values": {
+				"roleProperties": {
+					"displayName": "Role Properties",
+					"options": {
+						"role": {
+							"displayName": "Role Name or ID",
+							"description": "Name of the role to assign to the agent. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"assignment_scope": {
+							"displayName": "Scope",
+							"description": "Scope in which the agent may use the permissions granted by the role",
+							"options": {
+								"entire_helpdesk": {
+									"displayName": "Entire Helpdesk"
+								},
+								"member_groups": {
+									"displayName": "Member Groups"
+								},
+								"specified_groups": {
+									"displayName": "Specified Groups"
+								},
+								"assigned_items": {
+									"displayName": "Assigned Items"
+								}
+							}
+						},
+						"groups": {
+							"displayName": "Group Names or IDs",
+							"description": "Groups in which the permissions granted by the role apply. Required only when Scope is Specified Groups - ignored otherwise. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						}
+					}
+				},
+				"roles": {
+					"displayName": "Roles",
+					"placeholder": "Add Role"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Add Address Fields",
+					"options": {
+						"addressFields": {
+							"displayName": "Address Details",
+							"options": {
+								"line1": {
+									"displayName": "Line 1"
+								},
+								"line2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zipcode": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "Address Details",
+							"options": {
+								"line1": {
+									"displayName": "Line 1"
+								},
+								"line2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zipcode": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Address Fields"
+						}
+					}
+				},
+				"background_information": {
+					"displayName": "Background Information"
+				},
+				"department_ids": {
+					"displayName": "Department Names or IDs",
+					"description": "Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"job_title": {
+					"displayName": "Job Title"
+				},
+				"language": {
+					"displayName": "Language",
+					"options": {
+						"en": {
+							"displayName": "English"
+						},
+						"ar": {
+							"displayName": "Arabic"
+						},
+						"ca": {
+							"displayName": "Catalan"
+						},
+						"cs": {
+							"displayName": "Czech"
+						},
+						"cy-GB": {
+							"displayName": "Welsh"
+						},
+						"da": {
+							"displayName": "Danish"
+						},
+						"de": {
+							"displayName": "German"
+						},
+						"es": {
+							"displayName": "Spanish"
+						},
+						"es-LA": {
+							"displayName": "Spanish (Latin America)"
+						},
+						"et": {
+							"displayName": "Estonian"
+						},
+						"fi": {
+							"displayName": "Finnish"
+						},
+						"fr": {
+							"displayName": "French"
+						},
+						"he": {
+							"displayName": "Hebrew"
+						},
+						"hu": {
+							"displayName": "Hungarian"
+						},
+						"id": {
+							"displayName": "Indonesian"
+						},
+						"it": {
+							"displayName": "Italian"
+						},
+						"ja-JP": {
+							"displayName": "Japanese"
+						},
+						"ko": {
+							"displayName": "Korean"
+						},
+						"LV": {
+							"displayName": "Latvian"
+						},
+						"nb-NO": {
+							"displayName": "Norwegian"
+						},
+						"nl": {
+							"displayName": "Dutch"
+						},
+						"pl": {
+							"displayName": "Polish"
+						},
+						"pt": {
+							"displayName": "Portuguese"
+						},
+						"pt-BR": {
+							"displayName": "Portuguese (Brazil)"
+						},
+						"pt-PT": {
+							"displayName": "Portuguese (Portugal)"
+						},
+						"ru-RU": {
+							"displayName": "Russian"
+						},
+						"sk": {
+							"displayName": "Slovak"
+						},
+						"sk-SK": {
+							"displayName": "Slovak"
+						},
+						"sl": {
+							"displayName": "Slovenian"
+						},
+						"sv-SE": {
+							"displayName": "Swedish"
+						},
+						"th": {
+							"displayName": "Thai"
+						},
+						"tr": {
+							"displayName": "Turkish"
+						},
+						"UK": {
+							"displayName": "Ukrainian"
+						},
+						"vi": {
+							"displayName": "Vietnamese"
+						},
+						"zh-CN": {
+							"displayName": "Chinese (Simplified)"
+						},
+						"zh-TW": {
+							"displayName": "Chinese (Traditional)"
+						}
+					}
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"location_id": {
+					"displayName": "Location Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"member_of": {
+					"displayName": "Group Names or IDs",
+					"description": "Comma-separated IDs of the groups that the agent is a member of. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"mobile_phone_number": {
+					"displayName": "Mobile Phone"
+				},
+				"observer_of": {
+					"displayName": "Observer of Group Names/IDs",
+					"description": "Comma-separated IDs of the groups that the agent is an observer of. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"scoreboard_level_id": {
+					"displayName": "Scoreboard Level ID",
+					"description": "ID of the level of the agent in the Arcade",
+					"options": {
+						"1": {
+							"displayName": "Beginner"
+						},
+						"2": {
+							"displayName": "Intermediate"
+						},
+						"3": {
+							"displayName": "Professional"
+						},
+						"4": {
+							"displayName": "Expert"
+						},
+						"5": {
+							"displayName": "Master"
+						},
+						"6": {
+							"displayName": "Guru"
+						}
+					}
+				},
+				"time_format": {
+					"displayName": "Time Format",
+					"options": {
+						"12h": {
+							"displayName": "12-Hour Format"
+						},
+						"24h": {
+							"displayName": "24-Hour Format"
+						}
+					}
+				},
+				"work_phone_number": {
+					"displayName": "Work Phone"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "HTML supported"
+				},
+				"escalate_to": {
+					"displayName": "Escalate to Agent Name or ID",
+					"description": "ID of the user to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"members": {
+					"displayName": "Member Names or IDs",
+					"description": "Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"observers": {
+					"displayName": "Observer Names or IDs",
+					"description": "Comma-separated agent IDs who are observers of this group. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"unassigned_for": {
+					"displayName": "Unassigned For",
+					"description": "Time after which an escalation email is sent if a ticket in the group remains unassigned",
+					"options": {
+						"1d": {
+							"displayName": "1 Day"
+						},
+						"1h": {
+							"displayName": "1 Hour"
+						},
+						"12h": {
+							"displayName": "12 Hours"
+						},
+						"2d": {
+							"displayName": "2 Days"
+						},
+						"2h": {
+							"displayName": "2 Hours"
+						},
+						"3d": {
+							"displayName": "3 Days"
+						},
+						"30m": {
+							"displayName": "30 Minutes"
+						},
+						"8h": {
+							"displayName": "8 Hours"
+						}
+					}
+				},
+				"additional_emails": {
+					"displayName": "Additional Emails",
+					"description": "Comma-separated additional email addresses to which the announcement needs to be sent"
+				},
+				"departments": {
+					"displayName": "Department Names or IDs",
+					"description": "Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"visible_from": {
+					"displayName": "Visible From",
+					"description": "Timestamp at which announcement is active"
+				},
+				"visible_till": {
+					"displayName": "Visible Until",
+					"description": "Timestamp until which announcement is active"
+				},
+				"parent_asset_type_id": {
+					"displayName": "Parent Asset Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"agent_id": {
+					"displayName": "Agent Name or ID",
+					"description": "ID of the agent to whom the problem is assigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"change_type": {
+					"displayName": "Change Type",
+					"options": {
+						"1": {
+							"displayName": "Minor"
+						},
+						"2": {
+							"displayName": "Standard"
+						},
+						"3": {
+							"displayName": "Major"
+						},
+						"4": {
+							"displayName": "Emergency"
+						}
+					}
+				},
+				"department_id": {
+					"displayName": "Department Name or ID",
+					"description": "ID of the department to which this ticket belongs. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"group_id": {
+					"displayName": "Group Name or ID",
+					"description": "ID of the group to which the ticket has been assigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"impact": {
+					"displayName": "Impact",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "Priority",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						},
+						"4": {
+							"displayName": "Urgent"
+						}
+					}
+				},
+				"risk": {
+					"displayName": "Risk",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						},
+						"4": {
+							"displayName": "Very High"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"1": {
+							"displayName": "Open"
+						},
+						"2": {
+							"displayName": "Change Requested"
+						},
+						"3": {
+							"displayName": "Closed"
+						},
+						"4": {
+							"displayName": "Pending Release"
+						},
+						"5": {
+							"displayName": "Pending Review"
+						},
+						"6": {
+							"displayName": "Closed"
+						},
+						"In Production": {
+							"displayName": "In Production"
+						},
+						"In Pipeline": {
+							"displayName": "In Pipeline"
+						},
+						"Retired": {
+							"displayName": "Retired"
+						},
+						"disabled": {
+							"displayName": "Disabled"
+						},
+						"ignored": {
+							"displayName": "Ignored"
+						},
+						"needs review": {
+							"displayName": "Needs Review"
+						},
+						"restricted": {
+							"displayName": "Restricted"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "Subject"
+				},
+				"domains": {
+					"displayName": "Domains",
+					"description": "Comma-separated email domains associated with the department"
+				},
+				"manufacturer": {
+					"displayName": "Manufacturer"
+				},
+				"mode_of_procurement": {
+					"displayName": "Mode of Procurement",
+					"options": {
+						"Buy": {
+							"displayName": "Buy"
+						},
+						"Lease": {
+							"displayName": "Lease"
+						},
+						"Both": {
+							"displayName": "Both"
+						}
+					}
+				},
+				"secondary_emails": {
+					"displayName": "Secondary Emails",
+					"description": "Comma-separated secondary emails associated with the requester"
+				},
+				"notes": {
+					"displayName": "Notes"
+				},
+				"cc_emails": {
+					"displayName": "CC Emails",
+					"description": "Comma-separated email addresses to add in the CC field of the ticket email"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the ticket author"
+				},
+				"requester_id": {
+					"displayName": "Requester Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				}
+			}
+		},
+		"agentId": {
+			"displayName": "Agent ID",
+			"description": "ID of the agent to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"department_id": {
+					"displayName": "Department Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "First Name"
+				},
+				"job_title": {
+					"displayName": "Job Title"
+				},
+				"language": {
+					"displayName": "Language",
+					"options": {
+						"en": {
+							"displayName": "English"
+						},
+						"ar": {
+							"displayName": "Arabic"
+						},
+						"ca": {
+							"displayName": "Catalan"
+						},
+						"cs": {
+							"displayName": "Czech"
+						},
+						"cy-GB": {
+							"displayName": "Welsh"
+						},
+						"da": {
+							"displayName": "Danish"
+						},
+						"de": {
+							"displayName": "German"
+						},
+						"es": {
+							"displayName": "Spanish"
+						},
+						"es-LA": {
+							"displayName": "Spanish (Latin America)"
+						},
+						"et": {
+							"displayName": "Estonian"
+						},
+						"fi": {
+							"displayName": "Finnish"
+						},
+						"fr": {
+							"displayName": "French"
+						},
+						"he": {
+							"displayName": "Hebrew"
+						},
+						"hu": {
+							"displayName": "Hungarian"
+						},
+						"id": {
+							"displayName": "Indonesian"
+						},
+						"it": {
+							"displayName": "Italian"
+						},
+						"ja-JP": {
+							"displayName": "Japanese"
+						},
+						"ko": {
+							"displayName": "Korean"
+						},
+						"LV": {
+							"displayName": "Latvian"
+						},
+						"nb-NO": {
+							"displayName": "Norwegian"
+						},
+						"nl": {
+							"displayName": "Dutch"
+						},
+						"pl": {
+							"displayName": "Polish"
+						},
+						"pt": {
+							"displayName": "Portuguese"
+						},
+						"pt-BR": {
+							"displayName": "Portuguese (Brazil)"
+						},
+						"pt-PT": {
+							"displayName": "Portuguese (Portugal)"
+						},
+						"ru-RU": {
+							"displayName": "Russian"
+						},
+						"sk": {
+							"displayName": "Slovak"
+						},
+						"sk-SK": {
+							"displayName": "Slovak"
+						},
+						"sl": {
+							"displayName": "Slovenian"
+						},
+						"sv-SE": {
+							"displayName": "Swedish"
+						},
+						"th": {
+							"displayName": "Thai"
+						},
+						"tr": {
+							"displayName": "Turkish"
+						},
+						"UK": {
+							"displayName": "Ukrainian"
+						},
+						"vi": {
+							"displayName": "Vietnamese"
+						},
+						"zh-CN": {
+							"displayName": "Chinese (Simplified)"
+						},
+						"zh-TW": {
+							"displayName": "Chinese (Traditional)"
+						}
+					}
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"location_id": {
+					"displayName": "Location Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"mobile_phone_number": {
+					"displayName": "Mobile Phone Number"
+				},
+				"work_phone_number": {
+					"displayName": "Work Phone Number"
+				},
+				"filter": {
+					"displayName": "Predefined Filters",
+					"options": {
+						"closed": {
+							"displayName": "Closed"
+						},
+						"my_open": {
+							"displayName": "My Open"
+						},
+						"release_requested": {
+							"displayName": "Release Requested"
+						},
+						"requester_id": {
+							"displayName": "Requester ID"
+						},
+						"unassigned": {
+							"displayName": "Unassigned"
+						}
+					}
+				},
+				"sort_by": {
+					"displayName": "Sort Order",
+					"options": {
+						"asc": {
+							"displayName": "Ascending"
+						},
+						"desc": {
+							"displayName": "Descending"
+						}
+					}
+				},
+				"updated_since": {
+					"displayName": "Updated Since"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the department"
+				},
+				"primary_email": {
+					"displayName": "Primary Email"
+				},
+				"agent_id": {
+					"displayName": "Agent Name or ID",
+					"description": "ID of the agent to whom the tickets have been assigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"group_id": {
+					"displayName": "Group Name or ID",
+					"description": "ID of the group to which the tickets have been assigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"impact": {
+					"displayName": "Impact",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "Priority",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						},
+						"4": {
+							"displayName": "Urgent"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"2": {
+							"displayName": "Open"
+						},
+						"3": {
+							"displayName": "Pending"
+						},
+						"4": {
+							"displayName": "Resolved"
+						},
+						"5": {
+							"displayName": "Closed"
+						}
+					}
+				},
+				"created_at": {
+					"displayName": "Created On",
+					"description": "Date when the ticket was created"
+				},
+				"due_by": {
+					"displayName": "Due By",
+					"description": "Date when the ticket is due to be resolved"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Add Address Fields",
+					"options": {
+						"addressFields": {
+							"displayName": "Address Details",
+							"options": {
+								"line1": {
+									"displayName": "Line 1"
+								},
+								"line2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zipcode": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressFields": {
+							"displayName": "Address Details",
+							"options": {
+								"line1": {
+									"displayName": "Line 1"
+								},
+								"line2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"country": {
+									"displayName": "Country"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zipcode": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Address Fields"
+						}
+					}
+				},
+				"background_information": {
+					"displayName": "Background Information"
+				},
+				"department_ids": {
+					"displayName": "Department Names or IDs",
+					"description": "Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com",
+					"description": "Email address of the ticket author"
+				},
+				"first_name": {
+					"displayName": "First Name"
+				},
+				"job_title": {
+					"displayName": "Job Title"
+				},
+				"language": {
+					"displayName": "Language",
+					"options": {
+						"en": {
+							"displayName": "English"
+						},
+						"ar": {
+							"displayName": "Arabic"
+						},
+						"ca": {
+							"displayName": "Catalan"
+						},
+						"cs": {
+							"displayName": "Czech"
+						},
+						"cy-GB": {
+							"displayName": "Welsh"
+						},
+						"da": {
+							"displayName": "Danish"
+						},
+						"de": {
+							"displayName": "German"
+						},
+						"es": {
+							"displayName": "Spanish"
+						},
+						"es-LA": {
+							"displayName": "Spanish (Latin America)"
+						},
+						"et": {
+							"displayName": "Estonian"
+						},
+						"fi": {
+							"displayName": "Finnish"
+						},
+						"fr": {
+							"displayName": "French"
+						},
+						"he": {
+							"displayName": "Hebrew"
+						},
+						"hu": {
+							"displayName": "Hungarian"
+						},
+						"id": {
+							"displayName": "Indonesian"
+						},
+						"it": {
+							"displayName": "Italian"
+						},
+						"ja-JP": {
+							"displayName": "Japanese"
+						},
+						"ko": {
+							"displayName": "Korean"
+						},
+						"LV": {
+							"displayName": "Latvian"
+						},
+						"nb-NO": {
+							"displayName": "Norwegian"
+						},
+						"nl": {
+							"displayName": "Dutch"
+						},
+						"pl": {
+							"displayName": "Polish"
+						},
+						"pt": {
+							"displayName": "Portuguese"
+						},
+						"pt-BR": {
+							"displayName": "Portuguese (Brazil)"
+						},
+						"pt-PT": {
+							"displayName": "Portuguese (Portugal)"
+						},
+						"ru-RU": {
+							"displayName": "Russian"
+						},
+						"sk": {
+							"displayName": "Slovak"
+						},
+						"sk-SK": {
+							"displayName": "Slovak"
+						},
+						"sl": {
+							"displayName": "Slovenian"
+						},
+						"sv-SE": {
+							"displayName": "Swedish"
+						},
+						"th": {
+							"displayName": "Thai"
+						},
+						"tr": {
+							"displayName": "Turkish"
+						},
+						"UK": {
+							"displayName": "Ukrainian"
+						},
+						"vi": {
+							"displayName": "Vietnamese"
+						},
+						"zh-CN": {
+							"displayName": "Chinese (Simplified)"
+						},
+						"zh-TW": {
+							"displayName": "Chinese (Traditional)"
+						}
+					}
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"location_id": {
+					"displayName": "Location Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"member_of": {
+					"displayName": "Group Names or IDs",
+					"description": "Comma-separated IDs of the groups that the agent is a member of. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"mobile_phone_number": {
+					"displayName": "Mobile Phone"
+				},
+				"observer_of": {
+					"displayName": "Observer of Group Names/IDs",
+					"description": "Comma-separated IDs of the groups that the agent is an observer of. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"scoreboard_level_id": {
+					"displayName": "Scoreboard Level ID",
+					"description": "ID of the level of the agent in the Arcade",
+					"options": {
+						"1": {
+							"displayName": "Beginner"
+						},
+						"2": {
+							"displayName": "Intermediate"
+						},
+						"3": {
+							"displayName": "Professional"
+						},
+						"4": {
+							"displayName": "Expert"
+						},
+						"5": {
+							"displayName": "Master"
+						},
+						"6": {
+							"displayName": "Guru"
+						}
+					}
+				},
+				"time_format": {
+					"displayName": "Time Format",
+					"options": {
+						"12h": {
+							"displayName": "12-Hour Format"
+						},
+						"24h": {
+							"displayName": "24-Hour Format"
+						}
+					}
+				},
+				"work_phone_number": {
+					"displayName": "Work Phone"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "HTML supported"
+				},
+				"escalate_to": {
+					"displayName": "Escalate to Agent Name or ID",
+					"description": "ID of the agent to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"members": {
+					"displayName": "Member Names or IDs",
+					"description": "Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the ticket author"
+				},
+				"observers": {
+					"displayName": "Observer Names or IDs",
+					"description": "Comma-separated agent user IDs who are observers of this group. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"unassigned_for": {
+					"displayName": "Unassigned For",
+					"description": "Time after which an escalation email is sent if a ticket in the group remains unassigned",
+					"options": {
+						"1d": {
+							"displayName": "1 Day"
+						},
+						"1h": {
+							"displayName": "1 Hour"
+						},
+						"12h": {
+							"displayName": "12 Hours"
+						},
+						"2d": {
+							"displayName": "2 Days"
+						},
+						"2h": {
+							"displayName": "2 Hours"
+						},
+						"3d": {
+							"displayName": "3 Days"
+						},
+						"30m": {
+							"displayName": "30 Minutes"
+						},
+						"8h": {
+							"displayName": "8 Hours"
+						}
+					}
+				},
+				"additional_emails": {
+					"displayName": "Additional Emails",
+					"description": "Comma-separated additional email addresses to which the announcement needs to be sent"
+				},
+				"body_html": {
+					"displayName": "Body",
+					"description": "HTML supported"
+				},
+				"departments": {
+					"displayName": "Department Names or IDs",
+					"description": "Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"title": {
+					"displayName": "Title"
+				},
+				"visibility": {
+					"displayName": "Visibility",
+					"options": {
+						"agents_only": {
+							"displayName": "Agents Only"
+						},
+						"grouped_visibility": {
+							"displayName": "Agents and Groups"
+						},
+						"everyone": {
+							"displayName": "Everyone"
+						}
+					}
+				},
+				"agent_id": {
+					"displayName": "Agent Name or ID",
+					"description": "ID of the agent to whom the problem is assigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"change_type": {
+					"displayName": "Change Type",
+					"options": {
+						"1": {
+							"displayName": "Minor"
+						},
+						"2": {
+							"displayName": "Standard"
+						},
+						"3": {
+							"displayName": "Major"
+						},
+						"4": {
+							"displayName": "Emergency"
+						}
+					}
+				},
+				"department_id": {
+					"displayName": "Department Name or ID",
+					"description": "ID of the department to which this ticket has been assigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"group_id": {
+					"displayName": "Group Name or ID",
+					"description": "ID of the group to which the ticket has been assigned. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"impact": {
+					"displayName": "Impact",
+					"description": "Impact of the change",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						}
+					}
+				},
+				"priority": {
+					"displayName": "Priority",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						},
+						"4": {
+							"displayName": "Urgent"
+						}
+					},
+					"description": "Priority of the ticket"
+				},
+				"requester_id": {
+					"displayName": "Requester Name or ID",
+					"description": "ID of the initiator of the problem. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"risk": {
+					"displayName": "Risk",
+					"options": {
+						"1": {
+							"displayName": "Low"
+						},
+						"2": {
+							"displayName": "Medium"
+						},
+						"3": {
+							"displayName": "High"
+						},
+						"4": {
+							"displayName": "Very High"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"1": {
+							"displayName": "Open"
+						},
+						"2": {
+							"displayName": "Open"
+						},
+						"3": {
+							"displayName": "Pending"
+						},
+						"4": {
+							"displayName": "Resolved"
+						},
+						"5": {
+							"displayName": "Closed"
+						},
+						"6": {
+							"displayName": "Closed"
+						},
+						"In Production": {
+							"displayName": "In Production"
+						},
+						"In Pipeline": {
+							"displayName": "In Pipeline"
+						},
+						"Retired": {
+							"displayName": "Retired"
+						},
+						"disabled": {
+							"displayName": "Disabled"
+						},
+						"ignored": {
+							"displayName": "Ignored"
+						},
+						"needs review": {
+							"displayName": "Needs Review"
+						},
+						"restricted": {
+							"displayName": "Restricted"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "Subject"
+				},
+				"domains": {
+					"displayName": "Domains",
+					"description": "Comma-separated email domains associated with the department"
+				},
+				"due_by": {
+					"displayName": "Due By",
+					"description": "Date when the problem is due to be solved"
+				},
+				"asset_type_id": {
+					"displayName": "Asset Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"manufacturer": {
+					"displayName": "Manufacturer"
+				},
+				"mode_of_procurement": {
+					"displayName": "Mode of Procurement",
+					"options": {
+						"Buy": {
+							"displayName": "Buy"
+						},
+						"Lease": {
+							"displayName": "Lease"
+						},
+						"Both": {
+							"displayName": "Both"
+						}
+					}
+				},
+				"release_type": {
+					"displayName": "Release Type",
+					"options": {
+						"1": {
+							"displayName": "Minor"
+						},
+						"2": {
+							"displayName": "Standard"
+						},
+						"3": {
+							"displayName": "Major"
+						},
+						"4": {
+							"displayName": "Emergency"
+						}
+					}
+				},
+				"primary_email": {
+					"displayName": "Primary Email"
+				},
+				"secondary_emails": {
+					"displayName": "Secondary Emails",
+					"description": "Comma-separated secondary emails associated with the requester"
+				},
+				"application_type": {
+					"displayName": "Application Type",
+					"description": "Type of the software",
+					"options": {
+						"desktop": {
+							"displayName": "Desktop"
+						},
+						"mobile": {
+							"displayName": "Mobile"
+						},
+						"saas": {
+							"displayName": "SaaS"
+						}
+					}
+				},
+				"notes": {
+					"displayName": "Notes"
+				},
+				"phone": {
+					"displayName": "Phone"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the location"
+		},
+		"agentGroupId": {
+			"displayName": "Agent Group ID",
+			"description": "ID of the agent group to update"
+		},
+		"agentRoleId": {
+			"displayName": "Agent Role ID",
+			"description": "ID of the agent role to retrieve"
+		},
+		"title": {
+			"displayName": "Title"
+		},
+		"bodyHtml": {
+			"displayName": "Body",
+			"description": "HTML supported"
+		},
+		"visibility": {
+			"displayName": "Visibility",
+			"options": {
+				"agents_only": {
+					"displayName": "Agents Only"
+				},
+				"grouped_visibility": {
+					"displayName": "Agents and Groups"
+				},
+				"everyone": {
+					"displayName": "Everyone"
+				}
+			}
+		},
+		"visibleFrom": {
+			"displayName": "Visible From",
+			"description": "Timestamp at which announcement becomes active"
+		},
+		"announcementId": {
+			"displayName": "Announcement ID",
+			"description": "ID of the announcement to update"
+		},
+		"assetTypeId": {
+			"displayName": "Asset Type Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"requesterId": {
+			"displayName": "Requester ID",
+			"description": "ID of the requester to update"
+		},
+		"subject": {
+			"displayName": "Subject"
+		},
+		"plannedStartDate": {
+			"displayName": "Planned Start Date"
+		},
+		"plannedEndDate": {
+			"displayName": "Planned End Date"
+		},
+		"changeId": {
+			"displayName": "Change ID",
+			"description": "ID of the change to update"
+		},
+		"departmentId": {
+			"displayName": "Department ID",
+			"description": "ID of the department to update"
+		},
+		"locationId": {
+			"displayName": "Location ID",
+			"description": "ID of the location to update"
+		},
+		"dueBy": {
+			"displayName": "Due By",
+			"description": "Date when the problem is due to be solved"
+		},
+		"problemId": {
+			"displayName": "Problem ID",
+			"description": "ID of the problem to update"
+		},
+		"productId": {
+			"displayName": "Product ID",
+			"description": "ID of the product to update"
+		},
+		"releaseType": {
+			"displayName": "Release Type",
+			"options": {
+				"1": {
+					"displayName": "Minor"
+				},
+				"2": {
+					"displayName": "Standard"
+				},
+				"3": {
+					"displayName": "Major"
+				},
+				"4": {
+					"displayName": "Emergency"
+				}
+			}
+		},
+		"priority": {
+			"displayName": "Priority",
+			"options": {
+				"1": {
+					"displayName": "Low"
+				},
+				"2": {
+					"displayName": "Medium"
+				},
+				"3": {
+					"displayName": "High"
+				},
+				"4": {
+					"displayName": "Urgent"
+				}
+			}
+		},
+		"status": {
+			"displayName": "Status",
+			"options": {
+				"1": {
+					"displayName": "Open"
+				},
+				"2": {
+					"displayName": "Open"
+				},
+				"3": {
+					"displayName": "Pending"
+				},
+				"4": {
+					"displayName": "Resolved"
+				},
+				"5": {
+					"displayName": "Closed"
+				}
+			}
+		},
+		"releaseId": {
+			"displayName": "Release ID",
+			"description": "ID of the release to update"
+		},
+		"primaryEmail": {
+			"displayName": "Primary Email"
+		},
+		"requesterGroupId": {
+			"displayName": "Requester Group ID",
+			"description": "ID of the requester group to update"
+		},
+		"applicationType": {
+			"displayName": "Application Type",
+			"options": {
+				"desktop": {
+					"displayName": "Desktop"
+				},
+				"mobile": {
+					"displayName": "Mobile"
+				},
+				"saas": {
+					"displayName": "SaaS"
+				}
+			}
+		},
+		"softwareId": {
+			"displayName": "Software ID",
+			"description": "ID of the software application to update"
+		},
+		"description": {
+			"displayName": "Description",
+			"description": "HTML supported"
+		},
+		"ticketId": {
+			"displayName": "Ticket ID",
+			"description": "ID of the ticket to update"
+		}
+	}
+}

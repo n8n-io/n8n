@@ -1,0 +1,22 @@
+{
+	"header": {
+		"displayName": "AWS SNS Trigger",
+		"description": "Handle AWS SNS events via webhooks"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"topic": {
+			"displayName": "Topic"
+		}
+	}
+}

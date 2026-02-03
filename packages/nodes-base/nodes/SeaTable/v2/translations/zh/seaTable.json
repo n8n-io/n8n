@@ -1,0 +1,234 @@
+{
+	"header": {
+		"displayName": "SeaTable",
+		"description": "使用 SeaTable API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"row": {
+					"displayName": "行"
+				},
+				"base": {
+					"displayName": "基础"
+				},
+				"link": {
+					"displayName": "链接"
+				},
+				"asset": {
+					"displayName": "资产"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新行"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从链接列中移除两行之间的链接"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取行内容"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "列出特定行的所有链接"
+				},
+				"lock": {
+					"displayName": "锁定",
+					"description": "锁定行以防止进一步更改"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索一行或多行数据"
+				},
+				"unlock": {
+					"displayName": "解锁",
+					"description": "解除行的锁定"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新行内容"
+				},
+				"snapshot": {
+					"displayName": "快照",
+					"description": "创建基础快照"
+				},
+				"metadata": {
+					"displayName": "元数据",
+					"description": "获取基础数据的完整元数据"
+				},
+				"collaborator": {
+					"displayName": "协作者",
+					"description": "从协作者的邮箱或姓名中获取用户名"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "在链接列中创建两行之间的链接"
+				},
+				"getPublicURL": {
+					"displayName": "公共URL",
+					"description": "从资源路径获取公共URL"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "向现有行添加文件/图像"
+				}
+			}
+		},
+		"tableName": {
+			"displayName": "表名",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code-examples/expressions/\">表达式</a>指定名称",
+			"placeholder": "选择表格"
+		},
+		"rowId": {
+			"displayName": "行ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"fieldsToSend": {
+			"displayName": "要发送的数据",
+			"description": "是否将本节点接收的输入数据插入新行",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "自动映射输入数据到列",
+					"description": "当节点输入属性与目标列名匹配时使用"
+				},
+				"defineBelow": {
+					"displayName": "为每列定义以下内容",
+					"description": "为每个目标列设置值"
+				}
+			}
+		},
+		"apply_default": {
+			"displayName": "应用列默认值",
+			"description": "是否在创建新行时使用列默认值填充（仅适用于普通后端）"
+		},
+		"notice": {
+			"displayName": "提示：链接、文件、图片或数字签名必须单独添加。"
+		},
+		"inputsToIgnore": {
+			"displayName": "要忽略的输入",
+			"description": "要避免发送的输入属性列表，用逗号分隔。留空则发送所有属性。",
+			"placeholder": "输入属性..."
+		},
+		"columnsUi": {
+			"displayName": "要发送的列",
+			"description": "添加目标列及其值。按以下方式提供值：日期：YYYY-MM-DD 或 YYYY-MM-DD hh:mm；时长：以秒为单位的时间；复选框：true、on 或 1；多选：逗号分隔的列表。",
+			"placeholder": "添加列",
+			"multipleValueButtonText": "添加要发送的列",
+			"options": {
+				"columnValues": {
+					"displayName": "列",
+					"options": {
+						"columnName": {
+							"displayName": "列名或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"columnValue": {
+							"displayName": "列值"
+						}
+					}
+				}
+			},
+			"values": {
+				"columnValues": {
+					"displayName": "列",
+					"options": {
+						"columnName": {
+							"displayName": "列名或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"columnValue": {
+							"displayName": "列值"
+						}
+					}
+				},
+				"columnsUi": {
+					"displayName": "要发送的列",
+					"placeholder": "添加列"
+				}
+			}
+		},
+		"bigdata": {
+			"displayName": "保存到\"大数据\"后端",
+			"description": "是否写入大数据后端（true表示写入，false表示不写入）。选择true需要在基础中激活大数据后端。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"simple": {
+					"displayName": "简化",
+					"description": "是否返回简化版本的响应而非原始数据"
+				},
+				"convert": {
+					"displayName": "返回列名",
+					"description": "是否返回列键（false）或列名（true）"
+				},
+				"insensitive": {
+					"displayName": "不区分大小写搜索",
+					"description": "搜索是否忽略大小写区分（true）。否则，将区分大写和小写字符。"
+				},
+				"wildcard": {
+					"displayName": "启用通配符搜索",
+					"description": "搜索是否仅返回完全匹配的结果（true）。否则，即使搜索值只是字符串的一部分，也会找到对应行（false）。"
+				},
+				"replace": {
+					"displayName": "替换现有文件",
+					"description": "是否替换同名现有资产（true）。否则将上传带不同名称（括号内数字）的新版本（false）。"
+				},
+				"append": {
+					"displayName": "追加到列",
+					"description": "是否保留列中现有文件/图像并追加新资源（true）。否则，将从列中移除现有文件/图像（false）。"
+				}
+			}
+		},
+		"viewName": {
+			"displayName": "视图名称",
+			"description": "要访问的SeaTable视图名称，或使用表达式指定。以\"col.name:::col.type\"格式提供。"
+		},
+		"searchColumn": {
+			"displayName": "Column Name or ID",
+			"description": "Select the column to be searched. Not all column types are supported for search. Choose from the list, or specify a name using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>."
+		},
+		"searchTerm": {
+			"displayName": "搜索词",
+			"description": "查找什么？"
+		},
+		"searchString": {
+			"displayName": "协作者姓名或邮箱",
+			"description": "SeaTable使用唯一用户名标识用户，例如244b43hr6fy54bb4afa2c2cb7369d244@auth.local。请从协作者的邮箱或姓名中获取此用户名。",
+			"placeholder": "输入协作者的姓名或邮箱"
+		},
+		"linkColumn": {
+			"displayName": "链接列",
+			"description": "从列表中选择或使用表达式指定链接列。您需要以\"column_name:::link_id:::other_table_id\"的格式提供。"
+		},
+		"linkColumnSourceId": {
+			"displayName": "源表中的行ID",
+			"description": "提供所选表的行ID"
+		},
+		"linkColumnTargetId": {
+			"displayName": "目标表的行ID",
+			"description": "提供要链接的表的行ID"
+		},
+		"uploadColumn": {
+			"displayName": "列名",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定名称"
+		},
+		"dataPropertyName": {
+			"displayName": "属性名称",
+			"description": "包含待写入文件数据的二进制属性名称"
+		},
+		"assetPath": {
+			"displayName": "资源路径",
+			"placeholder": "/images/2023-09/logo.png"
+		}
+	}
+}

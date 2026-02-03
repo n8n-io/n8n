@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "Disqus",
+		"description": "Access data on Disqus"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"forum": {
+					"displayName": "Forum"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Return forum details"
+				},
+				"getCategories": {
+					"displayName": "Get All Categories",
+					"description": "Return a list of categories within a forum"
+				},
+				"getThreads": {
+					"displayName": "Get All Threads",
+					"description": "Return a list of threads within a forum"
+				},
+				"getPosts": {
+					"displayName": "Get All Posts",
+					"description": "Return a list of posts within a forum"
+				}
+			}
+		},
+		"id": {
+			"displayName": "Forum Name",
+			"description": "The short name(aka ID) of the forum to get Threads"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"attach": {
+					"displayName": "Attach"
+				},
+				"related": {
+					"displayName": "Related",
+					"description": "You may specify relations to include with your response"
+				},
+				"filters": {
+					"displayName": "Filters",
+					"description": "You may specify filters for your response"
+				},
+				"include": {
+					"displayName": "Include",
+					"description": "You may specify relations to include with your response"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "You may specify order to sort your response",
+					"options": {
+						"asc": {
+							"displayName": "ASC"
+						},
+						"desc": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"query": {
+					"displayName": "Query",
+					"description": "You may specify query forChoices: asc, desc your response"
+				},
+				"since": {
+					"displayName": "Since",
+					"description": "Unix timestamp (or ISO datetime standard)"
+				},
+				"thread": {
+					"displayName": "Thread",
+					"description": "Looks up a thread by ID. You may pass us the \"ident\" query type instead of an ID by including \"forum\". You may pass us the \"link\" query type to filter by URL. You must pass the \"forum\" if you do not have the Pro API Access addon."
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		}
+	}
+}

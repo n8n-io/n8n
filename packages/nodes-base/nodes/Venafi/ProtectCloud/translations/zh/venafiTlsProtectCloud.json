@@ -1,0 +1,297 @@
+{
+	"header": {
+		"displayName": "Venafi TLS Protect Cloud",
+		"description": "使用 Venafi TLS Protect Cloud API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"certificate": {
+					"displayName": "证书"
+				},
+				"certificateRequest": {
+					"displayName": "证书请求"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"delete": {
+					"displayName": "删除",
+					"description": "删除证书"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载证书"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索证书请求"
+				},
+				"getMany": {
+					"displayName": "获取多个",
+					"description": "检索多个证书请求"
+				},
+				"renew": {
+					"displayName": "续期",
+					"description": "续期证书"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新的证书请求"
+				}
+			}
+		},
+		"certificateId": {
+			"displayName": "证书ID"
+		},
+		"downloadItem": {
+			"displayName": "下载项目",
+			"options": {
+				"certificate": {
+					"displayName": "证书"
+				},
+				"keystore": {
+					"displayName": "密钥库"
+				}
+			}
+		},
+		"keystoreType": {
+			"displayName": "密钥库类型",
+			"options": {
+				"JKS": {
+					"displayName": "JKS"
+				},
+				"PKCS12": {
+					"displayName": "PKCS12"
+				},
+				"PEM": {
+					"displayName": "PEM"
+				}
+			}
+		},
+		"certificateLabel": {
+			"displayName": "证书标签"
+		},
+		"privateKeyPassphrase": {
+			"displayName": "私钥密码"
+		},
+		"keystorePassphrase": {
+			"displayName": "密钥库密码"
+		},
+		"binaryProperty": {
+			"displayName": "输入数据字段名称",
+			"description": "包含待上传二进制文件数据的输入字段名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"chainOrder": {
+					"displayName": "链式排序",
+					"options": {
+						"EE_FIRST": {
+							"displayName": "EE_FIRST",
+							"description": "首先下载包含链末端实体部分的证书"
+						},
+						"EE_ONLY": {
+							"displayName": "仅下载终端实体证书",
+							"description": "Download only the end-entity certificate"
+						},
+						"ROOT_FIRST": {
+							"displayName": "首先下载包含根链部分的证书",
+							"description": "Download the certificate with root portion of the chain first"
+						}
+					}
+				},
+				"format": {
+					"displayName": "格式",
+					"options": {
+						"PEM": {
+							"displayName": "PEM"
+						},
+						"DER": {
+							"displayName": "数据执行区域"
+						}
+					}
+				},
+				"validityPeriod": {
+					"displayName": "有效期",
+					"options": {
+						"P1Y": {
+							"displayName": "1年"
+						},
+						"P10D": {
+							"displayName": "10天"
+						},
+						"PT12H": {
+							"displayName": "12小时"
+						}
+					},
+					"description": "指定所颁发证书的有效期。使用ISO8601格式。",
+					"placeholder": "P1Y"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"subject": {
+					"displayName": "主题"
+				}
+			}
+		},
+		"applicationId": {
+			"displayName": "应用程序名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"existingCertificateId": {
+			"displayName": "现有证书ID"
+		},
+		"certificateIssuingTemplateId": {
+			"displayName": "证书颁发模板名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"certificateSigningRequest": {
+			"displayName": "证书签名请求"
+		},
+		"generateCsr": {
+			"displayName": "生成CSR"
+		},
+		"commonName": {
+			"displayName": "通用名称",
+			"description": "证书主题的通用名字段 (CN)"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"keyType": {
+					"displayName": "密钥类型",
+					"description": "公钥的加密算法",
+					"options": {
+						"EC": {
+							"displayName": "椭圆曲线",
+							"description": "椭圆曲线 (EC)"
+						},
+						"RSA": {
+							"displayName": "RSA",
+							"description": "Rivest、Shamir、Adleman密钥（RSA）"
+						}
+					}
+				},
+				"keyCurve": {
+					"displayName": "关键曲线",
+					"options": {
+						"ED25519": {
+							"displayName": "ED25519",
+							"description": "使用爱德华兹曲线数字签名算法（EdDSA）"
+						},
+						"P256": {
+							"displayName": "P256",
+							"description": "使用椭圆素数曲线256位加密"
+						},
+						"P384": {
+							"displayName": "P384",
+							"description": "使用384位椭圆素数曲线加密"
+						},
+						"P521": {
+							"displayName": "P521",
+							"description": "使用椭圆素数曲线521位加密"
+						},
+						"UNKNOWN": {
+							"displayName": "未知"
+						}
+					}
+				},
+				"keyLength": {
+					"displayName": "密钥长度",
+					"description": "密钥生成允许的位数"
+				},
+				"organization": {
+					"displayName": "(O) 组织",
+					"description": "公司或组织的名称"
+				},
+				"organizationalUnits": {
+					"displayName": "[0](OU) 组织单位",
+					"description": "[1]部门或科室的名称"
+				},
+				"locality": {
+					"displayName": "城市/地区",
+					"description": "城市或城镇的名称"
+				},
+				"state": {
+					"displayName": "[0](ST) 州/省",
+					"description": "[1]州或省名称"
+				},
+				"country": {
+					"displayName": "[0](C) 国家",
+					"description": "[1]两位字母国家代码"
+				},
+				"SubjectAltNamesUi": {
+					"displayName": "主题备用名称",
+					"placeholder": "添加主题",
+					"multipleValueButtonText": "添加主题",
+					"options": {
+						"SubjectAltNamesValues": {
+							"displayName": "主题备用名称",
+							"options": {
+								"Typename": {
+									"displayName": "类型名称",
+									"description": "正在使用哪种类型的SAN",
+									"options": {
+										"dnsNames": {
+											"displayName": "DNS"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "与Type或TypeName参数对应的SAN友好名称。例如，如果TypeName是IPAddress，则Name值应为有效的IP地址。"
+								}
+							}
+						}
+					},
+					"values": {
+						"SubjectAltNamesValues": {
+							"displayName": "主题备用名称",
+							"options": {
+								"Typename": {
+									"displayName": "类型名称",
+									"description": "正在使用哪种类型的SAN",
+									"options": {
+										"dnsNames": {
+											"displayName": "DNS"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "与Type或TypeName参数对应的SAN友好名称。例如，如果TypeName是IPAddress，则Name值应为有效的IP地址。"
+								}
+							}
+						},
+						"SubjectAltNamesUi": {
+							"displayName": "主题备用名称",
+							"placeholder": "添加主题"
+						}
+					}
+				}
+			}
+		},
+		"certificateRequestId": {
+			"displayName": "证书请求ID"
+		}
+	}
+}

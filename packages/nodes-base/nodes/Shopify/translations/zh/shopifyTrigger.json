@@ -1,0 +1,204 @@
+{
+	"header": {
+		"displayName": "Shopify触发器",
+		"description": "通过Webhook处理Shopify事件"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				},
+				"apiKey": {
+					"displayName": "API密钥"
+				}
+			}
+		},
+		"topic": {
+			"displayName": "触发条件",
+			"options": {
+				"app/uninstalled": {
+					"displayName": "应用已卸载"
+				},
+				"carts/create": {
+					"displayName": "购物车已创建"
+				},
+				"carts/update": {
+					"displayName": "购物车已更新"
+				},
+				"checkouts/create": {
+					"displayName": "结账已创建"
+				},
+				"checkouts/delete": {
+					"displayName": "结账删除"
+				},
+				"checkouts/update": {
+					"displayName": "结账更新"
+				},
+				"collections/create": {
+					"displayName": "集合已创建"
+				},
+				"collections/delete": {
+					"displayName": "集合已删除"
+				},
+				"collection_listings/add": {
+					"displayName": "集合列表已添加"
+				},
+				"collection_listings/remove": {
+					"displayName": "集合列表已移除"
+				},
+				"collection_listings/update": {
+					"displayName": "集合列表已更新"
+				},
+				"collections/update": {
+					"displayName": "集合已更新"
+				},
+				"customers/create": {
+					"displayName": "客户已创建"
+				},
+				"customers/delete": {
+					"displayName": "客户已删除"
+				},
+				"customers/disable": {
+					"displayName": "客户已禁用"
+				},
+				"customers/enable": {
+					"displayName": "客户已启用"
+				},
+				"customer_groups/create": {
+					"displayName": "客户群组已创建"
+				},
+				"customer_groups/delete": {
+					"displayName": "客户群组已删除"
+				},
+				"customer_groups/update": {
+					"displayName": "客户群组已更新"
+				},
+				"customers/update": {
+					"displayName": "客户已更新"
+				},
+				"draft_orders/create": {
+					"displayName": "草稿订单已创建"
+				},
+				"draft_orders/delete": {
+					"displayName": "草稿订单已删除"
+				},
+				"draft_orders/update": {
+					"displayName": "草稿订单已更新"
+				},
+				"fulfillments/create": {
+					"displayName": "履约单已创建"
+				},
+				"fulfillment_events/create": {
+					"displayName": "履约事件已创建"
+				},
+				"fulfillment_events/delete": {
+					"displayName": "履约事件已删除"
+				},
+				"fulfillments/update": {
+					"displayName": "履约状态已更新"
+				},
+				"inventory_items/create": {
+					"displayName": "库存项目已创建"
+				},
+				"inventory_items/delete": {
+					"displayName": "库存项目已删除"
+				},
+				"inventory_items/update": {
+					"displayName": "库存项目已更新"
+				},
+				"inventory_levels/connect": {
+					"displayName": "库存水平已连接"
+				},
+				"inventory_levels/disconnect": {
+					"displayName": "库存水平已断开连接"
+				},
+				"inventory_levels/update": {
+					"displayName": "库存水平已更新"
+				},
+				"locales/create": {
+					"displayName": "区域设置已创建"
+				},
+				"locales/update": {
+					"displayName": "区域设置已更新"
+				},
+				"locations/create": {
+					"displayName": "位置已创建"
+				},
+				"locations/delete": {
+					"displayName": "位置已删除"
+				},
+				"locations/update": {
+					"displayName": "位置已更新"
+				},
+				"orders/cancelled": {
+					"displayName": "订单已取消"
+				},
+				"orders/create": {
+					"displayName": "订单已创建"
+				},
+				"orders/fulfilled": {
+					"displayName": "订单已完成"
+				},
+				"orders/paid": {
+					"displayName": "订单已支付"
+				},
+				"orders/partially_fulfilled": {
+					"displayName": "订单部分履行"
+				},
+				"order_transactions/create": {
+					"displayName": "订单交易已创建"
+				},
+				"orders/updated": {
+					"displayName": "订单已更新"
+				},
+				"orders/delete": {
+					"displayName": "订单已删除"
+				},
+				"products/create": {
+					"displayName": "产品已创建"
+				},
+				"products/delete": {
+					"displayName": "产品已删除"
+				},
+				"product_listings/add": {
+					"displayName": "产品列表已添加"
+				},
+				"product_listings/remove": {
+					"displayName": "产品列表已移除"
+				},
+				"product_listings/update": {
+					"displayName": "产品列表已更新"
+				},
+				"products/update": {
+					"displayName": "产品已更新"
+				},
+				"refunds/create": {
+					"displayName": "退款已创建"
+				},
+				"shop/update": {
+					"displayName": "店铺已更新"
+				},
+				"tender_transactions/create": {
+					"displayName": "创建的招标交易"
+				},
+				"themes/create": {
+					"displayName": "主题已创建"
+				},
+				"themes/delete": {
+					"displayName": "主题已删除"
+				},
+				"themes/publish": {
+					"displayName": "主题已发布"
+				},
+				"themes/update": {
+					"displayName": "主题已更新"
+				}
+			}
+		}
+	}
+}

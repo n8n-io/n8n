@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "Pushcut触发器",
+		"description": "当Pushcut事件发生时启动工作流"
+	},
+	"nodeView": {
+		"actionName": {
+			"displayName": "操作名称",
+			"description": "可自定义任意名称，它将作为服务器操作显示在应用中。"
+		}
+	}
+}

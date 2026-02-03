@@ -1,0 +1,37 @@
+{
+	"header": {
+		"displayName": "Figma触发器（测试版）",
+		"description": "当Figma事件发生时启动工作流"
+	},
+	"nodeView": {
+		"teamId": {
+			"displayName": "团队ID",
+			"description": "触发器将监控此Figma团队的变更。在网页浏览器中查看Figma团队页面时，可从URL中找到团队ID：figma.com/files/team/{TEAM-ID}/。"
+		},
+		"triggerOn": {
+			"displayName": "触发于",
+			"options": {
+				"fileComment": {
+					"displayName": "文件被评论",
+					"description": "当有人评论文件时触发"
+				},
+				"fileDelete": {
+					"displayName": "文件已删除",
+					"description": "当文件被删除时触发。如果文件夹被删除，不会触发文件夹内所有文件。"
+				},
+				"fileUpdate": {
+					"displayName": "文件已更新",
+					"description": "当文件保存或删除时触发。这会在文件关闭时或在更改后的30秒内发生。"
+				},
+				"fileVersionUpdate": {
+					"displayName": "文件版本已更新",
+					"description": "每当在文件的版本历史记录中创建命名版本时触发"
+				},
+				"libraryPublish": {
+					"displayName": "库发布",
+					"description": "当库文件发布时触发"
+				}
+			}
+		}
+	}
+}

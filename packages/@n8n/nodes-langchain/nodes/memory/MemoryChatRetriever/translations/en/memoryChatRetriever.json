@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "Chat Messages Retriever",
+		"description": "Retrieve chat messages from memory and use them in the workflow"
+	},
+	"nodeView": {
+		"deprecatedNotice": {
+			"displayName": "This node is deprecated. Use 'Chat Memory Manager' node instead."
+		},
+		"simplifyOutput": {
+			"displayName": "Simplify Output",
+			"description": "Whether to simplify the output to only include the sender and the text"
+		}
+	}
+}

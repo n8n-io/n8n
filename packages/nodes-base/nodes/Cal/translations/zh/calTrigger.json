@@ -1,0 +1,40 @@
+{
+	"header": {
+		"displayName": "Cal.com 触发器",
+		"description": "通过Webhook处理Cal.com事件"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件"
+		},
+		"version": {
+			"displayName": "API版本",
+			"options": {
+				"1": {
+					"displayName": "v2.0之前"
+				},
+				"2": {
+					"displayName": "v2.0 及更高版本"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"appId": {
+					"displayName": "应用ID",
+					"description": "要监控的App ID"
+				},
+				"eventTypeId": {
+					"displayName": "事件类型名称或ID",
+					"description": "要监控的事件类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"payloadTemplate": {
+					"displayName": "载荷模板",
+					"description": "用于自定义Webhook载荷的模板"
+				}
+			}
+		}
+	}
+}

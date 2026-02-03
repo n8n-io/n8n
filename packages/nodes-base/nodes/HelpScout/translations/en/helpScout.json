@@ -1,0 +1,988 @@
+{
+	"header": {
+		"displayName": "Help Scout",
+		"description": "Consume Help Scout API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"conversation": {
+					"displayName": "Conversation"
+				},
+				"customer": {
+					"displayName": "Customer"
+				},
+				"mailbox": {
+					"displayName": "Mailbox"
+				},
+				"thread": {
+					"displayName": "Thread"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new chat thread"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a conversation"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get data of a mailbox"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many chat threads"
+				},
+				"properties": {
+					"displayName": "Properties",
+					"description": "Get customer property definitions"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a customer"
+				}
+			}
+		},
+		"mailboxId": {
+			"displayName": "Mailbox ID",
+			"description": "ID of a mailbox where the conversation is being created. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"status": {
+			"displayName": "Status",
+			"description": "Conversation status",
+			"options": {
+				"active": {
+					"displayName": "Active"
+				},
+				"closed": {
+					"displayName": "Closed"
+				},
+				"pending": {
+					"displayName": "Pending"
+				}
+			}
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "Conversation’s subject"
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "Conversation type",
+			"options": {
+				"chat": {
+					"displayName": "Chat"
+				},
+				"email": {
+					"displayName": "Email"
+				},
+				"phone": {
+					"displayName": "Phone"
+				},
+				"customer": {
+					"displayName": "Customer"
+				},
+				"note": {
+					"displayName": "Note"
+				},
+				"reply": {
+					"displayName": "Reply"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assignTo": {
+					"displayName": "Assign To",
+					"description": "The Help Scout user assigned to the conversation"
+				},
+				"autoReply": {
+					"displayName": "Auto Reply",
+					"description": "Whether set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation"
+				},
+				"closedAt": {
+					"displayName": "Closed At",
+					"description": "When the conversation was closed, only applicable for imported conversations"
+				},
+				"createdAt": {
+					"displayName": "Created At",
+					"description": "When this conversation was created - ISO 8601 date time"
+				},
+				"customerEmail": {
+					"displayName": "Customer Email"
+				},
+				"customerId": {
+					"displayName": "Customer ID"
+				},
+				"imported": {
+					"displayName": "Imported",
+					"description": "Whether no outgoing emails or notifications will be generated"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "List of tags to be added to the conversation. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"user": {
+					"displayName": "User ID",
+					"description": "ID of the user who is adding the conversation and threads"
+				},
+				"age": {
+					"displayName": "Age",
+					"description": "Customer’s age"
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "First name of the customer. When defined it must be between 1 and 40 characters."
+				},
+				"gender": {
+					"displayName": "Gender",
+					"description": "Gender of this customer",
+					"options": {
+						"female": {
+							"displayName": "Female"
+						},
+						"male": {
+							"displayName": "Male"
+						},
+						"unknown": {
+							"displayName": "Unknown"
+						}
+					}
+				},
+				"jobTitle": {
+					"displayName": "Job Title",
+					"description": "Job title. Max length 60 characters."
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "Last name of the customer"
+				},
+				"location": {
+					"displayName": "Location",
+					"description": "Location of the customer"
+				},
+				"background": {
+					"displayName": "Notes"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"photoUrl": {
+					"displayName": "Photo Url",
+					"description": "URL of the customer’s photo"
+				},
+				"draft": {
+					"displayName": "Draft",
+					"description": "Whether a draft reply is created"
+				}
+			}
+		},
+		"threadsUi": {
+			"displayName": "Threads",
+			"placeholder": "Add Thread",
+			"multipleValueButtonText": "Add Thread",
+			"options": {
+				"threadsValues": {
+					"displayName": "Thread",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"chat": {
+									"displayName": "Chat"
+								},
+								"customer": {
+									"displayName": "Customer"
+								},
+								"note": {
+									"displayName": "Note"
+								},
+								"phone": {
+									"displayName": "Phone"
+								},
+								"reply": {
+									"displayName": "Reply"
+								}
+							}
+						},
+						"text": {
+							"displayName": "Text",
+							"description": "The message text"
+						},
+						"bcc": {
+							"displayName": "Bcc",
+							"description": "Email addresses"
+						},
+						"cc": {
+							"displayName": "Cc",
+							"description": "Email addresses"
+						},
+						"draft": {
+							"displayName": "Draft",
+							"description": "Whether true, a draft reply is created"
+						}
+					}
+				}
+			},
+			"values": {
+				"threadsValues": {
+					"displayName": "Thread",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"chat": {
+									"displayName": "Chat"
+								},
+								"customer": {
+									"displayName": "Customer"
+								},
+								"note": {
+									"displayName": "Note"
+								},
+								"phone": {
+									"displayName": "Phone"
+								},
+								"reply": {
+									"displayName": "Reply"
+								}
+							}
+						},
+						"text": {
+							"displayName": "Text",
+							"description": "The message text"
+						},
+						"bcc": {
+							"displayName": "Bcc",
+							"description": "Email addresses"
+						},
+						"cc": {
+							"displayName": "Cc",
+							"description": "Email addresses"
+						},
+						"draft": {
+							"displayName": "Draft",
+							"description": "Whether true, a draft reply is created"
+						}
+					}
+				},
+				"threadsUi": {
+					"displayName": "Threads",
+					"placeholder": "Add Thread"
+				}
+			}
+		},
+		"conversationId": {
+			"displayName": "Conversation ID"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"assignTo": {
+					"displayName": "Assign To",
+					"description": "Filters conversations by assignee ID"
+				},
+				"embed": {
+					"displayName": "Embed",
+					"description": "Allows embedding/loading of sub-entities",
+					"options": {
+						"threads": {
+							"displayName": "Threads"
+						}
+					}
+				},
+				"folder": {
+					"displayName": "Folder ID",
+					"description": "Filters conversations from a specific folder ID"
+				},
+				"mailbox": {
+					"displayName": "Mailbox ID",
+					"description": "Filters customers from a specific mailbox"
+				},
+				"modifiedSince": {
+					"displayName": "Modified Since",
+					"description": "Returns only customers that were modified after this date"
+				},
+				"number": {
+					"displayName": "Number",
+					"description": "Looks up conversation by conversation number"
+				},
+				"query": {
+					"displayName": "Query",
+					"description": "Advanced search <a href=\"https://developer.helpscout.com/mailbox-api/endpoints/customers/list/#query\">Examples</a>"
+				},
+				"sortField": {
+					"displayName": "Sort Field",
+					"description": "Sorts the result by specified field",
+					"options": {
+						"createdAt": {
+							"displayName": "Created At"
+						},
+						"customerEmail": {
+							"displayName": "Customer Email"
+						},
+						"customerName": {
+							"displayName": "Customer Name"
+						},
+						"mailboxid": {
+							"displayName": "Mailbox ID"
+						},
+						"modifiedAt": {
+							"displayName": "Modified At"
+						},
+						"number": {
+							"displayName": "Number"
+						},
+						"score": {
+							"displayName": "Score"
+						},
+						"status": {
+							"displayName": "Status"
+						},
+						"subject": {
+							"displayName": "Subject"
+						},
+						"firstName": {
+							"displayName": "First Name"
+						},
+						"lastName": {
+							"displayName": "Last Name"
+						}
+					}
+				},
+				"sortOrder": {
+					"displayName": "Sort Order",
+					"options": {
+						"asc": {
+							"displayName": "ASC"
+						},
+						"desc": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Filter conversation by status",
+					"options": {
+						"active": {
+							"displayName": "Active"
+						},
+						"all": {
+							"displayName": "All"
+						},
+						"closed": {
+							"displayName": "Closed"
+						},
+						"open": {
+							"displayName": "Open"
+						},
+						"pending": {
+							"displayName": "Pending"
+						},
+						"spam": {
+							"displayName": "Spam"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Filter conversation by tags. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "Filters customers by first name"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "Filters customers by last name"
+				}
+			}
+		},
+		"addressUi": {
+			"displayName": "Address",
+			"placeholder": "Add Address",
+			"options": {
+				"addressValue": {
+					"displayName": "Address",
+					"options": {
+						"line1": {
+							"displayName": "Line 1"
+						},
+						"line2": {
+							"displayName": "Line 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"country": {
+							"displayName": "Country Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						}
+					}
+				}
+			},
+			"values": {
+				"addressValue": {
+					"displayName": "Address",
+					"options": {
+						"line1": {
+							"displayName": "Line 1"
+						},
+						"line2": {
+							"displayName": "Line 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"country": {
+							"displayName": "Country Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						}
+					}
+				},
+				"addressUi": {
+					"displayName": "Address",
+					"placeholder": "Add Address"
+				}
+			}
+		},
+		"chatsUi": {
+			"displayName": "Chat Handles",
+			"placeholder": "Add Chat Handle",
+			"multipleValueButtonText": "Add Chat Handle",
+			"options": {
+				"chatsValues": {
+					"displayName": "Chat Handle",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "Chat type",
+							"options": {
+								"aim": {
+									"displayName": "AIM"
+								},
+								"gtalk": {
+									"displayName": "Google Talk"
+								},
+								"icq": {
+									"displayName": "ICQ"
+								},
+								"msn": {
+									"displayName": "MSN"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"qq": {
+									"displayName": "QQ"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"xmpp": {
+									"displayName": "XMPP"
+								},
+								"yahoo": {
+									"displayName": "Yahoo"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Chat handle"
+						}
+					}
+				}
+			},
+			"values": {
+				"chatsValues": {
+					"displayName": "Chat Handle",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "Chat type",
+							"options": {
+								"aim": {
+									"displayName": "AIM"
+								},
+								"gtalk": {
+									"displayName": "Google Talk"
+								},
+								"icq": {
+									"displayName": "ICQ"
+								},
+								"msn": {
+									"displayName": "MSN"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"qq": {
+									"displayName": "QQ"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"xmpp": {
+									"displayName": "XMPP"
+								},
+								"yahoo": {
+									"displayName": "Yahoo"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Chat handle"
+						}
+					}
+				},
+				"chatsUi": {
+					"displayName": "Chat Handles",
+					"placeholder": "Add Chat Handle"
+				}
+			}
+		},
+		"emailsUi": {
+			"displayName": "Emails",
+			"placeholder": "Add Email",
+			"multipleValueButtonText": "Add Email",
+			"options": {
+				"emailsValues": {
+					"displayName": "Email",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "Location for this email address",
+							"options": {
+								"home": {
+									"displayName": "Home"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"work": {
+									"displayName": "Work"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Email"
+						}
+					}
+				}
+			},
+			"values": {
+				"emailsValues": {
+					"displayName": "Email",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "Location for this email address",
+							"options": {
+								"home": {
+									"displayName": "Home"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"work": {
+									"displayName": "Work"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Email"
+						}
+					}
+				},
+				"emailsUi": {
+					"displayName": "Emails",
+					"placeholder": "Add Email"
+				}
+			}
+		},
+		"phonesUi": {
+			"displayName": "Phones",
+			"placeholder": "Add Phone",
+			"multipleValueButtonText": "Add Phone",
+			"options": {
+				"phonesValues": {
+					"displayName": "Email",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "Location for this phone",
+							"options": {
+								"fax": {
+									"displayName": "Fax"
+								},
+								"home": {
+									"displayName": "Home"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"pager": {
+									"displayName": "Pager"
+								},
+								"work": {
+									"displayName": "Work"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Phone"
+						}
+					}
+				}
+			},
+			"values": {
+				"phonesValues": {
+					"displayName": "Email",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "Location for this phone",
+							"options": {
+								"fax": {
+									"displayName": "Fax"
+								},
+								"home": {
+									"displayName": "Home"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"pager": {
+									"displayName": "Pager"
+								},
+								"work": {
+									"displayName": "Work"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Phone"
+						}
+					}
+				},
+				"phonesUi": {
+					"displayName": "Phones",
+					"placeholder": "Add Phone"
+				}
+			}
+		},
+		"socialProfilesUi": {
+			"displayName": "Social Profiles",
+			"placeholder": "Add Social Profile",
+			"multipleValueButtonText": "Add Social Profile",
+			"options": {
+				"socialProfilesValues": {
+					"displayName": "Social Profile",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "Type of social profile",
+							"options": {
+								"aboutMe": {
+									"displayName": "About Me"
+								},
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"flickr": {
+									"displayName": "Flickr"
+								},
+								"forsquare": {
+									"displayName": "Forsquare"
+								},
+								"google": {
+									"displayName": "Google"
+								},
+								"googleplus": {
+									"displayName": "Google Plus"
+								},
+								"linkedin": {
+									"displayName": "Linkedin"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"quora": {
+									"displayName": "Quora"
+								},
+								"tungleme": {
+									"displayName": "Tungleme"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								},
+								"youtube": {
+									"displayName": "Youtube"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Social Profile handle (URL for example)"
+						}
+					}
+				}
+			},
+			"values": {
+				"socialProfilesValues": {
+					"displayName": "Social Profile",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "Type of social profile",
+							"options": {
+								"aboutMe": {
+									"displayName": "About Me"
+								},
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"flickr": {
+									"displayName": "Flickr"
+								},
+								"forsquare": {
+									"displayName": "Forsquare"
+								},
+								"google": {
+									"displayName": "Google"
+								},
+								"googleplus": {
+									"displayName": "Google Plus"
+								},
+								"linkedin": {
+									"displayName": "Linkedin"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"quora": {
+									"displayName": "Quora"
+								},
+								"tungleme": {
+									"displayName": "Tungleme"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								},
+								"youtube": {
+									"displayName": "Youtube"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Social Profile handle (URL for example)"
+						}
+					}
+				},
+				"socialProfilesUi": {
+					"displayName": "Social Profiles",
+					"placeholder": "Add Social Profile"
+				}
+			}
+		},
+		"websitesUi": {
+			"displayName": "Websites",
+			"placeholder": "Add Website",
+			"multipleValueButtonText": "Add Website",
+			"options": {
+				"websitesValues": {
+					"displayName": "Website",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"description": "Website URL"
+						}
+					}
+				}
+			},
+			"values": {
+				"websitesValues": {
+					"displayName": "Website",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"description": "Website URL"
+						}
+					}
+				},
+				"websitesUi": {
+					"displayName": "Websites",
+					"placeholder": "Add Website"
+				}
+			}
+		},
+		"customerId": {
+			"displayName": "Customer ID"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"age": {
+					"displayName": "Age",
+					"description": "Customer’s age"
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "First name of the customer. When defined it must be between 1 and 40 characters."
+				},
+				"gender": {
+					"displayName": "Gender",
+					"description": "Gender of this customer",
+					"options": {
+						"female": {
+							"displayName": "Female"
+						},
+						"male": {
+							"displayName": "Male"
+						},
+						"unknown": {
+							"displayName": "Unknown"
+						}
+					}
+				},
+				"jobTitle": {
+					"displayName": "Job Title",
+					"description": "Job title. Max length 60 characters."
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "Last name of the customer"
+				},
+				"location": {
+					"displayName": "Location",
+					"description": "Location of the customer"
+				},
+				"background": {
+					"displayName": "Notes"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"photoUrl": {
+					"displayName": "Photo Url",
+					"description": "URL of the customer’s photo"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "The chat text"
+		},
+		"attachmentsUi": {
+			"displayName": "Attachments",
+			"description": "Array of supported attachments to add to the message",
+			"placeholder": "Add Attachments",
+			"multipleValueButtonText": "Add Attachments",
+			"options": {
+				"attachmentsValues": {
+					"displayName": "Attachments Values",
+					"options": {
+						"fileName": {
+							"displayName": "FileName",
+							"description": "Attachment’s file name"
+						},
+						"mimeType": {
+							"displayName": "Mime Type",
+							"description": "Attachment’s mime type"
+						},
+						"data": {
+							"displayName": "Data",
+							"description": "Base64-encoded stream of data",
+							"placeholder": "ZXhhbXBsZSBmaWxl"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "Attachments Binary",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"description": "Name of the binary properties which contain data which should be added to email as attachment"
+						}
+					}
+				}
+			},
+			"values": {
+				"attachmentsValues": {
+					"displayName": "Attachments Values",
+					"options": {
+						"fileName": {
+							"displayName": "FileName",
+							"description": "Attachment’s file name"
+						},
+						"mimeType": {
+							"displayName": "Mime Type",
+							"description": "Attachment’s mime type"
+						},
+						"data": {
+							"displayName": "Data",
+							"description": "Base64-encoded stream of data",
+							"placeholder": "ZXhhbXBsZSBmaWxl"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "Attachments Binary",
+					"options": {
+						"property": {
+							"displayName": "Property",
+							"description": "Name of the binary properties which contain data which should be added to email as attachment"
+						}
+					}
+				},
+				"attachmentsUi": {
+					"displayName": "Attachments",
+					"placeholder": "Add Attachments"
+				}
+			}
+		}
+	}
+}

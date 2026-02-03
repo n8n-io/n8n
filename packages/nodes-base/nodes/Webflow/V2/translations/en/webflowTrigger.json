@@ -1,0 +1,41 @@
+{
+	"header": {
+		"displayName": "Webflow Trigger",
+		"description": "Handle Webflow events via webhooks"
+	},
+	"nodeView": {
+		"site": {
+			"displayName": "Site Name or ID",
+			"description": "Site that will trigger the events. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"collection_item_created": {
+					"displayName": "Collection Item Created"
+				},
+				"collection_item_deleted": {
+					"displayName": "Collection Item Deleted"
+				},
+				"collection_item_changed": {
+					"displayName": "Collection Item Updated"
+				},
+				"ecomm_inventory_changed": {
+					"displayName": "Ecomm Inventory Changed"
+				},
+				"ecomm_new_order": {
+					"displayName": "Ecomm New Order"
+				},
+				"ecomm_order_changed": {
+					"displayName": "Ecomm Order Changed"
+				},
+				"form_submission": {
+					"displayName": "Form Submission"
+				},
+				"site_publish": {
+					"displayName": "Site Publish"
+				}
+			}
+		}
+	}
+}

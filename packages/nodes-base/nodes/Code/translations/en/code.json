@@ -1,0 +1,43 @@
+{
+	"header": {
+		"displayName": "Code",
+		"description": "Run custom JavaScript or Python code"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "Mode",
+			"options": {
+				"runOnceForAllItems": {
+					"displayName": "Run Once for All Items",
+					"description": "Run this code only once, no matter how many input items there are"
+				},
+				"runOnceForEachItem": {
+					"displayName": "Run Once for Each Item",
+					"description": "Run this code as many times as there are input items"
+				}
+			}
+		},
+		"language": {
+			"displayName": "Language",
+			"options": {
+				"javaScript": {
+					"displayName": "JavaScript"
+				},
+				"pythonNative": {
+					"displayName": "Python"
+				}
+			}
+		},
+		"jsCode": {
+			"displayName": "JavaScript",
+			"description": "JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href=\"https://docs.n8n.io/nodes/n8n-nodes-base.function\">Learn more</a>."
+		},
+		"notice": {
+			"displayName": "Debug by using <code>print()</code> statements and viewing their output in the browser console.<br><br>The Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode."
+		},
+		"pythonCode": {
+			"displayName": "Python",
+			"description": "Python code to execute.<br><br>Tip: You can use built-in methods and variables like <code>_today</code> for dates and <code>_jmespath</code> for querying JSON structures. <a href=\"https://docs.n8n.io/code/builtin/\">Learn more</a>."
+		}
+	}
+}

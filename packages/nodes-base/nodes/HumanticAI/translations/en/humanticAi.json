@@ -1,0 +1,58 @@
+{
+	"header": {
+		"displayName": "Humantic AI",
+		"description": "Consume Humantic AI API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"profile": {
+					"displayName": "Profile"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a profile"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a profile"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a profile"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "This value is the same as the User ID that was provided when the analysis was created. Currently only supported for profiles created using LinkedIn URL."
+		},
+		"sendResume": {
+			"displayName": "Send Resume",
+			"description": "Whether to send a resume for a resume of the user"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"persona": {
+					"displayName": "Persona",
+					"description": "Fetch the Humantic profile of the user for a particular persona type. Multiple persona values can be supported using comma as a delimiter."
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "Additional text written by the user"
+		}
+	}
+}

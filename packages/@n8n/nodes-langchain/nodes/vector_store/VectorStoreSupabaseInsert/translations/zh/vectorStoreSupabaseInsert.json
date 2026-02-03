@@ -1,0 +1,21 @@
+{
+	"header": {
+		"displayName": "Supabase：插入",
+		"description": "将数据插入Supabase向量存储索引 [https://supabase.com/docs/guides/ai/langchain]"
+	},
+	"nodeView": {
+		"setupNotice": {
+			"displayName": "请参阅<a href=\"https://supabase.com/docs/guides/ai/langchain\" target=\"_blank\">Supabase文档</a>了解如何将数据库设置为向量存储。"
+		},
+		"tableName": {
+			"displayName": "表名"
+		},
+		"queryName": {
+			"displayName": "查询名称",
+			"description": "用于匹配文档的查询名称"
+		},
+		"notice": {
+			"displayName": "在文档加载器子节点中指定要加载的文档"
+		}
+	}
+}

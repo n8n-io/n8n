@@ -1,0 +1,101 @@
+{
+	"header": {
+		"displayName": "Dropcontact",
+		"description": "查找B2B邮箱并丰富联系人信息"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"enrich": {
+					"displayName": "丰富",
+					"description": "根据姓名和网站查找B2B邮箱并丰富联系人信息"
+				},
+				"fetchRequest": {
+					"displayName": "获取请求"
+				}
+			}
+		},
+		"requestId": {
+			"displayName": "请求ID"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"simplify": {
+			"displayName": "简化输出（更快）",
+			"description": "关闭时，在完成前等待联系人数据。等待时间可通过“延长等待时间”选项调整。开启时，返回一个request_id，可在后续的“获取请求”操作中使用。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"num_siren": {
+					"displayName": "公司SIREN编号"
+				},
+				"siret": {
+					"displayName": "公司SIRET代码"
+				},
+				"company": {
+					"displayName": "公司名称"
+				},
+				"country": {
+					"displayName": "国家"
+				},
+				"first_name": {
+					"displayName": "名字"
+				},
+				"full_name": {
+					"displayName": "全名"
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"linkedin": {
+					"displayName": "LinkedIn 个人资料"
+				},
+				"phone": {
+					"displayName": "电话号码"
+				},
+				"website": {
+					"displayName": "网站"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"waitTime": {
+					"displayName": "数据获取等待时间",
+					"description": "当不简化响应时，数据将分两步获取。此参数控制在尝试第二步之前等待的时间（秒）。"
+				},
+				"siren": {
+					"displayName": "法国公司信息丰富",
+					"description": "无论您需要<a href=\"https://en.wikipedia.org/wiki/SIREN_code\" target=\"_blank\">SIREN号码</a>、NAF代码、TVA号码、公司地址还是公司负责人的信息。仅适用于法国公司。"
+				},
+				"language": {
+					"displayName": "语言",
+					"description": "响应是否为英文或法文",
+					"options": {
+						"en": {
+							"displayName": "英文"
+						},
+						"fr": {
+							"displayName": "法语"
+						}
+					}
+				}
+			}
+		}
+	}
+}

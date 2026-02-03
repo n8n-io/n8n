@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "Drift",
+		"description": "使用Drift API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建联系人"
+				},
+				"getCustomAttributes": {
+					"displayName": "自定义属性",
+					"description": "获取自定义属性"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除联系人"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取联系人"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新联系人"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "联系人的电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "联系人的名称"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "与该联系人关联的电话号码"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "联系人的唯一标识符"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"email": {
+					"displayName": "电子邮件",
+					"description": "联系人的电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "联系人的名称"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "与该联系人关联的电话号码"
+				}
+			}
+		}
+	}
+}

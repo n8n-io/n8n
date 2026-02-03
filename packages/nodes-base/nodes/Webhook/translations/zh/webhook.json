@@ -1,0 +1,339 @@
+{
+	"header": {
+		"displayName": "Webhook",
+		"description": "当Webhook被调用时启动工作流"
+	},
+	"nodeView": {
+		"multipleMethods": {
+			"displayName": "允许多种HTTP方法",
+			"description": "是否允许Webhook监听多种HTTP方法"
+		},
+		"httpMethod": {
+			"displayName": "HTTP方法",
+			"description": "要监听的HTTP方法",
+			"options": {
+				"DELETE": {
+					"displayName": "删除"
+				},
+				"GET": {
+					"displayName": "获取"
+				},
+				"HEAD": {
+					"displayName": "HEAD"
+				},
+				"PATCH": {
+					"displayName": "PATCH"
+				},
+				"POST": {
+					"displayName": "POST"
+				},
+				"PUT": {
+					"displayName": "PUT"
+				}
+			}
+		},
+		"path": {
+			"displayName": "路径",
+			"description": "要监听的路径，可使用':'指定动态值，例如'your-path/:dynamic-value'。如果设置了动态值，路径前会自动添加'webhookId'。",
+			"placeholder": "webhook"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "身份验证方式",
+			"options": {
+				"basicAuth": {
+					"displayName": "基础认证"
+				},
+				"headerAuth": {
+					"displayName": "Header 认证"
+				},
+				"jwtAuth": {
+					"displayName": "JWT认证"
+				},
+				"none": {
+					"displayName": "无"
+				}
+			}
+		},
+		"responseMode": {
+			"displayName": "响应",
+			"description": "何时以及如何响应Webhook",
+			"options": {
+				"onReceived": {
+					"displayName": "立即",
+					"description": "当此节点执行时"
+				},
+				"lastNode": {
+					"displayName": "当最后一个节点完成时",
+					"description": "返回最后执行节点的数据"
+				},
+				"responseNode": {
+					"displayName": "使用'响应Webhook'节点",
+					"description": "在该节点中定义的响应"
+				},
+				"streaming": {
+					"displayName": "流式传输",
+					"description": "从启用了流式传输的节点实时返回数据"
+				}
+			}
+		},
+		"webhookNotice": {
+			"displayName": "插入'响应Webhook'节点来控制响应的时机和方式。<a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/\" target=\"_blank\">更多详情</a>"
+		},
+		"webhookStreamingNotice": {
+			"displayName": "插入一个支持流式传输的节点（例如'AI Agent'）并启用流式传输，以便在工作流执行时直接流式传输到响应。<a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/\" target=\"_blank\">更多详情</a>"
+		},
+		"responseCode": {
+			"displayName": "响应代码",
+			"description": "要返回的HTTP响应代码"
+		},
+		"responseData": {
+			"displayName": "响应数据",
+			"description": "应返回什么数据。是返回所有项目作为数组，还是仅返回第一个项目作为对象。",
+			"options": {
+				"allEntries": {
+					"displayName": "所有条目",
+					"description": "返回上一个节点的所有条目。始终返回一个数组。"
+				},
+				"firstEntryJson": {
+					"displayName": "首个条目JSON",
+					"description": "返回最后节点的首个条目的JSON数据。始终返回JSON对象。"
+				},
+				"firstEntryBinary": {
+					"displayName": "首个条目的二进制数据",
+					"description": "返回最后一个节点的第一个条目的二进制数据。始终返回二进制文件。"
+				},
+				"noData": {
+					"displayName": "无响应体",
+					"description": "无响应体返回"
+				}
+			}
+		},
+		"responseBinaryPropertyName": {
+			"displayName": "属性名称",
+			"description": "要返回的二进制属性名称"
+		},
+		"contentTypeNotice": {
+			"displayName": "如果发送响应，请添加带有适当值的“Content-Type”响应头以避免意外行为"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"allowedOrigins": {
+					"displayName": "允许的来源（CORS）",
+					"description": "允许跨域非预检请求的URL列表（逗号分隔）。使用 *（默认值）允许所有来源。"
+				},
+				"binaryData": {
+					"displayName": "二进制文件",
+					"description": "Webhook是否接收二进制数据"
+				},
+				"binaryPropertyName": {
+					"displayName": "将输出文件放入字段",
+					"description": "如果数据通过“表单数据多部分”接收，它将作为前缀，并附加一个从0开始的数字"
+				},
+				"ignoreBots": {
+					"displayName": "忽略机器人",
+					"description": "是否忽略来自链接预览器和网络爬虫等机器人的请求"
+				},
+				"ipWhitelist": {
+					"displayName": "IP白名单",
+					"description": "允许的IP地址列表，用逗号分隔。留空则允许所有IP。",
+					"placeholder": "例如：127.0.0.1"
+				},
+				"noResponseBody": {
+					"displayName": "无响应体",
+					"description": "是否在响应中发送任何正文"
+				},
+				"responsePropertyName": {
+					"displayName": "属性名称",
+					"description": "要返回其数据而非整个JSON的属性名称"
+				},
+				"rawBody": {
+					"displayName": "原始正文",
+					"description": "是否返回原始正文"
+				},
+				"responseCode": {
+					"displayName": "响应代码",
+					"placeholder": "添加响应代码",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"responseCode": {
+									"displayName": "响应代码",
+									"description": "要返回的HTTP响应码",
+									"options": {
+										"200": {
+											"displayName": "200",
+											"description": "OK - 请求已成功"
+										},
+										"201": {
+											"displayName": "已创建 - 请求已完成",
+											"description": "已创建 - 请求已完成"
+										},
+										"204": {
+											"displayName": "204",
+											"description": "无内容 - 请求已处理，无内容返回"
+										},
+										"301": {
+											"displayName": "301",
+											"description": "永久移动 - 请求的资源已永久移动"
+										},
+										"302": {
+											"displayName": "302",
+											"description": "已找到 - 请求的资源已临时移动"
+										},
+										"304": {
+											"displayName": "304",
+											"description": "未修改 - 资源未被修改"
+										},
+										"400": {
+											"displayName": "400",
+											"description": "错误请求 - 无法理解请求"
+										},
+										"401": {
+											"displayName": "401",
+											"description": "未授权 - 请求需要用户身份验证"
+										},
+										"403": {
+											"displayName": "403",
+											"description": "禁止访问 - 服务器已理解请求，但拒绝执行"
+										},
+										"404": {
+											"displayName": "404",
+											"description": "未找到 - 服务器未找到匹配项"
+										},
+										"customCode": {
+											"displayName": "自定义代码",
+											"description": "编写任意HTTP代码"
+										}
+									}
+								},
+								"customCode": {
+									"displayName": "代码",
+									"placeholder": "例如 400"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"responseCode": {
+									"displayName": "响应代码",
+									"description": "要返回的HTTP响应码",
+									"options": {
+										"200": {
+											"displayName": "200",
+											"description": "OK - 请求已成功"
+										},
+										"201": {
+											"displayName": "已创建 - 请求已完成",
+											"description": "已创建 - 请求已完成"
+										},
+										"204": {
+											"displayName": "204",
+											"description": "无内容 - 请求已处理，无内容返回"
+										},
+										"301": {
+											"displayName": "301",
+											"description": "永久移动 - 请求的资源已永久移动"
+										},
+										"302": {
+											"displayName": "302",
+											"description": "已找到 - 请求的资源已临时移动"
+										},
+										"304": {
+											"displayName": "304",
+											"description": "未修改 - 资源未被修改"
+										},
+										"400": {
+											"displayName": "400",
+											"description": "错误请求 - 无法理解请求"
+										},
+										"401": {
+											"displayName": "401",
+											"description": "未授权 - 请求需要用户身份验证"
+										},
+										"403": {
+											"displayName": "403",
+											"description": "禁止访问 - 服务器已理解请求，但拒绝执行"
+										},
+										"404": {
+											"displayName": "404",
+											"description": "未找到 - 服务器未找到匹配项"
+										},
+										"customCode": {
+											"displayName": "自定义代码",
+											"description": "编写任意HTTP代码"
+										}
+									}
+								},
+								"customCode": {
+									"displayName": "代码",
+									"placeholder": "例如 400"
+								}
+							}
+						},
+						"responseCode": {
+							"displayName": "响应代码",
+							"placeholder": "添加响应代码"
+						}
+					}
+				},
+				"responseContentType": {
+					"displayName": "响应内容类型",
+					"description": "设置自定义内容类型，以便在需要返回非\"application/json\"类型时使用",
+					"placeholder": "application/xml"
+				},
+				"responseData": {
+					"displayName": "响应数据",
+					"description": "要发送的自定义响应数据",
+					"placeholder": "成功"
+				},
+				"responseHeaders": {
+					"displayName": "响应头",
+					"description": "向Webhook响应添加头信息",
+					"placeholder": "添加响应头",
+					"multipleValueButtonText": "添加响应头",
+					"options": {
+						"entries": {
+							"displayName": "条目",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "标头的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"entries": {
+							"displayName": "条目",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "标头的值"
+								}
+							}
+						},
+						"responseHeaders": {
+							"displayName": "响应头",
+							"placeholder": "添加响应头"
+						}
+					}
+				}
+			}
+		}
+	}
+}

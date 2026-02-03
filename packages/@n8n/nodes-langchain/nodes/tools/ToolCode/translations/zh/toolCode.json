@@ -1,0 +1,68 @@
+{
+	"header": {
+		"displayName": "代码工具",
+		"description": "用JS或Python编写一个工具"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "所有属性都将设为必填项。如需设为可选，请改用'JSON Schema'架构类型"
+		},
+		"noticeTemplateExample": {
+			"displayName": "查看用JavaScript编写的带有自定义工具的对话代理示例<a href=\"/templates/1963\" target=\"_blank\">此处</a>。"
+		},
+		"name": {
+			"displayName": "名称",
+			"placeholder": "例如：我的工具",
+			"description": "要调用的函数名称，只能包含字母、数字和下划线"
+		},
+		"description": {
+			"displayName": "描述",
+			"placeholder": "调用此工具获取随机颜色。输入应为要排除的颜色名称组成的逗号分隔字符串。"
+		},
+		"language": {
+			"displayName": "语言",
+			"options": {
+				"javaScript": {
+					"displayName": "JavaScript"
+				},
+				"python": {
+					"displayName": "Python (Beta)"
+				}
+			}
+		},
+		"jsCode": {
+			"displayName": "JavaScript",
+			"description": "例如：将任意文本转换为大写"
+		},
+		"pythonCode": {
+			"displayName": "Python",
+			"description": "例如：将任意文本转换为大写"
+		},
+		"specifyInputSchema": {
+			"displayName": "指定输入模式",
+			"description": "是否为此函数指定模式。这将要求LLM以正确的格式提供输入，并根据模式进行验证。"
+		},
+		"schemaType": {
+			"displayName": "Schema类型",
+			"description": "如何为函数指定Schema",
+			"options": {
+				"fromJson": {
+					"displayName": "从JSON示例生成",
+					"description": "从示例JSON对象生成模式"
+				},
+				"manual": {
+					"displayName": "使用JSON Schema定义",
+					"description": "手动定义JSON模式"
+				}
+			}
+		},
+		"jsonSchemaExample": {
+			"displayName": "JSON示例",
+			"description": "用于生成模式的示例JSON对象"
+		},
+		"inputSchema": {
+			"displayName": "输入模式",
+			"description": "函数使用的模式"
+		}
+	}
+}

@@ -1,0 +1,29 @@
+{
+	"header": {
+		"displayName": "停止并报错",
+		"description": "在工作流中抛出错误"
+	},
+	"nodeView": {
+		"errorType": {
+			"displayName": "错误类型",
+			"description": "要抛出的错误类型",
+			"options": {
+				"errorMessage": {
+					"displayName": "错误信息"
+				},
+				"errorObject": {
+					"displayName": "错误对象"
+				}
+			}
+		},
+		"errorMessage": {
+			"displayName": "错误信息",
+			"placeholder": "发生错误！"
+		},
+		"errorObject": {
+			"displayName": "错误对象",
+			"description": "包含错误属性的对象",
+			"placeholder": "无法获取资源"
+		}
+	}
+}

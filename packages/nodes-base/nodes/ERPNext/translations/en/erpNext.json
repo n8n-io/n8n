@@ -1,0 +1,193 @@
+{
+	"header": {
+		"displayName": "ERPNext",
+		"description": "Consume ERPNext API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"document": {
+					"displayName": "Document"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a document"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a document"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a document"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many documents"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a document"
+				}
+			}
+		},
+		"docType": {
+			"displayName": "DocType Name or ID",
+			"description": "The type of document you would like to update. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "Customer"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"fields": {
+					"displayName": "Field Names or IDs",
+					"description": "Comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+					"placeholder": "name,country"
+				},
+				"filters": {
+					"displayName": "Filters",
+					"description": "Custom Properties",
+					"placeholder": "Add Filter",
+					"multipleValueButtonText": "Add Filter",
+					"options": {
+						"customProperty": {
+							"displayName": "Property",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"operator": {
+									"displayName": "Operator",
+									"options": {
+										"equalsGreater": {
+											"displayName": "EQUALS, or GREATER"
+										},
+										"equalsLess": {
+											"displayName": "EQUALS, or LESS"
+										},
+										"is": {
+											"displayName": "IS"
+										},
+										"greater": {
+											"displayName": "IS GREATER"
+										},
+										"less": {
+											"displayName": "IS LESS"
+										},
+										"isNot": {
+											"displayName": "IS NOT"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the operator condition"
+								}
+							}
+						}
+					},
+					"values": {
+						"customProperty": {
+							"displayName": "Property",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"operator": {
+									"displayName": "Operator",
+									"options": {
+										"equalsGreater": {
+											"displayName": "EQUALS, or GREATER"
+										},
+										"equalsLess": {
+											"displayName": "EQUALS, or LESS"
+										},
+										"is": {
+											"displayName": "IS"
+										},
+										"greater": {
+											"displayName": "IS GREATER"
+										},
+										"less": {
+											"displayName": "IS LESS"
+										},
+										"isNot": {
+											"displayName": "IS NOT"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the operator condition"
+								}
+							}
+						},
+						"filters": {
+							"displayName": "Filters",
+							"placeholder": "Add Filter"
+						}
+					}
+				}
+			}
+		},
+		"properties": {
+			"displayName": "Properties",
+			"placeholder": "Add Property",
+			"multipleValueButtonText": "Add Property",
+			"options": {
+				"customProperty": {
+					"displayName": "Property",
+					"options": {
+						"field": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"customProperty": {
+					"displayName": "Property",
+					"options": {
+						"field": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"properties": {
+					"displayName": "Properties",
+					"placeholder": "Add Property"
+				}
+			},
+			"description": "Properties of request body"
+		},
+		"documentName": {
+			"displayName": "Document Name",
+			"description": "The name (ID) of document you would like to get"
+		}
+	}
+}

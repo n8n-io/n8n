@@ -1,0 +1,23 @@
+{
+	"header": {
+		"displayName": "Simulate Trigger",
+		"description": "Simulate a trigger node"
+	},
+	"nodeView": {
+		"icon": {
+			"displayName": "Icon to Display on Canvas",
+			"description": "Select a type of node to show corresponding icon"
+		},
+		"subtitle": {
+			"displayName": "Subtitle",
+			"placeholder": "e.g. 'record: read'"
+		},
+		"jsonOutput": {
+			"displayName": "Output (JSON)"
+		},
+		"executionDuration": {
+			"displayName": "Execution Duration (MS)",
+			"description": "Execution duration in milliseconds"
+		}
+	}
+}

@@ -1,0 +1,1456 @@
+{
+	"header": {
+		"displayName": "Salesforce",
+		"description": "使用Salesforce API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "OAuth授权流程",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2"
+				},
+				"jwt": {
+					"displayName": "OAuth2 JWT"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"account": {
+					"displayName": "账户",
+					"description": "表示一个独立账户，即与您业务相关的组织或个人（例如客户、竞争对手和合作伙伴）"
+				},
+				"attachment": {
+					"displayName": "附件",
+					"description": "表示用户已上传并附加到父对象的文件"
+				},
+				"case": {
+					"displayName": "用例",
+					"description": "表示一个工单，即客户的问题或故障"
+				},
+				"contact": {
+					"displayName": "联系人",
+					"description": "表示联系人，即与账户关联的个人"
+				},
+				"customObject": {
+					"displayName": "自定义对象",
+					"description": "表示一个自定义对象"
+				},
+				"document": {
+					"displayName": "文档",
+					"description": "表示一个文档"
+				},
+				"flow": {
+					"displayName": "工作流",
+					"description": "表示自动启动的工作流"
+				},
+				"lead": {
+					"displayName": "潜在客户",
+					"description": "代表潜在客户或潜在机会"
+				},
+				"opportunity": {
+					"displayName": "商机",
+					"description": "表示一个商机，即一笔销售或待处理的交易"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索记录"
+				},
+				"task": {
+					"displayName": "任务",
+					"description": "代表一项业务活动，例如打电话或其他待办事项。在用户界面中，这些记录统称为活动。"
+				},
+				"user": {
+					"displayName": "用户",
+					"description": "表示一个人，即系统中的一名用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"addToCampaign": {
+					"displayName": "添加联系人至营销活动",
+					"description": "将联系人添加至营销活动"
+				},
+				"addNote": {
+					"displayName": "添加备注",
+					"description": "向账户添加备注"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建附件"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新账户，若已存在则更新当前账户（upsert）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除附件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个工作流"
+				},
+				"getSummary": {
+					"displayName": "获取摘要",
+					"description": "返回附件元数据概览"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新附件"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传文档"
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "执行一个SOQL查询，在单个响应中返回所有结果"
+				},
+				"addComment": {
+					"displayName": "添加评论",
+					"description": "向案例添加评论"
+				},
+				"invoke": {
+					"displayName": "调用",
+					"description": "调用工作流"
+				}
+			}
+		},
+		"externalId": {
+			"displayName": "匹配字段",
+			"description": "用于检查账户是否已存在的字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"externalIdValue": {
+			"displayName": "匹配值",
+			"description": "如果此值存在于'匹配字段'中，则更新账户。否则创建新账户。"
+		},
+		"company": {
+			"displayName": "公司",
+			"description": "潜在客户所属公司。如果启用了个人账户记录类型，且公司值为空，则潜在客户将转换为个人账户。"
+		},
+		"lastname": {
+			"displayName": "姓氏",
+			"description": "必填。联系人的姓氏。最多80个字符。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"annualRevenue": {
+					"displayName": "年度营收",
+					"description": "账户的预估年收入"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "潜在客户地址所在城市"
+				},
+				"country": {
+					"displayName": "国家",
+					"description": "潜在客户所在国家"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"description": "按自定义字段筛选",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "文档的文本描述。限制：255个字符。"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "联系人的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "传真",
+					"description": "账户传真号码"
+				},
+				"firstname": {
+					"displayName": "名字",
+					"description": "潜在客户的名字。最多40个字符。"
+				},
+				"hasOptedOutOfEmail": {
+					"displayName": "已选择退出电子邮件",
+					"description": "潜在客户是否不希望接收来自Salesforce的电子邮件（true表示是，false表示否）。标签为“电子邮件选择退出”。"
+				},
+				"hasOptedOutOfFax": {
+					"displayName": "已选择退出传真",
+					"description": "潜在客户是否不希望接收来自Salesforce的传真（true）或希望接收（false）。标签为“邮件选择退出”。"
+				},
+				"industry": {
+					"displayName": "行业",
+					"description": "此账户的网站。最多255个字符。"
+				},
+				"IsUnreadByOwner": {
+					"displayName": "所有者未读",
+					"description": "若为true，表示线索已分配但尚未被查看。详见未读线索。标签为所有者未读。"
+				},
+				"jigsaw": {
+					"displayName": "拼图",
+					"description": "引用Data.com中的公司ID"
+				},
+				"leadSource": {
+					"displayName": "潜在客户来源名称或ID",
+					"description": "获取潜在客户的来源。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"mobilePhone": {
+					"displayName": "手机",
+					"description": "联系人的手机号码"
+				},
+				"numberOfEmployees": {
+					"displayName": "员工数量",
+					"description": "潜在客户公司的员工数量。标签为“员工”。"
+				},
+				"owner": {
+					"displayName": "所有者姓名或ID",
+					"description": "附件所有者的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "账户的电话号码"
+				},
+				"postalCode": {
+					"displayName": "邮政编码",
+					"description": "潜在客户地址的邮政编码。标签为邮编/邮政编码。"
+				},
+				"recordTypeId": {
+					"displayName": "记录类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"rating": {
+					"displayName": "评分",
+					"description": "潜在客户评级"
+				},
+				"salutation": {
+					"displayName": "问候语",
+					"description": "用于问候语中姓名前的尊称缩写、单词或短语，例如博士或夫人。"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "潜在客户地址所在州"
+				},
+				"status": {
+					"displayName": "状态名称或ID",
+					"description": "案件状态，例如“新建”、“已关闭”或“已升级”。此字段直接控制 IsClosed 标志。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"street": {
+					"displayName": "街道",
+					"description": "潜在客户地址的街道门牌号和名称"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "联系人的头衔，例如CEO或副总裁"
+				},
+				"website": {
+					"displayName": "网站",
+					"description": "此账户的网站。最多255个字符。"
+				},
+				"acconuntId": {
+					"displayName": "账户名称或ID",
+					"description": "作为此联系人父级的账户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"assistantName": {
+					"displayName": "助手名称",
+					"description": "助手的名称"
+				},
+				"Assistant Phone": {
+					"displayName": "助理电话",
+					"description": "助理的电话号码"
+				},
+				"birthdate": {
+					"displayName": "出生日期",
+					"description": "联系人的出生日期"
+				},
+				"department": {
+					"displayName": "部门",
+					"description": "联系人所属部门"
+				},
+				"otherPostalCode": {
+					"displayName": "其他邮政编码"
+				},
+				"emailBouncedReason": {
+					"displayName": "邮件退回原因",
+					"description": "如果启用了退回管理功能，并且发送给联系人的邮件被退回，则显示退回原因"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "联系人的名字。最大长度为40个字符。"
+				},
+				"homePhone": {
+					"displayName": "家庭电话",
+					"description": "联系人的家庭电话号码"
+				},
+				"mailingCity": {
+					"displayName": "邮寄城市"
+				},
+				"mailingCountry": {
+					"displayName": "邮寄国家"
+				},
+				"mailingPostalCode": {
+					"displayName": "邮寄邮政编码"
+				},
+				"mailingState": {
+					"displayName": "邮寄状态"
+				},
+				"mailingStreet": {
+					"displayName": "邮寄街道",
+					"description": "邮寄地址的街道地址"
+				},
+				"otherCity": {
+					"displayName": "其他城市"
+				},
+				"otherCountry": {
+					"displayName": "其他国家"
+				},
+				"otherPhone": {
+					"displayName": "其他电话",
+					"description": "备用地址电话"
+				},
+				"otherState": {
+					"displayName": "其他状态"
+				},
+				"otherStreet": {
+					"displayName": "其他街道",
+					"description": "备用地址街道"
+				},
+				"fileExtension": {
+					"displayName": "文件扩展名",
+					"description": "要使用的文件扩展名。如果未设置，将使用二进制数据中的值。",
+					"placeholder": "pdf"
+				},
+				"linkToObjectId": {
+					"displayName": "链接到对象ID",
+					"description": "要链接此文档的目标对象ID"
+				},
+				"ownerId": {
+					"displayName": "所有者姓名或ID",
+					"description": "此文档所有者的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"accountId": {
+					"displayName": "账户ID",
+					"description": "与此案例关联的账户ID"
+				},
+				"amount": {
+					"displayName": "金额",
+					"description": "预估销售总额"
+				},
+				"campaignId": {
+					"displayName": "活动名称或ID",
+					"description": "需要获取的营销活动ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"forecastCategoryName": {
+					"displayName": "预测类别名称",
+					"description": "它由StageName字段隐含决定，而非直接控制"
+				},
+				"nextStep": {
+					"displayName": "下一步",
+					"description": "关闭商机的下一任务描述。限制：255个字符。"
+				},
+				"pricebook2Id": {
+					"displayName": "价格手册2 ID",
+					"description": "相关价格手册2对象的ID"
+				},
+				"probability": {
+					"displayName": "概率",
+					"description": "预估成交机会的置信度百分比"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "表示任务类型，例如通话或会议。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+					"options": {
+						"Business": {
+							"displayName": "业务"
+						},
+						"New Business": {
+							"displayName": "新业务"
+						}
+					}
+				},
+				"accountNumber": {
+					"displayName": "账户编号",
+					"description": "分配给此账户的账户编号（非唯一ID）。最大长度为40个字符。"
+				},
+				"accountSource": {
+					"displayName": "账户来源名称或ID",
+					"description": "账户记录的来源。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"billingCity": {
+					"displayName": "账单城市",
+					"description": "此账户的账单地址详细信息。最大长度为40个字符。"
+				},
+				"billingCountry": {
+					"displayName": "账单国家",
+					"description": "此账户的账单地址详情。最大长度为80个字符。"
+				},
+				"billingPostalCode": {
+					"displayName": "账单邮政编码",
+					"description": "此账户的账单地址详情。最大长度为20个字符。"
+				},
+				"billingState": {
+					"displayName": "账单状态",
+					"description": "此账户的账单地址详情。最大长度为80个字符。"
+				},
+				"billingStreet": {
+					"displayName": "账单街道",
+					"description": "此账户账单地址的街道地址"
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "父对象ID（如有）"
+				},
+				"sicDesc": {
+					"displayName": "SIC代码描述",
+					"description": "基于组织SIC代码的简要业务范围描述"
+				},
+				"shippingCity": {
+					"displayName": "发货城市",
+					"description": "此账户的发货地址详情。城市名称最多40个字符。"
+				},
+				"shippingCountry": {
+					"displayName": "发货国家",
+					"description": "此账户的发货地址详情。国家名称最多80个字符。"
+				},
+				"shippingPostalCode": {
+					"displayName": "收货邮政编码",
+					"description": "此账户的收货地址详情。邮政编码最多20个字符。"
+				},
+				"shippingState": {
+					"displayName": "发货州",
+					"description": "此账户的发货地址详情。州名最大长度为80个字符。"
+				},
+				"shippingStreet": {
+					"displayName": "收货街道",
+					"description": "此账户的收货地址街道信息。最多255个字符。"
+				},
+				"contactId": {
+					"displayName": "联系人ID",
+					"description": "关联联系人的ID"
+				},
+				"isEscalated": {
+					"displayName": "是否已升级",
+					"description": "表示案例是否已升级（true为已升级）"
+				},
+				"origin": {
+					"displayName": "原始名称或ID",
+					"description": "案例来源，例如电子邮件、电话或网络。标签为“案例来源”。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"ParentId": {
+					"displayName": "父级ID",
+					"description": "层级结构中父案例的ID。标签为父案例。"
+				},
+				"priority": {
+					"displayName": "优先级名称或ID",
+					"description": "表示任务的重要性或紧急性，例如高或低。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"reason": {
+					"displayName": "原因名称或ID",
+					"description": "创建此工单的原因，例如：说明不清晰，或用户未参加培训。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"subject": {
+					"displayName": "主题名称或ID",
+					"description": "任务的主题行，例如“致电”或“发送报价”。限制：255个字符。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"suppliedCompany": {
+					"displayName": "提供公司",
+					"description": "创建案例时输入的公司名称。案例创建后，此字段无法更新。"
+				},
+				"suppliedEmail": {
+					"displayName": "提供的邮箱",
+					"description": "创建案例时输入的邮箱地址。案例创建后此字段无法更新。"
+				},
+				"suppliedName": {
+					"displayName": "提供的名称",
+					"description": "创建案例时输入的名称。案例创建后，此字段无法更新。"
+				},
+				"suppliedPhone": {
+					"displayName": "提供的电话",
+					"description": "创建案例时输入的电话号码。案例创建后，此字段无法更新。"
+				},
+				"activityDate": {
+					"displayName": "活动日期",
+					"description": "表示任务的截止日期。此字段包含一个时间戳，始终设置为协调世界时（UTC）时区的午夜时间。"
+				},
+				"callDisposition": {
+					"displayName": "通话结果",
+					"description": "表示特定通话的结果，例如“我们将回电”或“通话未成功”。限制为255个字符。不受字段级安全性限制，可供Salesforce CRM呼叫中心组织中的任何用户使用。"
+				},
+				"callDurationInSeconds": {
+					"displayName": "通话时长（秒）",
+					"description": "通话时长（秒）。不受字段级安全限制，Salesforce CRM呼叫中心组织的任何用户均可使用。"
+				},
+				"callObject": {
+					"displayName": "呼叫对象",
+					"description": "呼叫中心名称。限制为255个字符。不受字段级安全性限制，可供组织中拥有Salesforce CRM呼叫中心的任何用户使用。"
+				},
+				"callType": {
+					"displayName": "通话类型名称或ID",
+					"description": "正在接听的通话类型：呼入、内部或呼出。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"isReminderSet": {
+					"displayName": "是否设置提醒",
+					"description": "是否为任务设置了弹出提醒（true表示已设置，false表示未设置）"
+				},
+				"recurrenceType": {
+					"displayName": "重复类型名称或ID",
+					"description": "任务的重复类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"recurrenceInstance": {
+					"displayName": "重复实例名称或ID",
+					"description": "重复任务的频率。例如“第2次”或“第3次”。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"recurrenceInterval": {
+					"displayName": "重复间隔",
+					"description": "重复任务之间的间隔时间"
+				},
+				"recurrenceDayOfMonth": {
+					"displayName": "每月重复日",
+					"description": "任务在每月的哪一天重复"
+				},
+				"recurrenceDayOfWeekMask": {
+					"displayName": "重复星期掩码",
+					"description": "任务在一周中的哪几天重复。此字段包含一个位掩码。取值如下：星期日 = 1 星期一 = 2 星期二 = 4 星期三 = 8 星期四 = 16 星期五 = 32 星期六 = 64 多天重复由其数值之和表示。例如，星期二和星期四 = 4 + 16 = 20。"
+				},
+				"recurrenceEndDateOnly": {
+					"displayName": "仅限重复开始日期",
+					"description": "重复任务的开始日期。必须是早于仅限重复结束日期的日期和时间。"
+				},
+				"recurrenceMonthOfYear": {
+					"displayName": "年循环月份",
+					"description": "任务重复的月份",
+					"options": {
+						"January": {
+							"displayName": "一月"
+						},
+						"February": {
+							"displayName": "二月"
+						},
+						"March": {
+							"displayName": "三月"
+						},
+						"April": {
+							"displayName": "四月"
+						},
+						"May": {
+							"displayName": "五月"
+						},
+						"June": {
+							"displayName": "六月"
+						},
+						"July": {
+							"displayName": "七月"
+						},
+						"August": {
+							"displayName": "八月"
+						},
+						"September": {
+							"displayName": "九月"
+						},
+						"October": {
+							"displayName": "十月"
+						},
+						"November": {
+							"displayName": "十一月"
+						},
+						"December": {
+							"displayName": "十二月"
+						}
+					}
+				},
+				"recurrenceRegeneratedType": {
+					"displayName": "重复任务再生类型",
+					"description": "表示触发重复任务重复的因素。将此字段与重复间隔字段一起添加到页面布局中，重复间隔字段决定了触发日期（截止日期或关闭日期）与系列中下一个重复任务的截止日期之间的天数。标签为“重复此任务”。",
+					"options": {
+						"RecurrenceRegenerateAfterDueDate": {
+							"displayName": "到期日后"
+						},
+						"RecurrenceRegenerateAfterToday": {
+							"displayName": "完成日期之后"
+						},
+						"RecurrenceRegenerated": {
+							"displayName": "[0](任务已关闭)"
+						}
+					}
+				},
+				"recurrenceTimeZoneSidKey": {
+					"displayName": "重复时区SidKey",
+					"description": "与重复任务关联的时区。例如，太平洋标准时间为“UTC-8:00”。"
+				},
+				"reminderDateTime": {
+					"displayName": "提醒日期时间",
+					"description": "表示如果IsReminderSet设为true时，提醒计划触发的时间。如果IsReminderSet设为false，则用户可能在Salesforce用户界面中取消了提醒复选框，或者提醒已在指定时间触发。"
+				},
+				"whatId": {
+					"displayName": "关联对象ID",
+					"description": "WhatId代表非人类对象，如账户、商机、营销活动、案例或自定义对象。WhatId是多态的，这意味着WhatId等同于相关对象的ID。"
+				},
+				"whoId": {
+					"displayName": "Who ID",
+					"description": "WhoId代表人员，例如潜在客户或联系人。WhoId是多态的。多态意味着WhoId等同于联系人的ID或潜在客户的ID。"
+				},
+				"isPrivate": {
+					"displayName": "是否私有",
+					"description": "此记录是否仅所有者和管理员可见（true），还是所有其他允许的用户可见（false）"
+				}
+			}
+		},
+		"leadId": {
+			"displayName": "潜在客户ID",
+			"description": "需要获取的线索ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"annualRevenue": {
+					"displayName": "年度营收",
+					"description": "账户的预估年收入"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "潜在客户地址所在城市"
+				},
+				"company": {
+					"displayName": "公司",
+					"description": "潜在客户所属公司。如果启用了个人账户记录类型，且公司值为空，潜在客户将转换为个人账户。"
+				},
+				"country": {
+					"displayName": "国家",
+					"description": "潜在客户所在国家"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"description": "按自定义字段筛选",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要添加自定义字段的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要设置在自定义字段上的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "文档的文本描述。限制：255个字符。"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "联系人的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "传真",
+					"description": "账户传真号码"
+				},
+				"firstname": {
+					"displayName": "名字",
+					"description": "潜在客户的名字。最多40个字符。"
+				},
+				"hasOptedOutOfEmail": {
+					"displayName": "已选择退出电子邮件",
+					"description": "潜在客户是否不希望接收来自Salesforce的电子邮件（true表示是，false表示否）。标签为“电子邮件选择退出”。"
+				},
+				"HasOptedOutOfFax": {
+					"displayName": "已选择退出传真",
+					"description": "该线索是否不希望接收来自Salesforce的传真（true表示是，false表示否）。标签为“传真选择退出”。"
+				},
+				"industry": {
+					"displayName": "行业",
+					"description": "此账户的网站。最多255个字符。"
+				},
+				"IsUnreadByOwner": {
+					"displayName": "所有者未读",
+					"description": "若为true，表示线索已分配但尚未被查看。详见未读线索。标签为所有者未读。"
+				},
+				"jigsaw": {
+					"displayName": "拼图",
+					"description": "引用Data.com中的公司ID"
+				},
+				"lastname": {
+					"displayName": "姓氏",
+					"description": "必填。潜在客户的姓氏。最多80个字符。"
+				},
+				"leadSource": {
+					"displayName": "潜在客户来源名称或ID",
+					"description": "获取潜在客户的来源。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"mobilePhone": {
+					"displayName": "手机",
+					"description": "联系人的手机号码"
+				},
+				"numberOfEmployees": {
+					"displayName": "员工数量",
+					"description": "潜在客户公司的员工数量。标签为“员工”。"
+				},
+				"owner": {
+					"displayName": "所有者姓名或ID",
+					"description": "附件所有者的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"postalCode": {
+					"displayName": "邮政编码",
+					"description": "潜在客户地址的邮政编码。标签为邮编/邮政编码。"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "账户的电话号码"
+				},
+				"recordTypeId": {
+					"displayName": "记录类型名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"rating": {
+					"displayName": "评分",
+					"description": "潜在客户评级"
+				},
+				"salutation": {
+					"displayName": "问候语",
+					"description": "用于问候语中姓名前的尊称缩写、单词或短语，例如博士或夫人。"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "潜在客户地址所在州"
+				},
+				"status": {
+					"displayName": "状态名称或ID",
+					"description": "任务的当前状态，例如进行中或已完成。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"street": {
+					"displayName": "街道",
+					"description": "潜在客户地址的街道门牌号和名称"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "联系人的头衔，例如CEO或副总裁"
+				},
+				"website": {
+					"displayName": "网站",
+					"description": "此账户的网站。最多255个字符。"
+				},
+				"acconuntId": {
+					"displayName": "账户名称或ID",
+					"description": "作为此联系人父级的账户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"assistantName": {
+					"displayName": "助手名称",
+					"description": "助手的名称"
+				},
+				"Assistant Phone": {
+					"displayName": "助理电话",
+					"description": "助理的电话号码"
+				},
+				"birthdate": {
+					"displayName": "出生日期",
+					"description": "联系人的出生日期"
+				},
+				"department": {
+					"displayName": "部门",
+					"description": "联系人所属部门"
+				},
+				"emailBouncedDate": {
+					"displayName": "邮件退回日期",
+					"description": "如果启用了退信管理，并且发送给联系人的邮件被退回，则记录退信发生的日期和时间"
+				},
+				"emailBouncedReason": {
+					"displayName": "邮件退回原因",
+					"description": "如果启用了退回管理功能，并且发送给联系人的邮件被退回，则显示退回原因"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "联系人的名字。最大长度为40个字符。"
+				},
+				"homePhone": {
+					"displayName": "家庭电话",
+					"description": "联系人的家庭电话号码"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "联系人的姓氏。最多80个字符。"
+				},
+				"mailingCity": {
+					"displayName": "邮寄城市"
+				},
+				"mailingCountry": {
+					"displayName": "邮寄国家"
+				},
+				"mailingState": {
+					"displayName": "邮寄状态"
+				},
+				"mailingStreet": {
+					"displayName": "邮寄街道",
+					"description": "邮寄地址的街道地址"
+				},
+				"mailingPostalCode": {
+					"displayName": "邮寄邮政编码"
+				},
+				"otherCity": {
+					"displayName": "其他城市"
+				},
+				"otherCountry": {
+					"displayName": "其他国家"
+				},
+				"otherPhone": {
+					"displayName": "其他电话",
+					"description": "备用地址电话"
+				},
+				"otherPostalCode": {
+					"displayName": "其他邮政编码"
+				},
+				"otherState": {
+					"displayName": "其他状态"
+				},
+				"otherStreet": {
+					"displayName": "其他街道",
+					"description": "备用地址街道"
+				},
+				"accountId": {
+					"displayName": "账户ID",
+					"description": "与此案例关联的账户ID"
+				},
+				"amount": {
+					"displayName": "金额",
+					"description": "预估销售总额"
+				},
+				"campaignId": {
+					"displayName": "活动名称或ID",
+					"description": "需要获取的营销活动ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"closeDate": {
+					"displayName": "关闭日期",
+					"description": "必填。预计机会关闭的日期。"
+				},
+				"forecastCategoryName": {
+					"displayName": "预测类别名称",
+					"description": "它由StageName字段隐含决定，而非直接控制"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "必填。附件文件名。最大长度为255个字符。标签为文件名。"
+				},
+				"nextStep": {
+					"displayName": "下一步",
+					"description": "关闭商机的下一任务描述。限制：255个字符。"
+				},
+				"pricebook2Id": {
+					"displayName": "价格手册2 ID",
+					"description": "相关价格手册2对象的ID"
+				},
+				"probability": {
+					"displayName": "概率",
+					"description": "预估成交机会的置信度百分比"
+				},
+				"stageName": {
+					"displayName": "阶段名称或ID",
+					"description": "必填。预计机会关闭的日期。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "表示任务类型，例如通话或会议。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+					"options": {
+						"Business": {
+							"displayName": "业务"
+						},
+						"New Business": {
+							"displayName": "新业务"
+						}
+					}
+				},
+				"accountNumber": {
+					"displayName": "账户编号",
+					"description": "分配给此账户的账户编号（非唯一ID）。最大长度为40个字符。"
+				},
+				"accountSource": {
+					"displayName": "账户来源名称或ID",
+					"description": "账户记录的来源。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"billingCity": {
+					"displayName": "账单城市",
+					"description": "此账户的账单地址详细信息。最大长度为40个字符。"
+				},
+				"billingCountry": {
+					"displayName": "账单国家",
+					"description": "此账户的账单地址详情。最大长度为80个字符。"
+				},
+				"billingPostalCode": {
+					"displayName": "账单邮政编码",
+					"description": "此账户的账单地址详情。最大长度为20个字符。"
+				},
+				"billingState": {
+					"displayName": "账单状态",
+					"description": "此账户的账单地址详情。最大长度为80个字符。"
+				},
+				"billingStreet": {
+					"displayName": "账单街道",
+					"description": "此账户账单地址的街道地址"
+				},
+				"ownerId": {
+					"displayName": "所有者姓名或ID",
+					"description": "账户所有者。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "父对象ID（如有）"
+				},
+				"sicDesc": {
+					"displayName": "SIC代码描述",
+					"description": "基于组织SIC代码的简要业务范围描述"
+				},
+				"shippingCity": {
+					"displayName": "发货城市",
+					"description": "此账户的发货地址详情。城市名称最多40个字符。"
+				},
+				"shippingCountry": {
+					"displayName": "发货国家",
+					"description": "此账户的发货地址详情。国家名称最多80个字符。"
+				},
+				"shippingPostalCode": {
+					"displayName": "收货邮政编码",
+					"description": "此账户的收货地址详情。邮政编码最多20个字符。"
+				},
+				"shippingState": {
+					"displayName": "发货州",
+					"description": "此账户的发货地址详情。州名最大长度为80个字符。"
+				},
+				"shippingStreet": {
+					"displayName": "收货街道",
+					"description": "此账户的收货地址街道信息。最多255个字符。"
+				},
+				"contactId": {
+					"displayName": "联系人ID",
+					"description": "关联联系人的ID"
+				},
+				"isEscalated": {
+					"displayName": "是否已升级",
+					"description": "案例是否已升级（true表示已升级）"
+				},
+				"origin": {
+					"displayName": "原始名称或ID",
+					"description": "案例来源，例如电子邮件、电话或网络。标签为“案例来源”。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"ParentId": {
+					"displayName": "父级ID",
+					"description": "层级结构中父案例的ID。标签为父案例。"
+				},
+				"priority": {
+					"displayName": "优先级名称或ID",
+					"description": "表示任务的重要性或紧急性，例如高或低。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"reason": {
+					"displayName": "原因名称或ID",
+					"description": "创建此工单的原因，例如：说明不清晰，或用户未参加培训。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"subject": {
+					"displayName": "主题名称或ID",
+					"description": "任务的主题行，例如“致电”或“发送报价”。限制：255个字符。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"suppliedCompany": {
+					"displayName": "提供公司",
+					"description": "创建案例时输入的公司名称。案例创建后，此字段无法更新。"
+				},
+				"suppliedEmail": {
+					"displayName": "提供的邮箱",
+					"description": "创建案例时输入的邮箱地址。案例创建后此字段无法更新。"
+				},
+				"suppliedName": {
+					"displayName": "提供的名称",
+					"description": "创建案例时输入的名称。案例创建后，此字段无法更新。"
+				},
+				"suppliedPhone": {
+					"displayName": "提供的电话",
+					"description": "创建案例时输入的电话号码。案例创建后，此字段无法更新。"
+				},
+				"activityDate": {
+					"displayName": "活动日期",
+					"description": "表示任务的截止日期。此字段包含一个时间戳，始终设置为协调世界时（UTC）时区的午夜时间。"
+				},
+				"callDisposition": {
+					"displayName": "通话结果",
+					"description": "表示特定通话的结果，例如“我们将回电”或“通话未成功”。限制为255个字符。不受字段级安全性限制，可供Salesforce CRM呼叫中心组织中的任何用户使用。"
+				},
+				"callDurationInSeconds": {
+					"displayName": "通话时长（秒）",
+					"description": "通话时长（秒）。不受字段级安全限制，Salesforce CRM呼叫中心组织的任何用户均可使用。"
+				},
+				"callObject": {
+					"displayName": "呼叫对象",
+					"description": "呼叫中心名称。限制为255个字符。不受字段级安全性限制，可供组织中拥有Salesforce CRM呼叫中心的任何用户使用。"
+				},
+				"callType": {
+					"displayName": "通话类型名称或ID",
+					"description": "正在接听的通话类型：呼入、内部或呼出。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"isReminderSet": {
+					"displayName": "是否设置提醒",
+					"description": "是否为任务设置了弹出提醒（true表示已设置，false表示未设置）"
+				},
+				"recurrenceDayOfMonth": {
+					"displayName": "每月重复日",
+					"description": "任务在每月的哪一天重复"
+				},
+				"recurrenceDayOfWeekMask": {
+					"displayName": "重复星期掩码",
+					"description": "任务在一周中的哪一天或哪几天重复。此字段包含一个位掩码。取值如下：周日 = 1 周一 = 2 周二 = 4 周三 = 8 周四 = 16 周五 = 32 周六 = 64。多天重复用其数值之和表示，例如周二和周四 = 4 + 16 = 20。"
+				},
+				"recurrenceEndDateOnly": {
+					"displayName": "仅限重复开始日期",
+					"description": "重复任务的开始日期。必须是早于仅限重复结束日期的日期和时间。"
+				},
+				"recurrenceInstance": {
+					"displayName": "重复实例名称或ID",
+					"description": "重复任务的频率。例如“第2次”或“第3次”。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"recurrenceInterval": {
+					"displayName": "重复间隔",
+					"description": "重复任务之间的间隔时间"
+				},
+				"recurrenceMonthOfYear": {
+					"displayName": "年循环月份",
+					"description": "任务重复的月份",
+					"options": {
+						"January": {
+							"displayName": "一月"
+						},
+						"February": {
+							"displayName": "二月"
+						},
+						"March": {
+							"displayName": "三月"
+						},
+						"April": {
+							"displayName": "四月"
+						},
+						"May": {
+							"displayName": "五月"
+						},
+						"June": {
+							"displayName": "六月"
+						},
+						"July": {
+							"displayName": "七月"
+						},
+						"August": {
+							"displayName": "八月"
+						},
+						"September": {
+							"displayName": "九月"
+						},
+						"October": {
+							"displayName": "十月"
+						},
+						"November": {
+							"displayName": "十一月"
+						},
+						"December": {
+							"displayName": "十二月"
+						}
+					}
+				},
+				"recurrenceRegeneratedType": {
+					"displayName": "重复任务再生类型",
+					"description": "表示触发重复任务重复的因素。将此字段与重复间隔字段一起添加到页面布局中，重复间隔字段决定了触发日期（截止日期或关闭日期）与系列中下一个重复任务的截止日期之间的天数。标签为“重复此任务”。",
+					"options": {
+						"RecurrenceRegenerateAfterDueDate": {
+							"displayName": "到期日后"
+						},
+						"RecurrenceRegenerateAfterToday": {
+							"displayName": "完成日期之后"
+						},
+						"RecurrenceRegenerated": {
+							"displayName": "[0](任务已关闭)"
+						}
+					}
+				},
+				"recurrenceType": {
+					"displayName": "重复类型名称或ID",
+					"description": "任务网站。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"recurrenceTimeZoneSidKey": {
+					"displayName": "重复时区SidKey",
+					"description": "与重复任务关联的时区。例如，太平洋标准时间为“UTC-8:00”。"
+				},
+				"reminderDateTime": {
+					"displayName": "提醒日期时间",
+					"description": "表示如果IsReminderSet设为true时，提醒计划触发的时间。如果IsReminderSet设为false，则用户可能在Salesforce用户界面中取消了提醒复选框，或者提醒已在指定时间触发。"
+				},
+				"whatId": {
+					"displayName": "关联对象ID",
+					"description": "WhatId代表非人类对象，如账户、商机、营销活动、案例或自定义对象。WhatId是多态的，这意味着WhatId等同于相关对象的ID。"
+				},
+				"whoId": {
+					"displayName": "Who ID",
+					"description": "WhoId代表人员，例如潜在客户或联系人。WhoId是多态的。多态意味着WhoId等同于联系人的ID或潜在客户的ID。"
+				},
+				"binaryPropertyName": {
+					"displayName": "输入二进制字段"
+				},
+				"isPrivate": {
+					"displayName": "是否私有",
+					"description": "此记录是否仅所有者和管理员可见（true），还是所有其他允许的用户可见（false）"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"conditionsUi": {
+					"displayName": "条件",
+					"description": "要设置的条件",
+					"placeholder": "添加条件",
+					"multipleValueButtonText": "添加条件",
+					"options": {
+						"conditionValues": {
+							"displayName": "条件",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "对于日期、数字或布尔值，请使用表达式。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"operation": {
+									"displayName": "操作",
+									"options": {
+										"<": {
+											"displayName": "<"
+										},
+										"<=": {
+											"displayName": "工作流"
+										},
+										"equal": {
+											"displayName": "[0]="
+										},
+										">": {
+											"displayName": "[0]>"
+										},
+										">=": {
+											"displayName": "大于或等于"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"conditionValues": {
+							"displayName": "条件",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "对于日期、数字或布尔值，请使用表达式。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"operation": {
+									"displayName": "操作",
+									"options": {
+										"<": {
+											"displayName": "<"
+										},
+										"<=": {
+											"displayName": "工作流"
+										},
+										"equal": {
+											"displayName": "[0]="
+										},
+										">": {
+											"displayName": "[0]>"
+										},
+										">=": {
+											"displayName": "大于或等于"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"conditionsUi": {
+							"displayName": "条件",
+							"placeholder": "添加条件"
+						}
+					}
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要包含的字段，用逗号分隔"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "控制此对象的HasResponded标志"
+				},
+				"body": {
+					"displayName": "正文",
+					"description": "笔记正文。限制为32 KB。"
+				},
+				"isPrivate": {
+					"displayName": "是否私有",
+					"description": "如果为true，只有笔记所有者或拥有“修改所有数据”权限的用户才能查看笔记或通过API查询"
+				},
+				"owner": {
+					"displayName": "所有者姓名或ID",
+					"description": "笔记所有者的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"ownerId": {
+					"displayName": "所有者姓名或ID",
+					"description": "笔记所有者的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"commentBody": {
+					"displayName": "评论正文",
+					"description": "案例评论的文本。评论正文的最大大小为 4,000 字节。标签为正文。"
+				},
+				"isPublished": {
+					"displayName": "已发布",
+					"description": "CaseComment是否在自助服务门户中对客户可见（true）或不可见（false）"
+				}
+			}
+		},
+		"campaignId": {
+			"displayName": "活动名称或ID",
+			"description": "需要获取的营销活动ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "笔记标题"
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "需要获取的联系人ID"
+		},
+		"customObject": {
+			"displayName": "自定义对象名称或ID",
+			"description": "自定义对象的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"customFieldsUi": {
+			"displayName": "字段",
+			"description": "按自定义字段筛选",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"customFieldsValues": {
+					"displayName": "自定义字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段名称或ID",
+							"description": "字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置在自定义字段上的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"customFieldsValues": {
+					"displayName": "自定义字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段名称或ID",
+							"description": "字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置在自定义字段上的值"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"recordId": {
+			"displayName": "记录ID",
+			"description": "要删除的记录ID"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "必填。附件文件的名称。最大长度为255个字符。标签为文件名。"
+		},
+		"closeDate": {
+			"displayName": "关闭日期",
+			"description": "必填。预计商机关闭的日期。"
+		},
+		"stageName": {
+			"displayName": "阶段名称或ID",
+			"description": "必填。预计机会关闭的日期。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"opportunityId": {
+			"displayName": "商机ID",
+			"description": "需要获取的机会ID"
+		},
+		"accountId": {
+			"displayName": "账户ID",
+			"description": "需要获取的账户ID"
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "一个SOQL查询。示例查询参数字符串可能类似：“SELECT+Name+FROM+MyObject”。如果SOQL查询字符串无效，将返回MALFORMED_QUERY响应。"
+		},
+		"type": {
+			"displayName": "输入类型名称或ID",
+			"description": "案例类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"caseId": {
+			"displayName": "案例ID",
+			"description": "需要获取的案例ID"
+		},
+		"status": {
+			"displayName": "状态名称或ID",
+			"description": "任务的当前状态，例如进行中或已完成。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"taskId": {
+			"displayName": "任务ID",
+			"description": "需要获取的任务ID"
+		},
+		"parentId": {
+			"displayName": "父文件夹ID"
+		},
+		"attachmentId": {
+			"displayName": "附件ID",
+			"description": "需要获取的附件ID"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "需要获取的用户ID"
+		},
+		"apiName": {
+			"displayName": "API名称",
+			"description": "必填。工作流的API名称。"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数",
+			"description": "输入变量应通过键值对界面还是JSON/RAW方式设置"
+		},
+		"variablesJson": {
+			"displayName": "变量",
+			"description": "以JSON对象形式输入变量"
+		},
+		"variablesUi": {
+			"displayName": "变量",
+			"description": "要发送的输入变量",
+			"placeholder": "添加变量",
+			"multipleValueButtonText": "添加变量",
+			"options": {
+				"variablesValues": {
+					"displayName": "变量",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "输入变量的名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "输入变量的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"variablesValues": {
+					"displayName": "变量",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "输入变量的名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "输入变量的值"
+						}
+					}
+				},
+				"variablesUi": {
+					"displayName": "变量",
+					"placeholder": "添加变量"
+				}
+			}
+		}
+	}
+}

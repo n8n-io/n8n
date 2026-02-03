@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "MultiQuery Retriever",
+		"description": "Automates prompt tuning, generates diverse queries and expands document pool for enhanced retrieval."
+	},
+	"nodeView": {
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"queryCount": {
+					"displayName": "Query Count",
+					"description": "Number of different versions of the given question to generate"
+				}
+			}
+		}
+	}
+}

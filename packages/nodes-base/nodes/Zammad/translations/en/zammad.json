@@ -1,0 +1,631 @@
+{
+	"header": {
+		"displayName": "Zammad",
+		"description": "Consume the Zammad API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"basicAuth": {
+					"displayName": "Basic Auth"
+				},
+				"tokenAuth": {
+					"displayName": "Token Auth"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"group": {
+					"displayName": "Group"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"ticket": {
+					"displayName": "Ticket"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a user"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many users"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a user"
+				},
+				"getSelf": {
+					"displayName": "Get Self",
+					"description": "Retrieve currently logged-in user"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Organization Name"
+		},
+		"id": {
+			"displayName": "User ID",
+			"description": "User to retrieve. Specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"active": {
+					"displayName": "Active",
+					"description": "Whether the organization is active"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldPairs": {
+							"displayName": "Custom Field",
+							"options": {
+								"name": {
+									"displayName": "Field Name or ID",
+									"description": "Name of the custom field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value to set on the custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldPairs": {
+							"displayName": "Custom Field",
+							"options": {
+								"name": {
+									"displayName": "Field Name or ID",
+									"description": "Name of the custom field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value to set on the custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"note": {
+					"displayName": "Notes",
+					"description": "A note about the organization"
+				},
+				"shared": {
+					"displayName": "Shared",
+					"description": "Whether the organization is shared with other instances"
+				},
+				"domain": {
+					"displayName": "Domain",
+					"description": "The domain associated with the organization"
+				},
+				"domain_assignment": {
+					"displayName": "Domain Assignment",
+					"description": "Whether to assign users based on their email domain"
+				},
+				"vip": {
+					"displayName": "VIP",
+					"description": "Whether the user is a Very Important Person"
+				},
+				"addressUi": {
+					"displayName": "Address",
+					"placeholder": "Add Address",
+					"options": {
+						"addressDetails": {
+							"displayName": "Address Details",
+							"options": {
+								"city": {
+									"displayName": "City",
+									"placeholder": "Berlin"
+								},
+								"country": {
+									"displayName": "Country",
+									"placeholder": "Germany"
+								},
+								"address": {
+									"displayName": "Street & Number",
+									"placeholder": "Borsigstr. 27"
+								},
+								"zip": {
+									"displayName": "Zip Code",
+									"placeholder": "10115"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressDetails": {
+							"displayName": "Address Details",
+							"options": {
+								"city": {
+									"displayName": "City",
+									"placeholder": "Berlin"
+								},
+								"country": {
+									"displayName": "Country",
+									"placeholder": "Germany"
+								},
+								"address": {
+									"displayName": "Street & Number",
+									"placeholder": "Borsigstr. 27"
+								},
+								"zip": {
+									"displayName": "Zip Code",
+									"placeholder": "10115"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "Address",
+							"placeholder": "Add Address"
+						}
+					}
+				},
+				"department": {
+					"displayName": "Department",
+					"placeholder": "Finance"
+				},
+				"email": {
+					"displayName": "Email Address",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "Fax",
+					"placeholder": "+49 30 901820"
+				},
+				"organization": {
+					"displayName": "Organization Name or ID",
+					"description": "Name of the organization to assign to the user. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"phone": {
+					"displayName": "Phone (Landline)",
+					"placeholder": "+49 30 901820"
+				},
+				"mobile": {
+					"displayName": "Phone (Mobile)",
+					"placeholder": "+49 1522 3433333"
+				},
+				"verified": {
+					"displayName": "Verified",
+					"description": "Whether the user has been verified"
+				},
+				"web": {
+					"displayName": "Website",
+					"placeholder": "https://n8n.io"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"active": {
+					"displayName": "Active",
+					"description": "Whether the organization is active"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldPairs": {
+							"displayName": "Custom Field",
+							"options": {
+								"name": {
+									"displayName": "Field Name or ID",
+									"description": "Name of the custom field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value to set on the custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldPairs": {
+							"displayName": "Custom Field",
+							"options": {
+								"name": {
+									"displayName": "Field Name or ID",
+									"description": "Name of the custom field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value to set on the custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"name": {
+					"displayName": "Group Name"
+				},
+				"note": {
+					"displayName": "Notes",
+					"description": "A note about the organization"
+				},
+				"shared": {
+					"displayName": "Shared",
+					"description": "Whether the organization is shared with other instances"
+				},
+				"domain": {
+					"displayName": "Domain",
+					"description": "The domain associated with the organization"
+				},
+				"domain_assignment": {
+					"displayName": "Domain Assignment",
+					"description": "Whether to assign users based on their email domain"
+				},
+				"vip": {
+					"displayName": "VIP",
+					"description": "Whether the user is a Very Important Person"
+				},
+				"addressUi": {
+					"displayName": "Address",
+					"placeholder": "Add Address",
+					"options": {
+						"addressDetails": {
+							"displayName": "Address Details",
+							"options": {
+								"city": {
+									"displayName": "City",
+									"placeholder": "Berlin"
+								},
+								"country": {
+									"displayName": "Country",
+									"placeholder": "Germany"
+								},
+								"address": {
+									"displayName": "Street & Number",
+									"placeholder": "Borsigstr. 27"
+								},
+								"zip": {
+									"displayName": "Zip Code",
+									"placeholder": "10115"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressDetails": {
+							"displayName": "Address Details",
+							"options": {
+								"city": {
+									"displayName": "City",
+									"placeholder": "Berlin"
+								},
+								"country": {
+									"displayName": "Country",
+									"placeholder": "Germany"
+								},
+								"address": {
+									"displayName": "Street & Number",
+									"placeholder": "Borsigstr. 27"
+								},
+								"zip": {
+									"displayName": "Zip Code",
+									"placeholder": "10115"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "Address",
+							"placeholder": "Add Address"
+						}
+					}
+				},
+				"department": {
+					"displayName": "Department",
+					"placeholder": "Finance"
+				},
+				"email": {
+					"displayName": "Email Address",
+					"placeholder": "hello@n8n.io"
+				},
+				"fax": {
+					"displayName": "Fax",
+					"placeholder": "+49 30 901820"
+				},
+				"firstname": {
+					"displayName": "First Name",
+					"placeholder": "John"
+				},
+				"lastname": {
+					"displayName": "Last Name",
+					"placeholder": "Smith"
+				},
+				"organization": {
+					"displayName": "Organization Name or ID",
+					"description": "Name of the organization to assign to the user. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"phone": {
+					"displayName": "Phone (Landline)",
+					"placeholder": "+49 30 901820"
+				},
+				"mobile": {
+					"displayName": "Phone (Mobile)",
+					"placeholder": "+49 1522 3433333"
+				},
+				"verified": {
+					"displayName": "Verified",
+					"description": "Whether the user has been verified"
+				},
+				"web": {
+					"displayName": "Website",
+					"placeholder": "https://n8n.io"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the ticket to create"
+		},
+		"group": {
+			"displayName": "Group Name or ID",
+			"description": "Group that will own the ticket to create. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "First-Level Helpdesk"
+		},
+		"customer": {
+			"displayName": "Customer Email Name or ID",
+			"description": "Email address of the customer concerned in the ticket to create. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "hello@n8n.io"
+		},
+		"article": {
+			"displayName": "Article",
+			"placeholder": "Add Article",
+			"options": {
+				"articleDetails": {
+					"displayName": "Article Details",
+					"options": {
+						"subject": {
+							"displayName": "Subject"
+						},
+						"body": {
+							"displayName": "Body"
+						},
+						"visibility": {
+							"displayName": "Visibility",
+							"options": {
+								"external": {
+									"displayName": "External",
+									"description": "Visible to customers"
+								},
+								"internal": {
+									"displayName": "Internal",
+									"description": "Visible to help desk"
+								}
+							}
+						},
+						"sender": {
+							"displayName": "Sender",
+							"options": {
+								"Agent": {
+									"displayName": "Agent"
+								},
+								"Customer": {
+									"displayName": "Customer"
+								},
+								"System": {
+									"displayName": "System",
+									"description": "Only subject will be displayed in Zammad"
+								}
+							}
+						},
+						"type": {
+							"displayName": "Article Type",
+							"options": {
+								"chat": {
+									"displayName": "Chat"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"fax": {
+									"displayName": "Fax"
+								},
+								"note": {
+									"displayName": "Note"
+								},
+								"phone": {
+									"displayName": "Phone"
+								},
+								"sms": {
+									"displayName": "SMS"
+								}
+							}
+						},
+						"reply_to": {
+							"displayName": "Reply To"
+						}
+					}
+				}
+			},
+			"values": {
+				"articleDetails": {
+					"displayName": "Article Details",
+					"options": {
+						"subject": {
+							"displayName": "Subject"
+						},
+						"body": {
+							"displayName": "Body"
+						},
+						"visibility": {
+							"displayName": "Visibility",
+							"options": {
+								"external": {
+									"displayName": "External",
+									"description": "Visible to customers"
+								},
+								"internal": {
+									"displayName": "Internal",
+									"description": "Visible to help desk"
+								}
+							}
+						},
+						"sender": {
+							"displayName": "Sender",
+							"options": {
+								"Agent": {
+									"displayName": "Agent"
+								},
+								"Customer": {
+									"displayName": "Customer"
+								},
+								"System": {
+									"displayName": "System",
+									"description": "Only subject will be displayed in Zammad"
+								}
+							}
+						},
+						"type": {
+							"displayName": "Article Type",
+							"options": {
+								"chat": {
+									"displayName": "Chat"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"fax": {
+									"displayName": "Fax"
+								},
+								"note": {
+									"displayName": "Note"
+								},
+								"phone": {
+									"displayName": "Phone"
+								},
+								"sms": {
+									"displayName": "SMS"
+								}
+							}
+						},
+						"reply_to": {
+							"displayName": "Reply To"
+						}
+					}
+				},
+				"article": {
+					"displayName": "Article",
+					"placeholder": "Add Article"
+				}
+			}
+		},
+		"firstname": {
+			"displayName": "First Name",
+			"placeholder": "John"
+		},
+		"lastname": {
+			"displayName": "Last Name",
+			"placeholder": "Smith"
+		},
+		"query": {
+			"displayName": "Query"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"query": {
+					"displayName": "Query",
+					"description": "Query to filter results by",
+					"placeholder": "user.firstname:john"
+				},
+				"sortUi": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort Options",
+					"options": {
+						"sortDetails": {
+							"displayName": "Sort Options",
+							"options": {
+								"sort_by": {
+									"displayName": "Sort Key Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"order_by": {
+									"displayName": "Sort Order",
+									"options": {
+										"asc": {
+											"displayName": "Ascending"
+										},
+										"desc": {
+											"displayName": "Descending"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"sortDetails": {
+							"displayName": "Sort Options",
+							"options": {
+								"sort_by": {
+									"displayName": "Sort Key Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"order_by": {
+									"displayName": "Sort Order",
+									"options": {
+										"asc": {
+											"displayName": "Ascending"
+										},
+										"desc": {
+											"displayName": "Descending"
+										}
+									}
+								}
+							}
+						},
+						"sortUi": {
+							"displayName": "Sort",
+							"placeholder": "Add Sort Options"
+						}
+					}
+				}
+			}
+		}
+	}
+}

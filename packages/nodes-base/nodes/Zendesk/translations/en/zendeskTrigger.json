@@ -1,0 +1,315 @@
+{
+	"header": {
+		"displayName": "Zendesk Trigger",
+		"description": "Handle Zendesk events via webhooks"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiToken": {
+					"displayName": "API Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"service": {
+			"displayName": "Service",
+			"options": {
+				"support": {
+					"displayName": "Support"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fields": {
+					"displayName": "Field Names or IDs",
+					"description": "The fields to return the values of. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"conditions": {
+			"displayName": "Conditions",
+			"description": "The condition to set",
+			"placeholder": "Add Condition",
+			"multipleValueButtonText": "Add Condition",
+			"options": {
+				"all": {
+					"displayName": "All",
+					"options": {
+						"resource": {
+							"displayName": "Resource",
+							"options": {
+								"ticket": {
+									"displayName": "Ticket"
+								}
+							}
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"assignee": {
+									"displayName": "Assignee"
+								},
+								"group": {
+									"displayName": "Group"
+								},
+								"priority": {
+									"displayName": "Priority"
+								},
+								"status": {
+									"displayName": "Status"
+								},
+								"type": {
+									"displayName": "Type"
+								}
+							}
+						},
+						"operation": {
+							"displayName": "Operation",
+							"options": {
+								"changed": {
+									"displayName": "Changed"
+								},
+								"value_previous": {
+									"displayName": "Changed From"
+								},
+								"value": {
+									"displayName": "Changed To"
+								},
+								"is": {
+									"displayName": "Is"
+								},
+								"is_not": {
+									"displayName": "Is Not"
+								},
+								"not_changed": {
+									"displayName": "Not Changed"
+								},
+								"not_value_previous": {
+									"displayName": "Not Changed From"
+								},
+								"not_value": {
+									"displayName": "Not Changed To"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				},
+				"any": {
+					"displayName": "Any",
+					"options": {
+						"resource": {
+							"displayName": "Resource",
+							"options": {
+								"ticket": {
+									"displayName": "Ticket"
+								}
+							}
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"assignee": {
+									"displayName": "Assignee"
+								},
+								"group": {
+									"displayName": "Group"
+								},
+								"priority": {
+									"displayName": "Priority"
+								},
+								"status": {
+									"displayName": "Status"
+								},
+								"type": {
+									"displayName": "Type"
+								}
+							}
+						},
+						"operation": {
+							"displayName": "Operation",
+							"options": {
+								"changed": {
+									"displayName": "Changed"
+								},
+								"value_previous": {
+									"displayName": "Changed From"
+								},
+								"value": {
+									"displayName": "Changed To"
+								},
+								"is": {
+									"displayName": "Is"
+								},
+								"is_not": {
+									"displayName": "Is Not"
+								},
+								"not_changed": {
+									"displayName": "Not Changed"
+								},
+								"not_value_previous": {
+									"displayName": "Not Changed From"
+								},
+								"not_value": {
+									"displayName": "Not Changed To"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				}
+			},
+			"values": {
+				"all": {
+					"displayName": "All",
+					"options": {
+						"resource": {
+							"displayName": "Resource",
+							"options": {
+								"ticket": {
+									"displayName": "Ticket"
+								}
+							}
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"assignee": {
+									"displayName": "Assignee"
+								},
+								"group": {
+									"displayName": "Group"
+								},
+								"priority": {
+									"displayName": "Priority"
+								},
+								"status": {
+									"displayName": "Status"
+								},
+								"type": {
+									"displayName": "Type"
+								}
+							}
+						},
+						"operation": {
+							"displayName": "Operation",
+							"options": {
+								"changed": {
+									"displayName": "Changed"
+								},
+								"value_previous": {
+									"displayName": "Changed From"
+								},
+								"value": {
+									"displayName": "Changed To"
+								},
+								"is": {
+									"displayName": "Is"
+								},
+								"is_not": {
+									"displayName": "Is Not"
+								},
+								"not_changed": {
+									"displayName": "Not Changed"
+								},
+								"not_value_previous": {
+									"displayName": "Not Changed From"
+								},
+								"not_value": {
+									"displayName": "Not Changed To"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				},
+				"any": {
+					"displayName": "Any",
+					"options": {
+						"resource": {
+							"displayName": "Resource",
+							"options": {
+								"ticket": {
+									"displayName": "Ticket"
+								}
+							}
+						},
+						"field": {
+							"displayName": "Field",
+							"options": {
+								"assignee": {
+									"displayName": "Assignee"
+								},
+								"group": {
+									"displayName": "Group"
+								},
+								"priority": {
+									"displayName": "Priority"
+								},
+								"status": {
+									"displayName": "Status"
+								},
+								"type": {
+									"displayName": "Type"
+								}
+							}
+						},
+						"operation": {
+							"displayName": "Operation",
+							"options": {
+								"changed": {
+									"displayName": "Changed"
+								},
+								"value_previous": {
+									"displayName": "Changed From"
+								},
+								"value": {
+									"displayName": "Changed To"
+								},
+								"is": {
+									"displayName": "Is"
+								},
+								"is_not": {
+									"displayName": "Is Not"
+								},
+								"not_changed": {
+									"displayName": "Not Changed"
+								},
+								"not_value_previous": {
+									"displayName": "Not Changed From"
+								},
+								"not_value": {
+									"displayName": "Not Changed To"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				},
+				"conditions": {
+					"displayName": "Conditions",
+					"placeholder": "Add Condition"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,330 @@
+{
+	"header": {
+		"displayName": "Wise",
+		"description": "使用Wise API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"account": {
+					"displayName": "账户"
+				},
+				"exchangeRate": {
+					"displayName": "汇率"
+				},
+				"profile": {
+					"displayName": "个人资料"
+				},
+				"quote": {
+					"displayName": "引用"
+				},
+				"recipient": {
+					"displayName": "收件人"
+				},
+				"transfer": {
+					"displayName": "传输"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getBalances": {
+					"displayName": "获取余额",
+					"description": "检索此用户所有账户币种的余额"
+				},
+				"getCurrencies": {
+					"displayName": "获取货币",
+					"description": "获取此用户无边界账户中的货币"
+				},
+				"getStatement": {
+					"displayName": "获取账单",
+					"description": "检索此用户的无国界账户账单"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"execute": {
+					"displayName": "执行"
+				}
+			}
+		},
+		"profileId": {
+			"displayName": "配置文件名称或ID",
+			"description": "要检索的用户配置文件ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"borderlessAccountId": {
+			"displayName": "无国界账户名称或ID",
+			"description": "要获取对账单的无国界账户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"currency": {
+			"displayName": "货币",
+			"description": "无国界账户货币代码，用于获取对账单"
+		},
+		"format": {
+			"displayName": "格式",
+			"description": "用于获取对账单的文件格式",
+			"options": {
+				"json": {
+					"displayName": "JSON"
+				},
+				"csv": {
+					"displayName": "CSV"
+				},
+				"pdf": {
+					"displayName": "PDF"
+				},
+				"xml": {
+					"displayName": "XML (CAMT.053)"
+				}
+			}
+		},
+		"binaryProperty": {
+			"displayName": "将输出文件放入字段"
+		},
+		"fileName": {
+			"displayName": "文件名",
+			"description": "将要下载的文件名称",
+			"placeholder": "data.pdf"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"lineStyle": {
+					"displayName": "线条样式",
+					"description": "用于获取语句的线条样式",
+					"options": {
+						"COMPACT": {
+							"displayName": "紧凑",
+							"description": "每行一个事务"
+						},
+						"FLAT": {
+							"displayName": "扁平化",
+							"description": "交易费用单独分行"
+						}
+					}
+				},
+				"range": {
+					"displayName": "范围",
+					"placeholder": "添加范围",
+					"options": {
+						"rangeProperties": {
+							"displayName": "范围属性",
+							"options": {
+								"intervalStart": {
+									"displayName": "范围起始"
+								},
+								"intervalEnd": {
+									"displayName": "范围结束"
+								},
+								"from": {
+									"displayName": "范围起始"
+								},
+								"to": {
+									"displayName": "范围结束"
+								}
+							}
+						}
+					},
+					"values": {
+						"rangeProperties": {
+							"displayName": "范围属性",
+							"options": {
+								"intervalStart": {
+									"displayName": "范围起始"
+								},
+								"intervalEnd": {
+									"displayName": "范围结束"
+								},
+								"from": {
+									"displayName": "范围起始"
+								},
+								"to": {
+									"displayName": "范围结束"
+								}
+							}
+						},
+						"range": {
+							"displayName": "范围",
+							"placeholder": "添加范围"
+						}
+					},
+					"description": "检索汇率的时间范围"
+				},
+				"interval": {
+					"displayName": "间隔时间",
+					"options": {
+						"day": {
+							"displayName": "天"
+						},
+						"hour": {
+							"displayName": "小时"
+						},
+						"minute": {
+							"displayName": "分钟"
+						}
+					}
+				},
+				"time": {
+					"displayName": "时间",
+					"description": "获取汇率的特定时间点"
+				},
+				"reference": {
+					"displayName": "参考",
+					"description": "收款人银行对账单中显示的参考文本"
+				}
+			}
+		},
+		"source": {
+			"displayName": "源货币",
+			"description": "要获取汇率的源货币代码"
+		},
+		"target": {
+			"displayName": "目标货币",
+			"description": "要获取汇率的目标货币代码"
+		},
+		"targetAccountId": {
+			"displayName": "目标账户名称或ID",
+			"description": "接收资金的账户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"amountType": {
+			"displayName": "金额类型",
+			"description": "金额是发送还是接收",
+			"options": {
+				"source": {
+					"displayName": "源"
+				},
+				"target": {
+					"displayName": "目标"
+				}
+			}
+		},
+		"amount": {
+			"displayName": "金额",
+			"description": "创建报价的资金金额"
+		},
+		"sourceCurrency": {
+			"displayName": "源货币",
+			"description": "用于创建报价的发送货币代码"
+		},
+		"targetCurrency": {
+			"displayName": "目标货币",
+			"description": "创建报价时接收货币的代码"
+		},
+		"quoteId": {
+			"displayName": "报价单ID",
+			"description": "基于此报价单ID创建转账"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"transferId": {
+			"displayName": "转账ID",
+			"description": "要检索的转账ID"
+		},
+		"downloadReceipt": {
+			"displayName": "下载收据",
+			"description": "是否将转账收据下载为PDF文件。仅适用于已执行的转账，状态为'出站付款已发送'。"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"range": {
+					"displayName": "范围",
+					"description": "筛选转账的时间范围",
+					"placeholder": "添加范围",
+					"options": {
+						"rangeProperties": {
+							"displayName": "范围属性",
+							"options": {
+								"createdDateStart": {
+									"displayName": "创建日期开始"
+								},
+								"createdDateEnd": {
+									"displayName": "创建日期结束"
+								}
+							}
+						}
+					},
+					"values": {
+						"rangeProperties": {
+							"displayName": "范围属性",
+							"options": {
+								"createdDateStart": {
+									"displayName": "创建日期开始"
+								},
+								"createdDateEnd": {
+									"displayName": "创建日期结束"
+								}
+							}
+						},
+						"range": {
+							"displayName": "范围",
+							"placeholder": "添加范围"
+						}
+					}
+				},
+				"sourceCurrency": {
+					"displayName": "源货币",
+					"description": "用于筛选转账的源货币代码"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"bounced_back": {
+							"displayName": "退回"
+						},
+						"cancelled": {
+							"displayName": "已取消"
+						},
+						"charged_back": {
+							"displayName": "已退款"
+						},
+						"funds_converted": {
+							"displayName": "资金已转换"
+						},
+						"funds_refunded": {
+							"displayName": "资金已退款"
+						},
+						"incoming_payment_waiting": {
+							"displayName": "待处理收款"
+						},
+						"outgoing_payment_sent": {
+							"displayName": "已发送付款"
+						},
+						"processing": {
+							"displayName": "处理中"
+						},
+						"unknown": {
+							"displayName": "未知"
+						},
+						"waiting_recipient_input_to_proceed": {
+							"displayName": "等待接收方输入以继续"
+						}
+					}
+				},
+				"targetCurrency": {
+					"displayName": "目标货币",
+					"description": "用于筛选转账的目标货币代码"
+				}
+			}
+		}
+	}
+}

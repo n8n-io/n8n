@@ -1,0 +1,231 @@
+{
+	"header": {
+		"displayName": "Perplexity",
+		"description": "Interact with the Perplexity API to generate AI responses with citations"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource"
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"complete": {
+					"displayName": "Message a Model",
+					"description": "Create one or more completions for a given text"
+				}
+			}
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will generate the completion",
+			"options": {
+				"sonar": {
+					"displayName": "Sonar"
+				},
+				"sonar-deep-research": {
+					"displayName": "Sonar Deep Research"
+				},
+				"sonar-pro": {
+					"displayName": "Sonar Pro"
+				},
+				"sonar-reasoning": {
+					"displayName": "Sonar Reasoning"
+				},
+				"sonar-reasoning-pro": {
+					"displayName": "Sonar Reasoning Pro"
+				}
+			}
+		},
+		"messages": {
+			"displayName": "Messages",
+			"description": "Any optional system messages must be sent first, followed by alternating user and assistant messages",
+			"placeholder": "Add Message",
+			"multipleValueButtonText": "Add Message",
+			"options": {
+				"message": {
+					"displayName": "Message",
+					"options": {
+						"content": {
+							"displayName": "Text",
+							"description": "The content of the message to be sent"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality. Must alternate with user messages."
+								},
+								"system": {
+									"displayName": "System",
+									"description": "Set the models behavior or context. Must come before user and assistant messages."
+								},
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"message": {
+					"displayName": "Message",
+					"options": {
+						"content": {
+							"displayName": "Text",
+							"description": "The content of the message to be sent"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality. Must alternate with user messages."
+								},
+								"system": {
+									"displayName": "System",
+									"description": "Set the models behavior or context. Must come before user and assistant messages."
+								},
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								}
+							}
+						}
+					}
+				},
+				"messages": {
+					"displayName": "Messages",
+					"placeholder": "Add Message"
+				}
+			}
+		},
+		"simplify": {
+			"displayName": "Simplify Output",
+			"description": "Whether to return only essential fields (ID, citations, message)"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"frequencyPenalty": {
+					"displayName": "Frequency Penalty",
+					"description": "Values greater than 1.0 penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim"
+				},
+				"maxTokens": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion. The number of tokens requested plus the number of prompt tokens sent in messages must not exceed the context window token limit of model requested."
+				},
+				"temperature": {
+					"displayName": "Output Randomness (Temperature)",
+					"description": "The amount of randomness in the response, valued between 0 inclusive and 2 exclusive. Higher values are more random, and lower values are more deterministic."
+				},
+				"topK": {
+					"displayName": "Top K",
+					"description": "The number of tokens to keep for highest Top K filtering, specified as an integer between 0 and 2048 inclusive. If set to 0, Top K filtering is disabled. We recommend either altering Top K or Top P, but not both."
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "The nucleus sampling threshold, valued between 0 and 1 inclusive. For each subsequent token, the model considers the results of the tokens with Top P probability mass. We recommend either altering Top K or Top P, but not both."
+				},
+				"presencePenalty": {
+					"displayName": "Presence Penalty",
+					"description": "A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics."
+				},
+				"returnImages": {
+					"displayName": "Return Images",
+					"description": "Whether or not a request to an online model should return images. Requires Perplexity API usage Tier-2."
+				},
+				"returnRelatedQuestions": {
+					"displayName": "Return Related Questions",
+					"description": "Whether or not a request to an online model should return related questions. Requires Perplexity API usage Tier-2."
+				},
+				"searchDomainFilter": {
+					"displayName": "Search Domain Filter",
+					"description": "Limit the citations used by the online model to URLs from the specified domains. For blacklisting, add a <code>-</code> to the beginning of the domain string (e.g., <code>-domain1</code>). Currently limited to 3 domains. Requires Perplexity API usage Tier-3.",
+					"placeholder": "e.g. domain1,domain2,-domain3"
+				},
+				"searchRecency": {
+					"displayName": "Search Recency Filter",
+					"description": "Returns search results within the specified time interval",
+					"options": {
+						"day": {
+							"displayName": "Day"
+						},
+						"hour": {
+							"displayName": "Hour"
+						},
+						"month": {
+							"displayName": "Month"
+						},
+						"week": {
+							"displayName": "Week"
+						}
+					}
+				}
+			}
+		},
+		"requestOptions": {
+			"displayName": "Request Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batching": {
+					"displayName": "Batching",
+					"placeholder": "Add Batching",
+					"options": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						},
+						"batching": {
+							"displayName": "Batching",
+							"placeholder": "Add Batching"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to accept the response even if SSL certificate validation is not possible"
+				},
+				"proxy": {
+					"displayName": "Proxy",
+					"description": "HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128",
+					"placeholder": "e.g. http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for the server to send response headers (and start the response body) before aborting the request"
+				}
+			}
+		}
+	}
+}

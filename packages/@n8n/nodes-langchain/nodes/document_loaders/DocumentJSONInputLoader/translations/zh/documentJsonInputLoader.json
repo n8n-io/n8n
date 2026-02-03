@@ -1,0 +1,57 @@
+{
+	"header": {
+		"displayName": "JSON输入加载器",
+		"description": "使用工作流中前一步的JSON数据"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到向量存储。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>插入一个</a>"
+		},
+		"pointers": {
+			"displayName": "指针",
+			"description": "从JSON中提取的指针，例如“/text”或“/text, /meta/title”"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"metadata": {
+					"displayName": "元数据",
+					"description": "要添加到每个文档的元数据。可用于检索期间的过滤",
+					"placeholder": "添加属性",
+					"multipleValueButtonText": "添加属性",
+					"options": {
+						"metadataValues": {
+							"displayName": "要设置的字段",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "要设置的字段",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "元数据",
+							"placeholder": "添加属性"
+						}
+					}
+				}
+			}
+		}
+	}
+}

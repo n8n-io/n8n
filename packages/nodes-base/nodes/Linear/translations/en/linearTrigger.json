@@ -1,0 +1,29 @@
+{
+	"header": {
+		"displayName": "Linear Trigger",
+		"description": "Starts the workflow when Linear events occur"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiToken": {
+					"displayName": "API Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "Make sure your credential has the \"Admin\" scope to create webhooks."
+		},
+		"teamId": {
+			"displayName": "Team Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"resources": {
+			"displayName": "Listen to Resources"
+		}
+	}
+}

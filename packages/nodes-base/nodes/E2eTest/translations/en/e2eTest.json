@@ -1,0 +1,38 @@
+{
+	"header": {
+		"displayName": "E2E Test",
+		"description": "Dummy node used for e2e testing"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"remoteOptions": {
+					"displayName": "Remote Options"
+				},
+				"resourceLocator": {
+					"displayName": "Resource Locator"
+				},
+				"resourceMapper": {
+					"displayName": "Resource Mapping Component"
+				}
+			}
+		},
+		"fieldId": {
+			"displayName": "Field ID"
+		},
+		"remoteOptions": {
+			"displayName": "Remote Options Name or ID",
+			"description": "Remote options to load. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"rlc": {
+			"displayName": "Resource Locator"
+		},
+		"resourceMapper": {
+			"displayName": "Resource Mapping Component"
+		},
+		"otherField": {
+			"displayName": "Other Non Important Field"
+		}
+	}
+}

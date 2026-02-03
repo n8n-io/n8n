@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "嵌入 AWS Bedrock",
+		"description": "使用嵌入 AWS Bedrock"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到向量存储。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>插入一个</a>"
+		},
+		"model": {
+			"displayName": "模型",
+			"description": "用于生成补全的模型。<a href=\"https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html\">了解更多</a>。"
+		}
+	}
+}

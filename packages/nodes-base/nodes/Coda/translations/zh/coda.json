@@ -1,0 +1,186 @@
+{
+	"header": {
+		"displayName": "Coda",
+		"description": "使用Coda API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"control": {
+					"displayName": "控件",
+					"description": "控件提供了一种用户友好的方式来输入可影响文档其他部分的值"
+				},
+				"formula": {
+					"displayName": "公式",
+					"description": "公式非常适合执行一次性计算"
+				},
+				"table": {
+					"displayName": "表格",
+					"description": "访问文档中的表格数据"
+				},
+				"view": {
+					"displayName": "查看",
+					"description": "访问文档中视图的数据"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"createRow": {
+					"displayName": "创建行",
+					"description": "创建/插入行"
+				},
+				"deleteRow": {
+					"displayName": "删除行",
+					"description": "删除一行或多行"
+				},
+				"getAllColumns": {
+					"displayName": "获取所有列",
+					"description": "获取表中的所有列"
+				},
+				"getAllRows": {
+					"displayName": "获取所有行",
+					"description": "获取表中的所有行"
+				},
+				"getColumn": {
+					"displayName": "获取列",
+					"description": "获取列"
+				},
+				"getRow": {
+					"displayName": "获取行",
+					"description": "获取一行"
+				},
+				"pushButton": {
+					"displayName": "推送按钮",
+					"description": "推送一个按钮"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取视图"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个视图"
+				},
+				"deleteViewRow": {
+					"displayName": "删除行",
+					"description": "删除视图行"
+				},
+				"getAllViewColumns": {
+					"displayName": "获取列",
+					"description": "获取所有视图列"
+				},
+				"getAllViewRows": {
+					"displayName": "获取行数据",
+					"description": "获取所有视图行"
+				},
+				"pushViewButton": {
+					"displayName": "推送按钮",
+					"description": "推送视图按钮"
+				},
+				"updateViewRow": {
+					"displayName": "更新行"
+				}
+			}
+		},
+		"docId": {
+			"displayName": "文档名称或ID",
+			"description": "文档ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"tableId": {
+			"displayName": "表名或ID",
+			"description": "要从中获取行的表。从列表中选择，或使用 <a href=\"https://docs.n8n.io/code/expressions/\">表达式</a> 指定ID。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"disableParsing": {
+					"displayName": "禁用解析",
+					"description": "API是否不会以任何方式尝试解析数据"
+				},
+				"keyColumns": {
+					"displayName": "关键列",
+					"description": "可选列ID、URL或名称（不稳定且不推荐），指定用作更新插入键的列。多个列请用逗号(,)分隔。"
+				},
+				"rawData": {
+					"displayName": "原始数据",
+					"description": "是否完全按照从API接收的方式返回数据"
+				},
+				"useColumnNames": {
+					"displayName": "使用列名",
+					"description": "是否在返回的输出中使用列名而非列ID。通常不建议这样做，因为这种方式很脆弱。如果列被重命名，使用原始名称的代码可能会抛出错误。"
+				},
+				"valueFormat": {
+					"displayName": "值格式",
+					"description": "单元格值返回的格式",
+					"options": {
+						"simple": {
+							"displayName": "简单"
+						},
+						"simpleWithArrays": {
+							"displayName": "简单数组处理"
+						},
+						"rich": {
+							"displayName": "富文本"
+						}
+					}
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "用于筛选返回行的查询，格式为&lt;列ID或名称&gt;:&lt;值&gt;。如果希望使用列名而非ID，必须为其添加引号（例如，\"My Column\":123）。另请注意，值为JSON值；如果希望使用字符串，必须用引号包围（例如，\"groceries\"）。"
+				},
+				"sortBy": {
+					"displayName": "排序方式",
+					"description": "指定返回行的排序顺序。如果留空，则按创建时间升序返回行。",
+					"options": {
+						"createdAt": {
+							"displayName": "创建时间"
+						},
+						"natural": {
+							"displayName": "自然"
+						}
+					}
+				},
+				"visibleOnly": {
+					"displayName": "仅显示可见内容",
+					"description": "是否仅返回表格中可见的行和列"
+				}
+			}
+		},
+		"rowId": {
+			"displayName": "行名称或ID",
+			"description": "要从中获取行的视图。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"columnId": {
+			"displayName": "列名或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"formulaId": {
+			"displayName": "公式ID",
+			"description": "用于获取行的公式"
+		},
+		"controlId": {
+			"displayName": "控件ID",
+			"description": "从中获取行的控件"
+		},
+		"viewId": {
+			"displayName": "视图名称或ID",
+			"description": "要从中获取行的视图。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"keyName": {
+			"displayName": "键名",
+			"description": "要从中获取行的视图"
+		}
+	}
+}

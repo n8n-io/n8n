@@ -1,0 +1,48 @@
+{
+	"header": {
+		"displayName": "Brandfetch",
+		"description": "Consume Brandfetch API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"color": {
+					"displayName": "Color",
+					"description": "Return a company's colors"
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "Return a company's data"
+				},
+				"font": {
+					"displayName": "Font",
+					"description": "Return a company's fonts"
+				},
+				"industry": {
+					"displayName": "Industry",
+					"description": "Return a company's industry"
+				},
+				"logo": {
+					"displayName": "Logo",
+					"description": "Return a company's logo & icon"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "Domain",
+			"description": "The domain name of the company"
+		},
+		"download": {
+			"displayName": "Download",
+			"description": "Name of the binary property to which to write the data of the read file"
+		},
+		"imageTypes": {
+			"displayName": "Image Type"
+		},
+		"imageFormats": {
+			"displayName": "Image Format",
+			"description": "The image format in which the logo should be returned as"
+		}
+	}
+}

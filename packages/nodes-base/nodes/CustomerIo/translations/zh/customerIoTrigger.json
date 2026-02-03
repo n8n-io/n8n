@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "Customer.io触发器",
+		"description": "在Customer.io更新时启动工作流（测试版）"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件",
+			"description": "可触发Webhook的事件及其启用状态"
+		}
+	}
+}

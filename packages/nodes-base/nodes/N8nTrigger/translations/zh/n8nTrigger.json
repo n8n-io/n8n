@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "n8n触发器",
+		"description": "处理事件并在您的n8n实例上执行操作"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件",
+			"description": "指定执行发生的条件：\n<ul>\n<li><b>已发布工作流更新</b>：当工作流版本从已发布状态重新发布时触发（工作流已发布过）</li>\n<li><b>实例启动</b>：当此n8n实例启动或重启时触发</li>\n<li><b>工作流发布</b>：当工作流版本从未发布状态发布时触发（工作流未发布过）</li>\n</ul>"
+		}
+	}
+}

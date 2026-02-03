@@ -1,0 +1,34 @@
+{
+	"header": {
+		"displayName": "Simple Memory",
+		"description": "Stores in n8n memory, so no credentials required"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"scalingNotice": {
+			"displayName": "This node stores memory locally in the n8n instance. It is not compatible with Queue Mode or Multi-Main setups, as memory will not be shared across workers. For production use with scaling, consider using an external memory store such as Redis, Postgres, or another persistent memory node."
+		},
+		"sessionKey": {
+			"displayName": "Key",
+			"description": "The key to use to store session ID in the memory"
+		},
+		"sessionIdType": {
+			"displayName": "Session ID",
+			"options": {
+				"fromInput": {
+					"displayName": "Connected Chat Trigger Node",
+					"description": "Looks for an input field called 'sessionId' that is coming from a directly connected Chat Trigger"
+				},
+				"customKey": {
+					"displayName": "Define below",
+					"description": "Use an expression to reference data in previous nodes or enter static text"
+				}
+			}
+		},
+		"contextWindowLength": {
+			"displayName": "Context Window Length"
+		}
+	}
+}

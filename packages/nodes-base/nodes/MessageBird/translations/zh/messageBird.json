@@ -1,0 +1,128 @@
+{
+	"header": {
+		"displayName": "MessageBird",
+		"description": "通过MessageBird发送短信"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"sms": {
+					"displayName": "短信"
+				},
+				"balance": {
+					"displayName": "余额"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "发送短信"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取余额"
+				}
+			}
+		},
+		"originator": {
+			"displayName": "来自",
+			"description": "发送消息的号码",
+			"placeholder": "14155238886"
+		},
+		"recipients": {
+			"displayName": "收件人",
+			"description": "所有收件人，用逗号分隔",
+			"placeholder": "14155238886/+14155238886"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"createdDatetime": {
+					"displayName": "创建日期时间",
+					"description": "消息创建的日期和时间，采用RFC3339格式（Y-m-dTH:i:sP）"
+				},
+				"datacoding": {
+					"displayName": "数据编码",
+					"description": "使用Unicode编码会将最大字符数限制为70个，而非160个",
+					"options": {
+						"auto": {
+							"displayName": "自动"
+						},
+						"plain": {
+							"displayName": "纯文本"
+						},
+						"unicode": {
+							"displayName": "Unicode"
+						}
+					}
+				},
+				"gateway": {
+					"displayName": "网关",
+					"description": "用于发送短信的SMS路由"
+				},
+				"groupIds": {
+					"displayName": "群组ID",
+					"description": "群组ID，以逗号分隔。如果提供，可以省略收件人",
+					"placeholder": "1,2"
+				},
+				"mclass": {
+					"displayName": "消息类型",
+					"description": "指示消息类型。1为普通消息，0为闪信。",
+					"placeholder": "允许值范围为0-3",
+					"options": {
+						"0": {
+							"displayName": "普通"
+						},
+						"1": {
+							"displayName": "闪信"
+						}
+					}
+				},
+				"reference": {
+					"displayName": "参考",
+					"description": "客户参考"
+				},
+				"reportUrl": {
+					"displayName": "报告网址",
+					"description": "每条消息使用的状态报告网址。发送状态报告Webhook需要此引用。"
+				},
+				"scheduledDatetime": {
+					"displayName": "预定日期时间",
+					"description": "消息的预定日期时间，采用RFC3339格式（Y-m-dTH:i:sP）"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "消息类型。可选值：sms、binary 或 flash。",
+					"options": {
+						"binary": {
+							"displayName": "二进制"
+						},
+						"flash": {
+							"displayName": "闪信"
+						},
+						"sms": {
+							"displayName": "短信"
+						}
+					}
+				},
+				"typeDetails": {
+					"displayName": "类型详情",
+					"description": "包含额外信息的哈希值。仅在发送二进制消息时使用。"
+				},
+				"validity": {
+					"displayName": "有效期",
+					"description": "消息有效的秒数"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"header": {
+		"displayName": "模拟",
+		"description": "模拟节点"
+	},
+	"nodeView": {
+		"icon": {
+			"displayName": "画布上显示的图标",
+			"description": "选择节点类型以显示对应图标"
+		},
+		"subtitle": {
+			"displayName": "副标题",
+			"placeholder": "例如 'record: read'"
+		},
+		"output": {
+			"displayName": "输出",
+			"options": {
+				"all": {
+					"displayName": "返回所有输入项"
+				},
+				"specify": {
+					"displayName": "指定返回多少输入项"
+				},
+				"custom": {
+					"displayName": "指定输出为JSON"
+				}
+			}
+		},
+		"numberOfItems": {
+			"displayName": "返回项目数量",
+			"description": "输入要返回的项目数量，如果大于输入长度，将返回所有项目"
+		},
+		"jsonOutput": {
+			"displayName": "JSON"
+		},
+		"executionDuration": {
+			"displayName": "执行时长（毫秒）",
+			"description": "执行时长（毫秒）"
+		}
+	}
+}

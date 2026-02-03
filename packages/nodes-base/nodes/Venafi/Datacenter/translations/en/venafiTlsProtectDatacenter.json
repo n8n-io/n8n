@@ -1,0 +1,434 @@
+{
+	"header": {
+		"displayName": "Venafi TLS Protect Datacenter",
+		"description": "Consume Venafi TLS Protect Datacenter"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"certificate": {
+					"displayName": "Certificate"
+				},
+				"policy": {
+					"displayName": "Policy"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Provision a new certificate"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a certificate"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a certificate"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a policy"
+				},
+				"getMany": {
+					"displayName": "Get Many",
+					"description": "Retrieve many certificates"
+				},
+				"renew": {
+					"displayName": "Renew",
+					"description": "Renew a certificate"
+				}
+			}
+		},
+		"PolicyDN": {
+			"displayName": "Policy DN",
+			"description": "The folder DN for the new certificate. If the value is missing, the folder name is the system default. If no system default is configured"
+		},
+		"Subject": {
+			"displayName": "Subject",
+			"description": "The Common Name field for the certificate Subject (DN)"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"Approvers": {
+					"displayName": "Approvers",
+					"description": "An array of one or more identities for certificate workflow approvers"
+				},
+				"CADN": {
+					"displayName": "CADN",
+					"description": "Only required when no policy sets a CA template. The Distinguished Name (DN) of the Trust Protection Platform Certificate Authority Template object for enrolling the certificate."
+				},
+				"CertificateType": {
+					"displayName": "Certificate Type",
+					"description": "One of the following Certificate objects. Ignores any other value.",
+					"options": {
+						"Code Signing": {
+							"displayName": "Code Signing",
+							"description": "X.509 Code Signing Certificate"
+						},
+						"Device": {
+							"displayName": "Device",
+							"description": "X.509 Device Certificate"
+						},
+						"Server": {
+							"displayName": "Server",
+							"description": "X.509 Server Certificate"
+						},
+						"User": {
+							"displayName": "User",
+							"description": "X.509 User Certificate"
+						}
+					}
+				},
+				"City": {
+					"displayName": "City",
+					"description": "The City field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR."
+				},
+				"Contacts": {
+					"displayName": "Contacts",
+					"description": "An array of one or more identities for users or groups who receive notifications about events pertaining to the object"
+				},
+				"Country": {
+					"displayName": "Country",
+					"description": "The Country field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR."
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Custom Fields",
+					"options": {
+						"customFielsValues": {
+							"displayName": "Address",
+							"options": {
+								"Name": {
+									"displayName": "Name"
+								},
+								"Values": {
+									"displayName": "Values"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFielsValues": {
+							"displayName": "Address",
+							"options": {
+								"Name": {
+									"displayName": "Name"
+								},
+								"Values": {
+									"displayName": "Values"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Custom Fields"
+						}
+					}
+				},
+				"CreatedBy": {
+					"displayName": "Created By",
+					"description": "The person, entity, or caller of this request. The default is Web SDK. Avoid overriding the default unless the caller is a significant enterprise application that is tightly integrated with Trust Protection Platform, such as a custom web portal. To add details, use Origin instead. If you want both attributes to have the same value, set only CreatedBy."
+				},
+				"Devices": {
+					"displayName": "Devices",
+					"placeholder": "Add Field",
+					"multipleValueButtonText": "Add Device",
+					"options": {
+						"applications": {
+							"displayName": "Applications",
+							"description": "An array of one or more Application objects to allow software, which runs on ObjectName, to use the same certificate"
+						},
+						"CloudInstanceID": {
+							"displayName": "Cloud Instance ID",
+							"description": "Required for Amazon EC2 provisioning. The unique cloud instance ID."
+						},
+						"CloudRegion": {
+							"displayName": "Cloud Region",
+							"description": "Required for Amazon EC2 provisioning. The geographic location where the cloud service instance resides. An instance in AWS can only exist in a single region."
+						},
+						"CloudService": {
+							"displayName": "Cloud Service",
+							"description": "Required for Amazon EC2 provisioning. AWS: An Amazon E2C cloud service. Requires you to install and configure the Cloud Instance Monitoring feature."
+						},
+						"ConcurrentConnectionLimit": {
+							"displayName": "Concurrent Connection Limit",
+							"description": "Maximum number of connections the device will accept from Trust Protection Platform"
+						},
+						"Contacts": {
+							"displayName": "Contacts",
+							"description": "An array of one or more identities who receive notifications for this device"
+						},
+						"CreatedBy": {
+							"displayName": "Created By",
+							"description": "The person or entity that is creating the device and any associated software applications for the device. Any value is accepted. Default is Web SDK."
+						},
+						"CredentialDN": {
+							"displayName": "Credential DN",
+							"description": "The device credential"
+						},
+						"description": {
+							"displayName": "Description",
+							"description": "The description for this device"
+						},
+						"EnforceKnownHost": {
+							"displayName": "Enforce Known Host",
+							"description": "For SSH keys. true: Enable known host key enforcement. false: Disable known host key enforcement."
+						},
+						"host": {
+							"displayName": "Host",
+							"description": "The physical Fully Qualified Domain Name (FQDN) for the host or the IP address for a device"
+						},
+						"ObjectName": {
+							"displayName": "Object Name",
+							"description": "The device host name or IP address for the certificate object in Trust Protection Platform. If the value is missing, the object name is the Subject."
+						},
+						"port": {
+							"displayName": "Port",
+							"description": "The port number to communicate with the device"
+						},
+						"SudoCredentialDN": {
+							"displayName": "Sudo Credential DN",
+							"description": "Use in conjunction with UseSudo. The DN that holds the password credential to be used if sudo is configured to prompt for a password when executing a command."
+						},
+						"TempDirectory": {
+							"displayName": "Temp Directory",
+							"description": "The host directory path to hold temporary files during provisioning. For example /tmp/. The folder should have the necessary write permissions."
+						},
+						"TrustedFingerprint": {
+							"displayName": "Trusted Fingerprint",
+							"description": "For Secure Shell (SSH) keys. The SSH server key fingerprint. If this value is set, and EnforceKnownHost is enabled, Trust Protection Platform will only successfully connect to the device if the hosts fingerprint matches this value."
+						},
+						"UseSudo": {
+							"displayName": "Use Sudo",
+							"description": "Use in conjunction with SudoCredentialDN. For cases where the device credentials require sudo privilege elevation to execute commands when installing the certificate on a Unix or Linux device: true: Execute commands using sudo when provisioning. false: Execute commands directly without using sudo."
+						}
+					}
+				},
+				"DisableAutomaticRenewal": {
+					"displayName": "Disable Automatic Renewal",
+					"description": "The setting to control whether manual intervention is required for certificate renewal"
+				},
+				"EllipticCurve": {
+					"displayName": "Elliptic Curve",
+					"description": "For Elliptic Curve Cryptography (ECC), use this parameter in conjunction with KeyAlgorithm",
+					"options": {
+						"P256": {
+							"displayName": "P256",
+							"description": "Use Elliptic Prime Curve 256 bit encryption"
+						},
+						"P384": {
+							"displayName": "P384",
+							"description": "Use Elliptic Prime Curve 384 bit encryption"
+						},
+						"P521": {
+							"displayName": "P521",
+							"description": "Use Elliptic Prime Curve 521 bit encryption. (not supported by all Certificate Authorities)."
+						}
+					}
+				},
+				"KeyAlgorithm": {
+					"displayName": "Key Algorithm",
+					"description": "The encryption algorithm for the public ke:",
+					"options": {
+						"RSA": {
+							"displayName": "RSA",
+							"description": "Rivest, Shamir, Adleman key (RSA)"
+						},
+						"ECC": {
+							"displayName": "ECC",
+							"description": "Elliptic Curve Cryptography (ECC)"
+						}
+					}
+				},
+				"KeyBitSize": {
+					"displayName": "Key Bit Size",
+					"description": "Use this parameter when KeyAlgorithm is RSA. The number of bits to allow for key generation."
+				},
+				"ManagementType": {
+					"displayName": "Management Type",
+					"description": "The level of management that Trust Protection Platform applies to the certificate",
+					"options": {
+						"Enrollment": {
+							"displayName": "Enrollment",
+							"description": "Issue a new certificate, renewcertificate, or key generation request to a CA for enrollment"
+						},
+						"Monitoring": {
+							"displayName": "Monitoring",
+							"description": "Allow Trust Protection Platform to monitor the certificate for expiration and renewal"
+						},
+						"Provisioning": {
+							"displayName": "Provisioning",
+							"description": "Issue a new certificate, renew a certificate, or send a key generation request to a CA for enrollment. Automatically install or provision the certificate."
+						},
+						"Unassigned": {
+							"displayName": "Unassigned",
+							"description": "Certificates are neither enrolled or monitored by Trust Protection Platform"
+						}
+					}
+				},
+				"origin": {
+					"displayName": "Origin",
+					"description": "Additional information, such as the name and version of the calling application, that describes the source of this enrollment, renewal, or provisioning request. The default is Web SDK."
+				},
+				"Organization": {
+					"displayName": "Organization",
+					"description": "The Organization field for the certificate Subject DN. Specify a value when the CSR centrally generates."
+				},
+				"OrganizationalUnit": {
+					"displayName": "Organizational Unit",
+					"description": "The department or division within the organization that is responsible for maintaining the certificate"
+				},
+				"PKCS10": {
+					"displayName": "PKCS10",
+					"description": "The PKCS#10 policy Signing Request (CSR). Omit escape characters such as or . If this value is provided, any Subject DN fields and the KeyBitSize in the request are ignored."
+				},
+				"Reenable": {
+					"displayName": "Reenable",
+					"description": "The action to control a previously disabled certificate"
+				},
+				"SetWorkToDo": {
+					"displayName": "Set Work To Do",
+					"description": "The setting to control certificate processing"
+				},
+				"State": {
+					"displayName": "State",
+					"description": "The State field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR."
+				},
+				"SubjectAltNamesUi": {
+					"displayName": "Subject Alt Names",
+					"placeholder": "Add Subject",
+					"multipleValueButtonText": "Add Subject",
+					"options": {
+						"SubjectAltNamesValues": {
+							"displayName": "Subject Alt Name",
+							"options": {
+								"Typename": {
+									"displayName": "Typename",
+									"description": "An integer that represents the kind of SAN",
+									"options": {
+										"0": {
+											"displayName": "OtherName",
+											"description": "Specify a Uniform Resource Name (URN) or username"
+										},
+										"1": {
+											"displayName": "Email"
+										},
+										"2": {
+											"displayName": "DNS"
+										},
+										"6": {
+											"displayName": "URI"
+										},
+										"7": {
+											"displayName": "IP Address"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "The SAN friendly name that corresponds to the Type or TypeName parameter. For example, if a TypeName is IPAddress, the Name value is a valid IP address."
+								}
+							}
+						}
+					},
+					"values": {
+						"SubjectAltNamesValues": {
+							"displayName": "Subject Alt Name",
+							"options": {
+								"Typename": {
+									"displayName": "Typename",
+									"description": "An integer that represents the kind of SAN",
+									"options": {
+										"0": {
+											"displayName": "OtherName",
+											"description": "Specify a Uniform Resource Name (URN) or username"
+										},
+										"1": {
+											"displayName": "Email"
+										},
+										"2": {
+											"displayName": "DNS"
+										},
+										"6": {
+											"displayName": "URI"
+										},
+										"7": {
+											"displayName": "IP Address"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "The SAN friendly name that corresponds to the Type or TypeName parameter. For example, if a TypeName is IPAddress, the Name value is a valid IP address."
+								}
+							}
+						},
+						"SubjectAltNamesUi": {
+							"displayName": "Subject Alt Names",
+							"placeholder": "Add Subject"
+						}
+					}
+				},
+				"IncludeChain": {
+					"displayName": "Include Chain"
+				},
+				"RootFirstOrder": {
+					"displayName": "Root First Order"
+				},
+				"KeystorePassword": {
+					"displayName": "Keystore Password"
+				}
+			}
+		},
+		"certificateDn": {
+			"displayName": "Certificate DN"
+		},
+		"includePrivateKey": {
+			"displayName": "Include Private Key"
+		},
+		"password": {
+			"displayName": "Password"
+		},
+		"binaryProperty": {
+			"displayName": "Input Data Field Name",
+			"description": "The name of the input field containing the binary file data to be uploaded"
+		},
+		"certificateId": {
+			"displayName": "Certificate GUID",
+			"description": "A GUID that uniquely identifies the certificate"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "Include one or more of the following certificate attributes in the return value"
+				}
+			}
+		},
+		"certificateDN": {
+			"displayName": "Certificate DN",
+			"description": "The Distinguished Name (DN) of the certificate to renew"
+		},
+		"policyDn": {
+			"displayName": "Policy DN",
+			"description": "The Distinguished Name (DN) of the policy folder"
+		}
+	}
+}

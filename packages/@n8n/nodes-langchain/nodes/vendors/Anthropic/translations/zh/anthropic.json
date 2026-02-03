@@ -1,0 +1,281 @@
+{
+	"header": {
+		"displayName": "Anthropic",
+		"description": "与Anthropic AI模型交互"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"document": {
+					"displayName": "文档"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"image": {
+					"displayName": "图片"
+				},
+				"prompt": {
+					"displayName": "提示词"
+				},
+				"text": {
+					"displayName": "文本"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"analyze": {
+					"displayName": "分析图像",
+					"description": "接收图像并回答相关问题"
+				},
+				"upload": {
+					"displayName": "上传文件",
+					"description": "将文件上传至Anthropic API以供后续使用"
+				},
+				"get": {
+					"displayName": "获取文件元数据",
+					"description": "从Anthropic API获取文件的元数据"
+				},
+				"list": {
+					"displayName": "列出文件",
+					"description": "从Anthropic API列出文件"
+				},
+				"deleteFile": {
+					"displayName": "删除文件",
+					"description": "从Anthropic API中删除文件"
+				},
+				"generate": {
+					"displayName": "生成提示",
+					"description": "为模型生成提示"
+				},
+				"improve": {
+					"displayName": "优化提示词",
+					"description": "优化模型提示词"
+				},
+				"templatize": {
+					"displayName": "模板化提示",
+					"description": "为模型模板化一个提示"
+				},
+				"message": {
+					"displayName": "向模型发送消息",
+					"description": "使用Anthropic模型创建补全"
+				}
+			}
+		},
+		"modelId": {
+			"displayName": "模型"
+		},
+		"text": {
+			"displayName": "文本输入",
+			"placeholder": "例如：这张图片里有什么？"
+		},
+		"inputType": {
+			"displayName": "输入类型",
+			"options": {
+				"url": {
+					"displayName": "图片URL"
+				},
+				"binary": {
+					"displayName": "二进制文件"
+				}
+			}
+		},
+		"documentUrls": {
+			"displayName": "URL地址",
+			"description": "要分析的文档URL地址，多个URL可用逗号分隔添加",
+			"placeholder": "例如：https://example.com/document.pdf"
+		},
+		"binaryPropertyName": {
+			"displayName": "附件输入数据字段名称",
+			"description": "包含待附加文件的二进制字段名称，多个字段名称可用逗号分隔添加",
+			"placeholder": "例如：data"
+		},
+		"simplify": {
+			"displayName": "简化输出",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"maxTokens": {
+					"displayName": "最大令牌数",
+					"description": "在补全中生成的最大令牌数"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "上传文件使用的文件名"
+				},
+				"system": {
+					"displayName": "系统消息",
+					"description": "用于模板化的现有系统提示",
+					"placeholder": "例如：您是一个有用的助手"
+				},
+				"feedback": {
+					"displayName": "反馈",
+					"description": "用于改进提示的反馈",
+					"placeholder": "例如：使其更详细并包含烹饪时间"
+				},
+				"includeMergedResponse": {
+					"displayName": "Include Merged Response",
+					"description": "Whether to include a single output string merging all text parts of the response"
+				},
+				"codeExecution": {
+					"displayName": "代码执行",
+					"description": "是否启用代码执行。并非所有模型都支持此功能。"
+				},
+				"webSearch": {
+					"displayName": "网络搜索",
+					"description": "是否启用网络搜索"
+				},
+				"maxUses": {
+					"displayName": "网络搜索最大使用次数",
+					"description": "每个请求的最大网络搜索使用次数"
+				},
+				"allowedDomains": {
+					"displayName": "允许搜索的域名",
+					"description": "Comma-separated list of domains to search. Only domains in this list will be searched. Conflicts with \"Web Search Blocked Domains\".",
+					"placeholder": "例如：google.com, wikipedia.org"
+				},
+				"blockedDomains": {
+					"displayName": "网络搜索被禁域名",
+					"description": "逗号分隔的禁止搜索域名列表。与\"网络搜索允许域名\"设置冲突。",
+					"placeholder": "例如：google.com, wikipedia.org"
+				},
+				"temperature": {
+					"displayName": "输出随机性（温度）",
+					"description": "控制输出的随机性。降低温度值会使补全结果更少随机性。当温度接近零时，模型会变得确定性和重复性"
+				},
+				"topP": {
+					"displayName": "输出随机性（Top P）",
+					"description": "采样时考虑的最大累积令牌概率"
+				},
+				"topK": {
+					"displayName": "输出随机性（Top K）",
+					"description": "采样时考虑的最大令牌数"
+				},
+				"maxToolsIterations": {
+					"displayName": "最大工具调用迭代次数",
+					"description": "LLM在停止前将运行的最大工具迭代周期数。单次迭代可包含多个工具调用。设为0表示无限制。"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "文件ID",
+			"description": "要获取元数据的文件ID",
+			"placeholder": "例如：file_123"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"fileUrl": {
+			"displayName": "URL",
+			"description": "要上传文件的URL",
+			"placeholder": "例如 https://example.com/file.pdf"
+		},
+		"imageUrls": {
+			"displayName": "URL地址",
+			"description": "要分析的图片URL地址，多个URL可用逗号分隔添加",
+			"placeholder": "例如：https://example.com/image.png"
+		},
+		"experimentalNotice": {
+			"displayName": "The <a href=\"https://docs.anthropic.com/en/api/prompt-tools-generate\">prompt tools APIs</a> are in a closed research preview. Your organization must request access to use them."
+		},
+		"task": {
+			"displayName": "任务",
+			"description": "提示词目的描述",
+			"placeholder": "例如：为一家备餐规划服务扮演厨师角色"
+		},
+		"messages": {
+			"displayName": "消息",
+			"description": "构成待模板化提示的消息",
+			"placeholder": "添加消息",
+			"multipleValueButtonText": "添加消息",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"assistant": {
+									"displayName": "助手",
+									"description": "指示模型采用特定语气或个性"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"assistant": {
+									"displayName": "助手",
+									"description": "指示模型采用特定语气或个性"
+								}
+							}
+						}
+					}
+				},
+				"messages": {
+					"displayName": "消息",
+					"placeholder": "添加消息"
+				}
+			}
+		},
+		"addAttachments": {
+			"displayName": "添加附件",
+			"description": "是否向消息添加附件"
+		},
+		"attachmentsInputType": {
+			"displayName": "附件输入类型",
+			"description": "用于附件的输入类型",
+			"options": {
+				"url": {
+					"displayName": "URL(s)"
+				},
+				"binary": {
+					"displayName": "二进制文件"
+				}
+			}
+		},
+		"attachmentsUrls": {
+			"displayName": "附件URL",
+			"description": "要附加的文件URL，多个URL可用逗号分隔添加",
+			"placeholder": "例如 https://example.com/image.png"
+		}
+	}
+}

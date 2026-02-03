@@ -1,0 +1,162 @@
+{
+	"header": {
+		"displayName": "默认数据加载器",
+		"description": "从工作流的上一步加载数据"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "这将从工作流的前一个步骤加载数据。<a href=\"/templates/1962\" target=\"_blank\">示例</a>"
+		},
+		"dataType": {
+			"displayName": "数据类型",
+			"options": {
+				"json": {
+					"displayName": "JSON",
+					"description": "处理工作流中上一步的JSON数据"
+				},
+				"binary": {
+					"displayName": "二进制",
+					"description": "处理工作流中前一步的二进制数据"
+				}
+			}
+		},
+		"jsonMode": {
+			"displayName": "模式",
+			"options": {
+				"allInputData": {
+					"displayName": "加载所有输入数据",
+					"description": "使用所有流入父代理或链的JSON数据"
+				},
+				"expressionData": {
+					"displayName": "加载特定数据",
+					"description": "加载数据子集，和/或工作流中任何先前步骤的数据"
+				}
+			}
+		},
+		"binaryMode": {
+			"displayName": "模式",
+			"options": {
+				"allInputData": {
+					"displayName": "加载所有输入数据",
+					"description": "使用所有流入父代理或链的二进制数据"
+				},
+				"specificField": {
+					"displayName": "加载特定数据",
+					"description": "从父级代理或链的特定字段加载数据"
+				}
+			}
+		},
+		"loader": {
+			"displayName": "数据格式",
+			"options": {
+				"auto": {
+					"displayName": "根据MIME类型自动检测",
+					"description": "使用MIME类型来检测格式"
+				},
+				"csvLoader": {
+					"displayName": "CSV",
+					"description": "加载CSV文件"
+				},
+				"docxLoader": {
+					"displayName": "Docx",
+					"description": "加载 Docx 文档"
+				},
+				"epubLoader": {
+					"displayName": "EPub",
+					"description": "加载EPub文件"
+				},
+				"jsonLoader": {
+					"displayName": "JSON",
+					"description": "加载JSON文件"
+				},
+				"pdfLoader": {
+					"displayName": "PDF",
+					"description": "加载PDF文档"
+				},
+				"textLoader": {
+					"displayName": "文本",
+					"description": "加载纯文本文件"
+				}
+			}
+		},
+		"jsonData": {
+			"displayName": "数据",
+			"description": "从输入窗格拖放字段，或使用表达式"
+		},
+		"binaryDataKey": {
+			"displayName": "输入数据字段名称",
+			"description": "代理或链的输入中包含待处理二进制文件的字段名称"
+		},
+		"textSplittingMode": {
+			"displayName": "文本分割",
+			"options": {
+				"simple": {
+					"displayName": "简单",
+					"description": "每1000个字符分割一次，重叠200个字符"
+				},
+				"custom": {
+					"displayName": "自定义",
+					"description": "连接自定义文本分割子节点"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"pointers": {
+					"displayName": "JSON指针",
+					"description": "从JSON中提取的指针，例如“/text”或“/text, /meta/title”"
+				},
+				"separator": {
+					"displayName": "CSV分隔符",
+					"description": "CSV使用的分隔符"
+				},
+				"column": {
+					"displayName": "CSV列",
+					"description": "要从CSV中提取的列"
+				},
+				"splitPages": {
+					"displayName": "拆分PDF页面",
+					"description": "是否将PDF页面拆分为独立文档"
+				},
+				"metadata": {
+					"displayName": "元数据",
+					"description": "要添加到每个文档的元数据。可用于检索期间的过滤",
+					"placeholder": "添加属性",
+					"multipleValueButtonText": "添加属性",
+					"options": {
+						"metadataValues": {
+							"displayName": "要设置的字段",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "要设置的字段",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "元数据",
+							"placeholder": "添加属性"
+						}
+					}
+				}
+			}
+		}
+	}
+}

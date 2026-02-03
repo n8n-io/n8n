@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "嵌入 Google Vertex",
+		"description": "使用 Google Vertex 嵌入"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "每个模型使用不同维度的嵌入密度。请确保为您的向量存储使用相同的维度。默认模型使用768维嵌入。您可以在<a href=\"https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api\">此处</a>查找可用模型。"
+		},
+		"projectId": {
+			"displayName": "项目ID",
+			"description": "选择或输入您的Google Cloud项目ID"
+		},
+		"modelName": {
+			"displayName": "模型名称",
+			"description": "用于生成嵌入向量的模型。<a href=\"https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api\">了解更多</a>。"
+		}
+	}
+}

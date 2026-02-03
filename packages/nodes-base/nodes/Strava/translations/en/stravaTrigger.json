@@ -1,0 +1,53 @@
+{
+	"header": {
+		"displayName": "Strava Trigger",
+		"description": "Starts the workflow when Strava events occur"
+	},
+	"nodeView": {
+		"object": {
+			"displayName": "Object",
+			"options": {
+				"*": {
+					"displayName": "[All]"
+				},
+				"activity": {
+					"displayName": "Activity"
+				},
+				"athlete": {
+					"displayName": "Athlete"
+				}
+			}
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"*": {
+					"displayName": "[All]"
+				},
+				"create": {
+					"displayName": "Created"
+				},
+				"delete": {
+					"displayName": "Deleted"
+				},
+				"update": {
+					"displayName": "Updated"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "By default the webhook-data only contain the Object ID. If this option gets activated, it will resolve the data automatically."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"deleteIfExist": {
+					"displayName": "Delete If Exist",
+					"description": "Strava allows just one subscription at all times. If you want to delete the current subscription to make room for a new subscription with the current parameters, set this parameter to true. Keep in mind this is a destructive operation."
+				}
+			}
+		}
+	}
+}

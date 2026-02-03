@@ -1,0 +1,79 @@
+{
+	"header": {
+		"displayName": "Facebook Trigger",
+		"description": "Starts the workflow when Facebook events occur"
+	},
+	"nodeView": {
+		"appId": {
+			"displayName": "APP ID",
+			"description": "Facebook APP ID"
+		},
+		"whatsappBusinessAccountNotice": {
+			"displayName": "To watch Whatsapp business account events use the Whatsapp trigger node"
+		},
+		"object": {
+			"displayName": "Object",
+			"description": "The object to subscribe to",
+			"options": {
+				"adAccount": {
+					"displayName": "Ad Account",
+					"description": "Get updates about Ad Account"
+				},
+				"application": {
+					"displayName": "Application",
+					"description": "Get updates about the app"
+				},
+				"certificateTransparency": {
+					"displayName": "Certificate Transparency",
+					"description": "Get updates about Certificate Transparency"
+				},
+				"group": {
+					"displayName": "Group",
+					"description": "Get updates about activity in groups and events in groups for Workplace"
+				},
+				"instagram": {
+					"displayName": "Instagram",
+					"description": "Get updates about comments on your media"
+				},
+				"link": {
+					"displayName": "Link",
+					"description": "Get updates about links for rich previews by an external provider"
+				},
+				"page": {
+					"displayName": "Page",
+					"description": "Page updates"
+				},
+				"permissions": {
+					"displayName": "Permissions",
+					"description": "Updates regarding granting or revoking permissions"
+				},
+				"user": {
+					"displayName": "User",
+					"description": "User profile updates"
+				},
+				"whatsappBusinessAccount": {
+					"displayName": "Whatsapp Business Account",
+					"description": "Get updates about Whatsapp business account"
+				},
+				"workplaceSecurity": {
+					"displayName": "Workplace Security",
+					"description": "Get updates about Workplace Security"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "Field Names or IDs",
+			"description": "The set of fields in this object that are subscribed to. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"includeValues": {
+					"displayName": "Include Values",
+					"description": "Whether change notifications should include the new values"
+				}
+			}
+		}
+	}
+}

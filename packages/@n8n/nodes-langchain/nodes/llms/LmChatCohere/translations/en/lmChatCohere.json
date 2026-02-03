@@ -1,0 +1,30 @@
+{
+	"header": {
+		"displayName": "Cohere Chat Model",
+		"description": "For advanced usage with an AI chain"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will generate the completion. <a href=\"https://docs.cohere.com/docs/models\">Learn more</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive."
+				},
+				"maxRetries": {
+					"displayName": "Max Retries",
+					"description": "Maximum number of retries to attempt"
+				}
+			}
+		}
+	}
+}

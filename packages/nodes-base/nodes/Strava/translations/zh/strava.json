@@ -1,0 +1,457 @@
+{
+	"header": {
+		"displayName": "Strava",
+		"description": "使用Strava API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"activity": {
+					"displayName": "活动"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新活动"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取活动"
+				},
+				"getComments": {
+					"displayName": "获取评论",
+					"description": "获取所有活动评论"
+				},
+				"getKudos": {
+					"displayName": "获取点赞",
+					"description": "获取所有活动点赞"
+				},
+				"getLaps": {
+					"displayName": "获取圈数",
+					"description": "获取所有活动圈数"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多项活动"
+				},
+				"getStreams": {
+					"displayName": "获取流",
+					"description": "获取活动流"
+				},
+				"getZones": {
+					"displayName": "获取区域",
+					"description": "获取所有活动区域"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新活动"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "活动名称"
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "活动类型。例如 - 跑步、骑行等。"
+		},
+		"sport_type": {
+			"displayName": "运动类型",
+			"description": "运动类型",
+			"options": {
+				"AlpineSki": {
+					"displayName": "高山滑雪"
+				},
+				"BackcountrySki": {
+					"displayName": "野外滑雪"
+				},
+				"Badminton": {
+					"displayName": "羽毛球"
+				},
+				"Canoeing": {
+					"displayName": "划独木舟"
+				},
+				"Crossfit": {
+					"displayName": "Crossfit"
+				},
+				"EBikeRide": {
+					"displayName": "电动自行车骑行"
+				},
+				"Elliptical": {
+					"displayName": "椭圆"
+				},
+				"EMountainBikeRide": {
+					"displayName": "山地自行车骑行"
+				},
+				"Golf": {
+					"displayName": "高尔夫"
+				},
+				"GravelRide": {
+					"displayName": "砾石骑行"
+				},
+				"Handcycle": {
+					"displayName": "手摇自行车"
+				},
+				"HighIntensityIntervalTraining": {
+					"displayName": "高强度间歇训练"
+				},
+				"Hike": {
+					"displayName": "Hike"
+				},
+				"IceSkate": {
+					"displayName": "冰鞋"
+				},
+				"InlineSkate": {
+					"displayName": "直排轮滑鞋"
+				},
+				"Kayaking": {
+					"displayName": "皮划艇"
+				},
+				"Kitesurf": {
+					"displayName": "风筝冲浪"
+				},
+				"MountainBikeRide": {
+					"displayName": "山地自行车骑行"
+				},
+				"NordicSki": {
+					"displayName": "北欧滑雪"
+				},
+				"Pickleball": {
+					"displayName": "匹克球"
+				},
+				"Pilates": {
+					"displayName": "普拉提"
+				},
+				"Racquetball": {
+					"displayName": "壁球"
+				},
+				"Ride": {
+					"displayName": "执行"
+				},
+				"RockClimbing": {
+					"displayName": "攀岩"
+				},
+				"RollerSki": {
+					"displayName": "滚轮滑雪"
+				},
+				"Rowing": {
+					"displayName": "划船"
+				},
+				"Run": {
+					"displayName": "运行"
+				},
+				"Sail": {
+					"displayName": "航行"
+				},
+				"Skateboard": {
+					"displayName": "滑板"
+				},
+				"Snowboard": {
+					"displayName": "滑雪板"
+				},
+				"Snowshoe": {
+					"displayName": "Snowshoe"
+				},
+				"Soccer": {
+					"displayName": "足球"
+				},
+				"Squash": {
+					"displayName": "压缩"
+				},
+				"StairStepper": {
+					"displayName": "阶梯步进器"
+				},
+				"StandUpPaddling": {
+					"displayName": "立式单桨冲浪"
+				},
+				"Surfing": {
+					"displayName": "冲浪"
+				},
+				"Swim": {
+					"displayName": "游泳"
+				},
+				"TableTennis": {
+					"displayName": "乒乓球"
+				},
+				"Tennis": {
+					"displayName": "网球"
+				},
+				"TrailRun": {
+					"displayName": "试运行"
+				},
+				"Velomobile": {
+					"displayName": "Velomobile"
+				},
+				"VirtualRide": {
+					"displayName": "虚拟骑行"
+				},
+				"VirtualRow": {
+					"displayName": "虚拟行"
+				},
+				"VirtualRun": {
+					"displayName": "虚拟运行"
+				},
+				"Walk": {
+					"displayName": "浏览"
+				},
+				"WeightTraining": {
+					"displayName": "重量训练"
+				},
+				"Wheelchair": {
+					"displayName": "轮椅"
+				},
+				"Windsurf": {
+					"displayName": "Windsurf"
+				},
+				"Workout": {
+					"displayName": "工作流"
+				},
+				"Yoga": {
+					"displayName": "瑜伽"
+				}
+			}
+		},
+		"startDate": {
+			"displayName": "开始日期",
+			"description": "ISO 8601 格式日期时间"
+		},
+		"elapsedTime": {
+			"displayName": "耗时（秒）",
+			"description": "秒数"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"commute": {
+					"displayName": "通勤",
+					"description": "是否标记为通勤"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "活动描述"
+				},
+				"distance": {
+					"displayName": "距离",
+					"description": "以米为单位"
+				},
+				"trainer": {
+					"displayName": "训练器",
+					"description": "是否标记为训练器活动"
+				}
+			}
+		},
+		"activityId": {
+			"displayName": "活动ID",
+			"description": "活动ID或邮箱"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"commute": {
+					"displayName": "通勤",
+					"description": "是否标记为通勤"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "活动描述"
+				},
+				"gear_id": {
+					"displayName": "装备ID",
+					"description": "活动关联装备的标识符。‘none’会从活动中清除装备。"
+				},
+				"hide_from_home": {
+					"displayName": "静默活动",
+					"description": "不发布到主页或俱乐部动态"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "活动名称"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "活动类型。例如 - 跑步、骑行等。"
+				},
+				"sport_type": {
+					"displayName": "运动类型",
+					"description": "运动类型",
+					"options": {
+						"AlpineSki": {
+							"displayName": "高山滑雪"
+						},
+						"BackcountrySki": {
+							"displayName": "野外滑雪"
+						},
+						"Badminton": {
+							"displayName": "羽毛球"
+						},
+						"Canoeing": {
+							"displayName": "划独木舟"
+						},
+						"Crossfit": {
+							"displayName": "Crossfit"
+						},
+						"EBikeRide": {
+							"displayName": "电动自行车骑行"
+						},
+						"Elliptical": {
+							"displayName": "椭圆"
+						},
+						"EMountainBikeRide": {
+							"displayName": "山地自行车骑行"
+						},
+						"Golf": {
+							"displayName": "高尔夫"
+						},
+						"GravelRide": {
+							"displayName": "砾石骑行"
+						},
+						"Handcycle": {
+							"displayName": "手摇自行车"
+						},
+						"HighIntensityIntervalTraining": {
+							"displayName": "高强度间歇训练"
+						},
+						"Hike": {
+							"displayName": "Hike"
+						},
+						"IceSkate": {
+							"displayName": "冰鞋"
+						},
+						"InlineSkate": {
+							"displayName": "直排轮滑鞋"
+						},
+						"Kayaking": {
+							"displayName": "皮划艇"
+						},
+						"Kitesurf": {
+							"displayName": "风筝冲浪"
+						},
+						"MountainBikeRide": {
+							"displayName": "山地自行车骑行"
+						},
+						"NordicSki": {
+							"displayName": "北欧滑雪"
+						},
+						"Pickleball": {
+							"displayName": "匹克球"
+						},
+						"Pilates": {
+							"displayName": "普拉提"
+						},
+						"Racquetball": {
+							"displayName": "壁球"
+						},
+						"Ride": {
+							"displayName": "执行"
+						},
+						"RockClimbing": {
+							"displayName": "攀岩"
+						},
+						"RollerSki": {
+							"displayName": "滚轮滑雪"
+						},
+						"Rowing": {
+							"displayName": "划船"
+						},
+						"Run": {
+							"displayName": "运行"
+						},
+						"Sail": {
+							"displayName": "航行"
+						},
+						"Skateboard": {
+							"displayName": "滑板"
+						},
+						"Snowboard": {
+							"displayName": "滑雪板"
+						},
+						"Snowshoe": {
+							"displayName": "Snowshoe"
+						},
+						"Soccer": {
+							"displayName": "足球"
+						},
+						"Squash": {
+							"displayName": "压缩"
+						},
+						"StairStepper": {
+							"displayName": "阶梯步进器"
+						},
+						"StandUpPaddling": {
+							"displayName": "立式单桨冲浪"
+						},
+						"Surfing": {
+							"displayName": "冲浪"
+						},
+						"Swim": {
+							"displayName": "游泳"
+						},
+						"TableTennis": {
+							"displayName": "乒乓球"
+						},
+						"Tennis": {
+							"displayName": "网球"
+						},
+						"TrailRun": {
+							"displayName": "试运行"
+						},
+						"Velomobile": {
+							"displayName": "Velomobile"
+						},
+						"VirtualRide": {
+							"displayName": "虚拟骑行"
+						},
+						"VirtualRow": {
+							"displayName": "虚拟行"
+						},
+						"VirtualRun": {
+							"displayName": "虚拟运行"
+						},
+						"Walk": {
+							"displayName": "浏览"
+						},
+						"WeightTraining": {
+							"displayName": "重量训练"
+						},
+						"Wheelchair": {
+							"displayName": "轮椅"
+						},
+						"Windsurf": {
+							"displayName": "Windsurf"
+						},
+						"Workout": {
+							"displayName": "工作流"
+						},
+						"Yoga": {
+							"displayName": "瑜伽"
+						}
+					}
+				},
+				"trainer": {
+					"displayName": "训练器",
+					"description": "是否标记为训练器活动"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"keys": {
+			"displayName": "键",
+			"description": "要返回的期望流类型"
+		}
+	}
+}

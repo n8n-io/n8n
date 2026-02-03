@@ -1,0 +1,60 @@
+{
+	"header": {
+		"displayName": "Zep Vector Store: Load",
+		"description": "Load data from Zep Vector Store index"
+	},
+	"nodeView": {
+		"deprecationNotice": {
+			"displayName": "This Zep integration is deprecated and will be removed in a future version."
+		},
+		"collectionName": {
+			"displayName": "Collection Name"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"embeddingDimensions": {
+					"displayName": "Embedding Dimensions",
+					"description": "Whether to allow using characters from the Unicode surrogate blocks"
+				},
+				"metadata": {
+					"displayName": "Metadata Filter",
+					"description": "Metadata to filter the document by",
+					"placeholder": "Add filter field",
+					"multipleValueButtonText": "Add filter field",
+					"options": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "Metadata Filter",
+							"placeholder": "Add filter field"
+						}
+					}
+				}
+			}
+		}
+	}
+}

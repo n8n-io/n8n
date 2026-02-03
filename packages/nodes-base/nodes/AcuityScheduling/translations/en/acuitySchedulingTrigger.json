@@ -1,0 +1,48 @@
+{
+	"header": {
+		"displayName": "Acuity Scheduling Trigger",
+		"description": "Handle Acuity Scheduling events via webhooks"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiKey": {
+					"displayName": "API Key"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"appointment.canceled": {
+					"displayName": "appointment.canceled",
+					"description": "Is called whenever an appointment is canceled"
+				},
+				"appointment.changed": {
+					"displayName": "appointment.changed",
+					"description": "Is called when the appointment is changed in any way"
+				},
+				"appointment.rescheduled": {
+					"displayName": "appointment.rescheduled",
+					"description": "Is called when the appointment is rescheduled to a new time"
+				},
+				"appointment.scheduled": {
+					"displayName": "appointment.scheduled",
+					"description": "Is called once when an appointment is initially booked"
+				},
+				"order.completed": {
+					"displayName": "order.completed",
+					"description": "Is called when an order is completed"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "By default does the webhook-data only contain the ID of the object. If this option gets activated, it will resolve the data automatically."
+		}
+	}
+}

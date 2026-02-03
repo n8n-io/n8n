@@ -1,0 +1,989 @@
+{
+	"header": {
+		"displayName": "Xero",
+		"description": "使用Xero API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				},
+				"invoice": {
+					"displayName": "发票"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建发票"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取发票"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个发票"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新发票"
+				}
+			}
+		},
+		"organizationId": {
+			"displayName": "组织名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "联系人/组织全名"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"accountNumber": {
+					"displayName": "账户编号",
+					"description": "用户定义的账号"
+				},
+				"addressesUi": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"multipleValueButtonText": "添加地址",
+					"options": {
+						"addressesValues": {
+							"displayName": "地址",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"POBOX": {
+											"displayName": "邮政信箱"
+										},
+										"STREET": {
+											"displayName": "街道"
+										}
+									}
+								},
+								"line1": {
+									"displayName": "第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"attentionTo": {
+									"displayName": "关注对象"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressesValues": {
+							"displayName": "地址",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"POBOX": {
+											"displayName": "邮政信箱"
+										},
+										"STREET": {
+											"displayName": "街道"
+										}
+									}
+								},
+								"line1": {
+									"displayName": "第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"attentionTo": {
+									"displayName": "关注对象"
+								}
+							}
+						},
+						"addressesUi": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"bankAccountDetails": {
+					"displayName": "银行账户详情",
+					"description": "联系人的银行账号"
+				},
+				"contactNumber": {
+					"displayName": "联系电话",
+					"description": "此字段在Xero联系人界面为只读，用于在外部系统中识别联系人"
+				},
+				"contactStatus": {
+					"displayName": "联系人状态",
+					"description": "联系人的当前状态 - 请参阅联系人状态类型",
+					"options": {
+						"ACTIVE": {
+							"displayName": "激活状态",
+							"description": "该联系人处于活跃状态，可用于交易"
+						},
+						"ARCHIVED": {
+							"displayName": "已归档",
+							"description": "该联系人已归档，无法再用于交易"
+						},
+						"GDPRREQUEST": {
+							"displayName": "GDPR 请求",
+							"description": "该联系人是 GDPR 删除请求的主体"
+						}
+					}
+				},
+				"defaultCurrency": {
+					"displayName": "默认货币",
+					"description": "针对联系人开具发票的默认货币"
+				},
+				"emailAddress": {
+					"displayName": "电子邮件",
+					"description": "联系人邮箱地址（不支持变音符号）（最大长度 = 255）"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "联系人名字（最大长度 = 255）"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "联系人姓氏（最大长度 = 255）"
+				},
+				"phonesUi": {
+					"displayName": "电话",
+					"placeholder": "添加电话",
+					"multipleValueButtonText": "添加电话",
+					"options": {
+						"phonesValues": {
+							"displayName": "电话",
+							"options": {
+								"phoneType": {
+									"displayName": "类型",
+									"options": {
+										"DEFAULT": {
+											"displayName": "默认"
+										},
+										"DDI": {
+											"displayName": "DDI"
+										},
+										"MOBILE": {
+											"displayName": "移动端"
+										},
+										"FAX": {
+											"displayName": "传真"
+										}
+									}
+								},
+								"phoneNumber": {
+									"displayName": "数字"
+								},
+								"phoneAreaCode": {
+									"displayName": "区号"
+								},
+								"phoneCountryCode": {
+									"displayName": "国家/地区代码"
+								}
+							}
+						}
+					},
+					"values": {
+						"phonesValues": {
+							"displayName": "电话",
+							"options": {
+								"phoneType": {
+									"displayName": "类型",
+									"options": {
+										"DEFAULT": {
+											"displayName": "默认"
+										},
+										"DDI": {
+											"displayName": "DDI"
+										},
+										"MOBILE": {
+											"displayName": "移动端"
+										},
+										"FAX": {
+											"displayName": "传真"
+										}
+									}
+								},
+								"phoneNumber": {
+									"displayName": "数字"
+								},
+								"phoneAreaCode": {
+									"displayName": "区号"
+								},
+								"phoneCountryCode": {
+									"displayName": "国家/地区代码"
+								}
+							}
+						},
+						"phonesUi": {
+							"displayName": "电话",
+							"placeholder": "添加电话"
+						}
+					}
+				},
+				"purchasesDefaultAccountCode": {
+					"displayName": "采购默认账户代码名称或ID",
+					"description": "联系人的默认采购账户代码。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"salesDefaultAccountCode": {
+					"displayName": "销售默认科目代码名称或ID",
+					"description": "联系人的默认销售科目代码。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"skypeUserName": {
+					"displayName": "Skype",
+					"description": "联系人的Skype用户名"
+				},
+				"taxNumber": {
+					"displayName": "税号",
+					"description": "联系人税号"
+				},
+				"xeroNetworkKey": {
+					"displayName": "Xero网络密钥",
+					"description": "为联系人存储Xero网络密钥"
+				},
+				"brandingThemeId": {
+					"displayName": "品牌主题名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"currency": {
+					"displayName": "货币名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"currencyRate": {
+					"displayName": "汇率",
+					"description": "多币种发票的汇率。如未指定，则使用XE.com的当日汇率。"
+				},
+				"date": {
+					"displayName": "日期",
+					"description": "发票开具日期 - YYYY-MM-DD格式。如果未指定日期元素，将根据组织的时区设置默认为当前日期。"
+				},
+				"dueDate": {
+					"displayName": "截止日期",
+					"description": "发票到期日期 - YYYY-MM-DD"
+				},
+				"expectedPaymentDate": {
+					"displayName": "预计付款日期",
+					"description": "设置后显示在销售发票（应收账款）上"
+				},
+				"invoiceNumber": {
+					"displayName": "发票编号"
+				},
+				"lineAmountType": {
+					"displayName": "行金额类型",
+					"options": {
+						"Exclusive": {
+							"displayName": "独占",
+							"description": "商品明细不含税"
+						},
+						"Inclusive": {
+							"displayName": "包含",
+							"description": "行项目包含税费"
+						},
+						"NoTax": {
+							"displayName": "无税",
+							"description": "行项目无税"
+						}
+					}
+				},
+				"plannedPaymentDate": {
+					"displayName": "计划付款日期",
+					"description": "设置后将在账单（应付账款）中显示"
+				},
+				"reference": {
+					"displayName": "参考",
+					"description": "仅限应收账款 - 附加参考编号（最大长度 = 255）"
+				},
+				"sendToContact": {
+					"displayName": "发送给联系人",
+					"description": "是否应在Xero应用中标记发票为“已发送”。此设置仅适用于已批准的发票。"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"DRAFT": {
+							"displayName": "草稿"
+						},
+						"SUBMITTED": {
+							"displayName": "已提交"
+						},
+						"AUTHORISED": {
+							"displayName": "已授权"
+						}
+					}
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "源文档的URL链接 - 在Xero应用中显示为“前往[appName]”"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"includeArchived": {
+					"displayName": "包含已归档",
+					"description": "是否在响应中包含状态为已归档的联系人"
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"description": "按返回的任何元素排序",
+					"placeholder": "发票ID"
+				},
+				"sortOrder": {
+					"displayName": "排序顺序",
+					"options": {
+						"ASC": {
+							"displayName": "升序"
+						},
+						"DESC": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"where": {
+					"displayName": "筛选条件",
+					"description": "where参数允许您筛选没有明确参数的端点和元素。<a href=\"https://developer.xero.com/documentation/api/requests-and-responses#get-modified\">查看示例</a>",
+					"placeholder": "EmailAddress!=null&&EmailAddress.StartsWith(\"boom\")"
+				},
+				"createdByMyApp": {
+					"displayName": "由我的应用创建",
+					"description": "是否仅检索由您的应用创建的发票"
+				},
+				"statuses": {
+					"displayName": "状态"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"accountNumber": {
+					"displayName": "账户编号",
+					"description": "用户定义的账号"
+				},
+				"addressesUi": {
+					"displayName": "地址",
+					"placeholder": "添加地址",
+					"multipleValueButtonText": "添加地址",
+					"options": {
+						"addressesValues": {
+							"displayName": "地址",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"POBOX": {
+											"displayName": "邮政信箱"
+										},
+										"STREET": {
+											"displayName": "街道"
+										}
+									}
+								},
+								"line1": {
+									"displayName": "第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"attentionTo": {
+									"displayName": "关注对象"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressesValues": {
+							"displayName": "地址",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"POBOX": {
+											"displayName": "邮政信箱"
+										},
+										"STREET": {
+											"displayName": "街道"
+										}
+									}
+								},
+								"line1": {
+									"displayName": "第1行"
+								},
+								"line2": {
+									"displayName": "第2行"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"region": {
+									"displayName": "区域"
+								},
+								"postalCode": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"attentionTo": {
+									"displayName": "关注对象"
+								}
+							}
+						},
+						"addressesUi": {
+							"displayName": "地址",
+							"placeholder": "添加地址"
+						}
+					}
+				},
+				"bankAccountDetails": {
+					"displayName": "银行账户详情",
+					"description": "联系人的银行账号"
+				},
+				"contactNumber": {
+					"displayName": "联系电话",
+					"description": "此字段在Xero联系人界面为只读，用于在外部系统中识别联系人"
+				},
+				"contactStatus": {
+					"displayName": "联系人状态",
+					"description": "联系人的当前状态 - 请参阅联系人状态类型",
+					"options": {
+						"ACTIVE": {
+							"displayName": "激活状态",
+							"description": "该联系人处于活跃状态，可用于交易"
+						},
+						"ARCHIVED": {
+							"displayName": "已归档",
+							"description": "该联系人已归档，无法再用于交易"
+						},
+						"GDPRREQUEST": {
+							"displayName": "GDPR 请求",
+							"description": "该联系人是 GDPR 删除请求的主体"
+						}
+					}
+				},
+				"defaultCurrency": {
+					"displayName": "默认货币",
+					"description": "针对联系人开具发票的默认货币"
+				},
+				"emailAddress": {
+					"displayName": "电子邮件",
+					"description": "联系人邮箱地址（不支持变音符号）（最大长度 = 255）"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "联系人名字（最大长度 = 255）"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "联系人姓氏（最大长度 = 255）"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "联系人/组织全名"
+				},
+				"phonesUi": {
+					"displayName": "电话",
+					"placeholder": "添加电话",
+					"multipleValueButtonText": "添加电话",
+					"options": {
+						"phonesValues": {
+							"displayName": "电话",
+							"options": {
+								"phoneType": {
+									"displayName": "类型",
+									"options": {
+										"DEFAULT": {
+											"displayName": "默认"
+										},
+										"DDI": {
+											"displayName": "DDI"
+										},
+										"MOBILE": {
+											"displayName": "移动端"
+										},
+										"FAX": {
+											"displayName": "传真"
+										}
+									}
+								},
+								"phoneNumber": {
+									"displayName": "数字"
+								},
+								"phoneAreaCode": {
+									"displayName": "区号"
+								},
+								"phoneCountryCode": {
+									"displayName": "国家/地区代码"
+								}
+							}
+						}
+					},
+					"values": {
+						"phonesValues": {
+							"displayName": "电话",
+							"options": {
+								"phoneType": {
+									"displayName": "类型",
+									"options": {
+										"DEFAULT": {
+											"displayName": "默认"
+										},
+										"DDI": {
+											"displayName": "DDI"
+										},
+										"MOBILE": {
+											"displayName": "移动端"
+										},
+										"FAX": {
+											"displayName": "传真"
+										}
+									}
+								},
+								"phoneNumber": {
+									"displayName": "数字"
+								},
+								"phoneAreaCode": {
+									"displayName": "区号"
+								},
+								"phoneCountryCode": {
+									"displayName": "国家/地区代码"
+								}
+							}
+						},
+						"phonesUi": {
+							"displayName": "电话",
+							"placeholder": "添加电话"
+						}
+					}
+				},
+				"purchasesDefaultAccountCode": {
+					"displayName": "采购默认账户代码名称或ID",
+					"description": "联系人的默认采购账户代码。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"salesDefaultAccountCode": {
+					"displayName": "销售默认科目代码名称或ID",
+					"description": "联系人的默认销售科目代码。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"skypeUserName": {
+					"displayName": "Skype",
+					"description": "联系人的Skype用户名"
+				},
+				"taxNumber": {
+					"displayName": "税号",
+					"description": "联系人税号"
+				},
+				"xeroNetworkKey": {
+					"displayName": "Xero网络密钥",
+					"description": "为联系人存储Xero网络密钥"
+				},
+				"brandingThemeId": {
+					"displayName": "品牌主题名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"contactId": {
+					"displayName": "联系人ID"
+				},
+				"currency": {
+					"displayName": "货币名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"currencyRate": {
+					"displayName": "汇率",
+					"description": "多币种发票的汇率。如未指定，则使用XE.com的当日汇率。"
+				},
+				"date": {
+					"displayName": "日期",
+					"description": "发票开具日期 - YYYY-MM-DD格式。如果未指定日期元素，将根据组织的时区设置默认为当前日期。"
+				},
+				"dueDate": {
+					"displayName": "截止日期",
+					"description": "发票到期日期 - YYYY-MM-DD"
+				},
+				"expectedPaymentDate": {
+					"displayName": "预计付款日期",
+					"description": "设置后显示在销售发票（应收账款）上"
+				},
+				"invoiceNumber": {
+					"displayName": "发票编号"
+				},
+				"lineAmountType": {
+					"displayName": "行金额类型",
+					"options": {
+						"Exclusive": {
+							"displayName": "独占",
+							"description": "商品明细不含税"
+						},
+						"Inclusive": {
+							"displayName": "包含",
+							"description": "行项目包含税费"
+						},
+						"NoTax": {
+							"displayName": "无税",
+							"description": "行项目无税"
+						}
+					}
+				},
+				"lineItemsUi": {
+					"displayName": "行项目",
+					"description": "行项目数据",
+					"placeholder": "添加行项目",
+					"multipleValueButtonText": "添加行项目",
+					"options": {
+						"lineItemsValues": {
+							"displayName": "行项目",
+							"options": {
+								"lineItemId": {
+									"displayName": "行项目ID",
+									"description": "Xero为行项目生成的标识符"
+								},
+								"description": {
+									"displayName": "描述",
+									"description": "仅包含描述的行项目"
+								},
+								"quantity": {
+									"displayName": "数量",
+									"description": "行项目数量"
+								},
+								"unitAmount": {
+									"displayName": "单位金额",
+									"description": "行项目单位金额。默认情况下，单位金额将四舍五入到两位小数。"
+								},
+								"itemCode": {
+									"displayName": "项目代码名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"accountCode": {
+									"displayName": "账户代码名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"taxType": {
+									"displayName": "税种类型",
+									"options": {
+										"INPUT": {
+											"displayName": "采购税"
+										},
+										"NONE": {
+											"displayName": "免税"
+										},
+										"OUTPUT": {
+											"displayName": "销售税"
+										},
+										"GSTONIMPORTS": {
+											"displayName": "进口销售税"
+										}
+									}
+								},
+								"taxAmount": {
+									"displayName": "税额",
+									"description": "税额根据税率自动按行金额的百分比计算"
+								},
+								"lineAmount": {
+									"displayName": "行金额",
+									"description": "如果使用了折扣率，行金额将反映折扣后的价格"
+								},
+								"discountRate": {
+									"displayName": "折扣率",
+									"description": "应用于行项目的百分比折扣或折扣金额。仅支持Xero中的ACCREC发票 - ACCPAY发票和贷项凭证不支持折扣。"
+								}
+							}
+						}
+					},
+					"values": {
+						"lineItemsValues": {
+							"displayName": "行项目",
+							"options": {
+								"lineItemId": {
+									"displayName": "行项目ID",
+									"description": "Xero为行项目生成的标识符"
+								},
+								"description": {
+									"displayName": "描述",
+									"description": "仅包含描述的行项目"
+								},
+								"quantity": {
+									"displayName": "数量",
+									"description": "行项目数量"
+								},
+								"unitAmount": {
+									"displayName": "单位金额",
+									"description": "行项目单位金额。默认情况下，单位金额将四舍五入到两位小数。"
+								},
+								"itemCode": {
+									"displayName": "项目代码名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"accountCode": {
+									"displayName": "账户代码名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"taxType": {
+									"displayName": "税种类型",
+									"options": {
+										"INPUT": {
+											"displayName": "采购税"
+										},
+										"NONE": {
+											"displayName": "免税"
+										},
+										"OUTPUT": {
+											"displayName": "销售税"
+										},
+										"GSTONIMPORTS": {
+											"displayName": "进口销售税"
+										}
+									}
+								},
+								"taxAmount": {
+									"displayName": "税额",
+									"description": "税额根据税率自动按行金额的百分比计算"
+								},
+								"lineAmount": {
+									"displayName": "行金额",
+									"description": "如果使用了折扣率，行金额将反映折扣后的价格"
+								},
+								"discountRate": {
+									"displayName": "折扣率",
+									"description": "应用于行项目的百分比折扣或折扣金额。仅支持Xero中的ACCREC发票 - ACCPAY发票和贷项凭证不支持折扣。"
+								}
+							}
+						},
+						"lineItemsUi": {
+							"displayName": "行项目",
+							"placeholder": "添加行项目"
+						}
+					}
+				},
+				"plannedPaymentDate": {
+					"displayName": "计划付款日期",
+					"description": "设置后将在账单（应付账款）中显示"
+				},
+				"reference": {
+					"displayName": "参考",
+					"description": "仅限应收账款 - 附加参考编号（最大长度 = 255）"
+				},
+				"sendToContact": {
+					"displayName": "发送给联系人",
+					"description": "是否应在Xero应用中标记发票为“已发送”。此设置仅适用于已批准的发票。"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"DRAFT": {
+							"displayName": "草稿"
+						},
+						"SUBMITTED": {
+							"displayName": "已提交"
+						},
+						"AUTHORISED": {
+							"displayName": "已授权"
+						}
+					}
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "源文档的URL链接 - 在Xero应用中显示为“前往[appName]”"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "发票类型",
+			"options": {
+				"ACCPAY": {
+					"displayName": "账单",
+					"description": "应付账款或供应商发票"
+				},
+				"ACCREC": {
+					"displayName": "销售发票",
+					"description": "应收账款或客户发票"
+				}
+			}
+		},
+		"lineItemsUi": {
+			"displayName": "行项目",
+			"description": "行项目数据",
+			"placeholder": "添加行项目",
+			"multipleValueButtonText": "添加行项目",
+			"options": {
+				"lineItemsValues": {
+					"displayName": "行项目",
+					"options": {
+						"description": {
+							"displayName": "描述",
+							"description": "仅包含描述的行项目"
+						},
+						"quantity": {
+							"displayName": "数量",
+							"description": "行项目数量"
+						},
+						"unitAmount": {
+							"displayName": "单位金额",
+							"description": "行项目单位金额。默认情况下，单位金额将四舍五入到两位小数。"
+						},
+						"itemCode": {
+							"displayName": "项目代码名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"accountCode": {
+							"displayName": "账户代码名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"taxType": {
+							"displayName": "税种类型",
+							"options": {
+								"INPUT": {
+									"displayName": "采购税"
+								},
+								"NONE": {
+									"displayName": "免税"
+								},
+								"OUTPUT": {
+									"displayName": "销售税"
+								},
+								"GSTONIMPORTS": {
+									"displayName": "进口销售税"
+								}
+							}
+						},
+						"taxAmount": {
+							"displayName": "税额",
+							"description": "税额根据税率自动按行金额的百分比计算"
+						},
+						"lineAmount": {
+							"displayName": "行金额",
+							"description": "如果使用了折扣率，行金额将反映折扣后的价格"
+						},
+						"discountRate": {
+							"displayName": "折扣率",
+							"description": "应用于行项目的百分比折扣或折扣金额。仅支持Xero中的ACCREC发票 - ACCPAY发票和贷项凭证不支持折扣。"
+						}
+					}
+				}
+			},
+			"values": {
+				"lineItemsValues": {
+					"displayName": "行项目",
+					"options": {
+						"description": {
+							"displayName": "描述",
+							"description": "仅包含描述的行项目"
+						},
+						"quantity": {
+							"displayName": "数量",
+							"description": "行项目数量"
+						},
+						"unitAmount": {
+							"displayName": "单位金额",
+							"description": "行项目单位金额。默认情况下，单位金额将四舍五入到两位小数。"
+						},
+						"itemCode": {
+							"displayName": "项目代码名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"accountCode": {
+							"displayName": "账户代码名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"taxType": {
+							"displayName": "税种类型",
+							"options": {
+								"INPUT": {
+									"displayName": "采购税"
+								},
+								"NONE": {
+									"displayName": "免税"
+								},
+								"OUTPUT": {
+									"displayName": "销售税"
+								},
+								"GSTONIMPORTS": {
+									"displayName": "进口销售税"
+								}
+							}
+						},
+						"taxAmount": {
+							"displayName": "税额",
+							"description": "税额根据税率自动按行金额的百分比计算"
+						},
+						"lineAmount": {
+							"displayName": "行金额",
+							"description": "如果使用了折扣率，行金额将反映折扣后的价格"
+						},
+						"discountRate": {
+							"displayName": "折扣率",
+							"description": "应用于行项目的百分比折扣或折扣金额。仅支持Xero中的ACCREC发票 - ACCPAY发票和贷项凭证不支持折扣。"
+						}
+					}
+				},
+				"lineItemsUi": {
+					"displayName": "行项目",
+					"placeholder": "添加行项目"
+				}
+			}
+		},
+		"invoiceId": {
+			"displayName": "发票ID"
+		}
+	}
+}

@@ -1,0 +1,43 @@
+{
+	"header": {
+		"displayName": "AMQP 发送器",
+		"description": "通过 AMQP 1.0 发送原始消息，每个项目执行一次"
+	},
+	"nodeView": {
+		"sink": {
+			"displayName": "队列 / 主题",
+			"description": "要发布到的队列或主题名称",
+			"placeholder": "例如：topic://sourcename.something"
+		},
+		"headerParametersJson": {
+			"displayName": "标头",
+			"description": "标头参数（扁平对象）。作为application_properties在amqp消息元信息中发送。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"containerId": {
+					"displayName": "容器ID",
+					"description": "将作为container_id传递给RHEA后端"
+				},
+				"dataAsObject": {
+					"displayName": "数据作为对象",
+					"description": "是否将数据作为对象发送"
+				},
+				"reconnect": {
+					"displayName": "重新连接",
+					"description": "断开时是否自动重新连接"
+				},
+				"reconnectLimit": {
+					"displayName": "重连限制",
+					"description": "最大重连尝试次数"
+				},
+				"sendOnlyProperty": {
+					"displayName": "发送属性",
+					"description": "唯一要发送的属性。如果为空，将发送整个数据项。"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,122 @@
+{
+	"header": {
+		"displayName": "Execute Workflow Trigger",
+		"description": "Helpers for calling other n8n workflows. Used for designing modular, microservice-like workflows."
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events"
+		},
+		"notice": {
+			"displayName": "When an ‘execute workflow’ node calls this workflow, the execution starts here. Any data passed into the 'execute workflow' node will be output by this node."
+		},
+		"outdatedVersionWarning": {
+			"displayName": "This node is out of date. Please upgrade by removing it and adding a new one"
+		},
+		"inputSource": {
+			"displayName": "Input data mode",
+			"options": {
+				"workflowInputs": {
+					"displayName": "Define using fields below",
+					"description": "Provide input fields via UI"
+				},
+				"jsonExample": {
+					"displayName": "Define using JSON example",
+					"description": "Generate a schema from an example JSON object"
+				},
+				"passthrough": {
+					"displayName": "Accept all data",
+					"description": "Use all incoming data from the parent workflow"
+				}
+			}
+		},
+		"jsonExample_notice": {
+			"displayName": "Provide an example object to infer fields and their types.<br>To allow any type for a given field, set the value to null."
+		},
+		"jsonExample": {
+			"displayName": "JSON Example"
+		},
+		"workflowInputs": {
+			"displayName": "Workflow Input Schema",
+			"description": "Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.",
+			"placeholder": "Add field",
+			"multipleValueButtonText": "Add field",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name",
+							"description": "A unique name for this workflow input, used to reference it from another workflows",
+							"placeholder": "e.g. fieldName"
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "Expected data type for this input value. Determines how this field's values are stored, validated, and displayed.",
+							"options": {
+								"any": {
+									"displayName": "Allow Any Type"
+								},
+								"string": {
+									"displayName": "String"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"boolean": {
+									"displayName": "Boolean"
+								},
+								"array": {
+									"displayName": "Array"
+								},
+								"object": {
+									"displayName": "Object"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name",
+							"description": "A unique name for this workflow input, used to reference it from another workflows",
+							"placeholder": "e.g. fieldName"
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "Expected data type for this input value. Determines how this field's values are stored, validated, and displayed.",
+							"options": {
+								"any": {
+									"displayName": "Allow Any Type"
+								},
+								"string": {
+									"displayName": "String"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"boolean": {
+									"displayName": "Boolean"
+								},
+								"array": {
+									"displayName": "Array"
+								},
+								"object": {
+									"displayName": "Object"
+								}
+							}
+						}
+					}
+				},
+				"workflowInputs": {
+					"displayName": "Workflow Input Schema",
+					"placeholder": "Add field"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,74 @@
+{
+	"header": {
+		"displayName": "Onfleet触发器",
+		"description": "当Onfleet事件发生时启动工作流"
+	},
+	"nodeView": {
+		"triggerOn": {
+			"displayName": "触发于",
+			"options": {
+				"SMSRecipientOptOut": {
+					"displayName": "短信接收者退订"
+				},
+				"smsRecipientResponseMissed": {
+					"displayName": "短信接收方响应未收到"
+				},
+				"taskArrival": {
+					"displayName": "任务到达"
+				},
+				"taskAssigned": {
+					"displayName": "任务已分配"
+				},
+				"taskCloned": {
+					"displayName": "任务已克隆"
+				},
+				"taskCompleted": {
+					"displayName": "任务完成"
+				},
+				"taskCreated": {
+					"displayName": "任务已创建"
+				},
+				"taskDelayed": {
+					"displayName": "任务已延迟"
+				},
+				"taskDeleted": {
+					"displayName": "任务已删除"
+				},
+				"taskEta": {
+					"displayName": "任务预计完成时间"
+				},
+				"taskFailed": {
+					"displayName": "任务失败"
+				},
+				"taskStarted": {
+					"displayName": "任务已开始"
+				},
+				"taskUnassigned": {
+					"displayName": "任务未分配"
+				},
+				"taskUpdated": {
+					"displayName": "任务已更新"
+				},
+				"workerCreated": {
+					"displayName": "工作线程已创建"
+				},
+				"workerDeleted": {
+					"displayName": "工作节点已删除"
+				},
+				"workerDuty": {
+					"displayName": "工作节点职责"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "用于识别的Webhook名称"
+				}
+			}
+		}
+	}
+}

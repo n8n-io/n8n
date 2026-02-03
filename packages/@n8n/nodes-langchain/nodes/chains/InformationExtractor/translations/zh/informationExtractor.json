@@ -1,0 +1,116 @@
+{
+	"header": {
+		"displayName": "信息提取器",
+		"description": "从文本中提取结构化格式的信息"
+	},
+	"nodeView": {
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "要从中提取信息的文本"
+		},
+		"schemaType": {
+			"displayName": "Schema类型",
+			"description": "如何指定期望输出的模式",
+			"options": {
+				"fromAttributes": {
+					"displayName": "从属性描述中",
+					"description": "根据类型和描述从文本中提取特定属性"
+				},
+				"fromJson": {
+					"displayName": "从JSON示例生成",
+					"description": "从示例JSON对象生成模式"
+				},
+				"manual": {
+					"displayName": "使用JSON Schema定义",
+					"description": "手动定义JSON模式"
+				}
+			}
+		},
+		"jsonSchemaExample": {
+			"displayName": "JSON示例",
+			"description": "用于生成模式的示例JSON对象"
+		},
+		"notice": {
+			"displayName": "All properties will be required. To make them optional, use the 'JSON Schema' schema type instead"
+		},
+		"inputSchema": {
+			"displayName": "输入模式",
+			"description": "函数使用的模式"
+		},
+		"attributes": {
+			"displayName": "属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"attributes": {
+					"displayName": "属性列表",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "要提取的属性",
+							"placeholder": "例如：company_name"
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "属性的数据类型",
+							"options": {
+								"boolean": {
+									"displayName": "布尔值"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"string": {
+									"displayName": "字符串"
+								}
+							}
+						},
+						"description": {
+							"displayName": "描述",
+							"description": "描述您的属性",
+							"placeholder": "为此属性添加描述"
+						},
+						"required": {
+							"displayName": "必填",
+							"description": "属性是否必填"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributes": {
+					"displayName": "属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"systemPromptTemplate": {
+					"displayName": "系统提示词模板",
+					"description": "直接用作系统提示词的字符串"
+				},
+				"batching": {
+					"displayName": "批量处理",
+					"description": "用于速率限制的批量处理选项",
+					"placeholder": "添加批量处理选项",
+					"options": {
+						"batchSize": {
+							"displayName": "批次大小",
+							"description": "并行处理的项目数量。这对速率限制很有用，但可能会影响日志输出顺序。"
+						},
+						"delayBetweenBatches": {
+							"displayName": "批次间延迟",
+							"description": "批次之间的延迟时间（毫秒）。适用于速率限制场景。"
+						}
+					}
+				}
+			}
+		}
+	}
+}

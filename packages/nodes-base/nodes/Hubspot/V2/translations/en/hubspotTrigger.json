@@ -1,0 +1,202 @@
+{
+	"header": {
+		"displayName": "HubSpot Trigger",
+		"description": "Starts the workflow when HubSpot events occur"
+	},
+	"nodeView": {
+		"eventsUi": {
+			"displayName": "Events",
+			"placeholder": "Add Event",
+			"multipleValueButtonText": "Add Event",
+			"options": {
+				"eventValues": {
+					"displayName": "Event",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"options": {
+								"company.creation": {
+									"displayName": "Company Created",
+									"description": "To get notified if any company is created in a customer's account"
+								},
+								"company.deletion": {
+									"displayName": "Company Deleted",
+									"description": "To get notified if any company is deleted in a customer's account"
+								},
+								"company.propertyChange": {
+									"displayName": "Company Property Changed",
+									"description": "To get notified if a specified property is changed for any company in a customer's account"
+								},
+								"contact.creation": {
+									"displayName": "Contact Created",
+									"description": "To get notified if any contact is created in a customer's account"
+								},
+								"contact.deletion": {
+									"displayName": "Contact Deleted",
+									"description": "To get notified if any contact is deleted in a customer's account"
+								},
+								"contact.privacyDeletion": {
+									"displayName": "Contact Privacy Deleted",
+									"description": "To get notified if a contact is deleted for privacy compliance reasons"
+								},
+								"contact.propertyChange": {
+									"displayName": "Contact Property Changed",
+									"description": "To get notified if a specified property is changed for any contact in a customer's account"
+								},
+								"conversation.creation": {
+									"displayName": "Conversation Creation",
+									"description": "To get notified if a new thread is created in an account"
+								},
+								"conversation.deletion": {
+									"displayName": "Conversation Deletion",
+									"description": "To get notified if a thread is archived or soft-deleted in an account"
+								},
+								"conversation.newMessage": {
+									"displayName": "Conversation New Message",
+									"description": "To get notified if a new message on a thread has been received"
+								},
+								"conversation.privacyDeletion": {
+									"displayName": "Conversation Privacy Deletion",
+									"description": "To get notified if a thread is permanently deleted in an account"
+								},
+								"conversation.propertyChange": {
+									"displayName": "Conversation Property Change",
+									"description": "To get notified if a property on a thread has been changed"
+								},
+								"deal.creation": {
+									"displayName": "Deal Created",
+									"description": "To get notified if any deal is created in a customer's account"
+								},
+								"deal.deletion": {
+									"displayName": "Deal Deleted",
+									"description": "To get notified if any deal is deleted in a customer's account"
+								},
+								"deal.propertyChange": {
+									"displayName": "Deal Property Changed",
+									"description": "To get notified if a specified property is changed for any deal in a customer's account"
+								},
+								"ticket.creation": {
+									"displayName": "Ticket Created",
+									"description": "To get notified if a ticket is created in a customer's account"
+								},
+								"ticket.deletion": {
+									"displayName": "Ticket Deleted",
+									"description": "To get notified if any ticket is deleted in a customer's account"
+								},
+								"ticket.propertyChange": {
+									"displayName": "Ticket Property Changed",
+									"description": "To get notified if a specified property is changed for any ticket in a customer's account"
+								}
+							}
+						},
+						"property": {
+							"displayName": "Property Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				}
+			},
+			"values": {
+				"eventValues": {
+					"displayName": "Event",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"options": {
+								"company.creation": {
+									"displayName": "Company Created",
+									"description": "To get notified if any company is created in a customer's account"
+								},
+								"company.deletion": {
+									"displayName": "Company Deleted",
+									"description": "To get notified if any company is deleted in a customer's account"
+								},
+								"company.propertyChange": {
+									"displayName": "Company Property Changed",
+									"description": "To get notified if a specified property is changed for any company in a customer's account"
+								},
+								"contact.creation": {
+									"displayName": "Contact Created",
+									"description": "To get notified if any contact is created in a customer's account"
+								},
+								"contact.deletion": {
+									"displayName": "Contact Deleted",
+									"description": "To get notified if any contact is deleted in a customer's account"
+								},
+								"contact.privacyDeletion": {
+									"displayName": "Contact Privacy Deleted",
+									"description": "To get notified if a contact is deleted for privacy compliance reasons"
+								},
+								"contact.propertyChange": {
+									"displayName": "Contact Property Changed",
+									"description": "To get notified if a specified property is changed for any contact in a customer's account"
+								},
+								"conversation.creation": {
+									"displayName": "Conversation Creation",
+									"description": "To get notified if a new thread is created in an account"
+								},
+								"conversation.deletion": {
+									"displayName": "Conversation Deletion",
+									"description": "To get notified if a thread is archived or soft-deleted in an account"
+								},
+								"conversation.newMessage": {
+									"displayName": "Conversation New Message",
+									"description": "To get notified if a new message on a thread has been received"
+								},
+								"conversation.privacyDeletion": {
+									"displayName": "Conversation Privacy Deletion",
+									"description": "To get notified if a thread is permanently deleted in an account"
+								},
+								"conversation.propertyChange": {
+									"displayName": "Conversation Property Change",
+									"description": "To get notified if a property on a thread has been changed"
+								},
+								"deal.creation": {
+									"displayName": "Deal Created",
+									"description": "To get notified if any deal is created in a customer's account"
+								},
+								"deal.deletion": {
+									"displayName": "Deal Deleted",
+									"description": "To get notified if any deal is deleted in a customer's account"
+								},
+								"deal.propertyChange": {
+									"displayName": "Deal Property Changed",
+									"description": "To get notified if a specified property is changed for any deal in a customer's account"
+								},
+								"ticket.creation": {
+									"displayName": "Ticket Created",
+									"description": "To get notified if a ticket is created in a customer's account"
+								},
+								"ticket.deletion": {
+									"displayName": "Ticket Deleted",
+									"description": "To get notified if any ticket is deleted in a customer's account"
+								},
+								"ticket.propertyChange": {
+									"displayName": "Ticket Property Changed",
+									"description": "To get notified if a specified property is changed for any ticket in a customer's account"
+								}
+							}
+						},
+						"property": {
+							"displayName": "Property Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						}
+					}
+				},
+				"eventsUi": {
+					"displayName": "Events",
+					"placeholder": "Add Event"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"maxConcurrentRequests": {
+					"displayName": "Max Concurrent Requests"
+				}
+			}
+		}
+	}
+}

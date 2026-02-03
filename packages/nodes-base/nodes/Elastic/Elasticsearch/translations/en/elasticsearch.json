@@ -1,0 +1,369 @@
+{
+	"header": {
+		"displayName": "Elasticsearch",
+		"description": "Consume the Elasticsearch API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"document": {
+					"displayName": "Document"
+				},
+				"index": {
+					"displayName": "Index"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a document"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a document"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a document"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many documents"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a document"
+				}
+			}
+		},
+		"indexId": {
+			"displayName": "Index ID",
+			"description": "ID of the index to retrieve"
+		},
+		"documentId": {
+			"displayName": "Document ID",
+			"description": "ID of the document to update"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"bulkOperation": {
+					"displayName": "Bulk Update",
+					"description": "Whether to use the bulk operation to update the document/s"
+				},
+				"_source_excludes": {
+					"displayName": "Source Excludes",
+					"description": "Comma-separated list of source fields to exclude from the response"
+				},
+				"_source_includes": {
+					"displayName": "Source Includes",
+					"description": "Comma-separated list of source fields to include in the response"
+				},
+				"stored_fields": {
+					"displayName": "Stored Fields",
+					"description": "Whether to retrieve the document fields stored in the index rather than the document <code>_source</code>. Defaults to false."
+				},
+				"allow_no_indices": {
+					"displayName": "Allow No Indices",
+					"description": "If false, return an error if any of the following targets only missing/closed indices: wildcard expression, index alias, or <code>_all</code> value. Defaults to true."
+				},
+				"allow_partial_search_results": {
+					"displayName": "Allow Partial Search Results",
+					"description": "<p>If true, return partial results if there are shard request timeouts or shard failures.</p><p>If false, returns an error with no partial results. Defaults to true.</p>."
+				},
+				"batched_reduce_size": {
+					"displayName": "Batched Reduce Size",
+					"description": "Number of shard results that should be reduced at once on the coordinating node. Defaults to 512."
+				},
+				"ccs_minimize_roundtrips": {
+					"displayName": "CCS Minimize Roundtrips",
+					"description": "Whether network round-trips between the coordinating node and the remote clusters are minimized when executing cross-cluster search (CCS) requests. Defaults to true."
+				},
+				"docvalue_fields": {
+					"displayName": "Doc Value Fields",
+					"description": "Comma-separated list of fields to return as the docvalue representation of a field for each hit"
+				},
+				"expand_wildcards": {
+					"displayName": "Expand Wildcards",
+					"description": "Type of index that wildcard expressions can match. Defaults to <code>open</code>",
+					"options": {
+						"all": {
+							"displayName": "All"
+						},
+						"closed": {
+							"displayName": "Closed"
+						},
+						"hidden": {
+							"displayName": "Hidden"
+						},
+						"none": {
+							"displayName": "None"
+						},
+						"open": {
+							"displayName": "Open"
+						}
+					}
+				},
+				"explain": {
+					"displayName": "Explain",
+					"description": "Whether to return detailed information about score computation as part of a hit. Defaults to false."
+				},
+				"ignore_throttled": {
+					"displayName": "Ignore Throttled",
+					"description": "Whether concrete, expanded or aliased indices are ignored when frozen. Defaults to true."
+				},
+				"ignore_unavailable": {
+					"displayName": "Ignore Unavailable",
+					"description": "Whether missing or closed indices are not included in the response. Defaults to false."
+				},
+				"max_concurrent_shard_requests": {
+					"displayName": "Max Concurrent Shard Requests",
+					"description": "Define the number of shard requests per node this search executes concurrently. Defaults to 5."
+				},
+				"pre_filter_shard_size": {
+					"displayName": "Pre-Filter Shard Size",
+					"description": "Define a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting. Only used if the number of shards the search request expands to exceeds the threshold."
+				},
+				"query": {
+					"displayName": "Query",
+					"description": "Query in the <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html\">Elasticsearch Query DSL</a>",
+					"placeholder": "{\n  \"query\": {\n    \"term\": {\n      \"user.id\": \"john\"\n    }\n  }\n}"
+				},
+				"request_cache": {
+					"displayName": "Request Cache",
+					"description": "Whether the caching of search results is enabled for requests where size is 0. See <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-request-cache.html\">Elasticsearch shard request cache settings</a>."
+				},
+				"routing": {
+					"displayName": "Routing",
+					"description": "Target this primary shard"
+				},
+				"search_type": {
+					"displayName": "Search Type",
+					"description": "How distributed term frequencies are calculated for relevance scoring. Defaults to Query then Fetch.",
+					"options": {
+						"dfs_query_then_fetch": {
+							"displayName": "DFS Query Then Fetch"
+						},
+						"query_then_fetch": {
+							"displayName": "Query Then Fetch"
+						}
+					}
+				},
+				"seq_no_primary_term": {
+					"displayName": "Sequence Number and Primary Term",
+					"description": "Whether to return the sequence number and primary term of the last modification of each hit. See <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/optimistic-concurrency-control.html\">Optimistic concurrency control</a>."
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "Comma-separated list of <code>field:direction</code> pairs"
+				},
+				"stats": {
+					"displayName": "Stats",
+					"description": "Tag of the request for logging and statistical purposes"
+				},
+				"terminate_after": {
+					"displayName": "Terminate After",
+					"description": "Max number of documents to collect for each shard"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Period to wait for active shards. Defaults to <code>1m</code> (one minute). See the <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units\">Elasticsearch time units reference</a>"
+				},
+				"track_scores": {
+					"displayName": "Track Scores",
+					"description": "Whether to calculate and return document scores, even if the scores are not used for sorting. Defaults to false."
+				},
+				"track_total_hits": {
+					"displayName": "Track Total Hits",
+					"description": "Number of hits matching the query to count accurately. Defaults to 10000."
+				},
+				"version": {
+					"displayName": "Version",
+					"description": "Whether to return document version as part of a hit. Defaults to false."
+				},
+				"pipeline": {
+					"displayName": "Pipeline ID",
+					"description": "ID of the pipeline to use to preprocess incoming documents"
+				},
+				"refresh": {
+					"displayName": "Refresh",
+					"description": "If true, Elasticsearch refreshes the affected shards to make this operation visible to search,if wait_for then wait for a refresh to make this operation visible to search,if false do nothing with refreshes",
+					"options": {
+						"true": {
+							"displayName": "True",
+							"description": "Refreshes the affected shards to make this operation visible to search"
+						},
+						"wait_for": {
+							"displayName": "Wait For",
+							"description": "Wait for a refresh to make this operation visible"
+						},
+						"false": {
+							"displayName": "False",
+							"description": "Do nothing with refreshes"
+						}
+					}
+				}
+			}
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"paginateNotice": {
+			"displayName": "By default, you cannot page through more than 10,000 hits. To page through more hits, add \"Sort\" from options."
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"dataToSend": {
+			"displayName": "Data to Send",
+			"description": "Whether to insert the input data this node receives in the new row",
+			"options": {
+				"defineBelow": {
+					"displayName": "Define Below for Each Column",
+					"description": "Set the value for each destination column"
+				},
+				"autoMapInputData": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties match destination column names"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "Inputs to Ignore",
+			"description": "List of input properties to avoid sending, separated by commas. Leave empty to send all properties.",
+			"placeholder": "Enter properties..."
+		},
+		"fieldsUi": {
+			"displayName": "Fields to Send",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field to Send",
+			"options": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "Fields to Send",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"documentId": {
+					"displayName": "Document ID",
+					"description": "ID of the document to create and add to the index"
+				},
+				"routing": {
+					"displayName": "Routing",
+					"description": "Target this primary shard"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Period to wait for a response. If no response is received before the timeout expires, the request fails and returns an error. Defaults to <code>30s</code>. See the <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units\">Elasticsearch time units reference</a>"
+				},
+				"aliases": {
+					"displayName": "Aliases",
+					"description": "Index aliases which include the index, as an <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html\">alias object</a>",
+					"placeholder": "{\n  \"aliases\": {\n    \"alias_1\": {},\n    \"alias_2\": {\n      \"filter\": {\n        \"term\": { \"user.id\": \"kimchy\" }\n      },\n      \"routing\": \"shard-1\"\n    }\n  }\n}"
+				},
+				"include_type_name": {
+					"displayName": "Include Type Name",
+					"description": "Whether a mapping type is expected in the body of mappings. Defaults to false."
+				},
+				"mappings": {
+					"displayName": "Mappings",
+					"description": "Mapping for fields in the index, as <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html\">mapping object</a>",
+					"placeholder": "{\n  \"mappings\": {\n    \"properties\": {\n      \"field1\": { \"type\": \"text\" }\n    }\n  }\n}"
+				},
+				"master_timeout": {
+					"displayName": "Master Timeout",
+					"description": "Period to wait for a connection to the master node. If no response is received before the timeout expires, the request fails and returns an error. Defaults to <code>1m</code>. See the <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units\">Elasticsearch time units reference</a>"
+				},
+				"settings": {
+					"displayName": "Settings",
+					"description": "Configuration options for the index, as an <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-modules-settings\">index settings object</a>",
+					"placeholder": "{\n  \"settings\": {\n    \"index\": {\n      \"number_of_shards\": 3,\n      \"number_of_replicas\": 2\n    }\n  }\n}"
+				},
+				"wait_for_active_shards": {
+					"displayName": "Wait for Active Shards",
+					"description": "The number of shard copies that must be active before proceeding with the operation. Set to <code>all</code> or any positive integer up to the total number of shards in the index. Default: 1, the primary shard"
+				},
+				"allow_no_indices": {
+					"displayName": "Allow No Indices",
+					"description": "If false, return an error if any of the following targets only missing/closed indices: wildcard expression, index alias, or <code>_all</code> value. Defaults to true."
+				},
+				"expand_wildcards": {
+					"displayName": "Expand Wildcards",
+					"description": "Type of index that wildcard expressions can match. Defaults to <code>open</code>",
+					"options": {
+						"all": {
+							"displayName": "All"
+						},
+						"closed": {
+							"displayName": "Closed"
+						},
+						"hidden": {
+							"displayName": "Hidden"
+						},
+						"none": {
+							"displayName": "None"
+						},
+						"open": {
+							"displayName": "Open"
+						}
+					}
+				},
+				"flat_settings": {
+					"displayName": "Flat Settings",
+					"description": "Whether to return settings in flat format. Defaults to false."
+				},
+				"ignore_unavailable": {
+					"displayName": "Ignore Unavailable",
+					"description": "Whether to request that target a missing index return an error. Defaults to false."
+				},
+				"include_defaults": {
+					"displayName": "Include Defaults",
+					"description": "Whether to return all default settings in the response. Defaults to false."
+				},
+				"local": {
+					"displayName": "Local",
+					"description": "Whether to retrieve information from the local node only. Defaults to false."
+				}
+			}
+		}
+	}
+}

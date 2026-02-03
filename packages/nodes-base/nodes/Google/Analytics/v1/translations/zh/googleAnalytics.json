@@ -1,0 +1,334 @@
+{
+	"header": {
+		"displayName": "Google Analytics",
+		"description": "使用Google Analytics API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"report": {
+					"displayName": "报告"
+				},
+				"userActivity": {
+					"displayName": "用户活动"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "返回分析数据"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "返回用户活动数据"
+				}
+			}
+		},
+		"viewId": {
+			"displayName": "视图名称或ID",
+			"description": "Google Analytics的视图ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "123456"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"dateRangesUi": {
+					"displayName": "日期范围",
+					"description": "请求中的日期范围",
+					"placeholder": "添加日期范围",
+					"options": {
+						"dateRanges": {
+							"displayName": "日期范围",
+							"options": {
+								"startDate": {
+									"displayName": "开始日期"
+								},
+								"endDate": {
+									"displayName": "结束日期"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRanges": {
+							"displayName": "日期范围",
+							"options": {
+								"startDate": {
+									"displayName": "开始日期"
+								},
+								"endDate": {
+									"displayName": "结束日期"
+								}
+							}
+						},
+						"dateRangesUi": {
+							"displayName": "日期范围",
+							"placeholder": "添加日期范围"
+						}
+					}
+				},
+				"dimensionUi": {
+					"displayName": "维度",
+					"description": "维度是数据的属性。例如，维度 ga:city 表示会话来源的城市，如“巴黎”或“纽约”。",
+					"placeholder": "添加维度",
+					"multipleValueButtonText": "添加维度",
+					"options": {
+						"dimensionValues": {
+							"displayName": "维度",
+							"options": {
+								"name": {
+									"displayName": "名称或ID",
+									"description": "要获取的维度名称，例如 ga:browser。从列表中选择，或使用 <a href=\"https://docs.n8n.io/code/expressions/\">表达式</a> 指定 ID。"
+								}
+							}
+						}
+					},
+					"values": {
+						"dimensionValues": {
+							"displayName": "维度",
+							"options": {
+								"name": {
+									"displayName": "名称或ID",
+									"description": "要获取的维度名称，例如 ga:browser。从列表中选择，或使用 <a href=\"https://docs.n8n.io/code/expressions/\">表达式</a> 指定 ID。"
+								}
+							}
+						},
+						"dimensionUi": {
+							"displayName": "维度",
+							"placeholder": "添加维度"
+						}
+					}
+				},
+				"dimensionFiltersUi": {
+					"displayName": "维度筛选器",
+					"description": "请求中的维度筛选器",
+					"placeholder": "添加维度筛选器",
+					"multipleValueButtonText": "添加维度筛选器",
+					"options": {
+						"filterValues": {
+							"displayName": "筛选器",
+							"options": {
+								"dimensionName": {
+									"displayName": "维度名称或ID",
+									"description": "要筛选的维度名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"operator": {
+									"displayName": "操作员",
+									"description": "与值组合使用的运算符",
+									"options": {
+										"BEGINS_WITH": {
+											"displayName": "以...开始"
+										},
+										"ENDS_WITH": {
+											"displayName": "以...结尾"
+										},
+										"NUMERIC_EQUAL": {
+											"displayName": "等于（数字）"
+										},
+										"EXACT": {
+											"displayName": "精确"
+										},
+										"NUMERIC_GREATER_THAN": {
+											"displayName": "大于（数字）"
+										},
+										"NUMERIC_LESS_THAN": {
+											"displayName": "小于（数字）"
+										},
+										"PARTIAL": {
+											"displayName": "部分"
+										},
+										"REGEXP": {
+											"displayName": "正则表达式"
+										}
+									}
+								},
+								"expressions": {
+									"displayName": "值",
+									"description": "用于匹配的字符串或<a href=\"https://support.google.com/analytics/answer/1034324?hl=zh_CN\">正则表达式</a>",
+									"placeholder": "ga:新用户数"
+								}
+							}
+						}
+					},
+					"values": {
+						"filterValues": {
+							"displayName": "筛选器",
+							"options": {
+								"dimensionName": {
+									"displayName": "维度名称或ID",
+									"description": "要筛选的维度名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"operator": {
+									"displayName": "操作员",
+									"description": "与值组合使用的运算符",
+									"options": {
+										"BEGINS_WITH": {
+											"displayName": "以...开始"
+										},
+										"ENDS_WITH": {
+											"displayName": "以...结尾"
+										},
+										"NUMERIC_EQUAL": {
+											"displayName": "等于（数字）"
+										},
+										"EXACT": {
+											"displayName": "精确"
+										},
+										"NUMERIC_GREATER_THAN": {
+											"displayName": "大于（数字）"
+										},
+										"NUMERIC_LESS_THAN": {
+											"displayName": "小于（数字）"
+										},
+										"PARTIAL": {
+											"displayName": "部分"
+										},
+										"REGEXP": {
+											"displayName": "正则表达式"
+										}
+									}
+								},
+								"expressions": {
+									"displayName": "值",
+									"description": "用于匹配的字符串或<a href=\"https://support.google.com/analytics/answer/1034324?hl=zh_CN\">正则表达式</a>",
+									"placeholder": "ga:新用户数"
+								}
+							}
+						},
+						"dimensionFiltersUi": {
+							"displayName": "维度筛选器",
+							"placeholder": "添加维度筛选器"
+						}
+					}
+				},
+				"hideTotals": {
+					"displayName": "隐藏总计",
+					"description": "是否针对每个日期范围，隐藏所有匹配行的所有指标总计"
+				},
+				"hideValueRanges": {
+					"displayName": "隐藏数值范围",
+					"description": "是否隐藏所有匹配行的最小值和最大值"
+				},
+				"includeEmptyRows": {
+					"displayName": "包含空行",
+					"description": "当所有检索指标都为零时是否排除该行"
+				},
+				"metricsUi": {
+					"displayName": "指标",
+					"description": "请求中的指标",
+					"placeholder": "添加指标",
+					"multipleValueButtonText": "添加指标",
+					"options": {
+						"metricValues": {
+							"displayName": "指标",
+							"options": {
+								"alias": {
+									"displayName": "别名",
+									"description": "指标表达式的别名是该表达式的替代名称。别名可用于筛选和排序。"
+								},
+								"expression": {
+									"displayName": "表达式",
+									"description": "<p>请求中的指标表达式。表达式由一个或多个指标和数字构成。</p><p>接受的运算符包括：加号 (+)、减号 (-)、取负 (一元 -)、除以 (/)、乘以 (*)、括号、正基数 (0-9)，可包含小数且长度限制为1024个字符。</p><p>示例 ga:totalRefunds/ga:users，在大多数情况下指标表达式仅为单个指标名称，如 ga:users。</p><p>混合使用 MetricType（例如 CURRENCY + PERCENTAGE）指标将导致意外结果。</p>"
+								},
+								"formattingType": {
+									"displayName": "格式化类型",
+									"description": "指定指标表达式的格式化方式",
+									"options": {
+										"CURRENCY": {
+											"displayName": "货币"
+										},
+										"FLOAT": {
+											"displayName": "浮点数"
+										},
+										"INTEGER": {
+											"displayName": "整数"
+										},
+										"PERCENT": {
+											"displayName": "百分比"
+										},
+										"TIME": {
+											"displayName": "时间"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"metricValues": {
+							"displayName": "指标",
+							"options": {
+								"alias": {
+									"displayName": "别名",
+									"description": "指标表达式的别名是该表达式的替代名称。别名可用于筛选和排序。"
+								},
+								"expression": {
+									"displayName": "表达式",
+									"description": "<p>请求中的指标表达式。表达式由一个或多个指标和数字构成。</p><p>接受的运算符包括：加号 (+)、减号 (-)、取负 (一元 -)、除以 (/)、乘以 (*)、括号、正基数 (0-9)，可包含小数且长度限制为1024个字符。</p><p>示例 ga:totalRefunds/ga:users，在大多数情况下指标表达式仅为单个指标名称，如 ga:users。</p><p>混合使用 MetricType（例如 CURRENCY + PERCENTAGE）指标将导致意外结果。</p>"
+								},
+								"formattingType": {
+									"displayName": "格式化类型",
+									"description": "指定指标表达式的格式化方式",
+									"options": {
+										"CURRENCY": {
+											"displayName": "货币"
+										},
+										"FLOAT": {
+											"displayName": "浮点数"
+										},
+										"INTEGER": {
+											"displayName": "整数"
+										},
+										"PERCENT": {
+											"displayName": "百分比"
+										},
+										"TIME": {
+											"displayName": "时间"
+										}
+									}
+								}
+							}
+						},
+						"metricsUi": {
+							"displayName": "指标",
+							"placeholder": "添加指标"
+						}
+					}
+				},
+				"useResourceQuotas": {
+					"displayName": "使用资源配额",
+					"description": "是否启用基于资源的配额"
+				},
+				"activityTypes": {
+					"displayName": "活动类型",
+					"description": "请求的活动类型"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "用户ID",
+			"placeholder": "123456"
+		}
+	}
+}

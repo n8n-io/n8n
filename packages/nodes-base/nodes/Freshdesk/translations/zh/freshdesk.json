@@ -1,0 +1,591 @@
+{
+	"header": {
+		"displayName": "Freshdesk",
+		"description": "使用Freshdesk API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				},
+				"ticket": {
+					"displayName": "工单"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新联系人"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除联系人"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取联系人"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个联系人"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新联系人"
+				}
+			}
+		},
+		"requester": {
+			"displayName": "请求方标识",
+			"options": {
+				"email": {
+					"displayName": "电子邮件",
+					"description": "请求者的电子邮件地址。如果Freshdesk中不存在具有此电子邮件地址的联系人，将添加为新联系人。"
+				},
+				"facebookId": {
+					"displayName": "Facebook ID",
+					"description": "请求者的Facebook ID。如果不存在具有此facebook_id的联系人，则将创建新联系人。"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "请求者的电话号码。如果Freshdesk中不存在具有此电话号码的联系人，将添加为新联系人。如果设置了电话号码但未设置电子邮件地址，则姓名属性为必填项。"
+				},
+				"requesterId": {
+					"displayName": "请求者ID",
+					"description": "请求者的用户ID。对于现有联系人，可以传递requester_id来代替请求者的电子邮件。"
+				},
+				"twitterId": {
+					"displayName": "Twitter ID",
+					"description": "请求者的Twitter用户名。如果Freshdesk中不存在此用户名的联系人，将添加为新联系人。"
+				},
+				"uniqueExternalId": {
+					"displayName": "唯一外部ID",
+					"description": "请求者的外部ID。如果Freshdesk中不存在具有此外部ID的联系人，将添加为新联系人。"
+				}
+			}
+		},
+		"requesterIdentificationValue": {
+			"displayName": "值",
+			"description": "所选标识的值"
+		},
+		"status": {
+			"displayName": "状态",
+			"options": {
+				"closed": {
+					"displayName": "已关闭"
+				},
+				"open": {
+					"displayName": "打开"
+				},
+				"pending": {
+					"displayName": "待处理"
+				},
+				"resolved": {
+					"displayName": "已解析"
+				}
+			}
+		},
+		"priority": {
+			"displayName": "优先级",
+			"options": {
+				"low": {
+					"displayName": "低"
+				},
+				"medium": {
+					"displayName": "中等"
+				},
+				"high": {
+					"displayName": "高"
+				},
+				"urgent": {
+					"displayName": "紧急"
+				}
+			}
+		},
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "创建工单的渠道",
+			"options": {
+				"chat": {
+					"displayName": "聊天"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"feedbackWidget": {
+					"displayName": "反馈组件"
+				},
+				"mobileHelp": {
+					"displayName": "Mobihelp"
+				},
+				"OutboundEmail": {
+					"displayName": "外发邮件"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"portal": {
+					"displayName": "门户"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"agent": {
+					"displayName": "代理名称或ID",
+					"description": "工单被分配给的代理ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"ccEmails": {
+					"displayName": "抄送邮箱",
+					"description": "以逗号(,)分隔的、添加到传入工单邮件'抄送'字段中的邮箱地址"
+				},
+				"company": {
+					"displayName": "公司名称或ID",
+					"description": "请求者的公司ID。仅当启用多公司功能（Estate套餐及以上）时才能设置此属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "工单的HTML内容"
+				},
+				"dueBy": {
+					"displayName": "截止时间",
+					"description": "表示工单应被解决的时间戳"
+				},
+				"emailConfigId": {
+					"displayName": "邮件配置ID",
+					"description": "用于此工单的邮件配置ID（例如：support@yourcompany.com/sales@yourcompany.com）。如果提供了product_id但未提供email_config_id，则将设置产品的主要email_config_id。"
+				},
+				"frDueBy": {
+					"displayName": "首次响应截止时间",
+					"description": "表示首次响应截止时间的时间戳"
+				},
+				"group": {
+					"displayName": "组名或ID",
+					"description": "工单被分配到的组ID。默认值为与给定email_config_id关联的组ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "请求者姓名"
+				},
+				"product": {
+					"displayName": "产品名称或ID",
+					"description": "与工单关联的产品ID。如果在请求中设置了email_config_id属性，此字段将被忽略。请从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "工单主题"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "用逗号（,）分隔与工单关联的标签"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "帮助根据客服团队处理的不同问题类型对工单进行分类",
+					"options": {
+						"Feature Request": {
+							"displayName": "功能请求"
+						},
+						"Incident": {
+							"displayName": "事件"
+						},
+						"Problem": {
+							"displayName": "问题"
+						},
+						"Question": {
+							"displayName": "问题"
+						},
+						"Refund": {
+							"displayName": "退款"
+						}
+					}
+				},
+				"companyId": {
+					"displayName": "公司ID"
+				},
+				"include": {
+					"displayName": "包含"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "排序属性升序或降序",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"description": "按对象属性排序集合",
+					"options": {
+						"createdAt": {
+							"displayName": "创建时间"
+						},
+						"dueBy": {
+							"displayName": "截止时间"
+						},
+						"updatedAt": {
+							"displayName": "更新时间"
+						}
+					}
+				},
+				"requesterEmail": {
+					"displayName": "请求者邮箱"
+				},
+				"requesterId": {
+					"displayName": "请求者ID"
+				},
+				"updatedSince": {
+					"displayName": "更新于"
+				}
+			}
+		},
+		"ticketId": {
+			"displayName": "工单ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"agent": {
+					"displayName": "代理名称或ID",
+					"description": "工单被分配给的代理ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"ccEmails": {
+					"displayName": "抄送邮箱",
+					"description": "以逗号(,)分隔的、添加到传入工单邮件'抄送'字段中的邮箱地址"
+				},
+				"company": {
+					"displayName": "公司名称或ID",
+					"description": "请求者的公司ID。仅当启用多公司功能（Estate套餐及以上）时才能设置此属性。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"dueBy": {
+					"displayName": "截止时间",
+					"description": "表示工单应被解决的时间戳"
+				},
+				"emailConfigId": {
+					"displayName": "邮件配置ID",
+					"description": "用于此工单的邮件配置ID（例如：support@yourcompany.com/sales@yourcompany.com）。如果提供了product_id但未提供email_config_id，则将设置产品的主要email_config_id。"
+				},
+				"frDueBy": {
+					"displayName": "首次响应截止时间",
+					"description": "表示首次响应截止时间的时间戳"
+				},
+				"group": {
+					"displayName": "组名或ID",
+					"description": "工单被分配到的组ID。默认值为与给定email_config_id关联的组ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "请求者姓名"
+				},
+				"product": {
+					"displayName": "产品名称或ID",
+					"description": "与工单关联的产品ID。如果在请求中设置了email_config_id属性，此字段将被忽略。请从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"options": {
+						"low": {
+							"displayName": "低"
+						},
+						"medium": {
+							"displayName": "中等"
+						},
+						"high": {
+							"displayName": "高"
+						},
+						"urgent": {
+							"displayName": "紧急"
+						}
+					}
+				},
+				"requester": {
+					"displayName": "请求者识别",
+					"options": {
+						"email": {
+							"displayName": "电子邮件",
+							"description": "请求者的电子邮件地址。如果Freshdesk中不存在具有此电子邮件地址的联系人，将添加为新联系人。"
+						},
+						"facebookId": {
+							"displayName": "Facebook ID",
+							"description": "请求者的Facebook ID。如果不存在具有此facebook_id的联系人，则将创建新联系人。"
+						},
+						"phone": {
+							"displayName": "电话",
+							"description": "请求者的电话号码。如果Freshdesk中不存在具有此电话号码的联系人，将添加为新联系人。如果设置了电话号码但未设置电子邮件地址，则姓名属性为必填项。"
+						},
+						"requesterId": {
+							"displayName": "请求者ID",
+							"description": "请求者的用户ID。对于现有联系人，可以传递requester_id来代替请求者的电子邮件。"
+						},
+						"twitterId": {
+							"displayName": "Twitter ID",
+							"description": "请求者的Twitter用户名。如果Freshdesk中不存在此用户名的联系人，将添加为新联系人。"
+						},
+						"uniqueExternalId": {
+							"displayName": "唯一外部ID",
+							"description": "请求者的外部ID。如果Freshdesk中不存在具有此外部ID的联系人，将添加为新联系人。"
+						}
+					}
+				},
+				"requesterIdentificationValue": {
+					"displayName": "请求者值",
+					"description": "所选标识的值"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"resolved": {
+							"displayName": "已解析"
+						},
+						"closed": {
+							"displayName": "已关闭"
+						}
+					}
+				},
+				"source": {
+					"displayName": "源",
+					"description": "创建工单的渠道",
+					"options": {
+						"chat": {
+							"displayName": "聊天"
+						},
+						"email": {
+							"displayName": "电子邮件"
+						},
+						"feedbackWidget": {
+							"displayName": "反馈组件"
+						},
+						"mobileHelp": {
+							"displayName": "Mobihelp"
+						},
+						"OutboundEmail": {
+							"displayName": "外发邮件"
+						},
+						"phone": {
+							"displayName": "电话"
+						},
+						"portal": {
+							"displayName": "门户"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "用逗号（,）分隔与工单关联的标签"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "帮助根据客服团队处理的不同问题类型对工单进行分类",
+					"options": {
+						"Feature Request": {
+							"displayName": "功能请求"
+						},
+						"Incident": {
+							"displayName": "事件"
+						},
+						"Problem": {
+							"displayName": "问题"
+						},
+						"Question": {
+							"displayName": "问题"
+						},
+						"Refund": {
+							"displayName": "退款"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "联系人姓名"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "联系人的主要电子邮件地址。如需为此联系人关联其他电子邮件，请使用 other_emails 属性。",
+			"placeholder": "name@email.com"
+		},
+		"contactId": {
+			"displayName": "联系人ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"address": {
+					"displayName": "地址",
+					"description": "联系人的地址"
+				},
+				"company_id": {
+					"displayName": "公司ID",
+					"description": "此联系人所属主公司的ID"
+				},
+				"customFields": {
+					"displayName": "自定义字段",
+					"description": "包含自定义字段名称和值的键值对。自定义日期字段仅接受格式为YYYY-MM-DD的日期作为输入。",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customField": {
+							"displayName": "自定义字段",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "自定义字段名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customField": {
+							"displayName": "自定义字段",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "自定义字段名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段的值"
+								}
+							}
+						},
+						"customFields": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "联系人的简短描述"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "联系人的主要电子邮件地址。如需关联其他电子邮件，请使用 other_emails 属性。",
+					"placeholder": "name@email.com"
+				},
+				"job_title": {
+					"displayName": "职位名称",
+					"description": "联系人的职位"
+				},
+				"language": {
+					"displayName": "语言",
+					"description": "联系人的语言。默认语言为\"en\"。仅当启用多语言功能（Garden套餐及以上）时才能设置此属性。"
+				},
+				"mobile": {
+					"displayName": "移动端",
+					"description": "联系人的手机号码"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "联系人姓名"
+				},
+				"other_companies": {
+					"displayName": "其他公司",
+					"description": "与该联系人关联的其他公司。仅当启用多公司功能（Estate 套餐及以上）时才能设置此属性。",
+					"placeholder": "添加公司"
+				},
+				"other_emails": {
+					"displayName": "其他邮箱",
+					"description": "联系人关联的其他邮箱",
+					"placeholder": "添加邮箱"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "联系人的电话号码"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "与此联系人关联的标签"
+				},
+				"time_zone": {
+					"displayName": "时区",
+					"description": "联系人的时区。默认值为域的时区。仅当启用多时区功能（Garden 套餐及以上）时才能设置此属性。"
+				},
+				"twitter_id": {
+					"displayName": "Twitter ID",
+					"description": "联系人的Twitter用户名"
+				},
+				"unique_external_id": {
+					"displayName": "唯一外部ID",
+					"description": "联系人的外部ID"
+				},
+				"view_all_tickets": {
+					"displayName": "查看所有工单",
+					"description": "联系人是否可以查看与其所属公司关联的所有工单"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"company_id": {
+					"displayName": "公司ID"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"mobile": {
+					"displayName": "移动端"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"state": {
+					"displayName": "状态",
+					"options": {
+						"blocked": {
+							"displayName": "已阻止"
+						},
+						"deleted": {
+							"displayName": "已删除"
+						},
+						"unverified": {
+							"displayName": "未验证"
+						},
+						"verified": {
+							"displayName": "已验证"
+						}
+					}
+				},
+				"updated_since": {
+					"displayName": "更新于"
+				}
+			}
+		}
+	}
+}

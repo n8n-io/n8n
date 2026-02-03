@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "Customer.io Trigger",
+		"description": "Starts the workflow on a Customer.io update (Beta)"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events",
+			"description": "The events that can trigger the webhook and whether they are enabled"
+		}
+	}
+}

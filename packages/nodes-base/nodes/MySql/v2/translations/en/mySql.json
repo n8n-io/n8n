@@ -1,0 +1,396 @@
+{
+	"header": {
+		"displayName": "MySQL",
+		"description": "Get, add and update data in MySQL"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource"
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"deleteTable": {
+					"displayName": "Delete",
+					"description": "Delete an entire table or rows in a table"
+				},
+				"executeQuery": {
+					"displayName": "Execute SQL",
+					"description": "Execute an SQL query"
+				},
+				"insert": {
+					"displayName": "Insert",
+					"description": "Insert rows in a table"
+				},
+				"upsert": {
+					"displayName": "Insert or Update",
+					"description": "Insert or update rows in a table"
+				},
+				"select": {
+					"displayName": "Select",
+					"description": "Select rows from a table"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update rows in a table"
+				}
+			}
+		},
+		"table": {
+			"displayName": "Table",
+			"description": "The table you want to work on"
+		},
+		"deleteCommand": {
+			"displayName": "Command",
+			"options": {
+				"truncate": {
+					"displayName": "Truncate",
+					"description": "Only removes the table's data and preserves the table's structure"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete the rows that match the 'Select Rows' conditions below. If no selection is made, all rows in the table are deleted."
+				},
+				"drop": {
+					"displayName": "Drop",
+					"description": "Deletes the table's data and also the table's structure permanently"
+				}
+			}
+		},
+		"where": {
+			"displayName": "Select Rows",
+			"description": "If not set, all rows will be selected",
+			"placeholder": "Add Condition",
+			"multipleValueButtonText": "Add Condition",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>",
+							"placeholder": "e.g. ID"
+						},
+						"condition": {
+							"displayName": "Operator",
+							"description": "The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
+							"options": {
+								"equal": {
+									"displayName": "Equal"
+								},
+								"!=": {
+									"displayName": "Not Equal"
+								},
+								"LIKE": {
+									"displayName": "Like"
+								},
+								">": {
+									"displayName": "Greater Than"
+								},
+								"<": {
+									"displayName": "Less Than"
+								},
+								">=": {
+									"displayName": "Greater Than Or Equal"
+								},
+								"<=": {
+									"displayName": "Less Than Or Equal"
+								},
+								"IS NULL": {
+									"displayName": "Is Null"
+								},
+								"IS NOT NULL": {
+									"displayName": "Is Not Null"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>",
+							"placeholder": "e.g. ID"
+						},
+						"condition": {
+							"displayName": "Operator",
+							"description": "The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
+							"options": {
+								"equal": {
+									"displayName": "Equal"
+								},
+								"!=": {
+									"displayName": "Not Equal"
+								},
+								"LIKE": {
+									"displayName": "Like"
+								},
+								">": {
+									"displayName": "Greater Than"
+								},
+								"<": {
+									"displayName": "Less Than"
+								},
+								">=": {
+									"displayName": "Greater Than Or Equal"
+								},
+								"<=": {
+									"displayName": "Less Than Or Equal"
+								},
+								"IS NULL": {
+									"displayName": "Is Null"
+								},
+								"IS NOT NULL": {
+									"displayName": "Is Not Null"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"where": {
+					"displayName": "Select Rows",
+					"placeholder": "Add Condition"
+				}
+			}
+		},
+		"combineConditions": {
+			"displayName": "Combine Conditions",
+			"description": "How to combine the conditions defined in \"Select Rows\": AND requires all conditions to be true, OR requires at least one condition to be true",
+			"options": {
+				"AND": {
+					"displayName": "AND",
+					"description": "Only rows that meet all the conditions are selected"
+				},
+				"OR": {
+					"displayName": "OR",
+					"description": "Rows that meet at least one condition are selected"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"connectionTimeoutMillis": {
+					"displayName": "Connection Timeout",
+					"description": "Number of milliseconds reserved for connecting to the database"
+				},
+				"connectionLimit": {
+					"displayName": "Connections Limit",
+					"description": "Maximum amount of connections to the database, setting high value can lead to performance issues and potential database crashes"
+				},
+				"queryBatching": {
+					"displayName": "Query Batching",
+					"description": "The way queries should be sent to the database",
+					"options": {
+						"single": {
+							"displayName": "Single Query",
+							"description": "A single query for all incoming items"
+						},
+						"independently": {
+							"displayName": "Independent",
+							"description": "Execute one query per incoming item of the run"
+						},
+						"transaction": {
+							"displayName": "Transaction",
+							"description": "Execute all queries in a transaction, if a failure occurs, all changes are rolled back"
+						}
+					}
+				},
+				"queryReplacement": {
+					"displayName": "Query Parameters",
+					"description": "Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left. <a href=\"https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/\" target=\"_blank\">More info</a>",
+					"placeholder": "e.g. value1,value2,value3"
+				},
+				"outputColumns": {
+					"displayName": "Output Columns",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>"
+				},
+				"largeNumbersOutput": {
+					"displayName": "Output Large-Format Numbers As",
+					"options": {
+						"numbers": {
+							"displayName": "Numbers"
+						},
+						"text": {
+							"displayName": "Text",
+							"description": "Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)"
+						}
+					}
+				},
+				"decimalNumbers": {
+					"displayName": "Output Decimals as Numbers",
+					"description": "Whether to output DECIMAL types as numbers instead of strings"
+				},
+				"priority": {
+					"displayName": "Priority",
+					"description": "Ignore any ignorable errors that occur while executing the INSERT statement",
+					"options": {
+						"LOW_PRIORITY": {
+							"displayName": "Low Prioirity",
+							"description": "Delays execution of the INSERT until no other clients are reading from the table"
+						},
+						"HIGH_PRIORITY": {
+							"displayName": "High Priority",
+							"description": "Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used."
+						}
+					}
+				},
+				"replaceEmptyStrings": {
+					"displayName": "Replace Empty Strings with NULL",
+					"description": "Whether to replace empty strings with NULL in input, could be useful when data come from spreadsheet"
+				},
+				"selectDistinct": {
+					"displayName": "Select Distinct",
+					"description": "Whether to remove these duplicate rows"
+				},
+				"detailedOutput": {
+					"displayName": "Output Query Execution Details",
+					"description": "Whether to show in output details of the ofexecuted query for each statement, or just confirmation of success"
+				},
+				"skipOnConflict": {
+					"displayName": "Skip on Conflict",
+					"description": "Whether to skip the row and do not throw error if a unique constraint or exclusion constraint is violated"
+				}
+			}
+		},
+		"query": {
+			"displayName": "Query",
+			"description": "The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
+			"placeholder": "e.g. SELECT id, name FROM product WHERE id < 40"
+		},
+		"dataMode": {
+			"displayName": "Data Mode",
+			"description": "Whether to map node input properties and the table data automatically or manually",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties names exactly match the table column names"
+				},
+				"defineBelow": {
+					"displayName": "Map Each Column Below",
+					"description": "Set the value for each destination column manually"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "\n\t\tIn this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use an 'Edit Fields' node before this node to change the field names.\n\t\t"
+		},
+		"valuesToSend": {
+			"displayName": "Values to Send",
+			"placeholder": "Add Value",
+			"multipleValueButtonText": "Add Value",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"valuesToSend": {
+					"displayName": "Values to Send",
+					"placeholder": "Add Value"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"sort": {
+			"displayName": "Sort",
+			"placeholder": "Add Sort Rule",
+			"multipleValueButtonText": "Add Sort Rule",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>"
+						},
+						"direction": {
+							"displayName": "Direction",
+							"options": {
+								"ASC": {
+									"displayName": "ASC"
+								},
+								"DESC": {
+									"displayName": "DESC"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>"
+						},
+						"direction": {
+							"displayName": "Direction",
+							"options": {
+								"ASC": {
+									"displayName": "ASC"
+								},
+								"DESC": {
+									"displayName": "DESC"
+								}
+							}
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort Rule"
+				}
+			}
+		},
+		"columnToMatchOn": {
+			"displayName": "Column to Match On",
+			"description": "The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>."
+		},
+		"valueToMatchOn": {
+			"displayName": "Value of Column to Match On",
+			"description": "Rows with a value in the specified \"Column to Match On\" that corresponds to the value in this field will be updated. New rows will be created for non-matching items."
+		}
+	}
+}

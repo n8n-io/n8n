@@ -1,0 +1,4374 @@
+{
+	"header": {
+		"displayName": "Slack",
+		"description": "Consume Slack API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"channel": {
+					"displayName": "Channel"
+				},
+				"file": {
+					"displayName": "File"
+				},
+				"message": {
+					"displayName": "Message"
+				},
+				"reaction": {
+					"displayName": "Reaction"
+				},
+				"star": {
+					"displayName": "Star"
+				},
+				"user": {
+					"displayName": "User"
+				},
+				"userGroup": {
+					"displayName": "User Group"
+				},
+				"userProfile": {
+					"displayName": "User Profile"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"archive": {
+					"displayName": "Archive",
+					"description": "Archives a conversation"
+				},
+				"close": {
+					"displayName": "Close",
+					"description": "Closes a direct message or multi-person direct message"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a user group"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get your user's profile"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many user groups"
+				},
+				"history": {
+					"displayName": "History",
+					"description": "Get a conversation's history of messages and events"
+				},
+				"invite": {
+					"displayName": "Invite",
+					"description": "Invite a user to a channel"
+				},
+				"join": {
+					"displayName": "Join",
+					"description": "Joins an existing conversation"
+				},
+				"kick": {
+					"displayName": "Kick",
+					"description": "Removes a user from a channel"
+				},
+				"leave": {
+					"displayName": "Leave",
+					"description": "Leaves a conversation"
+				},
+				"member": {
+					"displayName": "Member",
+					"description": "List members of a conversation"
+				},
+				"open": {
+					"displayName": "Open",
+					"description": "Opens or resumes a direct message or multi-person direct message"
+				},
+				"rename": {
+					"displayName": "Rename",
+					"description": "Renames a conversation"
+				},
+				"replies": {
+					"displayName": "Replies",
+					"description": "Get a thread of messages posted to a channel"
+				},
+				"setPurpose": {
+					"displayName": "Set Purpose",
+					"description": "Sets the purpose for a conversation"
+				},
+				"setTopic": {
+					"displayName": "Set Topic",
+					"description": "Sets the topic for a conversation"
+				},
+				"unarchive": {
+					"displayName": "Unarchive",
+					"description": "Unarchives a conversation"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a star from an item"
+				},
+				"getPermalink": {
+					"displayName": "Get Permalink",
+					"description": "Get Permanent Link of a message"
+				},
+				"post": {
+					"displayName": "Post",
+					"description": "Post a message into a channel"
+				},
+				"postEphemeral": {
+					"displayName": "Post (Ephemeral)",
+					"description": "Post an ephemeral message to a user in channel"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update user's profile"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Adds a reaction to a message"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Create or upload an existing file"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a reaction of a message"
+				},
+				"info": {
+					"displayName": "Info",
+					"description": "Get information about a user"
+				},
+				"getPresence": {
+					"displayName": "Get Presence",
+					"description": "Get online status of a user"
+				},
+				"disable": {
+					"displayName": "Disable",
+					"description": "Disable a user group"
+				},
+				"enable": {
+					"displayName": "Enable",
+					"description": "Enable a user group"
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "Channel Name or ID",
+			"description": "Channel containing the message. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "Channel name"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"isPrivate": {
+					"displayName": "Is Private",
+					"description": "Whether to create a private channel instead of a public one"
+				},
+				"includeNumMembers": {
+					"displayName": "Include Num of Members"
+				},
+				"channelIds": {
+					"displayName": "Channel Names or IDs",
+					"description": "A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "A short description of the User Group"
+				},
+				"handle": {
+					"displayName": "Handle",
+					"description": "A mention handle. Must be unique among channels, users and User Groups."
+				},
+				"include_count": {
+					"displayName": "Include Count",
+					"description": "Whether to include the number of users in each User Group"
+				},
+				"include_disabled": {
+					"displayName": "Include Disabled",
+					"description": "Whether to include disabled User Groups"
+				},
+				"include_users": {
+					"displayName": "Include Users",
+					"description": "Whether to include the list of users for each User Group"
+				},
+				"customFieldUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Fields",
+					"multipleValueButtonText": "Add Custom Fields",
+					"options": {
+						"customFieldValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"id": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								},
+								"alt": {
+									"displayName": "Alt"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"id": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field to set. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Field Value",
+									"description": "Value of the field to set"
+								},
+								"alt": {
+									"displayName": "Alt"
+								}
+							}
+						},
+						"customFieldUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Fields"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "This field can only be changed by admins for users on paid teams",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "First Name"
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"status_emoji": {
+					"displayName": "Status Emoji",
+					"description": "Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:"
+				},
+				"status_expiration": {
+					"displayName": "Status Expiration",
+					"description": "Is an integer specifying seconds since the epoch, more commonly known as \"UNIX time\". Providing 0 or omitting this field results in a custom status that will not expire."
+				},
+				"status_text": {
+					"displayName": "Status Text",
+					"description": "Allows up to 100 characters, though we strongly encourage brevity"
+				},
+				"user": {
+					"displayName": "User ID",
+					"description": "User to retrieve profile info for"
+				},
+				"include_labels": {
+					"displayName": "Include Labels",
+					"description": "Whether to include labels for each ID in custom profile fields"
+				}
+			}
+		},
+		"userIds": {
+			"displayName": "User Names or IDs",
+			"description": "The ID of the user to invite into channel. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"userId": {
+			"displayName": "User Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return",
+			"placeholder": "Limit"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"excludeArchived": {
+					"displayName": "Exclude Archived",
+					"description": "Whether to exclude archived channels from the list"
+				},
+				"types": {
+					"displayName": "Types",
+					"description": "Filter files by type"
+				},
+				"inclusive": {
+					"displayName": "Inclusive",
+					"description": "Whether to include messages with latest or oldest timestamp in results only when either timestamp is specified"
+				},
+				"latest": {
+					"displayName": "Latest",
+					"description": "End of time range of messages to include in results"
+				},
+				"oldest": {
+					"displayName": "Oldest",
+					"description": "Start of time range of messages to include in results"
+				},
+				"channelId": {
+					"displayName": "Channel Name or ID",
+					"description": "Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"showFilesHidden": {
+					"displayName": "Show Files Hidden By Limit",
+					"description": "Whether to show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit"
+				},
+				"tsFrom": {
+					"displayName": "Timestamp From",
+					"description": "Filter files created after this timestamp (inclusive)"
+				},
+				"tsTo": {
+					"displayName": "Timestamp To",
+					"description": "Filter files created before this timestamp (inclusive)"
+				},
+				"userId": {
+					"displayName": "User Name or ID",
+					"description": "Filter files created by a single user. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "Whether to resolve the data automatically. By default the response only contain the ID to resource."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"channelId": {
+					"displayName": "Channel Name or ID",
+					"description": "Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"returnIm": {
+					"displayName": "Return IM",
+					"description": "Whether you want the full IM channel definition in the response"
+				},
+				"users": {
+					"displayName": "User Names or IDs",
+					"description": "If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"fileComment": {
+					"displayName": "File Comment",
+					"description": "File comment to add star to"
+				},
+				"fileId": {
+					"displayName": "File ID",
+					"description": "File to add star to"
+				},
+				"timestamp": {
+					"displayName": "Timestamp",
+					"description": "Timestamp of the message to add star to"
+				},
+				"channelIds": {
+					"displayName": "Channel Names or IDs",
+					"description": "The channels to send the file to. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "Filename of file"
+				},
+				"initialComment": {
+					"displayName": "Initial Comment",
+					"description": "The message text introducing the file in specified channels"
+				},
+				"threadTs": {
+					"displayName": "Thread TS",
+					"description": "Provide another message's ts value to upload this file as a reply. Never use a reply's ts value; use its parent instead."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of file"
+				}
+			},
+			"description": "Other options to set"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "A name for the User Group. Must be unique among User Groups.",
+			"placeholder": "+1"
+		},
+		"ts": {
+			"displayName": "TS",
+			"description": "Timestamp of the message to be updated"
+		},
+		"purpose": {
+			"displayName": "Purpose",
+			"description": "A new, specialer purpose"
+		},
+		"topic": {
+			"displayName": "Topic",
+			"description": "The new topic string. Does not support formatting or linkification."
+		},
+		"timestamp": {
+			"displayName": "Timestamp",
+			"description": "Timestamp of the message"
+		},
+		"channel": {
+			"displayName": "Channel",
+			"description": "The channel to send the message to",
+			"placeholder": "Channel name"
+		},
+		"user": {
+			"displayName": "User ID",
+			"description": "The ID of the user to get the online status of",
+			"placeholder": "User ID"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "New text for the message, using the default formatting rules. It's not required when presenting attachments."
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"otherOptions": {
+			"displayName": "Options",
+			"description": "Other options to set",
+			"placeholder": "Add option",
+			"options": {
+				"icon_emoji": {
+					"displayName": "Icon Emoji",
+					"description": "Emoji to use as the icon for this message. Overrides icon_url."
+				},
+				"icon_url": {
+					"displayName": "Icon URL",
+					"description": "URL to an image to use as the icon for this message"
+				},
+				"link_names": {
+					"displayName": "Link Names",
+					"description": "Whether to find and link channel names and usernames"
+				},
+				"thread_ts": {
+					"displayName": "Make Reply",
+					"description": "Provide another message's ts value to make this message a reply"
+				},
+				"mrkdwn": {
+					"displayName": "Markdown",
+					"description": "Whether to use Slack Markdown parsing"
+				},
+				"reply_broadcast": {
+					"displayName": "Reply Broadcast",
+					"description": "Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts."
+				},
+				"unfurl_links": {
+					"displayName": "Unfurl Links",
+					"description": "Whether to enable unfurling of primarily text-based content"
+				},
+				"unfurl_media": {
+					"displayName": "Unfurl Media",
+					"description": "Whether to disable unfurling of media content"
+				},
+				"sendAsUser": {
+					"displayName": "Send as User",
+					"description": "The message will be sent from this username (i.e. as if this individual sent the message)."
+				}
+			}
+		},
+		"attachments": {
+			"displayName": "Attachments",
+			"description": "The attachment to add",
+			"placeholder": "Add attachment item",
+			"multipleValueButtonText": "Add attachment",
+			"options": {
+				"fallback": {
+					"displayName": "Fallback Text",
+					"description": "Required plain-text summary of the attachment"
+				},
+				"text": {
+					"displayName": "Text",
+					"description": "Text to send"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the message"
+				},
+				"title_link": {
+					"displayName": "Title Link",
+					"description": "Link of the title"
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "Color of the line left of text"
+				},
+				"pretext": {
+					"displayName": "Pretext",
+					"description": "Text which appears before the message block"
+				},
+				"author_name": {
+					"displayName": "Author Name",
+					"description": "Name that should appear"
+				},
+				"author_link": {
+					"displayName": "Author Link",
+					"description": "Link for the author"
+				},
+				"author_icon": {
+					"displayName": "Author Icon",
+					"description": "Icon which should appear for the user"
+				},
+				"image_url": {
+					"displayName": "Image URL",
+					"description": "URL of image"
+				},
+				"thumb_url": {
+					"displayName": "Thumbnail URL",
+					"description": "URL of thumbnail"
+				},
+				"footer": {
+					"displayName": "Footer",
+					"description": "Text of footer to add"
+				},
+				"footer_icon": {
+					"displayName": "Footer Icon",
+					"description": "Icon which should appear next to footer"
+				},
+				"ts": {
+					"displayName": "Timestamp",
+					"description": "Time message relates to"
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Fields to add to message",
+					"placeholder": "Add Fields",
+					"multipleValueButtonText": "Add Fields",
+					"options": {
+						"item": {
+							"displayName": "Item",
+							"options": {
+								"title": {
+									"displayName": "Title",
+									"description": "Title of the item"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the item"
+								},
+								"short": {
+									"displayName": "Short",
+									"description": "Whether items can be displayed next to each other"
+								}
+							}
+						}
+					},
+					"values": {
+						"item": {
+							"displayName": "Item",
+							"options": {
+								"title": {
+									"displayName": "Title",
+									"description": "Title of the item"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value of the item"
+								},
+								"short": {
+									"displayName": "Short",
+									"description": "Whether items can be displayed next to each other"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "Fields",
+							"placeholder": "Add Fields"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"link_names": {
+					"displayName": "Link Names",
+					"description": "Whether to find and link channel names and usernames"
+				},
+				"parse": {
+					"displayName": "Parse",
+					"description": "Change how messages are treated",
+					"options": {
+						"client": {
+							"displayName": "Client"
+						},
+						"full": {
+							"displayName": "Full"
+						},
+						"none": {
+							"displayName": "None"
+						}
+					}
+				},
+				"channels": {
+					"displayName": "Channel Names or IDs",
+					"description": "A comma-separated string of encoded channel IDs for which the User Group uses as a default. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "A short description of the User Group"
+				},
+				"handle": {
+					"displayName": "Handle",
+					"description": "A mention handle. Must be unique among channels, users and User Groups."
+				},
+				"include_count": {
+					"displayName": "Include Count",
+					"description": "Whether to include the number of users in each User Group"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "A name for the User Group. Must be unique among User Groups."
+				}
+			}
+		},
+		"attachmentsJson": {
+			"displayName": "Attachments",
+			"description": "The attachments to add"
+		},
+		"blocksJson": {
+			"displayName": "Blocks",
+			"description": "The blocks to add"
+		},
+		"blocksUi": {
+			"displayName": "Blocks",
+			"description": "The blocks to add",
+			"placeholder": "Add Block",
+			"multipleValueButtonText": "Add Block",
+			"options": {
+				"blocksValues": {
+					"displayName": "Block",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"actions": {
+									"displayName": "Actions"
+								},
+								"section": {
+									"displayName": "Section"
+								}
+							}
+						},
+						"blockId": {
+							"displayName": "Block ID",
+							"description": "A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters."
+						},
+						"elementsUi": {
+							"displayName": "Elements",
+							"placeholder": "Add Element",
+							"multipleValueButtonText": "Add Element",
+							"options": {
+								"elementsValues": {
+									"displayName": "Element",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The type of element",
+											"options": {
+												"button": {
+													"displayName": "Button"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block"
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+										},
+										"actionId": {
+											"displayName": "Action ID",
+											"description": "An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app."
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response."
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "The value to send along with the interaction payload"
+										},
+										"style": {
+											"displayName": "Style",
+											"description": "Decorates buttons with alternative visual color schemes",
+											"options": {
+												"danger": {
+													"displayName": "Danger"
+												},
+												"default": {
+													"displayName": "Default"
+												},
+												"primary": {
+													"displayName": "Primary"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "Confirm",
+											"description": "Defines an optional confirmation dialog after the button is clicked",
+											"placeholder": "Add Confirm",
+											"options": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines the dialog's title",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the text of the button that confirms the action",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Defines the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines the dialog's title",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the text of the button that confirms the action",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Defines the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "Confirm",
+													"placeholder": "Add Confirm"
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"elementsValues": {
+									"displayName": "Element",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The type of element",
+											"options": {
+												"button": {
+													"displayName": "Button"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block"
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+										},
+										"actionId": {
+											"displayName": "Action ID",
+											"description": "An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app."
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response."
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "The value to send along with the interaction payload"
+										},
+										"style": {
+											"displayName": "Style",
+											"description": "Decorates buttons with alternative visual color schemes",
+											"options": {
+												"danger": {
+													"displayName": "Danger"
+												},
+												"default": {
+													"displayName": "Default"
+												},
+												"primary": {
+													"displayName": "Primary"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "Confirm",
+											"description": "Defines an optional confirmation dialog after the button is clicked",
+											"placeholder": "Add Confirm",
+											"options": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines the dialog's title",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the text of the button that confirms the action",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Defines the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines the dialog's title",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the text of the button that confirms the action",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Defines the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "Confirm",
+													"placeholder": "Add Confirm"
+												}
+											}
+										}
+									}
+								},
+								"elementsUi": {
+									"displayName": "Elements",
+									"placeholder": "Add Element"
+								}
+							}
+						},
+						"textUi": {
+							"displayName": "Text",
+							"description": "Define the text of the button that cancels the action",
+							"placeholder": "Add Text",
+							"options": {
+								"textValue": {
+									"displayName": "Text",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The formatting to use for this text object",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "Plain Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "Verbatim",
+											"description": "Whether to set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed"
+										}
+									}
+								}
+							},
+							"values": {
+								"textValue": {
+									"displayName": "Text",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The formatting to use for this text object",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "Plain Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "Verbatim",
+											"description": "Whether to set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed"
+										}
+									}
+								},
+								"textUi": {
+									"displayName": "Text",
+									"placeholder": "Add Text"
+								}
+							}
+						},
+						"fieldsUi": {
+							"displayName": "Fields",
+							"description": "An array of text objects. Any text objects included with fields will be rendered in a compact format that allows for 2 columns of side-by-side text. Maximum number of items is 10.",
+							"placeholder": "Add Fields",
+							"multipleValueButtonText": "Add Fields",
+							"options": {
+								"fieldsValues": {
+									"displayName": "Text",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The formatting to use for this text object",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "Plain Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "Verbatim",
+											"description": "When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed"
+										}
+									}
+								}
+							},
+							"values": {
+								"fieldsValues": {
+									"displayName": "Text",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The formatting to use for this text object",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "Plain Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "Verbatim",
+											"description": "When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed"
+										}
+									}
+								},
+								"fieldsUi": {
+									"displayName": "Fields",
+									"placeholder": "Add Fields"
+								}
+							}
+						},
+						"accessoryUi": {
+							"displayName": "Accessory",
+							"placeholder": "Add Accessory",
+							"options": {
+								"accessoriesValues": {
+									"displayName": "Accessory",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The type of element",
+											"options": {
+												"button": {
+													"displayName": "Button"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block"
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+										},
+										"actionId": {
+											"displayName": "Action ID",
+											"description": "An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app."
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response."
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "The value to send along with the interaction payload"
+										},
+										"style": {
+											"displayName": "Style",
+											"description": "Decorates buttons with alternative visual color schemes",
+											"options": {
+												"danger": {
+													"displayName": "Danger"
+												},
+												"default": {
+													"displayName": "Default"
+												},
+												"primary": {
+													"displayName": "Primary"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "Confirm",
+											"description": "Defines an optional confirmation dialog after the button is clicked",
+											"placeholder": "Add Confirm",
+											"options": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines an optional confirmation dialog after the button is clicked",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Define the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines an optional confirmation dialog after the button is clicked",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Define the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "Confirm",
+													"placeholder": "Add Confirm"
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"accessoriesValues": {
+									"displayName": "Accessory",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The type of element",
+											"options": {
+												"button": {
+													"displayName": "Button"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block"
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+										},
+										"actionId": {
+											"displayName": "Action ID",
+											"description": "An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app."
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response."
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "The value to send along with the interaction payload"
+										},
+										"style": {
+											"displayName": "Style",
+											"description": "Decorates buttons with alternative visual color schemes",
+											"options": {
+												"danger": {
+													"displayName": "Danger"
+												},
+												"default": {
+													"displayName": "Default"
+												},
+												"primary": {
+													"displayName": "Primary"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "Confirm",
+											"description": "Defines an optional confirmation dialog after the button is clicked",
+											"placeholder": "Add Confirm",
+											"options": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines an optional confirmation dialog after the button is clicked",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Define the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines an optional confirmation dialog after the button is clicked",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Define the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "Confirm",
+													"placeholder": "Add Confirm"
+												}
+											}
+										}
+									}
+								},
+								"accessoryUi": {
+									"displayName": "Accessory",
+									"placeholder": "Add Accessory"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"blocksValues": {
+					"displayName": "Block",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"options": {
+								"actions": {
+									"displayName": "Actions"
+								},
+								"section": {
+									"displayName": "Section"
+								}
+							}
+						},
+						"blockId": {
+							"displayName": "Block ID",
+							"description": "A string acting as a unique identifier for a block. You can use this block_id when you receive an interaction payload to identify the source of the action. If not specified, a block_id will be generated. Maximum length for this field is 255 characters."
+						},
+						"elementsUi": {
+							"displayName": "Elements",
+							"placeholder": "Add Element",
+							"multipleValueButtonText": "Add Element",
+							"options": {
+								"elementsValues": {
+									"displayName": "Element",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The type of element",
+											"options": {
+												"button": {
+													"displayName": "Button"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block"
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+										},
+										"actionId": {
+											"displayName": "Action ID",
+											"description": "An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app."
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response."
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "The value to send along with the interaction payload"
+										},
+										"style": {
+											"displayName": "Style",
+											"description": "Decorates buttons with alternative visual color schemes",
+											"options": {
+												"danger": {
+													"displayName": "Danger"
+												},
+												"default": {
+													"displayName": "Default"
+												},
+												"primary": {
+													"displayName": "Primary"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "Confirm",
+											"description": "Defines an optional confirmation dialog after the button is clicked",
+											"placeholder": "Add Confirm",
+											"options": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines the dialog's title",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the text of the button that confirms the action",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Defines the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines the dialog's title",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the text of the button that confirms the action",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Defines the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "Confirm",
+													"placeholder": "Add Confirm"
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"elementsValues": {
+									"displayName": "Element",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The type of element",
+											"options": {
+												"button": {
+													"displayName": "Button"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block"
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+										},
+										"actionId": {
+											"displayName": "Action ID",
+											"description": "An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app."
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response."
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "The value to send along with the interaction payload"
+										},
+										"style": {
+											"displayName": "Style",
+											"description": "Decorates buttons with alternative visual color schemes",
+											"options": {
+												"danger": {
+													"displayName": "Danger"
+												},
+												"default": {
+													"displayName": "Default"
+												},
+												"primary": {
+													"displayName": "Primary"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "Confirm",
+											"description": "Defines an optional confirmation dialog after the button is clicked",
+											"placeholder": "Add Confirm",
+											"options": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines the dialog's title",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the text of the button that confirms the action",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Defines the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines the dialog's title",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the text of the button that confirms the action",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Defines the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "Confirm",
+													"placeholder": "Add Confirm"
+												}
+											}
+										}
+									}
+								},
+								"elementsUi": {
+									"displayName": "Elements",
+									"placeholder": "Add Element"
+								}
+							}
+						},
+						"textUi": {
+							"displayName": "Text",
+							"description": "Define the text of the button that cancels the action",
+							"placeholder": "Add Text",
+							"options": {
+								"textValue": {
+									"displayName": "Text",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The formatting to use for this text object",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "Plain Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "Verbatim",
+											"description": "Whether to set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed"
+										}
+									}
+								}
+							},
+							"values": {
+								"textValue": {
+									"displayName": "Text",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The formatting to use for this text object",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "Plain Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "Verbatim",
+											"description": "Whether to set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed"
+										}
+									}
+								},
+								"textUi": {
+									"displayName": "Text",
+									"placeholder": "Add Text"
+								}
+							}
+						},
+						"fieldsUi": {
+							"displayName": "Fields",
+							"description": "An array of text objects. Any text objects included with fields will be rendered in a compact format that allows for 2 columns of side-by-side text. Maximum number of items is 10.",
+							"placeholder": "Add Fields",
+							"multipleValueButtonText": "Add Fields",
+							"options": {
+								"fieldsValues": {
+									"displayName": "Text",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The formatting to use for this text object",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "Plain Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "Verbatim",
+											"description": "When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed"
+										}
+									}
+								}
+							},
+							"values": {
+								"fieldsValues": {
+									"displayName": "Text",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The formatting to use for this text object",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "Plain Text"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "Verbatim",
+											"description": "When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed"
+										}
+									}
+								},
+								"fieldsUi": {
+									"displayName": "Fields",
+									"placeholder": "Add Fields"
+								}
+							}
+						},
+						"accessoryUi": {
+							"displayName": "Accessory",
+							"placeholder": "Add Accessory",
+							"options": {
+								"accessoriesValues": {
+									"displayName": "Accessory",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The type of element",
+											"options": {
+												"button": {
+													"displayName": "Button"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block"
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+										},
+										"actionId": {
+											"displayName": "Action ID",
+											"description": "An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app."
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response."
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "The value to send along with the interaction payload"
+										},
+										"style": {
+											"displayName": "Style",
+											"description": "Decorates buttons with alternative visual color schemes",
+											"options": {
+												"danger": {
+													"displayName": "Danger"
+												},
+												"default": {
+													"displayName": "Default"
+												},
+												"primary": {
+													"displayName": "Primary"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "Confirm",
+											"description": "Defines an optional confirmation dialog after the button is clicked",
+											"placeholder": "Add Confirm",
+											"options": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines an optional confirmation dialog after the button is clicked",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Define the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines an optional confirmation dialog after the button is clicked",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Define the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "Confirm",
+													"placeholder": "Add Confirm"
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"accessoriesValues": {
+									"displayName": "Accessory",
+									"options": {
+										"type": {
+											"displayName": "Type",
+											"description": "The type of element",
+											"options": {
+												"button": {
+													"displayName": "Button"
+												}
+											}
+										},
+										"text": {
+											"displayName": "Text",
+											"description": "The text for the block"
+										},
+										"emoji": {
+											"displayName": "Emoji",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+										},
+										"actionId": {
+											"displayName": "Action ID",
+											"description": "An identifier for this action. You can use this when you receive an interaction payload to identify the source of the action. Should be unique among all other action_ids used elsewhere by your app."
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "A URL to load in the user's browser when the button is clicked. Maximum length for this field is 3000 characters. If you're using URL, you'll still receive an interaction payload and will need to send an acknowledgement response."
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "The value to send along with the interaction payload"
+										},
+										"style": {
+											"displayName": "Style",
+											"description": "Decorates buttons with alternative visual color schemes",
+											"options": {
+												"danger": {
+													"displayName": "Danger"
+												},
+												"default": {
+													"displayName": "Default"
+												},
+												"primary": {
+													"displayName": "Primary"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "Confirm",
+											"description": "Defines an optional confirmation dialog after the button is clicked",
+											"placeholder": "Add Confirm",
+											"options": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines an optional confirmation dialog after the button is clicked",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Define the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "Confirm",
+													"options": {
+														"titleUi": {
+															"displayName": "Title",
+															"description": "Defines an optional confirmation dialog after the button is clicked",
+															"placeholder": "Add Title",
+															"options": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "Title",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Text of the title"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "Title",
+																	"placeholder": "Add Title"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "Text",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Text",
+															"options": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "Text",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "The text for the block"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "Text",
+																	"placeholder": "Add Text"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "Confirm",
+															"description": "Defines the explanatory text that appears in the confirm dialog",
+															"placeholder": "Add Confirm",
+															"options": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "Confirm",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Defines the explanatory text that appears in the confirm dialog"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "Confirm",
+																	"placeholder": "Add Confirm"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "Deny",
+															"description": "Define the text of the button that cancels the action",
+															"placeholder": "Add Deny",
+															"options": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "Deny",
+																	"options": {
+																		"text": {
+																			"displayName": "Text",
+																			"description": "Define the text of the button that cancels the action"
+																		},
+																		"emoji": {
+																			"displayName": "Emoji",
+																			"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "Deny",
+																	"placeholder": "Add Deny"
+																}
+															}
+														},
+														"style": {
+															"displayName": "Style",
+															"description": "Defines the color scheme applied to the confirm button",
+															"options": {
+																"danger": {
+																	"displayName": "Danger"
+																},
+																"default": {
+																	"displayName": "Default"
+																},
+																"primary": {
+																	"displayName": "Primary"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "Confirm",
+													"placeholder": "Add Confirm"
+												}
+											}
+										}
+									}
+								},
+								"accessoryUi": {
+									"displayName": "Accessory",
+									"placeholder": "Add Accessory"
+								}
+							}
+						}
+					}
+				},
+				"blocksUi": {
+					"displayName": "Blocks",
+					"placeholder": "Add Block"
+				}
+			}
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the data to upload should be taken from binary field"
+		},
+		"fileContent": {
+			"displayName": "File Content",
+			"description": "The text content of the file to upload"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"fileId": {
+			"displayName": "File ID"
+		},
+		"userGroupId": {
+			"displayName": "User Group ID",
+			"description": "The encoded ID of the User Group to update"
+		}
+	}
+}

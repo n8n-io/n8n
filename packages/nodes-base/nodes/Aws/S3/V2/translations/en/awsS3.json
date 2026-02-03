@@ -1,0 +1,368 @@
+{
+	"header": {
+		"displayName": "AWS S3",
+		"description": "Sends data to AWS S3"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"bucket": {
+					"displayName": "Bucket"
+				},
+				"file": {
+					"displayName": "File"
+				},
+				"folder": {
+					"displayName": "Folder"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a folder"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a file"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many files"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search within a bucket"
+				},
+				"copy": {
+					"displayName": "Copy",
+					"description": "Copy a file"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a file"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a file"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the AWS S3 bucket to delete"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"acl": {
+					"displayName": "ACL",
+					"description": "The canned ACL to apply to the object",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "Authenticated Read"
+						},
+						"Private": {
+							"displayName": "Private"
+						},
+						"publicRead": {
+							"displayName": "Public Read"
+						},
+						"publicReadWrite": {
+							"displayName": "Public Read Write"
+						},
+						"awsExecRead": {
+							"displayName": "AWS Exec Read"
+						},
+						"bucketOwnerFullControl": {
+							"displayName": "Bucket Owner Full Control"
+						},
+						"bucketOwnerRead": {
+							"displayName": "Bucket Owner Read"
+						},
+						"private": {
+							"displayName": "Private"
+						}
+					}
+				},
+				"bucketObjectLockEnabled": {
+					"displayName": "Bucket Object Lock Enabled",
+					"description": "Whether you want S3 Object Lock to be enabled for the new bucket"
+				},
+				"grantFullControl": {
+					"displayName": "Grant Full Control",
+					"description": "Whether to give the grantee READ, READ_ACP, and WRITE_ACP permissions on the object"
+				},
+				"grantRead": {
+					"displayName": "Grant Read",
+					"description": "Whether to allow grantee to read the object data and its metadata"
+				},
+				"grantReadAcp": {
+					"displayName": "Grant Read ACP",
+					"description": "Whether to allow grantee to read the object ACL"
+				},
+				"grantWrite": {
+					"displayName": "Grant Write",
+					"description": "Whether to allow grantee to create, overwrite, and delete any object in the bucket"
+				},
+				"grantWriteAcp": {
+					"displayName": "Grant Write ACP",
+					"description": "Whether to allow grantee to write the ACL for the applicable object"
+				},
+				"region": {
+					"displayName": "Region",
+					"description": "Region you want to create the bucket in, by default the buckets are created on the region defined on the credentials"
+				},
+				"delimiter": {
+					"displayName": "Delimiter",
+					"description": "A delimiter is a character you use to group keys"
+				},
+				"encodingType": {
+					"displayName": "Encoding Type",
+					"description": "Encoding type used by Amazon S3 to encode object keys in the response",
+					"options": {
+						"url": {
+							"displayName": "URL"
+						}
+					}
+				},
+				"fetchOwner": {
+					"displayName": "Fetch Owner",
+					"description": "The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true"
+				},
+				"prefix": {
+					"displayName": "Prefix",
+					"description": "Limits the response to keys that begin with the specified prefix"
+				},
+				"requesterPays": {
+					"displayName": "Requester Pays",
+					"description": "Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled."
+				},
+				"startAfter": {
+					"displayName": "Start After",
+					"description": "StartAfter is where you want Amazon S3 to start listing from. Amazon S3 starts listing after this specified key."
+				},
+				"parentFolderKey": {
+					"displayName": "Parent Folder Key",
+					"description": "Parent folder you want to create the file in"
+				},
+				"storageClass": {
+					"displayName": "Storage Class",
+					"description": "Amazon S3 storage classes",
+					"options": {
+						"deepArchive": {
+							"displayName": "Deep Archive"
+						},
+						"glacier": {
+							"displayName": "Glacier"
+						},
+						"intelligentTiering": {
+							"displayName": "Intelligent Tiering"
+						},
+						"onezoneIA": {
+							"displayName": "One Zone IA"
+						},
+						"RecudedRedundancy": {
+							"displayName": "Reduced Redundancy"
+						},
+						"standard": {
+							"displayName": "Standard"
+						},
+						"standardIA": {
+							"displayName": "Standard IA"
+						}
+					}
+				},
+				"lockLegalHold": {
+					"displayName": "Lock Legal Hold",
+					"description": "Whether a legal hold will be applied to this object"
+				},
+				"lockMode": {
+					"displayName": "Lock Mode",
+					"description": "The Object Lock mode that you want to apply to this object",
+					"options": {
+						"governance": {
+							"displayName": "Governance"
+						},
+						"compliance": {
+							"displayName": "Compliance"
+						}
+					}
+				},
+				"lockRetainUntilDate": {
+					"displayName": "Lock Retain Until Date",
+					"description": "The date and time when you want this object's Object Lock to expire"
+				},
+				"metadataDirective": {
+					"displayName": "Metadata Directive",
+					"description": "Specifies whether the metadata is copied from the source object or replaced with metadata provided in the request",
+					"options": {
+						"copy": {
+							"displayName": "Copy"
+						},
+						"replace": {
+							"displayName": "Replace"
+						}
+					}
+				},
+				"serverSideEncryption": {
+					"displayName": "Server Side Encryption",
+					"description": "The server-side encryption algorithm used when storing this object in Amazon S3",
+					"options": {
+						"AES256": {
+							"displayName": "AES256"
+						},
+						"aws:kms": {
+							"displayName": "AWS:KMS"
+						}
+					}
+				},
+				"serverSideEncryptionContext": {
+					"displayName": "Server Side Encryption Context",
+					"description": "Specifies the AWS KMS Encryption Context to use for object encryption"
+				},
+				"encryptionAwsKmsKeyId": {
+					"displayName": "Server Side Encryption AWS KMS Key ID",
+					"description": "If x-amz-server-side-encryption is present and has the value of aws:kms"
+				},
+				"serversideEncryptionCustomerAlgorithm": {
+					"displayName": "Server Side Encryption Customer Algorithm",
+					"description": "Specifies the algorithm to use to when encrypting the object (for example, AES256)"
+				},
+				"serversideEncryptionCustomerKey": {
+					"displayName": "Server Side Encryption Customer Key",
+					"description": "Specifies the customer-provided encryption key for Amazon S3 to use in encrypting data"
+				},
+				"serversideEncryptionCustomerKeyMD5": {
+					"displayName": "Server Side Encryption Customer Key MD5",
+					"description": "Specifies the 128-bit MD5 digest of the encryption key according to RFC 1321"
+				},
+				"taggingDirective": {
+					"displayName": "Tagging Directive",
+					"description": "Specifies whether the metadata is copied from the source object or replaced with metadata provided in the request",
+					"options": {
+						"copy": {
+							"displayName": "Copy"
+						},
+						"replace": {
+							"displayName": "Replace"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"bucketName": {
+			"displayName": "Bucket Name"
+		},
+		"folderName": {
+			"displayName": "Folder Name"
+		},
+		"folderKey": {
+			"displayName": "Folder Key"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"fetchOwner": {
+					"displayName": "Fetch Owner",
+					"description": "The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true"
+				},
+				"folderKey": {
+					"displayName": "Folder Key"
+				},
+				"versionId": {
+					"displayName": "Version ID"
+				}
+			}
+		},
+		"sourcePath": {
+			"displayName": "Source Path",
+			"description": "The name of the source bucket should start with (/) and key name of the source object, separated by a slash (/)",
+			"placeholder": "/bucket/my-image.jpg"
+		},
+		"destinationPath": {
+			"displayName": "Destination Path",
+			"description": "The name of the destination bucket and key name of the destination object, separated by a slash (/)",
+			"placeholder": "/bucket/my-second-image.jpg"
+		},
+		"fileName": {
+			"displayName": "File Name",
+			"placeholder": "hello.txt",
+			"description": "If not set the binary data filename will be used"
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the data to upload should be taken from binary field"
+		},
+		"fileContent": {
+			"displayName": "File Content",
+			"description": "The text content of the file to upload"
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field"
+		},
+		"tagsUi": {
+			"displayName": "Tags",
+			"description": "Optional extra headers to add to the message (most headers are allowed)",
+			"placeholder": "Add Tag",
+			"multipleValueButtonText": "Add Tag",
+			"options": {
+				"tagsValues": {
+					"displayName": "Tag",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"tagsValues": {
+					"displayName": "Tag",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"tagsUi": {
+					"displayName": "Tags",
+					"placeholder": "Add Tag"
+				}
+			}
+		},
+		"fileKey": {
+			"displayName": "File Key"
+		}
+	}
+}

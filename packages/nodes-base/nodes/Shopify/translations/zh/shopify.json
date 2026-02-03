@@ -1,0 +1,1019 @@
+{
+	"header": {
+		"displayName": "Shopify",
+		"description": "使用Shopify API"
+	},
+	"nodeView": {
+		"apiVersion": {
+			"displayName": "Shopify API 版本：2024-07"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				},
+				"apiKey": {
+					"displayName": "API密钥"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"order": {
+					"displayName": "排序"
+				},
+				"product": {
+					"displayName": "产品"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建产品"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除产品"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取产品"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个产品"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新产品"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"billingAddressUi": {
+					"displayName": "账单地址",
+					"placeholder": "添加账单地址",
+					"options": {
+						"billingAddressValues": {
+							"displayName": "账单地址",
+							"options": {
+								"firstName": {
+									"displayName": "名字"
+								},
+								"lastName": {
+									"displayName": "姓氏"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"province": {
+									"displayName": "省份"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								},
+								"phone": {
+									"displayName": "电话"
+								}
+							}
+						}
+					},
+					"values": {
+						"billingAddressValues": {
+							"displayName": "账单地址",
+							"options": {
+								"firstName": {
+									"displayName": "名字"
+								},
+								"lastName": {
+									"displayName": "姓氏"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"province": {
+									"displayName": "省份"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								},
+								"phone": {
+									"displayName": "电话"
+								}
+							}
+						},
+						"billingAddressUi": {
+							"displayName": "账单地址",
+							"placeholder": "添加账单地址"
+						}
+					}
+				},
+				"discountCodesUi": {
+					"displayName": "折扣码",
+					"placeholder": "添加折扣码",
+					"multipleValueButtonText": "添加折扣码",
+					"options": {
+						"discountCodesValues": {
+							"displayName": "折扣码",
+							"options": {
+								"amount": {
+									"displayName": "金额",
+									"description": "从订单总额中扣除的金额"
+								},
+								"code": {
+									"displayName": "代码",
+									"description": "当关联的折扣应用类型为代码时"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "当关联的折扣应用类型为代码时",
+									"options": {
+										"fixedAmount": {
+											"displayName": "固定金额",
+											"description": "以商店货币单位应用金额"
+										},
+										"percentage": {
+											"displayName": "百分比",
+											"description": "应用折扣，金额为订单总额的百分比"
+										},
+										"shipping": {
+											"displayName": "运输",
+											"description": "对运费小于或等于指定金额的订单应用免运费折扣"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"discountCodesValues": {
+							"displayName": "折扣码",
+							"options": {
+								"amount": {
+									"displayName": "金额",
+									"description": "从订单总额中扣除的金额"
+								},
+								"code": {
+									"displayName": "代码",
+									"description": "当关联的折扣应用类型为代码时"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "当关联的折扣应用类型为代码时",
+									"options": {
+										"fixedAmount": {
+											"displayName": "固定金额",
+											"description": "以商店货币单位应用金额"
+										},
+										"percentage": {
+											"displayName": "百分比",
+											"description": "应用折扣，金额为订单总额的百分比"
+										},
+										"shipping": {
+											"displayName": "运输",
+											"description": "对运费小于或等于指定金额的订单应用免运费折扣"
+										}
+									}
+								}
+							}
+						},
+						"discountCodesUi": {
+							"displayName": "折扣码",
+							"placeholder": "添加折扣码"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "客户的邮箱地址",
+					"placeholder": "name@email.com"
+				},
+				"fulfillmentStatus": {
+					"displayName": "履行状态",
+					"description": "订单在已履行商品行方面的状态",
+					"options": {
+						"fulfilled": {
+							"displayName": "已履行",
+							"description": "订单中的所有行项目均已履行"
+						},
+						"null": {
+							"displayName": "空值",
+							"description": "订单中没有任何商品项目已完成"
+						},
+						"partial": {
+							"displayName": "部分",
+							"description": "订单中至少有一行项目已履行"
+						},
+						"restocked": {
+							"displayName": "已补货",
+							"description": "订单中所有商品均已补货，订单已取消"
+						}
+					}
+				},
+				"inventoryBehaviour": {
+					"displayName": "库存行为",
+					"description": "更新库存时使用的行为",
+					"options": {
+						"bypass": {
+							"displayName": "绕过",
+							"description": "不占用库存"
+						},
+						"decrementIgnoringPolicy": {
+							"displayName": "忽略库存策略减量",
+							"description": "忽略产品的库存策略并占用库存"
+						},
+						"decrementObeyingPolicy": {
+							"displayName": "遵循策略递减",
+							"description": "遵循产品的库存策略并占用库存（如可能）"
+						}
+					}
+				},
+				"locationId": {
+					"displayName": "位置名称或ID",
+					"description": "处理订单的物理位置ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "店铺所有者可为订单添加的备注（可选）"
+				},
+				"sendFulfillmentReceipt": {
+					"displayName": "发送履行收据",
+					"description": "是否向客户发送发货确认"
+				},
+				"sendReceipt": {
+					"displayName": "发送收据",
+					"description": "是否向客户发送订单确认"
+				},
+				"shippingAddressUi": {
+					"displayName": "收货地址",
+					"placeholder": "添加运费",
+					"options": {
+						"shippingAddressValues": {
+							"displayName": "收货地址",
+							"options": {
+								"firstName": {
+									"displayName": "名字"
+								},
+								"lastName": {
+									"displayName": "姓氏"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"province": {
+									"displayName": "省份"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								},
+								"phone": {
+									"displayName": "电话"
+								}
+							}
+						}
+					},
+					"values": {
+						"shippingAddressValues": {
+							"displayName": "收货地址",
+							"options": {
+								"firstName": {
+									"displayName": "名字"
+								},
+								"lastName": {
+									"displayName": "姓氏"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"province": {
+									"displayName": "省份"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								},
+								"phone": {
+									"displayName": "电话"
+								}
+							}
+						},
+						"shippingAddressUi": {
+							"displayName": "收货地址",
+							"placeholder": "添加运费"
+						}
+					}
+				},
+				"sourceName": {
+					"displayName": "来源名称",
+					"description": "订单的来源。仅在订单创建期间可设置，之后不可写入。"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "一串逗号分隔的标签，用于筛选和搜索。一个产品最多可拥有250个标签。每个标签最多可包含255个字符。"
+				},
+				"test": {
+					"displayName": "测试",
+					"description": "是否为测试订单"
+				},
+				"body_html": {
+					"displayName": "正文 HTML",
+					"description": "产品描述。支持 HTML 格式。"
+				},
+				"handle": {
+					"displayName": "处理",
+					"description": "按产品处理方式筛选结果"
+				},
+				"images": {
+					"displayName": "图片",
+					"description": "产品图片对象列表，每个对象代表与产品关联的一张图片",
+					"placeholder": "添加图片字段",
+					"multipleValueButtonText": "添加图片字段",
+					"options": {
+						"created_at": {
+							"displayName": "创建时间",
+							"description": "产品图片创建日期和时间"
+						},
+						"id": {
+							"displayName": "ID",
+							"description": "产品图片的唯一数字标识符"
+						},
+						"position": {
+							"displayName": "位置",
+							"description": "产品图片在列表中的顺序。第一张产品图片位于位置1，是产品的“主”图片。"
+						},
+						"product_id": {
+							"displayName": "产品ID",
+							"description": "与图片关联的产品ID"
+						},
+						"variant_ids": {
+							"displayName": "变体ID",
+							"description": "与图片关联的变体ID数组"
+						},
+						"src": {
+							"displayName": "源",
+							"description": "<p>指定产品图片的位置。此参数支持URL过滤器，可用于获取图片的修改副本。</p><p>例如，在文件名中添加_small以获取100 x 100像素的缩放副本（例如ipod-nano_small.png），或添加_2048x2048以获取分辨率限制在2048 x 2048像素的图片副本（例如ipod-nano_2048x2048.png）。</p>"
+						},
+						"width": {
+							"displayName": "宽度",
+							"description": "图像宽度尺寸，在上传时确定"
+						},
+						"height": {
+							"displayName": "高度",
+							"description": "图像的高度尺寸，在上传时确定"
+						},
+						"updated_at": {
+							"displayName": "更新时间",
+							"description": "产品图片最后修改的日期和时间"
+						}
+					}
+				},
+				"productOptions": {
+					"displayName": "选项",
+					"description": "自定义产品属性名称，如尺寸、颜色和材质。最多可添加3个选项，每个选项最多255个字符。",
+					"placeholder": "添加选项",
+					"multipleValueButtonText": "添加选项",
+					"options": {
+						"option": {
+							"displayName": "选项",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "选项名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "选项的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"option": {
+							"displayName": "选项",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "选项名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "选项的值"
+								}
+							}
+						},
+						"productOptions": {
+							"displayName": "选项",
+							"placeholder": "添加选项"
+						}
+					}
+				},
+				"product_type": {
+					"displayName": "产品类型",
+					"description": "按产品类型筛选结果"
+				},
+				"published_at": {
+					"displayName": "发布时间",
+					"description": "产品发布时间（ISO 8601格式）。可设为null以从在线商店渠道下架产品。"
+				},
+				"published_scope": {
+					"displayName": "发布范围",
+					"options": {
+						"global": {
+							"displayName": "全局",
+							"description": "产品已发布到在线商店渠道和销售点渠道"
+						},
+						"web": {
+							"displayName": "Web",
+							"description": "产品已发布到在线商店渠道，但未发布到销售点渠道"
+						}
+					}
+				},
+				"template_suffix": {
+					"displayName": "模板后缀",
+					"description": "用于产品页面的Liquid模板后缀。如果指定此属性，产品页面将使用名为\"product.suffix.liquid\"的模板，其中\"suffix\"为此属性的值。如果此属性为\"\"或null，则产品页面使用默认模板\"product.liquid\"。(默认值: null)"
+				},
+				"vendor": {
+					"displayName": "供应商",
+					"description": "按产品供应商筛选结果"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "仅显示特定字段，由逗号分隔的字段名列表指定"
+				},
+				"collection_id": {
+					"displayName": "集合ID",
+					"description": "按产品集合ID筛选结果"
+				},
+				"created_at_max": {
+					"displayName": "创建时间上限",
+					"description": "显示在此日期之前创建的产品"
+				},
+				"created_at_min": {
+					"displayName": "创建时间最小值",
+					"description": "显示在此日期后创建的产品"
+				},
+				"ids": {
+					"displayName": "ID",
+					"description": "仅返回由逗号分隔的产品ID列表指定的产品"
+				},
+				"presentment_currencies": {
+					"displayName": "呈现货币",
+					"description": "仅返回指定货币的呈现价格，通过逗号分隔的 ISO 4217 货币代码列表指定"
+				},
+				"published_at_max": {
+					"displayName": "最大发布时间",
+					"description": "显示指定日期前发布的产品"
+				},
+				"published_at_min": {
+					"displayName": "最早发布时间",
+					"description": "显示在此日期后发布的产品"
+				},
+				"published_status": {
+					"displayName": "发布状态",
+					"description": "按发布状态筛选产品",
+					"options": {
+						"any": {
+							"displayName": "任意",
+							"description": "显示所有产品"
+						},
+						"published": {
+							"displayName": "已发布",
+							"description": "仅显示已发布产品"
+						},
+						"unpublished": {
+							"displayName": "未发布",
+							"description": "仅显示未发布产品"
+						}
+					}
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "按产品标题筛选结果"
+				},
+				"updated_at_max": {
+					"displayName": "最近更新时间",
+					"description": "显示在此日期前最后更新的产品"
+				},
+				"updated_at_min": {
+					"displayName": "最小更新日期",
+					"description": "显示在此日期之后最后更新的产品"
+				}
+			}
+		},
+		"limeItemsUi": {
+			"displayName": "行项目",
+			"placeholder": "添加行项目",
+			"multipleValueButtonText": "添加行项目",
+			"options": {
+				"lineItemValues": {
+					"displayName": "行项目",
+					"options": {
+						"productId": {
+							"displayName": "产品名称或ID",
+							"description": "该行项目所属产品的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"variantId": {
+							"displayName": "变体ID",
+							"description": "产品变体的ID"
+						},
+						"title": {
+							"displayName": "标题",
+							"description": "产品标题"
+						},
+						"grams": {
+							"displayName": "克",
+							"description": "物品重量（克）"
+						},
+						"quantity": {
+							"displayName": "数量",
+							"description": "已购买的项目数量"
+						},
+						"price": {
+							"displayName": "价格"
+						}
+					}
+				}
+			},
+			"values": {
+				"lineItemValues": {
+					"displayName": "行项目",
+					"options": {
+						"productId": {
+							"displayName": "产品名称或ID",
+							"description": "该行项目所属产品的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"variantId": {
+							"displayName": "变体ID",
+							"description": "产品变体的ID"
+						},
+						"title": {
+							"displayName": "标题",
+							"description": "产品标题"
+						},
+						"grams": {
+							"displayName": "克",
+							"description": "物品重量（克）"
+						},
+						"quantity": {
+							"displayName": "数量",
+							"description": "已购买的项目数量"
+						},
+						"price": {
+							"displayName": "价格"
+						}
+					}
+				},
+				"limeItemsUi": {
+					"displayName": "行项目",
+					"placeholder": "添加行项目"
+				}
+			}
+		},
+		"orderId": {
+			"displayName": "订单ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "订单将返回的字段，格式化为逗号分隔的字符串。默认返回所有字段。"
+				},
+				"attributionAppId": {
+					"displayName": "归因应用ID",
+					"description": "显示归因于特定应用的订单，由应用ID指定。设为current可显示当前使用此API的应用的订单。"
+				},
+				"createdAtMin": {
+					"displayName": "创建时间最小值",
+					"description": "显示在此日期或之后创建的订单"
+				},
+				"createdAtMax": {
+					"displayName": "创建时间上限",
+					"description": "显示在此日期或之前创建的订单"
+				},
+				"financialStatus": {
+					"displayName": "财务状态",
+					"description": "按财务状态筛选订单",
+					"options": {
+						"any": {
+							"displayName": "任意",
+							"description": "显示任何财务状态的订单"
+						},
+						"authorized": {
+							"displayName": "已授权",
+							"description": "仅显示已授权订单"
+						},
+						"paid": {
+							"displayName": "已付费",
+							"description": "仅显示已付款订单"
+						},
+						"partiallyPaid": {
+							"displayName": "部分支付",
+							"description": "仅显示部分支付的订单"
+						},
+						"partiallyRefunded": {
+							"displayName": "部分退款",
+							"description": "仅显示部分退款的订单"
+						},
+						"pending": {
+							"displayName": "待处理",
+							"description": "仅显示待处理订单"
+						},
+						"refunded": {
+							"displayName": "已退款",
+							"description": "仅显示已退款订单"
+						},
+						"unpaid": {
+							"displayName": "未支付",
+							"description": "显示已授权和部分付款的订单"
+						},
+						"voided": {
+							"displayName": "已作废",
+							"description": "仅显示已作废订单"
+						}
+					}
+				},
+				"fulfillmentStatus": {
+					"displayName": "履行状态",
+					"description": "按订单履行状态筛选订单",
+					"options": {
+						"any": {
+							"displayName": "任意",
+							"description": "显示任意履约状态的订单"
+						},
+						"partial": {
+							"displayName": "部分",
+							"description": "显示部分已发货订单"
+						},
+						"shipped": {
+							"displayName": "已发货",
+							"description": "显示已发货的订单。返回fulfillment_status为fulfilled的订单。"
+						},
+						"unfulfilled": {
+							"displayName": "未完成",
+							"description": "返回fulfillment_status为null或partial的订单"
+						},
+						"unshipped": {
+							"displayName": "未发货",
+							"description": "显示尚未发货的订单。返回 `fulfillment_status` 为 null 的订单。"
+						}
+					}
+				},
+				"ids": {
+					"displayName": "ID",
+					"description": "仅检索由逗号分隔的订单ID列表指定的订单"
+				},
+				"processedAtMax": {
+					"displayName": "最大处理时间",
+					"description": "显示在此日期或之前导入的订单"
+				},
+				"processedAtMin": {
+					"displayName": "处理时间最小值",
+					"description": "显示在此日期或之后导入的订单"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "按订单状态筛选订单",
+					"options": {
+						"any": {
+							"displayName": "任意",
+							"description": "显示所有状态的订单，包括已归档订单"
+						},
+						"Cancelled": {
+							"displayName": "已取消",
+							"description": "仅显示已取消的订单"
+						},
+						"closed": {
+							"displayName": "已关闭",
+							"description": "仅显示已关闭订单"
+						},
+						"open": {
+							"displayName": "打开",
+							"description": "仅显示未完成订单"
+						}
+					}
+				},
+				"sinceId": {
+					"displayName": "自ID起",
+					"description": "显示指定ID之后的订单"
+				},
+				"updatedAtMax": {
+					"displayName": "最近更新时间",
+					"description": "显示在此日期或之后最后更新的订单"
+				},
+				"updatedAtMin": {
+					"displayName": "最小更新日期",
+					"description": "显示在此日期或之前最后更新的订单"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"email": {
+					"displayName": "电子邮件",
+					"description": "客户的邮箱地址",
+					"placeholder": "name@email.com"
+				},
+				"locationId": {
+					"displayName": "位置名称或ID",
+					"description": "处理订单的物理位置ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "店铺所有者可为订单添加的备注（可选）"
+				},
+				"shippingAddressUi": {
+					"displayName": "收货地址",
+					"placeholder": "添加运费",
+					"options": {
+						"shippingAddressValues": {
+							"displayName": "收货地址",
+							"options": {
+								"firstName": {
+									"displayName": "名字"
+								},
+								"lastName": {
+									"displayName": "姓氏"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"province": {
+									"displayName": "省份"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								},
+								"phone": {
+									"displayName": "电话"
+								}
+							}
+						}
+					},
+					"values": {
+						"shippingAddressValues": {
+							"displayName": "收货地址",
+							"options": {
+								"firstName": {
+									"displayName": "名字"
+								},
+								"lastName": {
+									"displayName": "姓氏"
+								},
+								"company": {
+									"displayName": "公司"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"province": {
+									"displayName": "省份"
+								},
+								"zip": {
+									"displayName": "邮政编码"
+								},
+								"phone": {
+									"displayName": "电话"
+								}
+							}
+						},
+						"shippingAddressUi": {
+							"displayName": "收货地址",
+							"placeholder": "添加运费"
+						}
+					}
+				},
+				"sourceName": {
+					"displayName": "来源名称",
+					"description": "订单的来源。仅在订单创建期间可设置，之后不可写入。"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "一串逗号分隔的标签，用于筛选和搜索。一个产品最多可拥有250个标签。每个标签最多可包含255个字符。"
+				},
+				"body_html": {
+					"displayName": "正文 HTML",
+					"description": "产品描述。支持 HTML 格式。"
+				},
+				"handle": {
+					"displayName": "处理",
+					"description": "产品的唯一人性化字符串。根据产品标题自动生成。供Liquid模板语言引用对象时使用。"
+				},
+				"images": {
+					"displayName": "图片",
+					"description": "产品图片对象列表，每个对象代表与产品关联的一张图片",
+					"placeholder": "添加图片字段",
+					"multipleValueButtonText": "添加图片字段",
+					"options": {
+						"created_at": {
+							"displayName": "创建时间",
+							"description": "产品图片创建日期和时间"
+						},
+						"id": {
+							"displayName": "ID",
+							"description": "产品图片的唯一数字标识符"
+						},
+						"position": {
+							"displayName": "位置",
+							"description": "产品图片在列表中的顺序。第一张产品图片位于位置1，是产品的“主”图片。"
+						},
+						"product_id": {
+							"displayName": "产品ID",
+							"description": "与图片关联的产品ID"
+						},
+						"variant_ids": {
+							"displayName": "变体ID",
+							"description": "与图片关联的变体ID数组"
+						},
+						"src": {
+							"displayName": "源",
+							"description": "<p>指定产品图片的位置。此参数支持URL过滤器，可用于获取图片的修改副本。</p><p>例如，在文件名中添加_small以获取100 x 100像素的缩放副本（例如ipod-nano_small.png），或添加_2048x2048以获取分辨率限制在2048 x 2048像素的图片副本（例如ipod-nano_2048x2048.png）。</p>"
+						},
+						"width": {
+							"displayName": "宽度",
+							"description": "图像宽度尺寸，在上传时确定"
+						},
+						"height": {
+							"displayName": "高度",
+							"description": "图像的高度尺寸，在上传时确定"
+						},
+						"updated_at": {
+							"displayName": "更新时间",
+							"description": "产品图片最后修改的日期和时间"
+						}
+					}
+				},
+				"productOptions": {
+					"displayName": "选项",
+					"description": "自定义产品属性名称，如尺寸、颜色和材质。最多可添加3个选项，每个选项最多255个字符。",
+					"placeholder": "添加选项",
+					"multipleValueButtonText": "添加选项",
+					"options": {
+						"option": {
+							"displayName": "选项",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "选项名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "选项的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"option": {
+							"displayName": "选项",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "选项名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "选项的值"
+								}
+							}
+						},
+						"productOptions": {
+							"displayName": "选项",
+							"placeholder": "添加选项"
+						}
+					}
+				},
+				"product_type": {
+					"displayName": "产品类型",
+					"description": "用于筛选和搜索产品的产品分类"
+				},
+				"published_at": {
+					"displayName": "发布时间",
+					"description": "产品发布时间（ISO 8601格式）。可设为null以从在线商店渠道下架产品。"
+				},
+				"published_scope": {
+					"displayName": "发布范围",
+					"options": {
+						"global": {
+							"displayName": "全局",
+							"description": "产品已发布到在线商店渠道和销售点渠道"
+						},
+						"web": {
+							"displayName": "Web",
+							"description": "产品已发布到在线商店渠道，但未发布到销售点渠道"
+						}
+					}
+				},
+				"template_suffix": {
+					"displayName": "模板后缀",
+					"description": "用于产品页面的Liquid模板后缀。如果指定此属性，产品页面将使用名为\"product.suffix.liquid\"的模板，其中\"suffix\"为此属性的值。如果此属性为\"\"或null，则产品页面使用默认模板\"product.liquid\"。(默认值: null)"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "产品名称"
+				},
+				"vendor": {
+					"displayName": "供应商",
+					"description": "产品供应商的名称"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "产品名称"
+		},
+		"productId": {
+			"displayName": "产品ID"
+		}
+	}
+}

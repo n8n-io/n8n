@@ -1,0 +1,137 @@
+{
+	"header": {
+		"displayName": "聊天记忆管理器",
+		"description": "管理聊天消息记忆并在工作流中使用"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "操作模式",
+			"options": {
+				"load": {
+					"displayName": "获取多条消息",
+					"description": "从已连接的内存中检索聊天消息"
+				},
+				"insert": {
+					"displayName": "插入消息",
+					"description": "将聊天消息插入到已连接的内存中"
+				},
+				"delete": {
+					"displayName": "删除消息",
+					"description": "从已连接内存中删除聊天消息"
+				}
+			}
+		},
+		"insertMode": {
+			"displayName": "插入模式",
+			"description": "选择新消息如何插入到记忆中",
+			"options": {
+				"insert": {
+					"displayName": "插入消息",
+					"description": "在现有消息旁添加消息"
+				},
+				"override": {
+					"displayName": "覆盖所有消息",
+					"description": "用新消息替换当前记忆"
+				}
+			}
+		},
+		"deleteMode": {
+			"displayName": "删除模式",
+			"description": "消息如何从记忆中删除",
+			"options": {
+				"lastN": {
+					"displayName": "最后N条",
+					"description": "删除最后N条消息"
+				},
+				"all": {
+					"displayName": "所有消息",
+					"description": "清空内存中的所有消息"
+				}
+			}
+		},
+		"messages": {
+			"displayName": "聊天消息",
+			"description": "要插入记忆的聊天消息",
+			"placeholder": "添加消息",
+			"multipleValueButtonText": "添加消息",
+			"options": {
+				"messageValues": {
+					"displayName": "消息",
+					"options": {
+						"type": {
+							"displayName": "输入名称或ID",
+							"options": {
+								"ai": {
+									"displayName": "AI"
+								},
+								"system": {
+									"displayName": "系统"
+								},
+								"user": {
+									"displayName": "用户"
+								}
+							}
+						},
+						"message": {
+							"displayName": "消息"
+						},
+						"hideFromUI": {
+							"displayName": "在聊天中隐藏消息",
+							"description": "是否在聊天界面中隐藏此消息"
+						}
+					}
+				}
+			},
+			"values": {
+				"messageValues": {
+					"displayName": "消息",
+					"options": {
+						"type": {
+							"displayName": "输入名称或ID",
+							"options": {
+								"ai": {
+									"displayName": "AI"
+								},
+								"system": {
+									"displayName": "系统"
+								},
+								"user": {
+									"displayName": "用户"
+								}
+							}
+						},
+						"message": {
+							"displayName": "消息"
+						},
+						"hideFromUI": {
+							"displayName": "在聊天中隐藏消息",
+							"description": "是否在聊天界面中隐藏此消息"
+						}
+					}
+				},
+				"messages": {
+					"displayName": "聊天消息",
+					"placeholder": "添加消息"
+				}
+			}
+		},
+		"lastMessagesCount": {
+			"displayName": "消息数量",
+			"description": "要删除的最后消息数量"
+		},
+		"simplifyOutput": {
+			"displayName": "简化输出",
+			"description": "是否简化输出，仅包含发送者和文本"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"groupMessages": {
+					"displayName": "消息分组",
+					"description": "是否将消息分组为单个条目，还是将每条消息作为单独条目返回"
+				}
+			}
+		}
+	}
+}

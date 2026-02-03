@@ -1,0 +1,42 @@
+{
+	"header": {
+		"displayName": "Github Trigger",
+		"description": "Starts the workflow when Github events occur"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "Only members with owner privileges for an organization or admin privileges for a repository can set up the webhooks this node requires."
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"owner": {
+			"displayName": "Repository Owner"
+		},
+		"repository": {
+			"displayName": "Repository Name"
+		},
+		"events": {
+			"displayName": "Events",
+			"description": "The events to listen to"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"insecureSSL": {
+					"displayName": "Insecure SSL",
+					"description": "Whether the SSL certificate of the n8n host be verified by GitHub when delivering payloads"
+				}
+			}
+		}
+	}
+}

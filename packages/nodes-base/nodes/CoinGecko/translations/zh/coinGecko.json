@@ -1,0 +1,272 @@
+{
+	"header": {
+		"displayName": "CoinGecko",
+		"description": "使用CoinGecko API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"coin": {
+					"displayName": "硬币"
+				},
+				"event": {
+					"displayName": "事件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"candlestick": {
+					"displayName": "K线图",
+					"description": "获取所选货币的开盘-最高-最低-收盘K线图"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取币种的当前数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个事件"
+				},
+				"history": {
+					"displayName": "历史记录",
+					"description": "获取代币在指定日期的历史数据（名称、价格、市场、统计信息）"
+				},
+				"market": {
+					"displayName": "市场",
+					"description": "获取与所选货币匹配的所有交易对的价格和市场相关数据"
+				},
+				"marketChart": {
+					"displayName": "市场图表",
+					"description": "获取历史市场数据，包括价格、市值和24小时交易量（粒度自动）"
+				},
+				"price": {
+					"displayName": "价格",
+					"description": "获取任意加密货币在当前所需其他支持货币中的价格"
+				},
+				"ticker": {
+					"displayName": "代币",
+					"description": "获取代币行情"
+				}
+			}
+		},
+		"searchBy": {
+			"displayName": "搜索方式",
+			"description": "按币种ID或合约地址搜索",
+			"options": {
+				"coinId": {
+					"displayName": "币种ID"
+				},
+				"contractAddress": {
+					"displayName": "合约地址"
+				}
+			}
+		},
+		"coinId": {
+			"displayName": "代币名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+			"placeholder": "比特币"
+		},
+		"baseCurrency": {
+			"displayName": "基础货币名称或ID",
+			"description": "货币对中的第一种货币。对于BTC:ETH，这是BTC。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"baseCurrencies": {
+			"displayName": "基础货币名称或ID",
+			"description": "货币对中的第一种货币。对于BTC:ETH，这是BTC。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "比特币"
+		},
+		"platformId": {
+			"displayName": "平台ID",
+			"description": "签发令牌的平台ID",
+			"options": {
+				"ethereum": {
+					"displayName": "以太坊"
+				}
+			}
+		},
+		"contractAddress": {
+			"displayName": "合约地址",
+			"description": "代币的合约地址"
+		},
+		"contractAddresses": {
+			"displayName": "合约地址",
+			"description": "代币的合约地址，用逗号分隔"
+		},
+		"quoteCurrency": {
+			"displayName": "报价货币名称或ID",
+			"description": "货币对中的第二种货币。对于BTC:ETH，这是ETH。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"quoteCurrencies": {
+			"displayName": "报价货币名称或ID",
+			"description": "货币对中的第二种货币。对于BTC:ETH，这是ETH。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"days": {
+			"displayName": "范围（天数）",
+			"description": "返回从现在起过去这么多天的数据",
+			"options": {
+				"1": {
+					"displayName": "1"
+				},
+				"7": {
+					"displayName": "7"
+				},
+				"14": {
+					"displayName": "14"
+				},
+				"30": {
+					"displayName": "30"
+				},
+				"90": {
+					"displayName": "90"
+				},
+				"180": {
+					"displayName": "180"
+				},
+				"365": {
+					"displayName": "365"
+				},
+				"max": {
+					"displayName": "最大值"
+				}
+			}
+		},
+		"date": {
+			"displayName": "日期",
+			"description": "数据快照的日期"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"ids": {
+					"displayName": "币种ID",
+					"description": "按逗号分隔的币种ID列表筛选结果",
+					"placeholder": "比特币"
+				},
+				"category": {
+					"displayName": "分类",
+					"description": "按币种分类筛选",
+					"options": {
+						"decentralized_finance_defi": {
+							"displayName": "去中心化金融 DeFi"
+						}
+					}
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "按所选规则对结果进行排序",
+					"options": {
+						"gecko_asc": {
+							"displayName": "壁虎升序"
+						},
+						"gecko_desc": {
+							"displayName": "壁虎描述"
+						},
+						"id_asc": {
+							"displayName": "ID 升序"
+						},
+						"id_desc": {
+							"displayName": "ID 描述"
+						},
+						"market_cap_asc": {
+							"displayName": "市值升序"
+						},
+						"market_cap_desc": {
+							"displayName": "市值降序"
+						},
+						"volume_asc": {
+							"displayName": "成交量升序"
+						},
+						"volume_desc": {
+							"displayName": "卷描述"
+						},
+						"trust_score_desc": {
+							"displayName": "信任分数描述"
+						},
+						"trust_score_asc": {
+							"displayName": "信任度升序"
+						}
+					}
+				},
+				"sparkline": {
+					"displayName": "迷你图",
+					"description": "是否包含迷你图7天数据（例如：true, false）。"
+				},
+				"price_change_percentage": {
+					"displayName": "价格变动百分比",
+					"description": "包含指定时段的价格变动百分比"
+				},
+				"include_24hr_change": {
+					"displayName": "包含24小时变化"
+				},
+				"include_24hr_vol": {
+					"displayName": "包含24小时交易量"
+				},
+				"include_last_updated_at": {
+					"displayName": "包含最后更新时间"
+				},
+				"include_market_cap": {
+					"displayName": "包含市值"
+				},
+				"exchange_ids": {
+					"displayName": "交易所名称或ID",
+					"description": "按交易所ID筛选结果。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"include_exchange_logo": {
+					"displayName": "包含Exchange徽标"
+				},
+				"localization": {
+					"displayName": "本地化",
+					"description": "是否在响应中包含所有本地化语言"
+				},
+				"community_data": {
+					"displayName": "社区数据",
+					"description": "是否包含社区数据"
+				},
+				"developer_data": {
+					"displayName": "开发者数据",
+					"description": "是否包含开发者数据"
+				},
+				"market_data": {
+					"displayName": "市场数据",
+					"description": "是否包含市场数据"
+				},
+				"tickers": {
+					"displayName": "股票代码",
+					"description": "是否包含股票代码数据"
+				},
+				"country_code": {
+					"displayName": "国家/地区代码",
+					"description": "事件的国家/地区代码。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"from_date": {
+					"displayName": "起始日期",
+					"description": "列出此日期之后的事件"
+				},
+				"to_date": {
+					"displayName": "截止日期",
+					"description": "列出此日期之前的事件"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "事件类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"upcoming_events_only": {
+					"displayName": "仅限即将发生的事件",
+					"description": "是否仅列出即将发生的事件"
+				}
+			}
+		}
+	}
+}

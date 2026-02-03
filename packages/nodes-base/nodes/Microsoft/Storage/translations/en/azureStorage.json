@@ -1,0 +1,374 @@
+{
+	"header": {
+		"displayName": "Azure Storage",
+		"description": "Interact with Azure Storage API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2"
+				},
+				"sharedKey": {
+					"displayName": "Shared Key"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"blob": {
+					"displayName": "Blob"
+				},
+				"container": {
+					"displayName": "Container"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a container"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a container"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve data for a specific container"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve a list of containers"
+				}
+			}
+		},
+		"container": {
+			"displayName": "Container",
+			"description": "Select the container to get"
+		},
+		"blobCreate": {
+			"displayName": "Blob Name",
+			"description": "The name of the new or existing blob",
+			"placeholder": "e.g. myblob"
+		},
+		"from": {
+			"displayName": "From",
+			"options": {
+				"binary": {
+					"displayName": "Binary"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Binary Contents",
+			"description": "The name of the input binary field containing the file to be written"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "URL where to read of the blob contents from",
+			"placeholder": "e.g. https://example.com/image.jpg"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"accessTier": {
+					"displayName": "Access Tier",
+					"description": "The tier to be set on the blob. For detailed information about block blob tiering, see <a href=\"https://learn.microsoft.com/en-us/azure/storage/blobs/access-tiers-overview\">Hot, cool, and archive storage tiers</a>.",
+					"options": {
+						"Archive": {
+							"displayName": "Archive"
+						},
+						"Cold": {
+							"displayName": "Cold"
+						},
+						"Cool": {
+							"displayName": "Cool"
+						},
+						"Hot": {
+							"displayName": "Hot"
+						}
+					}
+				},
+				"blobType": {
+					"displayName": "Blob Type",
+					"description": "Specifies the type of blob to create: block, page, or append blob",
+					"options": {
+						"BlockBlob": {
+							"displayName": "Block Blob"
+						},
+						"PageBlob": {
+							"displayName": "Page Blob"
+						},
+						"AppendBlob": {
+							"displayName": "Append Blob"
+						}
+					}
+				},
+				"cacheControl": {
+					"displayName": "Cache Control",
+					"description": "Sets the blob's cache control value"
+				},
+				"contentCrc64": {
+					"displayName": "Content CRC64",
+					"description": "CRC64 hash of the blob content to verify its integrity during transport"
+				},
+				"contentEncoding": {
+					"displayName": "Content Encoding",
+					"description": "Sets the blob's content encoding"
+				},
+				"contentLanguage": {
+					"displayName": "Content Language",
+					"description": "Sets the blob's content language"
+				},
+				"contentMd5": {
+					"displayName": "Content MD5",
+					"description": "Sets the blob's MD5 hash for integrity verification"
+				},
+				"contentType": {
+					"displayName": "Content Type",
+					"description": "Sets the blob's content type"
+				},
+				"encryptionContext": {
+					"displayName": "Encryption Context",
+					"description": "If the value is set it will set blob system metadata. Max length-1024. Valid only when Hierarchical Namespace is enabled for the account."
+				},
+				"encryptionScope": {
+					"displayName": "Encryption Scope",
+					"description": "Indicates the encryption scope for encrypting the request contents"
+				},
+				"expiryOption": {
+					"displayName": "Expiry Option",
+					"description": "Specifies the expiration date option for the request. This header is valid for accounts with hierarchical namespace enabled.",
+					"options": {
+						"Absolute": {
+							"displayName": "Expire",
+							"description": "Expiry Time must be specified"
+						},
+						"NeverExpire": {
+							"displayName": "Never Expire",
+							"description": "Sets the blob to never expire or removes the current expiration date"
+						}
+					}
+				},
+				"expiryTime": {
+					"displayName": "Expiry Time",
+					"description": "Specifies the time when the blob is set to expire as an absolute time"
+				},
+				"filename": {
+					"displayName": "Filename"
+				},
+				"immutabilityPolicyUntilDate": {
+					"displayName": "Immutability Policy Date",
+					"description": "Specifies the retention-until date to be set on the blob. This is the date until which the blob can be protected from being modified or deleted."
+				},
+				"immutabilityPolicyMode": {
+					"displayName": "Immutability Policy Mode",
+					"description": "Specifies the immutability policy mode to be set on the blob"
+				},
+				"leaseId": {
+					"displayName": "Lease ID",
+					"description": "If this header is specified, the operation is performed only if both of the following conditions are met: <ul><li>The blob's lease is currently active.</li><li>The lease ID that's specified in the request matches the lease ID of the blob.</li></ul>"
+				},
+				"legalHold": {
+					"displayName": "Legal Hold",
+					"description": "Whether to set a legal hold on the blob"
+				},
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "A name-value pair to associate with the container as metadata",
+					"placeholder": "Add metadata",
+					"multipleValueButtonText": "Add metadata",
+					"options": {
+						"metadataValues": {
+							"displayName": "Metadata",
+							"options": {
+								"fieldName": {
+									"displayName": "Field Name",
+									"description": "Names must adhere to the naming rules for <a href=\"https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/\">C# identifiers</a>"
+								},
+								"fieldValue": {
+									"displayName": "Field Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "Metadata",
+							"options": {
+								"fieldName": {
+									"displayName": "Field Name",
+									"description": "Names must adhere to the naming rules for <a href=\"https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/\">C# identifiers</a>"
+								},
+								"fieldValue": {
+									"displayName": "Field Value"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "Metadata",
+							"placeholder": "Add metadata"
+						}
+					}
+				},
+				"origin": {
+					"displayName": "Origin",
+					"description": "Specifies the origin from which the request is issued. The presence of this header results in cross-origin resource sharing (CORS) headers on the response."
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Sets the given tags on the blob",
+					"placeholder": "Add tag",
+					"multipleValueButtonText": "Add tag",
+					"options": {
+						"tagValues": {
+							"displayName": "Tag",
+							"options": {
+								"tagName": {
+									"displayName": "Tag Name"
+								},
+								"tagValue": {
+									"displayName": "Tag Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"tagValues": {
+							"displayName": "Tag",
+							"options": {
+								"tagName": {
+									"displayName": "Tag Name"
+								},
+								"tagValue": {
+									"displayName": "Tag Value"
+								}
+							}
+						},
+						"tags": {
+							"displayName": "Tags",
+							"placeholder": "Add tag"
+						}
+					}
+				},
+				"simplify": {
+					"displayName": "Simplify",
+					"description": "Whether to return a simplified version of the response instead of the raw data"
+				},
+				"upn": {
+					"displayName": "UPN",
+					"description": "Whether the user identity values that are returned in the response will be transformed from Microsoft Entra object IDs to User Principal Names. If the value is false, they're returned as Microsoft Entra object IDs. Valid for accounts with hierarchical namespace enabled."
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "The fields to add to the output"
+				},
+				"filter": {
+					"displayName": "Filter",
+					"description": "Filters the results to return only containers with a name that begins with the specified prefix",
+					"placeholder": "e.g. mycontainer"
+				},
+				"accessLevel": {
+					"displayName": "Access Level",
+					"options": {
+						"blob": {
+							"displayName": "Blob",
+							"description": "Specifies public read access for blobs. Blob data within this container can be read via anonymous request, but container data isn't available. Clients can't enumerate blobs within the container via anonymous request."
+						},
+						"container": {
+							"displayName": "Container",
+							"description": "Specifies full public read access for container and blob data. Clients can enumerate blobs within the container via anonymous request, but they can't enumerate containers within the storage account."
+						},
+						"": {
+							"displayName": "Private",
+							"description": "Container data is private to the account owner"
+						}
+					}
+				}
+			}
+		},
+		"blob": {
+			"displayName": "Blob",
+			"description": "Blob to get"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"containerCreate": {
+			"displayName": "Container Name",
+			"description": "The name of the new container",
+			"placeholder": "e.g. mycontainer"
+		},
+		"requestOptions": {
+			"displayName": "Request Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batching": {
+					"displayName": "Batching",
+					"placeholder": "Add Batching",
+					"options": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						},
+						"batching": {
+							"displayName": "Batching",
+							"placeholder": "Add Batching"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to accept the response even if SSL certificate validation is not possible"
+				},
+				"proxy": {
+					"displayName": "Proxy",
+					"description": "HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128",
+					"placeholder": "e.g. http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for the server to send response headers (and start the response body) before aborting the request"
+				}
+			}
+		}
+	}
+}

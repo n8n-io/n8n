@@ -1,0 +1,404 @@
+{
+	"header": {
+		"displayName": "SendGrid",
+		"description": "使用 SendGrid API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				},
+				"list": {
+					"displayName": "列表"
+				},
+				"mail": {
+					"displayName": "邮件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建列表"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除联系人"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "通过ID获取联系人"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个联系人"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新列表"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新联系人，如果已存在则更新当前联系人（upsert）"
+				},
+				"send": {
+					"displayName": "发送",
+					"description": "发送邮件"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "列表名称"
+		},
+		"listId": {
+			"displayName": "列表ID",
+			"description": "列表ID"
+		},
+		"deleteContacts": {
+			"displayName": "删除联系人",
+			"description": "是否删除列表中的所有联系人"
+		},
+		"contactSample": {
+			"displayName": "联系人示例",
+			"description": "是否返回联系人示例"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"query": {
+					"displayName": "查询",
+					"description": "查询字段接受有效的<a href=\"https://sendgrid.com/docs/for-developers/sending-email/segmentation-query-language/\">SGQL</a>语法来搜索联系人"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "联系人的电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addressUi": {
+					"displayName": "地址",
+					"placeholder": "地址",
+					"options": {
+						"addressValues": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressValues": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "地址",
+							"placeholder": "地址"
+						}
+					}
+				},
+				"alternateEmails": {
+					"displayName": "备用邮箱"
+				},
+				"city": {
+					"displayName": "城市"
+				},
+				"country": {
+					"displayName": "国家"
+				},
+				"firstName": {
+					"displayName": "名字"
+				},
+				"lastName": {
+					"displayName": "姓氏"
+				},
+				"postalCode": {
+					"displayName": "邮政编码"
+				},
+				"stateProvinceRegion": {
+					"displayName": "省/州/地区"
+				},
+				"listIdsUi": {
+					"displayName": "列出ID",
+					"description": "添加自定义字段以设置未预定义的值",
+					"placeholder": "列出ID",
+					"options": {
+						"listIdValues": {
+							"displayName": "列出ID",
+							"options": {
+								"listIds": {
+									"displayName": "列出名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								}
+							}
+						}
+					},
+					"values": {
+						"listIdValues": {
+							"displayName": "列出ID",
+							"options": {
+								"listIds": {
+									"displayName": "列出名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								}
+							}
+						},
+						"listIdsUi": {
+							"displayName": "列出ID",
+							"placeholder": "列出ID"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"description": "添加自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "字段的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "字段的值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"attachments": {
+					"displayName": "附件",
+					"description": "二进制属性列表（逗号分隔）"
+				},
+				"bccEmail": {
+					"displayName": "密送邮箱",
+					"description": "接收邮件密送副本的邮箱列表，以逗号分隔"
+				},
+				"categories": {
+					"displayName": "分类",
+					"description": "逗号分隔的类别列表。每个类别名称不得超过255个字符。"
+				},
+				"ccEmail": {
+					"displayName": "抄送邮箱",
+					"description": "接收邮件抄送的收件人邮箱列表，以逗号分隔"
+				},
+				"enableSandbox": {
+					"displayName": "启用沙盒",
+					"description": "是否使用沙盒环境来测试邮件发送功能"
+				},
+				"ipPoolName": {
+					"displayName": "IP池名称",
+					"description": "发送此邮件所使用的IP池"
+				},
+				"replyToEmail": {
+					"displayName": "回复至邮箱",
+					"description": "将出现在邮件回复至字段中的逗号分隔邮箱地址列表",
+					"placeholder": "reply@domain.com"
+				},
+				"headers": {
+					"displayName": "请求头",
+					"placeholder": "添加请求头",
+					"multipleValueButtonText": "添加请求头",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要在标头对象中设置的键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要在标头对象中设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要在标头对象中设置的键"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "要在标头对象中设置的值"
+								}
+							}
+						},
+						"headers": {
+							"displayName": "请求头",
+							"placeholder": "添加请求头"
+						}
+					}
+				},
+				"sendAt": {
+					"displayName": "发送时间",
+					"description": "邮件的发送时间。禁止安排在72小时之后。"
+				}
+			}
+		},
+		"ids": {
+			"displayName": "联系人ID",
+			"description": "联系人ID。多个ID可用逗号分隔添加。"
+		},
+		"deleteAll": {
+			"displayName": "全部删除",
+			"description": "是否删除所有联系人"
+		},
+		"by": {
+			"displayName": "按",
+			"description": "通过ID或邮箱搜索用户",
+			"options": {
+				"id": {
+					"displayName": "ID"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "联系人的ID"
+		},
+		"fromEmail": {
+			"displayName": "发件人邮箱",
+			"description": "邮件发件人的邮箱地址",
+			"placeholder": "sender@domain.com"
+		},
+		"fromName": {
+			"displayName": "发件人姓名",
+			"description": "电子邮件发件人的姓名",
+			"placeholder": "约翰·史密斯"
+		},
+		"toEmail": {
+			"displayName": "收件人邮箱",
+			"description": "收件人邮箱地址列表（逗号分隔）",
+			"placeholder": "recipient@domain.com"
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "要发送邮件的主题"
+		},
+		"dynamicTemplate": {
+			"displayName": "动态模板",
+			"description": "此邮件是否包含动态模板"
+		},
+		"contentType": {
+			"displayName": "MIME类型",
+			"description": "要发送的电子邮件的MIME类型",
+			"options": {
+				"text/plain": {
+					"displayName": "纯文本"
+				},
+				"text/html": {
+					"displayName": "HTML"
+				}
+			}
+		},
+		"contentValue": {
+			"displayName": "消息正文",
+			"description": "要发送的电子邮件消息正文"
+		},
+		"templateId": {
+			"displayName": "模板名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"dynamicTemplateFields": {
+			"displayName": "动态模板字段",
+			"placeholder": "添加动态模板字段",
+			"multipleValueButtonText": "添加动态模板字段",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "动态模板字段的键"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "字段的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "动态模板字段的键"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "字段的值"
+						}
+					}
+				},
+				"dynamicTemplateFields": {
+					"displayName": "动态模板字段",
+					"placeholder": "添加动态模板字段"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,38 @@
+{
+	"header": {
+		"displayName": "Embeddings Cohere",
+		"description": "Use Cohere Embeddings"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings."
+		},
+		"modelName": {
+			"displayName": "Model",
+			"description": "The model which will generate the embeddings. <a href=\"https://docs.cohere.com/docs/models\">Learn more</a>.",
+			"options": {
+				"embed-english-light-v2.0": {
+					"displayName": "Embed-English-Light-v2.0 (1024 Dimensions)"
+				},
+				"embed-english-light-v3.0": {
+					"displayName": "Embed-English-Light-v3.0 (384 Dimensions)"
+				},
+				"embed-english-v2.0": {
+					"displayName": "Embed-English-v2.0 (4096 Dimensions)"
+				},
+				"embed-english-v3.0": {
+					"displayName": "Embed-English-v3.0 (1024 Dimensions)"
+				},
+				"embed-multilingual-light-v3.0": {
+					"displayName": "Embed-Multilingual-Light-v3.0 (384 Dimensions)"
+				},
+				"embed-multilingual-v2.0": {
+					"displayName": "Embed-Multilingual-v2.0 (768 Dimensions)"
+				},
+				"embed-multilingual-v3.0": {
+					"displayName": "Embed-Multilingual-v3.0 (1024 Dimensions)"
+				}
+			}
+		}
+	}
+}

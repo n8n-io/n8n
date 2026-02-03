@@ -1,0 +1,231 @@
+{
+	"header": {
+		"displayName": "Perplexity",
+		"description": "与Perplexity API交互，生成带引用的AI响应"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"complete": {
+					"displayName": "向模型发送消息",
+					"description": "为给定文本创建一个或多个补全"
+				}
+			}
+		},
+		"model": {
+			"displayName": "模型",
+			"description": "用于生成补全的模型",
+			"options": {
+				"sonar": {
+					"displayName": "Sonar"
+				},
+				"sonar-deep-research": {
+					"displayName": "Sonar深度研究"
+				},
+				"sonar-pro": {
+					"displayName": "Sonar Pro"
+				},
+				"sonar-reasoning": {
+					"displayName": "Sonar推理"
+				},
+				"sonar-reasoning-pro": {
+					"displayName": "Sonar Reasoning Pro"
+				}
+			}
+		},
+		"messages": {
+			"displayName": "消息",
+			"description": "任何可选的系统消息必须首先发送，然后交替发送用户消息和助手消息",
+			"placeholder": "添加消息",
+			"multipleValueButtonText": "添加消息",
+			"options": {
+				"message": {
+					"displayName": "消息",
+					"options": {
+						"content": {
+							"displayName": "文本",
+							"description": "要发送的消息内容"
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"assistant": {
+									"displayName": "助手",
+									"description": "请让模型采用特定的语气或个性。必须与用户消息交替进行。"
+								},
+								"system": {
+									"displayName": "系统",
+									"description": "设置模型的行为或上下文。必须在用户和助手消息之前。"
+								},
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"message": {
+					"displayName": "消息",
+					"options": {
+						"content": {
+							"displayName": "文本",
+							"description": "要发送的消息内容"
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"assistant": {
+									"displayName": "助手",
+									"description": "请让模型采用特定的语气或个性。必须与用户消息交替进行。"
+								},
+								"system": {
+									"displayName": "系统",
+									"description": "设置模型的行为或上下文。必须在用户和助手消息之前。"
+								},
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								}
+							}
+						}
+					}
+				},
+				"messages": {
+					"displayName": "消息",
+					"placeholder": "添加消息"
+				}
+			}
+		},
+		"simplify": {
+			"displayName": "简化输出",
+			"description": "是否仅返回必要字段（ID、引用、消息）"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"frequencyPenalty": {
+					"displayName": "频率惩罚",
+					"description": "大于1.0的值会根据新词在现有文本中的出现频率进行惩罚，从而降低模型逐字重复相同内容的可能性"
+				},
+				"maxTokens": {
+					"displayName": "最大令牌数",
+					"description": "生成完成内容的最大令牌数。请求的令牌数加上消息中发送的提示令牌数不得超过所请求模型的上下文窗口令牌限制。"
+				},
+				"temperature": {
+					"displayName": "输出随机性（温度）",
+					"description": "响应中的随机性程度，取值范围为0（含）到2（不含）。数值越高越随机，数值越低越确定。"
+				},
+				"topK": {
+					"displayName": "Top K",
+					"description": "用于最高Top K过滤保留的令牌数量，指定为0到2048之间的整数。如果设置为0，则禁用Top K过滤。建议修改Top K或Top P中的一项，而非同时修改两者。"
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "核心采样阈值，取值范围为0到1（含）。对于每个后续令牌，模型会考虑Top P概率质量对应的令牌结果。建议仅调整Top K或Top P中的一项，而非同时修改两者。"
+				},
+				"presencePenalty": {
+					"displayName": "存在惩罚",
+					"description": "介于-2.0到2.0之间的值。正值会根据新词元是否已在文本中出现来惩罚它们，从而增加模型讨论新话题的可能性。"
+				},
+				"returnImages": {
+					"displayName": "返回图像",
+					"description": "是否应向在线模型请求返回图像。需要使用Perplexity API第二层级。"
+				},
+				"returnRelatedQuestions": {
+					"displayName": "返回相关问题",
+					"description": "是否应向在线模型的请求返回相关问题。需要Perplexity API使用第2层级。"
+				},
+				"searchDomainFilter": {
+					"displayName": "搜索域名过滤器",
+					"description": "将在线模型使用的引用限制为来自指定域名的URL。如需黑名单，请在域名字符串前添加<code>-</code>（例如<code>-domain1</code>）。当前最多支持3个域名。需要Perplexity API使用层级3。",
+					"placeholder": "例如：domain1,domain2,-domain3"
+				},
+				"searchRecency": {
+					"displayName": "搜索时效性筛选",
+					"description": "返回指定时间间隔内的搜索结果",
+					"options": {
+						"day": {
+							"displayName": "天"
+						},
+						"hour": {
+							"displayName": "小时"
+						},
+						"month": {
+							"displayName": "月份"
+						},
+						"week": {
+							"displayName": "周"
+						}
+					}
+				}
+			}
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

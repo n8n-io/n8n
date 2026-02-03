@@ -1,0 +1,419 @@
+{
+	"header": {
+		"displayName": "MISP",
+		"description": "使用MISP API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"attribute": {
+					"displayName": "属性"
+				},
+				"event": {
+					"displayName": "事件"
+				},
+				"eventTag": {
+					"displayName": "事件标签"
+				},
+				"feed": {
+					"displayName": "Feed"
+				},
+				"galaxy": {
+					"displayName": "银河"
+				},
+				"noticelist": {
+					"displayName": "通知列表"
+				},
+				"object": {
+					"displayName": "对象"
+				},
+				"organisation": {
+					"displayName": "组织"
+				},
+				"tag": {
+					"displayName": "标签"
+				},
+				"user": {
+					"displayName": "用户"
+				},
+				"warninglist": {
+					"displayName": "警告列表"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"search": {
+					"displayName": "搜索"
+				},
+				"update": {
+					"displayName": "更新"
+				},
+				"publish": {
+					"displayName": "发布"
+				},
+				"unpublish": {
+					"displayName": "取消发布"
+				},
+				"add": {
+					"displayName": "添加"
+				},
+				"remove": {
+					"displayName": "移除"
+				},
+				"disable": {
+					"displayName": "禁用"
+				},
+				"enable": {
+					"displayName": "启用"
+				}
+			}
+		},
+		"eventId": {
+			"displayName": "事件ID",
+			"description": "事件的UUID或数字ID"
+		},
+		"type": {
+			"displayName": "类型",
+			"options": {
+				"text": {
+					"displayName": "文本"
+				},
+				"url": {
+					"displayName": "URL"
+				},
+				"comment": {
+					"displayName": "评论"
+				}
+			}
+		},
+		"value": {
+			"displayName": "数值",
+			"placeholder": "例如 127.0.0.1"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"distribution": {
+					"displayName": "分发",
+					"description": "发布后谁可以查看此事件",
+					"options": {
+						"0": {
+							"displayName": "仅限您的组织"
+						},
+						"1": {
+							"displayName": "仅限社区"
+						},
+						"2": {
+							"displayName": "已连接的社区"
+						},
+						"3": {
+							"displayName": "所有社区"
+						},
+						"4": {
+							"displayName": "共享组"
+						},
+						"5": {
+							"displayName": "继承事件"
+						}
+					}
+				},
+				"sharing_group_id": {
+					"displayName": "共享组名称或ID",
+					"description": "仅在<code>Distribution</code>中选择<code>Sharing Group</code>时使用。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"category": {
+					"displayName": "分类",
+					"placeholder": "例如：内部参考"
+				},
+				"deleted": {
+					"displayName": "已删除"
+				},
+				"searchall": {
+					"displayName": "搜索全部",
+					"description": "按匹配任何标签名称、事件描述、属性值或属性注释进行搜索"
+				},
+				"tags": {
+					"displayName": "标签",
+					"placeholder": "例如：tag1,tag2"
+				},
+				"type": {
+					"displayName": "类型",
+					"placeholder": "例如 文本"
+				},
+				"published": {
+					"displayName": "已发布"
+				},
+				"analysis": {
+					"displayName": "分析",
+					"description": "事件的分析成熟度级别",
+					"options": {
+						"0": {
+							"displayName": "初始化"
+						},
+						"1": {
+							"displayName": "进行中"
+						},
+						"2": {
+							"displayName": "完成"
+						}
+					}
+				},
+				"threat_level_id": {
+					"displayName": "威胁等级ID",
+					"options": {
+						"1": {
+							"displayName": "高"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "低"
+						},
+						"4": {
+							"displayName": "未定义"
+						}
+					}
+				},
+				"json": {
+					"displayName": "规则",
+					"description": "信息流的筛选规则"
+				},
+				"created_by_email": {
+					"displayName": "由电子邮件创建"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"nationality": {
+					"displayName": "国籍"
+				},
+				"sector": {
+					"displayName": "行业"
+				},
+				"usercount": {
+					"displayName": "用户数量"
+				},
+				"colour": {
+					"displayName": "颜色",
+					"description": "标签的十六进制颜色代码"
+				},
+				"gpgkey": {
+					"displayName": "GPG密钥"
+				},
+				"invited_by": {
+					"displayName": "邀请人邮箱或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"org_id": {
+					"displayName": "组织名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				}
+			}
+		},
+		"attributeId": {
+			"displayName": "属性ID",
+			"description": "要更新的属性ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"useJson": {
+			"displayName": "使用JSON指定字段",
+			"description": "是否使用JSON指定搜索请求的字段"
+		},
+		"jsonOutput": {
+			"displayName": "JSON",
+			"description": "更多信息请访问 {YOUR_BASE_URL_SPECIFIED_IN_CREDENTIALS}/api/openapi#operation/restSearchAttributes"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"distribution": {
+					"displayName": "分发",
+					"description": "发布后谁可以查看此事件",
+					"options": {
+						"0": {
+							"displayName": "仅限您的组织"
+						},
+						"1": {
+							"displayName": "仅限社区"
+						},
+						"2": {
+							"displayName": "已连接的社区"
+						},
+						"3": {
+							"displayName": "所有社区"
+						},
+						"4": {
+							"displayName": "共享组"
+						},
+						"5": {
+							"displayName": "继承事件"
+						}
+					}
+				},
+				"sharing_group_id": {
+					"displayName": "共享组名称或ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>."
+				},
+				"analysis": {
+					"displayName": "分析",
+					"description": "事件的分析成熟度级别",
+					"options": {
+						"0": {
+							"displayName": "初始化"
+						},
+						"1": {
+							"displayName": "进行中"
+						},
+						"2": {
+							"displayName": "完成"
+						}
+					}
+				},
+				"information": {
+					"displayName": "信息",
+					"description": "事件信息 - 最多65535个字符"
+				},
+				"threat_level_id": {
+					"displayName": "威胁等级ID",
+					"options": {
+						"1": {
+							"displayName": "高"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "低"
+						},
+						"4": {
+							"displayName": "未定义"
+						}
+					}
+				},
+				"name": {
+					"displayName": "名称"
+				},
+				"provider": {
+					"displayName": "提供商"
+				},
+				"rules": {
+					"displayName": "规则",
+					"description": "信息流的筛选规则"
+				},
+				"url": {
+					"displayName": "URL"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"nationality": {
+					"displayName": "国籍"
+				},
+				"sector": {
+					"displayName": "行业"
+				},
+				"type": {
+					"displayName": "类型"
+				},
+				"colour": {
+					"displayName": "颜色",
+					"description": "标签的十六进制颜色代码"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "name@email.com"
+				},
+				"gpgkey": {
+					"displayName": "GPG密钥"
+				},
+				"invited_by": {
+					"displayName": "邀请人姓名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"org_id": {
+					"displayName": "组织名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				}
+			}
+		},
+		"org_id": {
+			"displayName": "组织名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"information": {
+			"displayName": "信息",
+			"description": "事件信息 - 最多65535个字符"
+		},
+		"tagId": {
+			"displayName": "标签ID",
+			"description": "要更新的标签ID"
+		},
+		"name": {
+			"displayName": "名称"
+		},
+		"provider": {
+			"displayName": "提供商"
+		},
+		"url": {
+			"displayName": "URL",
+			"placeholder": "https://example.com"
+		},
+		"feedId": {
+			"displayName": "Feed ID",
+			"description": "要更新的Feed ID"
+		},
+		"galaxyId": {
+			"displayName": "Galaxy ID",
+			"description": "Galaxy的UUID或数字ID"
+		},
+		"noticelistId": {
+			"displayName": "通知列表ID",
+			"description": "通知列表的数字ID"
+		},
+		"organisationId": {
+			"displayName": "组织ID",
+			"description": "要更新的组织ID"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"role_id": {
+			"displayName": "角色ID",
+			"description": "角色ID可在MISP仪表板的/roles/index页面查看"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "要更新的用户ID"
+		},
+		"warninglistId": {
+			"displayName": "警告列表ID",
+			"description": "警告列表的数字ID"
+		}
+	}
+}

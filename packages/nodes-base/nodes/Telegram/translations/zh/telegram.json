@@ -1,0 +1,1411 @@
+{
+	"header": {
+		"displayName": "Telegram",
+		"description": "发送数据到Telegram"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"chat": {
+					"displayName": "聊天"
+				},
+				"callback": {
+					"displayName": "回调"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"message": {
+					"displayName": "消息"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取文件"
+				},
+				"administrators": {
+					"displayName": "获取管理员",
+					"description": "获取聊天管理员"
+				},
+				"member": {
+					"displayName": "获取成员",
+					"description": "获取聊天成员"
+				},
+				"leave": {
+					"displayName": "离开",
+					"description": "离开群组、超级群组或频道"
+				},
+				"setDescription": {
+					"displayName": "设置描述",
+					"description": "设置聊天描述"
+				},
+				"setTitle": {
+					"displayName": "设置标题",
+					"description": "设置聊天标题"
+				},
+				"answerQuery": {
+					"displayName": "应答查询",
+					"description": "发送答案到内联键盘的回调查询"
+				},
+				"answerInlineQuery": {
+					"displayName": "回答内联查询",
+					"description": "发送回调查询答案（来自内联机器人）"
+				},
+				"deleteMessage": {
+					"displayName": "删除聊天消息",
+					"description": "删除聊天消息"
+				},
+				"editMessageText": {
+					"displayName": "编辑消息文本",
+					"description": "编辑文本消息"
+				},
+				"pinChatMessage": {
+					"displayName": "置顶聊天消息",
+					"description": "置顶一条聊天消息"
+				},
+				"sendAnimation": {
+					"displayName": "发送动画",
+					"description": "发送动画文件"
+				},
+				"sendAudio": {
+					"displayName": "发送音频",
+					"description": "发送音频文件"
+				},
+				"sendChatAction": {
+					"displayName": "发送聊天动作",
+					"description": "发送聊天动作"
+				},
+				"sendDocument": {
+					"displayName": "发送文档",
+					"description": "发送文档"
+				},
+				"sendLocation": {
+					"displayName": "发送位置",
+					"description": "发送位置"
+				},
+				"sendMediaGroup": {
+					"displayName": "发送媒体组",
+					"description": "发送照片或视频组到相册"
+				},
+				"sendMessage": {
+					"displayName": "发送消息",
+					"description": "发送文本消息"
+				},
+				"sendAndWait": {
+					"displayName": "发送并等待响应",
+					"description": "发送消息并等待响应"
+				},
+				"sendPhoto": {
+					"displayName": "发送照片",
+					"description": "发送照片"
+				},
+				"sendSticker": {
+					"displayName": "发送贴纸",
+					"description": "发送贴纸"
+				},
+				"sendVideo": {
+					"displayName": "发送视频",
+					"description": "发送视频"
+				},
+				"unpinChatMessage": {
+					"displayName": "取消置顶聊天消息",
+					"description": "取消置顶聊天消息"
+				}
+			}
+		},
+		"chatId": {
+			"displayName": "聊天ID",
+			"description": "目标聊天或目标频道的唯一标识符（格式为@channelusername）。要查找您的聊天ID，请询问@get_id_bot。"
+		},
+		"messageId": {
+			"displayName": "消息ID",
+			"description": "要编辑消息的唯一标识符"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"disable_notification": {
+					"displayName": "禁用通知",
+					"description": "是否静默发送消息。用户将收到无声音的通知。"
+				},
+				"cache_time": {
+					"displayName": "缓存时间",
+					"description": "回调查询结果在客户端可缓存的最大时间（秒）"
+				},
+				"show_alert": {
+					"displayName": "显示警告",
+					"description": "是否由客户端显示警告，而非聊天屏幕顶部的通知"
+				},
+				"text": {
+					"displayName": "文本",
+					"description": "通知文本。如果未指定，则不会向用户显示任何内容，0-200个字符。"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "用户客户端将打开的URL"
+				},
+				"mimeType": {
+					"displayName": "MIME类型",
+					"description": "文件的MIME类型。如果未指定，将根据文件扩展名确定MIME类型。",
+					"placeholder": "image/jpeg"
+				},
+				"appendAttribution": {
+					"displayName": "添加n8n归属声明",
+					"description": "是否在消息末尾包含“此消息由n8n自动发送”字样"
+				},
+				"caption": {
+					"displayName": "标题",
+					"description": "要设置的标题文本，0-1024个字符"
+				},
+				"disable_web_page_preview": {
+					"displayName": "禁用网页预览",
+					"description": "是否禁用此消息中链接的链接预览"
+				},
+				"duration": {
+					"displayName": "持续时间",
+					"description": "剪辑时长（秒）"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"placeholder": "image.jpeg"
+				},
+				"height": {
+					"displayName": "高度",
+					"description": "视频高度"
+				},
+				"parse_mode": {
+					"displayName": "解析模式",
+					"description": "如何解析文本",
+					"options": {
+						"Markdown": {
+							"displayName": "Markdown（旧版）"
+						},
+						"MarkdownV2": {
+							"displayName": "MarkdownV2"
+						},
+						"HTML": {
+							"displayName": "HTML"
+						}
+					}
+				},
+				"performer": {
+					"displayName": "执行者",
+					"description": "执行者名称"
+				},
+				"reply_to_message_id": {
+					"displayName": "回复消息ID",
+					"description": "如果消息是回复，则为原始消息的ID"
+				},
+				"message_thread_id": {
+					"displayName": "消息主题ID",
+					"description": "论坛主题的唯一标识符"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "轨道标题"
+				},
+				"thumb": {
+					"displayName": "缩略图",
+					"description": "发送文件的缩略图；如果服务器端支持文件缩略图生成，则可忽略此项。缩略图应为JPEG格式且大小小于200 kB。缩略图的宽度和高度不应超过320。"
+				},
+				"width": {
+					"displayName": "宽度",
+					"description": "视频宽度"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "目标用户的唯一标识符"
+		},
+		"description": {
+			"displayName": "描述",
+			"description": "新聊天描述，0-255个字符"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "新聊天标题，1-255个字符"
+		},
+		"queryId": {
+			"displayName": "查询ID",
+			"description": "已答复查询的唯一标识符"
+		},
+		"results": {
+			"displayName": "结果",
+			"description": "内联查询结果的JSON序列化数组"
+		},
+		"fileId": {
+			"displayName": "文件ID",
+			"description": "文件ID"
+		},
+		"download": {
+			"displayName": "下载",
+			"description": "是否下载文件"
+		},
+		"messageType": {
+			"displayName": "消息类型",
+			"description": "要编辑的消息类型",
+			"options": {
+				"inlineMessage": {
+					"displayName": "内联消息"
+				},
+				"message": {
+					"displayName": "消息"
+				}
+			}
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段",
+			"description": "包含要上传数据的二进制属性名称"
+		},
+		"inlineMessageId": {
+			"displayName": "内联消息ID",
+			"description": "要编辑的内联消息的唯一标识符"
+		},
+		"replyMarkup": {
+			"displayName": "回复标记",
+			"description": "附加界面选项",
+			"options": {
+				"none": {
+					"displayName": "无"
+				},
+				"inlineKeyboard": {
+					"displayName": "内联键盘"
+				},
+				"forceReply": {
+					"displayName": "强制回复"
+				},
+				"replyKeyboard": {
+					"displayName": "回复键盘"
+				},
+				"replyKeyboardRemove": {
+					"displayName": "回复键盘移除"
+				}
+			}
+		},
+		"file": {
+			"displayName": "视频",
+			"description": "要发送的视频文件。传递 file_id 可发送 Telegram 服务器上已有的文件（推荐），或传递 HTTP URL 让 Telegram 从互联网获取文件。"
+		},
+		"action": {
+			"displayName": "操作",
+			"description": "要广播的操作类型。根据用户即将接收的内容选择其一。状态会持续5秒或更短（当收到来自您机器人的消息时）。",
+			"options": {
+				"find_location": {
+					"displayName": "查找位置"
+				},
+				"record_audio": {
+					"displayName": "录制音频"
+				},
+				"record_video": {
+					"displayName": "录制视频"
+				},
+				"record_video_note": {
+					"displayName": "录制视频笔记"
+				},
+				"typing": {
+					"displayName": "输入中"
+				},
+				"upload_audio": {
+					"displayName": "上传音频"
+				},
+				"upload_document": {
+					"displayName": "上传文档"
+				},
+				"upload_photo": {
+					"displayName": "上传照片"
+				},
+				"upload_video": {
+					"displayName": "上传视频"
+				},
+				"upload_video_note": {
+					"displayName": "上传视频笔记"
+				}
+			}
+		},
+		"latitude": {
+			"displayName": "纬度",
+			"description": "位置纬度"
+		},
+		"longitude": {
+			"displayName": "经度",
+			"description": "位置经度"
+		},
+		"media": {
+			"displayName": "媒体",
+			"description": "要添加的媒体",
+			"placeholder": "添加媒体",
+			"multipleValueButtonText": "添加媒体",
+			"options": {
+				"media": {
+					"displayName": "媒体",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "要添加的媒体类型",
+							"options": {
+								"photo": {
+									"displayName": "照片"
+								},
+								"video": {
+									"displayName": "视频"
+								}
+							}
+						},
+						"media": {
+							"displayName": "媒体文件",
+							"description": "要发送的媒体文件。传入 file_id 以发送 Telegram 服务器上已有的文件（推荐），或传入 HTTP URL 让 Telegram 从互联网获取文件。"
+						},
+						"additionalFields": {
+							"displayName": "附加字段",
+							"placeholder": "添加字段",
+							"options": {
+								"caption": {
+									"displayName": "标题",
+									"description": "要设置的标题文本，0-1024个字符"
+								},
+								"parse_mode": {
+									"displayName": "解析模式",
+									"description": "如何解析文本",
+									"options": {
+										"Markdown": {
+											"displayName": "Markdown（旧版）"
+										},
+										"MarkdownV2": {
+											"displayName": "MarkdownV2"
+										},
+										"HTML": {
+											"displayName": "HTML"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"media": {
+					"displayName": "媒体",
+					"placeholder": "添加媒体"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "要发送的消息文本"
+		},
+		"forceReply": {
+			"displayName": "强制回复",
+			"placeholder": "添加字段",
+			"options": {
+				"force_reply": {
+					"displayName": "强制回复",
+					"description": "是否向用户显示回复界面，就像他们手动选择机器人的消息并点击'回复'一样"
+				},
+				"selective": {
+					"displayName": "选择性",
+					"description": "是否仅强制特定用户回复"
+				}
+			}
+		},
+		"inlineKeyboard": {
+			"displayName": "内联键盘",
+			"description": "添加一个内联键盘，该键盘紧贴其所属消息显示",
+			"placeholder": "添加键盘行",
+			"multipleValueButtonText": "添加键盘行",
+			"options": {
+				"rows": {
+					"displayName": "行数",
+					"options": {
+						"row": {
+							"displayName": "行",
+							"description": "要设置的值",
+							"placeholder": "添加按钮",
+							"multipleValueButtonText": "添加按钮",
+							"options": {
+								"buttons": {
+									"displayName": "按钮",
+									"options": {
+										"text": {
+											"displayName": "文本",
+											"description": "按钮上的标签文本"
+										},
+										"additionalFields": {
+											"displayName": "附加字段",
+											"placeholder": "添加字段",
+											"options": {
+												"callback_data": {
+													"displayName": "回调数据",
+													"description": "按下按钮时发送给机器人的回调查询数据，1-64字节"
+												},
+												"pay": {
+													"displayName": "支付",
+													"description": "是否发送支付按钮"
+												},
+												"switch_inline_query_current_chat": {
+													"displayName": "切换当前聊天内联查询",
+													"description": "如果启用，按下按钮将在当前聊天输入框中插入机器人用户名和指定的内联查询。可为空，此时仅插入机器人用户名。"
+												},
+												"switch_inline_query": {
+													"displayName": "切换内联查询",
+													"description": "如果设置，按下按钮将提示用户选择一个聊天，打开该聊天并在输入字段中插入机器人用户名和指定的内联查询。可以为空，此时仅插入机器人用户名。"
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "按下按钮时打开的HTTP或tg:// URL"
+												},
+												"web_app": {
+													"displayName": "Web应用",
+													"description": "启动Telegram Web应用",
+													"placeholder": "设置Telegram Web应用URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "要打开的Web应用的HTTPS URL"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"buttons": {
+									"displayName": "按钮",
+									"options": {
+										"text": {
+											"displayName": "文本",
+											"description": "按钮上的标签文本"
+										},
+										"additionalFields": {
+											"displayName": "附加字段",
+											"placeholder": "添加字段",
+											"options": {
+												"callback_data": {
+													"displayName": "回调数据",
+													"description": "按下按钮时发送给机器人的回调查询数据，1-64字节"
+												},
+												"pay": {
+													"displayName": "支付",
+													"description": "是否发送支付按钮"
+												},
+												"switch_inline_query_current_chat": {
+													"displayName": "切换当前聊天内联查询",
+													"description": "如果启用，按下按钮将在当前聊天输入框中插入机器人用户名和指定的内联查询。可为空，此时仅插入机器人用户名。"
+												},
+												"switch_inline_query": {
+													"displayName": "切换内联查询",
+													"description": "如果设置，按下按钮将提示用户选择一个聊天，打开该聊天并在输入字段中插入机器人用户名和指定的内联查询。可以为空，此时仅插入机器人用户名。"
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "按下按钮时打开的HTTP或tg:// URL"
+												},
+												"web_app": {
+													"displayName": "Web应用",
+													"description": "启动Telegram Web应用",
+													"placeholder": "设置Telegram Web应用URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "要打开的Web应用的HTTPS URL"
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								"row": {
+									"displayName": "行",
+									"placeholder": "添加按钮"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"rows": {
+					"displayName": "行数",
+					"options": {
+						"row": {
+							"displayName": "行",
+							"description": "要设置的值",
+							"placeholder": "添加按钮",
+							"multipleValueButtonText": "添加按钮",
+							"options": {
+								"buttons": {
+									"displayName": "按钮",
+									"options": {
+										"text": {
+											"displayName": "文本",
+											"description": "按钮上的标签文本"
+										},
+										"additionalFields": {
+											"displayName": "附加字段",
+											"placeholder": "添加字段",
+											"options": {
+												"callback_data": {
+													"displayName": "回调数据",
+													"description": "按下按钮时发送给机器人的回调查询数据，1-64字节"
+												},
+												"pay": {
+													"displayName": "支付",
+													"description": "是否发送支付按钮"
+												},
+												"switch_inline_query_current_chat": {
+													"displayName": "切换当前聊天内联查询",
+													"description": "如果启用，按下按钮将在当前聊天输入框中插入机器人用户名和指定的内联查询。可为空，此时仅插入机器人用户名。"
+												},
+												"switch_inline_query": {
+													"displayName": "切换内联查询",
+													"description": "如果设置，按下按钮将提示用户选择一个聊天，打开该聊天并在输入字段中插入机器人用户名和指定的内联查询。可以为空，此时仅插入机器人用户名。"
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "按下按钮时打开的HTTP或tg:// URL"
+												},
+												"web_app": {
+													"displayName": "Web应用",
+													"description": "启动Telegram Web应用",
+													"placeholder": "设置Telegram Web应用URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "要打开的Web应用的HTTPS URL"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"buttons": {
+									"displayName": "按钮",
+									"options": {
+										"text": {
+											"displayName": "文本",
+											"description": "按钮上的标签文本"
+										},
+										"additionalFields": {
+											"displayName": "附加字段",
+											"placeholder": "添加字段",
+											"options": {
+												"callback_data": {
+													"displayName": "回调数据",
+													"description": "按下按钮时发送给机器人的回调查询数据，1-64字节"
+												},
+												"pay": {
+													"displayName": "支付",
+													"description": "是否发送支付按钮"
+												},
+												"switch_inline_query_current_chat": {
+													"displayName": "切换当前聊天内联查询",
+													"description": "如果启用，按下按钮将在当前聊天输入框中插入机器人用户名和指定的内联查询。可为空，此时仅插入机器人用户名。"
+												},
+												"switch_inline_query": {
+													"displayName": "切换内联查询",
+													"description": "如果设置，按下按钮将提示用户选择一个聊天，打开该聊天并在输入字段中插入机器人用户名和指定的内联查询。可以为空，此时仅插入机器人用户名。"
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "按下按钮时打开的HTTP或tg:// URL"
+												},
+												"web_app": {
+													"displayName": "Web应用",
+													"description": "启动Telegram Web应用",
+													"placeholder": "设置Telegram Web应用URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "要打开的Web应用的HTTPS URL"
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								"row": {
+									"displayName": "行",
+									"placeholder": "添加按钮"
+								}
+							}
+						}
+					}
+				},
+				"inlineKeyboard": {
+					"displayName": "内联键盘",
+					"placeholder": "添加键盘行"
+				}
+			}
+		},
+		"replyKeyboard": {
+			"displayName": "回复键盘",
+			"description": "添加带有回复选项的自定义键盘",
+			"placeholder": "添加回复键盘行",
+			"multipleValueButtonText": "添加回复键盘行",
+			"options": {
+				"rows": {
+					"displayName": "行数",
+					"options": {
+						"row": {
+							"displayName": "行",
+							"description": "要设置的值",
+							"placeholder": "添加按钮",
+							"multipleValueButtonText": "添加按钮",
+							"options": {
+								"buttons": {
+									"displayName": "按钮",
+									"options": {
+										"text": {
+											"displayName": "文本",
+											"description": "按钮文本。如果未使用任何可选字段，按下按钮时将作为消息发送。"
+										},
+										"additionalFields": {
+											"displayName": "附加字段",
+											"placeholder": "添加字段",
+											"options": {
+												"request_contact": {
+													"displayName": "请求联系人",
+													"description": "按下按钮时是否将用户的电话号码作为联系人发送。仅限私聊。"
+												},
+												"request_location": {
+													"displayName": "请求位置",
+													"description": "用户是否请求位置"
+												},
+												"web_app": {
+													"displayName": "Web应用",
+													"description": "启动Telegram Web应用",
+													"placeholder": "设置Telegram Web应用URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "要打开的Web应用的HTTPS URL"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"buttons": {
+									"displayName": "按钮",
+									"options": {
+										"text": {
+											"displayName": "文本",
+											"description": "按钮文本。如果未使用任何可选字段，按下按钮时将作为消息发送。"
+										},
+										"additionalFields": {
+											"displayName": "附加字段",
+											"placeholder": "添加字段",
+											"options": {
+												"request_contact": {
+													"displayName": "请求联系人",
+													"description": "按下按钮时是否将用户的电话号码作为联系人发送。仅限私聊。"
+												},
+												"request_location": {
+													"displayName": "请求位置",
+													"description": "用户是否请求位置"
+												},
+												"web_app": {
+													"displayName": "Web应用",
+													"description": "启动Telegram Web应用",
+													"placeholder": "设置Telegram Web应用URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "要打开的Web应用的HTTPS URL"
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								"row": {
+									"displayName": "行",
+									"placeholder": "添加按钮"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"rows": {
+					"displayName": "行数",
+					"options": {
+						"row": {
+							"displayName": "行",
+							"description": "要设置的值",
+							"placeholder": "添加按钮",
+							"multipleValueButtonText": "添加按钮",
+							"options": {
+								"buttons": {
+									"displayName": "按钮",
+									"options": {
+										"text": {
+											"displayName": "文本",
+											"description": "按钮文本。如果未使用任何可选字段，按下按钮时将作为消息发送。"
+										},
+										"additionalFields": {
+											"displayName": "附加字段",
+											"placeholder": "添加字段",
+											"options": {
+												"request_contact": {
+													"displayName": "请求联系人",
+													"description": "按下按钮时是否将用户的电话号码作为联系人发送。仅限私聊。"
+												},
+												"request_location": {
+													"displayName": "请求位置",
+													"description": "用户是否请求位置"
+												},
+												"web_app": {
+													"displayName": "Web应用",
+													"description": "启动Telegram Web应用",
+													"placeholder": "设置Telegram Web应用URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "要打开的Web应用的HTTPS URL"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"buttons": {
+									"displayName": "按钮",
+									"options": {
+										"text": {
+											"displayName": "文本",
+											"description": "按钮文本。如果未使用任何可选字段，按下按钮时将作为消息发送。"
+										},
+										"additionalFields": {
+											"displayName": "附加字段",
+											"placeholder": "添加字段",
+											"options": {
+												"request_contact": {
+													"displayName": "请求联系人",
+													"description": "按下按钮时是否将用户的电话号码作为联系人发送。仅限私聊。"
+												},
+												"request_location": {
+													"displayName": "请求位置",
+													"description": "用户是否请求位置"
+												},
+												"web_app": {
+													"displayName": "Web应用",
+													"description": "启动Telegram Web应用",
+													"placeholder": "设置Telegram Web应用URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "要打开的Web应用的HTTPS URL"
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								"row": {
+									"displayName": "行",
+									"placeholder": "添加按钮"
+								}
+							}
+						}
+					}
+				},
+				"replyKeyboard": {
+					"displayName": "回复键盘",
+					"placeholder": "添加回复键盘行"
+				}
+			}
+		},
+		"replyKeyboardOptions": {
+			"displayName": "回复键盘选项",
+			"placeholder": "添加选项",
+			"options": {
+				"resize_keyboard": {
+					"displayName": "调整键盘大小",
+					"description": "是否请求客户端垂直调整键盘大小以获得最佳适配"
+				},
+				"one_time_keyboard": {
+					"displayName": "一次性键盘",
+					"description": "是否要求客户端在使用键盘后立即隐藏"
+				},
+				"selective": {
+					"displayName": "选择性",
+					"description": "是否仅向特定用户显示键盘"
+				}
+			}
+		},
+		"replyKeyboardRemove": {
+			"displayName": "回复键盘移除",
+			"placeholder": "添加字段",
+			"options": {
+				"remove_keyboard": {
+					"displayName": "移除键盘",
+					"description": "是否请求客户端移除自定义键盘"
+				},
+				"selective": {
+					"displayName": "选择性",
+					"description": "是否仅强制特定用户回复"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息"
+		},
+		"responseType": {
+			"displayName": "响应类型",
+			"options": {
+				"approval": {
+					"displayName": "审批",
+					"description": "用户可直接在消息内批准/拒绝"
+				},
+				"freeText": {
+					"displayName": "自由文本",
+					"description": "用户可通过表单提交响应"
+				},
+				"customForm": {
+					"displayName": "自定义表单",
+					"description": "用户可通过自定义表单提交响应"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "定义表单",
+			"options": {
+				"fields": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "表单字段"
+		},
+		"formFields": {
+			"displayName": "表单元素",
+			"placeholder": "添加表单元素",
+			"multipleValueButtonText": "添加表单元素",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "表单元素",
+					"placeholder": "添加表单元素"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "审批选项",
+			"placeholder": "添加选项",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "审批选项",
+					"placeholder": "添加选项"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"limitWaitTime": {
+					"displayName": "等待时间限制",
+					"description": "是否限制此节点在继续执行前等待用户响应的时间",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "等待时间限制"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "添加n8n归属声明",
+					"description": "是否在消息末尾包含短语“此消息由n8n自动发送”"
+				},
+				"messageButtonLabel": {
+					"displayName": "消息按钮标签"
+				},
+				"responseFormTitle": {
+					"displayName": "响应表单标题",
+					"description": "用户可访问以提供其响应的表单标题"
+				},
+				"responseFormDescription": {
+					"displayName": "响应表单描述",
+					"description": "用户可访问以提供其响应的表单描述"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "响应表单按钮标签"
+				},
+				"responseFormCustomCss": {
+					"displayName": "响应表单自定义样式",
+					"description": "使用CSS覆盖响应表单的默认样式"
+				}
+			}
+		}
+	}
+}

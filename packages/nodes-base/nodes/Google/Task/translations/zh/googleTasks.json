@@ -1,0 +1,176 @@
+{
+	"header": {
+		"displayName": "Google Tasks",
+		"description": "使用 Google Tasks API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "添加任务到任务列表"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除任务"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索任务"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "从任务列表中检索多个任务"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新任务"
+				}
+			}
+		},
+		"task": {
+			"displayName": "任务列表名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "任务标题"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"completed": {
+					"displayName": "完成日期",
+					"description": "任务的完成日期（采用RFC 3339时间戳格式）。如果任务尚未完成，则不显示此字段。"
+				},
+				"deleted": {
+					"displayName": "已删除",
+					"description": "任务是否已被删除"
+				},
+				"dueDate": {
+					"displayName": "截止日期",
+					"description": "任务截止日期"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "补充说明"
+				},
+				"parent": {
+					"displayName": "父级",
+					"description": "父任务标识符。如果任务是在顶层创建的，则省略此参数。"
+				},
+				"previous": {
+					"displayName": "上一个",
+					"description": "上一个同级任务的标识符。如果任务在其同级任务中创建于首位，则省略此参数。"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "任务当前状态",
+					"options": {
+						"needsAction": {
+							"displayName": "待处理"
+						},
+						"completed": {
+							"displayName": "已完成"
+						}
+					}
+				},
+				"completedMax": {
+					"displayName": "已完成最大",
+					"description": "任务完成日期的上限（RFC 3339时间戳），用于筛选"
+				},
+				"completedMin": {
+					"displayName": "已完成最小",
+					"description": "任务完成日期的下限（RFC 3339时间戳）用于筛选"
+				},
+				"dueMin": {
+					"displayName": "截止时间最小值",
+					"description": "用于筛选的任务截止时间下限（采用RFC 3339时间戳格式）"
+				},
+				"dueMax": {
+					"displayName": "截止时间上限",
+					"description": "用于筛选任务截止时间的上限（RFC 3339时间戳格式）"
+				},
+				"showCompleted": {
+					"displayName": "显示已完成",
+					"description": "是否在结果中返回已完成的任务。要显示在网页界面或Google移动应用等第一方客户端中完成的任务，<strong>显示隐藏</strong>也必须设为True。"
+				},
+				"showDeleted": {
+					"displayName": "显示已删除",
+					"description": "结果中是否返回已删除的任务"
+				},
+				"showHidden": {
+					"displayName": "显示隐藏项",
+					"description": "结果中是否返回隐藏任务"
+				},
+				"updatedMin": {
+					"displayName": "已更新最小值",
+					"description": "按任务最后修改时间筛选的下限（RFC 3339时间戳格式）"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "任务ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "更新字段",
+			"options": {
+				"completed": {
+					"displayName": "完成日期",
+					"description": "任务的完成日期（采用RFC 3339时间戳格式）。如果任务尚未完成，则不显示此字段。"
+				},
+				"deleted": {
+					"displayName": "已删除",
+					"description": "任务是否已被删除"
+				},
+				"dueDate": {
+					"displayName": "截止日期",
+					"description": "任务截止日期"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "补充说明"
+				},
+				"previous": {
+					"displayName": "上一个",
+					"description": "上一个同级任务的标识符。如果任务在其同级任务中创建于首位，则省略此参数。"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "任务当前状态",
+					"options": {
+						"needsAction": {
+							"displayName": "需要更新"
+						},
+						"completed": {
+							"displayName": "已完成"
+						}
+					}
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "任务标题"
+				}
+			}
+		}
+	}
+}

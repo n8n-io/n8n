@@ -1,0 +1,72 @@
+{
+	"header": {
+		"displayName": "ProfitWell",
+		"description": "Consume ProfitWell API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"company": {
+					"displayName": "Company"
+				},
+				"metric": {
+					"displayName": "Metric"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getSetting": {
+					"displayName": "Get Settings",
+					"description": "Get your company's ProfitWell account settings"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve financial metric broken down by day for either the current month or the last"
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"options": {
+				"daily": {
+					"displayName": "Daily",
+					"description": "Retrieve financial metric broken down by day for either the current month or the last"
+				},
+				"monthly": {
+					"displayName": "Monthly",
+					"description": "Retrieve all monthly financial metric for your company"
+				}
+			}
+		},
+		"month": {
+			"displayName": "Month",
+			"description": "Can only be the current or previous month. Format should be YYYY-MM.",
+			"placeholder": "YYYY-MM"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"plan_id": {
+					"displayName": "Plan Name or ID",
+					"description": "Only return the metric for this Plan ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"dailyMetrics": {
+					"displayName": "Metrics",
+					"description": "Comma-separated list of metric trends to return (the default is to return all metric)"
+				},
+				"monthlyMetrics": {
+					"displayName": "Metrics",
+					"description": "Comma-separated list of metric trends to return (the default is to return all metric)"
+				}
+			}
+		}
+	}
+}

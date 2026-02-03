@@ -1,0 +1,260 @@
+{
+	"header": {
+		"displayName": "Reddit",
+		"description": "Consume the Reddit API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"post": {
+					"displayName": "Post"
+				},
+				"postComment": {
+					"displayName": "Post Comment"
+				},
+				"profile": {
+					"displayName": "Profile"
+				},
+				"subreddit": {
+					"displayName": "Subreddit"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Submit a post to a subreddit"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many posts from a subreddit"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a post from a subreddit"
+				},
+				"reply": {
+					"displayName": "Reply",
+					"description": "Write a reply to a comment in a post"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a post from a subreddit"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search posts in a subreddit or in all of Reddit"
+				}
+			}
+		},
+		"postId": {
+			"displayName": "Post ID",
+			"description": "ID of the post to retrieve. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>",
+			"placeholder": "l0me7x"
+		},
+		"commentText": {
+			"displayName": "Comment Text",
+			"description": "Text of the comment. Markdown supported."
+		},
+		"subreddit": {
+			"displayName": "Subreddit",
+			"description": "The name of subreddit to search in"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"commentId": {
+			"displayName": "Comment ID",
+			"description": "ID of the comment to reply to. To be found in the comment URL: <code>www.reddit.com/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>",
+			"placeholder": "gl9iroa"
+		},
+		"replyText": {
+			"displayName": "Reply Text",
+			"description": "Text of the reply. Markdown supported."
+		},
+		"details": {
+			"displayName": "Details",
+			"description": "Details of the user to retrieve",
+			"options": {
+				"blockedUsers": {
+					"displayName": "Blocked Users",
+					"description": "Return the blocked users of the logged-in user"
+				},
+				"friends": {
+					"displayName": "Friends",
+					"description": "Return the friends of the logged-in user"
+				},
+				"identity": {
+					"displayName": "Identity",
+					"description": "Return the identity of the logged-in user"
+				},
+				"karma": {
+					"displayName": "Karma",
+					"description": "Return the subreddit karma for the logged-in user"
+				},
+				"prefs": {
+					"displayName": "Preferences",
+					"description": "Return the settings preferences of the logged-in user"
+				},
+				"saved": {
+					"displayName": "Saved",
+					"description": "Return the saved posts for the user"
+				},
+				"trophies": {
+					"displayName": "Trophies",
+					"description": "Return the trophies of the logged-in user"
+				},
+				"about": {
+					"displayName": "About"
+				},
+				"comments": {
+					"displayName": "Comments"
+				},
+				"gilded": {
+					"displayName": "Gilded"
+				},
+				"overview": {
+					"displayName": "Overview"
+				},
+				"submitted": {
+					"displayName": "Submitted"
+				}
+			}
+		},
+		"content": {
+			"displayName": "Content",
+			"description": "Subreddit content to retrieve",
+			"options": {
+				"about": {
+					"displayName": "About"
+				},
+				"rules": {
+					"displayName": "Rules"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"keyword": {
+					"displayName": "Keyword",
+					"description": "The keyword for the subreddit search"
+				},
+				"trending": {
+					"displayName": "Trending",
+					"description": "Whether to fetch currently trending subreddits in all of Reddit"
+				},
+				"category": {
+					"displayName": "Category",
+					"description": "Category of the posts to retrieve",
+					"options": {
+						"top": {
+							"displayName": "Top Posts"
+						},
+						"hot": {
+							"displayName": "Hot Posts"
+						},
+						"new": {
+							"displayName": "New Posts"
+						},
+						"rising": {
+							"displayName": "Rising Posts"
+						}
+					}
+				}
+			}
+		},
+		"kind": {
+			"displayName": "Kind",
+			"description": "The kind of the post to create",
+			"options": {
+				"self": {
+					"displayName": "Text Post"
+				},
+				"link": {
+					"displayName": "Link Post"
+				},
+				"image": {
+					"displayName": "Image Post"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the post, up to 300 characters long"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "URL of the post"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "Text of the post. Markdown supported."
+		},
+		"resubmit": {
+			"displayName": "Resubmit",
+			"description": "Whether the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error."
+		},
+		"location": {
+			"displayName": "Location",
+			"description": "Location where to search for posts",
+			"options": {
+				"allReddit": {
+					"displayName": "All Reddit",
+					"description": "Search for posts in all of Reddit"
+				},
+				"subreddit": {
+					"displayName": "Subreddit",
+					"description": "Search for posts in a specific subreddit"
+				}
+			}
+		},
+		"keyword": {
+			"displayName": "Keyword",
+			"description": "The keyword for the search"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"sort": {
+					"displayName": "Sort",
+					"description": "The category to sort results by",
+					"options": {
+						"comments": {
+							"displayName": "Comments"
+						},
+						"hot": {
+							"displayName": "Hot"
+						},
+						"new": {
+							"displayName": "New"
+						},
+						"relevance": {
+							"displayName": "Relevance"
+						},
+						"top": {
+							"displayName": "Top"
+						}
+					}
+				}
+			}
+		},
+		"username": {
+			"displayName": "Username",
+			"description": "Reddit ID of the user to retrieve"
+		}
+	}
+}

@@ -1,0 +1,536 @@
+{
+	"header": {
+		"displayName": "GoToWebinar",
+		"description": "使用GoToWebinar API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"attendee": {
+					"displayName": "参会者"
+				},
+				"coorganizer": {
+					"displayName": "协办者"
+				},
+				"panelist": {
+					"displayName": "参与者"
+				},
+				"registrant": {
+					"displayName": "注册人"
+				},
+				"session": {
+					"displayName": "会话"
+				},
+				"webinar": {
+					"displayName": "网络研讨会"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"getDetails": {
+					"displayName": "获取详情"
+				},
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"reinvite": {
+					"displayName": "重新邀请"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"webinarKey": {
+			"displayName": "网络研讨会密钥",
+			"description": "要更新的网络研讨会密钥"
+		},
+		"sessionKey": {
+			"displayName": "会话密钥",
+			"description": "与会者参加的会话密钥。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"registrantKey": {
+			"displayName": "注册者密钥",
+			"description": "要检索的注册者密钥"
+		},
+		"details": {
+			"displayName": "详细信息",
+			"description": "要获取的参会者详细信息",
+			"options": {
+				"polls": {
+					"displayName": "投票",
+					"description": "网络研讨会会话中的投票问题与答案"
+				},
+				"questions": {
+					"displayName": "问题",
+					"description": "过往网络研讨会的问题与解答"
+				},
+				"surveyAnswers": {
+					"displayName": "调查答案",
+					"description": "网络研讨会参会者的调查答案"
+				},
+				"performance": {
+					"displayName": "性能",
+					"description": "网络研讨会会话的性能详情"
+				},
+				"surveys": {
+					"displayName": "调查",
+					"description": "过往网络研讨会会话的调查"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"isExternal": {
+			"displayName": "是否为外部",
+			"description": "协办方是否没有GoToWebinar账户"
+		},
+		"organizerKey": {
+			"displayName": "组织者密钥",
+			"description": "网络研讨会的联席组织者密钥"
+		},
+		"givenName": {
+			"displayName": "名字",
+			"description": "共同组织者的名字"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要创建的注册人邮箱地址",
+			"placeholder": "name@email.com"
+		},
+		"coorganizerKey": {
+			"displayName": "协同组织者密钥",
+			"description": "要重新邀请的协同组织者密钥"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的面板成员名称"
+		},
+		"panelistKey": {
+			"displayName": "小组成员密钥",
+			"description": "要重新邀请的小组成员密钥"
+		},
+		"firstName": {
+			"displayName": "名字",
+			"description": "要创建的注册者名字"
+		},
+		"lastName": {
+			"displayName": "姓氏",
+			"description": "创建注册人的姓氏"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"fullAddress": {
+					"displayName": "完整地址",
+					"description": "要创建的注册人完整地址",
+					"placeholder": "添加地址字段",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"address": {
+									"displayName": "地址"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zipCode": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"address": {
+									"displayName": "地址"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zipCode": {
+									"displayName": "邮政编码"
+								},
+								"country": {
+									"displayName": "国家"
+								}
+							}
+						},
+						"fullAddress": {
+							"displayName": "完整地址",
+							"placeholder": "添加地址字段"
+						}
+					}
+				},
+				"industry": {
+					"displayName": "行业",
+					"description": "注册人组织所属的行业类型"
+				},
+				"jobTitle": {
+					"displayName": "职位名称"
+				},
+				"multiChoiceResponses": {
+					"displayName": "多项选择响应",
+					"description": "设置所有问题的答案",
+					"placeholder": "添加多项选择响应",
+					"multipleValueButtonText": "添加多项选择响应",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"questionKey": {
+									"displayName": "问题键名或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"AnswerKey": {
+									"displayName": "答案键",
+									"description": "问题的答案ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"questionKey": {
+									"displayName": "问题键名或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"AnswerKey": {
+									"displayName": "答案键",
+									"description": "问题的答案ID"
+								}
+							}
+						},
+						"multiChoiceResponses": {
+							"displayName": "多项选择响应",
+							"placeholder": "添加多项选择响应"
+						}
+					}
+				},
+				"numberOfEmployees": {
+					"displayName": "员工数量",
+					"description": "注册人组织的员工规模"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"purchasingRole": {
+					"displayName": "采购角色",
+					"description": "注册人在购买产品时的角色"
+				},
+				"purchasingTimeFrame": {
+					"displayName": "采购时间范围",
+					"description": "产品将被采购的时间范围"
+				},
+				"questionsAndComments": {
+					"displayName": "问题与评论",
+					"description": "注册人在注册期间提出的问题或评论"
+				},
+				"resendConfirmation": {
+					"displayName": "重新发送确认"
+				},
+				"simpleResponses": {
+					"displayName": "简单响应",
+					"description": "设置所有问题的答案",
+					"placeholder": "添加简单响应",
+					"multipleValueButtonText": "添加简单响应",
+					"options": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"questionKey": {
+									"displayName": "问题键名或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"responseText": {
+									"displayName": "响应文本",
+									"description": "对问题的响应文本"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "详细信息",
+							"options": {
+								"questionKey": {
+									"displayName": "问题键名或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"responseText": {
+									"displayName": "响应文本",
+									"description": "对问题的响应文本"
+								}
+							}
+						},
+						"simpleResponses": {
+							"displayName": "简单响应",
+							"placeholder": "添加简单响应"
+						}
+					}
+				},
+				"source": {
+					"displayName": "源",
+					"description": "注册来源"
+				},
+				"times": {
+					"displayName": "时间范围",
+					"placeholder": "添加时间范围",
+					"options": {
+						"timesProperties": {
+							"displayName": "时间属性",
+							"options": {
+								"fromTime": {
+									"displayName": "开始时间",
+									"description": "网络研讨会日期时间范围的开始时间"
+								},
+								"toTime": {
+									"displayName": "结束时间",
+									"description": "网络研讨会的日期时间范围结束时间"
+								}
+							}
+						}
+					},
+					"values": {
+						"timesProperties": {
+							"displayName": "时间属性",
+							"options": {
+								"fromTime": {
+									"displayName": "开始时间",
+									"description": "网络研讨会日期时间范围的开始时间"
+								},
+								"toTime": {
+									"displayName": "结束时间",
+									"description": "网络研讨会的日期时间范围结束时间"
+								}
+							}
+						},
+						"times": {
+							"displayName": "时间范围",
+							"placeholder": "添加时间范围"
+						}
+					}
+				},
+				"webinarKey": {
+					"displayName": "网络研讨会名称或ID",
+					"description": "用于筛选要检索的会议的网络研讨会。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"experienceType": {
+					"displayName": "体验类型",
+					"options": {
+						"CLASSIC": {
+							"displayName": "经典"
+						},
+						"BROADCAST": {
+							"displayName": "广播"
+						},
+						"SIMULIVE": {
+							"displayName": "Simulive"
+						}
+					}
+				},
+				"isOnDemand": {
+					"displayName": "按需执行"
+				},
+				"isPasswordProtected": {
+					"displayName": "是否受密码保护"
+				},
+				"timezone": {
+					"displayName": "时区名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+					"placeholder": "2020-12-11T09:00:00Z"
+				},
+				"type": {
+					"displayName": "网络研讨会类型",
+					"options": {
+						"single_session": {
+							"displayName": "单次会话",
+							"description": "单场会议网络研讨会"
+						},
+						"series": {
+							"displayName": "系列",
+							"description": "包含多个会议时间的网络研讨会，参会者仅需选择其中一个参加"
+						},
+						"sequence": {
+							"displayName": "序列",
+							"description": "包含多个会议时间的网络研讨会，所有场次预计为同一批参会者"
+						}
+					}
+				},
+				"sendCancellationEmails": {
+					"displayName": "发送取消邮件"
+				}
+			}
+		},
+		"subject": {
+			"displayName": "主题"
+		},
+		"times": {
+			"displayName": "时间范围",
+			"placeholder": "添加时间范围",
+			"multipleValueButtonText": "添加时间范围",
+			"options": {
+				"timesProperties": {
+					"displayName": "时间属性",
+					"options": {
+						"startTime": {
+							"displayName": "开始时间"
+						},
+						"endTime": {
+							"displayName": "结束时间"
+						}
+					}
+				}
+			},
+			"values": {
+				"timesProperties": {
+					"displayName": "时间属性",
+					"options": {
+						"startTime": {
+							"displayName": "开始时间"
+						},
+						"endTime": {
+							"displayName": "结束时间"
+						}
+					}
+				},
+				"times": {
+					"displayName": "时间范围",
+					"placeholder": "添加时间范围"
+				}
+			}
+		},
+		"notifyParticipants": {
+			"displayName": "通知参与者"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述"
+				},
+				"experienceType": {
+					"displayName": "体验类型",
+					"options": {
+						"CLASSIC": {
+							"displayName": "经典"
+						},
+						"BROADCAST": {
+							"displayName": "广播"
+						},
+						"SIMULIVE": {
+							"displayName": "Simulive"
+						}
+					}
+				},
+				"isOnDemand": {
+					"displayName": "按需执行",
+					"description": "网络研讨会是否可随时观看"
+				},
+				"isPasswordProtected": {
+					"displayName": "是否受密码保护",
+					"description": "网络研讨会是否需要密码才能让与会者加入"
+				},
+				"times": {
+					"displayName": "时间",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"timesProperties": {
+							"displayName": "时间属性",
+							"options": {
+								"startTime": {
+									"displayName": "开始时间"
+								},
+								"endTime": {
+									"displayName": "结束时间"
+								}
+							}
+						}
+					},
+					"values": {
+						"timesProperties": {
+							"displayName": "时间属性",
+							"options": {
+								"startTime": {
+									"displayName": "开始时间"
+								},
+								"endTime": {
+									"displayName": "结束时间"
+								}
+							}
+						},
+						"times": {
+							"displayName": "时间"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "网络研讨会名称或主题"
+				},
+				"timezone": {
+					"displayName": "时区名称或ID",
+					"description": "网络研讨会所在的时区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+					"placeholder": "2020-12-11T09:00:00Z"
+				},
+				"type": {
+					"displayName": "网络研讨会类型",
+					"options": {
+						"single_session": {
+							"displayName": "单次会话",
+							"description": "单场会议网络研讨会"
+						},
+						"series": {
+							"displayName": "系列",
+							"description": "包含多个会议时间的网络研讨会，参会者仅需选择其中一个参加"
+						},
+						"sequence": {
+							"displayName": "序列",
+							"description": "包含多个会议时间的网络研讨会，所有场次预计为同一批参会者"
+						}
+					}
+				}
+			}
+		}
+	}
+}

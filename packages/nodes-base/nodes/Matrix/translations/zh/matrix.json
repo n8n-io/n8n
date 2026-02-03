@@ -1,0 +1,271 @@
+{
+	"header": {
+		"displayName": "矩阵",
+		"description": "使用矩阵API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"account": {
+					"displayName": "账户"
+				},
+				"event": {
+					"displayName": "事件"
+				},
+				"media": {
+					"displayName": "媒体"
+				},
+				"message": {
+					"displayName": "消息"
+				},
+				"room": {
+					"displayName": "房间"
+				},
+				"roomMember": {
+					"displayName": "房间成员"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"me": {
+					"displayName": "我",
+					"description": "获取当前用户的账户信息"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "通过ID获取单个事件"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "发送媒体到聊天室"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "使用预设设置创建新聊天室"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个成员"
+				},
+				"invite": {
+					"displayName": "邀请",
+					"description": "邀请用户加入房间"
+				},
+				"join": {
+					"displayName": "加入",
+					"description": "加入新房间"
+				},
+				"kick": {
+					"displayName": "踢出",
+					"description": "将用户从房间中踢出"
+				},
+				"leave": {
+					"displayName": "离开",
+					"description": "离开房间"
+				}
+			}
+		},
+		"roomId": {
+			"displayName": "房间名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+			"placeholder": "!123abc:matrix.org"
+		},
+		"eventId": {
+			"displayName": "事件ID",
+			"description": "与该事件相关的房间",
+			"placeholder": "$1234abcd:matrix.org"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"mediaType": {
+			"displayName": "媒体类型",
+			"description": "正在上传的文件类型",
+			"placeholder": "mxc://matrix.org/uploaded-media-uri",
+			"options": {
+				"file": {
+					"displayName": "文件",
+					"description": "通用文件"
+				},
+				"image": {
+					"displayName": "图片",
+					"description": "图像媒体类型"
+				},
+				"audio": {
+					"displayName": "音频",
+					"description": "音频媒体类型"
+				},
+				"video": {
+					"displayName": "视频",
+					"description": "视频媒体类型"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"fileName": {
+					"displayName": "文件名",
+					"description": "正在上传的文件名"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "要发送的文本",
+			"placeholder": "n8n 向您问好！"
+		},
+		"messageType": {
+			"displayName": "消息类型",
+			"description": "要发送的消息类型",
+			"options": {
+				"m.emote": {
+					"displayName": "表情动作",
+					"description": "执行一个动作（类似于IRC中的/me命令）"
+				},
+				"m.notice": {
+					"displayName": "通知",
+					"description": "发送通知"
+				},
+				"m.text": {
+					"displayName": "文本",
+					"description": "发送文本消息"
+				}
+			}
+		},
+		"messageFormat": {
+			"displayName": "消息格式",
+			"description": "消息正文的格式",
+			"options": {
+				"plain": {
+					"displayName": "纯文本",
+					"description": "仅文本"
+				},
+				"org.matrix.custom.html": {
+					"displayName": "HTML",
+					"description": "HTML格式文本"
+				}
+			}
+		},
+		"fallbackText": {
+			"displayName": "备用文本",
+			"description": "当Matrix客户端无法渲染HTML时显示的纯文本消息"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"otherOptions": {
+			"displayName": "其他选项",
+			"placeholder": "添加选项",
+			"options": {
+				"filter": {
+					"displayName": "筛选器",
+					"description": "用于筛选返回事件的JSON RoomEventFilter。更多信息请参阅此<a href=\"https://matrix.org/docs/spec/client_server/r0.6.0\">页面</a>。",
+					"placeholder": "{\"contains_url\":true,\"types\":[\"m.room.message\", \"m.sticker\"]}"
+				}
+			}
+		},
+		"roomName": {
+			"displayName": "房间名称",
+			"placeholder": "我的新房间"
+		},
+		"preset": {
+			"displayName": "预设",
+			"placeholder": "我的新房间",
+			"options": {
+				"private_chat": {
+					"displayName": "私聊"
+				},
+				"public_chat": {
+					"displayName": "公共聊天",
+					"description": "开放公共聊天"
+				}
+			}
+		},
+		"roomAlias": {
+			"displayName": "房间别名",
+			"placeholder": "最酷的房间"
+		},
+		"roomIdOrAlias": {
+			"displayName": "房间ID或别名"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "完全限定的用户ID",
+			"placeholder": "@cheeky_monkey:matrix.org"
+		},
+		"reason": {
+			"displayName": "原因",
+			"description": "踢出原因",
+			"placeholder": "讲不好笑的笑话"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"description": "筛选选项",
+			"placeholder": "添加筛选器",
+			"options": {
+				"notMembership": {
+					"displayName": "排除成员资格",
+					"description": "排除成员资格非所选选项的成员（使用成员资格的OR过滤器）",
+					"options": {
+						"": {
+							"displayName": "任意",
+							"description": "任意用户成员资格"
+						},
+						"ban": {
+							"displayName": "封禁",
+							"description": "用户已从房间中移除"
+						},
+						"invite": {
+							"displayName": "邀请",
+							"description": "受邀加入的用户"
+						},
+						"join": {
+							"displayName": "加入",
+							"description": "当前房间中的用户"
+						},
+						"leave": {
+							"displayName": "离开",
+							"description": "离开的用户"
+						}
+					}
+				},
+				"membership": {
+					"displayName": "成员资格",
+					"description": "仅获取具有选定成员资格状态的用户（使用排除成员资格的OR过滤器）",
+					"options": {
+						"": {
+							"displayName": "任意",
+							"description": "任意用户成员资格"
+						},
+						"ban": {
+							"displayName": "封禁",
+							"description": "用户已从房间中移除"
+						},
+						"invite": {
+							"displayName": "邀请",
+							"description": "受邀加入的用户"
+						},
+						"join": {
+							"displayName": "加入",
+							"description": "当前房间中的用户"
+						},
+						"leave": {
+							"displayName": "离开",
+							"description": "离开的用户"
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,813 @@
+{
+	"header": {
+		"displayName": "Zendesk",
+		"description": "使用 Zendesk API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiToken": {
+					"displayName": "API令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"ticket": {
+					"displayName": "工单",
+					"description": "工单是您的最终用户（客户）在Zendesk Support中与客服人员沟通的方式"
+				},
+				"ticketField": {
+					"displayName": "工单字段",
+					"description": "管理系统和自定义工单字段"
+				},
+				"user": {
+					"displayName": "用户",
+					"description": "管理用户"
+				},
+				"organization": {
+					"displayName": "组织",
+					"description": "管理组织"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建组织"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除组织"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取组织"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个组织"
+				},
+				"recover": {
+					"displayName": "恢复",
+					"description": "恢复已暂停的工单"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新组织"
+				},
+				"getOrganizations": {
+					"displayName": "获取组织",
+					"description": "获取用户的组织"
+				},
+				"getRelatedData": {
+					"displayName": "获取相关数据",
+					"description": "获取与组织相关的数据"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索用户"
+				},
+				"count": {
+					"displayName": "计数",
+					"description": "统计组织数量"
+				}
+			}
+		},
+		"description": {
+			"displayName": "描述",
+			"description": "工单上的第一条评论"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"id": {
+									"displayName": "名称或ID",
+									"description": "自定义字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"id": {
+									"displayName": "名称或ID",
+									"description": "自定义字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"externalId": {
+					"displayName": "外部ID",
+					"description": "可用于将Zendesk Support工单链接到本地记录的ID"
+				},
+				"group": {
+					"displayName": "组名或ID",
+					"description": "此工单被分配到的组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"recipient": {
+					"displayName": "收件人",
+					"description": "工单的原始收件人电子邮件地址"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "工单状态",
+					"options": {
+						"closed": {
+							"displayName": "已关闭"
+						},
+						"new": {
+							"displayName": "新建"
+						},
+						"hold": {
+							"displayName": "已暂停"
+						},
+						"open": {
+							"displayName": "打开"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"solved": {
+							"displayName": "已解决"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "此工单的主题字段值"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "应用于此组织的标签ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "此工单的类型",
+					"options": {
+						"question": {
+							"displayName": "问题"
+						},
+						"incident": {
+							"displayName": "事件"
+						},
+						"problem": {
+							"displayName": "问题"
+						},
+						"task": {
+							"displayName": "任务"
+						}
+					}
+				},
+				"alias": {
+					"displayName": "别名",
+					"description": "向最终用户显示的别名"
+				},
+				"custom_role_id": {
+					"displayName": "自定义角色ID",
+					"description": "如果用户是企业版计划的客服，则为自定义角色"
+				},
+				"details": {
+					"displayName": "详细信息",
+					"description": "组织详情，例如地址"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用户的主邮箱地址",
+					"placeholder": "name@email.com"
+				},
+				"external_id": {
+					"displayName": "外部ID",
+					"description": "来自其他系统的唯一标识符"
+				},
+				"locale": {
+					"displayName": "语言区域",
+					"description": "用户区域设置。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"moderator": {
+					"displayName": "版主",
+					"description": "用户是否拥有论坛版主权限"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "关于此用户的任何备注信息"
+				},
+				"only_private_comments": {
+					"displayName": "仅限私密评论",
+					"description": "用户是否只能创建私密评论"
+				},
+				"organization_id": {
+					"displayName": "组织名称或ID",
+					"description": "用户所属组织的ID。如果用户属于多个组织，则使用其默认组织的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "用户的主要电话号码"
+				},
+				"report_csv": {
+					"displayName": "CSV报告",
+					"description": "用户是否可以在Support管理界面的报告页面搜索选项卡中访问CSV报告"
+				},
+				"restricted_agent": {
+					"displayName": "受限代理",
+					"description": "代理是否有任何限制；管理员和无限制代理为false，其他代理为true"
+				},
+				"role": {
+					"displayName": "角色",
+					"description": "用户角色",
+					"options": {
+						"end-user": {
+							"displayName": "最终用户"
+						},
+						"agent": {
+							"displayName": "代理"
+						},
+						"admin": {
+							"displayName": "管理员"
+						}
+					}
+				},
+				"signature": {
+					"displayName": "签名",
+					"description": "用户的签名。仅代理和管理员可以拥有签名。"
+				},
+				"suspended": {
+					"displayName": "已暂停",
+					"description": "代理是否被暂停。来自被暂停用户的工单也会被暂停，这些用户无法登录最终用户门户。"
+				},
+				"ticket_restriction": {
+					"displayName": "票据限制",
+					"description": "指定用户可访问的票据",
+					"options": {
+						"organization": {
+							"displayName": "组织"
+						},
+						"groups": {
+							"displayName": "分组"
+						},
+						"assigned": {
+							"displayName": "已分配"
+						},
+						"requested": {
+							"displayName": "已请求"
+						}
+					}
+				},
+				"time_zone": {
+					"displayName": "时区",
+					"description": "用户的时区"
+				},
+				"userFieldsUi": {
+					"displayName": "用户字段",
+					"description": "用户个人资料中的自定义字段值",
+					"placeholder": "添加用户字段",
+					"multipleValueButtonText": "添加用户字段",
+					"options": {
+						"userFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "用于排序的字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "字段的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"userFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "用于排序的字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "字段的值"
+								}
+							}
+						},
+						"userFieldsUi": {
+							"displayName": "用户字段",
+							"placeholder": "添加用户字段"
+						}
+					}
+				},
+				"verified": {
+					"displayName": "已验证",
+					"description": "用户的主要身份是否已验证"
+				},
+				"domain_names": {
+					"displayName": "域名",
+					"description": "与此组织关联的域名（逗号分隔）"
+				},
+				"organizationFieldsUi": {
+					"displayName": "组织字段",
+					"description": "组织资料中自定义字段的值",
+					"placeholder": "添加组织字段",
+					"multipleValueButtonText": "添加组织字段",
+					"options": {
+						"organizationFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"organizationFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"organizationFieldsUi": {
+							"displayName": "组织字段",
+							"placeholder": "添加组织字段"
+						}
+					}
+				}
+			}
+		},
+		"additionalFieldsJson": {
+			"displayName": "附加字段",
+			"description": "要设置的值对象，具体描述请参考<a href=\"https://developer.zendesk.com/rest_api/docs/support/tickets\">此处</a>"
+		},
+		"id": {
+			"displayName": "组织ID",
+			"description": "工单ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assigneeEmail": {
+					"displayName": "分配者邮箱",
+					"description": "分配者的电子邮件地址"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"id": {
+									"displayName": "名称或ID",
+									"description": "自定义字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"id": {
+									"displayName": "名称或ID",
+									"description": "自定义字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"externalId": {
+					"displayName": "外部ID",
+					"description": "可用于将Zendesk Support工单链接到本地记录的ID"
+				},
+				"group": {
+					"displayName": "组名或ID",
+					"description": "此工单被分配到的组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"internalNote": {
+					"displayName": "内部备注",
+					"description": "内部工单备注（支持HTML）"
+				},
+				"publicReply": {
+					"displayName": "公开回复",
+					"description": "公开工单回复"
+				},
+				"recipient": {
+					"displayName": "收件人",
+					"description": "工单的原始收件人电子邮件地址"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "工单状态",
+					"options": {
+						"closed": {
+							"displayName": "已关闭"
+						},
+						"new": {
+							"displayName": "新建"
+						},
+						"hold": {
+							"displayName": "已暂停"
+						},
+						"open": {
+							"displayName": "打开"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"solved": {
+							"displayName": "已解决"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "此工单的主题字段值"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "应用于此组织的标签ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "此工单的类型",
+					"options": {
+						"question": {
+							"displayName": "问题"
+						},
+						"incident": {
+							"displayName": "事件"
+						},
+						"problem": {
+							"displayName": "问题"
+						},
+						"task": {
+							"displayName": "任务"
+						}
+					}
+				},
+				"alias": {
+					"displayName": "别名",
+					"description": "向最终用户显示的别名"
+				},
+				"custom_role_id": {
+					"displayName": "自定义角色ID",
+					"description": "如果用户是企业版计划的客服，则为自定义角色"
+				},
+				"details": {
+					"displayName": "详细信息",
+					"description": "组织详情，例如地址"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "用户的主邮箱地址",
+					"placeholder": "name@email.com"
+				},
+				"external_id": {
+					"displayName": "外部ID",
+					"description": "来自其他系统的唯一标识符"
+				},
+				"locale": {
+					"displayName": "语言区域",
+					"description": "用户区域设置。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"moderator": {
+					"displayName": "版主",
+					"description": "用户是否拥有论坛版主权限"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "用户名"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "关于此用户的任何备注信息"
+				},
+				"only_private_comments": {
+					"displayName": "仅限私密评论",
+					"description": "用户是否只能创建私密评论"
+				},
+				"organization_id": {
+					"displayName": "组织名称或ID",
+					"description": "用户所属组织的ID。如果用户属于多个组织，则使用其默认组织的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "用户的主要电话号码"
+				},
+				"report_csv": {
+					"displayName": "CSV报告",
+					"description": "用户是否可以在Support管理界面的报告页面搜索选项卡中访问CSV报告"
+				},
+				"restricted_agent": {
+					"displayName": "受限代理",
+					"description": "代理是否有任何限制；管理员和无限制代理为false，其他代理为true"
+				},
+				"role": {
+					"displayName": "角色",
+					"description": "用户角色",
+					"options": {
+						"end-user": {
+							"displayName": "最终用户"
+						},
+						"agent": {
+							"displayName": "代理"
+						},
+						"admin": {
+							"displayName": "管理员"
+						}
+					}
+				},
+				"signature": {
+					"displayName": "签名",
+					"description": "用户的签名。仅代理和管理员可以拥有签名。"
+				},
+				"suspended": {
+					"displayName": "已暂停",
+					"description": "代理是否被暂停。来自被暂停用户的工单也会被暂停，这些用户无法登录最终用户门户。"
+				},
+				"ticket_restriction": {
+					"displayName": "票据限制",
+					"description": "指定用户可访问的票据",
+					"options": {
+						"organization": {
+							"displayName": "组织"
+						},
+						"groups": {
+							"displayName": "分组"
+						},
+						"assigned": {
+							"displayName": "已分配"
+						},
+						"requested": {
+							"displayName": "已请求"
+						}
+					}
+				},
+				"time_zone": {
+					"displayName": "时区",
+					"description": "用户的时区"
+				},
+				"userFieldsUi": {
+					"displayName": "用户字段",
+					"description": "用户个人资料中的自定义字段值",
+					"placeholder": "添加用户字段",
+					"multipleValueButtonText": "添加用户字段",
+					"options": {
+						"userFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "用于排序的字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "字段的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"userFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "用于排序的字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "字段的值"
+								}
+							}
+						},
+						"userFieldsUi": {
+							"displayName": "用户字段",
+							"placeholder": "添加用户字段"
+						}
+					}
+				},
+				"verified": {
+					"displayName": "已验证",
+					"description": "用户的主要身份是否已验证"
+				},
+				"domain_names": {
+					"displayName": "域名",
+					"description": "与此组织关联的域名（逗号分隔）"
+				},
+				"organizationFieldsUi": {
+					"displayName": "组织字段",
+					"description": "组织资料中自定义字段的值",
+					"placeholder": "添加组织字段",
+					"multipleValueButtonText": "添加组织字段",
+					"options": {
+						"organizationFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"organizationFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"organizationFieldsUi": {
+							"displayName": "组织字段",
+							"placeholder": "添加组织字段"
+						}
+					}
+				}
+			}
+		},
+		"updateFieldsJson": {
+			"displayName": "更新字段",
+			"description": "要更新的值对象，详情请参阅<a href=\"https://developer.zendesk.com/rest_api/docs/support/tickets\">此处</a>"
+		},
+		"ticketType": {
+			"displayName": "工单类型",
+			"options": {
+				"regular": {
+					"displayName": "常规"
+				},
+				"suspended": {
+					"displayName": "已暂停"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"group": {
+					"displayName": "组名或ID",
+					"description": "要搜索的群组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "用于搜索工单的<a href=\"https://developer.zendesk.com/api-reference/ticketing/ticket-management/search/#syntax-examples\">查询语法</a>"
+				},
+				"sortBy": {
+					"displayName": "排序方式",
+					"description": "默认按相关性排序",
+					"options": {
+						"created_at": {
+							"displayName": "创建时间"
+						},
+						"priority": {
+							"displayName": "优先级"
+						},
+						"status": {
+							"displayName": "状态"
+						},
+						"ticket_type": {
+							"displayName": "工单类型"
+						},
+						"updated_at": {
+							"displayName": "更新时间"
+						}
+					}
+				},
+				"sortOrder": {
+					"displayName": "排序顺序",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "降序"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "工单状态",
+					"options": {
+						"closed": {
+							"displayName": "已关闭"
+						},
+						"new": {
+							"displayName": "新建"
+						},
+						"hold": {
+							"displayName": "已暂停"
+						},
+						"open": {
+							"displayName": "打开"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"solved": {
+							"displayName": "已解决"
+						}
+					}
+				}
+			}
+		},
+		"ticketFieldId": {
+			"displayName": "工单字段ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "用户姓名"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"role": {
+					"displayName": "角色"
+				},
+				"query": {
+					"displayName": "查询"
+				},
+				"external_id": {
+					"displayName": "外部ID"
+				}
+			}
+		}
+	}
+}

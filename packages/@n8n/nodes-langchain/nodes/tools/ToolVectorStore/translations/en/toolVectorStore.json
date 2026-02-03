@@ -1,0 +1,25 @@
+{
+	"header": {
+		"displayName": "Vector Store Question Answer Tool",
+		"description": "Answer questions with a vector store"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"name": {
+			"displayName": "Data Name",
+			"description": "Name of the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.",
+			"placeholder": "e.g. users_info"
+		},
+		"description": {
+			"displayName": "Description of Data",
+			"description": "Describe the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.",
+			"placeholder": "[Describe your data here, e.g. a user's name, email, etc.]"
+		},
+		"topK": {
+			"displayName": "Limit",
+			"description": "The maximum number of results to return"
+		}
+	}
+}

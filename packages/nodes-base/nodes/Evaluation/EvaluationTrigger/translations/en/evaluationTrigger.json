@@ -1,0 +1,152 @@
+{
+	"header": {
+		"displayName": "Evaluation Trigger",
+		"description": "Run a test dataset through your workflow to check performance"
+	},
+	"nodeView": {
+		"source": {
+			"displayName": "Source",
+			"description": "Where to get the test dataset from",
+			"options": {
+				"dataTable": {
+					"displayName": "Data table",
+					"description": "Load the test dataset from a local Data table"
+				},
+				"googleSheets": {
+					"displayName": "Google Sheets",
+					"description": "Load the test dataset from a Google Sheets document"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "Pulls a test dataset from a Google Sheet. The workflow will run once for each row, in sequence. Tips for wiring this node up <a href=\"https://docs.n8n.io/advanced-ai/evaluations/tips-and-common-issues/#combining-multiple-triggers\">here</a>."
+		},
+		"credentials": {
+			"displayName": "Credentials"
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"serviceAccount": {
+					"displayName": "Service Account"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				}
+			}
+		},
+		"documentId": {
+			"displayName": "Document Containing Dataset"
+		},
+		"sheetName": {
+			"displayName": "Sheet Containing Dataset"
+		},
+		"dataTableId": {
+			"displayName": "Data table"
+		},
+		"limitRows": {
+			"displayName": "Limit Rows",
+			"description": "Whether to limit number of rows to process"
+		},
+		"maxRows": {
+			"displayName": "Max Rows to Process",
+			"description": "Maximum number of rows to process"
+		},
+		"filtersUI": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"multipleValueButtonText": "Add Filter",
+			"options": {
+				"values": {
+					"displayName": "Filter",
+					"values": {
+						"lookupColumn": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"lookupValue": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Filter",
+					"values": {
+						"lookupColumn": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"lookupValue": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"filtersUI": {
+					"displayName": "Filters",
+					"placeholder": "Add Filter"
+				}
+			}
+		},
+		"filterRows": {
+			"displayName": "Filter Rows",
+			"description": "Whether to filter rows to process"
+		},
+		"matchType": {
+			"displayName": "Must Match",
+			"options": {
+				"anyCondition": {
+					"displayName": "Any Condition"
+				},
+				"allConditions": {
+					"displayName": "All Conditions"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "Conditions",
+			"description": "Filter to decide which rows get",
+			"placeholder": "Add Condition",
+			"multipleValueButtonText": "Add Condition",
+			"options": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"keyName": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"condition": {
+							"displayName": "Condition"
+						},
+						"keyValue": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"keyName": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"condition": {
+							"displayName": "Condition"
+						},
+						"keyValue": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "Conditions",
+					"placeholder": "Add Condition"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,78 @@
+{
+	"header": {
+		"displayName": "Anthropic聊天模型",
+		"description": "Anthropic语言模型"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI链。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"model": {
+			"displayName": "模型",
+			"description": "模型。从列表中选择，或指定ID。<a href=\"https://docs.anthropic.com/claude/docs/models-overview\">了解更多</a>。",
+			"options": {
+				"claude-3-5-sonnet-20241022": {
+					"displayName": "Claude 3.5 Sonnet(20241022)"
+				},
+				"claude-3-opus-20240229": {
+					"displayName": "Claude 3 Opus(20240229)"
+				},
+				"claude-3-5-sonnet-20240620": {
+					"displayName": "Claude 3.5 Sonnet(20240620)"
+				},
+				"claude-3-sonnet-20240229": {
+					"displayName": "Claude 3 Sonnet(20240229)"
+				},
+				"claude-3-5-haiku-20241022": {
+					"displayName": "Claude 3.5 Haiku(20241022)"
+				},
+				"claude-3-haiku-20240307": {
+					"displayName": "Claude 3 Haiku(20240307)"
+				},
+				"claude-2": {
+					"displayName": "[0]旧版：Claude 2"
+				},
+				"claude-2.1": {
+					"displayName": "[0]旧版：Claude 2.1"
+				},
+				"claude-instant-1.2": {
+					"displayName": "旧版: Claude Instant 1.2"
+				},
+				"claude-instant-1": {
+					"displayName": "[0]旧版：Claude Instant 1"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"maxTokensToSample": {
+					"displayName": "最大令牌数",
+					"description": "在补全中生成的最大令牌数"
+				},
+				"temperature": {
+					"displayName": "采样温度",
+					"description": "控制随机性：降低温度会使生成结果更少随机性。当温度趋近于零时，模型会变得确定且重复。"
+				},
+				"topK": {
+					"displayName": "Top K",
+					"description": "用于移除“长尾”低概率响应。默认为-1，表示禁用此功能。"
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "通过核心采样控制多样性：0.5表示考虑所有似然加权选项的一半。我们通常建议调整此参数或温度，但不要同时调整两者。"
+				},
+				"thinking": {
+					"displayName": "启用思考模式",
+					"description": "是否为模型启用思考模式"
+				},
+				"thinkingBudget": {
+					"displayName": "思考预算（令牌数）",
+					"description": "用于思考的最大令牌数"
+				}
+			}
+		}
+	}
+}

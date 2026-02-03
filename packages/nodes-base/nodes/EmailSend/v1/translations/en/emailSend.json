@@ -1,0 +1,60 @@
+{
+	"header": {
+		"displayName": "Send Email",
+		"description": "Sends an Email"
+	},
+	"nodeView": {
+		"fromEmail": {
+			"displayName": "From Email",
+			"description": "Email address of the sender optional with name",
+			"placeholder": "admin@example.com"
+		},
+		"toEmail": {
+			"displayName": "To Email",
+			"description": "Email address of the recipient",
+			"placeholder": "info@example.com"
+		},
+		"ccEmail": {
+			"displayName": "CC Email",
+			"description": "Email address of CC recipient",
+			"placeholder": "cc@example.com"
+		},
+		"bccEmail": {
+			"displayName": "BCC Email",
+			"description": "Email address of BCC recipient",
+			"placeholder": "bcc@example.com"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "Subject line of the email",
+			"placeholder": "My subject line"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "Plain text message of email"
+		},
+		"html": {
+			"displayName": "HTML",
+			"description": "HTML text message of email"
+		},
+		"attachments": {
+			"displayName": "Attachments",
+			"description": "Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to connect even if SSL certificate validation is not possible"
+				},
+				"replyTo": {
+					"displayName": "Reply To",
+					"description": "The email address to send the reply to",
+					"placeholder": "info@example.com"
+				}
+			}
+		}
+	}
+}

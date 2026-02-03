@@ -1,0 +1,282 @@
+{
+	"header": {
+		"displayName": "Gmail触发器",
+		"description": "从Gmail获取邮件，并在指定的轮询间隔触发工作流。"
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "轮询时间",
+			"description": "轮询应发生的时间",
+			"placeholder": "添加轮询时间",
+			"multipleValueButtonText": "添加轮询时间",
+			"options": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "轮询时间",
+					"placeholder": "添加轮询时间"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				},
+				"serviceAccount": {
+					"displayName": "服务账号"
+				}
+			}
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"messageReceived": {
+					"displayName": "消息已接收"
+				}
+			}
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"includeSpamTrash": {
+					"displayName": "包含垃圾邮件和已删除邮件",
+					"description": "是否在结果中包含来自垃圾邮件和已删除邮件的消息"
+				},
+				"includeDrafts": {
+					"displayName": "包含草稿",
+					"description": "是否在结果中包含邮件草稿"
+				},
+				"labelIds": {
+					"displayName": "标签名称或ID",
+					"description": "仅返回匹配所有指定标签ID的消息。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"q": {
+					"displayName": "搜索",
+					"description": "仅返回匹配指定查询的消息",
+					"placeholder": "包含附件"
+				},
+				"readStatus": {
+					"displayName": "读取状态",
+					"options": {
+						"both": {
+							"displayName": "未读和已读邮件"
+						},
+						"unread": {
+							"displayName": "仅未读邮件"
+						},
+						"read": {
+							"displayName": "仅读取邮件"
+						}
+					}
+				},
+				"sender": {
+					"displayName": "发送方",
+					"description": "用于筛选的发件人姓名或邮箱"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "附件前缀",
+					"description": "用于写入附件的二进制属性名称前缀。将添加从0开始的索引。例如，如果名称为'attachment_'，则第一个附件将保存为'attachment_0'。"
+				},
+				"downloadAttachments": {
+					"displayName": "下载附件",
+					"description": "是否下载邮件的附件"
+				}
+			}
+		}
+	}
+}

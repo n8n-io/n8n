@@ -1,0 +1,43 @@
+{
+	"header": {
+		"displayName": "GitHub文档加载器",
+		"description": "使用GitHub数据作为此链的输入"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到向量存储。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>插入一个</a>"
+		},
+		"repository": {
+			"displayName": "仓库链接"
+		},
+		"branch": {
+			"displayName": "分支"
+		},
+		"textSplittingMode": {
+			"displayName": "文本分割",
+			"options": {
+				"simple": {
+					"displayName": "简单",
+					"description": "每1000个字符分割一次，重叠200个字符"
+				},
+				"custom": {
+					"displayName": "自定义",
+					"description": "连接自定义文本分割子节点"
+				}
+			}
+		},
+		"additionalOptions": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"recursive": {
+					"displayName": "递归"
+				},
+				"ignorePaths": {
+					"displayName": "忽略路径",
+					"description": "要忽略的路径列表，以逗号分隔，例如 \"docs, src/tests\""
+				}
+			}
+		}
+	}
+}

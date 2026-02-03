@@ -1,0 +1,23 @@
+{
+	"header": {
+		"displayName": "Form.io Trigger",
+		"description": "Handle form.io events via webhooks"
+	},
+	"nodeView": {
+		"projectId": {
+			"displayName": "Project Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"formId": {
+			"displayName": "Form Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"events": {
+			"displayName": "Trigger Events"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		}
+	}
+}

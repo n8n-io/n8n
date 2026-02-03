@@ -1,0 +1,63 @@
+{
+	"header": {
+		"displayName": "ConvertKit触发器",
+		"description": "通过Webhook处理ConvertKit事件"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "事件",
+			"description": "可触发webhook的事件及其启用状态",
+			"options": {
+				"formSubscribe": {
+					"displayName": "表单订阅"
+				},
+				"linkClick": {
+					"displayName": "链接点击"
+				},
+				"productPurchase": {
+					"displayName": "产品购买"
+				},
+				"purchaseCreate": {
+					"displayName": "采购已创建"
+				},
+				"courseComplete": {
+					"displayName": "序列完成"
+				},
+				"courseSubscribe": {
+					"displayName": "序列订阅"
+				},
+				"subscriberActivate": {
+					"displayName": "订阅者已激活"
+				},
+				"subscriberUnsubscribe": {
+					"displayName": "订阅者取消订阅"
+				},
+				"tagAdd": {
+					"displayName": "添加标签"
+				},
+				"tagRemove": {
+					"displayName": "标签移除"
+				}
+			}
+		},
+		"formId": {
+			"displayName": "表单名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"courseId": {
+			"displayName": "序列名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"link": {
+			"displayName": "初始化链接",
+			"description": "初始化链接的URL"
+		},
+		"productId": {
+			"displayName": "产品ID"
+		},
+		"tagId": {
+			"displayName": "标签名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		}
+	}
+}

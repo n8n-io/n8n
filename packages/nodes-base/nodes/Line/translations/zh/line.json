@@ -1,0 +1,127 @@
+{
+	"header": {
+		"displayName": "行",
+		"description": "使用 Line API"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "服务终止：LINE Notify将于2025年4月1日起停止服务，更多信息请<a href=\"https://notify-bot.line.me/closing-announce\" target=\"_blank\">点击此处</a>查看"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"notification": {
+					"displayName": "通知"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "向用户或群组发送通知"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"imageUi": {
+					"displayName": "图片",
+					"placeholder": "添加图片",
+					"options": {
+						"imageValue": {
+							"displayName": "图片",
+							"options": {
+								"binaryData": {
+									"displayName": "二进制文件"
+								},
+								"imageFullsize": {
+									"displayName": "图像原始尺寸",
+									"description": "HTTP/HTTPS URL。JPEG格式，最大尺寸为2048×2048像素。"
+								},
+								"imageThumbnail": {
+									"displayName": "图片缩略图",
+									"description": "HTTP/HTTPS URL。最大尺寸为240×240像素的JPEG格式。"
+								},
+								"binaryProperty": {
+									"displayName": "输入二进制字段"
+								}
+							}
+						}
+					},
+					"values": {
+						"imageValue": {
+							"displayName": "图片",
+							"options": {
+								"binaryData": {
+									"displayName": "二进制文件"
+								},
+								"imageFullsize": {
+									"displayName": "图像原始尺寸",
+									"description": "HTTP/HTTPS URL。JPEG格式，最大尺寸为2048×2048像素。"
+								},
+								"imageThumbnail": {
+									"displayName": "图片缩略图",
+									"description": "HTTP/HTTPS URL。最大尺寸为240×240像素的JPEG格式。"
+								},
+								"binaryProperty": {
+									"displayName": "输入二进制字段"
+								}
+							}
+						},
+						"imageUi": {
+							"displayName": "图片",
+							"placeholder": "添加图片"
+						}
+					}
+				},
+				"notificationDisabled": {
+					"displayName": "通知已禁用",
+					"description": "<p>true：消息发送时用户不会收到推送通知。</p><p>false：消息发送时用户会收到推送通知</p>"
+				},
+				"stickerUi": {
+					"displayName": "贴纸",
+					"placeholder": "添加贴纸",
+					"options": {
+						"stickerValue": {
+							"displayName": "贴纸",
+							"options": {
+								"stickerId": {
+									"displayName": "贴纸ID"
+								},
+								"stickerPackageId": {
+									"displayName": "贴纸包ID",
+									"description": "包ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"stickerValue": {
+							"displayName": "贴纸",
+							"options": {
+								"stickerId": {
+									"displayName": "贴纸ID"
+								},
+								"stickerPackageId": {
+									"displayName": "贴纸包ID",
+									"description": "包ID"
+								}
+							}
+						},
+						"stickerUi": {
+							"displayName": "贴纸",
+							"placeholder": "添加贴纸"
+						}
+					}
+				}
+			}
+		}
+	}
+}

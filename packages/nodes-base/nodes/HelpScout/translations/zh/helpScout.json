@@ -1,0 +1,988 @@
+{
+	"header": {
+		"displayName": "Help Scout",
+		"description": "使用 Help Scout API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"conversation": {
+					"displayName": "对话"
+				},
+				"customer": {
+					"displayName": "客户"
+				},
+				"mailbox": {
+					"displayName": "邮箱"
+				},
+				"thread": {
+					"displayName": "主题"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新的聊天线程"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除对话"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取邮箱数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个聊天线程"
+				},
+				"properties": {
+					"displayName": "属性",
+					"description": "获取客户属性定义"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新客户"
+				}
+			}
+		},
+		"mailboxId": {
+			"displayName": "邮箱ID",
+			"description": "正在创建对话的邮箱ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"status": {
+			"displayName": "状态",
+			"description": "对话状态",
+			"options": {
+				"active": {
+					"displayName": "激活状态"
+				},
+				"closed": {
+					"displayName": "已关闭"
+				},
+				"pending": {
+					"displayName": "待处理"
+				}
+			}
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "对话主题"
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "对话类型",
+			"options": {
+				"chat": {
+					"displayName": "聊天"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"customer": {
+					"displayName": "客户"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"reply": {
+					"displayName": "回复"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，响应仅包含资源的ID。如果激活此选项，它将自动解析数据。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assignTo": {
+					"displayName": "分配给",
+					"description": "分配给对话的Help Scout用户"
+				},
+				"autoReply": {
+					"displayName": "自动回复",
+					"description": "若设为true，只要对话中至少存在一个客户会话，就会发送自动回复"
+				},
+				"closedAt": {
+					"displayName": "关闭时间",
+					"description": "对话关闭时间，仅适用于导入的对话"
+				},
+				"createdAt": {
+					"displayName": "创建时间",
+					"description": "此对话创建时间 - ISO 8601 日期时间"
+				},
+				"customerEmail": {
+					"displayName": "客户邮箱"
+				},
+				"customerId": {
+					"displayName": "客户ID"
+				},
+				"imported": {
+					"displayName": "已导入",
+					"description": "是否不会生成任何外发邮件或通知"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "要添加到对话的标签列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"user": {
+					"displayName": "用户ID",
+					"description": "添加对话和线程的用户ID"
+				},
+				"age": {
+					"displayName": "年龄",
+					"description": "客户年龄"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "客户的名字。定义时长度必须在1到40个字符之间。"
+				},
+				"gender": {
+					"displayName": "性别",
+					"description": "该客户的性别",
+					"options": {
+						"female": {
+							"displayName": "女性"
+						},
+						"male": {
+							"displayName": "男性"
+						},
+						"unknown": {
+							"displayName": "未知"
+						}
+					}
+				},
+				"jobTitle": {
+					"displayName": "职位名称",
+					"description": "职位名称。最多60个字符。"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "客户姓氏"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "客户所在地"
+				},
+				"background": {
+					"displayName": "备注"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"photoUrl": {
+					"displayName": "照片URL",
+					"description": "客户照片的URL"
+				},
+				"draft": {
+					"displayName": "草稿",
+					"description": "是否创建草稿回复"
+				}
+			}
+		},
+		"threadsUi": {
+			"displayName": "线程",
+			"placeholder": "添加线程",
+			"multipleValueButtonText": "添加线程",
+			"options": {
+				"threadsValues": {
+					"displayName": "主题",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"chat": {
+									"displayName": "聊天"
+								},
+								"customer": {
+									"displayName": "客户"
+								},
+								"note": {
+									"displayName": "备注"
+								},
+								"phone": {
+									"displayName": "电话"
+								},
+								"reply": {
+									"displayName": "回复"
+								}
+							}
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "消息文本"
+						},
+						"bcc": {
+							"displayName": "密送",
+							"description": "电子邮件地址"
+						},
+						"cc": {
+							"displayName": "抄送",
+							"description": "电子邮件地址"
+						},
+						"draft": {
+							"displayName": "草稿",
+							"description": "如果为true，则创建草稿回复"
+						}
+					}
+				}
+			},
+			"values": {
+				"threadsValues": {
+					"displayName": "主题",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"chat": {
+									"displayName": "聊天"
+								},
+								"customer": {
+									"displayName": "客户"
+								},
+								"note": {
+									"displayName": "备注"
+								},
+								"phone": {
+									"displayName": "电话"
+								},
+								"reply": {
+									"displayName": "回复"
+								}
+							}
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "消息文本"
+						},
+						"bcc": {
+							"displayName": "密送",
+							"description": "电子邮件地址"
+						},
+						"cc": {
+							"displayName": "抄送",
+							"description": "电子邮件地址"
+						},
+						"draft": {
+							"displayName": "草稿",
+							"description": "如果为true，则创建草稿回复"
+						}
+					}
+				},
+				"threadsUi": {
+					"displayName": "线程",
+					"placeholder": "添加线程"
+				}
+			}
+		},
+		"conversationId": {
+			"displayName": "会话ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"assignTo": {
+					"displayName": "分配给",
+					"description": "按负责人ID筛选对话"
+				},
+				"embed": {
+					"displayName": "嵌入",
+					"description": "允许嵌入/加载子实体",
+					"options": {
+						"threads": {
+							"displayName": "线程"
+						}
+					}
+				},
+				"folder": {
+					"displayName": "文件夹ID",
+					"description": "从特定文件夹ID筛选对话"
+				},
+				"mailbox": {
+					"displayName": "邮箱ID",
+					"description": "从指定邮箱筛选客户"
+				},
+				"modifiedSince": {
+					"displayName": "修改时间晚于",
+					"description": "仅返回在此日期之后修改的客户"
+				},
+				"number": {
+					"displayName": "数字",
+					"description": "按会话编号查找会话"
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "高级搜索 <a href=\"https://developer.helpscout.com/mailbox-api/endpoints/customers/list/#query\">示例</a>"
+				},
+				"sortField": {
+					"displayName": "排序字段",
+					"description": "按指定字段对结果进行排序",
+					"options": {
+						"createdAt": {
+							"displayName": "创建时间"
+						},
+						"customerEmail": {
+							"displayName": "客户邮箱"
+						},
+						"customerName": {
+							"displayName": "客户名称"
+						},
+						"mailboxid": {
+							"displayName": "邮箱ID"
+						},
+						"modifiedAt": {
+							"displayName": "修改于"
+						},
+						"number": {
+							"displayName": "数字"
+						},
+						"score": {
+							"displayName": "评分"
+						},
+						"status": {
+							"displayName": "状态"
+						},
+						"subject": {
+							"displayName": "主题"
+						},
+						"firstName": {
+							"displayName": "名字"
+						},
+						"lastName": {
+							"displayName": "姓氏"
+						}
+					}
+				},
+				"sortOrder": {
+					"displayName": "排序顺序",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "按状态筛选对话",
+					"options": {
+						"active": {
+							"displayName": "激活状态"
+						},
+						"all": {
+							"displayName": "全部"
+						},
+						"closed": {
+							"displayName": "已关闭"
+						},
+						"open": {
+							"displayName": "打开"
+						},
+						"pending": {
+							"displayName": "待处理"
+						},
+						"spam": {
+							"displayName": "垃圾信息"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "按标签筛选对话。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "按名字筛选客户"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "按姓氏筛选客户"
+				}
+			}
+		},
+		"addressUi": {
+			"displayName": "地址",
+			"placeholder": "添加地址",
+			"options": {
+				"addressValue": {
+					"displayName": "地址",
+					"options": {
+						"line1": {
+							"displayName": "第1行"
+						},
+						"line2": {
+							"displayName": "第2行"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"country": {
+							"displayName": "国家名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						}
+					}
+				}
+			},
+			"values": {
+				"addressValue": {
+					"displayName": "地址",
+					"options": {
+						"line1": {
+							"displayName": "第1行"
+						},
+						"line2": {
+							"displayName": "第2行"
+						},
+						"city": {
+							"displayName": "城市"
+						},
+						"state": {
+							"displayName": "状态"
+						},
+						"country": {
+							"displayName": "国家名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"postalCode": {
+							"displayName": "邮政编码"
+						}
+					}
+				},
+				"addressUi": {
+					"displayName": "地址",
+					"placeholder": "添加地址"
+				}
+			}
+		},
+		"chatsUi": {
+			"displayName": "聊天处理程序",
+			"placeholder": "添加聊天处理程序",
+			"multipleValueButtonText": "添加聊天处理器",
+			"options": {
+				"chatsValues": {
+					"displayName": "聊天处理器",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "聊天类型",
+							"options": {
+								"aim": {
+									"displayName": "AIM"
+								},
+								"gtalk": {
+									"displayName": "Google Talk"
+								},
+								"icq": {
+									"displayName": "ICQ"
+								},
+								"msn": {
+									"displayName": "MSN"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"qq": {
+									"displayName": "QQ"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"xmpp": {
+									"displayName": "XMPP"
+								},
+								"yahoo": {
+									"displayName": "Yahoo"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "聊天句柄"
+						}
+					}
+				}
+			},
+			"values": {
+				"chatsValues": {
+					"displayName": "聊天处理器",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "聊天类型",
+							"options": {
+								"aim": {
+									"displayName": "AIM"
+								},
+								"gtalk": {
+									"displayName": "Google Talk"
+								},
+								"icq": {
+									"displayName": "ICQ"
+								},
+								"msn": {
+									"displayName": "MSN"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"qq": {
+									"displayName": "QQ"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"xmpp": {
+									"displayName": "XMPP"
+								},
+								"yahoo": {
+									"displayName": "Yahoo"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "聊天句柄"
+						}
+					}
+				},
+				"chatsUi": {
+					"displayName": "聊天处理程序",
+					"placeholder": "添加聊天处理程序"
+				}
+			}
+		},
+		"emailsUi": {
+			"displayName": "邮件",
+			"placeholder": "添加邮件",
+			"multipleValueButtonText": "添加电子邮件",
+			"options": {
+				"emailsValues": {
+					"displayName": "电子邮件",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "此邮箱地址的位置",
+							"options": {
+								"home": {
+									"displayName": "首页"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"work": {
+									"displayName": "工作"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "电子邮件"
+						}
+					}
+				}
+			},
+			"values": {
+				"emailsValues": {
+					"displayName": "电子邮件",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "此邮箱地址的位置",
+							"options": {
+								"home": {
+									"displayName": "首页"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"work": {
+									"displayName": "工作"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "电子邮件"
+						}
+					}
+				},
+				"emailsUi": {
+					"displayName": "邮件",
+					"placeholder": "添加邮箱"
+				}
+			}
+		},
+		"phonesUi": {
+			"displayName": "电话",
+			"placeholder": "添加电话",
+			"multipleValueButtonText": "添加电话",
+			"options": {
+				"phonesValues": {
+					"displayName": "电子邮件",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "此电话的位置",
+							"options": {
+								"fax": {
+									"displayName": "传真"
+								},
+								"home": {
+									"displayName": "首页"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"pager": {
+									"displayName": "分页器"
+								},
+								"work": {
+									"displayName": "工作"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "电话"
+						}
+					}
+				}
+			},
+			"values": {
+				"phonesValues": {
+					"displayName": "电子邮件",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "此电话的位置",
+							"options": {
+								"fax": {
+									"displayName": "传真"
+								},
+								"home": {
+									"displayName": "首页"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"pager": {
+									"displayName": "分页器"
+								},
+								"work": {
+									"displayName": "工作"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "电话"
+						}
+					}
+				},
+				"phonesUi": {
+					"displayName": "电话",
+					"placeholder": "添加电话"
+				}
+			}
+		},
+		"socialProfilesUi": {
+			"displayName": "社交资料",
+			"placeholder": "添加社交资料",
+			"multipleValueButtonText": "添加社交资料",
+			"options": {
+				"socialProfilesValues": {
+					"displayName": "社交资料",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "社交资料类型",
+							"options": {
+								"aboutMe": {
+									"displayName": "关于我"
+								},
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"flickr": {
+									"displayName": "Flickr"
+								},
+								"forsquare": {
+									"displayName": "Foursquare"
+								},
+								"google": {
+									"displayName": "Google"
+								},
+								"googleplus": {
+									"displayName": "Google Plus"
+								},
+								"linkedin": {
+									"displayName": "Linkedin"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"quora": {
+									"displayName": "Quora"
+								},
+								"tungleme": {
+									"displayName": "Tungleme"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								},
+								"youtube": {
+									"displayName": "YouTube"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "社交资料句柄（例如URL）"
+						}
+					}
+				}
+			},
+			"values": {
+				"socialProfilesValues": {
+					"displayName": "社交资料",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "社交资料类型",
+							"options": {
+								"aboutMe": {
+									"displayName": "关于我"
+								},
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"flickr": {
+									"displayName": "Flickr"
+								},
+								"forsquare": {
+									"displayName": "Foursquare"
+								},
+								"google": {
+									"displayName": "Google"
+								},
+								"googleplus": {
+									"displayName": "Google Plus"
+								},
+								"linkedin": {
+									"displayName": "Linkedin"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"quora": {
+									"displayName": "Quora"
+								},
+								"tungleme": {
+									"displayName": "Tungleme"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								},
+								"youtube": {
+									"displayName": "YouTube"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "社交资料句柄（例如URL）"
+						}
+					}
+				},
+				"socialProfilesUi": {
+					"displayName": "社交资料",
+					"placeholder": "添加社交资料"
+				}
+			}
+		},
+		"websitesUi": {
+			"displayName": "网站",
+			"placeholder": "添加网站",
+			"multipleValueButtonText": "添加网站",
+			"options": {
+				"websitesValues": {
+					"displayName": "网站",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"description": "网站URL"
+						}
+					}
+				}
+			},
+			"values": {
+				"websitesValues": {
+					"displayName": "网站",
+					"options": {
+						"value": {
+							"displayName": "值",
+							"description": "网站URL"
+						}
+					}
+				},
+				"websitesUi": {
+					"displayName": "网站",
+					"placeholder": "添加网站"
+				}
+			}
+		},
+		"customerId": {
+			"displayName": "客户ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"age": {
+					"displayName": "年龄",
+					"description": "客户年龄"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "客户的名字。定义时长度必须在1到40个字符之间。"
+				},
+				"gender": {
+					"displayName": "性别",
+					"description": "该客户的性别",
+					"options": {
+						"female": {
+							"displayName": "女性"
+						},
+						"male": {
+							"displayName": "男性"
+						},
+						"unknown": {
+							"displayName": "未知"
+						}
+					}
+				},
+				"jobTitle": {
+					"displayName": "职位名称",
+					"description": "职位名称。最多60个字符。"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "客户姓氏"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "客户所在地"
+				},
+				"background": {
+					"displayName": "备注"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"photoUrl": {
+					"displayName": "照片URL",
+					"description": "客户照片的URL"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "聊天文本"
+		},
+		"attachmentsUi": {
+			"displayName": "附件",
+			"description": "要添加到消息中的支持附件数组",
+			"placeholder": "添加附件",
+			"multipleValueButtonText": "添加附件",
+			"options": {
+				"attachmentsValues": {
+					"displayName": "附件值",
+					"options": {
+						"fileName": {
+							"displayName": "文件名",
+							"description": "附件的文件名"
+						},
+						"mimeType": {
+							"displayName": "MIME类型",
+							"description": "附件的MIME类型"
+						},
+						"data": {
+							"displayName": "数据",
+							"description": "Base64编码的数据流",
+							"placeholder": "示例文件"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "附件二进制",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"description": "包含应作为邮件附件添加的数据的二进制属性名称"
+						}
+					}
+				}
+			},
+			"values": {
+				"attachmentsValues": {
+					"displayName": "附件值",
+					"options": {
+						"fileName": {
+							"displayName": "文件名",
+							"description": "附件的文件名"
+						},
+						"mimeType": {
+							"displayName": "MIME类型",
+							"description": "附件的MIME类型"
+						},
+						"data": {
+							"displayName": "数据",
+							"description": "Base64编码的数据流",
+							"placeholder": "示例文件"
+						}
+					}
+				},
+				"attachmentsBinary": {
+					"displayName": "附件二进制",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"description": "包含应作为邮件附件添加的数据的二进制属性名称"
+						}
+					}
+				},
+				"attachmentsUi": {
+					"displayName": "附件",
+					"placeholder": "添加附件"
+				}
+			}
+		}
+	}
+}

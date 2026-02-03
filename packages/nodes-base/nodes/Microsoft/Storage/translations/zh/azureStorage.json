@@ -1,0 +1,374 @@
+{
+	"header": {
+		"displayName": "Azure 存储",
+		"description": "与 Azure 存储 API 交互"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2"
+				},
+				"sharedKey": {
+					"displayName": "共享密钥"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"blob": {
+					"displayName": "二进制大对象"
+				},
+				"container": {
+					"displayName": "容器"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建容器"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除容器"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索特定容器的数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索容器列表"
+				}
+			}
+		},
+		"container": {
+			"displayName": "容器",
+			"description": "选择要获取的容器"
+		},
+		"blobCreate": {
+			"displayName": "Blob名称",
+			"description": "新Blob或现有Blob的名称",
+			"placeholder": "例如：myblob"
+		},
+		"from": {
+			"displayName": "可自定义的发件人名称。长度应在3到11个字符之间，仅允许使用字母数字字符。",
+			"options": {
+				"binary": {
+					"displayName": "二进制"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "二进制内容",
+			"description": "包含待写入文件的输入二进制字段名称"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "读取Blob内容的URL",
+			"placeholder": "例如 https://example.com/image.jpg"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"accessTier": {
+					"displayName": "访问层级",
+					"description": "要在Blob上设置的层级。有关块Blob分层的详细信息，请参阅<a href=\"https://learn.microsoft.com/en-us/azure/storage/blobs/access-tiers-overview\">热、冷和存档存储层级</a>。",
+					"options": {
+						"Archive": {
+							"displayName": "归档"
+						},
+						"Cold": {
+							"displayName": "冷"
+						},
+						"Cool": {
+							"displayName": "好的"
+						},
+						"Hot": {
+							"displayName": "热门"
+						}
+					}
+				},
+				"blobType": {
+					"displayName": "Blob类型",
+					"description": "指定要创建的Blob类型：块Blob、页Blob或追加Blob",
+					"options": {
+						"BlockBlob": {
+							"displayName": "块 Blob"
+						},
+						"PageBlob": {
+							"displayName": "页面Blob"
+						},
+						"AppendBlob": {
+							"displayName": "追加Blob"
+						}
+					}
+				},
+				"cacheControl": {
+					"displayName": "缓存控制",
+					"description": "设置Blob的缓存控制值"
+				},
+				"contentCrc64": {
+					"displayName": "内容 CRC64",
+					"description": "用于在传输过程中验证其完整性的二进制大对象内容 CRC64 哈希值"
+				},
+				"contentEncoding": {
+					"displayName": "内容编码",
+					"description": "设置Blob的内容编码"
+				},
+				"contentLanguage": {
+					"displayName": "内容语言",
+					"description": "设置Blob的内容语言"
+				},
+				"contentMd5": {
+					"displayName": "内容MD5",
+					"description": "设置Blob的MD5哈希值用于完整性验证"
+				},
+				"contentType": {
+					"displayName": "内容类型",
+					"description": "设置Blob的内容类型"
+				},
+				"encryptionContext": {
+					"displayName": "加密上下文",
+					"description": "若设置此值，将设置blob系统元数据。最大长度1024。仅在账户启用分层命名空间时有效。"
+				},
+				"encryptionScope": {
+					"displayName": "加密范围",
+					"description": "指示用于加密请求内容的加密范围"
+				},
+				"expiryOption": {
+					"displayName": "过期选项",
+					"description": "指定请求的过期日期选项。此标头对启用分层命名空间的账户有效。",
+					"options": {
+						"Absolute": {
+							"displayName": "过期",
+							"description": "必须指定过期时间"
+						},
+						"NeverExpire": {
+							"displayName": "永不过期",
+							"description": "将Blob设置为永不过期或移除当前过期日期"
+						}
+					}
+				},
+				"expiryTime": {
+					"displayName": "过期时间",
+					"description": "指定Blob的绝对过期时间"
+				},
+				"filename": {
+					"displayName": "文件名"
+				},
+				"immutabilityPolicyUntilDate": {
+					"displayName": "不可变性策略日期",
+					"description": "指定要在Blob上设置的保留截止日期。在此日期之前，Blob将受到保护，不会被修改或删除。"
+				},
+				"immutabilityPolicyMode": {
+					"displayName": "不可变性策略模式",
+					"description": "指定要在Blob上设置的不可变性策略模式"
+				},
+				"leaseId": {
+					"displayName": "租约ID",
+					"description": "如果指定此请求头，则仅在满足以下两个条件时执行操作：<ul><li>Blob的租约当前处于活动状态。</li><li>请求中指定的租约ID与Blob的租约ID匹配。</li></ul>"
+				},
+				"legalHold": {
+					"displayName": "法律保留",
+					"description": "是否对Blob设置法律保留"
+				},
+				"metadata": {
+					"displayName": "元数据",
+					"description": "作为元数据与容器关联的名称-值对",
+					"placeholder": "添加元数据",
+					"multipleValueButtonText": "添加元数据",
+					"options": {
+						"metadataValues": {
+							"displayName": "元数据",
+							"options": {
+								"fieldName": {
+									"displayName": "字段名称",
+									"description": "名称必须遵循<a href=\"https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/\">C#标识符</a>的命名规则"
+								},
+								"fieldValue": {
+									"displayName": "字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "元数据",
+							"options": {
+								"fieldName": {
+									"displayName": "字段名称",
+									"description": "名称必须遵循<a href=\"https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/\">C#标识符</a>的命名规则"
+								},
+								"fieldValue": {
+									"displayName": "字段值"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "元数据",
+							"placeholder": "添加元数据"
+						}
+					}
+				},
+				"origin": {
+					"displayName": "来源",
+					"description": "指定请求的来源。此标头的存在会导致响应中包含跨域资源共享（CORS）标头。"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "在Blob上设置给定的标签",
+					"placeholder": "添加标签",
+					"multipleValueButtonText": "添加标签",
+					"options": {
+						"tagValues": {
+							"displayName": "标签",
+							"options": {
+								"tagName": {
+									"displayName": "标签名称"
+								},
+								"tagValue": {
+									"displayName": "标签值"
+								}
+							}
+						}
+					},
+					"values": {
+						"tagValues": {
+							"displayName": "标签",
+							"options": {
+								"tagName": {
+									"displayName": "标签名称"
+								},
+								"tagValue": {
+									"displayName": "标签值"
+								}
+							}
+						},
+						"tags": {
+							"displayName": "标签",
+							"placeholder": "添加标签"
+						}
+					}
+				},
+				"simplify": {
+					"displayName": "简化",
+					"description": "是否返回简化版本的响应而非原始数据"
+				},
+				"upn": {
+					"displayName": "UPN",
+					"description": "是否将响应中返回的用户身份值从Microsoft Entra对象ID转换为用户主体名称。如果值为false，则返回Microsoft Entra对象ID。适用于启用分层命名空间的账户。"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要添加到输出的字段"
+				},
+				"filter": {
+					"displayName": "筛选器",
+					"description": "筛选结果，仅返回名称以指定前缀开头的容器",
+					"placeholder": "例如：mycontainer"
+				},
+				"accessLevel": {
+					"displayName": "访问级别",
+					"options": {
+						"blob": {
+							"displayName": "二进制大对象",
+							"description": "指定Blob的公共读取访问权限。此容器内的Blob数据可通过匿名请求读取，但容器数据不可用。客户端无法通过匿名请求枚举容器内的Blob。"
+						},
+						"container": {
+							"displayName": "容器",
+							"description": "指定容器和Blob数据的完全公共读取访问权限。客户端可通过匿名请求枚举容器内的Blob，但无法枚举存储帐户内的容器。"
+						},
+						"": {
+							"displayName": "私有",
+							"description": "容器数据对账户所有者私有"
+						}
+					}
+				}
+			}
+		},
+		"blob": {
+			"displayName": "Blob",
+			"description": "要获取的Blob"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"containerCreate": {
+			"displayName": "容器名称",
+			"description": "新容器的名称",
+			"placeholder": "例如：mycontainer"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

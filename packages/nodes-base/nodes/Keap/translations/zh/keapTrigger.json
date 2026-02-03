@@ -1,0 +1,16 @@
+{
+	"header": {
+		"displayName": "Keap触发器",
+		"description": "当Infusionsoft事件发生时启动工作流"
+	},
+	"nodeView": {
+		"eventId": {
+			"displayName": "事件名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"rawData": {
+			"displayName": "原始数据",
+			"description": "是否按照从API接收到的原始格式返回数据"
+		}
+	}
+}

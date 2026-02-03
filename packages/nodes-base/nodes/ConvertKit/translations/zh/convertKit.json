@@ -1,0 +1,205 @@
+{
+	"header": {
+		"displayName": "ConvertKit",
+		"description": "使用ConvertKit API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"customField": {
+					"displayName": "自定义字段"
+				},
+				"form": {
+					"displayName": "表单"
+				},
+				"sequence": {
+					"displayName": "序列"
+				},
+				"tag": {
+					"displayName": "标签"
+				},
+				"tagSubscriber": {
+					"displayName": "标签订阅者"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建标签"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从订阅者删除标签"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "列出标签订阅（包含订阅者数据）"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新字段"
+				},
+				"addSubscriber": {
+					"displayName": "添加订阅者",
+					"description": "添加订阅者"
+				},
+				"getSubscriptions": {
+					"displayName": "获取订阅",
+					"description": "获取序列的所有订阅，包含订阅者数据"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "为订阅者添加标签"
+				}
+			},
+			"description": "要执行的操作"
+		},
+		"id": {
+			"displayName": "序列名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"label": {
+			"displayName": "标签",
+			"description": "自定义字段的标签"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "订阅者邮箱地址",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"fieldsUi": {
+					"displayName": "自定义字段",
+					"description": "用于自定义字段的键/值对对象（必须先存在自定义字段才能在此使用）",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"fieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "字段键",
+									"description": "该字段的键",
+									"placeholder": "姓氏"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "字段的值",
+									"placeholder": "Doe"
+								}
+							}
+						}
+					},
+					"values": {
+						"fieldsValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "字段键",
+									"description": "该字段的键",
+									"placeholder": "姓氏"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "字段的值",
+									"placeholder": "Doe"
+								}
+							}
+						},
+						"fieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "订阅者名字"
+				},
+				"subscriberState": {
+					"displayName": "订阅者状态",
+					"options": {
+						"active": {
+							"displayName": "激活状态"
+						},
+						"cancelled": {
+							"displayName": "已取消"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "标签。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"fields": {
+					"displayName": "自定义字段",
+					"description": "用于自定义字段的键/值对对象（必须先存在自定义字段才能在此使用）",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"field": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "字段键",
+									"description": "该字段的键",
+									"placeholder": "姓氏"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "字段的值",
+									"placeholder": "Doe"
+								}
+							}
+						}
+					},
+					"values": {
+						"field": {
+							"displayName": "自定义字段",
+							"options": {
+								"key": {
+									"displayName": "字段键",
+									"description": "该字段的键",
+									"placeholder": "姓氏"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "字段的值",
+									"placeholder": "Doe"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				}
+			},
+			"description": "仅接收活跃订阅者或已取消订阅者"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "标签名称，多个标签可用逗号分隔添加"
+		},
+		"tagId": {
+			"displayName": "标签名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		}
+	}
+}

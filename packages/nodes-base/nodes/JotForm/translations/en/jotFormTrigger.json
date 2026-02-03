@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "Jotform Trigger",
+		"description": "Handle Jotform events via webhooks"
+	},
+	"nodeView": {
+		"form": {
+			"displayName": "Form Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names."
+		},
+		"onlyAnswers": {
+			"displayName": "Only Answers",
+			"description": "Whether to return only the answers of the form and not any of the other data"
+		}
+	}
+}

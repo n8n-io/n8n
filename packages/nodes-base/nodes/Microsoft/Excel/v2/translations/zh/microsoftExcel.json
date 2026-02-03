@@ -1,0 +1,302 @@
+{
+	"header": {
+		"displayName": "Microsoft Excel 365",
+		"description": "使用 Microsoft Excel API"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点连接到 Microsoft 365 云平台。使用“从文件提取”和“转换为文件”节点可直接操作电子表格文件（.xls、.csv 等）。<a href=\"https://n8n.io/workflows/890-read-in-an-excel-spreadsheet-file/\" target=\"_blank\">更多信息</a>。"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"table": {
+					"displayName": "表格",
+					"description": "表示一个Excel表格"
+				},
+				"workbook": {
+					"displayName": "工作簿",
+					"description": "工作簿是包含一个或多个工作表的最顶层对象"
+				},
+				"worksheet": {
+					"displayName": "工作表",
+					"description": "工作表是由单元格组成的网格，可以包含数据、表格、图表等"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"append": {
+					"displayName": "追加",
+					"description": "向工作表追加数据"
+				},
+				"convertToRange": {
+					"displayName": "转换为范围",
+					"description": "将表格转换为范围"
+				},
+				"addTable": {
+					"displayName": "创建",
+					"description": "基于范围添加表格"
+				},
+				"deleteTable": {
+					"displayName": "删除",
+					"description": "删除表格"
+				},
+				"getColumns": {
+					"displayName": "获取列",
+					"description": "获取表列列表"
+				},
+				"getRows": {
+					"displayName": "获取行数据",
+					"description": "检索表格行列表"
+				},
+				"lookup": {
+					"displayName": "查找",
+					"description": "在列中查找匹配给定值的行"
+				},
+				"addWorksheet": {
+					"displayName": "添加表格",
+					"description": "向工作簿添加新工作表"
+				},
+				"deleteWorkbook": {
+					"displayName": "删除",
+					"description": "删除工作簿"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取工作表列表"
+				},
+				"upsert": {
+					"displayName": "追加或更新",
+					"description": "追加新行，若已存在则更新当前行（更新插入）"
+				},
+				"clear": {
+					"displayName": "清空",
+					"description": "清空工作表"
+				},
+				"deleteWorksheet": {
+					"displayName": "删除",
+					"description": "删除工作表"
+				},
+				"readRows": {
+					"displayName": "获取行数据",
+					"description": "获取工作表行列表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新工作表或工作表范围的行"
+				}
+			}
+		},
+		"workbook": {
+			"displayName": "工作簿"
+		},
+		"worksheet": {
+			"displayName": "工作表"
+		},
+		"table": {
+			"displayName": "表"
+		},
+		"dataMode": {
+			"displayName": "数据模式",
+			"options": {
+				"autoMap": {
+					"displayName": "自动映射输入数据到列",
+					"description": "当节点输入属性与目标列名匹配时使用"
+				},
+				"define": {
+					"displayName": "映射下方每列",
+					"description": "为每个目标列设置值"
+				},
+				"raw": {
+					"displayName": "原始",
+					"description": "发送原始数据为JSON，整个选定范围将使用新值更新"
+				}
+			}
+		},
+		"data": {
+			"displayName": "数据",
+			"description": "指定范围的原始值，以字符串数组的JSON格式返回。应与指定范围匹配：每个行对应一个数组项。",
+			"placeholder": "例如：[['Sara','2006年1月2日','柏林'],['George','2010年5月3日','巴黎']]"
+		},
+		"fieldsUi": {
+			"displayName": "要发送的值",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加字段",
+			"options": {
+				"values": {
+					"displayName": "字段",
+					"values": {
+						"column": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"fieldValue": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "字段",
+					"values": {
+						"column": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"fieldValue": {
+							"displayName": "值"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "要发送的值",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"index": {
+					"displayName": "索引",
+					"description": "指定新行的相对位置。如果未定义，则在末尾添加。插入行下方的所有行将向下移动。首行索引为0。"
+				},
+				"rawData": {
+					"displayName": "原始数据",
+					"description": "数据是否应返回原始格式，而非根据标题行解析为键值对"
+				},
+				"dataProperty": {
+					"displayName": "数据属性",
+					"description": "用于写入原始数据的属性名称"
+				},
+				"returnAllMatches": {
+					"displayName": "Return All Matches",
+					"description": "By default only the first result gets returned. If options gets set all found matches get returned."
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "Fields the response will containt. Multiple can be added separated by ,."
+				},
+				"updateAll": {
+					"displayName": "更新所有匹配项",
+					"description": "是否更新所有匹配行或仅更新第一个匹配项"
+				},
+				"appendAfterSelectedRange": {
+					"displayName": "在选定范围后追加",
+					"description": "是否在选定范围或已使用范围后追加数据"
+				}
+			}
+		},
+		"selectRange": {
+			"displayName": "选择范围",
+			"options": {
+				"auto": {
+					"displayName": "自动",
+					"description": "所选工作表的整个使用范围将被转换为表格"
+				},
+				"manual": {
+					"displayName": "手动",
+					"description": "选择要转换为表格的范围"
+				}
+			}
+		},
+		"range": {
+			"displayName": "范围",
+			"description": "要读取数据的表格范围，需使用A1样式表示法指定，必须具体明确，例如A1:B5，不支持A:B等通用范围。留空则使用表格中整个已使用范围。",
+			"placeholder": "例如：A1:B2"
+		},
+		"hasHeaders": {
+			"displayName": "是否包含表头",
+			"description": "指定范围是否包含列标签。当此属性设为false时，Excel将自动生成表头并将数据下移一行。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"rawData": {
+			"displayName": "原始数据",
+			"description": "数据是否应返回原始格式，而非根据标题解析为键值"
+		},
+		"dataProperty": {
+			"displayName": "数据属性",
+			"description": "用于写入RAW数据的属性名称"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "响应中包含的字段列表，以逗号分隔"
+				},
+				"column": {
+					"displayName": "列名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定多个ID。"
+				}
+			}
+		},
+		"lookupColumn": {
+			"displayName": "查找列",
+			"description": "要在其中查找值的列名",
+			"placeholder": "邮箱"
+		},
+		"lookupValue": {
+			"displayName": "查找值",
+			"description": "要在列中查找的值",
+			"placeholder": "frank@example.com"
+		},
+		"additionalFields": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "要添加的工作表名称。名称应保持唯一。如未指定，Excel将自动确定新工作表的名称。"
+				}
+			}
+		},
+		"applyTo": {
+			"displayName": "应用于",
+			"options": {
+				"All": {
+					"displayName": "全部",
+					"description": "清除单元格数据并移除所有格式"
+				},
+				"Formats": {
+					"displayName": "格式",
+					"description": "Clear formatting(e.g. font size, color) of cells"
+				},
+				"Contents": {
+					"displayName": "目录",
+					"description": "清除单元格中的数据"
+				}
+			}
+		},
+		"useRange": {
+			"displayName": "选择范围"
+		},
+		"keyRow": {
+			"displayName": "表头行",
+			"description": "相对于选定的'范围'，首行索引为0"
+		},
+		"dataStartRow": {
+			"displayName": "首行数据",
+			"description": "相对于选定的'范围'，首行索引为0"
+		},
+		"columnToMatchOn": {
+			"displayName": "匹配列",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"valueToMatchOn": {
+			"displayName": "匹配列的值"
+		}
+	}
+}

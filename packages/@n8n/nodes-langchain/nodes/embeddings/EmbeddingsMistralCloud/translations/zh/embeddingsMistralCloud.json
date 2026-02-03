@@ -1,0 +1,30 @@
+{
+	"header": {
+		"displayName": "嵌入模型 Mistral Cloud",
+		"description": "使用嵌入模型 Mistral Cloud"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到向量存储。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>插入一个</a>"
+		},
+		"model": {
+			"displayName": "模型",
+			"description": "用于计算嵌入向量的模型。<a href=\"https://docs.mistral.ai/platform/endpoints/\">了解更多</a>。"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batchSize": {
+					"displayName": "批次大小",
+					"description": "每个请求中发送的最大文档数量"
+				},
+				"stripNewLines": {
+					"displayName": "去除换行符",
+					"description": "是否从输入文本中去除换行符"
+				}
+			}
+		}
+	}
+}

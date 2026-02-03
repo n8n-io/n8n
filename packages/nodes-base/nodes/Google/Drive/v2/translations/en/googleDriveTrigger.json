@@ -1,0 +1,301 @@
+{
+	"header": {
+		"displayName": "Google Drive Trigger",
+		"description": "Starts the workflow when Google Drive events occur"
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "Poll Times",
+			"description": "Time at which polling should occur",
+			"placeholder": "Add Poll Time",
+			"multipleValueButtonText": "Add Poll Time",
+			"options": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "Poll Times",
+					"placeholder": "Add Poll Time"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "Credential Type",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				},
+				"serviceAccount": {
+					"displayName": "Service Account"
+				}
+			}
+		},
+		"triggerOn": {
+			"displayName": "Trigger On",
+			"options": {
+				"specificFile": {
+					"displayName": "Changes to a Specific File"
+				},
+				"specificFolder": {
+					"displayName": "Changes Involving a Specific Folder"
+				}
+			}
+		},
+		"fileToWatch": {
+			"displayName": "File"
+		},
+		"event": {
+			"displayName": "Watch For",
+			"description": "When to trigger this node",
+			"options": {
+				"fileUpdated": {
+					"displayName": "File Updated",
+					"description": "When a file is updated in the watched drive"
+				},
+				"fileCreated": {
+					"displayName": "File Created",
+					"description": "When a file is created in the watched drive"
+				},
+				"folderCreated": {
+					"displayName": "Folder Created",
+					"description": "When a folder is created in the watched drive"
+				},
+				"folderUpdated": {
+					"displayName": "Folder Updated",
+					"description": "When a folder is updated in the watched drive"
+				},
+				"watchFolderUpdated": {
+					"displayName": "Watch Folder Updated",
+					"description": "When the watched folder itself is modified"
+				}
+			}
+		},
+		"folderToWatch": {
+			"displayName": "Folder"
+		},
+		"asas": {
+			"displayName": "Changes within subfolders won't trigger this node"
+		},
+		"driveToWatch": {
+			"displayName": "Drive To Watch",
+			"description": "The drive to monitor. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fileType": {
+					"displayName": "File Type",
+					"description": "Triggers only when the file is this type",
+					"options": {
+						"all": {
+							"displayName": "[All]"
+						},
+						"application/vnd.google-apps.audio": {
+							"displayName": "Audio"
+						},
+						"application/vnd.google-apps.document": {
+							"displayName": "Google Docs"
+						},
+						"application/vnd.google-apps.drawing": {
+							"displayName": "Google Drawings"
+						},
+						"application/vnd.google-apps.presentation": {
+							"displayName": "Google Slides"
+						},
+						"application/vnd.google-apps.spreadsheet": {
+							"displayName": "Google Spreadsheets"
+						},
+						"application/vnd.google-apps.photo": {
+							"displayName": "Photos and Images"
+						},
+						"application/vnd.google-apps.video": {
+							"displayName": "Videos"
+						}
+					}
+				}
+			}
+		}
+	}
+}

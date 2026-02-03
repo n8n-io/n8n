@@ -1,0 +1,113 @@
+{
+	"header": {
+		"displayName": "DebugHelper",
+		"description": "Causes problems intentionally and generates useful data for debugging"
+	},
+	"nodeView": {
+		"category": {
+			"displayName": "Category",
+			"options": {
+				"doNothing": {
+					"displayName": "Do Nothing",
+					"description": "Does nothing"
+				},
+				"throwError": {
+					"displayName": "Throw Error",
+					"description": "Throws an error with the specified type and message"
+				},
+				"oom": {
+					"displayName": "Out Of Memory",
+					"description": "Generates a large amount of memory to cause an out of memory error"
+				},
+				"randomData": {
+					"displayName": "Generate Random Data",
+					"description": "Generates random data sets"
+				}
+			}
+		},
+		"throwErrorType": {
+			"displayName": "Error Type",
+			"options": {
+				"NodeApiError": {
+					"displayName": "NodeApiError"
+				},
+				"NodeOperationError": {
+					"displayName": "NodeOperationError"
+				},
+				"Error": {
+					"displayName": "Error"
+				}
+			}
+		},
+		"throwErrorMessage": {
+			"displayName": "Error Message",
+			"description": "The message to send as part of the error"
+		},
+		"memorySizeValue": {
+			"displayName": "Memory Size to Generate",
+			"description": "The approximate amount of memory to generate. Be generous..."
+		},
+		"randomDataType": {
+			"displayName": "Data Type",
+			"options": {
+				"address": {
+					"displayName": "Address"
+				},
+				"latLong": {
+					"displayName": "Coordinates"
+				},
+				"creditCard": {
+					"displayName": "Credit Card"
+				},
+				"email": {
+					"displayName": "Email"
+				},
+				"ipv4": {
+					"displayName": "IPv4"
+				},
+				"ipv6": {
+					"displayName": "IPv6"
+				},
+				"macAddress": {
+					"displayName": "MAC"
+				},
+				"nanoid": {
+					"displayName": "NanoIds"
+				},
+				"url": {
+					"displayName": "URL"
+				},
+				"user": {
+					"displayName": "User Data"
+				},
+				"uuid": {
+					"displayName": "UUID"
+				},
+				"semver": {
+					"displayName": "Version"
+				}
+			}
+		},
+		"nanoidAlphabet": {
+			"displayName": "NanoId Alphabet",
+			"description": "The alphabet to use for generating the nanoIds"
+		},
+		"nanoidLength": {
+			"displayName": "NanoId Length",
+			"description": "The length of each nanoIds"
+		},
+		"randomDataSeed": {
+			"displayName": "Seed",
+			"description": "If set, seed to use for generating the data (same seed will generate the same data)",
+			"placeholder": "Leave empty for random seed"
+		},
+		"randomDataCount": {
+			"displayName": "Number of Items to Generate",
+			"description": "The number of random data items to generate into an array"
+		},
+		"randomDataSingleArray": {
+			"displayName": "Output as Single Array",
+			"description": "Whether to output a single array instead of multiple items"
+		}
+	}
+}

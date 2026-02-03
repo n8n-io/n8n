@@ -1,0 +1,225 @@
+{
+	"header": {
+		"displayName": "Monday.com",
+		"description": "使用 Monday.com API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"board": {
+					"displayName": "看板"
+				},
+				"boardColumn": {
+					"displayName": "看板列"
+				},
+				"boardGroup": {
+					"displayName": "面板分组"
+				},
+				"boardItem": {
+					"displayName": "看板项目"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"archive": {
+					"displayName": "归档",
+					"description": "归档看板"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "在面板分组中创建项目"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取项目"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个项目"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除项目"
+				},
+				"addUpdate": {
+					"displayName": "添加更新",
+					"description": "向项目添加更新"
+				},
+				"changeColumnValue": {
+					"displayName": "更改列值",
+					"description": "更改看板项目的列值"
+				},
+				"changeMultipleColumnValues": {
+					"displayName": "修改多个列值",
+					"description": "修改看板项目的多个列值"
+				},
+				"getByColumnValue": {
+					"displayName": "按列值获取",
+					"description": "按列值获取项目"
+				},
+				"move": {
+					"displayName": "移动",
+					"description": "移动项目到分组"
+				}
+			}
+		},
+		"boardId": {
+			"displayName": "看板名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "新项目的名称"
+		},
+		"kind": {
+			"displayName": "类型",
+			"description": "看板类型（公开 / 私有 / 共享）",
+			"options": {
+				"share": {
+					"displayName": "分享"
+				},
+				"public": {
+					"displayName": "公开"
+				},
+				"private": {
+					"displayName": "私有"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"templateId": {
+					"displayName": "模板ID",
+					"description": "可选看板模板ID"
+				},
+				"defaults": {
+					"displayName": "默认值",
+					"description": "新列的默认值"
+				},
+				"columnValues": {
+					"displayName": "列值",
+					"description": "新项目的列值"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"columnType": {
+			"displayName": "列类型",
+			"options": {
+				"checkbox": {
+					"displayName": "复选框"
+				},
+				"country": {
+					"displayName": "国家"
+				},
+				"date": {
+					"displayName": "日期"
+				},
+				"dropdown": {
+					"displayName": "下拉菜单"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"hour": {
+					"displayName": "小时"
+				},
+				"Link": {
+					"displayName": "链接"
+				},
+				"longText": {
+					"displayName": "长文本"
+				},
+				"numbers": {
+					"displayName": "数字"
+				},
+				"people": {
+					"displayName": "用户"
+				},
+				"person": {
+					"displayName": "人员"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"rating": {
+					"displayName": "评分"
+				},
+				"status": {
+					"displayName": "状态"
+				},
+				"tags": {
+					"displayName": "标签"
+				},
+				"team": {
+					"displayName": "团队"
+				},
+				"text": {
+					"displayName": "文本"
+				},
+				"timeline": {
+					"displayName": "时间线"
+				},
+				"timezone": {
+					"displayName": "时区"
+				},
+				"week": {
+					"displayName": "周"
+				},
+				"worldClock": {
+					"displayName": "世界时钟"
+				}
+			}
+		},
+		"groupId": {
+			"displayName": "群组名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"itemId": {
+			"displayName": "项目ID",
+			"description": "项目的ID"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "JSON格式的列值。文档可在此<a href=\"https://monday.com/developers/v2#mutations-section-columns-change-column-value\">查看</a>。"
+		},
+		"columnId": {
+			"displayName": "列名或ID",
+			"description": "列的唯一标识符。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"columnValues": {
+			"displayName": "列值",
+			"description": "JSON格式的列字段和值。文档可在此<a href=\"https://monday.com/developers/v2#mutations-section-columns-change-multiple-column-values\">查看</a>。"
+		},
+		"columnValue": {
+			"displayName": "列值",
+			"description": "用于搜索项目的列值"
+		}
+	}
+}

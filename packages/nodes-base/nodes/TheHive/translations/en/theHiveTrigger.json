@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "TheHive Trigger",
+		"description": "Starts the workflow when TheHive events occur"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "You must set up the webhook in TheHive — instructions <a href=\"https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.thehivetrigger/#configure-a-webhook-in-thehive\" target=\"_blank\">here</a>"
+		},
+		"events": {
+			"displayName": "Events",
+			"description": "Events types"
+		}
+	}
+}

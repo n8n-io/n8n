@@ -1,0 +1,301 @@
+{
+	"header": {
+		"displayName": "Google Drive触发器",
+		"description": "当Google Drive事件发生时启动工作流"
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "轮询时间",
+			"description": "轮询应发生的时间",
+			"placeholder": "添加轮询时间",
+			"multipleValueButtonText": "添加轮询时间",
+			"options": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "轮询时间",
+					"placeholder": "添加轮询时间"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "凭据类型",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				},
+				"serviceAccount": {
+					"displayName": "服务账号"
+				}
+			}
+		},
+		"triggerOn": {
+			"displayName": "触发于",
+			"options": {
+				"specificFile": {
+					"displayName": "特定文件的变更"
+				},
+				"specificFolder": {
+					"displayName": "特定文件夹的变更"
+				}
+			}
+		},
+		"fileToWatch": {
+			"displayName": "文件"
+		},
+		"event": {
+			"displayName": "监听",
+			"description": "何时触发此节点",
+			"options": {
+				"fileUpdated": {
+					"displayName": "文件已更新",
+					"description": "当被监控驱动器中的文件被更新时"
+				},
+				"fileCreated": {
+					"displayName": "文件已创建",
+					"description": "当被监视的驱动器中有文件被创建时"
+				},
+				"folderCreated": {
+					"displayName": "文件夹已创建",
+					"description": "当在监控的驱动器中创建文件夹时"
+				},
+				"folderUpdated": {
+					"displayName": "文件夹已更新",
+					"description": "当监视驱动器中的文件夹被更新时"
+				},
+				"watchFolderUpdated": {
+					"displayName": "监听文件夹更新",
+					"description": "当被监听的文件夹本身被修改时"
+				}
+			}
+		},
+		"folderToWatch": {
+			"displayName": "文件夹"
+		},
+		"asas": {
+			"displayName": "子文件夹内的更改不会触发此节点"
+		},
+		"driveToWatch": {
+			"displayName": "要监控的驱动器。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"description": "要监控的驱动器。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fileType": {
+					"displayName": "文件类型",
+					"description": "仅当文件为此类型时触发",
+					"options": {
+						"all": {
+							"displayName": "[0][全部]"
+						},
+						"application/vnd.google-apps.audio": {
+							"displayName": "音频"
+						},
+						"application/vnd.google-apps.document": {
+							"displayName": "Google 文档"
+						},
+						"application/vnd.google-apps.drawing": {
+							"displayName": "Google 绘图"
+						},
+						"application/vnd.google-apps.presentation": {
+							"displayName": "Google 幻灯片"
+						},
+						"application/vnd.google-apps.spreadsheet": {
+							"displayName": "Google 电子表格"
+						},
+						"application/vnd.google-apps.photo": {
+							"displayName": "照片和图像"
+						},
+						"application/vnd.google-apps.video": {
+							"displayName": "视频"
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,641 @@
+{
+	"header": {
+		"displayName": "Google日历",
+		"description": "使用Google日历API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"calendar": {
+					"displayName": "日历"
+				},
+				"event": {
+					"displayName": "事件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"availability": {
+					"displayName": "可用性",
+					"description": "如果日历中有可用的时间段"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "添加日历事件"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除事件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索事件"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "从日历中检索多个事件"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新事件"
+				}
+			}
+		},
+		"calendar": {
+			"displayName": "日历",
+			"description": "要操作的Google日历"
+		},
+		"timeMin": {
+			"displayName": "之后",
+			"description": "事件的至少部分必须晚于此时，使用<a href=\"https://docs.n8n.io/code/cookbook/luxon/\" target=\"_blank\">表达式</a>设置日期，或切换到固定模式从控件选择日期"
+		},
+		"timeMax": {
+			"displayName": "之前",
+			"description": "事件的至少部分必须在此时间之前，使用<a href=\"https://docs.n8n.io/code/cookbook/luxon/\" target=\"_blank\">表达式</a>设置日期，或切换到固定模式从小部件选择日期"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"outputFormat": {
+					"displayName": "输出格式",
+					"description": "返回数据的格式",
+					"options": {
+						"availability": {
+							"displayName": "可用性",
+							"description": "返回在给定时间内是否存在任何事件"
+						},
+						"bookedSlots": {
+							"displayName": "已预订时段",
+							"description": "返回已预订的时段"
+						},
+						"raw": {
+							"displayName": "返回完整的电子邮件消息数据，其中正文内容以base64url编码字符串的形式存储在raw字段中；payload字段未被使用",
+							"description": "返回API的原始数据"
+						}
+					}
+				},
+				"timezone": {
+					"displayName": "时区",
+					"description": "响应中使用的时区。默认使用n8n时区。"
+				},
+				"sendUpdates": {
+					"displayName": "发送更新",
+					"description": "是否发送有关新事件创建的通知",
+					"options": {
+						"all": {
+							"displayName": "全部",
+							"description": "通知会发送给所有宾客"
+						},
+						"externalOnly": {
+							"displayName": "仅限外部",
+							"description": "通知仅发送给非Google日历的参与者"
+						},
+						"none": {
+							"displayName": "无",
+							"description": "不发送任何通知。此值仅应用于迁移场景。"
+						}
+					}
+				},
+				"maxAttendees": {
+					"displayName": "最大参会人数",
+					"description": "响应中包含的最大参会人数。如果参会人数超过指定数量，则仅返回参与者。"
+				},
+				"returnNextInstance": {
+					"displayName": "返回周期性事件的下一次实例",
+					"description": "是否返回周期性事件的下一次实例而非事件本身"
+				},
+				"timeZone": {
+					"displayName": "时区",
+					"description": "响应中使用的时区。默认为日历的时区。"
+				},
+				"timeMin": {
+					"displayName": "之后",
+					"description": "事件的至少部分必须晚于此时间，使用<a href=\"https://docs.n8n.io/code/cookbook/luxon/\" target=\"_blank\">表达式</a>设置日期，或切换到固定模式从控件选择日期"
+				},
+				"timeMax": {
+					"displayName": "之前",
+					"description": "事件的至少部分时间必须早于此时间，使用<a href=\"https://docs.n8n.io/code/cookbook/luxon/\" target=\"_blank\">表达式</a>设置日期，或切换到固定模式从控件选择日期"
+				},
+				"singleEvents": {
+					"displayName": "展开事件",
+					"description": "是否将重复事件展开为实例，仅返回一次性事件和重复事件的实例，而不返回底层的重复事件本身"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "指定要返回的字段，默认情况下会返回Google预定义的一组常用字段。要返回所有字段，请使用'*'，<a href='https://developers.google.com/calendar/api/guides/performance#partial' target='_blank'>更多信息</a>。",
+					"placeholder": "例如：items(ID,status,summary)"
+				},
+				"iCalUID": {
+					"displayName": "iCalUID",
+					"description": "指定要包含在响应中的iCalendar格式事件ID"
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"description": "结果中返回事件的顺序",
+					"options": {
+						"startTime": {
+							"displayName": "开始时间",
+							"description": "按开始日期/时间升序排列。仅在查询单个事件时可用（即参数 singleEvents 为 True）。"
+						},
+						"updated": {
+							"displayName": "已更新",
+							"description": "按最后修改时间排序（升序）"
+						}
+					}
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "自由文本搜索词，用于在任何字段（扩展属性除外）中查找匹配这些词的事件"
+				},
+				"recurringEventHandling": {
+					"displayName": "循环事件处理",
+					"options": {
+						"expand": {
+							"displayName": "所有出现",
+							"description": "返回指定时间范围内重复事件的所有实例"
+						},
+						"first": {
+							"displayName": "首次发生",
+							"description": "返回具有指定重复规则的事件"
+						},
+						"next": {
+							"displayName": "下次发生时间",
+							"description": "返回循环事件的下一个实例"
+						}
+					}
+				},
+				"showDeleted": {
+					"displayName": "显示已删除",
+					"description": "是否在结果中包含已删除的事件（状态为\"已取消\"）"
+				},
+				"showHiddenInvitations": {
+					"displayName": "显示隐藏邀请",
+					"description": "是否在结果中包含隐藏邀请"
+				},
+				"updatedMin": {
+					"displayName": "已更新最小值",
+					"description": "事件最后修改时间的下限（RFC3339时间戳），用于筛选。指定后，自该时间以来删除的条目将始终包含在内，无论showDeleted设置如何。"
+				}
+			}
+		},
+		"start": {
+			"displayName": "开始",
+			"description": "事件开始时间，使用<a href=\"https://docs.n8n.io/code/cookbook/luxon/\" target=\"_blank\">表达式</a>设置日期，或切换到固定模式从控件选择日期"
+		},
+		"end": {
+			"displayName": "结束",
+			"description": "事件结束时间，使用<a href=\"https://docs.n8n.io/code/cookbook/luxon/\" target=\"_blank\">表达式</a>设置日期，或切换到固定模式从小部件选择日期"
+		},
+		"useDefaultReminders": {
+			"displayName": "使用默认提醒"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"allday": {
+					"displayName": "全天",
+					"description": "事件是否为全天",
+					"options": {
+						"yes": {
+							"displayName": "是"
+						},
+						"no": {
+							"displayName": "否"
+						}
+					}
+				},
+				"attendees": {
+					"displayName": "参会者",
+					"description": "活动参与者。多个参与者可用逗号分隔。"
+				},
+				"color": {
+					"displayName": "颜色名称或ID",
+					"description": "事件的颜色。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"conferenceDataUi": {
+					"displayName": "会议数据",
+					"description": "创建会议链接（Hangouts、Meet等）并将其附加到事件",
+					"placeholder": "添加会议",
+					"options": {
+						"conferenceDataValues": {
+							"displayName": "会议链接",
+							"options": {
+								"conferenceSolution": {
+									"displayName": "输入名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								}
+							}
+						}
+					},
+					"values": {
+						"conferenceDataValues": {
+							"displayName": "会议链接",
+							"options": {
+								"conferenceSolution": {
+									"displayName": "输入名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								}
+							}
+						},
+						"conferenceDataUi": {
+							"displayName": "会议数据",
+							"placeholder": "添加会议"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"guestsCanInviteOthers": {
+					"displayName": "来宾可以邀请他人",
+					"description": "除组织者外的参会者是否可以邀请其他人加入活动"
+				},
+				"guestsCanModify": {
+					"displayName": "参与者可修改",
+					"description": "除组织者外的参与者是否可以修改活动"
+				},
+				"guestsCanSeeOtherGuests": {
+					"displayName": "访客可查看其他访客",
+					"description": "除组织者外的参与者是否可查看活动参与者列表"
+				},
+				"id": {
+					"displayName": "ID",
+					"description": "事件的不透明标识符"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "事件的地理位置（自由文本格式）"
+				},
+				"maxAttendees": {
+					"displayName": "最大参会人数",
+					"description": "响应中包含的最大参会人数。如果参会人数超过指定数量，则仅返回参与者。"
+				},
+				"repeatFrecuency": {
+					"displayName": "重复频率",
+					"options": {
+						"Daily": {
+							"displayName": "每日"
+						},
+						"weekly": {
+							"displayName": "每周"
+						},
+						"monthly": {
+							"displayName": "每月"
+						},
+						"yearly": {
+							"displayName": "每年"
+						}
+					}
+				},
+				"repeatHowManyTimes": {
+					"displayName": "重复多少次？"
+				},
+				"repeatUntil": {
+					"displayName": "重复直到"
+				},
+				"rrule": {
+					"displayName": "RRULE",
+					"description": "重复规则。设置后，将忽略重复频率、重复次数和重复截止时间参数。"
+				},
+				"sendUpdates": {
+					"displayName": "发送更新",
+					"description": "是否发送有关新事件创建的通知",
+					"options": {
+						"all": {
+							"displayName": "全部",
+							"description": "通知会发送给所有宾客"
+						},
+						"externalOnly": {
+							"displayName": "仅限外部",
+							"description": "通知仅发送给非Google日历的参与者"
+						},
+						"none": {
+							"displayName": "无",
+							"description": "不发送任何通知。此值仅应用于迁移场景。"
+						}
+					}
+				},
+				"showMeAs": {
+					"displayName": "显示为",
+					"description": "事件是否在日历中占用时间",
+					"options": {
+						"transparent": {
+							"displayName": "可用",
+							"description": "该事件不会在日历上占用时间"
+						},
+						"opaque": {
+							"displayName": "忙碌中",
+							"description": "该事件会在日历上占用时间"
+						}
+					}
+				},
+				"summary": {
+					"displayName": "摘要",
+					"description": "事件标题"
+				},
+				"visibility": {
+					"displayName": "可见性",
+					"description": "事件的可见性",
+					"options": {
+						"confidential": {
+							"displayName": "保密",
+							"description": "该事件为私密事件。提供此值是为了兼容性考虑。"
+						},
+						"default": {
+							"displayName": "默认",
+							"description": "使用日历事件的默认可见性设置"
+						},
+						"private": {
+							"displayName": "私有",
+							"description": "该活动为私人性质，仅活动参与者可查看活动详情"
+						},
+						"public": {
+							"displayName": "公开",
+							"description": "该活动为公开活动，所有日历读者均可查看活动详情。"
+						}
+					}
+				}
+			}
+		},
+		"remindersUi": {
+			"displayName": "提醒事项",
+			"description": "如果事件未使用默认提醒，此处列出该事件特有的提醒",
+			"placeholder": "添加提醒",
+			"multipleValueButtonText": "添加提醒",
+			"options": {
+				"remindersValues": {
+					"displayName": "提醒",
+					"options": {
+						"method": {
+							"displayName": "方法",
+							"options": {
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"popup": {
+									"displayName": "弹出窗口"
+								}
+							}
+						},
+						"minutes": {
+							"displayName": "分钟前"
+						}
+					}
+				}
+			},
+			"values": {
+				"remindersValues": {
+					"displayName": "提醒",
+					"options": {
+						"method": {
+							"displayName": "方法",
+							"options": {
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"popup": {
+									"displayName": "弹出窗口"
+								}
+							}
+						},
+						"minutes": {
+							"displayName": "分钟前"
+						}
+					}
+				},
+				"remindersUi": {
+					"displayName": "提醒事项",
+					"placeholder": "添加提醒"
+				}
+			}
+		},
+		"eventId": {
+			"displayName": "事件ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"modifyTarget": {
+			"displayName": "修改",
+			"options": {
+				"instance": {
+					"displayName": "循环事件实例"
+				},
+				"event": {
+					"displayName": "周期性事件"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"allday": {
+					"displayName": "全天",
+					"description": "事件是否为全天",
+					"options": {
+						"yes": {
+							"displayName": "是"
+						},
+						"no": {
+							"displayName": "否"
+						}
+					}
+				},
+				"attendeesUi": {
+					"displayName": "参会者",
+					"placeholder": "添加参会者",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"mode": {
+									"displayName": "模式",
+									"options": {
+										"add": {
+											"displayName": "在下方添加参会者 [默认]"
+										},
+										"replace": {
+											"displayName": "将与会者替换为以下人员"
+										}
+									}
+								},
+								"attendees": {
+									"displayName": "参会者",
+									"description": "活动参与者。多个参与者可用逗号分隔。"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"mode": {
+									"displayName": "模式",
+									"options": {
+										"add": {
+											"displayName": "在下方添加参会者 [默认]"
+										},
+										"replace": {
+											"displayName": "将与会者替换为以下人员"
+										}
+									}
+								},
+								"attendees": {
+									"displayName": "参会者",
+									"description": "活动参与者。多个参与者可用逗号分隔。"
+								}
+							}
+						},
+						"attendeesUi": {
+							"displayName": "参会者",
+							"placeholder": "添加参会者"
+						}
+					}
+				},
+				"attendees": {
+					"displayName": "参会者",
+					"description": "活动参与者。多个参与者可用逗号分隔。"
+				},
+				"color": {
+					"displayName": "颜色名称或ID",
+					"description": "事件的颜色。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"end": {
+					"displayName": "结束",
+					"description": "事件结束时间"
+				},
+				"guestsCanInviteOthers": {
+					"displayName": "来宾可以邀请他人",
+					"description": "除组织者外的参会者是否可以邀请其他人加入活动"
+				},
+				"guestsCanModify": {
+					"displayName": "参与者可修改",
+					"description": "除组织者外的参与者是否可以修改活动"
+				},
+				"guestsCanSeeOtherGuests": {
+					"displayName": "访客可查看其他访客",
+					"description": "除组织者外的参与者是否可查看活动参与者列表"
+				},
+				"id": {
+					"displayName": "ID",
+					"description": "事件的不透明标识符"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "事件的地理位置（自由文本格式）"
+				},
+				"maxAttendees": {
+					"displayName": "最大参会人数",
+					"description": "响应中包含的最大参会人数。如果参会人数超过指定数量，则仅返回参与者。"
+				},
+				"repeatFrecuency": {
+					"displayName": "重复频率",
+					"options": {
+						"Daily": {
+							"displayName": "每日"
+						},
+						"weekly": {
+							"displayName": "每周"
+						},
+						"monthly": {
+							"displayName": "每月"
+						},
+						"yearly": {
+							"displayName": "每年"
+						}
+					}
+				},
+				"repeatHowManyTimes": {
+					"displayName": "重复多少次？"
+				},
+				"repeatUntil": {
+					"displayName": "重复直到"
+				},
+				"rrule": {
+					"displayName": "RRULE",
+					"description": "重复规则。设置后，将忽略重复频率、重复次数和重复截止时间参数。"
+				},
+				"sendUpdates": {
+					"displayName": "发送更新",
+					"description": "是否发送有关新事件创建的通知",
+					"options": {
+						"all": {
+							"displayName": "全部",
+							"description": "通知会发送给所有宾客"
+						},
+						"externalOnly": {
+							"displayName": "仅限外部",
+							"description": "通知仅发送给非Google日历的参与者"
+						},
+						"none": {
+							"displayName": "无",
+							"description": "不发送任何通知。此值仅应用于迁移场景。"
+						}
+					}
+				},
+				"showMeAs": {
+					"displayName": "显示为",
+					"description": "事件是否在日历中占用时间",
+					"options": {
+						"transparent": {
+							"displayName": "可用",
+							"description": "该事件不会在日历上占用时间"
+						},
+						"opaque": {
+							"displayName": "忙碌中",
+							"description": "该事件会在日历上占用时间"
+						}
+					}
+				},
+				"start": {
+					"displayName": "开始",
+					"description": "事件开始时间"
+				},
+				"summary": {
+					"displayName": "摘要",
+					"description": "事件标题"
+				},
+				"visibility": {
+					"displayName": "可见性",
+					"description": "事件的可见性",
+					"options": {
+						"confidential": {
+							"displayName": "保密",
+							"description": "该事件为私密事件。提供此值是为了兼容性考虑。"
+						},
+						"default": {
+							"displayName": "默认",
+							"description": "使用日历事件的默认可见性设置"
+						},
+						"public": {
+							"displayName": "公开",
+							"description": "该活动为公开活动，所有日历读者均可查看活动详情。"
+						},
+						"private": {
+							"displayName": "私有",
+							"description": "该活动为私人性质，仅活动参与者可查看活动详情"
+						}
+					}
+				}
+			}
+		},
+		"useN8nTimeZone": {
+			"displayName": "此节点将使用n8n设置中的时区，但您可以在工作流设置中覆盖此设置"
+		}
+	}
+}

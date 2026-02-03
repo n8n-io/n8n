@@ -1,0 +1,250 @@
+{
+	"header": {
+		"displayName": "PayPal",
+		"description": "Consume PayPal API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"payout": {
+					"displayName": "Payout"
+				},
+				"payoutItem": {
+					"displayName": "Payout Item"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a batch payout"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Show payout item details"
+				},
+				"cancel": {
+					"displayName": "Cancel",
+					"description": "Cancels an unclaimed payout item"
+				}
+			}
+		},
+		"senderBatchId": {
+			"displayName": "Sender Batch ID",
+			"description": "A sender-specified ID number. Tracks the payout in an accounting system."
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"itemsUi": {
+			"displayName": "Items",
+			"placeholder": "Add Item",
+			"multipleValueButtonText": "Add Item",
+			"options": {
+				"itemsValues": {
+					"displayName": "Item",
+					"options": {
+						"recipientType": {
+							"displayName": "Recipient Type",
+							"description": "The ID type that identifies the recipient of the payment",
+							"options": {
+								"phone": {
+									"displayName": "Phone",
+									"description": "The unencrypted phone number"
+								},
+								"email": {
+									"displayName": "Email",
+									"description": "The unencrypted email"
+								},
+								"paypalId": {
+									"displayName": "PayPal ID",
+									"description": "The encrypted PayPal account number"
+								}
+							}
+						},
+						"receiverValue": {
+							"displayName": "Receiver Value",
+							"description": "The receiver of the payment. Corresponds to the recipient_type value in the request. Max length: 127 characters."
+						},
+						"currency": {
+							"displayName": "Currency",
+							"options": {
+								"AUD": {
+									"displayName": "Australian Dollar"
+								},
+								"BRL": {
+									"displayName": "Brazilian Real"
+								},
+								"CAD": {
+									"displayName": "Canadian Dollar"
+								},
+								"CZK": {
+									"displayName": "Czech Koruna"
+								},
+								"DKK": {
+									"displayName": "Danish Krone"
+								},
+								"EUR": {
+									"displayName": "Euro"
+								},
+								"USD": {
+									"displayName": "United States Dollar"
+								}
+							}
+						},
+						"amount": {
+							"displayName": "Amount",
+							"description": "The value, which might be"
+						},
+						"note": {
+							"displayName": "Note",
+							"description": "The sender-specified note for notifications. Supports up to 4000 ASCII characters and 1000 non-ASCII characters."
+						},
+						"senderItemId": {
+							"displayName": "Sender Item ID",
+							"description": "The sender-specified ID number. Tracks the payout in an accounting system."
+						},
+						"recipientWallet": {
+							"displayName": "Recipient Wallet",
+							"options": {
+								"paypal": {
+									"displayName": "PayPal",
+									"description": "PayPal Wallet"
+								},
+								"venmo": {
+									"displayName": "Venmo",
+									"description": "Venmo Wallet"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"itemsValues": {
+					"displayName": "Item",
+					"options": {
+						"recipientType": {
+							"displayName": "Recipient Type",
+							"description": "The ID type that identifies the recipient of the payment",
+							"options": {
+								"phone": {
+									"displayName": "Phone",
+									"description": "The unencrypted phone number"
+								},
+								"email": {
+									"displayName": "Email",
+									"description": "The unencrypted email"
+								},
+								"paypalId": {
+									"displayName": "PayPal ID",
+									"description": "The encrypted PayPal account number"
+								}
+							}
+						},
+						"receiverValue": {
+							"displayName": "Receiver Value",
+							"description": "The receiver of the payment. Corresponds to the recipient_type value in the request. Max length: 127 characters."
+						},
+						"currency": {
+							"displayName": "Currency",
+							"options": {
+								"AUD": {
+									"displayName": "Australian Dollar"
+								},
+								"BRL": {
+									"displayName": "Brazilian Real"
+								},
+								"CAD": {
+									"displayName": "Canadian Dollar"
+								},
+								"CZK": {
+									"displayName": "Czech Koruna"
+								},
+								"DKK": {
+									"displayName": "Danish Krone"
+								},
+								"EUR": {
+									"displayName": "Euro"
+								},
+								"USD": {
+									"displayName": "United States Dollar"
+								}
+							}
+						},
+						"amount": {
+							"displayName": "Amount",
+							"description": "The value, which might be"
+						},
+						"note": {
+							"displayName": "Note",
+							"description": "The sender-specified note for notifications. Supports up to 4000 ASCII characters and 1000 non-ASCII characters."
+						},
+						"senderItemId": {
+							"displayName": "Sender Item ID",
+							"description": "The sender-specified ID number. Tracks the payout in an accounting system."
+						},
+						"recipientWallet": {
+							"displayName": "Recipient Wallet",
+							"options": {
+								"paypal": {
+									"displayName": "PayPal",
+									"description": "PayPal Wallet"
+								},
+								"venmo": {
+									"displayName": "Venmo",
+									"description": "Venmo Wallet"
+								}
+							}
+						}
+					}
+				},
+				"itemsUi": {
+					"displayName": "Items",
+					"placeholder": "Add Item"
+				}
+			}
+		},
+		"itemsJson": {
+			"displayName": "Items",
+			"description": "An array of individual payout items"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"emailSubject": {
+					"displayName": "Email Subject",
+					"description": "The subject line for the email that PayPal sends when payment for a payout item completes. The subject line is the same for all recipients. Max length: 255 characters."
+				},
+				"emailMessage": {
+					"displayName": "Email Message",
+					"description": "The email message that PayPal sends when the payout item completes. The message is the same for all recipients."
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "The payouts and item-level notes are concatenated in the email. Max length: 1000 characters."
+				}
+			}
+		},
+		"payoutBatchId": {
+			"displayName": "Payout Batch ID",
+			"description": "The ID of the payout for which to show details"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"payoutItemId": {
+			"displayName": "Payout Item ID",
+			"description": "The ID of the payout item to cancel"
+		}
+	}
+}

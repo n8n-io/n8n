@@ -1,0 +1,415 @@
+{
+	"header": {
+		"displayName": "UptimeRobot",
+		"description": "Consume UptimeRobot API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"account": {
+					"displayName": "Account"
+				},
+				"alertContact": {
+					"displayName": "Alert Contact"
+				},
+				"maintenanceWindow": {
+					"displayName": "Maintenance Window"
+				},
+				"monitor": {
+					"displayName": "Monitor"
+				},
+				"publicStatusPage": {
+					"displayName": "Public Status Page"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a public status page"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a public status page"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a public status page"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many public status pages"
+				},
+				"reset": {
+					"displayName": "Reset",
+					"description": "Reset a monitor"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a maintenance window"
+				}
+			}
+		},
+		"friendlyName": {
+			"displayName": "Friendly Name",
+			"description": "The friendly name of the status page"
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "The type of the maintenance window",
+			"options": {
+				"1": {
+					"displayName": "Once"
+				},
+				"2": {
+					"displayName": "Daily"
+				},
+				"3": {
+					"displayName": "Weekly"
+				},
+				"4": {
+					"displayName": "Monthly"
+				},
+				"5": {
+					"displayName": "Webhook"
+				},
+				"6": {
+					"displayName": "Pushbullet"
+				},
+				"9": {
+					"displayName": "Pushover"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "The URL/IP of the monitor"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "The ID of the public status page"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"alert_contacts": {
+					"displayName": "Alert Contact IDs",
+					"description": "Alert contact IDs separated with dash, e.g. 236-1782-4790"
+				},
+				"logs": {
+					"displayName": "Logs",
+					"description": "Whether the logs of each monitor will be returned"
+				},
+				"mwindow": {
+					"displayName": "Maintenance Window IDs",
+					"description": "Maintenance windows IDs separated with dash, e.g. 236-1782-4790"
+				},
+				"monitors": {
+					"displayName": "Monitor IDs",
+					"description": "Monitors IDs separated with dash, e.g. 15830-32696-83920"
+				},
+				"response_times": {
+					"displayName": "Response Times",
+					"description": "Whether the response time data of each monitor will be returned"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "A keyword to be matched against URL and friendly name"
+				},
+				"statuses": {
+					"displayName": "Statuses"
+				},
+				"types": {
+					"displayName": "Types",
+					"description": "Select monitor types"
+				},
+				"psps": {
+					"displayName": "Public Status Page IDs",
+					"description": "Public status pages IDs separated with dash, e.g. 236-1782-4790"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"friendly_name": {
+					"displayName": "Friendly Name",
+					"description": "The friendly name of the status page"
+				},
+				"http_auth_type": {
+					"displayName": "HTTP Auth Type",
+					"description": "The authentication type for password-protected web pages",
+					"options": {
+						"1": {
+							"displayName": "HTTP Basic"
+						},
+						"2": {
+							"displayName": "Digest"
+						}
+					}
+				},
+				"http_method": {
+					"displayName": "HTTP Method",
+					"description": "The HTTP method to be used",
+					"options": {
+						"1": {
+							"displayName": "HEAD"
+						},
+						"2": {
+							"displayName": "GET"
+						},
+						"3": {
+							"displayName": "POST"
+						},
+						"4": {
+							"displayName": "PUT"
+						},
+						"5": {
+							"displayName": "PATCH"
+						},
+						"6": {
+							"displayName": "DELETE"
+						},
+						"7": {
+							"displayName": "OPTIONS"
+						}
+					}
+				},
+				"http_password": {
+					"displayName": "HTTP Password",
+					"description": "The password used for password-protected web pages"
+				},
+				"http_username": {
+					"displayName": "HTTP Username",
+					"description": "The username used for password-protected web pages"
+				},
+				"interval": {
+					"displayName": "Interval",
+					"description": "The interval for the monitoring check"
+				},
+				"port": {
+					"displayName": "Port",
+					"description": "The monitored port"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Select monitor statuses",
+					"options": {
+						"0": {
+							"displayName": "Pause"
+						},
+						"1": {
+							"displayName": "Resume"
+						}
+					}
+				},
+				"sub_type": {
+					"displayName": "Sub Type",
+					"description": "Specify which pre-defined port/service or custom port is monitored",
+					"options": {
+						"1": {
+							"displayName": "HTTP (80)"
+						},
+						"2": {
+							"displayName": "HTTPS (443)"
+						},
+						"3": {
+							"displayName": "FTP (21)"
+						},
+						"4": {
+							"displayName": "SMTP (25)"
+						},
+						"5": {
+							"displayName": "POP3 (110)"
+						},
+						"6": {
+							"displayName": "IMAP (143)"
+						},
+						"99": {
+							"displayName": "Custom Port"
+						}
+					}
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "The URL/IP of the monitor"
+				},
+				"value": {
+					"displayName": "Value",
+					"description": "The correspondent value for the alert contact type (can only be used if it is a Webhook alert contact)"
+				},
+				"start_time": {
+					"displayName": "Start Time",
+					"description": "The maintenance window start datetime"
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "The type of the maintenance window",
+					"options": {
+						"1": {
+							"displayName": "Once"
+						},
+						"2": {
+							"displayName": "Daily"
+						},
+						"3": {
+							"displayName": "Weekly"
+						},
+						"4": {
+							"displayName": "Monthly"
+						}
+					}
+				},
+				"weekDay": {
+					"displayName": "Week Day",
+					"options": {
+						"1": {
+							"displayName": "Monday"
+						},
+						"2": {
+							"displayName": "Tuesday"
+						},
+						"3": {
+							"displayName": "Wednesday"
+						},
+						"4": {
+							"displayName": "Thursday"
+						},
+						"5": {
+							"displayName": "Friday"
+						},
+						"6": {
+							"displayName": "Saturday"
+						},
+						"7": {
+							"displayName": "Sunday"
+						}
+					}
+				},
+				"monthDay": {
+					"displayName": "Month Day"
+				},
+				"custom_domain": {
+					"displayName": "Custom Domain",
+					"description": "The domain or subdomain that the status page will run on"
+				},
+				"monitors": {
+					"displayName": "Monitor IDs",
+					"description": "Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors)"
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "The password for the status page"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The sorting of the status page",
+					"options": {
+						"1": {
+							"displayName": "Friendly Name (A-Z)"
+						},
+						"2": {
+							"displayName": "Friendly Name (Z-A)"
+						},
+						"3": {
+							"displayName": "Status (Up-Down-Paused)"
+						},
+						"4": {
+							"displayName": "Status (Down-Up-Paused)"
+						}
+					}
+				}
+			}
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "The correspondent value for the alert contact type"
+		},
+		"duration": {
+			"displayName": "Duration (Minutes)",
+			"description": "The maintenance window activation period (minutes)"
+		},
+		"weekDay": {
+			"displayName": "Week Day",
+			"options": {
+				"1": {
+					"displayName": "Monday"
+				},
+				"2": {
+					"displayName": "Tuesday"
+				},
+				"3": {
+					"displayName": "Wednesday"
+				},
+				"4": {
+					"displayName": "Thursday"
+				},
+				"5": {
+					"displayName": "Friday"
+				},
+				"6": {
+					"displayName": "Saturday"
+				},
+				"7": {
+					"displayName": "Sunday"
+				}
+			}
+		},
+		"monthDay": {
+			"displayName": "Month Day"
+		},
+		"start_time": {
+			"displayName": "Start Time",
+			"description": "The maintenance window start datetime"
+		},
+		"monitors": {
+			"displayName": "Monitor IDs",
+			"description": "Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors)"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"custom_domain": {
+					"displayName": "Custom Domain",
+					"description": "The domain or subdomain that the status page will run on"
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "The password for the status page"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"description": "The sorting of the status page",
+					"options": {
+						"1": {
+							"displayName": "Friendly Name (A-Z)"
+						},
+						"2": {
+							"displayName": "Friendly Name (Z-A)"
+						},
+						"3": {
+							"displayName": "Status (Up-Down-Paused)"
+						},
+						"4": {
+							"displayName": "Status (Down-Up-Paused)"
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,50 @@
+{
+	"header": {
+		"displayName": "WooCommerce触发器",
+		"description": "通过Webhook处理WooCommerce事件"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "事件",
+			"description": "确定Webhook触发的资源事件",
+			"options": {
+				"coupon.created": {
+					"displayName": "优惠券已创建"
+				},
+				"coupon.deleted": {
+					"displayName": "优惠券已删除"
+				},
+				"coupon.updated": {
+					"displayName": "优惠券.已更新"
+				},
+				"customer.created": {
+					"displayName": "客户已创建"
+				},
+				"customer.deleted": {
+					"displayName": "客户.已删除"
+				},
+				"customer.updated": {
+					"displayName": "客户已更新"
+				},
+				"order.created": {
+					"displayName": "订单已创建"
+				},
+				"order.deleted": {
+					"displayName": "订单.已删除"
+				},
+				"order.updated": {
+					"displayName": "订单已更新"
+				},
+				"product.created": {
+					"displayName": "产品已创建"
+				},
+				"product.deleted": {
+					"displayName": "产品.已删除"
+				},
+				"product.updated": {
+					"displayName": "产品已更新"
+				}
+			}
+		}
+	}
+}

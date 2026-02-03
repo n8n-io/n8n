@@ -1,0 +1,272 @@
+{
+	"header": {
+		"displayName": "NocoDB",
+		"description": "从NocoDB读取、更新、写入和删除数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"nocoDbApiToken": {
+					"displayName": "API令牌"
+				},
+				"nocoDb": {
+					"displayName": "用户令牌"
+				}
+			}
+		},
+		"version": {
+			"displayName": "API版本",
+			"options": {
+				"1": {
+					"displayName": "v0.90.0版本之前"
+				},
+				"2": {
+					"displayName": "v0.90.0 及更高版本"
+				},
+				"3": {
+					"displayName": "v0.200.0 及更高版本"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"row": {
+					"displayName": "行"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建一行"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一行"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索一行数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多行数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新行数据"
+				}
+			}
+		},
+		"workspaceId": {
+			"displayName": "工作区名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"projectId": {
+			"displayName": "项目名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"table": {
+			"displayName": "表",
+			"description": "表名"
+		},
+		"primaryKey": {
+			"displayName": "主键类型",
+			"options": {
+				"id": {
+					"displayName": "默认",
+					"description": "默认，通过以下选项从UI创建表时添加：创建新表 / 从Excel导入 / 从CSV导入"
+				},
+				"ncRecordId": {
+					"displayName": "从Airtable导入",
+					"description": "选择是否从Airtable导入表格"
+				},
+				"custom": {
+					"displayName": "自定义",
+					"description": "连接到现有外部数据库时，现有主键字段将保持不变，请在下方输入主键字段名称"
+				}
+			}
+		},
+		"customPrimaryKey": {
+			"displayName": "字段名称"
+		},
+		"id": {
+			"displayName": "行ID值",
+			"description": "ID字段的值"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"downloadAttachments": {
+			"displayName": "下载附件",
+			"description": "是否下载'下载字段'中定义的附件字段"
+		},
+		"downloadFieldNames": {
+			"displayName": "下载字段",
+			"description": "应下载的'附件'类型字段名称。多个字段可用逗号分隔定义。区分大小写。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"viewId": {
+					"displayName": "视图ID",
+					"description": "返回行的选定字段",
+					"placeholder": "视图ID"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "返回行的选定字段",
+					"placeholder": "名称"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "返回行的排序规则",
+					"placeholder": "添加排序规则",
+					"multipleValueButtonText": "添加排序规则",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"field": {
+									"displayName": "字段",
+									"description": "排序字段名称"
+								},
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向",
+									"options": {
+										"asc": {
+											"displayName": "升序",
+											"description": "按升序排序（小 → 大）"
+										},
+										"desc": {
+											"displayName": "描述",
+											"description": "降序排列（大→小）"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"field": {
+									"displayName": "字段",
+									"description": "排序字段名称"
+								},
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向",
+									"options": {
+										"asc": {
+											"displayName": "升序",
+											"description": "按升序排序（小 → 大）"
+										},
+										"desc": {
+											"displayName": "描述",
+											"description": "降序排列（大→小）"
+										}
+									}
+								}
+							}
+						},
+						"sort": {
+							"displayName": "排序",
+							"placeholder": "添加排序规则"
+						}
+					}
+				},
+				"where": {
+					"displayName": "按公式筛选",
+					"description": "用于筛选行的公式",
+					"placeholder": "(name,like,example%)~or(name,eq,test)"
+				}
+			}
+		},
+		"dataToSend": {
+			"displayName": "要发送的数据",
+			"description": "是否将本节点接收的输入数据插入到新行中",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "自动映射输入数据到列",
+					"description": "当节点输入属性与目标列名匹配时使用"
+				},
+				"defineBelow": {
+					"displayName": "为每列定义以下内容",
+					"description": "为每个目标列设置值"
+				}
+			}
+		},
+		"info": {
+			"displayName": "此操作要求每行都包含主键。"
+		},
+		"inputsToIgnore": {
+			"displayName": "要忽略的输入",
+			"description": "要避免发送的输入属性列表，用逗号分隔。留空则发送所有属性。",
+			"placeholder": "输入属性..."
+		},
+		"fieldsUi": {
+			"displayName": "要发送的字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加要发送的字段",
+			"options": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称"
+						},
+						"binaryData": {
+							"displayName": "是否为二进制文件",
+							"description": "要设置的字段数据是否为二进制，且应从二进制属性中获取"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						},
+						"binaryProperty": {
+							"displayName": "从字段获取输入",
+							"description": "包含要上传的二进制文件数据的字段"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称"
+						},
+						"binaryData": {
+							"displayName": "是否为二进制文件",
+							"description": "要设置的字段数据是否为二进制，且应从二进制属性中获取"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						},
+						"binaryProperty": {
+							"displayName": "从字段获取输入",
+							"description": "包含要上传的二进制文件数据的字段"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "要发送的字段",
+					"placeholder": "添加字段"
+				}
+			}
+		}
+	}
+}

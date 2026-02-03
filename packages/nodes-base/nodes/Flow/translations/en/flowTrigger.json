@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "Flow Trigger",
+		"description": "Handle Flow events via webhooks"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"description": "Resource that triggers the webhook",
+			"options": {
+				"list": {
+					"displayName": "Project"
+				},
+				"task": {
+					"displayName": "Task"
+				}
+			}
+		},
+		"listIds": {
+			"displayName": "Project ID",
+			"description": "Lists IDs, perhaps known better as \"Projects\" separated by a comma (,)"
+		},
+		"taskIds": {
+			"displayName": "Task ID",
+			"description": "Task IDs separated by a comma (,)"
+		}
+	}
+}

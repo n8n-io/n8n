@@ -1,0 +1,42 @@
+{
+	"header": {
+		"displayName": "Github 触发器",
+		"description": "当 Github 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "只有拥有组织所有者权限或仓库管理员权限的成员才能设置此节点所需的Webhook。"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"owner": {
+			"displayName": "仓库所有者"
+		},
+		"repository": {
+			"displayName": "仓库名称"
+		},
+		"events": {
+			"displayName": "事件",
+			"description": "要监听的事件"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"insecureSSL": {
+					"displayName": "不安全的SSL",
+					"description": "GitHub在交付有效载荷时是否验证n8n主机的SSL证书"
+				}
+			}
+		}
+	}
+}

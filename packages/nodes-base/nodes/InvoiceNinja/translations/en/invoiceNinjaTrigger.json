@@ -1,0 +1,39 @@
+{
+	"header": {
+		"displayName": "Invoice Ninja Trigger",
+		"description": "Starts the workflow when Invoice Ninja events occur"
+	},
+	"nodeView": {
+		"apiVersion": {
+			"displayName": "API Version",
+			"options": {
+				"v4": {
+					"displayName": "Version 4"
+				},
+				"v5": {
+					"displayName": "Version 5"
+				}
+			}
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"create_client": {
+					"displayName": "Client Created"
+				},
+				"create_invoice": {
+					"displayName": "Invoice Created"
+				},
+				"create_payment": {
+					"displayName": "Payment Created"
+				},
+				"create_quote": {
+					"displayName": "Quote Created"
+				},
+				"create_vendor": {
+					"displayName": "Vendor Created"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,179 @@
+{
+	"header": {
+		"displayName": "Demio",
+		"description": "Consume the Demio API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"event": {
+					"displayName": "Event"
+				},
+				"report": {
+					"displayName": "Report"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get an event report"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many events"
+				},
+				"register": {
+					"displayName": "Register",
+					"description": "Register someone to an event"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"type": {
+					"displayName": "Type",
+					"options": {
+						"automated": {
+							"displayName": "Automated"
+						},
+						"past": {
+							"displayName": "Past"
+						},
+						"upcoming": {
+							"displayName": "Upcoming"
+						}
+					}
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Filter results by participation status",
+					"options": {
+						"attended": {
+							"displayName": "Attended"
+						},
+						"banned": {
+							"displayName": "Banned"
+						},
+						"completed": {
+							"displayName": "Completed"
+						},
+						"did-not-attend": {
+							"displayName": "Did Not Attend"
+						},
+						"left-early": {
+							"displayName": "Left Early"
+						}
+					}
+				}
+			}
+		},
+		"eventId": {
+			"displayName": "Event Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"active": {
+					"displayName": "Active",
+					"description": "Whether to return only active dates in series"
+				},
+				"date_id": {
+					"displayName": "Session Name or ID",
+					"description": "Event Session ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "The value for the predefined Company field"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Field",
+					"multipleValueButtonText": "Add Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field ID",
+									"description": "Each custom field's unique identifier can be found within the Event's Registration block in the Customize tab"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field ID",
+									"description": "Each custom field's unique identifier can be found within the Event's Registration block in the Customize tab"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value to set on custom field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Field"
+						}
+					}
+				},
+				"ref_url": {
+					"displayName": "Event Registration URL",
+					"description": "Event Registration page URL. It can be useful when you do not know Event ID, but have Event link."
+				},
+				"gdpr": {
+					"displayName": "GDPR",
+					"description": "The value for the predefined GDPR field"
+				},
+				"last_name": {
+					"displayName": "Last Name",
+					"description": "The value for the predefined Last Name field"
+				},
+				"phone_number": {
+					"displayName": "Phone Number",
+					"description": "The value for the predefined Phone Number field"
+				},
+				"website": {
+					"displayName": "Website",
+					"description": "The value for the predefined Website field"
+				}
+			}
+		},
+		"firstName": {
+			"displayName": "First Name",
+			"description": "The registrant's first name"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The registrant's email address",
+			"placeholder": "name@email.com"
+		},
+		"dateId": {
+			"displayName": "Session Name or ID",
+			"description": "ID of the session. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

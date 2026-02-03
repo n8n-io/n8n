@@ -1,0 +1,148 @@
+{
+	"header": {
+		"displayName": "Google Slides",
+		"description": "Consume the Google Slides API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				},
+				"serviceAccount": {
+					"displayName": "Service Account"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"page": {
+					"displayName": "Page"
+				},
+				"presentation": {
+					"displayName": "Presentation"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a presentation"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a page"
+				},
+				"getSlides": {
+					"displayName": "Get Slides",
+					"description": "Get presentation slides"
+				},
+				"replaceText": {
+					"displayName": "Replace Text",
+					"description": "Replace text in a presentation"
+				},
+				"getThumbnail": {
+					"displayName": "Get Thumbnail",
+					"description": "Get a thumbnail"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the presentation to create"
+		},
+		"presentationId": {
+			"displayName": "Presentation ID",
+			"description": "ID of the presentation to retrieve. Found in the presentation URL: <code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>",
+			"placeholder": "1wZtNFZ8MO-WKrxhYrOLMvyiqSgFwdSz5vn8_l_7eNqw"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"pageObjectId": {
+			"displayName": "Page Object ID",
+			"description": "ID of the page object to retrieve"
+		},
+		"textUi": {
+			"displayName": "Texts To Replace",
+			"placeholder": "Add Text",
+			"multipleValueButtonText": "Add Text",
+			"options": {
+				"textValues": {
+					"displayName": "Text",
+					"options": {
+						"matchCase": {
+							"displayName": "Match Case",
+							"description": "Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive."
+						},
+						"pageObjectIds": {
+							"displayName": "Slide Names or IDs",
+							"description": "If non-empty, limits the matches to slide elements only on the given slides. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"text": {
+							"displayName": "Search For",
+							"description": "The text to search for in the slide"
+						},
+						"replaceText": {
+							"displayName": "Replace With",
+							"description": "The text that will replace the matched text"
+						}
+					}
+				}
+			},
+			"values": {
+				"textValues": {
+					"displayName": "Text",
+					"options": {
+						"matchCase": {
+							"displayName": "Match Case",
+							"description": "Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive."
+						},
+						"pageObjectIds": {
+							"displayName": "Slide Names or IDs",
+							"description": "If non-empty, limits the matches to slide elements only on the given slides. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"text": {
+							"displayName": "Search For",
+							"description": "The text to search for in the slide"
+						},
+						"replaceText": {
+							"displayName": "Replace With",
+							"description": "The text that will replace the matched text"
+						}
+					}
+				},
+				"textUi": {
+					"displayName": "Texts To Replace",
+					"placeholder": "Add Text"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"revisionId": {
+					"displayName": "Revision ID",
+					"description": "The revision ID of the presentation required for the write request. If specified and the requiredRevisionId doesn't exactly match the presentation's current revisionId, the request will not be processed and will return a 400 bad request error."
+				}
+			}
+		},
+		"download": {
+			"displayName": "Download",
+			"description": "Name of the binary property to which to write the data of the read page"
+		},
+		"binaryProperty": {
+			"displayName": "Put Output File in Field"
+		}
+	}
+}

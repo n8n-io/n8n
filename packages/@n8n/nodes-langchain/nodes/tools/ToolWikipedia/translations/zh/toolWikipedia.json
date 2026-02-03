@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "维基百科",
+		"description": "在维基百科中搜索"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		}
+	}
+}

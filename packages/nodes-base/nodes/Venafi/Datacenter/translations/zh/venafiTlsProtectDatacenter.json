@@ -1,0 +1,434 @@
+{
+	"header": {
+		"displayName": "Venafi TLS Protect Datacenter",
+		"description": "使用 Venafi TLS Protect Datacenter"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"certificate": {
+					"displayName": "证书"
+				},
+				"policy": {
+					"displayName": "策略"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "配置新证书"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除证书"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载证书"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取策略"
+				},
+				"getMany": {
+					"displayName": "获取多个",
+					"description": "检索多个证书"
+				},
+				"renew": {
+					"displayName": "续期",
+					"description": "续期证书"
+				}
+			}
+		},
+		"PolicyDN": {
+			"displayName": "策略DN",
+			"description": "新证书的文件夹DN。如果未提供此值，则文件夹名称使用系统默认值。如果未配置系统默认值"
+		},
+		"Subject": {
+			"displayName": "主题",
+			"description": "证书主题（DN）的通用名字段"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"Approvers": {
+					"displayName": "审批人",
+					"description": "证书工作流审批人的一个或多个身份标识数组"
+				},
+				"CADN": {
+					"displayName": "仅当没有策略设置CA模板时需要。用于注册证书的Trust Protection Platform证书颁发机构模板对象的可分辨名称(DN)。",
+					"description": "仅当没有策略设置CA模板时需要。用于注册证书的Trust Protection Platform证书颁发机构模板对象的可分辨名称(DN)。"
+				},
+				"CertificateType": {
+					"displayName": "证书类型",
+					"description": "以下证书对象之一。忽略任何其他值。",
+					"options": {
+						"Code Signing": {
+							"displayName": "代码签名",
+							"description": "X.509 代码签名证书"
+						},
+						"Device": {
+							"displayName": "设备",
+							"description": "X.509设备证书"
+						},
+						"Server": {
+							"displayName": "服务器",
+							"description": "X.509服务器证书"
+						},
+						"User": {
+							"displayName": "用户",
+							"description": "X.509 用户证书"
+						}
+					}
+				},
+				"City": {
+					"displayName": "城市",
+					"description": "证书主题DN中的城市字段。请求集中生成的CSR时请指定值。"
+				},
+				"Contacts": {
+					"displayName": "联系人",
+					"description": "一个或多个用户或组身份的数组，用于接收有关该对象事件的通知"
+				},
+				"Country": {
+					"displayName": "国家",
+					"description": "证书主题DN的国家字段。请求集中生成的CSR时需指定值。"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "自定义字段",
+					"options": {
+						"customFielsValues": {
+							"displayName": "地址",
+							"options": {
+								"Name": {
+									"displayName": "名称"
+								},
+								"Values": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFielsValues": {
+							"displayName": "地址",
+							"options": {
+								"Name": {
+									"displayName": "名称"
+								},
+								"Values": {
+									"displayName": "值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "自定义字段"
+						}
+					}
+				},
+				"CreatedBy": {
+					"displayName": "创建者",
+					"description": "此请求的发起人、实体或调用方。默认为Web SDK。除非调用方是与Trust Protection Platform深度集成的重大企业应用程序（如自定义门户），否则请避免覆盖默认值。如需添加详细信息，请改用Origin属性。若希望两个属性具有相同值，请仅设置CreatedBy。"
+				},
+				"Devices": {
+					"displayName": "设备",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加设备",
+					"options": {
+						"applications": {
+							"displayName": "应用程序",
+							"description": "一个或多个应用程序对象的数组，允许运行在ObjectName上的软件使用相同的证书"
+						},
+						"CloudInstanceID": {
+							"displayName": "云实例ID",
+							"description": "Amazon EC2 配置所需。唯一的云实例ID。"
+						},
+						"CloudRegion": {
+							"displayName": "云区域",
+							"description": "Amazon EC2 配置所需。云服务实例所在的地理位置。AWS 中的实例只能存在于单个区域中。"
+						},
+						"CloudService": {
+							"displayName": "云服务",
+							"description": "Amazon EC2 资源调配所需。AWS：一种 Amazon E2C 云服务。需要您安装并配置云实例监控功能。"
+						},
+						"ConcurrentConnectionLimit": {
+							"displayName": "并发连接数限制",
+							"description": "设备将从信任保护平台接受的最大连接数"
+						},
+						"Contacts": {
+							"displayName": "联系人",
+							"description": "接收此设备通知的一个或多个身份标识的数组"
+						},
+						"CreatedBy": {
+							"displayName": "创建者",
+							"description": "创建设备及其相关软件应用程序的个人或实体。接受任何值。默认为Web SDK。"
+						},
+						"CredentialDN": {
+							"displayName": "凭据 DN",
+							"description": "设备凭据"
+						},
+						"description": {
+							"displayName": "描述",
+							"description": "此设备的描述"
+						},
+						"EnforceKnownHost": {
+							"displayName": "强制执行已知主机",
+							"description": "针对SSH密钥。true：启用已知主机密钥强制执行。false：禁用已知主机密钥强制执行。"
+						},
+						"host": {
+							"displayName": "主机",
+							"description": "主机物理完全限定域名(FQDN)或设备IP地址"
+						},
+						"ObjectName": {
+							"displayName": "对象名称",
+							"description": "Trust Protection Platform 中证书对象的设备主机名或 IP 地址。如果缺少此值，则对象名称为主题。"
+						},
+						"port": {
+							"displayName": "端口",
+							"description": "与设备通信的端口号"
+						},
+						"SudoCredentialDN": {
+							"displayName": "Sudo凭据DN",
+							"description": "与UseSudo配合使用。当sudo配置为执行命令时提示输入密码时，此DN持有要使用的密码凭据。"
+						},
+						"TempDirectory": {
+							"displayName": "临时目录",
+							"description": "在配置期间用于存放临时文件的主机目录路径。例如 /tmp/。该文件夹应具备必要的写入权限。"
+						},
+						"TrustedFingerprint": {
+							"displayName": "可信指纹",
+							"description": "用于安全外壳（SSH）密钥。SSH服务器密钥指纹。如果设置了此值，并且启用了“强制已知主机”选项，则仅当主机指纹与此值匹配时，信任保护平台才会成功连接到设备。"
+						},
+						"UseSudo": {
+							"displayName": "使用Sudo",
+							"description": "与SudoCredentialDN配合使用。当在Unix或Linux设备上安装证书时，如果设备凭据需要sudo权限提升来执行命令：true：在配置时使用sudo执行命令。false：直接执行命令而不使用sudo。"
+						}
+					}
+				},
+				"DisableAutomaticRenewal": {
+					"displayName": "禁用自动续期",
+					"description": "控制证书续期是否需要手动干预的设置"
+				},
+				"EllipticCurve": {
+					"displayName": "椭圆曲线",
+					"description": "对于椭圆曲线加密（ECC），将此参数与密钥算法配合使用",
+					"options": {
+						"P256": {
+							"displayName": "P256",
+							"description": "使用椭圆素数曲线256位加密"
+						},
+						"P384": {
+							"displayName": "P384",
+							"description": "使用384位椭圆素数曲线加密"
+						},
+						"P521": {
+							"displayName": "P521",
+							"description": "使用椭圆素数曲线521位加密。（并非所有证书颁发机构都支持）"
+						}
+					}
+				},
+				"KeyAlgorithm": {
+					"displayName": "密钥算法",
+					"description": "公钥加密算法：",
+					"options": {
+						"RSA": {
+							"displayName": "RSA",
+							"description": "Rivest、Shamir、Adleman密钥（RSA）"
+						},
+						"ECC": {
+							"displayName": "ECC",
+							"description": "椭圆曲线密码学 (ECC)"
+						}
+					}
+				},
+				"KeyBitSize": {
+					"displayName": "密钥位大小",
+					"description": "当密钥算法为RSA时使用此参数。密钥生成允许的位数。"
+				},
+				"ManagementType": {
+					"displayName": "管理类型",
+					"description": "信任保护平台应用于证书的管理级别",
+					"options": {
+						"Enrollment": {
+							"displayName": "注册",
+							"description": "向CA提交新证书颁发、证书续期或密钥生成请求进行注册"
+						},
+						"Monitoring": {
+							"displayName": "监控",
+							"description": "允许信任保护平台监控证书的到期和续订"
+						},
+						"Provisioning": {
+							"displayName": "用户配置",
+							"description": "签发新证书、续订证书或向CA发送密钥生成请求进行注册。自动安装或配置证书。"
+						},
+						"Unassigned": {
+							"displayName": "未分配",
+							"description": "证书既未由信任保护平台注册，也未受其监控。"
+						}
+					}
+				},
+				"origin": {
+					"displayName": "来源",
+					"description": "描述此注册、续订或配置请求来源的附加信息，例如调用应用程序的名称和版本。默认为 Web SDK。"
+				},
+				"Organization": {
+					"displayName": "组织",
+					"description": "证书主题DN的组织字段。当CSR集中生成时指定一个值。"
+				},
+				"OrganizationalUnit": {
+					"displayName": "组织单位",
+					"description": "组织内负责维护证书的部门或分支机构"
+				},
+				"PKCS10": {
+					"displayName": "PKCS10",
+					"description": "PKCS#10策略签名请求(CSR)。省略转义字符，如或。如果提供了此值，请求中的任何主题DN字段和KeyBitSize将被忽略。"
+				},
+				"Reenable": {
+					"displayName": "重新启用",
+					"description": "用于控制先前已禁用凭据的操作"
+				},
+				"SetWorkToDo": {
+					"displayName": "设置待处理工作",
+					"description": "控制证书处理的设置"
+				},
+				"State": {
+					"displayName": "状态",
+					"description": "证书主题DN的州/省字段。在请求集中生成的CSR时指定值。"
+				},
+				"SubjectAltNamesUi": {
+					"displayName": "主题备用名称",
+					"placeholder": "添加主题",
+					"multipleValueButtonText": "添加主题",
+					"options": {
+						"SubjectAltNamesValues": {
+							"displayName": "主题备用名称",
+							"options": {
+								"Typename": {
+									"displayName": "类型名称",
+									"description": "表示SAN类型的整数",
+									"options": {
+										"0": {
+											"displayName": "其他名称",
+											"description": "指定统一资源名称(URN)或用户名"
+										},
+										"1": {
+											"displayName": "电子邮件"
+										},
+										"2": {
+											"displayName": "DNS"
+										},
+										"6": {
+											"displayName": "URI"
+										},
+										"7": {
+											"displayName": "IP地址"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "与Type或TypeName参数对应的SAN友好名称。例如，如果TypeName是IPAddress，则Name值应为有效的IP地址。"
+								}
+							}
+						}
+					},
+					"values": {
+						"SubjectAltNamesValues": {
+							"displayName": "主题备用名称",
+							"options": {
+								"Typename": {
+									"displayName": "类型名称",
+									"description": "表示SAN类型的整数",
+									"options": {
+										"0": {
+											"displayName": "其他名称",
+											"description": "指定统一资源名称(URN)或用户名"
+										},
+										"1": {
+											"displayName": "电子邮件"
+										},
+										"2": {
+											"displayName": "DNS"
+										},
+										"6": {
+											"displayName": "URI"
+										},
+										"7": {
+											"displayName": "IP地址"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "与Type或TypeName参数对应的SAN友好名称。例如，如果TypeName是IPAddress，则Name值应为有效的IP地址。"
+								}
+							}
+						},
+						"SubjectAltNamesUi": {
+							"displayName": "主题备用名称",
+							"placeholder": "添加主题"
+						}
+					}
+				},
+				"IncludeChain": {
+					"displayName": "包含链"
+				},
+				"RootFirstOrder": {
+					"displayName": "根首序"
+				},
+				"KeystorePassword": {
+					"displayName": "密钥库密码"
+				}
+			}
+		},
+		"certificateDn": {
+			"displayName": "证书DN"
+		},
+		"includePrivateKey": {
+			"displayName": "包含私钥"
+		},
+		"password": {
+			"displayName": "密码"
+		},
+		"binaryProperty": {
+			"displayName": "输入数据字段名称",
+			"description": "包含待上传二进制文件数据的输入字段名称"
+		},
+		"certificateId": {
+			"displayName": "证书GUID",
+			"description": "唯一标识证书的GUID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "返回值中需包含以下一个或多个证书属性"
+				}
+			}
+		},
+		"certificateDN": {
+			"displayName": "证书DN",
+			"description": "要续订的证书的可分辨名称(DN)"
+		},
+		"policyDn": {
+			"displayName": "策略DN",
+			"description": "策略文件夹的可分辨名称(DN)"
+		}
+	}
+}

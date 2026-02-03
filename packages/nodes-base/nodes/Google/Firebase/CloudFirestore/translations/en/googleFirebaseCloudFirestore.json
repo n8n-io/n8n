@@ -1,0 +1,101 @@
+{
+	"header": {
+		"displayName": "Google Cloud Firestore",
+		"description": "Interact with Google Firebase - Cloud Firestore API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"displayName": "OAuth2 (recommended)"
+				},
+				"serviceAccount": {
+					"displayName": "Service Account"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"document": {
+					"displayName": "Document"
+				},
+				"collection": {
+					"displayName": "Collection"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a document"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new document, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a document"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a document"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many root collections"
+				},
+				"query": {
+					"displayName": "Query",
+					"description": "Runs a query against your documents"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "Project Name or ID",
+			"description": "As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"database": {
+			"displayName": "Database",
+			"description": "Usually the provided default value will work"
+		},
+		"collection": {
+			"displayName": "Collection",
+			"description": "Collection name"
+		},
+		"documentId": {
+			"displayName": "Document ID"
+		},
+		"columns": {
+			"displayName": "Columns /Attributes",
+			"description": "Columns to insert",
+			"placeholder": "age, city, location"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateKey": {
+			"displayName": "Update Key",
+			"description": "Name of the field in an input item that contains the document ID",
+			"placeholder": "documentId"
+		},
+		"query": {
+			"displayName": "Query JSON",
+			"description": "JSON query to execute",
+			"placeholder": "{\"structuredQuery\": {\"where\": {\"fieldFilter\": {\"field\": {\"fieldPath\": \"age\"},\"op\": \"EQUAL\", \"value\": {\"integerValue\": 28}}}, \"from\": [{\"collectionId\": \"users-collection\"}]}}"
+		}
+	}
+}

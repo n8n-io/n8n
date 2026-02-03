@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "聊天消息检索器",
+		"description": "从内存中检索聊天消息并在工作流中使用"
+	},
+	"nodeView": {
+		"deprecatedNotice": {
+			"displayName": "此节点已弃用。请改用'聊天记忆管理器'节点。"
+		},
+		"simplifyOutput": {
+			"displayName": "简化输出",
+			"description": "是否简化输出，仅包含发送者和文本"
+		}
+	}
+}

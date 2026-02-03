@@ -1,0 +1,21 @@
+{
+	"header": {
+		"displayName": "Pinecone：插入",
+		"description": "将数据插入Pinecone向量存储索引"
+	},
+	"nodeView": {
+		"pineconeIndex": {
+			"displayName": "Pinecone 索引"
+		},
+		"pineconeNamespace": {
+			"displayName": "Pinecone 命名空间"
+		},
+		"notice": {
+			"displayName": "在文档加载器子节点中指定要加载的文档"
+		},
+		"clearNamespace": {
+			"displayName": "清空命名空间",
+			"description": "是否在插入新数据前清空命名空间"
+		}
+	}
+}

@@ -1,0 +1,161 @@
+{
+	"header": {
+		"displayName": "AWS Transcribe",
+		"description": "Sends data to AWS Transcribe"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"transcriptionJob": {
+					"displayName": "Transcription Job"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a transcription job"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a transcription job"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a transcription job"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many transcription jobs"
+				}
+			}
+		},
+		"transcriptionJobName": {
+			"displayName": "Job Name",
+			"description": "The name of the job"
+		},
+		"mediaFileUri": {
+			"displayName": "Media File URI",
+			"description": "The S3 object location of the input media file"
+		},
+		"detectLanguage": {
+			"displayName": "Detect Language",
+			"description": "Whether to set this field to true to enable automatic language identification"
+		},
+		"languageCode": {
+			"displayName": "Language",
+			"description": "Language used in the input media file",
+			"options": {
+				"en-US": {
+					"displayName": "American English"
+				},
+				"en-GB": {
+					"displayName": "British English"
+				},
+				"de-DE": {
+					"displayName": "German"
+				},
+				"en-IN": {
+					"displayName": "Indian English"
+				},
+				"en-IE": {
+					"displayName": "Irish English"
+				},
+				"ru-RU": {
+					"displayName": "Russian"
+				},
+				"es-ES": {
+					"displayName": "Spanish"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"channelIdentification": {
+					"displayName": "Channel Identification",
+					"description": "Instructs Amazon Transcribe to process each audiochannel separately and then merge the transcription output of each channel into a single transcription. You can't set both Max Speaker Labels and Channel Identification in the same request. If you set both, your request returns a BadRequestException."
+				},
+				"maxAlternatives": {
+					"displayName": "Max Alternatives",
+					"description": "The number of alternative transcriptions that the service should return"
+				},
+				"maxSpeakerLabels": {
+					"displayName": "Max Speaker Labels",
+					"description": "The maximum number of speakers to identify in the input audio. If there are more speakers in the audio than this number, multiple speakers are identified as a single speaker."
+				},
+				"vocabularyName": {
+					"displayName": "Vocabulary Name",
+					"description": "Name of vocabulary to use when processing the transcription job"
+				},
+				"vocabularyFilterName": {
+					"displayName": "Vocabulary Filter Name",
+					"description": "The name of the vocabulary filter to use when transcribing the audio. The filter that you specify must have the same language code as the transcription job."
+				},
+				"vocabularyFilterMethod": {
+					"displayName": "Vocabulary Filter Method",
+					"description": "<p>Set to mask to remove filtered text from the transcript and replace it with three asterisks (\"***\") as placeholder text.</p><p>Set to remove to remove filtered text from the transcript without using placeholder text. Set to tag to mark the word in the transcription output that matches the vocabulary filter. When you set the filter method to tag, the words matching your vocabulary filter are not masked or removed.</p>",
+					"options": {
+						"remove": {
+							"displayName": "Remove"
+						},
+						"mask": {
+							"displayName": "Mask"
+						},
+						"tag": {
+							"displayName": "Tag"
+						}
+					}
+				}
+			}
+		},
+		"returnTranscript": {
+			"displayName": "Return Transcript",
+			"description": "By default, the response only contains metadata about the transcript. Enable this option to retrieve the transcript instead."
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"jobNameContains": {
+					"displayName": "Job Name Contains",
+					"description": "Return only transcription jobs whose name contains the specified string"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Return only transcription jobs with the specified status",
+					"options": {
+						"COMPLETED": {
+							"displayName": "Completed"
+						},
+						"FAILED": {
+							"displayName": "Failed"
+						},
+						"IN_PROGRESS": {
+							"displayName": "In Progress"
+						},
+						"QUEUED": {
+							"displayName": "Queued"
+						}
+					}
+				}
+			}
+		}
+	}
+}

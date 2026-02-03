@@ -1,0 +1,85 @@
+{
+	"header": {
+		"displayName": "AI智能体",
+		"description": "生成并执行行动计划。可以使用外部工具。"
+	},
+	"nodeView": {
+		"aiAgentStarterCallout": {
+			"displayName": "提示：通过我们的快速<a href=\"https://docs.n8n.io/advanced-ai/intro-tutorial/\" target=\"_blank\">教程</a>体验代理功能，或查看此节点工作方式的<a href=\"/workflows/templates/1954\" target=\"_blank\">示例</a>"
+		},
+		"promptType": {
+			"displayName": "提示词来源（用户消息）",
+			"options": {
+				"auto": {
+					"displayName": "已连接的聊天触发器节点",
+					"description": "查找名为'chatInput'的输入字段，该字段来自直接连接的聊天触发器"
+				},
+				"guardrails": {
+					"displayName": "已连接的护栏节点",
+					"description": "查找来自直接连接的护栏节点的名为'guardrailsInput'的输入字段"
+				},
+				"define": {
+					"displayName": "定义如下",
+					"description": "使用表达式引用先前节点中的数据或输入静态文本"
+				}
+			}
+		},
+		"text": {
+			"displayName": "例如：你好，我能如何帮助你？",
+			"placeholder": "例如：你好，我能如何帮助你？"
+		},
+		"hasOutputParser": {
+			"displayName": "要求特定输出格式"
+		},
+		"notice": {
+			"displayName": "在画布上连接一个<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>输出解析器</a>来指定您需要的输出格式"
+		},
+		"needsFallback": {
+			"displayName": "启用备用模型"
+		},
+		"fallbackNotice": {
+			"displayName": "在画布上连接一个额外的语言模型，作为主模型失败时的备用方案"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"systemMessage": {
+					"displayName": "系统消息",
+					"description": "对话开始前发送给代理的消息"
+				},
+				"maxIterations": {
+					"displayName": "最大迭代次数",
+					"description": "代理在停止前将运行的最大迭代次数"
+				},
+				"returnIntermediateSteps": {
+					"displayName": "返回中间步骤",
+					"description": "输出是否应包含代理采取的中间步骤"
+				},
+				"passthroughBinaryImages": {
+					"displayName": "自动透传二进制图像",
+					"description": "是否应将二进制图像自动作为图像类型消息传递给代理"
+				},
+				"batching": {
+					"displayName": "批量处理",
+					"description": "用于速率限制的批量处理选项",
+					"placeholder": "添加批量处理选项",
+					"options": {
+						"batchSize": {
+							"displayName": "批次大小",
+							"description": "并行处理的项目数量。这对速率限制很有用，但可能会影响日志输出顺序。"
+						},
+						"delayBetweenBatches": {
+							"displayName": "批次间延迟",
+							"description": "批次之间的延迟时间（毫秒）。适用于速率限制场景。"
+						}
+					}
+				},
+				"enableStreaming": {
+					"displayName": "启用流式传输",
+					"description": "此代理是否会在生成文本时实时流式传输响应"
+				}
+			}
+		}
+	}
+}

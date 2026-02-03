@@ -1,0 +1,126 @@
+{
+	"header": {
+		"displayName": "Pinecone Vector Store",
+		"description": "Work with your data in Pinecone Vector Store"
+	},
+	"nodeView": {
+		"ragStarterCallout": {
+			"displayName": "Tip: Get a feel for vector stores in n8n with our"
+		},
+		"mode": {
+			"displayName": "Operation Mode",
+			"options": {
+				"load": {
+					"displayName": "Get Many",
+					"description": "Get many ranked documents from vector store for query"
+				},
+				"insert": {
+					"displayName": "Insert Documents",
+					"description": "Insert documents into vector store"
+				},
+				"retrieve": {
+					"displayName": "Retrieve Documents (As Vector Store for Chain/Tool)",
+					"description": "Retrieve documents from vector store to be used as vector store with AI nodes"
+				},
+				"retrieve-as-tool": {
+					"displayName": "Retrieve Documents (As Tool for AI Agent)",
+					"description": "Retrieve documents from vector store to be used as tool with AI nodes"
+				},
+				"update": {
+					"displayName": "Update Documents",
+					"description": "Update documents in vector store by ID"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "This node must be connected to a vector store retriever. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_retriever'>Insert one</a>"
+		},
+		"toolName": {
+			"displayName": "Name",
+			"description": "Name of the vector store",
+			"placeholder": "e.g. company_knowledge_base"
+		},
+		"toolDescription": {
+			"displayName": "Description",
+			"description": "Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often",
+			"placeholder": "e.g. Work with your data in Pinecone Vector Store"
+		},
+		"pineconeIndex": {
+			"displayName": "Pinecone Index"
+		},
+		"embeddingBatchSize": {
+			"displayName": "Embedding Batch Size",
+			"description": "Number of documents to embed in a single batch"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"clearNamespace": {
+					"displayName": "Clear Namespace",
+					"description": "Whether to clear the namespace before inserting new data"
+				},
+				"pineconeNamespace": {
+					"displayName": "Pinecone Namespace",
+					"description": "Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index."
+				},
+				"metadata": {
+					"displayName": "Metadata Filter",
+					"description": "Metadata to filter the document by",
+					"placeholder": "Add filter field",
+					"multipleValueButtonText": "Add filter field",
+					"options": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "Metadata Filter",
+							"placeholder": "Add filter field"
+						}
+					}
+				}
+			}
+		},
+		"prompt": {
+			"displayName": "Prompt",
+			"description": "Search prompt to retrieve matching documents from the vector store using similarity-based ranking"
+		},
+		"topK": {
+			"displayName": "Limit",
+			"description": "Number of top results to fetch from vector store"
+		},
+		"includeDocumentMetadata": {
+			"displayName": "Include Metadata",
+			"description": "Whether or not to include document metadata"
+		},
+		"useReranker": {
+			"displayName": "Rerank Results",
+			"description": "Whether or not to rerank results"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "ID of an embedding entry"
+		}
+	}
+}

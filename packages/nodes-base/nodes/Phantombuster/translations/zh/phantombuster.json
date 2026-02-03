@@ -1,0 +1,196 @@
+{
+	"header": {
+		"displayName": "Phantombuster",
+		"description": "使用 Phantombuster API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"agent": {
+					"displayName": "代理"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"delete": {
+					"displayName": "删除",
+					"description": "按ID删除代理"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "通过ID获取代理"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取当前用户组织的多个代理"
+				},
+				"getOutput": {
+					"displayName": "获取输出",
+					"description": "获取代理最近容器的输出"
+				},
+				"launch": {
+					"displayName": "启动",
+					"description": "将代理添加到启动队列"
+				}
+			}
+		},
+		"agentId": {
+			"displayName": "代理名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，启动仅包含容器ID。如果激活此选项，它将自动解析数据。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"prevContainerId": {
+					"displayName": "上一个容器ID",
+					"description": "如果设置此项，将从指定上一个容器ID之后获取输出"
+				},
+				"prevStatus": {
+					"displayName": "先前状态",
+					"description": "如果设置，允许定义用户端先前检索到的状态",
+					"options": {
+						"finished": {
+							"displayName": "已完成"
+						},
+						"lauch error": {
+							"displayName": "启动错误"
+						},
+						"never launched": {
+							"displayName": "从未启动"
+						},
+						"running": {
+							"displayName": "运行中"
+						},
+						"starting": {
+							"displayName": "开始"
+						},
+						"unknown": {
+							"displayName": "未知"
+						}
+					}
+				},
+				"prevRuntimeEventIndex": {
+					"displayName": "预运行时事件索引",
+					"description": "如果设置，将从提供的上一个运行时事件索引开始返回容器运行时事件"
+				},
+				"argumentsJson": {
+					"displayName": "参数 (JSON)",
+					"description": "代理参数。可以是JSON字符串或普通对象。该参数可在代理脚本中使用 buster.argument 获取。"
+				},
+				"argumentsUi": {
+					"displayName": "参数",
+					"placeholder": "添加参数",
+					"multipleValueButtonText": "添加参数",
+					"options": {
+						"argumentValues": {
+							"displayName": "参数",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要添加的参数键名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为参数键设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"argumentValues": {
+							"displayName": "参数",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要添加的参数键名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为参数键设置的值"
+								}
+							}
+						},
+						"argumentsUi": {
+							"displayName": "参数",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"bonusArgumentUi": {
+					"displayName": "奖励参数",
+					"placeholder": "添加奖励参数",
+					"multipleValueButtonText": "添加奖励参数",
+					"options": {
+						"bonusArgumentValue": {
+							"displayName": "奖励参数",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要添加的参数键名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为参数键设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"bonusArgumentValue": {
+							"displayName": "奖励参数",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要添加的参数键名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为参数键设置的值"
+								}
+							}
+						},
+						"bonusArgumentUi": {
+							"displayName": "奖励参数",
+							"placeholder": "添加奖励参数"
+						}
+					}
+				},
+				"bonusArgumentJson": {
+					"displayName": "[0]额外参数 (JSON)",
+					"description": "智能体额外参数。可以是 JSON 字符串或普通对象。此额外参数为一次性使用，仅用于当前启动。如果存在，它将与原始参数合并，生成可通过智能体脚本中的 buster.argument 检索的有效参数。"
+				},
+				"manualLaunch": {
+					"displayName": "手动启动",
+					"description": "是否将代理视为“手动启动”"
+				},
+				"maxInstanceCount": {
+					"displayName": "最大实例数",
+					"description": "如果设置此值，仅当正在运行的实例数低于指定数量时才会启动代理"
+				},
+				"saveArgument": {
+					"displayName": "保存参数",
+					"description": "若为真，此参数将保存为智能体的默认启动选项"
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		}
+	}
+}

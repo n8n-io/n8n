@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "Calculator",
+		"description": "Make it easier for AI agents to perform arithmetic"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		}
+	}
+}

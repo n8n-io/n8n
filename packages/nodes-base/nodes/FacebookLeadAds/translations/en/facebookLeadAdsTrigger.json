@@ -1,0 +1,37 @@
+{
+	"header": {
+		"displayName": "Facebook Lead Ads Trigger",
+		"description": "Handle Facebook Lead Ads events via webhooks"
+	},
+	"nodeView": {
+		"facebookLeadAdsNotice": {
+			"displayName": "Due to Facebook API limitations, you can use just one Facebook Lead Ads trigger for each Facebook App"
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"newLead": {
+					"displayName": "New Lead"
+				}
+			}
+		},
+		"page": {
+			"displayName": "Page",
+			"description": "The page linked to the form for retrieving new leads"
+		},
+		"form": {
+			"displayName": "Form",
+			"description": "The form to monitor for fetching lead details upon submission"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"simplifyOutput": {
+					"displayName": "Simplify Output",
+					"description": "Whether to return a simplified version of the webhook event instead of all fields"
+				}
+			}
+		}
+	}
+}

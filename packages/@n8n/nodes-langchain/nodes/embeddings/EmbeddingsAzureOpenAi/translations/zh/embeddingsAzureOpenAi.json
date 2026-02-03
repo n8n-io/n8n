@@ -1,0 +1,55 @@
+{
+	"header": {
+		"displayName": "嵌入 Azure OpenAI",
+		"description": "使用嵌入 Azure OpenAI"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到向量存储。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>插入一个</a>"
+		},
+		"model": {
+			"displayName": "模型（部署）名称",
+			"description": "要使用的模型（部署）名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batchSize": {
+					"displayName": "批次大小",
+					"description": "每个请求中发送的最大文档数量"
+				},
+				"stripNewLines": {
+					"displayName": "去除换行符",
+					"description": "是否从输入文本中去除换行符"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "请求允许的最大耗时（秒）。设为-1表示无超时限制。"
+				},
+				"dimensions": {
+					"displayName": "维度",
+					"description": "输出嵌入向量的维度数量。仅支持 text-embedding-3 及更高版本的模型。",
+					"options": {
+						"256": {
+							"displayName": "256"
+						},
+						"512": {
+							"displayName": "512"
+						},
+						"1024": {
+							"displayName": "1024"
+						},
+						"1536": {
+							"displayName": "1536"
+						},
+						"3072": {
+							"displayName": "3072"
+						}
+					}
+				}
+			}
+		}
+	}
+}

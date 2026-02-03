@@ -1,0 +1,44 @@
+{
+	"header": {
+		"displayName": "AWS Bedrock Chat Model",
+		"description": "Language Model AWS Bedrock"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"modelSource": {
+			"displayName": "Model Source",
+			"description": "Choose between on-demand foundation models or inference profiles",
+			"options": {
+				"onDemand": {
+					"displayName": "On-Demand Models",
+					"description": "Standard foundation models with on-demand pricing"
+				},
+				"inferenceProfile": {
+					"displayName": "Inference Profiles",
+					"description": "Cross-region inference profiles (required for models like Claude Sonnet 4 and others)"
+				}
+			}
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The inference profile which will generate the completion. <a href=\"https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-use.html\">Learn more</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"maxTokensToSample": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion"
+				},
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive."
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,95 @@
+{
+	"header": {
+		"displayName": "Local File Trigger",
+		"description": "Triggers a workflow on file system changes"
+	},
+	"nodeView": {
+		"triggerOn": {
+			"displayName": "Trigger On",
+			"options": {
+				"file": {
+					"displayName": "Changes to a Specific File"
+				},
+				"folder": {
+					"displayName": "Changes Involving a Specific Folder"
+				}
+			}
+		},
+		"path": {
+			"displayName": "Folder to Watch",
+			"placeholder": "/data/invoices"
+		},
+		"events": {
+			"displayName": "Watch for",
+			"description": "The events to listen to"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"awaitWriteFinish": {
+					"displayName": "Await Write Finish",
+					"description": "Whether to wait until files finished writing to avoid partially read"
+				},
+				"followSymlinks": {
+					"displayName": "Include Linked Files/Folders",
+					"description": "Whether linked files/folders will also be watched (this includes symlinks, aliases on MacOS and shortcuts on Windows). Otherwise only the links themselves will be monitored)."
+				},
+				"ignored": {
+					"displayName": "Ignore",
+					"description": "Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href=\"https://github.com/micromatch/anymatch\">Anymatch</a>- syntax. Regex patterns may not work on macOS. To ignore files based on substring matching, use the 'Ignore Mode' option with 'Contain'.",
+					"placeholder": "**/*.txt or ignore-me/subfolder"
+				},
+				"ignoreInitial": {
+					"displayName": "Ignore Existing Files/Folders",
+					"description": "Whether to ignore existing files/folders to not trigger an event"
+				},
+				"depth": {
+					"displayName": "Max Folder Depth",
+					"description": "How deep into the folder structure to watch for changes",
+					"options": {
+						"0": {
+							"displayName": "Top Folder Only"
+						},
+						"1": {
+							"displayName": "1 Levels Down"
+						},
+						"2": {
+							"displayName": "2 Levels Down"
+						},
+						"3": {
+							"displayName": "3 Levels Down"
+						},
+						"4": {
+							"displayName": "4 Levels Down"
+						},
+						"5": {
+							"displayName": "5 Levels Down"
+						},
+						"-1": {
+							"displayName": "Unlimited"
+						}
+					}
+				},
+				"usePolling": {
+					"displayName": "Use Polling",
+					"description": "Whether to use polling for watching. Typically necessary to successfully watch files over a network."
+				},
+				"ignoreMode": {
+					"displayName": "Ignore Mode",
+					"description": "Whether to ignore files using regex matching (Anymatch patterns) or by checking if the path contains a specified value",
+					"options": {
+						"match": {
+							"displayName": "Match",
+							"description": "Ignore files using regex patterns (e.g., **/*.txt), Not supported on macOS"
+						},
+						"contain": {
+							"displayName": "Contain",
+							"description": "Ignore files if their path contains the specified value"
+						}
+					}
+				}
+			}
+		}
+	}
+}

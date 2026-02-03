@@ -1,0 +1,124 @@
+{
+	"header": {
+		"displayName": "移除重复项",
+		"description": "删除具有匹配字段值的项目"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"removeDuplicateInputItems": {
+					"displayName": "移除当前输入中的重复项",
+					"description": "移除传入项的重复项"
+				},
+				"removeItemsSeenInPreviousExecutions": {
+					"displayName": "移除先前执行中已处理的项",
+					"description": "对先前执行中已见过的项进行去重"
+				},
+				"clearDeduplicationHistory": {
+					"displayName": "清除去重历史",
+					"description": "清空先前项目存储"
+				}
+			}
+		},
+		"compare": {
+			"displayName": "比较",
+			"description": "要比较的输入项字段，以检查它们是否相同",
+			"options": {
+				"allFields": {
+					"displayName": "所有字段"
+				},
+				"allFieldsExcept": {
+					"displayName": "除以下字段外的所有字段"
+				},
+				"selectedFields": {
+					"displayName": "选定字段"
+				}
+			}
+		},
+		"fieldsToExclude": {
+			"displayName": "要排除的字段",
+			"description": "要从比较中排除的输入字段",
+			"placeholder": "例如：email, name"
+		},
+		"fieldsToCompare": {
+			"displayName": "要比较的字段",
+			"description": "要添加到比较的输入字段",
+			"placeholder": "例如：email, name"
+		},
+		"logic": {
+			"displayName": "保留符合条件的项目",
+			"description": "如何通过将输入项目与先前处理的关键值进行比较来选择要移除的项目",
+			"options": {
+				"removeItemsWithAlreadySeenKeyValues": {
+					"displayName": "值为新",
+					"description": "移除所有与已处理值匹配的输入项"
+				},
+				"removeItemsUpToStoredIncrementalKey": {
+					"displayName": "值高于任何先前值",
+					"description": "适用于增量值，移除所有值小于等于存储值的输入项"
+				},
+				"removeItemsUpToStoredDate": {
+					"displayName": "值晚于任何先前日期",
+					"description": "适用于日期值，移除所有值早于或等于存储日期的输入项"
+				}
+			}
+		},
+		"dedupeValue": {
+			"displayName": "用于去重的值",
+			"description": "使用具有唯一ID值的输入字段（或字段组合）",
+			"placeholder": "例如：ID"
+		},
+		"incrementalDedupeValue": {
+			"displayName": "用于去重的值",
+			"description": "使用具有递增值的输入字段（或字段组合）",
+			"placeholder": "例如：ID"
+		},
+		"dateDedupeValue": {
+			"displayName": "用于去重的值",
+			"description": "使用包含ISO格式日期值的输入字段",
+			"placeholder": "例如 2024-08-09T13:44:16Z"
+		},
+		"mode": {
+			"displayName": "模式",
+			"description": "您希望如何修改存储在数据库中的键值。这些模式都不会删除输入项。",
+			"options": {
+				"cleanDatabase": {
+					"displayName": "清理数据库",
+					"description": "清除数据库中为某个键存储的所有值"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				},
+				"removeOtherFields": {
+					"displayName": "移除其他字段",
+					"description": "是否移除未被比较的任何字段。如果禁用，将保留重复项中第一个条目的值。"
+				},
+				"scope": {
+					"displayName": "范围",
+					"description": "如果设置为‘workflow’，键值将在工作流的所有节点间共享。如果设置为‘node’，键值将特定于此节点。",
+					"options": {
+						"workflow": {
+							"displayName": "工作流",
+							"description": "去重信息将在工作流的所有节点之间共享"
+						},
+						"node": {
+							"displayName": "节点",
+							"description": "去重信息将仅存储于此节点"
+						}
+					}
+				},
+				"historySize": {
+					"displayName": "历史记录大小"
+				}
+			}
+		}
+	}
+}

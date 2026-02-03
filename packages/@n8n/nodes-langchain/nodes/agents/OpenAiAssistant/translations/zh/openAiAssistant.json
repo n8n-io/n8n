@@ -1,0 +1,62 @@
+{
+	"header": {
+		"displayName": "OpenAI助手",
+		"description": "使用Open AI的助手API。"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "操作",
+			"options": {
+				"new": {
+					"displayName": "使用新助手"
+				},
+				"existing": {
+					"displayName": "使用现有助手"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称"
+		},
+		"instructions": {
+			"displayName": "说明",
+			"description": "助手和模型应如何表现或响应"
+		},
+		"model": {
+			"displayName": "模型",
+			"description": "将用于驱动助手的模型。<a href=\"https://beta.openai.com/docs/models/overview\">了解更多</a>。检索工具需要gpt-3.5-turbo-1106和gpt-4-1106-preview模型。"
+		},
+		"assistantId": {
+			"displayName": "助手",
+			"description": "要使用的助手。<a href=\"https://beta.openai.com/docs/assistants/overview\">了解更多</a>。"
+		},
+		"text": {
+			"displayName": "要发送的文本"
+		},
+		"nativeTools": {
+			"displayName": "OpenAI工具"
+		},
+		"noticeTools": {
+			"displayName": "上传文件以供检索，使用<a href=\"https://platform.openai.com/playground\" target=\"_blank\">OpenAI网站<a/>"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"baseURL": {
+					"displayName": "基础URL",
+					"description": "覆盖API的默认基础URL"
+				},
+				"maxRetries": {
+					"displayName": "最大重试次数",
+					"description": "尝试的最大重试次数"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "请求允许执行的最长时间（毫秒）"
+				}
+			}
+		}
+	}
+}

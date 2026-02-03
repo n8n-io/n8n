@@ -1,0 +1,883 @@
+{
+	"header": {
+		"displayName": "Todoist",
+		"description": "Consume Todoist API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiKey": {
+					"displayName": "API Key"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"task": {
+					"displayName": "Task",
+					"description": "Task resource"
+				},
+				"project": {
+					"displayName": "Project",
+					"description": "Project resource"
+				},
+				"section": {
+					"displayName": "Section",
+					"description": "Section resource"
+				},
+				"comment": {
+					"displayName": "Comment",
+					"description": "Comment resource"
+				},
+				"label": {
+					"displayName": "Label",
+					"description": "Label resource"
+				},
+				"reminder": {
+					"displayName": "Reminder",
+					"description": "Reminder resource"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"close": {
+					"displayName": "Close",
+					"description": "Close a task"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new reminder"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a reminder"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a label"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many reminders"
+				},
+				"move": {
+					"displayName": "Move",
+					"description": "Move a task"
+				},
+				"quickAdd": {
+					"displayName": "Quick Add",
+					"description": "Quick add a task using natural language"
+				},
+				"reopen": {
+					"displayName": "Reopen",
+					"description": "Reopen a task"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a reminder"
+				},
+				"archive": {
+					"displayName": "Archive",
+					"description": "Archive a project"
+				},
+				"getCollaborators": {
+					"displayName": "Get Collaborators",
+					"description": "Get project collaborators"
+				},
+				"unarchive": {
+					"displayName": "Unarchive",
+					"description": "Unarchive a project"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "Task ID"
+		},
+		"project": {
+			"displayName": "Project Name or ID",
+			"description": "The destination project. Choose from the list, or specify an ID."
+		},
+		"section": {
+			"displayName": "Section Name or ID",
+			"description": "Section to which you want move the task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"options": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add option",
+			"options": {
+				"section": {
+					"displayName": "Section Name or ID",
+					"description": "The section you want to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"parent": {
+					"displayName": "Parent Name or ID",
+					"description": "The destination parent task. The task becomes the last child task of the parent task. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "The content of the note"
+				},
+				"reminder": {
+					"displayName": "Reminder",
+					"description": "The date of the reminder, added in free form text"
+				},
+				"auto_reminder": {
+					"displayName": "Auto Reminder",
+					"description": "When this option is enabled, the default reminder will be added to the new item if it has a due date with time set"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "A description for the task"
+				},
+				"dueDateTime": {
+					"displayName": "Due Date Time",
+					"description": "Specific date and time in RFC3339 format in UTC"
+				},
+				"dueLang": {
+					"displayName": "Due String Locale",
+					"description": "2-letter code specifying language in case due_string is not written in English"
+				},
+				"dueString": {
+					"displayName": "Due String",
+					"description": "Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time."
+				},
+				"parentId": {
+					"displayName": "Parent Name or ID",
+					"description": "The parent task you want to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"priority": {
+					"displayName": "Priority",
+					"description": "Task priority from 1 (normal) to 4 (urgent)"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "Non-zero integer used to sort tasks under the same parent"
+				},
+				"dueDate": {
+					"displayName": "Due Date",
+					"description": "Specific date in YYYY-MM-DD format",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"assigneeId": {
+					"displayName": "Assignee ID",
+					"description": "Responsible user ID (for shared tasks)"
+				},
+				"duration": {
+					"displayName": "Duration",
+					"description": "Positive integer for task duration (must be used with Duration Unit)"
+				},
+				"durationUnit": {
+					"displayName": "Duration Unit",
+					"description": "Unit of time for duration (must be used with Duration)",
+					"options": {
+						"minute": {
+							"displayName": "Minute"
+						},
+						"day": {
+							"displayName": "Day"
+						}
+					}
+				},
+				"deadlineDate": {
+					"displayName": "Deadline Date",
+					"description": "Specific deadline date in YYYY-MM-DD format",
+					"placeholder": "YYYY-MM-DD"
+				}
+			}
+		},
+		"labels": {
+			"displayName": "Label Names",
+			"description": "Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"content": {
+			"displayName": "Content",
+			"description": "Task content"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "Natural language text for quick adding task (e.g., \"Buy milk @Grocery #shopping tomorrow\"). It can include a due date in free form text, a project name starting with the \"#\" character (without spaces), a label starting with the \"@\" character, an assignee starting with the \"+\" character, a priority (e.g., p1), a deadline between \"{}\" (e.g. {in 3 days}), or a description starting from \"//\" until the end of the text."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add option",
+			"options": {
+				"filter": {
+					"displayName": "Filter",
+					"description": "Filter by any <a href=\"https://get.todoist.help/hc/en-us/articles/205248842\">supported filter.</a>"
+				},
+				"ids": {
+					"displayName": "IDs",
+					"description": "A list of the task IDs to retrieve, this should be a comma-separated list"
+				},
+				"labelId": {
+					"displayName": "Label Name or ID",
+					"description": "Filter tasks by label. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"lang": {
+					"displayName": "Lang",
+					"description": "IETF language tag defining what language filter is written in, if differs from default English"
+				},
+				"parentId": {
+					"displayName": "Parent Name or ID",
+					"description": "Filter tasks by parent task ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"projectId": {
+					"displayName": "Project Name or ID",
+					"description": "Filter tasks by project ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"sectionId": {
+					"displayName": "Section Name or ID",
+					"description": "Filter tasks by section ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"content": {
+					"displayName": "Content",
+					"description": "Task content"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "A description for the task"
+				},
+				"dueDateTime": {
+					"displayName": "Due Date Time",
+					"description": "Specific date and time in RFC3339 format in UTC"
+				},
+				"dueLang": {
+					"displayName": "Due String Locale",
+					"description": "2-letter code specifying language in case due_string is not written in English"
+				},
+				"dueString": {
+					"displayName": "Due String",
+					"description": "Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time."
+				},
+				"labels": {
+					"displayName": "Label Names",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"priority": {
+					"displayName": "Priority",
+					"description": "Task priority from 1 (normal) to 4 (urgent)"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "Non-zero integer used to sort tasks under the same parent"
+				},
+				"dueDate": {
+					"displayName": "Due Date",
+					"description": "Specific date in YYYY-MM-DD format",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"assigneeId": {
+					"displayName": "Assignee ID",
+					"description": "Responsible user ID (for shared tasks)"
+				},
+				"duration": {
+					"displayName": "Duration",
+					"description": "Positive integer for task duration (must be used with Duration Unit)"
+				},
+				"durationUnit": {
+					"displayName": "Duration Unit",
+					"description": "Unit of time for duration (must be used with Duration)",
+					"options": {
+						"minute": {
+							"displayName": "Minute"
+						},
+						"day": {
+							"displayName": "Day"
+						}
+					}
+				},
+				"deadlineDate": {
+					"displayName": "Deadline Date",
+					"description": "Specific deadline date in YYYY-MM-DD format",
+					"placeholder": "YYYY-MM-DD"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "Project ID",
+			"description": "The project ID - can be either a string or number"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the project"
+		},
+		"projectOptions": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"color": {
+					"displayName": "Color",
+					"description": "The color of the project",
+					"options": {
+						"berry_red": {
+							"displayName": "Berry Red"
+						},
+						"red": {
+							"displayName": "Red"
+						},
+						"orange": {
+							"displayName": "Orange"
+						},
+						"yellow": {
+							"displayName": "Yellow"
+						},
+						"olive_green": {
+							"displayName": "Olive Green"
+						},
+						"lime_green": {
+							"displayName": "Lime Green"
+						},
+						"green": {
+							"displayName": "Green"
+						},
+						"mint_green": {
+							"displayName": "Mint Green"
+						},
+						"teal": {
+							"displayName": "Teal"
+						},
+						"sky_blue": {
+							"displayName": "Sky Blue"
+						},
+						"light_blue": {
+							"displayName": "Light Blue"
+						},
+						"blue": {
+							"displayName": "Blue"
+						},
+						"grape": {
+							"displayName": "Grape"
+						},
+						"violet": {
+							"displayName": "Violet"
+						},
+						"lavender": {
+							"displayName": "Lavender"
+						},
+						"magenta": {
+							"displayName": "Magenta"
+						},
+						"salmon": {
+							"displayName": "Salmon"
+						},
+						"charcoal": {
+							"displayName": "Charcoal"
+						},
+						"grey": {
+							"displayName": "Grey"
+						},
+						"taupe": {
+							"displayName": "Taupe"
+						}
+					}
+				},
+				"is_favorite": {
+					"displayName": "Is Favorite",
+					"description": "Whether the project is a favorite"
+				},
+				"parent_id": {
+					"displayName": "Parent ID",
+					"description": "Parent project ID"
+				},
+				"view_style": {
+					"displayName": "View Style",
+					"description": "The default view style of the project",
+					"options": {
+						"list": {
+							"displayName": "List"
+						},
+						"board": {
+							"displayName": "Board"
+						}
+					}
+				}
+			}
+		},
+		"projectUpdateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the project"
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "The color of the project",
+					"options": {
+						"berry_red": {
+							"displayName": "Berry Red"
+						},
+						"red": {
+							"displayName": "Red"
+						},
+						"orange": {
+							"displayName": "Orange"
+						},
+						"yellow": {
+							"displayName": "Yellow"
+						},
+						"olive_green": {
+							"displayName": "Olive Green"
+						},
+						"lime_green": {
+							"displayName": "Lime Green"
+						},
+						"green": {
+							"displayName": "Green"
+						},
+						"mint_green": {
+							"displayName": "Mint Green"
+						},
+						"teal": {
+							"displayName": "Teal"
+						},
+						"sky_blue": {
+							"displayName": "Sky Blue"
+						},
+						"light_blue": {
+							"displayName": "Light Blue"
+						},
+						"blue": {
+							"displayName": "Blue"
+						},
+						"grape": {
+							"displayName": "Grape"
+						},
+						"violet": {
+							"displayName": "Violet"
+						},
+						"lavender": {
+							"displayName": "Lavender"
+						},
+						"magenta": {
+							"displayName": "Magenta"
+						},
+						"salmon": {
+							"displayName": "Salmon"
+						},
+						"charcoal": {
+							"displayName": "Charcoal"
+						},
+						"grey": {
+							"displayName": "Grey"
+						},
+						"taupe": {
+							"displayName": "Taupe"
+						}
+					}
+				},
+				"is_favorite": {
+					"displayName": "Is Favorite",
+					"description": "Whether the project is a favorite"
+				},
+				"view_style": {
+					"displayName": "View Style",
+					"description": "The default view style of the project",
+					"options": {
+						"list": {
+							"displayName": "List"
+						},
+						"board": {
+							"displayName": "Board"
+						}
+					}
+				}
+			}
+		},
+		"sectionId": {
+			"displayName": "Section ID"
+		},
+		"sectionProject": {
+			"displayName": "Project Name or ID",
+			"description": "The project to add the section to"
+		},
+		"sectionName": {
+			"displayName": "Name",
+			"description": "Name of the section"
+		},
+		"sectionOptions": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"order": {
+					"displayName": "Order",
+					"description": "The order of the section"
+				}
+			}
+		},
+		"sectionUpdateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the section"
+				}
+			}
+		},
+		"sectionFilters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"project_id": {
+					"displayName": "Project Name or ID",
+					"description": "Filter sections by project. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"commentId": {
+			"displayName": "Comment ID"
+		},
+		"commentTaskId": {
+			"displayName": "Task ID",
+			"description": "The ID of the task to comment on"
+		},
+		"commentContent": {
+			"displayName": "Content",
+			"description": "Comment content"
+		},
+		"commentUpdateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"content": {
+					"displayName": "Content",
+					"description": "Comment content"
+				}
+			}
+		},
+		"commentFilters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"task_id": {
+					"displayName": "Task ID",
+					"description": "Filter comments by task ID"
+				},
+				"project_id": {
+					"displayName": "Project ID",
+					"description": "Filter comments by project ID"
+				}
+			}
+		},
+		"labelId": {
+			"displayName": "Label ID"
+		},
+		"labelName": {
+			"displayName": "Name",
+			"description": "Name of the label"
+		},
+		"labelOptions": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"color": {
+					"displayName": "Color",
+					"description": "The color of the label",
+					"options": {
+						"berry_red": {
+							"displayName": "Berry Red"
+						},
+						"red": {
+							"displayName": "Red"
+						},
+						"orange": {
+							"displayName": "Orange"
+						},
+						"yellow": {
+							"displayName": "Yellow"
+						},
+						"olive_green": {
+							"displayName": "Olive Green"
+						},
+						"lime_green": {
+							"displayName": "Lime Green"
+						},
+						"green": {
+							"displayName": "Green"
+						},
+						"mint_green": {
+							"displayName": "Mint Green"
+						},
+						"teal": {
+							"displayName": "Teal"
+						},
+						"sky_blue": {
+							"displayName": "Sky Blue"
+						},
+						"light_blue": {
+							"displayName": "Light Blue"
+						},
+						"blue": {
+							"displayName": "Blue"
+						},
+						"grape": {
+							"displayName": "Grape"
+						},
+						"violet": {
+							"displayName": "Violet"
+						},
+						"lavender": {
+							"displayName": "Lavender"
+						},
+						"magenta": {
+							"displayName": "Magenta"
+						},
+						"salmon": {
+							"displayName": "Salmon"
+						},
+						"charcoal": {
+							"displayName": "Charcoal"
+						},
+						"grey": {
+							"displayName": "Grey"
+						},
+						"taupe": {
+							"displayName": "Taupe"
+						}
+					}
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "Label order"
+				},
+				"is_favorite": {
+					"displayName": "Is Favorite",
+					"description": "Whether the label is a favorite"
+				}
+			}
+		},
+		"labelUpdateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the label"
+				},
+				"color": {
+					"displayName": "Color",
+					"description": "The color of the label",
+					"options": {
+						"berry_red": {
+							"displayName": "Berry Red"
+						},
+						"red": {
+							"displayName": "Red"
+						},
+						"orange": {
+							"displayName": "Orange"
+						},
+						"yellow": {
+							"displayName": "Yellow"
+						},
+						"olive_green": {
+							"displayName": "Olive Green"
+						},
+						"lime_green": {
+							"displayName": "Lime Green"
+						},
+						"green": {
+							"displayName": "Green"
+						},
+						"mint_green": {
+							"displayName": "Mint Green"
+						},
+						"teal": {
+							"displayName": "Teal"
+						},
+						"sky_blue": {
+							"displayName": "Sky Blue"
+						},
+						"light_blue": {
+							"displayName": "Light Blue"
+						},
+						"blue": {
+							"displayName": "Blue"
+						},
+						"grape": {
+							"displayName": "Grape"
+						},
+						"violet": {
+							"displayName": "Violet"
+						},
+						"lavender": {
+							"displayName": "Lavender"
+						},
+						"magenta": {
+							"displayName": "Magenta"
+						},
+						"salmon": {
+							"displayName": "Salmon"
+						},
+						"charcoal": {
+							"displayName": "Charcoal"
+						},
+						"grey": {
+							"displayName": "Grey"
+						},
+						"taupe": {
+							"displayName": "Taupe"
+						}
+					}
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "Label order"
+				},
+				"is_favorite": {
+					"displayName": "Is Favorite",
+					"description": "Whether the label is a favorite"
+				}
+			}
+		},
+		"reminderId": {
+			"displayName": "Reminder ID"
+		},
+		"itemId": {
+			"displayName": "Task ID",
+			"description": "The ID of the task to attach reminder to"
+		},
+		"dueDateType": {
+			"displayName": "Due Date Type",
+			"description": "How to specify when the reminder should trigger",
+			"options": {
+				"natural_language": {
+					"displayName": "Natural Language",
+					"description": "Human-readable date and time (e.g., \"tomorrow 2pm\")"
+				},
+				"full_day": {
+					"displayName": "Full-Day Date",
+					"description": "Date without specific time (floating)"
+				},
+				"floating_time": {
+					"displayName": "Floating Date with Time",
+					"description": "Date and time without timezone"
+				},
+				"fixed_timezone": {
+					"displayName": "Fixed Timezone Date with Time",
+					"description": "Date and time with specific timezone"
+				}
+			}
+		},
+		"natural_language_representation": {
+			"displayName": "Natural Language Representation",
+			"description": "Human-readable date and time",
+			"placeholder": "e.g., \"tomorrow 2pm\", \"monday 10:45am\""
+		},
+		"date": {
+			"displayName": "Date",
+			"description": "Full-day date in YYYY-MM-DD format",
+			"placeholder": "YYYY-MM-DD"
+		},
+		"datetime": {
+			"displayName": "Date Time",
+			"description": "Date and time with timezone"
+		},
+		"timezone": {
+			"displayName": "Timezone",
+			"description": "Timezone for the fixed timezone date",
+			"placeholder": "e.g., \"America/New_York\""
+		},
+		"reminderOptions": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"type": {
+					"displayName": "Type",
+					"description": "The reminder type",
+					"options": {
+						"absolute": {
+							"displayName": "Absolute"
+						},
+						"relative": {
+							"displayName": "Relative"
+						}
+					}
+				},
+				"minute_offset": {
+					"displayName": "Minute Offset",
+					"description": "Minutes before the task due date"
+				},
+				"notify_uid": {
+					"displayName": "Notify User ID",
+					"description": "User ID to notify (for shared tasks)"
+				}
+			}
+		},
+		"reminderUpdateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"due": {
+					"displayName": "Due",
+					"description": "When the reminder should trigger",
+					"placeholder": "Add Due Date Option",
+					"options": {
+						"string": {
+							"displayName": "Natural Language",
+							"description": "Human-readable date and time",
+							"placeholder": "e.g., \"tomorrow 2pm\", \"monday 10:45am\""
+						},
+						"date": {
+							"displayName": "Date",
+							"description": "Specific date in YYYY-MM-DD format",
+							"placeholder": "YYYY-MM-DD"
+						},
+						"datetime": {
+							"displayName": "Date Time",
+							"description": "Specific date and time"
+						},
+						"timezone": {
+							"displayName": "Timezone",
+							"description": "Timezone for the reminder",
+							"placeholder": "e.g., \"America/New_York\""
+						}
+					}
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "The reminder type",
+					"options": {
+						"absolute": {
+							"displayName": "Absolute"
+						},
+						"relative": {
+							"displayName": "Relative"
+						}
+					}
+				},
+				"minute_offset": {
+					"displayName": "Minute Offset",
+					"description": "Minutes before the task due date"
+				},
+				"notify_uid": {
+					"displayName": "Notify User ID",
+					"description": "User ID to notify (for shared tasks)"
+				}
+			}
+		}
+	}
+}

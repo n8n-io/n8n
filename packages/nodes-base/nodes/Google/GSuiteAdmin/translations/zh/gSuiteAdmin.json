@@ -1,0 +1,1009 @@
+{
+	"header": {
+		"displayName": "Google Workspace 管理",
+		"description": "使用 Google Workspace 管理 API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"device": {
+					"displayName": "ChromeOS 设备"
+				},
+				"group": {
+					"displayName": "分组"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户"
+				},
+				"changeStatus": {
+					"displayName": "更改状态",
+					"description": "更改ChromeOS设备的状态"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"addToGroup": {
+					"displayName": "添加到群组",
+					"description": "将现有用户添加到群组"
+				},
+				"removeFromGroup": {
+					"displayName": "从群组移除",
+					"description": "将用户从群组中移除"
+				}
+			}
+		},
+		"deviceId": {
+			"displayName": "设备",
+			"description": "选择您要检索的设备"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"projection": {
+			"displayName": "自定义字段",
+			"description": "为此用户获取哪些字段子集",
+			"options": {
+				"basic": {
+					"displayName": "不包含",
+					"description": "不包含用户的任何自定义字段"
+				},
+				"full": {
+					"displayName": "包含全部",
+					"description": "包含与此用户关联的所有字段"
+				},
+				"custom": {
+					"displayName": "自定义",
+					"description": "包含在自定义架构名称或ID中请求的架构的自定义字段"
+				}
+			}
+		},
+		"includeChildOrgunits": {
+			"displayName": "包含子级",
+			"description": "是否包含指定组织单位下级组织单位中的设备"
+		},
+		"filter": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"orgUnitPath": {
+					"displayName": "组织单位名称或ID",
+					"description": "指定组织单位名称或ID。从列表中选择或使用表达式。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "用于筛选结果的查询字符串。遵循Google Admin SDK文档。<a href=\"https://developers.google.com/admin-sdk/directory/v1/guides/search-users#examples\" target=\"_blank\">更多信息</a>",
+					"placeholder": "例如：name:contact* email:contact*"
+				},
+				"customer": {
+					"displayName": "客户",
+					"description": "客户Google Workspace账户的唯一ID"
+				},
+				"domain": {
+					"displayName": "域名",
+					"description": "域名。使用此字段可从特定域获取群组。"
+				},
+				"userId": {
+					"displayName": "用户ID",
+					"description": "要列出其所属群组的用户邮箱或不可变ID"
+				},
+				"showDeleted": {
+					"displayName": "显示已删除",
+					"description": "是否检索已删除用户列表"
+				}
+			}
+		},
+		"sort": {
+			"displayName": "排序",
+			"description": "为结果定义排序规则",
+			"placeholder": "添加排序规则",
+			"options": {
+				"sortRules": {
+					"displayName": "排序规则",
+					"options": {
+						"orderBy": {
+							"displayName": "排序方式",
+							"description": "用于排序结果的字段",
+							"options": {
+								"annotatedLocation": {
+									"displayName": "标注位置"
+								},
+								"annotatedUser": {
+									"displayName": "已标注用户"
+								},
+								"lastSync": {
+									"displayName": "上次同步"
+								},
+								"notes": {
+									"displayName": "备注"
+								},
+								"serialNumber": {
+									"displayName": "序列号"
+								},
+								"status": {
+									"displayName": "状态"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"familyName": {
+									"displayName": "姓氏"
+								},
+								"givenName": {
+									"displayName": "名字"
+								}
+							}
+						},
+						"sortBy": {
+							"displayName": "排序顺序",
+							"description": "排序方向",
+							"options": {
+								"ascending": {
+									"displayName": "升序"
+								},
+								"descending": {
+									"displayName": "降序"
+								}
+							}
+						},
+						"sortOrder": {
+							"displayName": "排序顺序",
+							"description": "排序方向",
+							"options": {
+								"ASCENDING": {
+									"displayName": "升序"
+								},
+								"DESCENDING": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"sortRules": {
+					"displayName": "排序规则",
+					"options": {
+						"orderBy": {
+							"displayName": "排序方式",
+							"description": "用于排序结果的字段",
+							"options": {
+								"annotatedLocation": {
+									"displayName": "标注位置"
+								},
+								"annotatedUser": {
+									"displayName": "已标注用户"
+								},
+								"lastSync": {
+									"displayName": "上次同步"
+								},
+								"notes": {
+									"displayName": "备注"
+								},
+								"serialNumber": {
+									"displayName": "序列号"
+								},
+								"status": {
+									"displayName": "状态"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"familyName": {
+									"displayName": "姓氏"
+								},
+								"givenName": {
+									"displayName": "名字"
+								}
+							}
+						},
+						"sortBy": {
+							"displayName": "排序顺序",
+							"description": "排序方向",
+							"options": {
+								"ascending": {
+									"displayName": "升序"
+								},
+								"descending": {
+									"displayName": "降序"
+								}
+							}
+						},
+						"sortOrder": {
+							"displayName": "排序顺序",
+							"description": "排序方向",
+							"options": {
+								"ASCENDING": {
+									"displayName": "升序"
+								},
+								"DESCENDING": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				},
+				"sort": {
+					"displayName": "排序",
+					"placeholder": "添加排序规则"
+				}
+			}
+		},
+		"updateOptions": {
+			"displayName": "更新字段",
+			"placeholder": "添加选项",
+			"options": {
+				"orgUnitPath": {
+					"displayName": "移动到组织单位名称或ID",
+					"description": "组织单位的完整路径。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"annotatedUser": {
+					"displayName": "已标注用户",
+					"description": "设备的已标注用户",
+					"placeholder": "例如：帮助台"
+				},
+				"annotatedLocation": {
+					"displayName": "标注位置",
+					"description": "设备的标注位置",
+					"placeholder": "例如：山景城服务台 Chromebook"
+				},
+				"annotatedAssetId": {
+					"displayName": "已标注资产ID",
+					"description": "设备的已标注资产ID",
+					"placeholder": "例如：1234567890"
+				},
+				"notes": {
+					"displayName": "备注",
+					"description": "向设备添加备注",
+					"placeholder": "例如：从技术支持处借用"
+				}
+			}
+		},
+		"action": {
+			"displayName": "状态",
+			"description": "设置设备状态",
+			"options": {
+				"reenable": {
+					"displayName": "已启用",
+					"description": "重新启用已禁用的Chromebook"
+				},
+				"disable": {
+					"displayName": "已禁用",
+					"description": "禁用Chromebook"
+				}
+			}
+		},
+		"groupId": {
+			"displayName": "分组",
+			"description": "选择要执行操作的分组"
+		},
+		"name": {
+			"displayName": "分组名称",
+			"description": "分组的显示名称",
+			"placeholder": "例如：销售"
+		},
+		"email": {
+			"displayName": "群组邮箱",
+			"description": "群组的电子邮件地址。如果您的账户有多个域名，请为电子邮件地址选择相应的域名。该邮箱地址必须是唯一的",
+			"placeholder": "例如：sales@example.com"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述",
+					"description": "用于帮助用户确定群组目的的扩展描述。例如，您可以包含以下信息：谁应该加入该群组、应向群组发送的消息类型、关于该群组的常见问题解答链接或相关群组。"
+				},
+				"changePasswordAtNextLogin": {
+					"displayName": "下次登录时更改密码",
+					"description": "是否强制用户下次登录时更改密码"
+				},
+				"phoneUi": {
+					"displayName": "电话",
+					"placeholder": "添加电话",
+					"multipleValueButtonText": "添加电话",
+					"options": {
+						"phoneValues": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电话号码类型",
+									"options": {
+										"assistant": {
+											"displayName": "助手"
+										},
+										"callback": {
+											"displayName": "回调"
+										},
+										"car": {
+											"displayName": "汽车"
+										},
+										"company_main": {
+											"displayName": "公司主页"
+										},
+										"custom": {
+											"displayName": "自定义"
+										},
+										"grand_central": {
+											"displayName": "中央调度"
+										},
+										"home": {
+											"displayName": "首页"
+										},
+										"home_fax": {
+											"displayName": "家庭传真"
+										},
+										"isdn": {
+											"displayName": "ISDN"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"other_fax": {
+											"displayName": "其他传真"
+										},
+										"pager": {
+											"displayName": "分页器"
+										},
+										"radio": {
+											"displayName": "单选按钮"
+										},
+										"telex": {
+											"displayName": "电传"
+										},
+										"tty_tdd": {
+											"displayName": "TTY TDD"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"work_fax": {
+											"displayName": "工作传真"
+										},
+										"work_mobile": {
+											"displayName": "工作手机"
+										},
+										"work_pager": {
+											"displayName": "工作传呼机"
+										}
+									}
+								},
+								"value": {
+									"displayName": "电话号码"
+								},
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否是用户的主要电话号码"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneValues": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电话号码类型",
+									"options": {
+										"assistant": {
+											"displayName": "助手"
+										},
+										"callback": {
+											"displayName": "回调"
+										},
+										"car": {
+											"displayName": "汽车"
+										},
+										"company_main": {
+											"displayName": "公司主页"
+										},
+										"custom": {
+											"displayName": "自定义"
+										},
+										"grand_central": {
+											"displayName": "中央调度"
+										},
+										"home": {
+											"displayName": "首页"
+										},
+										"home_fax": {
+											"displayName": "家庭传真"
+										},
+										"isdn": {
+											"displayName": "ISDN"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"other_fax": {
+											"displayName": "其他传真"
+										},
+										"pager": {
+											"displayName": "分页器"
+										},
+										"radio": {
+											"displayName": "单选按钮"
+										},
+										"telex": {
+											"displayName": "电传"
+										},
+										"tty_tdd": {
+											"displayName": "TTY TDD"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"work_fax": {
+											"displayName": "工作传真"
+										},
+										"work_mobile": {
+											"displayName": "工作手机"
+										},
+										"work_pager": {
+											"displayName": "工作传呼机"
+										}
+									}
+								},
+								"value": {
+									"displayName": "电话号码"
+								},
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否是用户的主要电话号码"
+								}
+							}
+						},
+						"phoneUi": {
+							"displayName": "电话",
+							"placeholder": "添加电话"
+						}
+					}
+				},
+				"emailUi": {
+					"displayName": "次要邮箱",
+					"placeholder": "添加邮箱",
+					"multipleValueButtonText": "添加邮箱",
+					"options": {
+						"emailValues": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电子邮件账户类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								},
+								"address": {
+									"displayName": "电子邮件"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailValues": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电子邮件账户类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								},
+								"address": {
+									"displayName": "电子邮件"
+								}
+							}
+						},
+						"emailUi": {
+							"displayName": "次要邮箱",
+							"placeholder": "添加邮箱"
+						}
+					}
+				},
+				"roles": {
+					"displayName": "角色",
+					"description": "选择要分配给用户的角色"
+				},
+				"customFields": {
+					"displayName": "自定义字段",
+					"description": "允许编辑和添加自定义字段",
+					"placeholder": "添加或编辑自定义字段",
+					"multipleValueButtonText": "添加或编辑自定义字段",
+					"options": {
+						"fieldValues": {
+							"displayName": "字段",
+							"options": {
+								"schemaName": {
+									"displayName": "架构名称或ID",
+									"description": "选择用于自定义字段的架构。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldName": {
+									"displayName": "字段名称或ID",
+									"description": "Enter a field name from the selected schema"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为所选字段提供一个值"
+								}
+							}
+						}
+					},
+					"values": {
+						"fieldValues": {
+							"displayName": "字段",
+							"options": {
+								"schemaName": {
+									"displayName": "架构名称或ID",
+									"description": "选择用于自定义字段的架构。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldName": {
+									"displayName": "字段名称或ID",
+									"description": "Enter a field name from the selected schema"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为所选字段提供一个值"
+								}
+							}
+						},
+						"customFields": {
+							"displayName": "自定义字段",
+							"placeholder": "添加或编辑自定义字段"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述",
+					"description": "用于帮助用户确定群组目的的扩展描述。例如，您可以包含以下信息：谁应该加入该群组、应向群组发送的消息类型、关于该群组的常见问题解答链接或相关群组。"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "群组的电子邮件地址。如果您的账户有多个域名，请为电子邮件地址选择合适的域名。该电子邮件地址必须是唯一的。",
+					"placeholder": "例如：sales@example.com"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "群组的显示名称",
+					"placeholder": "例如：销售"
+				},
+				"archived": {
+					"displayName": "已归档",
+					"description": "用户是否已归档"
+				},
+				"suspendUi": {
+					"displayName": "挂起",
+					"description": "是否将用户设为挂起状态。如果设为OFF，用户将被重新激活。如未添加此选项，状态将保持不变。"
+				},
+				"changePasswordAtNextLogin": {
+					"displayName": "下次登录时更改密码",
+					"description": "是否强制用户下次登录时更改密码"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"placeholder": "例如 John"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"placeholder": "例如：Doe"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "存储用户账户的密码。至少需要8个字符，最大长度为100个字符。",
+					"placeholder": "例如：MyStrongP@ssword123"
+				},
+				"phoneUi": {
+					"displayName": "电话",
+					"placeholder": "添加电话",
+					"multipleValueButtonText": "添加电话",
+					"options": {
+						"phoneValues": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电话号码类型",
+									"options": {
+										"assistant": {
+											"displayName": "助手"
+										},
+										"callback": {
+											"displayName": "回调"
+										},
+										"car": {
+											"displayName": "汽车"
+										},
+										"company_main": {
+											"displayName": "公司主页"
+										},
+										"custom": {
+											"displayName": "自定义"
+										},
+										"grand_central": {
+											"displayName": "中央调度"
+										},
+										"home": {
+											"displayName": "首页"
+										},
+										"home_fax": {
+											"displayName": "家庭传真"
+										},
+										"isdn": {
+											"displayName": "ISDN"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"other_fax": {
+											"displayName": "其他传真"
+										},
+										"pager": {
+											"displayName": "分页器"
+										},
+										"radio": {
+											"displayName": "单选按钮"
+										},
+										"telex": {
+											"displayName": "电传"
+										},
+										"tty_tdd": {
+											"displayName": "TTY TDD"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"work_fax": {
+											"displayName": "工作传真"
+										},
+										"work_mobile": {
+											"displayName": "工作手机"
+										},
+										"work_pager": {
+											"displayName": "工作传呼机"
+										}
+									}
+								},
+								"value": {
+									"displayName": "电话号码",
+									"placeholder": "例如 +1234567890"
+								},
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否是用户的主要电话号码。一个用户只能有一个主要电话号码。"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneValues": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电话号码类型",
+									"options": {
+										"assistant": {
+											"displayName": "助手"
+										},
+										"callback": {
+											"displayName": "回调"
+										},
+										"car": {
+											"displayName": "汽车"
+										},
+										"company_main": {
+											"displayName": "公司主页"
+										},
+										"custom": {
+											"displayName": "自定义"
+										},
+										"grand_central": {
+											"displayName": "中央调度"
+										},
+										"home": {
+											"displayName": "首页"
+										},
+										"home_fax": {
+											"displayName": "家庭传真"
+										},
+										"isdn": {
+											"displayName": "ISDN"
+										},
+										"main": {
+											"displayName": "主界面"
+										},
+										"mobile": {
+											"displayName": "移动端"
+										},
+										"other": {
+											"displayName": "其他"
+										},
+										"other_fax": {
+											"displayName": "其他传真"
+										},
+										"pager": {
+											"displayName": "分页器"
+										},
+										"radio": {
+											"displayName": "单选按钮"
+										},
+										"telex": {
+											"displayName": "电传"
+										},
+										"tty_tdd": {
+											"displayName": "TTY TDD"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"work_fax": {
+											"displayName": "工作传真"
+										},
+										"work_mobile": {
+											"displayName": "工作手机"
+										},
+										"work_pager": {
+											"displayName": "工作传呼机"
+										}
+									}
+								},
+								"value": {
+									"displayName": "电话号码",
+									"placeholder": "例如 +1234567890"
+								},
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否是用户的主要电话号码。一个用户只能有一个主要电话号码。"
+								}
+							}
+						},
+						"phoneUi": {
+							"displayName": "电话",
+							"placeholder": "添加电话"
+						}
+					}
+				},
+				"primaryEmail": {
+					"displayName": "主邮箱",
+					"description": "用户的主邮箱地址。在创建用户账户的请求中，此属性为必填项。主邮箱必须唯一，且不能是其他用户的别名。",
+					"placeholder": "例如：john.doe@example.com"
+				},
+				"emailUi": {
+					"displayName": "次要邮箱",
+					"placeholder": "添加邮箱",
+					"multipleValueButtonText": "添加邮箱",
+					"options": {
+						"emailValues": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电子邮件账户类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								},
+								"address": {
+									"displayName": "电子邮件",
+									"placeholder": "例如：john.doe.work@example.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailValues": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"description": "电子邮件账户类型",
+									"options": {
+										"home": {
+											"displayName": "首页"
+										},
+										"work": {
+											"displayName": "工作"
+										},
+										"other": {
+											"displayName": "其他"
+										}
+									}
+								},
+								"address": {
+									"displayName": "电子邮件",
+									"placeholder": "例如：john.doe.work@example.com"
+								}
+							}
+						},
+						"emailUi": {
+							"displayName": "次要邮箱",
+							"placeholder": "添加邮箱"
+						}
+					}
+				},
+				"roles": {
+					"displayName": "角色",
+					"description": "选择要分配给用户的角色"
+				},
+				"customFields": {
+					"displayName": "自定义字段",
+					"description": "允许编辑和添加自定义字段",
+					"placeholder": "添加或编辑自定义字段",
+					"multipleValueButtonText": "添加或编辑自定义字段",
+					"options": {
+						"fieldValues": {
+							"displayName": "字段",
+							"options": {
+								"schemaName": {
+									"displayName": "架构名称或ID",
+									"description": "选择用于自定义字段的架构。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldName": {
+									"displayName": "字段名称或ID",
+									"description": "Enter a field name from the selected schema"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为所选字段提供一个值"
+								}
+							}
+						}
+					},
+					"values": {
+						"fieldValues": {
+							"displayName": "字段",
+							"options": {
+								"schemaName": {
+									"displayName": "架构名称或ID",
+									"description": "选择用于自定义字段的架构。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldName": {
+									"displayName": "字段名称或ID",
+									"description": "Enter a field name from the selected schema"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为所选字段提供一个值"
+								}
+							}
+						},
+						"customFields": {
+							"displayName": "自定义字段",
+							"placeholder": "添加或编辑自定义字段"
+						}
+					}
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户",
+			"description": "选择要执行操作的用户"
+		},
+		"firstName": {
+			"displayName": "名字",
+			"placeholder": "例如：Nathan"
+		},
+		"lastName": {
+			"displayName": "姓氏",
+			"placeholder": "例如：Smith"
+		},
+		"password": {
+			"displayName": "密码",
+			"description": "存储用户账户的密码。至少需要8个字符。最大长度为100个字符。"
+		},
+		"username": {
+			"displayName": "用户名",
+			"description": "将为此用户设置的用户名。示例：如果您的域是example.com，并将用户名设置为n.smith，那么该用户的最终电子邮件地址将是n.smith@example.com。",
+			"placeholder": "例如：n.smith"
+		},
+		"domain": {
+			"displayName": "域名或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"output": {
+			"displayName": "输出",
+			"options": {
+				"simplified": {
+					"displayName": "仅返回特定字段：kind、ID、primaryEmail、name（含子字段）、isAdmin、lastLoginTime、creationTime 和 suspended",
+					"description": "仅返回特定字段：kind、ID、primaryEmail、name（包含子字段）、isAdmin、lastLoginTime、creationTime 和 suspended"
+				},
+				"raw": {
+					"displayName": "原始",
+					"description": "返回API响应中的所有字段"
+				},
+				"select": {
+					"displayName": "选择包含字段",
+					"description": "选择要包含的特定字段"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "字段",
+			"description": "选择\"包含字段\"时响应中包含的字段"
+		},
+		"customFieldMask": {
+			"displayName": "自定义模式名称或ID",
+			"description": "以逗号分隔的模式名称列表。将获取这些模式的所有字段。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

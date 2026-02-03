@@ -1,0 +1,786 @@
+{
+	"header": {
+		"displayName": "Microsoft Entra ID",
+		"description": "与 Microsoft Entra ID API 交互"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"group": {
+					"displayName": "分组"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索特定用户的数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取用户列表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户"
+				},
+				"addGroup": {
+					"displayName": "添加到群组",
+					"description": "将用户添加到群组"
+				},
+				"removeGroup": {
+					"displayName": "从群组中移除",
+					"description": "从群组中移除用户"
+				}
+			}
+		},
+		"groupType": {
+			"displayName": "分组类型",
+			"options": {
+				"Unified": {
+					"displayName": "Microsoft 365"
+				},
+				"": {
+					"displayName": "安全"
+				}
+			}
+		},
+		"displayName": {
+			"displayName": "显示名称",
+			"description": "在用户通讯录中显示的名称",
+			"placeholder": "例如：Nathan Smith"
+		},
+		"mailNickname": {
+			"displayName": "邮件别名",
+			"description": "用户的邮件别名",
+			"placeholder": "例如：NathanSmith"
+		},
+		"mailEnabled": {
+			"displayName": "邮件启用",
+			"description": "群组是否启用邮件功能"
+		},
+		"membershipType": {
+			"displayName": "会员类型",
+			"options": {
+				"": {
+					"displayName": "已分配",
+					"description": "允许您将特定用户添加为群组成员并拥有独特权限"
+				},
+				"DynamicMembership": {
+					"displayName": "动态",
+					"description": "允许您使用规则自动添加和移除用户成员"
+				}
+			}
+		},
+		"securityEnabled": {
+			"displayName": "已启用安全功能",
+			"description": "该组是否为安全组"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"isAssignableToRole": {
+					"displayName": "可分配至角色",
+					"description": "是否可将Microsoft Entra角色分配给此群组"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "该分组的描述"
+				},
+				"membershipRule": {
+					"displayName": "成员资格规则",
+					"description": "<a href=\"https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership\">动态成员资格规则</a>",
+					"placeholder": "例如 user.department -eq \"Marketing\""
+				},
+				"membershipRuleProcessingState": {
+					"displayName": "成员资格规则处理状态",
+					"description": "指示动态成员资格处理是开启还是暂停",
+					"options": {
+						"On": {
+							"displayName": "开启"
+						},
+						"Paused": {
+							"displayName": "已暂停"
+						}
+					}
+				},
+				"preferredDataLocation": {
+					"displayName": "首选数据位置",
+					"description": "为组设置的属性，Office 365服务使用该属性来配置相应的静态数据资源（邮箱、OneDrive、群组站点等）"
+				},
+				"uniqueName": {
+					"displayName": "唯一名称",
+					"description": "分组的唯一标识符，仅在为空时可更新，设置后不可更改"
+				},
+				"visibility": {
+					"displayName": "可见性",
+					"description": "指定组的可见性",
+					"options": {
+						"Private": {
+							"displayName": "私有"
+						},
+						"Public": {
+							"displayName": "公开"
+						}
+					}
+				},
+				"aboutMe": {
+					"displayName": "关于我",
+					"description": "供用户描述自己的自由格式文本输入字段"
+				},
+				"ageGroup": {
+					"displayName": "年龄组",
+					"description": "设置用户的年龄组",
+					"options": {
+						"Adult": {
+							"displayName": "成人"
+						},
+						"Minor": {
+							"displayName": "次要"
+						},
+						"NotAdult": {
+							"displayName": "非成人内容"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "生日",
+					"description": "用户的生日"
+				},
+				"businessPhones": {
+					"displayName": "商务电话",
+					"description": "用户的电话号码"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "用户所在城市"
+				},
+				"companyName": {
+					"displayName": "公司名称",
+					"description": "与用户关联的公司名称"
+				},
+				"consentProvidedForMinor": {
+					"displayName": "已提供同意",
+					"description": "指定是否为未成年人提供同意",
+					"options": {
+						"Denied": {
+							"displayName": "已拒绝"
+						},
+						"Granted": {
+							"displayName": "已授权"
+						},
+						"NotRequired": {
+							"displayName": "非必需"
+						}
+					}
+				},
+				"country": {
+					"displayName": "国家",
+					"description": "用户所在国家/地区",
+					"placeholder": "例如：美国"
+				},
+				"department": {
+					"displayName": "部门",
+					"description": "用户所在部门名称"
+				},
+				"employeeId": {
+					"displayName": "员工编号",
+					"description": "由组织分配的员工标识符"
+				},
+				"employeeType": {
+					"displayName": "员工类型",
+					"description": "定义企业工作者类型",
+					"placeholder": "例如：合同工"
+				},
+				"employeeHireDate": {
+					"displayName": "员工入职日期",
+					"description": "用户的入职日期",
+					"placeholder": "例如：2014-01-01T00:00:00Z"
+				},
+				"employeeLeaveDateTime": {
+					"displayName": "员工离职日期",
+					"description": "用户离开或将要离开组织的日期和时间",
+					"placeholder": "例如：2014-01-01T00:00:00Z"
+				},
+				"employeeOrgData": {
+					"displayName": "员工组织数据",
+					"description": "表示与用户关联的组织数据（例如，部门和成本中心）",
+					"options": {
+						"employeeOrgValues": {
+							"displayName": "员工组织数据",
+							"options": {
+								"costCenter": {
+									"displayName": "成本中心",
+									"description": "与用户关联的成本中心"
+								},
+								"division": {
+									"displayName": "除法",
+									"description": "用户所在部门名称"
+								}
+							}
+						}
+					},
+					"values": {
+						"employeeOrgValues": {
+							"displayName": "员工组织数据",
+							"options": {
+								"costCenter": {
+									"displayName": "成本中心",
+									"description": "与用户关联的成本中心"
+								},
+								"division": {
+									"displayName": "除法",
+									"description": "用户所在部门名称"
+								}
+							}
+						},
+						"employeeOrgData": {
+							"displayName": "员工组织数据"
+						}
+					}
+				},
+				"givenName": {
+					"displayName": "名字",
+					"description": "用户的名字（名）"
+				},
+				"forceChangePassword": {
+					"displayName": "强制更改密码",
+					"description": "用户是否必须在下次登录时更改密码",
+					"options": {
+						"forceChangePasswordNextSignIn": {
+							"displayName": "下次登录"
+						},
+						"forceChangePasswordNextSignInWithMfa": {
+							"displayName": "下一步：使用MFA登录"
+						}
+					}
+				},
+				"interests": {
+					"displayName": "兴趣",
+					"description": "供用户描述兴趣的列表"
+				},
+				"jobTitle": {
+					"displayName": "职位名称",
+					"description": "用户的职位名称"
+				},
+				"surname": {
+					"displayName": "姓氏",
+					"description": "用户的姓氏"
+				},
+				"mail": {
+					"displayName": "邮件",
+					"description": "用户的SMTP地址",
+					"placeholder": "例如：jeff@contoso.com"
+				},
+				"mobilePhone": {
+					"displayName": "手机",
+					"description": "用户的主要手机号码"
+				},
+				"mySite": {
+					"displayName": "我的站点",
+					"description": "用户个人站点的URL"
+				},
+				"officeLocation": {
+					"displayName": "办公地点",
+					"description": "用户的办公地点"
+				},
+				"onPremisesImmutableId": {
+					"displayName": "本地不可变ID",
+					"description": "此属性用于将本地Active Directory用户帐户与其Microsoft Entra用户对象关联"
+				},
+				"otherMails": {
+					"displayName": "其他邮箱",
+					"description": "用户的附加电子邮件地址"
+				},
+				"passwordPolicies": {
+					"displayName": "密码策略",
+					"description": "指定密码策略"
+				},
+				"pastProjects": {
+					"displayName": "过往项目",
+					"description": "用户曾参与的项目列表"
+				},
+				"postalCode": {
+					"displayName": "邮政编码",
+					"description": "用户地址的邮政编码"
+				},
+				"preferredLanguage": {
+					"displayName": "首选语言",
+					"description": "用户偏好的语言（ISO 639-1代码）",
+					"placeholder": "例如：en-US"
+				},
+				"responsibilities": {
+					"displayName": "职责",
+					"description": "用户职责列表"
+				},
+				"schools": {
+					"displayName": "就读学校",
+					"description": "用户就读过的学校列表"
+				},
+				"skills": {
+					"displayName": "技能",
+					"description": "用户拥有的技能列表"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "用户地址的州或省"
+				},
+				"streetAddress": {
+					"displayName": "街道地址",
+					"description": "用户的营业场所街道地址"
+				},
+				"usageLocation": {
+					"displayName": "使用地区",
+					"description": "用户所在国家的两位字母代码",
+					"placeholder": "例如：美国"
+				},
+				"userType": {
+					"displayName": "用户类型",
+					"description": "对用户类型进行分类",
+					"options": {
+						"Guest": {
+							"displayName": "访客"
+						},
+						"Member": {
+							"displayName": "成员"
+						}
+					}
+				}
+			}
+		},
+		"group": {
+			"displayName": "分组"
+		},
+		"output": {
+			"displayName": "输出",
+			"options": {
+				"simple": {
+					"displayName": "仅返回特定字段：kind、ID、primaryEmail、name（含子字段）、isAdmin、lastLoginTime、creationTime 和 suspended"
+				},
+				"raw": {
+					"displayName": "原始"
+				},
+				"fields": {
+					"displayName": "选定字段"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "字段",
+			"description": "要添加到输出的字段"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"includeMembers": {
+					"displayName": "包含成员"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filter": {
+			"displayName": "筛选器",
+			"description": "用于筛选结果的<a href=\"https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter\">查询参数</a>",
+			"placeholder": "例如 startswith(displayName, 'a')"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"allowExternalSenders": {
+					"displayName": "允许外部发件人",
+					"description": "组织外部人员是否可以向群组发送消息。在新创建的群组中编辑此字段前请等待几秒钟。"
+				},
+				"autoSubscribeNewMembers": {
+					"displayName": "自动订阅新成员",
+					"description": "新加入群组的成员是否自动订阅以接收邮件通知。在新创建的群组中编辑此字段前请等待几秒钟。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "该分组的描述"
+				},
+				"displayName": {
+					"displayName": "显示名称",
+					"description": "在地址簿中为用户显示的名称"
+				},
+				"mailNickname": {
+					"displayName": "邮件别名",
+					"description": "用户的邮件别名",
+					"placeholder": "例如：alias"
+				},
+				"membershipRule": {
+					"displayName": "成员资格规则",
+					"description": "<a href=\"https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership\">动态成员资格规则</a>",
+					"placeholder": "例如 user.department -eq \"Marketing\""
+				},
+				"membershipRuleProcessingState": {
+					"displayName": "成员资格规则处理状态",
+					"description": "指示动态成员资格处理是开启还是暂停",
+					"options": {
+						"On": {
+							"displayName": "开启"
+						},
+						"Paused": {
+							"displayName": "已暂停"
+						}
+					}
+				},
+				"preferredDataLocation": {
+					"displayName": "首选数据位置",
+					"description": "为组设置的属性，Office 365服务使用该属性来配置相应的静态数据资源（邮箱、OneDrive、群组站点等）"
+				},
+				"securityEnabled": {
+					"displayName": "已启用安全功能",
+					"description": "该组是否为安全组"
+				},
+				"uniqueName": {
+					"displayName": "唯一名称",
+					"description": "分组的唯一标识符，仅在为空时可更新，设置后不可更改"
+				},
+				"visibility": {
+					"displayName": "可见性",
+					"description": "指定组的可见性",
+					"options": {
+						"Private": {
+							"displayName": "私有"
+						},
+						"Public": {
+							"displayName": "公开"
+						}
+					}
+				},
+				"aboutMe": {
+					"displayName": "关于我",
+					"description": "供用户描述自己的自由格式文本输入字段"
+				},
+				"accountEnabled": {
+					"displayName": "账户启用状态",
+					"description": "账户是否已启用"
+				},
+				"ageGroup": {
+					"displayName": "年龄组",
+					"description": "设置用户的年龄组",
+					"options": {
+						"Adult": {
+							"displayName": "成人"
+						},
+						"Minor": {
+							"displayName": "次要"
+						},
+						"NotAdult": {
+							"displayName": "非成人内容"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "生日",
+					"description": "用户的生日"
+				},
+				"businessPhones": {
+					"displayName": "商务电话",
+					"description": "用户的电话号码"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "用户所在城市"
+				},
+				"companyName": {
+					"displayName": "公司名称",
+					"description": "与用户关联的公司名称"
+				},
+				"consentProvidedForMinor": {
+					"displayName": "已提供同意",
+					"description": "指定是否为未成年人提供同意",
+					"options": {
+						"Denied": {
+							"displayName": "已拒绝"
+						},
+						"Granted": {
+							"displayName": "已授权"
+						},
+						"NotRequired": {
+							"displayName": "非必需"
+						}
+					}
+				},
+				"country": {
+					"displayName": "国家",
+					"description": "用户所在国家/地区",
+					"placeholder": "例如：美国"
+				},
+				"department": {
+					"displayName": "部门",
+					"description": "用户所在部门名称"
+				},
+				"employeeId": {
+					"displayName": "员工编号",
+					"description": "由组织分配的员工标识符"
+				},
+				"employeeType": {
+					"displayName": "员工类型",
+					"description": "定义企业工作者类型",
+					"placeholder": "例如：合同工"
+				},
+				"givenName": {
+					"displayName": "名字",
+					"description": "用户的名字（名）"
+				},
+				"employeeHireDate": {
+					"displayName": "员工入职日期",
+					"description": "用户的入职日期",
+					"placeholder": "例如：2014-01-01T00:00:00Z"
+				},
+				"employeeLeaveDateTime": {
+					"displayName": "员工离职日期",
+					"description": "用户离开或将要离开组织的日期和时间",
+					"placeholder": "例如：2014-01-01T00:00:00Z"
+				},
+				"employeeOrgData": {
+					"displayName": "员工组织数据",
+					"description": "表示与用户关联的组织数据（例如，部门和成本中心）",
+					"options": {
+						"employeeOrgValues": {
+							"displayName": "员工组织数据",
+							"options": {
+								"costCenter": {
+									"displayName": "成本中心",
+									"description": "与用户关联的成本中心"
+								},
+								"division": {
+									"displayName": "除法",
+									"description": "用户所在部门名称"
+								}
+							}
+						}
+					},
+					"values": {
+						"employeeOrgValues": {
+							"displayName": "员工组织数据",
+							"options": {
+								"costCenter": {
+									"displayName": "成本中心",
+									"description": "与用户关联的成本中心"
+								},
+								"division": {
+									"displayName": "除法",
+									"description": "用户所在部门名称"
+								}
+							}
+						},
+						"employeeOrgData": {
+							"displayName": "员工组织数据"
+						}
+					}
+				},
+				"forceChangePassword": {
+					"displayName": "强制更改密码",
+					"description": "用户是否必须在下次登录时更改密码",
+					"options": {
+						"forceChangePasswordNextSignIn": {
+							"displayName": "下次登录"
+						},
+						"forceChangePasswordNextSignInWithMfa": {
+							"displayName": "下一步：使用MFA登录"
+						}
+					}
+				},
+				"interests": {
+					"displayName": "兴趣",
+					"description": "供用户描述兴趣的列表"
+				},
+				"jobTitle": {
+					"displayName": "职位名称",
+					"description": "用户的职位名称"
+				},
+				"surname": {
+					"displayName": "姓氏",
+					"description": "用户的姓氏"
+				},
+				"mail": {
+					"displayName": "邮件",
+					"description": "用户的SMTP地址",
+					"placeholder": "例如：jeff@contoso.com"
+				},
+				"mobilePhone": {
+					"displayName": "手机",
+					"description": "用户的主要手机号码"
+				},
+				"mySite": {
+					"displayName": "我的站点",
+					"description": "用户个人站点的URL"
+				},
+				"officeLocation": {
+					"displayName": "办公地点",
+					"description": "用户的办公地点"
+				},
+				"onPremisesImmutableId": {
+					"displayName": "本地不可变ID",
+					"description": "此属性用于将本地Active Directory用户帐户与其Microsoft Entra用户对象关联"
+				},
+				"otherMails": {
+					"displayName": "其他邮箱",
+					"description": "用户的附加电子邮件地址"
+				},
+				"password": {
+					"displayName": "密码",
+					"description": "用户的密码。密码必须满足passwordPolicies属性规定的最低要求。"
+				},
+				"passwordPolicies": {
+					"displayName": "密码策略",
+					"description": "指定密码策略"
+				},
+				"pastProjects": {
+					"displayName": "过往项目",
+					"description": "用户曾参与的项目列表"
+				},
+				"postalCode": {
+					"displayName": "邮政编码",
+					"description": "用户地址的邮政编码"
+				},
+				"preferredLanguage": {
+					"displayName": "首选语言",
+					"description": "用户偏好的语言（ISO 639-1代码）",
+					"placeholder": "例如：en-US"
+				},
+				"responsibilities": {
+					"displayName": "职责",
+					"description": "用户职责列表"
+				},
+				"schools": {
+					"displayName": "就读学校",
+					"description": "用户就读过的学校列表"
+				},
+				"skills": {
+					"displayName": "技能",
+					"description": "用户拥有的技能列表"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "用户地址的州或省"
+				},
+				"streetAddress": {
+					"displayName": "街道地址",
+					"description": "用户的营业场所街道地址"
+				},
+				"usageLocation": {
+					"displayName": "使用地区",
+					"description": "用户所在国家的两位字母代码",
+					"placeholder": "例如：美国"
+				},
+				"userPrincipalName": {
+					"displayName": "用户主体名称",
+					"description": "用户主体名称 (UPN)",
+					"placeholder": "例如：AdeleV@contoso.com"
+				},
+				"userType": {
+					"displayName": "用户类型",
+					"description": "对用户类型进行分类",
+					"options": {
+						"Guest": {
+							"displayName": "访客"
+						},
+						"Member": {
+							"displayName": "成员"
+						}
+					}
+				}
+			}
+		},
+		"user": {
+			"displayName": "要更新的用户"
+		},
+		"accountEnabled": {
+			"displayName": "账户启用状态",
+			"description": "账户是否已启用"
+		},
+		"userPrincipalName": {
+			"displayName": "用户主体名称",
+			"description": "用户主体名称 (UPN)",
+			"placeholder": "例如 NathanSmith@contoso.com"
+		},
+		"password": {
+			"displayName": "密码",
+			"description": "用户的密码"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

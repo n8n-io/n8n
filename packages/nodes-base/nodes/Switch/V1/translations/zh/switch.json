@@ -1,0 +1,150 @@
+{
+	"header": {
+		"displayName": "切换",
+		"description": "根据定义的表达式或规则路由项目"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "模式",
+			"description": "数据应如何路由",
+			"options": {
+				"expression": {
+					"displayName": "表达式",
+					"description": "表达式决定如何路由数据"
+				},
+				"rules": {
+					"displayName": "规则",
+					"description": "规则决定如何路由数据"
+				}
+			}
+		},
+		"output": {
+			"displayName": "输出",
+			"description": "发送数据到的输出索引"
+		},
+		"dataType": {
+			"displayName": "数据类型",
+			"description": "要路由的数据类型",
+			"options": {
+				"boolean": {
+					"displayName": "布尔值"
+				},
+				"dateTime": {
+					"displayName": "日期与时间"
+				},
+				"number": {
+					"displayName": "数字"
+				},
+				"string": {
+					"displayName": "字符串"
+				}
+			}
+		},
+		"value1": {
+			"displayName": "值1",
+			"description": "用于与第二个值比较的值"
+		},
+		"rules": {
+			"displayName": "路由规则",
+			"placeholder": "添加路由规则",
+			"multipleValueButtonText": "添加路由规则",
+			"options": {
+				"rules": {
+					"displayName": "字符串",
+					"options": {
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"equal": {
+									"displayName": "等于"
+								},
+								"notEqual": {
+									"displayName": "不等于"
+								},
+								"after": {
+									"displayName": "发生时间晚于"
+								},
+								"before": {
+									"displayName": "发生时间早于"
+								},
+								"smaller": {
+									"displayName": "较小"
+								},
+								"smallerEqual": {
+									"displayName": "小于等于"
+								},
+								"larger": {
+									"displayName": "较大"
+								},
+								"largerEqual": {
+									"displayName": "大于等于"
+								},
+								"contains": {
+									"displayName": "包含"
+								},
+								"notContains": {
+									"displayName": "不包含"
+								},
+								"endsWith": {
+									"displayName": "以...结尾"
+								},
+								"notEndsWith": {
+									"displayName": "不以...结尾"
+								},
+								"regex": {
+									"displayName": "正则表达式匹配"
+								},
+								"notRegex": {
+									"displayName": "正则表达式不匹配"
+								},
+								"startsWith": {
+									"displayName": "以...开头"
+								},
+								"notStartsWith": {
+									"displayName": "不以...开始"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "正则表达式",
+							"description": "必须匹配的正则表达式",
+							"placeholder": "/text/i"
+						},
+						"output": {
+							"displayName": "输出",
+							"description": "如果规则匹配，将数据发送到的输出索引"
+						}
+					}
+				}
+			},
+			"values": {
+				"rules": {
+					"displayName": "路由规则",
+					"placeholder": "添加路由规则"
+				}
+			}
+		},
+		"fallbackOutput": {
+			"displayName": "后备输出",
+			"description": "将所有不匹配任何规则的项目路由至此输出",
+			"options": {
+				"0": {
+					"displayName": "0"
+				},
+				"1": {
+					"displayName": "1"
+				},
+				"2": {
+					"displayName": "2"
+				},
+				"3": {
+					"displayName": "3"
+				},
+				"-1": {
+					"displayName": "无"
+				}
+			}
+		}
+	}
+}

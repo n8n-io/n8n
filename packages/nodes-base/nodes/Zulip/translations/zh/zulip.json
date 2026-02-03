@@ -1,0 +1,381 @@
+{
+	"header": {
+		"displayName": "Zulip",
+		"description": "使用Zulip API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"message": {
+					"displayName": "消息"
+				},
+				"stream": {
+					"displayName": "流"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"delete": {
+					"displayName": "删除",
+					"description": "删除流"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户"
+				},
+				"sendPrivate": {
+					"displayName": "发送私信",
+					"description": "发送私信"
+				},
+				"sendStream": {
+					"displayName": "发送到流",
+					"description": "发送消息到流"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户"
+				},
+				"updateFile": {
+					"displayName": "上传文件"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户"
+				},
+				"getSubscribed": {
+					"displayName": "获取订阅",
+					"description": "获取订阅流"
+				},
+				"deactivate": {
+					"displayName": "停用",
+					"description": "停用用户"
+				}
+			}
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"description": "目标流，或包含收件人用户名（邮箱）的逗号分隔列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "消息内容"
+		},
+		"stream": {
+			"displayName": "流名称或ID",
+			"description": "目标流，或包含收件人用户名（邮箱）的逗号分隔列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"topic": {
+			"displayName": "主题名称或ID",
+			"description": "消息的主题。仅在类型为流时必需，否则忽略。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"messageId": {
+			"displayName": "消息ID",
+			"description": "消息的唯一标识符"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"content": {
+					"displayName": "内容",
+					"description": "消息内容"
+				},
+				"propagateMode": {
+					"displayName": "传播模式",
+					"description": "应编辑哪些消息：仅编辑message_id指定的消息、同一主题中在此之后发送的消息，还是全部消息",
+					"options": {
+						"changeOne": {
+							"displayName": "更改一个"
+						},
+						"changeLater": {
+							"displayName": "稍后更改"
+						},
+						"changeAll": {
+							"displayName": "全部更改"
+						}
+					}
+				},
+				"topic": {
+					"displayName": "主题",
+					"description": "消息主题。仅流式消息需要。"
+				}
+			}
+		},
+		"dataBinaryProperty": {
+			"displayName": "将输出文件放入字段"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"additionalFieldsJson": {
+			"displayName": "附加字段",
+			"description": "流创建参数的JSON格式"
+		},
+		"subscriptions": {
+			"displayName": "订阅列表",
+			"description": "包含键名和值的字典列表，用于指定要订阅的流名称。如果流不存在，将创建新流。",
+			"multipleValueButtonText": "添加",
+			"options": {
+				"properties": {
+					"displayName": "订阅属性",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "订阅名称"
+						},
+						"description": {
+							"displayName": "描述",
+							"description": "订阅描述"
+						}
+					}
+				}
+			},
+			"values": {
+				"properties": {
+					"displayName": "订阅属性",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "订阅名称"
+						},
+						"description": {
+							"displayName": "描述",
+							"description": "订阅描述"
+						}
+					}
+				},
+				"subscriptions": {
+					"displayName": "订阅"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"announce": {
+					"displayName": "公告",
+					"description": "如果公告为True，且订阅中指定的任一数据流需要被创建（即最初不存在），则会发布公告通知新数据流已创建。"
+				},
+				"authorizationErrorsFatal": {
+					"displayName": "授权错误视为致命",
+					"description": "是否将授权错误（例如请求用户无权访问私有流）视为致命错误。设为True时，授权错误会如实报告。设为False时，返回的JSON负载会表明存在授权错误，但响应仍被视为成功。"
+				},
+				"historyPublicToSubscribers": {
+					"displayName": "历史记录对订阅者公开",
+					"description": "是否应将消息历史记录提供给新订阅成员，还是用户只能访问订阅期间实际接收的消息"
+				},
+				"inviteOnly": {
+					"displayName": "仅限邀请",
+					"description": "订阅中指定的流是否为仅限邀请"
+				},
+				"principals": {
+					"displayName": "主体",
+					"description": "将订阅/取消订阅到subscriptions参数中指定流的用户电子邮件地址列表。如果未提供，则订阅请求用户/机器人。",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"properties": {
+							"displayName": "主体属性",
+							"options": {
+								"email": {
+									"displayName": "主体邮箱",
+									"description": "主体邮箱地址",
+									"placeholder": "name@email.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"properties": {
+							"displayName": "主体属性",
+							"options": {
+								"email": {
+									"displayName": "主体邮箱",
+									"description": "主体邮箱地址",
+									"placeholder": "name@email.com"
+								}
+							}
+						},
+						"principals": {
+							"displayName": "主体"
+						}
+					}
+				},
+				"streamPostPolicy": {
+					"displayName": "流发布策略",
+					"description": "允许哪些用户向流发布消息的策略",
+					"options": {
+						"1": {
+							"displayName": "1",
+							"description": "任何用户都可以发布"
+						},
+						"2": {
+							"displayName": "2",
+							"description": "仅管理员可发布"
+						},
+						"3": {
+							"displayName": "3",
+							"description": "仅限新成员可发帖"
+						}
+					}
+				},
+				"includeAllActive": {
+					"displayName": "包含所有活跃流",
+					"description": "是否包含所有活跃流。用户必须拥有管理员权限才能使用此参数。"
+				},
+				"includeDefault": {
+					"displayName": "包含默认",
+					"description": "是否包含用户域的所有默认流"
+				},
+				"includeOwnersubscribed": {
+					"displayName": "包含所有者订阅",
+					"description": "用户是否为机器人，包含机器人所有者订阅的所有流"
+				},
+				"includePublic": {
+					"displayName": "包含公开流",
+					"description": "是否包含所有公开流"
+				},
+				"includeSubscribed": {
+					"displayName": "包含订阅内容",
+					"description": "是否包含用户订阅的所有流"
+				},
+				"includeSubscribers": {
+					"displayName": "包含订阅者",
+					"description": "是否每个返回的流对象都应包含一个订阅者字段，其中列出其订阅者的用户ID"
+				},
+				"isAnnouncementOnly": {
+					"displayName": "仅限公告",
+					"description": "直播是否仅限于公告"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "该流的新描述",
+					"placeholder": "讨论地点"
+				},
+				"isPrivate": {
+					"displayName": "是否私有",
+					"description": "流是否为私有流"
+				},
+				"newName": {
+					"displayName": "新名称",
+					"description": "流的新名称",
+					"placeholder": "意大利"
+				},
+				"clientGravatar": {
+					"displayName": "客户端 Gravatar",
+					"description": "客户端是否支持计算 Gravatar 头像 URL。若启用，avatar_url 仅在存在 Zulip 头像时包含在响应中，对于使用 Gravatar 作为头像的用户将返回 null。"
+				},
+				"includeCustomProfileFields": {
+					"displayName": "自定义个人资料字段",
+					"description": "客户端是否希望在响应中包含自定义个人资料字段数据"
+				},
+				"fullName": {
+					"displayName": "全名",
+					"description": "用户全名"
+				},
+				"isAdmin": {
+					"displayName": "是否为管理员",
+					"description": "目标用户是否为管理员"
+				},
+				"isGuest": {
+					"displayName": "是否为访客",
+					"description": "目标用户是否为访客"
+				},
+				"profileData": {
+					"displayName": "个人资料数据",
+					"description": "包含用户待更新的自定义个人资料字段数据的字典",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "自定义个人资料数据值的ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义个人资料数据的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "自定义个人资料数据值的ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义个人资料数据的值"
+								}
+							}
+						},
+						"profileData": {
+							"displayName": "个人资料数据"
+						}
+					}
+				},
+				"role": {
+					"displayName": "角色",
+					"description": "用户角色",
+					"options": {
+						"100": {
+							"displayName": "组织所有者"
+						},
+						"200": {
+							"displayName": "组织管理员"
+						},
+						"300": {
+							"displayName": "组织管理员"
+						},
+						"400": {
+							"displayName": "成员"
+						},
+						"600": {
+							"displayName": "访客"
+						}
+					}
+				}
+			}
+		},
+		"streamId": {
+			"displayName": "流ID",
+			"description": "要删除的流ID"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "新用户的电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"fullName": {
+			"displayName": "全名",
+			"description": "新用户的全名"
+		},
+		"password": {
+			"displayName": "密码",
+			"description": "新用户的密码"
+		},
+		"shortName": {
+			"displayName": "简称",
+			"description": "新用户的简称。用户不可见。"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "要停用的用户ID"
+		}
+	}
+}

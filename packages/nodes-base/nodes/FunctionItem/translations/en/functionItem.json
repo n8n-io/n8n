@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "Function Item",
+		"description": "Run custom function code which gets executed once per item"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "A newer version of this node type is available, called the ‘Code’ node"
+		},
+		"functionCode": {
+			"displayName": "JavaScript Code",
+			"description": "The JavaScript code to execute for each item"
+		}
+	}
+}

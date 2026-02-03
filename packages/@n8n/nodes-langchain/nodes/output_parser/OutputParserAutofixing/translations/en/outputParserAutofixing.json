@@ -1,0 +1,24 @@
+{
+	"header": {
+		"displayName": "Auto-fixing Output Parser",
+		"description": "Deprecated, use structured output parser"
+	},
+	"nodeView": {
+		"info": {
+			"displayName": "This node wraps another output parser. If the first one fails it calls an LLM to fix the format"
+		},
+		"notice": {
+			"displayName": "This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"prompt": {
+					"displayName": "Retry Prompt",
+					"description": "Prompt template used for fixing the output. Uses placeholders: \"{instructions}\" for parsing rules, \"{completion}\" for the failed attempt, and \"{error}\" for the validation error message."
+				}
+			}
+		}
+	}
+}

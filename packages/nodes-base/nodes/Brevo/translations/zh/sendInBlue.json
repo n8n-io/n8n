@@ -1,0 +1,639 @@
+{
+	"header": {
+		"displayName": "Brevo",
+		"description": "使用Brevo API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"contact": {
+					"displayName": "联系人"
+				},
+				"attribute": {
+					"displayName": "联系人属性"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"sender": {
+					"displayName": "发送方"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"update": {
+					"displayName": "更新"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"upsert": {
+					"displayName": "创建或更新"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"send": {
+					"displayName": "发送"
+				},
+				"sendTemplate": {
+					"displayName": "发送模板"
+				}
+			}
+		},
+		"attributeCategory": {
+			"displayName": "分类",
+			"description": "属性分类",
+			"options": {
+				"calculated": {
+					"displayName": "已计算"
+				},
+				"category": {
+					"displayName": "分类"
+				},
+				"global": {
+					"displayName": "全局"
+				},
+				"normal": {
+					"displayName": "普通"
+				},
+				"transactional": {
+					"displayName": "事务性"
+				}
+			}
+		},
+		"attributeName": {
+			"displayName": "名称",
+			"description": "属性名称"
+		},
+		"attributeType": {
+			"displayName": "类型",
+			"description": "属性类型",
+			"options": {
+				"boolean": {
+					"displayName": "布尔值"
+				},
+				"date": {
+					"displayName": "日期"
+				},
+				"float": {
+					"displayName": "浮点数"
+				},
+				"text": {
+					"displayName": "文本"
+				}
+			}
+		},
+		"attributeValue": {
+			"displayName": "值",
+			"description": "属性值"
+		},
+		"attributeCategoryList": {
+			"displayName": "联系人属性列表",
+			"placeholder": "添加属性",
+			"options": {
+				"categoryEnumeration": {
+					"displayName": "联系人属性",
+					"description": "该属性可取的数值和标签列表",
+					"placeholder": "添加属性",
+					"multipleValueButtonText": "添加属性",
+					"options": {
+						"attributesValues": {
+							"displayName": "属性",
+							"options": {
+								"attributeCategoryValue": {
+									"displayName": "值ID",
+									"description": "值的ID，必须为数字"
+								},
+								"attributeCategoryLabel": {
+									"displayName": "标签",
+									"description": "值的标签"
+								}
+							}
+						}
+					},
+					"values": {
+						"attributesValues": {
+							"displayName": "属性",
+							"options": {
+								"attributeCategoryValue": {
+									"displayName": "值ID",
+									"description": "值的ID，必须为数字"
+								},
+								"attributeCategoryLabel": {
+									"displayName": "标签",
+									"description": "值的标签"
+								}
+							}
+						},
+						"categoryEnumeration": {
+							"displayName": "联系人属性",
+							"placeholder": "添加属性"
+						}
+					}
+				}
+			}
+		},
+		"updateAttributeCategory": {
+			"displayName": "分类",
+			"description": "属性分类",
+			"options": {
+				"calculated": {
+					"displayName": "已计算"
+				},
+				"category": {
+					"displayName": "分类"
+				},
+				"global": {
+					"displayName": "全局"
+				}
+			}
+		},
+		"updateAttributeName": {
+			"displayName": "名称",
+			"description": "现有属性名称"
+		},
+		"updateAttributeValue": {
+			"displayName": "值",
+			"description": "要更新的属性值"
+		},
+		"updateAttributeCategoryList": {
+			"displayName": "更新字段",
+			"description": "该属性可用的值和标签列表",
+			"placeholder": "添加字段",
+			"options": {
+				"updateCategoryEnumeration": {
+					"displayName": "联系人属性",
+					"description": "该属性可取的数值和标签列表",
+					"placeholder": "添加属性",
+					"multipleValueButtonText": "添加属性",
+					"options": {
+						"updateAttributesValues": {
+							"displayName": "属性",
+							"options": {
+								"attributeCategoryValue": {
+									"displayName": "值",
+									"description": "值的ID，必须为数字"
+								},
+								"attributeCategoryLabel": {
+									"displayName": "标签",
+									"description": "值的标签"
+								}
+							}
+						}
+					},
+					"values": {
+						"updateAttributesValues": {
+							"displayName": "属性",
+							"options": {
+								"attributeCategoryValue": {
+									"displayName": "值",
+									"description": "值的ID，必须为数字"
+								},
+								"attributeCategoryLabel": {
+									"displayName": "标签",
+									"description": "值的标签"
+								}
+							}
+						},
+						"updateCategoryEnumeration": {
+							"displayName": "联系人属性",
+							"placeholder": "添加属性"
+						}
+					}
+				}
+			}
+		},
+		"deleteAttributeCategory": {
+			"displayName": "类别",
+			"description": "属性类别",
+			"options": {
+				"calculated": {
+					"displayName": "已计算"
+				},
+				"category": {
+					"displayName": "分类"
+				},
+				"global": {
+					"displayName": "全局"
+				},
+				"normal": {
+					"displayName": "普通"
+				},
+				"transactional": {
+					"displayName": "事务性"
+				}
+			}
+		},
+		"deleteAttributeName": {
+			"displayName": "名称",
+			"description": "属性名称"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "发送者名称"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "联系人的电子邮件",
+			"placeholder": "name@email.com"
+		},
+		"id": {
+			"displayName": "发送方ID",
+			"description": "要删除的发送方ID"
+		},
+		"createContactAttributes": {
+			"displayName": "联系人属性",
+			"description": "要添加的属性数组",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"attributesValues": {
+					"displayName": "属性",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributesValues": {
+					"displayName": "属性",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				},
+				"createContactAttributes": {
+					"displayName": "联系人属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"sort": {
+					"displayName": "排序",
+					"description": "按记录创建时间升序/降序排列结果",
+					"options": {
+						"desc": {
+							"displayName": "描述"
+						},
+						"asc": {
+							"displayName": "升序"
+						}
+					}
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"modifiedSince": {
+					"displayName": "修改时间晚于",
+					"description": "筛选（URL编码）在指定UTC日期时间（YYYY-MM-DDTHH:mm:ss.SSSZ）之后修改的联系人"
+				}
+			}
+		},
+		"identifier": {
+			"displayName": "联系人标识符",
+			"description": "联系人电子邮件（URL编码）或ID或其短信属性值"
+		},
+		"updateAttributes": {
+			"displayName": "属性",
+			"description": "待更新的属性数组",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"updateAttributesValues": {
+					"displayName": "属性",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				}
+			},
+			"values": {
+				"updateAttributesValues": {
+					"displayName": "属性",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				},
+				"updateAttributes": {
+					"displayName": "属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"upsertAttributes": {
+			"displayName": "联系人属性",
+			"description": "要更新的属性数组",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"upsertAttributesValues": {
+					"displayName": "属性",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				}
+			},
+			"values": {
+				"upsertAttributesValues": {
+					"displayName": "属性",
+					"options": {
+						"fieldName": {
+							"displayName": "字段名称"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				},
+				"upsertAttributes": {
+					"displayName": "联系人属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"sendHTML": {
+			"displayName": "发送HTML"
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "邮件主题"
+		},
+		"textContent": {
+			"displayName": "文本内容",
+			"description": "消息的文本内容"
+		},
+		"htmlContent": {
+			"displayName": "消息的HTML内容",
+			"description": "消息的HTML内容"
+		},
+		"sender": {
+			"displayName": "发送者"
+		},
+		"receipients": {
+			"displayName": "收件人"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"description": "要添加的额外字段",
+			"placeholder": "添加字段",
+			"options": {
+				"emailAttachments": {
+					"displayName": "附件",
+					"placeholder": "添加附件",
+					"options": {
+						"attachment": {
+							"displayName": "附件数据",
+							"options": {
+								"binaryPropertyName": {
+									"displayName": "输入数据字段名称",
+									"description": "包含待处理二进制文件数据的传入字段名称"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachment": {
+							"displayName": "附件数据",
+							"options": {
+								"binaryPropertyName": {
+									"displayName": "输入数据字段名称",
+									"description": "包含待处理二进制文件数据的传入字段名称"
+								}
+							}
+						},
+						"emailAttachments": {
+							"displayName": "附件",
+							"placeholder": "添加附件"
+						}
+					}
+				},
+				"receipientsBCC": {
+					"displayName": "收件人密送",
+					"placeholder": "添加密送",
+					"options": {
+						"receipientBcc": {
+							"displayName": "收件人",
+							"options": {
+								"bcc": {
+									"displayName": "收件人"
+								}
+							}
+						}
+					},
+					"values": {
+						"receipientBcc": {
+							"displayName": "收件人",
+							"options": {
+								"bcc": {
+									"displayName": "收件人"
+								}
+							}
+						},
+						"receipientsBCC": {
+							"displayName": "收件人密送",
+							"placeholder": "添加密送"
+						}
+					}
+				},
+				"receipientsCC": {
+					"displayName": "抄送收件人",
+					"placeholder": "添加抄送",
+					"options": {
+						"receipientCc": {
+							"displayName": "收件人",
+							"options": {
+								"cc": {
+									"displayName": "收件人"
+								}
+							}
+						}
+					},
+					"values": {
+						"receipientCc": {
+							"displayName": "收件人",
+							"options": {
+								"cc": {
+									"displayName": "收件人"
+								}
+							}
+						},
+						"receipientsCC": {
+							"displayName": "抄送收件人",
+							"placeholder": "添加抄送"
+						}
+					}
+				},
+				"emailTags": {
+					"displayName": "邮件标签",
+					"description": "为邮件添加标签，以便更轻松地查找",
+					"placeholder": "添加邮件标签",
+					"options": {
+						"tags": {
+							"displayName": "标签",
+							"options": {
+								"tag": {
+									"displayName": "标签"
+								}
+							}
+						}
+					},
+					"values": {
+						"tags": {
+							"displayName": "标签",
+							"options": {
+								"tag": {
+									"displayName": "标签"
+								}
+							}
+						},
+						"emailTags": {
+							"displayName": "邮件标签",
+							"placeholder": "添加邮件标签"
+						}
+					}
+				},
+				"templateParameters": {
+					"displayName": "模板参数",
+					"description": "传递一组属性来自定义模板",
+					"placeholder": "添加参数",
+					"options": {
+						"parameterValues": {
+							"displayName": "参数",
+							"options": {
+								"parameters": {
+									"displayName": "参数",
+									"description": "逗号分隔的键=值对",
+									"placeholder": "键=值"
+								}
+							}
+						}
+					},
+					"values": {
+						"parameterValues": {
+							"displayName": "参数",
+							"options": {
+								"parameters": {
+									"displayName": "参数",
+									"description": "逗号分隔的键=值对",
+									"placeholder": "键=值"
+								}
+							}
+						},
+						"templateParameters": {
+							"displayName": "模板参数",
+							"placeholder": "添加参数"
+						}
+					}
+				}
+			}
+		},
+		"templateId": {
+			"displayName": "模板ID"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

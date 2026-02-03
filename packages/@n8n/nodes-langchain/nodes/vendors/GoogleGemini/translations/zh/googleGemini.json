@@ -1,0 +1,428 @@
+{
+	"header": {
+		"displayName": "Google Gemini",
+		"description": "与 Google Gemini AI 模型交互"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"audio": {
+					"displayName": "音频"
+				},
+				"document": {
+					"displayName": "文档"
+				},
+				"fileSearch": {
+					"displayName": "文件搜索"
+				},
+				"image": {
+					"displayName": "图片"
+				},
+				"file": {
+					"displayName": "媒体文件"
+				},
+				"text": {
+					"displayName": "文本"
+				},
+				"video": {
+					"displayName": "视频"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"analyze": {
+					"displayName": "分析视频",
+					"description": "接收视频并回答相关问题"
+				},
+				"transcribe": {
+					"displayName": "转录录音",
+					"description": "将音频转录为文本"
+				},
+				"upload": {
+					"displayName": "上传媒体文件",
+					"description": "将文件上传至Google Gemini API以供后续使用"
+				},
+				"createStore": {
+					"displayName": "创建文件搜索存储",
+					"description": "为RAG（检索增强生成）创建新的文件搜索存储"
+				},
+				"deleteStore": {
+					"displayName": "删除文件搜索存储",
+					"description": "删除文件搜索存储"
+				},
+				"listStores": {
+					"displayName": "列出文件搜索存储",
+					"description": "列出用户拥有的所有文件搜索存储"
+				},
+				"uploadToStore": {
+					"displayName": "上传到文件搜索存储",
+					"description": "将文件上传到文件搜索存储以供RAG（检索增强生成）使用"
+				},
+				"generate": {
+					"displayName": "生成视频",
+					"description": "根据文本提示创建视频"
+				},
+				"edit": {
+					"displayName": "编辑图片",
+					"description": "上传一张或多张图片，并根据提示应用编辑"
+				},
+				"message": {
+					"displayName": "向模型发送消息",
+					"description": "使用Google Gemini模型创建补全"
+				},
+				"download": {
+					"displayName": "下载视频",
+					"description": "使用URL从Google Gemini API下载生成的视频"
+				}
+			}
+		},
+		"modelId": {
+			"displayName": "模型"
+		},
+		"text": {
+			"displayName": "文本输入",
+			"placeholder": "例如：这个视频里有什么？"
+		},
+		"inputType": {
+			"displayName": "输入类型",
+			"options": {
+				"url": {
+					"displayName": "视频URL"
+				},
+				"binary": {
+					"displayName": "二进制文件"
+				}
+			}
+		},
+		"audioUrls": {
+			"displayName": "URL地址",
+			"description": "要转录的音频URL地址，多个URL可用逗号分隔添加",
+			"placeholder": "例如：https://example.com/audio.mp3"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入数据字段名称",
+			"description": "包含视频的二进制字段名称，多个字段名称用逗号分隔",
+			"placeholder": "例如：data"
+		},
+		"simplify": {
+			"displayName": "简化输出",
+			"description": "是否简化响应"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"maxOutputTokens": {
+					"displayName": "描述长度（最大词元数）",
+					"description": "词元数越少，生成的视频描述越简短、越不详细"
+				},
+				"startTime": {
+					"displayName": "开始时间",
+					"description": "音频开始时间，格式为MM:SS或HH:MM:SS",
+					"placeholder": "例如：00:15"
+				},
+				"endTime": {
+					"displayName": "结束时间",
+					"description": "音频结束时间，格式为MM:SS或HH:MM:SS",
+					"placeholder": "例如 02:15"
+				},
+				"binaryPropertyOutput": {
+					"displayName": "将输出放入字段"
+				},
+				"sampleCount": {
+					"displayName": "视频数量",
+					"description": "生成视频数量"
+				},
+				"includeMergedResponse": {
+					"displayName": "Include Merged Response",
+					"description": "Whether to include a single output string merging all text parts of the response"
+				},
+				"systemMessage": {
+					"displayName": "系统消息",
+					"placeholder": "例如：您是一个有用的助手"
+				},
+				"codeExecution": {
+					"displayName": "代码执行",
+					"description": "Whether to allow the model to execute code it generates to produce a response. Supported only by certain models."
+				},
+				"frequencyPenalty": {
+					"displayName": "频率惩罚",
+					"description": "正值会根据新词元在文本中已有的出现频率进行惩罚，降低模型逐字重复相同内容的可能性。"
+				},
+				"candidateCount": {
+					"displayName": "完成次数",
+					"description": "每个提示生成多少个完成结果"
+				},
+				"presencePenalty": {
+					"displayName": "存在惩罚",
+					"description": "正值会根据新标记是否已在现有文本中出现来惩罚它们，从而增加模型谈论新话题的可能性"
+				},
+				"temperature": {
+					"displayName": "输出随机性（温度）",
+					"description": "控制输出的随机性。降低温度值会使补全结果更少随机性。当温度接近零时，模型会变得确定性和重复性"
+				},
+				"topP": {
+					"displayName": "输出随机性（Top P）",
+					"description": "采样时考虑的最大累积令牌概率"
+				},
+				"topK": {
+					"displayName": "输出随机性（Top K）",
+					"description": "采样时考虑的最大令牌数"
+				},
+				"thinkingBudget": {
+					"displayName": "思考预算",
+					"description": "控制思考模型的推理令牌数。设置为0以禁用自动思考。设置为-1启用动态思考。留空为自动模式。"
+				},
+				"maxToolsIterations": {
+					"displayName": "最大工具调用迭代次数",
+					"description": "LLM在停止前将运行的最大工具迭代周期数。单次迭代可包含多个工具调用。设为0表示无限制。"
+				},
+				"durationSeconds": {
+					"displayName": "时长（秒）",
+					"description": "生成视频的长度（以秒为单位）。仅特定模型支持。"
+				},
+				"aspectRatio": {
+					"displayName": "宽高比",
+					"options": {
+						"16:9": {
+							"displayName": "宽屏 (16:9)",
+							"description": "电视和显示器最常见的宽高比"
+						},
+						"9:16": {
+							"displayName": "纵向 (9:16)",
+							"description": "适用于YouTube Shorts等短视频"
+						}
+					}
+				},
+				"personGeneration": {
+					"displayName": "人员生成",
+					"options": {
+						"dont_allow": {
+							"displayName": "不允许",
+							"description": "防止在视频中生成人物"
+						},
+						"allow_adult": {
+							"displayName": "允许成人内容",
+							"description": "允许在视频中生成成人人物"
+						},
+						"allow_all": {
+							"displayName": "允许全部",
+							"description": "允许生成视频中所有人物"
+						}
+					}
+				}
+			}
+		},
+		"documentUrls": {
+			"displayName": "URL地址",
+			"description": "要分析的文档URL地址，多个URL可用逗号分隔添加",
+			"placeholder": "例如：https://example.com/document.pdf"
+		},
+		"fileUrl": {
+			"displayName": "URL",
+			"description": "要上传文件的URL",
+			"placeholder": "例如 https://example.com/file.pdf"
+		},
+		"displayName": {
+			"displayName": "文件显示名称",
+			"description": "文件的易读名称（将在引用中可见）",
+			"placeholder": "例如：我的文档"
+		},
+		"fileSearchStoreName": {
+			"displayName": "文件搜索存储名称",
+			"description": "要上传到的文件搜索存储的完整名称（格式：fileSearchStores/...）",
+			"placeholder": "例如：fileSearchStores/abc123"
+		},
+		"force": {
+			"displayName": "强制删除",
+			"description": "是否删除相关文档和对象。如果设为false，当存储中包含任何文档时，删除操作将失败。"
+		},
+		"pageSize": {
+			"displayName": "每页大小",
+			"description": "每页返回的文件搜索存储最大数量（最多20个）"
+		},
+		"pageToken": {
+			"displayName": "页面令牌",
+			"description": "用于获取下一页结果的上一页令牌"
+		},
+		"imageUrls": {
+			"displayName": "URL地址",
+			"description": "要分析的图片URL地址，多个URL可用逗号分隔添加",
+			"placeholder": "例如：https://example.com/image.png"
+		},
+		"prompt": {
+			"displayName": "提示",
+			"description": "期望视频的文字描述",
+			"placeholder": "例如：一只三花小猫在阳光下睡觉的平移广角镜头"
+		},
+		"images": {
+			"displayName": "图片",
+			"description": "添加一个或多个二进制字段以在提示中包含图片",
+			"placeholder": "添加图片",
+			"multipleValueButtonText": "添加图片",
+			"options": {
+				"values": {
+					"displayName": "图片",
+					"values": {
+						"binaryPropertyName": {
+							"displayName": "二进制字段名称",
+							"description": "包含图像数据的二进制字段名称",
+							"placeholder": "例如：data"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "图片",
+					"values": {
+						"binaryPropertyName": {
+							"displayName": "二进制字段名称",
+							"description": "包含图像数据的二进制字段名称",
+							"placeholder": "例如：data"
+						}
+					}
+				},
+				"images": {
+					"displayName": "图片",
+					"placeholder": "添加图片"
+				}
+			}
+		},
+		"messages": {
+			"displayName": "消息",
+			"placeholder": "添加消息",
+			"multipleValueButtonText": "添加消息",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"model": {
+									"displayName": "模型",
+									"description": "指示模型采用特定语气或个性"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"model": {
+									"displayName": "模型",
+									"description": "指示模型采用特定语气或个性"
+								}
+							}
+						}
+					}
+				},
+				"messages": {
+					"displayName": "消息",
+					"placeholder": "添加消息"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "将输出内容作为JSON",
+			"description": "是否尝试以JSON格式返回响应"
+		},
+		"builtInTools": {
+			"displayName": "内置工具",
+			"placeholder": "添加内置工具",
+			"options": {
+				"googleSearch": {
+					"displayName": "Google搜索",
+					"description": "是否允许模型使用Google搜索获取实时信息"
+				},
+				"googleMaps": {
+					"displayName": "Google Maps",
+					"options": {
+						"latitude": {
+							"displayName": "纬度",
+							"description": "用于基于位置查询的纬度坐标"
+						},
+						"longitude": {
+							"displayName": "经度",
+							"description": "用于基于位置查询的经度坐标"
+						}
+					}
+				},
+				"urlContext": {
+					"displayName": "URL上下文",
+					"description": "是否允许模型读取和分析特定URL的内容"
+				},
+				"fileSearch": {
+					"displayName": "文件搜索",
+					"options": {
+						"fileSearchStoreNames": {
+							"displayName": "文件搜索存储名称",
+							"description": "用于文件搜索的文件搜索存储名称。文件搜索存储通过Google AI Studio进行管理。"
+						},
+						"metadataFilter": {
+							"displayName": "元数据过滤器",
+							"description": "使用元数据筛选器在文档子集中搜索。示例：author=\"罗伯特·格雷夫斯\"",
+							"placeholder": "例如：author=\"约翰·多伊\""
+						}
+					}
+				},
+				"codeExecution": {
+					"displayName": "代码执行",
+					"description": "Whether to allow the model to execute code it generates to produce a response. Supported only by certain models."
+				}
+			}
+		},
+		"videoUrls": {
+			"displayName": "URL",
+			"description": "要分析的视频URL，多个URL可用逗号分隔添加",
+			"placeholder": "例如：https://example.com/video.mp4"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "用于从Google Gemini API下载视频的URL",
+			"placeholder": "例如 https://generativelanguage.googleapis.com/v1beta/files/abcdefg:download"
+		},
+		"returnAs": {
+			"displayName": "返回方式",
+			"description": "是否将视频作为二进制文件返回，还是返回一个可用于稍后下载视频的URL",
+			"options": {
+				"video": {
+					"displayName": "视频"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		}
+	}
+}

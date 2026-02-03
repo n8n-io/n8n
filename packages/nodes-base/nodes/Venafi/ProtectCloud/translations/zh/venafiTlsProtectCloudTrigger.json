@@ -1,0 +1,16 @@
+{
+	"header": {
+		"displayName": "Venafi TLS Protect Cloud 触发器",
+		"description": "当 Venafi 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"triggerOn": {
+			"displayName": "触发于",
+			"description": "从列表中选择，或使用<表达式>指定ID。从列表中选择，或使用<表达式>指定多个ID。从列表中选择，或使用<表达式>指定ID。从列表中选择，或使用<表达式>指定多个ID。"
+		}
+	}
+}

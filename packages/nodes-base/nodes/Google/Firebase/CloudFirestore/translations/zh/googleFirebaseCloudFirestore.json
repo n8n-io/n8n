@@ -1,0 +1,101 @@
+{
+	"header": {
+		"displayName": "Google Cloud Firestore",
+		"description": "与 Google Firebase - Cloud Firestore API 交互"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"displayName": "OAuth2（推荐）"
+				},
+				"serviceAccount": {
+					"displayName": "服务账号"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"document": {
+					"displayName": "文档"
+				},
+				"collection": {
+					"displayName": "集合"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建文档"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新文档，若已存在则更新当前文档（upsert）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文档"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取文档"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个根集合"
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "对您的文档运行查询"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "项目名称或ID",
+			"description": "如Firebase控制台URL中所示。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"database": {
+			"displayName": "数据库",
+			"description": "通常提供的默认值即可使用"
+		},
+		"collection": {
+			"displayName": "集合",
+			"description": "集合名称"
+		},
+		"documentId": {
+			"displayName": "文档ID"
+		},
+		"columns": {
+			"displayName": "列/属性",
+			"description": "要插入的列",
+			"placeholder": "age, city, location"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateKey": {
+			"displayName": "更新键",
+			"description": "输入项中包含文档ID的字段名称",
+			"placeholder": "documentId"
+		},
+		"query": {
+			"displayName": "查询JSON",
+			"description": "要执行的JSON查询",
+			"placeholder": "{\"structuredQuery\": {\"where\": {\"fieldFilter\": {\"field\": {\"fieldPath\": \"age\"},\"op\": \"EQUAL\", \"value\": {\"integerValue\": 28}}}, \"from\": [{\"collectionId\": \"users-collection\"}]}}"
+		}
+	}
+}

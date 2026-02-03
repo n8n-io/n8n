@@ -1,0 +1,397 @@
+{
+	"header": {
+		"displayName": "Google Sheets",
+		"description": "读取、更新和写入Google Sheets数据"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"serviceAccount": {
+					"displayName": "服务账号"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"spreadsheet": {
+					"displayName": "电子表格"
+				},
+				"sheet": {
+					"displayName": "工作表"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"append": {
+					"displayName": "追加",
+					"description": "向工作表追加数据"
+				},
+				"clear": {
+					"displayName": "清空",
+					"description": "清除工作表数据"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建电子表格"
+				},
+				"upsert": {
+					"displayName": "创建或更新",
+					"description": "创建新记录，如果已存在则更新当前记录（upsert）"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从工作表中删除列和行"
+				},
+				"lookup": {
+					"displayName": "查找",
+					"description": "查找特定列值并返回匹配行"
+				},
+				"read": {
+					"displayName": "读取",
+					"description": "从工作表读取数据"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "删除工作表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "在工作表中更新行"
+				}
+			}
+		},
+		"sheetId": {
+			"displayName": "电子表格ID",
+			"description": "Google电子表格的ID。在表格URL https://docs.google.com/spreadsheets/d/{ID}/ 中作为一部分找到。"
+		},
+		"range": {
+			"displayName": "范围",
+			"description": "要读取或追加数据的表格范围。详情请参阅Google<a href=\"https://developers.google.com/sheets/api/guides/values#writing\">文档</a>。如果包含多个工作表，也可以这样添加：\"MySheet!A:F\""
+		},
+		"toDelete": {
+			"displayName": "待删除",
+			"description": "从工作表中删除列和行",
+			"placeholder": "添加要删除的列/行",
+			"multipleValueButtonText": "添加要删除的列/行",
+			"options": {
+				"columns": {
+					"displayName": "列",
+					"options": {
+						"sheetId": {
+							"displayName": "工作表名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+							"options": {}
+						},
+						"startIndex": {
+							"displayName": "起始索引",
+							"description": "要删除的列的起始索引（从0开始且包含该索引）"
+						},
+						"amount": {
+							"displayName": "金额",
+							"description": "要删除的列数"
+						}
+					}
+				},
+				"rows": {
+					"displayName": "行数",
+					"options": {
+						"sheetId": {
+							"displayName": "工作表名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+							"options": {}
+						},
+						"startIndex": {
+							"displayName": "起始索引",
+							"description": "要删除的行的起始索引（从0开始且包含该行）"
+						},
+						"amount": {
+							"displayName": "金额",
+							"description": "要删除的行数"
+						}
+					}
+				}
+			},
+			"values": {
+				"columns": {
+					"displayName": "列",
+					"options": {
+						"sheetId": {
+							"displayName": "工作表名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+							"options": {}
+						},
+						"startIndex": {
+							"displayName": "起始索引",
+							"description": "要删除的列的起始索引（从0开始且包含该索引）"
+						},
+						"amount": {
+							"displayName": "金额",
+							"description": "要删除的列数"
+						}
+					}
+				},
+				"rows": {
+					"displayName": "行数",
+					"options": {
+						"sheetId": {
+							"displayName": "工作表名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+							"options": {}
+						},
+						"startIndex": {
+							"displayName": "起始索引",
+							"description": "要删除的行的起始索引（从0开始且包含该行）"
+						},
+						"amount": {
+							"displayName": "金额",
+							"description": "要删除的行数"
+						}
+					}
+				},
+				"toDelete": {
+					"displayName": "待删除",
+					"placeholder": "添加要删除的列/行"
+				}
+			}
+		},
+		"rawData": {
+			"displayName": "原始数据",
+			"description": "提供的数据是否为RAW格式而非解析为键值对"
+		},
+		"dataProperty": {
+			"displayName": "数据属性",
+			"description": "从中读取原始数据的属性名称"
+		},
+		"dataStartRow": {
+			"displayName": "数据起始行",
+			"description": "包含实际数据而非键名的首行索引。从0开始计数。"
+		},
+		"keyRow": {
+			"displayName": "键行",
+			"description": "包含键的行索引，从0开始。传入的节点数据将与键进行匹配以进行赋值。匹配区分大小写。"
+		},
+		"lookupColumn": {
+			"displayName": "查找列",
+			"description": "要在其中查找值的列名",
+			"placeholder": "邮箱"
+		},
+		"lookupValue": {
+			"displayName": "查找值",
+			"description": "要在列中查找的值",
+			"placeholder": "frank@example.com"
+		},
+		"key": {
+			"displayName": "键",
+			"description": "用于识别应在工作表中更新哪个数据的键名"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"continue": {
+					"displayName": "空值继续",
+					"description": "默认情况下，如果查找/读取未返回值，工作流将停止执行"
+				},
+				"returnAllMatches": {
+					"displayName": "Return All Matches",
+					"description": "By default only the first result gets returned. If options gets set all found matches get returned."
+				},
+				"usePathForKeyRow": {
+					"displayName": "将表头名称用作JSON路径",
+					"description": "是否希望将表头作为路径进行匹配。例如，行表头“category.name”将匹配“category”对象并从中获取“name”字段。默认情况下，“category.name”将匹配具有确切名称的字段，而非嵌套对象。"
+				},
+				"valueInputMode": {
+					"displayName": "数值输入模式",
+					"description": "确定应如何解析数据",
+					"options": {
+						"RAW": {
+							"displayName": "返回完整的电子邮件消息数据，其中正文内容以base64url编码字符串的形式存储在raw字段中；payload字段未被使用",
+							"description": "这些值将不会被解析，会按原样存储"
+						},
+						"USER_ENTERED": {
+							"displayName": "用户输入",
+							"description": "这些值将按照用户在界面中输入的方式进行解析。数字将保持为数字，但字符串可能会根据在Google Sheets界面中向单元格输入文本时应用的相同规则转换为数字、日期等。"
+						}
+					}
+				},
+				"valueRenderMode": {
+					"displayName": "值渲染模式",
+					"description": "决定输出中应如何渲染值",
+					"options": {
+						"FORMATTED_VALUE": {
+							"displayName": "格式化值",
+							"description": "数值将根据单元格的格式在回复中计算并格式化。格式化基于电子表格的区域设置，而非请求用户的区域设置。例如，如果A1单元格为1.23，A2单元格为=A1且格式设置为货币，则A2将返回“$1.23”。"
+						},
+						"FORMULA": {
+							"displayName": "公式",
+							"description": "数值将不会被计算。回复将包含公式。例如，如果A1是1.23，A2是=A1且格式化为货币，那么A2将返回“=A1”。"
+						},
+						"UNFORMATTED_VALUE": {
+							"displayName": "未格式化的值",
+							"description": "数值会被计算，但在返回时不会被格式化。例如，如果A1是1.23，A2是=A1且格式化为货币，那么A2将返回数字1.23。"
+						}
+					}
+				},
+				"locale": {
+					"displayName": "语言区域",
+					"description": "电子表格的区域设置，格式为以下之一：\n<ul>\n<li>en (639-1)</li>\n<li>fil (若无639-1格式则使用639-2)</li>\n<li>en_US (ISO语言与国家代码的组合)</li>\n</ul>",
+					"placeholder": "en_US"
+				},
+				"autoRecalc": {
+					"displayName": "重新计算间隔",
+					"description": "单元格重新计算间隔选项",
+					"options": {
+						"": {
+							"displayName": "默认",
+							"description": "默认值"
+						},
+						"ON_CHANGE": {
+							"displayName": "变更时",
+							"description": "易变函数在每次变更时更新"
+						},
+						"MINUTE": {
+							"displayName": "分钟",
+							"description": "易变函数会在每次更改和每分钟更新"
+						},
+						"HOUR": {
+							"displayName": "小时",
+							"description": "易变函数会在每次变更和每小时更新"
+						}
+					}
+				},
+				"gridProperties": {
+					"displayName": "网格属性",
+					"description": "工作表类型",
+					"placeholder": "添加属性",
+					"options": {
+						"columnCount": {
+							"displayName": "列数",
+							"description": "网格中的列数"
+						},
+						"columnGroupControlAfter": {
+							"displayName": "列分组控件后置",
+							"description": "是否在分组后显示列分组控件切换"
+						},
+						"frozenColumnCount": {
+							"displayName": "冻结列数",
+							"description": "网格中冻结的列数"
+						},
+						"frozenRowCount": {
+							"displayName": "冻结行数",
+							"description": "网格中被冻结的行数"
+						},
+						"hideGridlines": {
+							"displayName": "隐藏网格线",
+							"description": "是否在界面中不显示网格线"
+						},
+						"rowCount": {
+							"displayName": "行数",
+							"description": "网格中的行数"
+						},
+						"rowGroupControlAfter": {
+							"displayName": "行分组控制后置",
+							"description": "是否在分组后显示行分组控制开关"
+						}
+					}
+				},
+				"hidden": {
+					"displayName": "隐藏",
+					"description": "工作表在UI中是否隐藏，false表示可见"
+				},
+				"rightToLeft": {
+					"displayName": "从右到左",
+					"description": "工作表是否为从右到左(RTL)布局而非从左到右(LTR)布局"
+				},
+				"sheetId": {
+					"displayName": "[0]工作表ID\n[1]工作表的ID。必须为非负数。此字段一旦设置即不可更改。",
+					"description": "The ID of the sheet. Must be non-negative. This field cannot be changed once set."
+				},
+				"index": {
+					"displayName": "工作表索引",
+					"description": "工作表在电子表格中的索引位置"
+				},
+				"tabColor": {
+					"displayName": "标签页颜色",
+					"description": "UI中标签页的颜色"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "工作表名称"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "电子表格的标题"
+		},
+		"sheetsUi": {
+			"displayName": "表格",
+			"placeholder": "添加表格",
+			"multipleValueButtonText": "添加工作表",
+			"options": {
+				"sheetValues": {
+					"displayName": "工作表",
+					"options": {
+						"propertiesUi": {
+							"displayName": "工作表属性",
+							"placeholder": "添加属性",
+							"options": {
+								"hidden": {
+									"displayName": "隐藏",
+									"description": "是否应在用户界面中隐藏此工作表"
+								},
+								"title": {
+									"displayName": "标题",
+									"description": "要创建的属性标题"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"sheetValues": {
+					"displayName": "工作表",
+					"options": {
+						"propertiesUi": {
+							"displayName": "工作表属性",
+							"placeholder": "添加属性",
+							"options": {
+								"hidden": {
+									"displayName": "隐藏",
+									"description": "是否应在用户界面中隐藏此工作表"
+								},
+								"title": {
+									"displayName": "标题",
+									"description": "要创建的属性标题"
+								}
+							}
+						}
+					}
+				},
+				"sheetsUi": {
+					"displayName": "表格",
+					"placeholder": "添加表格"
+				}
+			}
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"id": {
+			"displayName": "工作表ID",
+			"description": "要删除的工作表的ID"
+		}
+	}
+}

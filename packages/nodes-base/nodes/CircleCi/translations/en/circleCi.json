@@ -1,0 +1,86 @@
+{
+	"header": {
+		"displayName": "CircleCI",
+		"description": "Consume CircleCI API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"pipeline": {
+					"displayName": "Pipeline"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a pipeline"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many pipelines"
+				},
+				"trigger": {
+					"displayName": "Trigger",
+					"description": "Trigger a pipeline"
+				}
+			}
+		},
+		"vcs": {
+			"displayName": "Provider",
+			"description": "Source control system",
+			"options": {
+				"bitbucket": {
+					"displayName": "Bitbucket"
+				},
+				"github": {
+					"displayName": "GitHub"
+				}
+			}
+		},
+		"projectSlug": {
+			"displayName": "Project Slug",
+			"description": "Project slug in the form org-name/repo-name",
+			"placeholder": "n8n-io/n8n"
+		},
+		"pipelineNumber": {
+			"displayName": "Pipeline Number",
+			"description": "The number of the pipeline"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"branch": {
+					"displayName": "Branch",
+					"description": "The name of a vcs branch"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"branch": {
+					"displayName": "Branch",
+					"description": "The branch where the pipeline ran. The HEAD commit on this branch was used for the pipeline. Note that branch and tag are mutually exclusive."
+				},
+				"tag": {
+					"displayName": "Tag",
+					"description": "The tag used by the pipeline. The commit that this tag points to was used for the pipeline. Note that branch and tag are mutually exclusive"
+				}
+			}
+		}
+	}
+}

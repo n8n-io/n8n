@@ -1,0 +1,38 @@
+{
+	"header": {
+		"displayName": "端到端测试",
+		"description": "用于端到端测试的虚拟节点"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"remoteOptions": {
+					"displayName": "远程选项"
+				},
+				"resourceLocator": {
+					"displayName": "资源定位器"
+				},
+				"resourceMapper": {
+					"displayName": "资源映射组件"
+				}
+			}
+		},
+		"fieldId": {
+			"displayName": "字段ID"
+		},
+		"remoteOptions": {
+			"displayName": "远程选项名称或ID",
+			"description": "要加载的远程选项。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"rlc": {
+			"displayName": "资源定位器"
+		},
+		"resourceMapper": {
+			"displayName": "资源映射组件"
+		},
+		"otherField": {
+			"displayName": "其他非重要字段"
+		}
+	}
+}

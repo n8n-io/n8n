@@ -1,0 +1,689 @@
+{
+	"header": {
+		"displayName": "GitHub",
+		"description": "使用GitHub API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"issue": {
+					"displayName": "问题"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"release": {
+					"displayName": "发布"
+				},
+				"repository": {
+					"displayName": "仓库"
+				},
+				"review": {
+					"displayName": "审阅"
+				},
+				"user": {
+					"displayName": "用户"
+				},
+				"workflow": {
+					"displayName": "工作流"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getRepositories": {
+					"displayName": "获取仓库",
+					"description": "返回用户的仓库"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新审核"
+				},
+				"createComment": {
+					"displayName": "创建评论",
+					"description": "在问题上创建新评论"
+				},
+				"edit": {
+					"displayName": "编辑",
+					"description": "编辑仓库中的文件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取工作流"
+				},
+				"lock": {
+					"displayName": "锁定",
+					"description": "锁定问题"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一个发布"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "列出工作流"
+				},
+				"getIssues": {
+					"displayName": "获取问题",
+					"description": "返回仓库的问题"
+				},
+				"getLicense": {
+					"displayName": "获取许可证",
+					"description": "如果检测到仓库的许可证文件，则返回其内容"
+				},
+				"getProfile": {
+					"displayName": "获取资料",
+					"description": "获取仓库的社区资料，包含指标、健康评分、描述、许可证等信息"
+				},
+				"getPullRequests": {
+					"displayName": "获取拉取请求",
+					"description": "返回仓库的拉取请求"
+				},
+				"listPopularPaths": {
+					"displayName": "列出热门路径",
+					"description": "获取过去14天内前10个热门内容路径"
+				},
+				"listReferrers": {
+					"displayName": "列出引荐来源",
+					"description": "获取过去14天内前10个引荐域名"
+				},
+				"getUserIssues": {
+					"displayName": "获取问题",
+					"description": "返回分配给用户的问题"
+				},
+				"invite": {
+					"displayName": "邀请",
+					"description": "邀请用户加入组织"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取拉取请求的多个审阅记录"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新评论"
+				},
+				"disable": {
+					"displayName": "禁用",
+					"description": "禁用工作流"
+				},
+				"dispatch": {
+					"displayName": "调度",
+					"description": "调度工作流事件"
+				},
+				"dispatchAndWait": {
+					"displayName": "分发并等待完成",
+					"description": "分发工作流事件并等待Webhook被调用后再继续"
+				},
+				"enable": {
+					"displayName": "启用",
+					"description": "启用工作流"
+				},
+				"getUsage": {
+					"displayName": "获取用量",
+					"description": "获取工作流的使用情况"
+				}
+			}
+		},
+		"webhookNotice": {
+			"displayName": "您的执行将暂停，直到Webhook被调用。此URL将在运行时生成，并作为resumeUrl输入传递给您的Github工作流。"
+		},
+		"owner": {
+			"displayName": "仓库所有者"
+		},
+		"repository": {
+			"displayName": "仓库名称"
+		},
+		"workflowId": {
+			"displayName": "工作流",
+			"description": "要派发的工作流"
+		},
+		"ref": {
+			"displayName": "Ref",
+			"description": "工作流调度的git引用（分支、标签或提交SHA）"
+		},
+		"inputs": {
+			"displayName": "输入参数",
+			"description": "包含工作流输入参数的JSON对象"
+		},
+		"filePath": {
+			"displayName": "路径",
+			"description": "要列出文件夹的路径",
+			"placeholder": "docs/"
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "文件的文本内容"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		},
+		"commitMessage": {
+			"displayName": "提交信息"
+		},
+		"additionalParameters": {
+			"displayName": "附加参数",
+			"description": "要添加的附加字段",
+			"placeholder": "添加参数",
+			"options": {
+				"author": {
+					"displayName": "作者",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "提交作者姓名"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"description": "提交作者的电子邮件",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"branch": {
+					"displayName": "分支",
+					"options": {
+						"branch": {
+							"displayName": "分支",
+							"description": "要提交到的分支。如果未设置，则使用仓库的默认分支（通常是 master）。"
+						}
+					}
+				},
+				"committer": {
+					"displayName": "提交者",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "提交者的名称"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"description": "提交者的电子邮件",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"reference": {
+					"displayName": "参考",
+					"description": "提交/分支/标签的名称。默认：仓库的默认分支（通常是 master）。",
+					"placeholder": "master"
+				}
+			},
+			"values": {
+				"author": {
+					"displayName": "作者",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "提交作者姓名"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"description": "提交作者的电子邮件",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"branch": {
+					"displayName": "分支",
+					"options": {
+						"branch": {
+							"displayName": "分支",
+							"description": "要提交到的分支。如果未设置，则使用仓库的默认分支（通常是 master）。"
+						}
+					}
+				},
+				"committer": {
+					"displayName": "提交者",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "提交者的名称"
+						},
+						"email": {
+							"displayName": "电子邮件",
+							"description": "提交者的电子邮件",
+							"placeholder": "name@email.com"
+						}
+					}
+				},
+				"additionalParameters": {
+					"displayName": "附加参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"asBinaryProperty": {
+			"displayName": "作为二进制属性",
+			"description": "是否将文件数据设为二进制属性而非返回原始API响应"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "问题标题"
+		},
+		"body": {
+			"displayName": "正文",
+			"description": "评论正文"
+		},
+		"labels": {
+			"displayName": "标签",
+			"multipleValueButtonText": "添加标签",
+			"options": {
+				"label": {
+					"displayName": "标签",
+					"description": "要添加到问题的标签"
+				}
+			}
+		},
+		"assignees": {
+			"displayName": "负责人",
+			"multipleValueButtonText": "添加负责人",
+			"options": {
+				"assignee": {
+					"displayName": "分配对象",
+					"description": "分配问题的用户"
+				}
+			}
+		},
+		"issueNumber": {
+			"displayName": "问题编号",
+			"description": "要锁定问题编号"
+		},
+		"editFields": {
+			"displayName": "编辑字段",
+			"options": {
+				"assignees": {
+					"displayName": "负责人",
+					"multipleValueButtonText": "添加受理人",
+					"options": {
+						"assignee": {
+							"displayName": "负责人",
+							"description": "分配问题的用户"
+						}
+					}
+				},
+				"body": {
+					"displayName": "正文",
+					"description": "问题正文"
+				},
+				"labels": {
+					"displayName": "标签",
+					"multipleValueButtonText": "添加标签",
+					"options": {
+						"label": {
+							"displayName": "标签",
+							"description": "要添加到问题的标签"
+						}
+					}
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "要设置的状态",
+					"options": {
+						"closed": {
+							"displayName": "已关闭",
+							"description": "将状态设置为“已关闭”"
+						},
+						"open": {
+							"displayName": "打开",
+							"description": "将状态设置为“open”"
+						}
+					}
+				},
+				"state_reason": {
+					"displayName": "状态原因",
+					"description": "状态变更的原因",
+					"options": {
+						"completed": {
+							"displayName": "已完成",
+							"description": "问题已解决"
+						},
+						"not_planned": {
+							"displayName": "未计划",
+							"description": "问题未计划"
+						},
+						"reopened": {
+							"displayName": "已重新打开",
+							"description": "问题已重新打开"
+						}
+					}
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "问题标题"
+				}
+			}
+		},
+		"lockReason": {
+			"displayName": "锁定原因",
+			"description": "锁定此问题的原因",
+			"options": {
+				"off-topic": {
+					"displayName": "离题",
+					"description": "此问题已离题"
+				},
+				"too heated": {
+					"displayName": "过于激烈",
+					"description": "讨论过于激烈"
+				},
+				"resolved": {
+					"displayName": "已解析",
+					"description": "问题已解决"
+				},
+				"spam": {
+					"displayName": "垃圾信息",
+					"description": "该问题是垃圾信息"
+				}
+			}
+		},
+		"releaseTag": {
+			"displayName": "标签",
+			"description": "发布的标签"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "发布名称"
+				},
+				"body": {
+					"displayName": "正文",
+					"description": "发布内容正文"
+				},
+				"draft": {
+					"displayName": "草稿",
+					"description": "是否创建草稿（未发布）版本，设为“false”则创建已发布版本"
+				},
+				"prerelease": {
+					"displayName": "预发布版",
+					"description": "是否指明该版本为非生产就绪版本"
+				},
+				"target_commitish": {
+					"displayName": "目标提交引用",
+					"description": "指定用于确定Git标签创建来源的提交引用值。可以是任何分支或提交SHA。如果Git标签已存在则忽略此项。默认值：仓库的默认分支（通常为master）。"
+				},
+				"tag_name": {
+					"displayName": "标签名称",
+					"description": "标签的名称"
+				},
+				"commitId": {
+					"displayName": "提交ID",
+					"description": "需要审查的提交SHA（如果与最新提交不同）"
+				}
+			},
+			"placeholder": "添加字段"
+		},
+		"release_id": {
+			"displayName": "发布ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"getRepositoryIssuesFilters": {
+			"displayName": "过滤器",
+			"options": {
+				"assignee": {
+					"displayName": "分配对象",
+					"description": "仅返回分配给特定用户的问题"
+				},
+				"creator": {
+					"displayName": "创建者",
+					"description": "仅返回由特定用户创建的问题"
+				},
+				"mentioned": {
+					"displayName": "提及",
+					"description": "仅返回特定用户被提及的问题"
+				},
+				"labels": {
+					"displayName": "标签",
+					"description": "仅返回带有指定标签的问题。多个标签可用逗号分隔。"
+				},
+				"since": {
+					"displayName": "更新于",
+					"description": "仅返回在此时间或之后更新的问题"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "要设置的状态",
+					"options": {
+						"all": {
+							"displayName": "全部",
+							"description": "返回任意状态的问题"
+						},
+						"closed": {
+							"displayName": "已关闭",
+							"description": "返回状态为“已关闭”的问题"
+						},
+						"open": {
+							"displayName": "打开",
+							"description": "返回状态为\"open\"的问题"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "问题返回顺序",
+					"options": {
+						"created": {
+							"displayName": "已创建",
+							"description": "按创建日期排序"
+						},
+						"updated": {
+							"displayName": "已更新",
+							"description": "按更新日期排序"
+						},
+						"comments": {
+							"displayName": "评论",
+							"description": "按评论排序"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "方向",
+					"description": "排序顺序",
+					"options": {
+						"asc": {
+							"displayName": "升序",
+							"description": "按升序排序"
+						},
+						"desc": {
+							"displayName": "降序",
+							"description": "按降序排序"
+						}
+					}
+				}
+			}
+		},
+		"getRepositoryPullRequestsFilters": {
+			"displayName": "过滤器",
+			"options": {
+				"state": {
+					"displayName": "状态",
+					"description": "要设置的状态",
+					"options": {
+						"all": {
+							"displayName": "全部",
+							"description": "返回任意状态的拉取请求"
+						},
+						"closed": {
+							"displayName": "已关闭",
+							"description": "返回状态为\"已关闭\"的拉取请求"
+						},
+						"open": {
+							"displayName": "打开",
+							"description": "返回状态为\"open\"的拉取请求"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "拉取请求的返回顺序",
+					"options": {
+						"created": {
+							"displayName": "已创建",
+							"description": "按创建日期排序"
+						},
+						"updated": {
+							"displayName": "已更新",
+							"description": "按更新日期排序"
+						},
+						"popularity": {
+							"displayName": "热门度",
+							"description": "按评论数排序"
+						},
+						"long-running": {
+							"displayName": "长期运行",
+							"description": "按创建日期排序，并将结果限制为已开启超过一个月且在过去一个月内有活动的拉取请求"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "方向",
+					"description": "排序顺序",
+					"options": {
+						"asc": {
+							"displayName": "升序",
+							"description": "按升序排序"
+						},
+						"desc": {
+							"displayName": "降序",
+							"description": "按降序排序"
+						}
+					}
+				}
+			}
+		},
+		"pullRequestNumber": {
+			"displayName": "PR编号",
+			"description": "待审查的拉取请求编号"
+		},
+		"reviewId": {
+			"displayName": "审核ID",
+			"description": "审核的ID"
+		},
+		"event": {
+			"displayName": "事件",
+			"description": "您想要执行的审核操作",
+			"options": {
+				"approve": {
+					"displayName": "批准",
+					"description": "批准拉取请求"
+				},
+				"requestChanges": {
+					"displayName": "请求变更",
+					"description": "请求代码变更"
+				},
+				"comment": {
+					"displayName": "评论",
+					"description": "添加无需审批或变更请求的评论"
+				},
+				"pending": {
+					"displayName": "待处理",
+					"description": "准备好后，您需要提交拉取请求审查"
+				}
+			}
+		},
+		"organization": {
+			"displayName": "组织",
+			"description": "邀请用户加入的GitHub组织"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "被邀请用户的电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"getUserIssuesFilters": {
+			"displayName": "过滤器",
+			"options": {
+				"mentioned": {
+					"displayName": "提及",
+					"description": "仅返回特定用户被提及的问题"
+				},
+				"labels": {
+					"displayName": "标签",
+					"description": "仅返回带有指定标签的问题。多个标签可用逗号分隔。"
+				},
+				"since": {
+					"displayName": "更新于",
+					"description": "仅返回在此时间或之后更新的问题"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "要设置的状态",
+					"options": {
+						"all": {
+							"displayName": "全部",
+							"description": "返回任意状态的问题"
+						},
+						"closed": {
+							"displayName": "已关闭",
+							"description": "返回状态为“已关闭”的问题"
+						},
+						"open": {
+							"displayName": "打开",
+							"description": "返回状态为\"open\"的问题"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "问题返回顺序",
+					"options": {
+						"created": {
+							"displayName": "已创建",
+							"description": "按创建日期排序"
+						},
+						"updated": {
+							"displayName": "已更新",
+							"description": "按更新日期排序"
+						},
+						"comments": {
+							"displayName": "评论",
+							"description": "按评论排序"
+						}
+					}
+				},
+				"direction": {
+					"displayName": "方向",
+					"description": "排序顺序",
+					"options": {
+						"asc": {
+							"displayName": "升序",
+							"description": "按升序排序"
+						},
+						"desc": {
+							"displayName": "降序",
+							"description": "按降序排序"
+						}
+					}
+				}
+			}
+		}
+	}
+}

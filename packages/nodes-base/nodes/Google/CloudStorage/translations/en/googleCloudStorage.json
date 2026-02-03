@@ -1,0 +1,582 @@
+{
+	"header": {
+		"displayName": "Google Cloud Storage",
+		"description": "Use the Google Cloud Storage API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"bucket": {
+					"displayName": "Bucket"
+				},
+				"object": {
+					"displayName": "Object"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create an object"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an object"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get object data or metadata"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve a list of objects"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update an object's metadata"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "Project ID",
+			"placeholder": "Project ID"
+		},
+		"bucketName": {
+			"displayName": "Bucket Name",
+			"placeholder": "Bucket Name"
+		},
+		"prefix": {
+			"displayName": "Prefix",
+			"placeholder": "Filter for Bucket Names"
+		},
+		"projection": {
+			"displayName": "Projection",
+			"options": {
+				"full": {
+					"displayName": "All Properties"
+				},
+				"noAcl": {
+					"displayName": "No ACL"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"getFilters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"ifMetagenerationMatch": {
+					"displayName": "Metageneration Match",
+					"description": "Only return data if the metageneration value of the Bucket matches the sent value"
+				},
+				"ifMetagenerationNotMatch": {
+					"displayName": "Metageneration Exclude",
+					"description": "Only return data if the metageneration value of the Bucket does not match the sent value"
+				}
+			}
+		},
+		"createAcl": {
+			"displayName": "Predefined Access Control",
+			"placeholder": "Add Access Control Parameters",
+			"options": {
+				"predefinedAcl": {
+					"displayName": "Predefined ACL",
+					"placeholder": "Apply a predefined set of access controls to this bucket",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "Authenticated Read"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"projectPrivate": {
+							"displayName": "Project Private"
+						},
+						"publicRead": {
+							"displayName": "Public Read"
+						},
+						"publicReadWrite": {
+							"displayName": "Public Read/Write"
+						}
+					}
+				},
+				"predefinedDefaultObjectAcl": {
+					"displayName": "Predefined Default Object ACL",
+					"placeholder": "Apply a predefined set of default object access controls to this bucket",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "Authenticated Read"
+						},
+						"bucketOwnerFullControl": {
+							"displayName": "Bucket Owner Full Control"
+						},
+						"bucketOwnerRead": {
+							"displayName": "Bucket Owner Read"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"projectPrivate": {
+							"displayName": "Project Private"
+						},
+						"publicRead": {
+							"displayName": "Public Read"
+						}
+					}
+				}
+			}
+		},
+		"createBody": {
+			"displayName": "Additional Parameters",
+			"placeholder": "Add Metadata Parameter",
+			"options": {
+				"acl": {
+					"displayName": "Access Control",
+					"placeholder": "Access controls on the Bucket"
+				},
+				"billing": {
+					"displayName": "Billing",
+					"placeholder": "The bucket's billing configuration"
+				},
+				"cors": {
+					"displayName": "CORS",
+					"placeholder": "The bucket's Cross Origin Resource Sharing configuration"
+				},
+				"customPlacementConfig": {
+					"displayName": "Custom Placement Config",
+					"placeholder": "The configuration for the region(s) for the Bucket"
+				},
+				"dataLocations": {
+					"displayName": "Data Locations",
+					"placeholder": "The list of individual regions that comprise a dual-region Bucket"
+				},
+				"defaultEventBasedHold": {
+					"displayName": "Default Event Based Hold",
+					"placeholder": "Whether or not to automatically apply an event based hold to new objects"
+				},
+				"defaultObjectAcl": {
+					"displayName": "Default Object ACL",
+					"placeholder": "Default Access Controls for new objects when no ACL is provided"
+				},
+				"encryption": {
+					"displayName": "Encryption",
+					"placeholder": "Encryption configuration for a bucket"
+				},
+				"iamConfiguration": {
+					"displayName": "IAM Configuration",
+					"placeholder": "The bucket's IAM configuration"
+				},
+				"labels": {
+					"displayName": "Labels",
+					"placeholder": "User provided bucket labels, in key/value pairs"
+				},
+				"lifecycle": {
+					"displayName": "Lifecycle",
+					"placeholder": "The bucket's lifecycle configuration"
+				},
+				"location": {
+					"displayName": "Location",
+					"placeholder": "The location of the bucket"
+				},
+				"logging": {
+					"displayName": "Logging",
+					"placeholder": "The bucket's logging configuration"
+				},
+				"retentionPolicy": {
+					"displayName": "Retention Policy",
+					"placeholder": "The bucket's retention policy"
+				},
+				"rpo": {
+					"displayName": "Recovery Point Objective",
+					"placeholder": "The recovery point objective for the bucket"
+				},
+				"storageClass": {
+					"displayName": "Storage Class",
+					"placeholder": "The bucket's default storage class for objects that don't define one"
+				},
+				"versioning": {
+					"displayName": "Versioning",
+					"placeholder": "The bucket's versioning configuration"
+				},
+				"website": {
+					"displayName": "Website",
+					"placeholder": "The bucket's website configuration for when it is used to host a website"
+				}
+			}
+		},
+		"objectName": {
+			"displayName": "Object Name",
+			"placeholder": "Object Name"
+		},
+		"updateProjection": {
+			"displayName": "Projection",
+			"options": {
+				"full": {
+					"displayName": "All Properties"
+				},
+				"noAcl": {
+					"displayName": "No ACL"
+				}
+			}
+		},
+		"alt": {
+			"displayName": "Return Data",
+			"placeholder": "The type of data to return from the request",
+			"options": {
+				"json": {
+					"displayName": "Metadata"
+				},
+				"media": {
+					"displayName": "Object Data"
+				}
+			}
+		},
+		"createFromBinary": {
+			"displayName": "Use Input Binary Field",
+			"description": "Whether the data for creating a file should come from a binary field"
+		},
+		"createBinaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"createContent": {
+			"displayName": "File Content",
+			"description": "Content of the file to be uploaded"
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field"
+		},
+		"maxResults": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"createData": {
+			"displayName": "Create Fields",
+			"placeholder": "Add Create Body Field",
+			"options": {
+				"acl": {
+					"displayName": "Access Control List"
+				},
+				"cacheControl": {
+					"displayName": "Cache Control"
+				},
+				"contentDisposition": {
+					"displayName": "Content Disposition"
+				},
+				"contentEncoding": {
+					"displayName": "Content Encoding"
+				},
+				"contentLanguage": {
+					"displayName": "Content Language"
+				},
+				"contentType": {
+					"displayName": "Content Type"
+				},
+				"crc32c": {
+					"displayName": "CRC32c Checksum"
+				},
+				"customTime": {
+					"displayName": "Custom Time"
+				},
+				"eventBasedHold": {
+					"displayName": "Event Based Hold"
+				},
+				"md5Hash": {
+					"displayName": "MD5 Hash"
+				},
+				"metadata": {
+					"displayName": "Metadata"
+				},
+				"storageClass": {
+					"displayName": "Storage Class"
+				},
+				"temporaryHold": {
+					"displayName": "Temporary Hold"
+				}
+			}
+		},
+		"updateData": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Update Body Field",
+			"options": {
+				"acl": {
+					"displayName": "Access Control"
+				},
+				"cacheControl": {
+					"displayName": "Cache Control"
+				},
+				"contentDisposition": {
+					"displayName": "Content Disposition"
+				},
+				"contentEncoding": {
+					"displayName": "Content Encoding"
+				},
+				"contentLanguage": {
+					"displayName": "Content Language"
+				},
+				"contentType": {
+					"displayName": "Content Type"
+				},
+				"customTime": {
+					"displayName": "Custom Time"
+				},
+				"eventBasedHold": {
+					"displayName": "Event Based Hold"
+				},
+				"metadata": {
+					"displayName": "Metadata"
+				},
+				"temporaryHold": {
+					"displayName": "Temporary Hold"
+				}
+			}
+		},
+		"createQuery": {
+			"displayName": "Additional Parameters",
+			"placeholder": "Add Additional Parameters",
+			"options": {
+				"contentEncoding": {
+					"displayName": "Content Encoding"
+				},
+				"generation": {
+					"displayName": "Generation",
+					"placeholder": "Select a specific revision of the chosen object"
+				},
+				"ifGenerationMatch": {
+					"displayName": "Generation Match",
+					"placeholder": "Make operation conditional of the object generation matching this value"
+				},
+				"ifGenerationNotMatch": {
+					"displayName": "Generation Exclude",
+					"placeholder": "Make operation conditional of the object generation not matching this value"
+				},
+				"ifMetagenerationMatch": {
+					"displayName": "Metageneration Match",
+					"placeholder": "Make operation conditional of the object's current metageneration matching this value"
+				},
+				"ifMetagenerationNotMatch": {
+					"displayName": "Metageneration Exclude",
+					"placeholder": "Make operation conditional of the object's current metageneration not matching this value"
+				},
+				"kmsKeyName": {
+					"displayName": "KMS Key Name"
+				},
+				"predefinedAcl": {
+					"displayName": "Predefined ACL",
+					"placeholder": "Apply a predefined set of Access Controls to the object",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "Authenticated Read"
+						},
+						"bucketOwnerFullControl": {
+							"displayName": "Bucket Owner Full Control"
+						},
+						"bucketOwnerRead": {
+							"displayName": "Bucket Owner Read"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"projectPrivate": {
+							"displayName": "Project Private"
+						},
+						"publicRead": {
+							"displayName": "Public Read"
+						}
+					}
+				}
+			}
+		},
+		"getParameters": {
+			"displayName": "Additional Parameters",
+			"placeholder": "Add Additional Parameters",
+			"options": {
+				"generation": {
+					"displayName": "Generation",
+					"placeholder": "Select a specific revision of the chosen object"
+				},
+				"ifGenerationMatch": {
+					"displayName": "Generation Match",
+					"placeholder": "Make operation conditional of the object generation matching this value"
+				},
+				"ifGenerationNotMatch": {
+					"displayName": "Generation Exclude",
+					"placeholder": "Make operation conditional of the object generation not matching this value"
+				},
+				"ifMetagenerationMatch": {
+					"displayName": "Metageneration Match",
+					"placeholder": "Make operation conditional of the object's current metageneration matching this value"
+				},
+				"ifMetagenerationNotMatch": {
+					"displayName": "Metageneration Exclude",
+					"placeholder": "Make operation conditional of the object's current metageneration not matching this value"
+				}
+			}
+		},
+		"metagenAndAclQuery": {
+			"displayName": "Additional Parameters",
+			"placeholder": "Add Additional Parameters",
+			"options": {
+				"generation": {
+					"displayName": "Generation",
+					"placeholder": "Select a specific revision of the chosen object"
+				},
+				"ifGenerationMatch": {
+					"displayName": "Generation Match",
+					"placeholder": "Make operation conditional of the object generation matching this value"
+				},
+				"ifGenerationNotMatch": {
+					"displayName": "Generation Exclude",
+					"placeholder": "Make operation conditional of the object generation not matching this value"
+				},
+				"ifMetagenerationMatch": {
+					"displayName": "Metageneration Match",
+					"placeholder": "Make operation conditional of the object's current metageneration matching this value"
+				},
+				"ifMetagenerationNotMatch": {
+					"displayName": "Metageneration Exclude",
+					"placeholder": "Make operation conditional of the object's current metageneration not matching this value"
+				},
+				"predefinedAcl": {
+					"displayName": "Predefined ACL",
+					"placeholder": "Apply a predefined set of Access Controls to the object",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "Authenticated Read"
+						},
+						"bucketOwnerFullControl": {
+							"displayName": "Bucket Owner Full Control"
+						},
+						"bucketOwnerRead": {
+							"displayName": "Bucket Owner Read"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"projectPrivate": {
+							"displayName": "Project Private"
+						},
+						"publicRead": {
+							"displayName": "Public Read"
+						}
+					}
+				}
+			}
+		},
+		"encryptionHeaders": {
+			"displayName": "Encryption Headers",
+			"placeholder": "Add Encryption Headers",
+			"options": {
+				"X-Goog-Encryption-Algorithm": {
+					"displayName": "Encryption Algorithm",
+					"placeholder": "The encryption algorithm to use, which must be AES256. Use to supply your own key in the request",
+					"options": {
+						"AES256": {
+							"displayName": "AES256"
+						}
+					}
+				},
+				"X-Goog-Encryption-Key": {
+					"displayName": "Encryption Key",
+					"placeholder": "Base64 encoded string of your AES256 encryption key"
+				},
+				"X-Goog-Encryption-Key-Sha256": {
+					"displayName": "Encryption Key Hash",
+					"placeholder": "Base64 encoded string of the SHA256 hash of your encryption key"
+				}
+			}
+		},
+		"listFilters": {
+			"displayName": "Additional Parameters",
+			"placeholder": "Add Additional Parameters",
+			"options": {
+				"delimiter": {
+					"displayName": "Delimiter",
+					"placeholder": "Returns results in directory-like mode, using this value as the delimiter"
+				},
+				"endOffset": {
+					"displayName": "End Offset",
+					"placeholder": "Filter results to names lexicographically before this value"
+				},
+				"includeTrailingDelimiter": {
+					"displayName": "Include Trailing Delimiter",
+					"placeholder": "If true, objects will appear with exactly one instance of delimiter at the end of the name"
+				},
+				"prefix": {
+					"displayName": "Prefix",
+					"placeholder": "Filter results to names that start with this value"
+				},
+				"startOffset": {
+					"displayName": "Start Offset",
+					"placeholder": "Filter results to names lexicographically equal or after this value"
+				},
+				"versions": {
+					"displayName": "Versions",
+					"placeholder": "If true, list all versions of objects as distinct entries"
+				}
+			}
+		},
+		"requestOptions": {
+			"displayName": "Request Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batching": {
+					"displayName": "Batching",
+					"placeholder": "Add Batching",
+					"options": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						},
+						"batching": {
+							"displayName": "Batching",
+							"placeholder": "Add Batching"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to accept the response even if SSL certificate validation is not possible"
+				},
+				"proxy": {
+					"displayName": "Proxy",
+					"description": "HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128",
+					"placeholder": "e.g. http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for the server to send response headers (and start the response body) before aborting the request"
+				}
+			}
+		}
+	}
+}

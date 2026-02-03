@@ -1,0 +1,5932 @@
+{
+	"header": {
+		"displayName": "WhatsApp Business Cloud",
+		"description": "访问WhatsApp API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"message": {
+					"displayName": "消息"
+				},
+				"media": {
+					"displayName": "媒体"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送"
+				},
+				"sendAndWait": {
+					"displayName": "发送并等待响应"
+				},
+				"sendTemplate": {
+					"displayName": "发送模板"
+				},
+				"mediaUpload": {
+					"displayName": "上传"
+				},
+				"mediaUrlGet": {
+					"displayName": "下载"
+				},
+				"mediaDelete": {
+					"displayName": "删除"
+				}
+			},
+			"description": "对媒体执行的操作"
+		},
+		"messagingProduct": {
+			"displayName": "消息产品"
+		},
+		"phoneNumberId": {
+			"displayName": "发送方电话号码（或ID）",
+			"description": "要存储媒体的企业账户电话号码ID"
+		},
+		"recipientPhoneNumber": {
+			"displayName": "收件人电话号码",
+			"description": "消息接收者的电话号码"
+		},
+		"messageType": {
+			"displayName": "消息类型",
+			"description": "消息的类型",
+			"options": {
+				"audio": {
+					"displayName": "音频"
+				},
+				"contacts": {
+					"displayName": "联系人"
+				},
+				"document": {
+					"displayName": "文档"
+				},
+				"image": {
+					"displayName": "图片"
+				},
+				"location": {
+					"displayName": "位置"
+				},
+				"text": {
+					"displayName": "文本"
+				},
+				"video": {
+					"displayName": "视频"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"placeholder": "添加参数",
+			"options": {
+				"data": {
+					"displayName": "名称",
+					"options": {
+						"formatted_name": {
+							"displayName": "格式化名称"
+						},
+						"first_name": {
+							"displayName": "名字"
+						},
+						"last_name": {
+							"displayName": "姓氏"
+						},
+						"middle_name": {
+							"displayName": "中间名"
+						},
+						"suffix": {
+							"displayName": "后缀"
+						},
+						"prefix": {
+							"displayName": "前缀"
+						}
+					}
+				}
+			},
+			"values": {
+				"data": {
+					"displayName": "名称",
+					"options": {
+						"formatted_name": {
+							"displayName": "格式化名称"
+						},
+						"first_name": {
+							"displayName": "名字"
+						},
+						"last_name": {
+							"displayName": "姓氏"
+						},
+						"middle_name": {
+							"displayName": "中间名"
+						},
+						"suffix": {
+							"displayName": "后缀"
+						},
+						"prefix": {
+							"displayName": "前缀"
+						}
+					}
+				},
+				"name": {
+					"displayName": "名称",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addresses": {
+					"displayName": "地址",
+					"placeholder": "添加参数",
+					"multipleValueButtonText": "添加参数",
+					"options": {
+						"address": {
+							"displayName": "地址",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"HOME": {
+											"displayName": "首页"
+										},
+										"WORK": {
+											"displayName": "工作"
+										}
+									}
+								},
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zip": {
+									"displayName": "压缩"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"country_code": {
+									"displayName": "国家/地区代码"
+								}
+							}
+						}
+					},
+					"values": {
+						"address": {
+							"displayName": "地址",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"HOME": {
+											"displayName": "首页"
+										},
+										"WORK": {
+											"displayName": "工作"
+										}
+									}
+								},
+								"street": {
+									"displayName": "街道"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"zip": {
+									"displayName": "压缩"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"country_code": {
+									"displayName": "国家/地区代码"
+								}
+							}
+						},
+						"addresses": {
+							"displayName": "地址",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "生日",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"emails": {
+					"displayName": "邮件",
+					"placeholder": "添加参数",
+					"multipleValueButtonText": "添加参数",
+					"options": {
+						"data": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"HOME": {
+											"displayName": "首页"
+										},
+										"WORK": {
+											"displayName": "工作"
+										}
+									}
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"data": {
+							"displayName": "电子邮件",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"HOME": {
+											"displayName": "首页"
+										},
+										"WORK": {
+											"displayName": "工作"
+										}
+									}
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "name@email.com"
+								}
+							}
+						},
+						"emails": {
+							"displayName": "邮件",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"organization": {
+					"displayName": "组织",
+					"placeholder": "添加参数",
+					"options": {
+						"data": {
+							"displayName": "组织",
+							"options": {
+								"company": {
+									"displayName": "公司"
+								},
+								"department": {
+									"displayName": "部门"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						}
+					},
+					"values": {
+						"data": {
+							"displayName": "组织",
+							"options": {
+								"company": {
+									"displayName": "公司"
+								},
+								"department": {
+									"displayName": "部门"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						},
+						"organization": {
+							"displayName": "组织",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"phones": {
+					"displayName": "电话",
+					"placeholder": "添加参数",
+					"multipleValueButtonText": "添加参数",
+					"options": {
+						"data": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"CELL": {
+											"displayName": "单元格"
+										},
+										"HOME": {
+											"displayName": "首页"
+										},
+										"IPHONE": {
+											"displayName": "iPhone"
+										},
+										"MAIN": {
+											"displayName": "主界面"
+										},
+										"WORK": {
+											"displayName": "工作"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "电话"
+								},
+								"whatsapp_user_id": {
+									"displayName": "WhatsApp 用户 ID",
+									"description": "如果省略，消息将显示“邀请使用 WhatsApp”按钮，而非标准按钮"
+								}
+							}
+						}
+					},
+					"values": {
+						"data": {
+							"displayName": "电话",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"CELL": {
+											"displayName": "单元格"
+										},
+										"HOME": {
+											"displayName": "首页"
+										},
+										"IPHONE": {
+											"displayName": "iPhone"
+										},
+										"MAIN": {
+											"displayName": "主界面"
+										},
+										"WORK": {
+											"displayName": "工作"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "电话"
+								},
+								"whatsapp_user_id": {
+									"displayName": "WhatsApp 用户 ID",
+									"description": "如果省略，消息将显示“邀请使用 WhatsApp”按钮，而非标准按钮"
+								}
+							}
+						},
+						"phones": {
+							"displayName": "电话",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"urls": {
+					"displayName": "URL",
+					"placeholder": "添加参数",
+					"multipleValueButtonText": "添加参数",
+					"options": {
+						"url": {
+							"displayName": "URL",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"HOME": {
+											"displayName": "首页"
+										},
+										"WORK": {
+											"displayName": "工作"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL"
+								}
+							}
+						}
+					},
+					"values": {
+						"url": {
+							"displayName": "URL",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"HOME": {
+											"displayName": "首页"
+										},
+										"WORK": {
+											"displayName": "工作"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL"
+								}
+							}
+						},
+						"urls": {
+							"displayName": "URL",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"nameAndAddress": {
+					"displayName": "名称与地址",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"address": {
+							"displayName": "地址"
+						}
+					}
+				},
+				"mediaFilename": {
+					"displayName": "文件名",
+					"description": "文件的名称"
+				},
+				"mediaCaption": {
+					"displayName": "标题",
+					"description": "媒体标题"
+				},
+				"previewUrl": {
+					"displayName": "显示URL预览",
+					"description": "是否在文本消息中显示URL预览"
+				},
+				"mediaFileName": {
+					"displayName": "文件名",
+					"description": "用于文件的名称"
+				}
+			},
+			"values": {
+				"nameAndAddress": {
+					"displayName": "名称与地址",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"address": {
+							"displayName": "地址"
+						}
+					}
+				},
+				"additionalFields": {
+					"displayName": "附加字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"longitude": {
+			"displayName": "经度"
+		},
+		"latitude": {
+			"displayName": "纬度"
+		},
+		"textBody": {
+			"displayName": "文本正文",
+			"description": "消息正文（最多4096个字符）"
+		},
+		"mediaPath": {
+			"displayName": "获取视频来源",
+			"description": "使用链接、ID或通过n8n上传视频",
+			"options": {
+				"useMediaLink": {
+					"displayName": "链接",
+					"description": "使用链接时，WhatsApp会自动下载视频，省去您手动上传视频的步骤"
+				},
+				"useMediaId": {
+					"displayName": "WhatsApp媒体",
+					"description": "如果视频已上传至WhatsApp，可使用ID"
+				},
+				"useMedian8n": {
+					"displayName": "n8n",
+					"description": "在n8n中正在处理的项上上传二进制文件"
+				}
+			}
+		},
+		"mediaLink": {
+			"displayName": "链接",
+			"description": "要发送的媒体链接"
+		},
+		"mediaId": {
+			"displayName": "ID",
+			"description": "要发送的媒体ID"
+		},
+		"mediaPropertyName": {
+			"displayName": "属性名称",
+			"description": "包含待上传文件数据的二进制属性名称"
+		},
+		"mediaFilename": {
+			"displayName": "文件名",
+			"description": "文件名称（使用文件ID时必须提供）"
+		},
+		"template": {
+			"displayName": "模板",
+			"description": "模板名称"
+		},
+		"components": {
+			"displayName": "组件",
+			"placeholder": "添加组件",
+			"multipleValueButtonText": "添加组件",
+			"options": {
+				"component": {
+					"displayName": "组件",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"body": {
+									"displayName": "正文"
+								},
+								"button": {
+									"displayName": "按钮"
+								},
+								"header": {
+									"displayName": "页眉"
+								}
+							}
+						},
+						"bodyParameters": {
+							"displayName": "参数",
+							"placeholder": "添加参数",
+							"multipleValueButtonText": "添加参数",
+							"options": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"text": {
+													"displayName": "文本"
+												},
+												"currency": {
+													"displayName": "货币"
+												},
+												"date_time": {
+													"displayName": "日期时间"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本"
+										},
+										"code": {
+											"displayName": "货币代码",
+											"placeholder": "美元",
+											"options": {
+												"AED": {
+													"displayName": "AED - 阿联酋迪拉姆"
+												},
+												"AFN": {
+													"displayName": "AFN - 阿富汗尼"
+												},
+												"ALL": {
+													"displayName": "全部 - 低"
+												},
+												"AMD": {
+													"displayName": "AMD - 亚美尼亚德拉姆"
+												},
+												"ANG": {
+													"displayName": "ANG - 荷属安的列斯盾"
+												},
+												"AOA": {
+													"displayName": "安哥拉宽扎"
+												},
+												"ARS": {
+													"displayName": "ARS - 阿根廷比索"
+												},
+												"AUD": {
+													"displayName": "AUD - 澳大利亚元"
+												},
+												"AWG": {
+													"displayName": "AWG - 阿鲁巴弗罗林"
+												},
+												"AZN": {
+													"displayName": "AZN - 阿塞拜疆马纳特"
+												},
+												"BAM": {
+													"displayName": "BAM - 可兑换马克"
+												},
+												"BBD": {
+													"displayName": "巴巴多斯元 - 巴巴多斯元"
+												},
+												"BDT": {
+													"displayName": "孟加拉塔卡 (BDT)"
+												},
+												"BGN": {
+													"displayName": "BGN - 保加利亚列弗"
+												},
+												"BHD": {
+													"displayName": "BHD - 巴林第纳尔"
+												},
+												"BIF": {
+													"displayName": "BIF - 布隆迪法郎"
+												},
+												"BMD": {
+													"displayName": "BMD - 百慕大元"
+												},
+												"BND": {
+													"displayName": "BND - 文莱元"
+												},
+												"BOB": {
+													"displayName": "BOB - 玻利维亚诺"
+												},
+												"BOV": {
+													"displayName": "BOV - 玻利瓦尔"
+												},
+												"BRL": {
+													"displayName": "BRL - 巴西雷亚尔"
+												},
+												"BSD": {
+													"displayName": "BSD - 巴哈马元"
+												},
+												"BTN": {
+													"displayName": "BTN - 努尔特鲁姆"
+												},
+												"BWP": {
+													"displayName": "BWP - 普拉"
+												},
+												"BYN": {
+													"displayName": "白俄罗斯卢布"
+												},
+												"BZD": {
+													"displayName": "BZD - 伯利兹元"
+												},
+												"CAD": {
+													"displayName": "CAD - 加拿大元"
+												},
+												"CDF": {
+													"displayName": "CDF - 刚果法郎"
+												},
+												"CHE": {
+													"displayName": "瑞士 - 欧元"
+												},
+												"CHF": {
+													"displayName": "CHF - 瑞士法郎"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR法郎"
+												},
+												"CLF": {
+													"displayName": "CLF - 发展单位"
+												},
+												"CLP": {
+													"displayName": "CLP - 智利比索"
+												},
+												"CNY": {
+													"displayName": "CNY - 人民币元"
+												},
+												"COP": {
+													"displayName": "COP - 哥伦比亚比索"
+												},
+												"COU": {
+													"displayName": "COU - 实际价值单位"
+												},
+												"CRC": {
+													"displayName": "CRC - 哥斯达黎加科朗"
+												},
+												"CUC": {
+													"displayName": "CUC - 可兑换比索"
+												},
+												"CUP": {
+													"displayName": "CUP - 古巴比索"
+												},
+												"CVE": {
+													"displayName": "CVE - 佛得角埃斯库多"
+												},
+												"CZK": {
+													"displayName": "捷克克朗 - 捷克货币"
+												},
+												"DJF": {
+													"displayName": "DJF - 吉布提法郎"
+												},
+												"DKK": {
+													"displayName": "丹麦克朗 - 丹麦克朗"
+												},
+												"DOP": {
+													"displayName": "DOP - 多米尼加比索"
+												},
+												"DZD": {
+													"displayName": "DZD - 阿尔及利亚第纳尔"
+												},
+												"EGP": {
+													"displayName": "EGP - 埃及镑"
+												},
+												"ERN": {
+													"displayName": "厄立特里亚纳克法"
+												},
+												"ETB": {
+													"displayName": "ETB - 埃塞俄比亚比尔"
+												},
+												"EUR": {
+													"displayName": "EUR - 欧元"
+												},
+												"FJD": {
+													"displayName": "FJD - 斐济元"
+												},
+												"FKP": {
+													"displayName": "FKP - 福克兰群岛镑"
+												},
+												"GBP": {
+													"displayName": "英镑 - 英镑"
+												},
+												"GEL": {
+													"displayName": "格鲁吉亚拉里"
+												},
+												"GHS": {
+													"displayName": "GHS - 加纳塞地"
+												},
+												"GIP": {
+													"displayName": "GIP - 直布罗陀镑"
+												},
+												"GMD": {
+													"displayName": "GMD - 达拉西"
+												},
+												"GNF": {
+													"displayName": "GNF - 几内亚法郎"
+												},
+												"GTQ": {
+													"displayName": "GTQ - 格查尔"
+												},
+												"GYD": {
+													"displayName": "圭亚那元 - 圭亚那元"
+												},
+												"HKD": {
+													"displayName": "HKD - 港币"
+												},
+												"HNL": {
+													"displayName": "HNL - 伦皮拉"
+												},
+												"HRK": {
+													"displayName": "HRK - 库纳"
+												},
+												"HTG": {
+													"displayName": "HTG - 古德"
+												},
+												"HUF": {
+													"displayName": "HUF - 福林"
+												},
+												"IDR": {
+													"displayName": "IDR - 印尼盾"
+												},
+												"ILS": {
+													"displayName": "ILS - 新以色列谢克尔"
+												},
+												"INR": {
+													"displayName": "INR - 印度卢比"
+												},
+												"IQD": {
+													"displayName": "IQD - 伊拉克第纳尔"
+												},
+												"IRR": {
+													"displayName": "IRR - 伊朗里亚尔"
+												},
+												"ISK": {
+													"displayName": "ISK - 冰岛克朗"
+												},
+												"JMD": {
+													"displayName": "JMD - 牙买加元"
+												},
+												"JOD": {
+													"displayName": "JOD - 约旦第纳尔"
+												},
+												"JPY": {
+													"displayName": "JPY - 日元"
+												},
+												"KES": {
+													"displayName": "KES - 肯尼亚先令"
+												},
+												"KGS": {
+													"displayName": "KGS - 总计"
+												},
+												"KHR": {
+													"displayName": "KHR - 瑞尔"
+												},
+												"KMF": {
+													"displayName": "KMF - 科摩罗法郎"
+												},
+												"KPW": {
+													"displayName": "KPW - 朝鲜元"
+												},
+												"KRW": {
+													"displayName": "KRW - 韩元"
+												},
+												"KWD": {
+													"displayName": "KWD - 科威特第纳尔"
+												},
+												"KYD": {
+													"displayName": "KYD - 开曼群岛元"
+												},
+												"KZT": {
+													"displayName": "KZT - 坚戈"
+												},
+												"LAK": {
+													"displayName": "老挝基普"
+												},
+												"LBP": {
+													"displayName": "LBP - 黎巴嫩镑"
+												},
+												"LKR": {
+													"displayName": "LKR - 斯里兰卡卢比"
+												},
+												"LRD": {
+													"displayName": "LRD - 利比里亚元"
+												},
+												"LSL": {
+													"displayName": "LSL - 洛蒂"
+												},
+												"LYD": {
+													"displayName": "LYD - 利比亚第纳尔"
+												},
+												"MAD": {
+													"displayName": "MAD - 摩洛哥迪拉姆"
+												},
+												"MDL": {
+													"displayName": "MDL - 摩尔多瓦列伊"
+												},
+												"MGA": {
+													"displayName": "MGA - 马达加斯加阿里亚里"
+												},
+												"MKD": {
+													"displayName": "MKD - 代纳尔"
+												},
+												"MMK": {
+													"displayName": "MMK - 缅元"
+												},
+												"MNT": {
+													"displayName": "MNT - 图格里克"
+												},
+												"MOP": {
+													"displayName": "MOP - 澳门币"
+												},
+												"MRU": {
+													"displayName": "MRU - 乌吉亚"
+												},
+												"MUR": {
+													"displayName": "MUR - 毛里求斯卢比"
+												},
+												"MVR": {
+													"displayName": "MVR - 拉菲亚"
+												},
+												"MWK": {
+													"displayName": "MWK - 马拉维克瓦查"
+												},
+												"MXN": {
+													"displayName": "MXN - 墨西哥比索"
+												},
+												"MXV": {
+													"displayName": "MXV - 墨西哥投资单位（UDI）"
+												},
+												"MYR": {
+													"displayName": "MYR - 马来西亚林吉特"
+												},
+												"MZN": {
+													"displayName": "MZN - 莫桑比克梅蒂卡尔"
+												},
+												"NAD": {
+													"displayName": "NAD - 纳米比亚元"
+												},
+												"NGN": {
+													"displayName": "NGN - 尼日利亚奈拉"
+												},
+												"NIO": {
+													"displayName": "NIO - 科尔多瓦奥罗"
+												},
+												"NOK": {
+													"displayName": "NOK - 挪威克朗"
+												},
+												"NPR": {
+													"displayName": "尼泊尔卢比"
+												},
+												"NZD": {
+													"displayName": "NZD - 新西兰元"
+												},
+												"OMR": {
+													"displayName": "OMR - 阿曼里亚尔"
+												},
+												"PAB": {
+													"displayName": "PAB - 巴拿马巴波亚"
+												},
+												"PEN": {
+													"displayName": "笔 - 解决方案"
+												},
+												"PGK": {
+													"displayName": "PGK - 基那"
+												},
+												"PHP": {
+													"displayName": "PHP - 菲律宾比索"
+												},
+												"PKR": {
+													"displayName": "PKR - 巴基斯坦卢比"
+												},
+												"PLN": {
+													"displayName": "PLN - 波兰兹罗提"
+												},
+												"PYG": {
+													"displayName": "PYG - 瓜拉尼"
+												},
+												"QAR": {
+													"displayName": "QAR - 卡塔尔里亚尔"
+												},
+												"RON": {
+													"displayName": "RON - 罗马尼亚列伊"
+												},
+												"RSD": {
+													"displayName": "RSD - 塞尔维亚第纳尔"
+												},
+												"RUB": {
+													"displayName": "RUB - 俄罗斯卢布"
+												},
+												"RWF": {
+													"displayName": "RWF - 卢旺达法郎"
+												},
+												"SAR": {
+													"displayName": "沙特里亚尔 - 沙特阿拉伯货币"
+												},
+												"SBD": {
+													"displayName": "SBD - 所罗门群岛元"
+												},
+												"SCR": {
+													"displayName": "SCR - 塞舌尔卢比"
+												},
+												"SDG": {
+													"displayName": "SDG - 苏丹镑"
+												},
+												"SEK": {
+													"displayName": "瑞典克朗"
+												},
+												"SGD": {
+													"displayName": "SGD - 新加坡元"
+												},
+												"SHP": {
+													"displayName": "SHP - 圣赫勒拿镑"
+												},
+												"SLL": {
+													"displayName": "SLL - 利昂"
+												},
+												"SOS": {
+													"displayName": "SOS - 索马里先令"
+												},
+												"SRD": {
+													"displayName": "苏里南元 - SRD"
+												},
+												"SSP": {
+													"displayName": "SSP - 南苏丹镑"
+												},
+												"STN": {
+													"displayName": "STN - 多布拉"
+												},
+												"SVC": {
+													"displayName": "SVC - 萨尔瓦多科朗"
+												},
+												"SYP": {
+													"displayName": "SYP - 叙利亚镑"
+												},
+												"SZL": {
+													"displayName": "SZL - 里兰吉尼"
+												},
+												"THB": {
+													"displayName": "THB - 泰铢"
+												},
+												"TJS": {
+													"displayName": "塔吉克斯坦索莫尼"
+												},
+												"TMT": {
+													"displayName": "土库曼斯坦新马纳特"
+												},
+												"TND": {
+													"displayName": "TND - 突尼斯第纳尔"
+												},
+												"TOP": {
+													"displayName": "TOP - 潘加"
+												},
+												"TRY": {
+													"displayName": "TRY - 土耳其里拉"
+												},
+												"TTD": {
+													"displayName": "TTD - 特立尼达和多巴哥元"
+												},
+												"TWD": {
+													"displayName": "TWD - 新台币"
+												},
+												"TZS": {
+													"displayName": "TZS - 坦桑尼亚先令"
+												},
+												"UAH": {
+													"displayName": "UAH - 格里夫纳"
+												},
+												"UGX": {
+													"displayName": "UGX - 乌干达先令"
+												},
+												"USD": {
+													"displayName": "美元 - 美元"
+												},
+												"USN": {
+													"displayName": "USN - 美元（次日）"
+												},
+												"UYI": {
+													"displayName": "UYI - 乌拉圭比索指数单位（UI）"
+												},
+												"UYU": {
+													"displayName": "乌拉圭比索"
+												},
+												"UYW": {
+													"displayName": "UYW - 预防单位"
+												},
+												"UZS": {
+													"displayName": "UZS - 乌兹别克斯坦苏姆"
+												},
+												"VES": {
+													"displayName": "VES - 主权玻利瓦尔"
+												},
+												"VND": {
+													"displayName": "VND - 越南盾"
+												},
+												"VUV": {
+													"displayName": "VUV - 瓦图"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - 中非金融合作法郎"
+												},
+												"XAG": {
+													"displayName": "XAG - 白银"
+												},
+												"XAU": {
+													"displayName": "XAU - 黄金"
+												},
+												"XBA": {
+													"displayName": "XBA - 债券市场单位欧洲复合单位 (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - 债券市场单位 欧洲货币单位 (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - 债券市场单位 欧洲记账单位9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - 债券市场单位 欧洲记账单位17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - 东加勒比元"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR（特别提款权）"
+												},
+												"XOF": {
+													"displayName": "XOF - 西非法郎 BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - 钯金"
+												},
+												"XPF": {
+													"displayName": "XPF - 太平洋法郎"
+												},
+												"XPT": {
+													"displayName": "XPT - 铂金"
+												},
+												"XSU": {
+													"displayName": "XSU - 苏克雷"
+												},
+												"XTS": {
+													"displayName": "XTS - 专为测试目的保留的代码"
+												},
+												"XUA": {
+													"displayName": "XUA - 非洲开发银行记账单位"
+												},
+												"XXX": {
+													"displayName": "XXX - 为不涉及货币的交易分配的代码"
+												},
+												"YER": {
+													"displayName": "YER - 也门里亚尔"
+												},
+												"ZAR": {
+													"displayName": "ZAR - 兰特"
+												},
+												"ZMW": {
+													"displayName": "ZMW - 赞比亚克瓦查"
+												},
+												"ZWL": {
+													"displayName": "津巴布韦元"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "金额"
+										},
+										"date_time": {
+											"displayName": "日期时间"
+										},
+										"fallback_value": {
+											"displayName": "回退值"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"text": {
+													"displayName": "文本"
+												},
+												"currency": {
+													"displayName": "货币"
+												},
+												"date_time": {
+													"displayName": "日期时间"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本"
+										},
+										"code": {
+											"displayName": "货币代码",
+											"placeholder": "美元",
+											"options": {
+												"AED": {
+													"displayName": "AED - 阿联酋迪拉姆"
+												},
+												"AFN": {
+													"displayName": "AFN - 阿富汗尼"
+												},
+												"ALL": {
+													"displayName": "全部 - 低"
+												},
+												"AMD": {
+													"displayName": "AMD - 亚美尼亚德拉姆"
+												},
+												"ANG": {
+													"displayName": "ANG - 荷属安的列斯盾"
+												},
+												"AOA": {
+													"displayName": "安哥拉宽扎"
+												},
+												"ARS": {
+													"displayName": "ARS - 阿根廷比索"
+												},
+												"AUD": {
+													"displayName": "AUD - 澳大利亚元"
+												},
+												"AWG": {
+													"displayName": "AWG - 阿鲁巴弗罗林"
+												},
+												"AZN": {
+													"displayName": "AZN - 阿塞拜疆马纳特"
+												},
+												"BAM": {
+													"displayName": "BAM - 可兑换马克"
+												},
+												"BBD": {
+													"displayName": "巴巴多斯元 - 巴巴多斯元"
+												},
+												"BDT": {
+													"displayName": "孟加拉塔卡 (BDT)"
+												},
+												"BGN": {
+													"displayName": "BGN - 保加利亚列弗"
+												},
+												"BHD": {
+													"displayName": "BHD - 巴林第纳尔"
+												},
+												"BIF": {
+													"displayName": "BIF - 布隆迪法郎"
+												},
+												"BMD": {
+													"displayName": "BMD - 百慕大元"
+												},
+												"BND": {
+													"displayName": "BND - 文莱元"
+												},
+												"BOB": {
+													"displayName": "BOB - 玻利维亚诺"
+												},
+												"BOV": {
+													"displayName": "BOV - 玻利瓦尔"
+												},
+												"BRL": {
+													"displayName": "BRL - 巴西雷亚尔"
+												},
+												"BSD": {
+													"displayName": "BSD - 巴哈马元"
+												},
+												"BTN": {
+													"displayName": "BTN - 努尔特鲁姆"
+												},
+												"BWP": {
+													"displayName": "BWP - 普拉"
+												},
+												"BYN": {
+													"displayName": "白俄罗斯卢布"
+												},
+												"BZD": {
+													"displayName": "BZD - 伯利兹元"
+												},
+												"CAD": {
+													"displayName": "CAD - 加拿大元"
+												},
+												"CDF": {
+													"displayName": "CDF - 刚果法郎"
+												},
+												"CHE": {
+													"displayName": "瑞士 - 欧元"
+												},
+												"CHF": {
+													"displayName": "CHF - 瑞士法郎"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR法郎"
+												},
+												"CLF": {
+													"displayName": "CLF - 发展单位"
+												},
+												"CLP": {
+													"displayName": "CLP - 智利比索"
+												},
+												"CNY": {
+													"displayName": "CNY - 人民币元"
+												},
+												"COP": {
+													"displayName": "COP - 哥伦比亚比索"
+												},
+												"COU": {
+													"displayName": "COU - 实际价值单位"
+												},
+												"CRC": {
+													"displayName": "CRC - 哥斯达黎加科朗"
+												},
+												"CUC": {
+													"displayName": "CUC - 可兑换比索"
+												},
+												"CUP": {
+													"displayName": "CUP - 古巴比索"
+												},
+												"CVE": {
+													"displayName": "CVE - 佛得角埃斯库多"
+												},
+												"CZK": {
+													"displayName": "捷克克朗 - 捷克货币"
+												},
+												"DJF": {
+													"displayName": "DJF - 吉布提法郎"
+												},
+												"DKK": {
+													"displayName": "丹麦克朗 - 丹麦克朗"
+												},
+												"DOP": {
+													"displayName": "DOP - 多米尼加比索"
+												},
+												"DZD": {
+													"displayName": "DZD - 阿尔及利亚第纳尔"
+												},
+												"EGP": {
+													"displayName": "EGP - 埃及镑"
+												},
+												"ERN": {
+													"displayName": "厄立特里亚纳克法"
+												},
+												"ETB": {
+													"displayName": "ETB - 埃塞俄比亚比尔"
+												},
+												"EUR": {
+													"displayName": "EUR - 欧元"
+												},
+												"FJD": {
+													"displayName": "FJD - 斐济元"
+												},
+												"FKP": {
+													"displayName": "FKP - 福克兰群岛镑"
+												},
+												"GBP": {
+													"displayName": "英镑 - 英镑"
+												},
+												"GEL": {
+													"displayName": "格鲁吉亚拉里"
+												},
+												"GHS": {
+													"displayName": "GHS - 加纳塞地"
+												},
+												"GIP": {
+													"displayName": "GIP - 直布罗陀镑"
+												},
+												"GMD": {
+													"displayName": "GMD - 达拉西"
+												},
+												"GNF": {
+													"displayName": "GNF - 几内亚法郎"
+												},
+												"GTQ": {
+													"displayName": "GTQ - 格查尔"
+												},
+												"GYD": {
+													"displayName": "圭亚那元 - 圭亚那元"
+												},
+												"HKD": {
+													"displayName": "HKD - 港币"
+												},
+												"HNL": {
+													"displayName": "HNL - 伦皮拉"
+												},
+												"HRK": {
+													"displayName": "HRK - 库纳"
+												},
+												"HTG": {
+													"displayName": "HTG - 古德"
+												},
+												"HUF": {
+													"displayName": "HUF - 福林"
+												},
+												"IDR": {
+													"displayName": "IDR - 印尼盾"
+												},
+												"ILS": {
+													"displayName": "ILS - 新以色列谢克尔"
+												},
+												"INR": {
+													"displayName": "INR - 印度卢比"
+												},
+												"IQD": {
+													"displayName": "IQD - 伊拉克第纳尔"
+												},
+												"IRR": {
+													"displayName": "IRR - 伊朗里亚尔"
+												},
+												"ISK": {
+													"displayName": "ISK - 冰岛克朗"
+												},
+												"JMD": {
+													"displayName": "JMD - 牙买加元"
+												},
+												"JOD": {
+													"displayName": "JOD - 约旦第纳尔"
+												},
+												"JPY": {
+													"displayName": "JPY - 日元"
+												},
+												"KES": {
+													"displayName": "KES - 肯尼亚先令"
+												},
+												"KGS": {
+													"displayName": "KGS - 总计"
+												},
+												"KHR": {
+													"displayName": "KHR - 瑞尔"
+												},
+												"KMF": {
+													"displayName": "KMF - 科摩罗法郎"
+												},
+												"KPW": {
+													"displayName": "KPW - 朝鲜元"
+												},
+												"KRW": {
+													"displayName": "KRW - 韩元"
+												},
+												"KWD": {
+													"displayName": "KWD - 科威特第纳尔"
+												},
+												"KYD": {
+													"displayName": "KYD - 开曼群岛元"
+												},
+												"KZT": {
+													"displayName": "KZT - 坚戈"
+												},
+												"LAK": {
+													"displayName": "老挝基普"
+												},
+												"LBP": {
+													"displayName": "LBP - 黎巴嫩镑"
+												},
+												"LKR": {
+													"displayName": "LKR - 斯里兰卡卢比"
+												},
+												"LRD": {
+													"displayName": "LRD - 利比里亚元"
+												},
+												"LSL": {
+													"displayName": "LSL - 洛蒂"
+												},
+												"LYD": {
+													"displayName": "LYD - 利比亚第纳尔"
+												},
+												"MAD": {
+													"displayName": "MAD - 摩洛哥迪拉姆"
+												},
+												"MDL": {
+													"displayName": "MDL - 摩尔多瓦列伊"
+												},
+												"MGA": {
+													"displayName": "MGA - 马达加斯加阿里亚里"
+												},
+												"MKD": {
+													"displayName": "MKD - 代纳尔"
+												},
+												"MMK": {
+													"displayName": "MMK - 缅元"
+												},
+												"MNT": {
+													"displayName": "MNT - 图格里克"
+												},
+												"MOP": {
+													"displayName": "MOP - 澳门币"
+												},
+												"MRU": {
+													"displayName": "MRU - 乌吉亚"
+												},
+												"MUR": {
+													"displayName": "MUR - 毛里求斯卢比"
+												},
+												"MVR": {
+													"displayName": "MVR - 拉菲亚"
+												},
+												"MWK": {
+													"displayName": "MWK - 马拉维克瓦查"
+												},
+												"MXN": {
+													"displayName": "MXN - 墨西哥比索"
+												},
+												"MXV": {
+													"displayName": "MXV - 墨西哥投资单位（UDI）"
+												},
+												"MYR": {
+													"displayName": "MYR - 马来西亚林吉特"
+												},
+												"MZN": {
+													"displayName": "MZN - 莫桑比克梅蒂卡尔"
+												},
+												"NAD": {
+													"displayName": "NAD - 纳米比亚元"
+												},
+												"NGN": {
+													"displayName": "NGN - 尼日利亚奈拉"
+												},
+												"NIO": {
+													"displayName": "NIO - 科尔多瓦奥罗"
+												},
+												"NOK": {
+													"displayName": "NOK - 挪威克朗"
+												},
+												"NPR": {
+													"displayName": "尼泊尔卢比"
+												},
+												"NZD": {
+													"displayName": "NZD - 新西兰元"
+												},
+												"OMR": {
+													"displayName": "OMR - 阿曼里亚尔"
+												},
+												"PAB": {
+													"displayName": "PAB - 巴拿马巴波亚"
+												},
+												"PEN": {
+													"displayName": "笔 - 解决方案"
+												},
+												"PGK": {
+													"displayName": "PGK - 基那"
+												},
+												"PHP": {
+													"displayName": "PHP - 菲律宾比索"
+												},
+												"PKR": {
+													"displayName": "PKR - 巴基斯坦卢比"
+												},
+												"PLN": {
+													"displayName": "PLN - 波兰兹罗提"
+												},
+												"PYG": {
+													"displayName": "PYG - 瓜拉尼"
+												},
+												"QAR": {
+													"displayName": "QAR - 卡塔尔里亚尔"
+												},
+												"RON": {
+													"displayName": "RON - 罗马尼亚列伊"
+												},
+												"RSD": {
+													"displayName": "RSD - 塞尔维亚第纳尔"
+												},
+												"RUB": {
+													"displayName": "RUB - 俄罗斯卢布"
+												},
+												"RWF": {
+													"displayName": "RWF - 卢旺达法郎"
+												},
+												"SAR": {
+													"displayName": "沙特里亚尔 - 沙特阿拉伯货币"
+												},
+												"SBD": {
+													"displayName": "SBD - 所罗门群岛元"
+												},
+												"SCR": {
+													"displayName": "SCR - 塞舌尔卢比"
+												},
+												"SDG": {
+													"displayName": "SDG - 苏丹镑"
+												},
+												"SEK": {
+													"displayName": "瑞典克朗"
+												},
+												"SGD": {
+													"displayName": "SGD - 新加坡元"
+												},
+												"SHP": {
+													"displayName": "SHP - 圣赫勒拿镑"
+												},
+												"SLL": {
+													"displayName": "SLL - 利昂"
+												},
+												"SOS": {
+													"displayName": "SOS - 索马里先令"
+												},
+												"SRD": {
+													"displayName": "苏里南元 - SRD"
+												},
+												"SSP": {
+													"displayName": "SSP - 南苏丹镑"
+												},
+												"STN": {
+													"displayName": "STN - 多布拉"
+												},
+												"SVC": {
+													"displayName": "SVC - 萨尔瓦多科朗"
+												},
+												"SYP": {
+													"displayName": "SYP - 叙利亚镑"
+												},
+												"SZL": {
+													"displayName": "SZL - 里兰吉尼"
+												},
+												"THB": {
+													"displayName": "THB - 泰铢"
+												},
+												"TJS": {
+													"displayName": "塔吉克斯坦索莫尼"
+												},
+												"TMT": {
+													"displayName": "土库曼斯坦新马纳特"
+												},
+												"TND": {
+													"displayName": "TND - 突尼斯第纳尔"
+												},
+												"TOP": {
+													"displayName": "TOP - 潘加"
+												},
+												"TRY": {
+													"displayName": "TRY - 土耳其里拉"
+												},
+												"TTD": {
+													"displayName": "TTD - 特立尼达和多巴哥元"
+												},
+												"TWD": {
+													"displayName": "TWD - 新台币"
+												},
+												"TZS": {
+													"displayName": "TZS - 坦桑尼亚先令"
+												},
+												"UAH": {
+													"displayName": "UAH - 格里夫纳"
+												},
+												"UGX": {
+													"displayName": "UGX - 乌干达先令"
+												},
+												"USD": {
+													"displayName": "美元 - 美元"
+												},
+												"USN": {
+													"displayName": "USN - 美元（次日）"
+												},
+												"UYI": {
+													"displayName": "UYI - 乌拉圭比索指数单位（UI）"
+												},
+												"UYU": {
+													"displayName": "乌拉圭比索"
+												},
+												"UYW": {
+													"displayName": "UYW - 预防单位"
+												},
+												"UZS": {
+													"displayName": "UZS - 乌兹别克斯坦苏姆"
+												},
+												"VES": {
+													"displayName": "VES - 主权玻利瓦尔"
+												},
+												"VND": {
+													"displayName": "VND - 越南盾"
+												},
+												"VUV": {
+													"displayName": "VUV - 瓦图"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - 中非金融合作法郎"
+												},
+												"XAG": {
+													"displayName": "XAG - 白银"
+												},
+												"XAU": {
+													"displayName": "XAU - 黄金"
+												},
+												"XBA": {
+													"displayName": "XBA - 债券市场单位欧洲复合单位 (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - 债券市场单位 欧洲货币单位 (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - 债券市场单位 欧洲记账单位9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - 债券市场单位 欧洲记账单位17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - 东加勒比元"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR（特别提款权）"
+												},
+												"XOF": {
+													"displayName": "XOF - 西非法郎 BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - 钯金"
+												},
+												"XPF": {
+													"displayName": "XPF - 太平洋法郎"
+												},
+												"XPT": {
+													"displayName": "XPT - 铂金"
+												},
+												"XSU": {
+													"displayName": "XSU - 苏克雷"
+												},
+												"XTS": {
+													"displayName": "XTS - 专为测试目的保留的代码"
+												},
+												"XUA": {
+													"displayName": "XUA - 非洲开发银行记账单位"
+												},
+												"XXX": {
+													"displayName": "XXX - 为不涉及货币的交易分配的代码"
+												},
+												"YER": {
+													"displayName": "YER - 也门里亚尔"
+												},
+												"ZAR": {
+													"displayName": "ZAR - 兰特"
+												},
+												"ZMW": {
+													"displayName": "ZMW - 赞比亚克瓦查"
+												},
+												"ZWL": {
+													"displayName": "津巴布韦元"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "金额"
+										},
+										"date_time": {
+											"displayName": "日期时间"
+										},
+										"fallback_value": {
+											"displayName": "回退值"
+										}
+									}
+								},
+								"bodyParameters": {
+									"displayName": "参数",
+									"placeholder": "添加参数"
+								}
+							}
+						},
+						"sub_type": {
+							"displayName": "子类型",
+							"options": {
+								"quick_reply": {
+									"displayName": "快速回复",
+									"description": "允许您的客户拨打电话号码并访问网站"
+								},
+								"url": {
+									"displayName": "URL"
+								}
+							}
+						},
+						"index": {
+							"displayName": "索引"
+						},
+						"buttonParameters": {
+							"displayName": "参数",
+							"placeholder": "添加参数",
+							"options": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"payload": {
+													"displayName": "载荷"
+												},
+												"text": {
+													"displayName": "文本"
+												}
+											}
+										},
+										"payload": {
+											"displayName": "载荷"
+										},
+										"text": {
+											"displayName": "文本"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"payload": {
+													"displayName": "载荷"
+												},
+												"text": {
+													"displayName": "文本"
+												}
+											}
+										},
+										"payload": {
+											"displayName": "载荷"
+										},
+										"text": {
+											"displayName": "文本"
+										}
+									}
+								},
+								"buttonParameters": {
+									"displayName": "参数",
+									"placeholder": "添加参数"
+								}
+							}
+						},
+						"headerParameters": {
+							"displayName": "参数",
+							"placeholder": "添加参数",
+							"multipleValueButtonText": "添加参数",
+							"options": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"text": {
+													"displayName": "文本"
+												},
+												"currency": {
+													"displayName": "货币"
+												},
+												"date_time": {
+													"displayName": "日期时间"
+												},
+												"image": {
+													"displayName": "图片"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本"
+										},
+										"code": {
+											"displayName": "货币代码",
+											"placeholder": "美元",
+											"options": {
+												"AED": {
+													"displayName": "AED - 阿联酋迪拉姆"
+												},
+												"AFN": {
+													"displayName": "AFN - 阿富汗尼"
+												},
+												"ALL": {
+													"displayName": "全部 - 低"
+												},
+												"AMD": {
+													"displayName": "AMD - 亚美尼亚德拉姆"
+												},
+												"ANG": {
+													"displayName": "ANG - 荷属安的列斯盾"
+												},
+												"AOA": {
+													"displayName": "安哥拉宽扎"
+												},
+												"ARS": {
+													"displayName": "ARS - 阿根廷比索"
+												},
+												"AUD": {
+													"displayName": "AUD - 澳大利亚元"
+												},
+												"AWG": {
+													"displayName": "AWG - 阿鲁巴弗罗林"
+												},
+												"AZN": {
+													"displayName": "AZN - 阿塞拜疆马纳特"
+												},
+												"BAM": {
+													"displayName": "BAM - 可兑换马克"
+												},
+												"BBD": {
+													"displayName": "巴巴多斯元 - 巴巴多斯元"
+												},
+												"BDT": {
+													"displayName": "孟加拉塔卡 (BDT)"
+												},
+												"BGN": {
+													"displayName": "BGN - 保加利亚列弗"
+												},
+												"BHD": {
+													"displayName": "BHD - 巴林第纳尔"
+												},
+												"BIF": {
+													"displayName": "BIF - 布隆迪法郎"
+												},
+												"BMD": {
+													"displayName": "BMD - 百慕大元"
+												},
+												"BND": {
+													"displayName": "BND - 文莱元"
+												},
+												"BOB": {
+													"displayName": "BOB - 玻利维亚诺"
+												},
+												"BOV": {
+													"displayName": "BOV - 玻利瓦尔"
+												},
+												"BRL": {
+													"displayName": "BRL - 巴西雷亚尔"
+												},
+												"BSD": {
+													"displayName": "BSD - 巴哈马元"
+												},
+												"BTN": {
+													"displayName": "BTN - 努尔特鲁姆"
+												},
+												"BWP": {
+													"displayName": "BWP - 普拉"
+												},
+												"BYN": {
+													"displayName": "白俄罗斯卢布"
+												},
+												"BZD": {
+													"displayName": "BZD - 伯利兹元"
+												},
+												"CAD": {
+													"displayName": "CAD - 加拿大元"
+												},
+												"CDF": {
+													"displayName": "CDF - 刚果法郎"
+												},
+												"CHE": {
+													"displayName": "瑞士 - 欧元"
+												},
+												"CHF": {
+													"displayName": "CHF - 瑞士法郎"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR法郎"
+												},
+												"CLF": {
+													"displayName": "CLF - 发展单位"
+												},
+												"CLP": {
+													"displayName": "CLP - 智利比索"
+												},
+												"CNY": {
+													"displayName": "CNY - 人民币元"
+												},
+												"COP": {
+													"displayName": "COP - 哥伦比亚比索"
+												},
+												"COU": {
+													"displayName": "COU - 实际价值单位"
+												},
+												"CRC": {
+													"displayName": "CRC - 哥斯达黎加科朗"
+												},
+												"CUC": {
+													"displayName": "CUC - 可兑换比索"
+												},
+												"CUP": {
+													"displayName": "CUP - 古巴比索"
+												},
+												"CVE": {
+													"displayName": "CVE - 佛得角埃斯库多"
+												},
+												"CZK": {
+													"displayName": "捷克克朗 - 捷克货币"
+												},
+												"DJF": {
+													"displayName": "DJF - 吉布提法郎"
+												},
+												"DKK": {
+													"displayName": "丹麦克朗 - 丹麦克朗"
+												},
+												"DOP": {
+													"displayName": "DOP - 多米尼加比索"
+												},
+												"DZD": {
+													"displayName": "DZD - 阿尔及利亚第纳尔"
+												},
+												"EGP": {
+													"displayName": "EGP - 埃及镑"
+												},
+												"ERN": {
+													"displayName": "厄立特里亚纳克法"
+												},
+												"ETB": {
+													"displayName": "ETB - 埃塞俄比亚比尔"
+												},
+												"EUR": {
+													"displayName": "EUR - 欧元"
+												},
+												"FJD": {
+													"displayName": "FJD - 斐济元"
+												},
+												"FKP": {
+													"displayName": "FKP - 福克兰群岛镑"
+												},
+												"GBP": {
+													"displayName": "英镑 - 英镑"
+												},
+												"GEL": {
+													"displayName": "格鲁吉亚拉里"
+												},
+												"GHS": {
+													"displayName": "GHS - 加纳塞地"
+												},
+												"GIP": {
+													"displayName": "GIP - 直布罗陀镑"
+												},
+												"GMD": {
+													"displayName": "GMD - 达拉西"
+												},
+												"GNF": {
+													"displayName": "GNF - 几内亚法郎"
+												},
+												"GTQ": {
+													"displayName": "GTQ - 格查尔"
+												},
+												"GYD": {
+													"displayName": "圭亚那元 - 圭亚那元"
+												},
+												"HKD": {
+													"displayName": "HKD - 港币"
+												},
+												"HNL": {
+													"displayName": "HNL - 伦皮拉"
+												},
+												"HRK": {
+													"displayName": "HRK - 库纳"
+												},
+												"HTG": {
+													"displayName": "HTG - 古德"
+												},
+												"HUF": {
+													"displayName": "HUF - 福林"
+												},
+												"IDR": {
+													"displayName": "IDR - 印尼盾"
+												},
+												"ILS": {
+													"displayName": "ILS - 新以色列谢克尔"
+												},
+												"INR": {
+													"displayName": "INR - 印度卢比"
+												},
+												"IQD": {
+													"displayName": "IQD - 伊拉克第纳尔"
+												},
+												"IRR": {
+													"displayName": "IRR - 伊朗里亚尔"
+												},
+												"ISK": {
+													"displayName": "ISK - 冰岛克朗"
+												},
+												"JMD": {
+													"displayName": "JMD - 牙买加元"
+												},
+												"JOD": {
+													"displayName": "JOD - 约旦第纳尔"
+												},
+												"JPY": {
+													"displayName": "JPY - 日元"
+												},
+												"KES": {
+													"displayName": "KES - 肯尼亚先令"
+												},
+												"KGS": {
+													"displayName": "KGS - 总计"
+												},
+												"KHR": {
+													"displayName": "KHR - 瑞尔"
+												},
+												"KMF": {
+													"displayName": "KMF - 科摩罗法郎"
+												},
+												"KPW": {
+													"displayName": "KPW - 朝鲜元"
+												},
+												"KRW": {
+													"displayName": "KRW - 韩元"
+												},
+												"KWD": {
+													"displayName": "KWD - 科威特第纳尔"
+												},
+												"KYD": {
+													"displayName": "KYD - 开曼群岛元"
+												},
+												"KZT": {
+													"displayName": "KZT - 坚戈"
+												},
+												"LAK": {
+													"displayName": "老挝基普"
+												},
+												"LBP": {
+													"displayName": "LBP - 黎巴嫩镑"
+												},
+												"LKR": {
+													"displayName": "LKR - 斯里兰卡卢比"
+												},
+												"LRD": {
+													"displayName": "LRD - 利比里亚元"
+												},
+												"LSL": {
+													"displayName": "LSL - 洛蒂"
+												},
+												"LYD": {
+													"displayName": "LYD - 利比亚第纳尔"
+												},
+												"MAD": {
+													"displayName": "MAD - 摩洛哥迪拉姆"
+												},
+												"MDL": {
+													"displayName": "MDL - 摩尔多瓦列伊"
+												},
+												"MGA": {
+													"displayName": "MGA - 马达加斯加阿里亚里"
+												},
+												"MKD": {
+													"displayName": "MKD - 代纳尔"
+												},
+												"MMK": {
+													"displayName": "MMK - 缅元"
+												},
+												"MNT": {
+													"displayName": "MNT - 图格里克"
+												},
+												"MOP": {
+													"displayName": "MOP - 澳门币"
+												},
+												"MRU": {
+													"displayName": "MRU - 乌吉亚"
+												},
+												"MUR": {
+													"displayName": "MUR - 毛里求斯卢比"
+												},
+												"MVR": {
+													"displayName": "MVR - 拉菲亚"
+												},
+												"MWK": {
+													"displayName": "MWK - 马拉维克瓦查"
+												},
+												"MXN": {
+													"displayName": "MXN - 墨西哥比索"
+												},
+												"MXV": {
+													"displayName": "MXV - 墨西哥投资单位（UDI）"
+												},
+												"MYR": {
+													"displayName": "MYR - 马来西亚林吉特"
+												},
+												"MZN": {
+													"displayName": "MZN - 莫桑比克梅蒂卡尔"
+												},
+												"NAD": {
+													"displayName": "NAD - 纳米比亚元"
+												},
+												"NGN": {
+													"displayName": "NGN - 尼日利亚奈拉"
+												},
+												"NIO": {
+													"displayName": "NIO - 科尔多瓦奥罗"
+												},
+												"NOK": {
+													"displayName": "NOK - 挪威克朗"
+												},
+												"NPR": {
+													"displayName": "尼泊尔卢比"
+												},
+												"NZD": {
+													"displayName": "NZD - 新西兰元"
+												},
+												"OMR": {
+													"displayName": "OMR - 阿曼里亚尔"
+												},
+												"PAB": {
+													"displayName": "PAB - 巴拿马巴波亚"
+												},
+												"PEN": {
+													"displayName": "笔 - 解决方案"
+												},
+												"PGK": {
+													"displayName": "PGK - 基那"
+												},
+												"PHP": {
+													"displayName": "PHP - 菲律宾比索"
+												},
+												"PKR": {
+													"displayName": "PKR - 巴基斯坦卢比"
+												},
+												"PLN": {
+													"displayName": "PLN - 波兰兹罗提"
+												},
+												"PYG": {
+													"displayName": "PYG - 瓜拉尼"
+												},
+												"QAR": {
+													"displayName": "QAR - 卡塔尔里亚尔"
+												},
+												"RON": {
+													"displayName": "RON - 罗马尼亚列伊"
+												},
+												"RSD": {
+													"displayName": "RSD - 塞尔维亚第纳尔"
+												},
+												"RUB": {
+													"displayName": "RUB - 俄罗斯卢布"
+												},
+												"RWF": {
+													"displayName": "RWF - 卢旺达法郎"
+												},
+												"SAR": {
+													"displayName": "沙特里亚尔 - 沙特阿拉伯货币"
+												},
+												"SBD": {
+													"displayName": "SBD - 所罗门群岛元"
+												},
+												"SCR": {
+													"displayName": "SCR - 塞舌尔卢比"
+												},
+												"SDG": {
+													"displayName": "SDG - 苏丹镑"
+												},
+												"SEK": {
+													"displayName": "瑞典克朗"
+												},
+												"SGD": {
+													"displayName": "SGD - 新加坡元"
+												},
+												"SHP": {
+													"displayName": "SHP - 圣赫勒拿镑"
+												},
+												"SLL": {
+													"displayName": "SLL - 利昂"
+												},
+												"SOS": {
+													"displayName": "SOS - 索马里先令"
+												},
+												"SRD": {
+													"displayName": "苏里南元 - SRD"
+												},
+												"SSP": {
+													"displayName": "SSP - 南苏丹镑"
+												},
+												"STN": {
+													"displayName": "STN - 多布拉"
+												},
+												"SVC": {
+													"displayName": "SVC - 萨尔瓦多科朗"
+												},
+												"SYP": {
+													"displayName": "SYP - 叙利亚镑"
+												},
+												"SZL": {
+													"displayName": "SZL - 里兰吉尼"
+												},
+												"THB": {
+													"displayName": "THB - 泰铢"
+												},
+												"TJS": {
+													"displayName": "塔吉克斯坦索莫尼"
+												},
+												"TMT": {
+													"displayName": "土库曼斯坦新马纳特"
+												},
+												"TND": {
+													"displayName": "TND - 突尼斯第纳尔"
+												},
+												"TOP": {
+													"displayName": "TOP - 潘加"
+												},
+												"TRY": {
+													"displayName": "TRY - 土耳其里拉"
+												},
+												"TTD": {
+													"displayName": "TTD - 特立尼达和多巴哥元"
+												},
+												"TWD": {
+													"displayName": "TWD - 新台币"
+												},
+												"TZS": {
+													"displayName": "TZS - 坦桑尼亚先令"
+												},
+												"UAH": {
+													"displayName": "UAH - 格里夫纳"
+												},
+												"UGX": {
+													"displayName": "UGX - 乌干达先令"
+												},
+												"USD": {
+													"displayName": "美元 - 美元"
+												},
+												"USN": {
+													"displayName": "USN - 美元（次日）"
+												},
+												"UYI": {
+													"displayName": "UYI - 乌拉圭比索指数单位（UI）"
+												},
+												"UYU": {
+													"displayName": "乌拉圭比索"
+												},
+												"UYW": {
+													"displayName": "UYW - 预防单位"
+												},
+												"UZS": {
+													"displayName": "UZS - 乌兹别克斯坦苏姆"
+												},
+												"VES": {
+													"displayName": "VES - 主权玻利瓦尔"
+												},
+												"VND": {
+													"displayName": "VND - 越南盾"
+												},
+												"VUV": {
+													"displayName": "VUV - 瓦图"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - 中非金融合作法郎"
+												},
+												"XAG": {
+													"displayName": "XAG - 白银"
+												},
+												"XAU": {
+													"displayName": "XAU - 黄金"
+												},
+												"XBA": {
+													"displayName": "XBA - 债券市场单位欧洲复合单位 (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - 债券市场单位 欧洲货币单位 (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - 债券市场单位 欧洲记账单位9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - 债券市场单位 欧洲记账单位17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - 东加勒比元"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR（特别提款权）"
+												},
+												"XOF": {
+													"displayName": "XOF - 西非法郎 BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - 钯金"
+												},
+												"XPF": {
+													"displayName": "XPF - 太平洋法郎"
+												},
+												"XPT": {
+													"displayName": "XPT - 铂金"
+												},
+												"XSU": {
+													"displayName": "XSU - 苏克雷"
+												},
+												"XTS": {
+													"displayName": "XTS - 专为测试目的保留的代码"
+												},
+												"XUA": {
+													"displayName": "XUA - 非洲开发银行记账单位"
+												},
+												"XXX": {
+													"displayName": "XXX - 为不涉及货币的交易分配的代码"
+												},
+												"YER": {
+													"displayName": "YER - 也门里亚尔"
+												},
+												"ZAR": {
+													"displayName": "ZAR - 兰特"
+												},
+												"ZMW": {
+													"displayName": "ZMW - 赞比亚克瓦查"
+												},
+												"ZWL": {
+													"displayName": "津巴布韦元"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "金额"
+										},
+										"date_time": {
+											"displayName": "日期时间"
+										},
+										"imageLink": {
+											"displayName": "图片链接"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"text": {
+													"displayName": "文本"
+												},
+												"currency": {
+													"displayName": "货币"
+												},
+												"date_time": {
+													"displayName": "日期时间"
+												},
+												"image": {
+													"displayName": "图片"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本"
+										},
+										"code": {
+											"displayName": "货币代码",
+											"placeholder": "美元",
+											"options": {
+												"AED": {
+													"displayName": "AED - 阿联酋迪拉姆"
+												},
+												"AFN": {
+													"displayName": "AFN - 阿富汗尼"
+												},
+												"ALL": {
+													"displayName": "全部 - 低"
+												},
+												"AMD": {
+													"displayName": "AMD - 亚美尼亚德拉姆"
+												},
+												"ANG": {
+													"displayName": "ANG - 荷属安的列斯盾"
+												},
+												"AOA": {
+													"displayName": "安哥拉宽扎"
+												},
+												"ARS": {
+													"displayName": "ARS - 阿根廷比索"
+												},
+												"AUD": {
+													"displayName": "AUD - 澳大利亚元"
+												},
+												"AWG": {
+													"displayName": "AWG - 阿鲁巴弗罗林"
+												},
+												"AZN": {
+													"displayName": "AZN - 阿塞拜疆马纳特"
+												},
+												"BAM": {
+													"displayName": "BAM - 可兑换马克"
+												},
+												"BBD": {
+													"displayName": "巴巴多斯元 - 巴巴多斯元"
+												},
+												"BDT": {
+													"displayName": "孟加拉塔卡 (BDT)"
+												},
+												"BGN": {
+													"displayName": "BGN - 保加利亚列弗"
+												},
+												"BHD": {
+													"displayName": "BHD - 巴林第纳尔"
+												},
+												"BIF": {
+													"displayName": "BIF - 布隆迪法郎"
+												},
+												"BMD": {
+													"displayName": "BMD - 百慕大元"
+												},
+												"BND": {
+													"displayName": "BND - 文莱元"
+												},
+												"BOB": {
+													"displayName": "BOB - 玻利维亚诺"
+												},
+												"BOV": {
+													"displayName": "BOV - 玻利瓦尔"
+												},
+												"BRL": {
+													"displayName": "BRL - 巴西雷亚尔"
+												},
+												"BSD": {
+													"displayName": "BSD - 巴哈马元"
+												},
+												"BTN": {
+													"displayName": "BTN - 努尔特鲁姆"
+												},
+												"BWP": {
+													"displayName": "BWP - 普拉"
+												},
+												"BYN": {
+													"displayName": "白俄罗斯卢布"
+												},
+												"BZD": {
+													"displayName": "BZD - 伯利兹元"
+												},
+												"CAD": {
+													"displayName": "CAD - 加拿大元"
+												},
+												"CDF": {
+													"displayName": "CDF - 刚果法郎"
+												},
+												"CHE": {
+													"displayName": "瑞士 - 欧元"
+												},
+												"CHF": {
+													"displayName": "CHF - 瑞士法郎"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR法郎"
+												},
+												"CLF": {
+													"displayName": "CLF - 发展单位"
+												},
+												"CLP": {
+													"displayName": "CLP - 智利比索"
+												},
+												"CNY": {
+													"displayName": "CNY - 人民币元"
+												},
+												"COP": {
+													"displayName": "COP - 哥伦比亚比索"
+												},
+												"COU": {
+													"displayName": "COU - 实际价值单位"
+												},
+												"CRC": {
+													"displayName": "CRC - 哥斯达黎加科朗"
+												},
+												"CUC": {
+													"displayName": "CUC - 可兑换比索"
+												},
+												"CUP": {
+													"displayName": "CUP - 古巴比索"
+												},
+												"CVE": {
+													"displayName": "CVE - 佛得角埃斯库多"
+												},
+												"CZK": {
+													"displayName": "捷克克朗 - 捷克货币"
+												},
+												"DJF": {
+													"displayName": "DJF - 吉布提法郎"
+												},
+												"DKK": {
+													"displayName": "丹麦克朗 - 丹麦克朗"
+												},
+												"DOP": {
+													"displayName": "DOP - 多米尼加比索"
+												},
+												"DZD": {
+													"displayName": "DZD - 阿尔及利亚第纳尔"
+												},
+												"EGP": {
+													"displayName": "EGP - 埃及镑"
+												},
+												"ERN": {
+													"displayName": "厄立特里亚纳克法"
+												},
+												"ETB": {
+													"displayName": "ETB - 埃塞俄比亚比尔"
+												},
+												"EUR": {
+													"displayName": "EUR - 欧元"
+												},
+												"FJD": {
+													"displayName": "FJD - 斐济元"
+												},
+												"FKP": {
+													"displayName": "FKP - 福克兰群岛镑"
+												},
+												"GBP": {
+													"displayName": "英镑 - 英镑"
+												},
+												"GEL": {
+													"displayName": "格鲁吉亚拉里"
+												},
+												"GHS": {
+													"displayName": "GHS - 加纳塞地"
+												},
+												"GIP": {
+													"displayName": "GIP - 直布罗陀镑"
+												},
+												"GMD": {
+													"displayName": "GMD - 达拉西"
+												},
+												"GNF": {
+													"displayName": "GNF - 几内亚法郎"
+												},
+												"GTQ": {
+													"displayName": "GTQ - 格查尔"
+												},
+												"GYD": {
+													"displayName": "圭亚那元 - 圭亚那元"
+												},
+												"HKD": {
+													"displayName": "HKD - 港币"
+												},
+												"HNL": {
+													"displayName": "HNL - 伦皮拉"
+												},
+												"HRK": {
+													"displayName": "HRK - 库纳"
+												},
+												"HTG": {
+													"displayName": "HTG - 古德"
+												},
+												"HUF": {
+													"displayName": "HUF - 福林"
+												},
+												"IDR": {
+													"displayName": "IDR - 印尼盾"
+												},
+												"ILS": {
+													"displayName": "ILS - 新以色列谢克尔"
+												},
+												"INR": {
+													"displayName": "INR - 印度卢比"
+												},
+												"IQD": {
+													"displayName": "IQD - 伊拉克第纳尔"
+												},
+												"IRR": {
+													"displayName": "IRR - 伊朗里亚尔"
+												},
+												"ISK": {
+													"displayName": "ISK - 冰岛克朗"
+												},
+												"JMD": {
+													"displayName": "JMD - 牙买加元"
+												},
+												"JOD": {
+													"displayName": "JOD - 约旦第纳尔"
+												},
+												"JPY": {
+													"displayName": "JPY - 日元"
+												},
+												"KES": {
+													"displayName": "KES - 肯尼亚先令"
+												},
+												"KGS": {
+													"displayName": "KGS - 总计"
+												},
+												"KHR": {
+													"displayName": "KHR - 瑞尔"
+												},
+												"KMF": {
+													"displayName": "KMF - 科摩罗法郎"
+												},
+												"KPW": {
+													"displayName": "KPW - 朝鲜元"
+												},
+												"KRW": {
+													"displayName": "KRW - 韩元"
+												},
+												"KWD": {
+													"displayName": "KWD - 科威特第纳尔"
+												},
+												"KYD": {
+													"displayName": "KYD - 开曼群岛元"
+												},
+												"KZT": {
+													"displayName": "KZT - 坚戈"
+												},
+												"LAK": {
+													"displayName": "老挝基普"
+												},
+												"LBP": {
+													"displayName": "LBP - 黎巴嫩镑"
+												},
+												"LKR": {
+													"displayName": "LKR - 斯里兰卡卢比"
+												},
+												"LRD": {
+													"displayName": "LRD - 利比里亚元"
+												},
+												"LSL": {
+													"displayName": "LSL - 洛蒂"
+												},
+												"LYD": {
+													"displayName": "LYD - 利比亚第纳尔"
+												},
+												"MAD": {
+													"displayName": "MAD - 摩洛哥迪拉姆"
+												},
+												"MDL": {
+													"displayName": "MDL - 摩尔多瓦列伊"
+												},
+												"MGA": {
+													"displayName": "MGA - 马达加斯加阿里亚里"
+												},
+												"MKD": {
+													"displayName": "MKD - 代纳尔"
+												},
+												"MMK": {
+													"displayName": "MMK - 缅元"
+												},
+												"MNT": {
+													"displayName": "MNT - 图格里克"
+												},
+												"MOP": {
+													"displayName": "MOP - 澳门币"
+												},
+												"MRU": {
+													"displayName": "MRU - 乌吉亚"
+												},
+												"MUR": {
+													"displayName": "MUR - 毛里求斯卢比"
+												},
+												"MVR": {
+													"displayName": "MVR - 拉菲亚"
+												},
+												"MWK": {
+													"displayName": "MWK - 马拉维克瓦查"
+												},
+												"MXN": {
+													"displayName": "MXN - 墨西哥比索"
+												},
+												"MXV": {
+													"displayName": "MXV - 墨西哥投资单位（UDI）"
+												},
+												"MYR": {
+													"displayName": "MYR - 马来西亚林吉特"
+												},
+												"MZN": {
+													"displayName": "MZN - 莫桑比克梅蒂卡尔"
+												},
+												"NAD": {
+													"displayName": "NAD - 纳米比亚元"
+												},
+												"NGN": {
+													"displayName": "NGN - 尼日利亚奈拉"
+												},
+												"NIO": {
+													"displayName": "NIO - 科尔多瓦奥罗"
+												},
+												"NOK": {
+													"displayName": "NOK - 挪威克朗"
+												},
+												"NPR": {
+													"displayName": "尼泊尔卢比"
+												},
+												"NZD": {
+													"displayName": "NZD - 新西兰元"
+												},
+												"OMR": {
+													"displayName": "OMR - 阿曼里亚尔"
+												},
+												"PAB": {
+													"displayName": "PAB - 巴拿马巴波亚"
+												},
+												"PEN": {
+													"displayName": "笔 - 解决方案"
+												},
+												"PGK": {
+													"displayName": "PGK - 基那"
+												},
+												"PHP": {
+													"displayName": "PHP - 菲律宾比索"
+												},
+												"PKR": {
+													"displayName": "PKR - 巴基斯坦卢比"
+												},
+												"PLN": {
+													"displayName": "PLN - 波兰兹罗提"
+												},
+												"PYG": {
+													"displayName": "PYG - 瓜拉尼"
+												},
+												"QAR": {
+													"displayName": "QAR - 卡塔尔里亚尔"
+												},
+												"RON": {
+													"displayName": "RON - 罗马尼亚列伊"
+												},
+												"RSD": {
+													"displayName": "RSD - 塞尔维亚第纳尔"
+												},
+												"RUB": {
+													"displayName": "RUB - 俄罗斯卢布"
+												},
+												"RWF": {
+													"displayName": "RWF - 卢旺达法郎"
+												},
+												"SAR": {
+													"displayName": "沙特里亚尔 - 沙特阿拉伯货币"
+												},
+												"SBD": {
+													"displayName": "SBD - 所罗门群岛元"
+												},
+												"SCR": {
+													"displayName": "SCR - 塞舌尔卢比"
+												},
+												"SDG": {
+													"displayName": "SDG - 苏丹镑"
+												},
+												"SEK": {
+													"displayName": "瑞典克朗"
+												},
+												"SGD": {
+													"displayName": "SGD - 新加坡元"
+												},
+												"SHP": {
+													"displayName": "SHP - 圣赫勒拿镑"
+												},
+												"SLL": {
+													"displayName": "SLL - 利昂"
+												},
+												"SOS": {
+													"displayName": "SOS - 索马里先令"
+												},
+												"SRD": {
+													"displayName": "苏里南元 - SRD"
+												},
+												"SSP": {
+													"displayName": "SSP - 南苏丹镑"
+												},
+												"STN": {
+													"displayName": "STN - 多布拉"
+												},
+												"SVC": {
+													"displayName": "SVC - 萨尔瓦多科朗"
+												},
+												"SYP": {
+													"displayName": "SYP - 叙利亚镑"
+												},
+												"SZL": {
+													"displayName": "SZL - 里兰吉尼"
+												},
+												"THB": {
+													"displayName": "THB - 泰铢"
+												},
+												"TJS": {
+													"displayName": "塔吉克斯坦索莫尼"
+												},
+												"TMT": {
+													"displayName": "土库曼斯坦新马纳特"
+												},
+												"TND": {
+													"displayName": "TND - 突尼斯第纳尔"
+												},
+												"TOP": {
+													"displayName": "TOP - 潘加"
+												},
+												"TRY": {
+													"displayName": "TRY - 土耳其里拉"
+												},
+												"TTD": {
+													"displayName": "TTD - 特立尼达和多巴哥元"
+												},
+												"TWD": {
+													"displayName": "TWD - 新台币"
+												},
+												"TZS": {
+													"displayName": "TZS - 坦桑尼亚先令"
+												},
+												"UAH": {
+													"displayName": "UAH - 格里夫纳"
+												},
+												"UGX": {
+													"displayName": "UGX - 乌干达先令"
+												},
+												"USD": {
+													"displayName": "美元 - 美元"
+												},
+												"USN": {
+													"displayName": "USN - 美元（次日）"
+												},
+												"UYI": {
+													"displayName": "UYI - 乌拉圭比索指数单位（UI）"
+												},
+												"UYU": {
+													"displayName": "乌拉圭比索"
+												},
+												"UYW": {
+													"displayName": "UYW - 预防单位"
+												},
+												"UZS": {
+													"displayName": "UZS - 乌兹别克斯坦苏姆"
+												},
+												"VES": {
+													"displayName": "VES - 主权玻利瓦尔"
+												},
+												"VND": {
+													"displayName": "VND - 越南盾"
+												},
+												"VUV": {
+													"displayName": "VUV - 瓦图"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - 中非金融合作法郎"
+												},
+												"XAG": {
+													"displayName": "XAG - 白银"
+												},
+												"XAU": {
+													"displayName": "XAU - 黄金"
+												},
+												"XBA": {
+													"displayName": "XBA - 债券市场单位欧洲复合单位 (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - 债券市场单位 欧洲货币单位 (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - 债券市场单位 欧洲记账单位9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - 债券市场单位 欧洲记账单位17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - 东加勒比元"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR（特别提款权）"
+												},
+												"XOF": {
+													"displayName": "XOF - 西非法郎 BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - 钯金"
+												},
+												"XPF": {
+													"displayName": "XPF - 太平洋法郎"
+												},
+												"XPT": {
+													"displayName": "XPT - 铂金"
+												},
+												"XSU": {
+													"displayName": "XSU - 苏克雷"
+												},
+												"XTS": {
+													"displayName": "XTS - 专为测试目的保留的代码"
+												},
+												"XUA": {
+													"displayName": "XUA - 非洲开发银行记账单位"
+												},
+												"XXX": {
+													"displayName": "XXX - 为不涉及货币的交易分配的代码"
+												},
+												"YER": {
+													"displayName": "YER - 也门里亚尔"
+												},
+												"ZAR": {
+													"displayName": "ZAR - 兰特"
+												},
+												"ZMW": {
+													"displayName": "ZMW - 赞比亚克瓦查"
+												},
+												"ZWL": {
+													"displayName": "津巴布韦元"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "金额"
+										},
+										"date_time": {
+											"displayName": "日期时间"
+										},
+										"imageLink": {
+											"displayName": "图片链接"
+										}
+									}
+								},
+								"headerParameters": {
+									"displayName": "参数",
+									"placeholder": "添加参数"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"component": {
+					"displayName": "组件",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"body": {
+									"displayName": "正文"
+								},
+								"button": {
+									"displayName": "按钮"
+								},
+								"header": {
+									"displayName": "页眉"
+								}
+							}
+						},
+						"bodyParameters": {
+							"displayName": "参数",
+							"placeholder": "添加参数",
+							"multipleValueButtonText": "添加参数",
+							"options": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"text": {
+													"displayName": "文本"
+												},
+												"currency": {
+													"displayName": "货币"
+												},
+												"date_time": {
+													"displayName": "日期时间"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本"
+										},
+										"code": {
+											"displayName": "货币代码",
+											"placeholder": "美元",
+											"options": {
+												"AED": {
+													"displayName": "AED - 阿联酋迪拉姆"
+												},
+												"AFN": {
+													"displayName": "AFN - 阿富汗尼"
+												},
+												"ALL": {
+													"displayName": "全部 - 低"
+												},
+												"AMD": {
+													"displayName": "AMD - 亚美尼亚德拉姆"
+												},
+												"ANG": {
+													"displayName": "ANG - 荷属安的列斯盾"
+												},
+												"AOA": {
+													"displayName": "安哥拉宽扎"
+												},
+												"ARS": {
+													"displayName": "ARS - 阿根廷比索"
+												},
+												"AUD": {
+													"displayName": "AUD - 澳大利亚元"
+												},
+												"AWG": {
+													"displayName": "AWG - 阿鲁巴弗罗林"
+												},
+												"AZN": {
+													"displayName": "AZN - 阿塞拜疆马纳特"
+												},
+												"BAM": {
+													"displayName": "BAM - 可兑换马克"
+												},
+												"BBD": {
+													"displayName": "巴巴多斯元 - 巴巴多斯元"
+												},
+												"BDT": {
+													"displayName": "孟加拉塔卡 (BDT)"
+												},
+												"BGN": {
+													"displayName": "BGN - 保加利亚列弗"
+												},
+												"BHD": {
+													"displayName": "BHD - 巴林第纳尔"
+												},
+												"BIF": {
+													"displayName": "BIF - 布隆迪法郎"
+												},
+												"BMD": {
+													"displayName": "BMD - 百慕大元"
+												},
+												"BND": {
+													"displayName": "BND - 文莱元"
+												},
+												"BOB": {
+													"displayName": "BOB - 玻利维亚诺"
+												},
+												"BOV": {
+													"displayName": "BOV - 玻利瓦尔"
+												},
+												"BRL": {
+													"displayName": "BRL - 巴西雷亚尔"
+												},
+												"BSD": {
+													"displayName": "BSD - 巴哈马元"
+												},
+												"BTN": {
+													"displayName": "BTN - 努尔特鲁姆"
+												},
+												"BWP": {
+													"displayName": "BWP - 普拉"
+												},
+												"BYN": {
+													"displayName": "白俄罗斯卢布"
+												},
+												"BZD": {
+													"displayName": "BZD - 伯利兹元"
+												},
+												"CAD": {
+													"displayName": "CAD - 加拿大元"
+												},
+												"CDF": {
+													"displayName": "CDF - 刚果法郎"
+												},
+												"CHE": {
+													"displayName": "瑞士 - 欧元"
+												},
+												"CHF": {
+													"displayName": "CHF - 瑞士法郎"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR法郎"
+												},
+												"CLF": {
+													"displayName": "CLF - 发展单位"
+												},
+												"CLP": {
+													"displayName": "CLP - 智利比索"
+												},
+												"CNY": {
+													"displayName": "CNY - 人民币元"
+												},
+												"COP": {
+													"displayName": "COP - 哥伦比亚比索"
+												},
+												"COU": {
+													"displayName": "COU - 实际价值单位"
+												},
+												"CRC": {
+													"displayName": "CRC - 哥斯达黎加科朗"
+												},
+												"CUC": {
+													"displayName": "CUC - 可兑换比索"
+												},
+												"CUP": {
+													"displayName": "CUP - 古巴比索"
+												},
+												"CVE": {
+													"displayName": "CVE - 佛得角埃斯库多"
+												},
+												"CZK": {
+													"displayName": "捷克克朗 - 捷克货币"
+												},
+												"DJF": {
+													"displayName": "DJF - 吉布提法郎"
+												},
+												"DKK": {
+													"displayName": "丹麦克朗 - 丹麦克朗"
+												},
+												"DOP": {
+													"displayName": "DOP - 多米尼加比索"
+												},
+												"DZD": {
+													"displayName": "DZD - 阿尔及利亚第纳尔"
+												},
+												"EGP": {
+													"displayName": "EGP - 埃及镑"
+												},
+												"ERN": {
+													"displayName": "厄立特里亚纳克法"
+												},
+												"ETB": {
+													"displayName": "ETB - 埃塞俄比亚比尔"
+												},
+												"EUR": {
+													"displayName": "EUR - 欧元"
+												},
+												"FJD": {
+													"displayName": "FJD - 斐济元"
+												},
+												"FKP": {
+													"displayName": "FKP - 福克兰群岛镑"
+												},
+												"GBP": {
+													"displayName": "英镑 - 英镑"
+												},
+												"GEL": {
+													"displayName": "格鲁吉亚拉里"
+												},
+												"GHS": {
+													"displayName": "GHS - 加纳塞地"
+												},
+												"GIP": {
+													"displayName": "GIP - 直布罗陀镑"
+												},
+												"GMD": {
+													"displayName": "GMD - 达拉西"
+												},
+												"GNF": {
+													"displayName": "GNF - 几内亚法郎"
+												},
+												"GTQ": {
+													"displayName": "GTQ - 格查尔"
+												},
+												"GYD": {
+													"displayName": "圭亚那元 - 圭亚那元"
+												},
+												"HKD": {
+													"displayName": "HKD - 港币"
+												},
+												"HNL": {
+													"displayName": "HNL - 伦皮拉"
+												},
+												"HRK": {
+													"displayName": "HRK - 库纳"
+												},
+												"HTG": {
+													"displayName": "HTG - 古德"
+												},
+												"HUF": {
+													"displayName": "HUF - 福林"
+												},
+												"IDR": {
+													"displayName": "IDR - 印尼盾"
+												},
+												"ILS": {
+													"displayName": "ILS - 新以色列谢克尔"
+												},
+												"INR": {
+													"displayName": "INR - 印度卢比"
+												},
+												"IQD": {
+													"displayName": "IQD - 伊拉克第纳尔"
+												},
+												"IRR": {
+													"displayName": "IRR - 伊朗里亚尔"
+												},
+												"ISK": {
+													"displayName": "ISK - 冰岛克朗"
+												},
+												"JMD": {
+													"displayName": "JMD - 牙买加元"
+												},
+												"JOD": {
+													"displayName": "JOD - 约旦第纳尔"
+												},
+												"JPY": {
+													"displayName": "JPY - 日元"
+												},
+												"KES": {
+													"displayName": "KES - 肯尼亚先令"
+												},
+												"KGS": {
+													"displayName": "KGS - 总计"
+												},
+												"KHR": {
+													"displayName": "KHR - 瑞尔"
+												},
+												"KMF": {
+													"displayName": "KMF - 科摩罗法郎"
+												},
+												"KPW": {
+													"displayName": "KPW - 朝鲜元"
+												},
+												"KRW": {
+													"displayName": "KRW - 韩元"
+												},
+												"KWD": {
+													"displayName": "KWD - 科威特第纳尔"
+												},
+												"KYD": {
+													"displayName": "KYD - 开曼群岛元"
+												},
+												"KZT": {
+													"displayName": "KZT - 坚戈"
+												},
+												"LAK": {
+													"displayName": "老挝基普"
+												},
+												"LBP": {
+													"displayName": "LBP - 黎巴嫩镑"
+												},
+												"LKR": {
+													"displayName": "LKR - 斯里兰卡卢比"
+												},
+												"LRD": {
+													"displayName": "LRD - 利比里亚元"
+												},
+												"LSL": {
+													"displayName": "LSL - 洛蒂"
+												},
+												"LYD": {
+													"displayName": "LYD - 利比亚第纳尔"
+												},
+												"MAD": {
+													"displayName": "MAD - 摩洛哥迪拉姆"
+												},
+												"MDL": {
+													"displayName": "MDL - 摩尔多瓦列伊"
+												},
+												"MGA": {
+													"displayName": "MGA - 马达加斯加阿里亚里"
+												},
+												"MKD": {
+													"displayName": "MKD - 代纳尔"
+												},
+												"MMK": {
+													"displayName": "MMK - 缅元"
+												},
+												"MNT": {
+													"displayName": "MNT - 图格里克"
+												},
+												"MOP": {
+													"displayName": "MOP - 澳门币"
+												},
+												"MRU": {
+													"displayName": "MRU - 乌吉亚"
+												},
+												"MUR": {
+													"displayName": "MUR - 毛里求斯卢比"
+												},
+												"MVR": {
+													"displayName": "MVR - 拉菲亚"
+												},
+												"MWK": {
+													"displayName": "MWK - 马拉维克瓦查"
+												},
+												"MXN": {
+													"displayName": "MXN - 墨西哥比索"
+												},
+												"MXV": {
+													"displayName": "MXV - 墨西哥投资单位（UDI）"
+												},
+												"MYR": {
+													"displayName": "MYR - 马来西亚林吉特"
+												},
+												"MZN": {
+													"displayName": "MZN - 莫桑比克梅蒂卡尔"
+												},
+												"NAD": {
+													"displayName": "NAD - 纳米比亚元"
+												},
+												"NGN": {
+													"displayName": "NGN - 尼日利亚奈拉"
+												},
+												"NIO": {
+													"displayName": "NIO - 科尔多瓦奥罗"
+												},
+												"NOK": {
+													"displayName": "NOK - 挪威克朗"
+												},
+												"NPR": {
+													"displayName": "尼泊尔卢比"
+												},
+												"NZD": {
+													"displayName": "NZD - 新西兰元"
+												},
+												"OMR": {
+													"displayName": "OMR - 阿曼里亚尔"
+												},
+												"PAB": {
+													"displayName": "PAB - 巴拿马巴波亚"
+												},
+												"PEN": {
+													"displayName": "笔 - 解决方案"
+												},
+												"PGK": {
+													"displayName": "PGK - 基那"
+												},
+												"PHP": {
+													"displayName": "PHP - 菲律宾比索"
+												},
+												"PKR": {
+													"displayName": "PKR - 巴基斯坦卢比"
+												},
+												"PLN": {
+													"displayName": "PLN - 波兰兹罗提"
+												},
+												"PYG": {
+													"displayName": "PYG - 瓜拉尼"
+												},
+												"QAR": {
+													"displayName": "QAR - 卡塔尔里亚尔"
+												},
+												"RON": {
+													"displayName": "RON - 罗马尼亚列伊"
+												},
+												"RSD": {
+													"displayName": "RSD - 塞尔维亚第纳尔"
+												},
+												"RUB": {
+													"displayName": "RUB - 俄罗斯卢布"
+												},
+												"RWF": {
+													"displayName": "RWF - 卢旺达法郎"
+												},
+												"SAR": {
+													"displayName": "沙特里亚尔 - 沙特阿拉伯货币"
+												},
+												"SBD": {
+													"displayName": "SBD - 所罗门群岛元"
+												},
+												"SCR": {
+													"displayName": "SCR - 塞舌尔卢比"
+												},
+												"SDG": {
+													"displayName": "SDG - 苏丹镑"
+												},
+												"SEK": {
+													"displayName": "瑞典克朗"
+												},
+												"SGD": {
+													"displayName": "SGD - 新加坡元"
+												},
+												"SHP": {
+													"displayName": "SHP - 圣赫勒拿镑"
+												},
+												"SLL": {
+													"displayName": "SLL - 利昂"
+												},
+												"SOS": {
+													"displayName": "SOS - 索马里先令"
+												},
+												"SRD": {
+													"displayName": "苏里南元 - SRD"
+												},
+												"SSP": {
+													"displayName": "SSP - 南苏丹镑"
+												},
+												"STN": {
+													"displayName": "STN - 多布拉"
+												},
+												"SVC": {
+													"displayName": "SVC - 萨尔瓦多科朗"
+												},
+												"SYP": {
+													"displayName": "SYP - 叙利亚镑"
+												},
+												"SZL": {
+													"displayName": "SZL - 里兰吉尼"
+												},
+												"THB": {
+													"displayName": "THB - 泰铢"
+												},
+												"TJS": {
+													"displayName": "塔吉克斯坦索莫尼"
+												},
+												"TMT": {
+													"displayName": "土库曼斯坦新马纳特"
+												},
+												"TND": {
+													"displayName": "TND - 突尼斯第纳尔"
+												},
+												"TOP": {
+													"displayName": "TOP - 潘加"
+												},
+												"TRY": {
+													"displayName": "TRY - 土耳其里拉"
+												},
+												"TTD": {
+													"displayName": "TTD - 特立尼达和多巴哥元"
+												},
+												"TWD": {
+													"displayName": "TWD - 新台币"
+												},
+												"TZS": {
+													"displayName": "TZS - 坦桑尼亚先令"
+												},
+												"UAH": {
+													"displayName": "UAH - 格里夫纳"
+												},
+												"UGX": {
+													"displayName": "UGX - 乌干达先令"
+												},
+												"USD": {
+													"displayName": "美元 - 美元"
+												},
+												"USN": {
+													"displayName": "USN - 美元（次日）"
+												},
+												"UYI": {
+													"displayName": "UYI - 乌拉圭比索指数单位（UI）"
+												},
+												"UYU": {
+													"displayName": "乌拉圭比索"
+												},
+												"UYW": {
+													"displayName": "UYW - 预防单位"
+												},
+												"UZS": {
+													"displayName": "UZS - 乌兹别克斯坦苏姆"
+												},
+												"VES": {
+													"displayName": "VES - 主权玻利瓦尔"
+												},
+												"VND": {
+													"displayName": "VND - 越南盾"
+												},
+												"VUV": {
+													"displayName": "VUV - 瓦图"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - 中非金融合作法郎"
+												},
+												"XAG": {
+													"displayName": "XAG - 白银"
+												},
+												"XAU": {
+													"displayName": "XAU - 黄金"
+												},
+												"XBA": {
+													"displayName": "XBA - 债券市场单位欧洲复合单位 (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - 债券市场单位 欧洲货币单位 (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - 债券市场单位 欧洲记账单位9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - 债券市场单位 欧洲记账单位17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - 东加勒比元"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR（特别提款权）"
+												},
+												"XOF": {
+													"displayName": "XOF - 西非法郎 BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - 钯金"
+												},
+												"XPF": {
+													"displayName": "XPF - 太平洋法郎"
+												},
+												"XPT": {
+													"displayName": "XPT - 铂金"
+												},
+												"XSU": {
+													"displayName": "XSU - 苏克雷"
+												},
+												"XTS": {
+													"displayName": "XTS - 专为测试目的保留的代码"
+												},
+												"XUA": {
+													"displayName": "XUA - 非洲开发银行记账单位"
+												},
+												"XXX": {
+													"displayName": "XXX - 为不涉及货币的交易分配的代码"
+												},
+												"YER": {
+													"displayName": "YER - 也门里亚尔"
+												},
+												"ZAR": {
+													"displayName": "ZAR - 兰特"
+												},
+												"ZMW": {
+													"displayName": "ZMW - 赞比亚克瓦查"
+												},
+												"ZWL": {
+													"displayName": "津巴布韦元"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "金额"
+										},
+										"date_time": {
+											"displayName": "日期时间"
+										},
+										"fallback_value": {
+											"displayName": "回退值"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"text": {
+													"displayName": "文本"
+												},
+												"currency": {
+													"displayName": "货币"
+												},
+												"date_time": {
+													"displayName": "日期时间"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本"
+										},
+										"code": {
+											"displayName": "货币代码",
+											"placeholder": "美元",
+											"options": {
+												"AED": {
+													"displayName": "AED - 阿联酋迪拉姆"
+												},
+												"AFN": {
+													"displayName": "AFN - 阿富汗尼"
+												},
+												"ALL": {
+													"displayName": "全部 - 低"
+												},
+												"AMD": {
+													"displayName": "AMD - 亚美尼亚德拉姆"
+												},
+												"ANG": {
+													"displayName": "ANG - 荷属安的列斯盾"
+												},
+												"AOA": {
+													"displayName": "安哥拉宽扎"
+												},
+												"ARS": {
+													"displayName": "ARS - 阿根廷比索"
+												},
+												"AUD": {
+													"displayName": "AUD - 澳大利亚元"
+												},
+												"AWG": {
+													"displayName": "AWG - 阿鲁巴弗罗林"
+												},
+												"AZN": {
+													"displayName": "AZN - 阿塞拜疆马纳特"
+												},
+												"BAM": {
+													"displayName": "BAM - 可兑换马克"
+												},
+												"BBD": {
+													"displayName": "巴巴多斯元 - 巴巴多斯元"
+												},
+												"BDT": {
+													"displayName": "孟加拉塔卡 (BDT)"
+												},
+												"BGN": {
+													"displayName": "BGN - 保加利亚列弗"
+												},
+												"BHD": {
+													"displayName": "BHD - 巴林第纳尔"
+												},
+												"BIF": {
+													"displayName": "BIF - 布隆迪法郎"
+												},
+												"BMD": {
+													"displayName": "BMD - 百慕大元"
+												},
+												"BND": {
+													"displayName": "BND - 文莱元"
+												},
+												"BOB": {
+													"displayName": "BOB - 玻利维亚诺"
+												},
+												"BOV": {
+													"displayName": "BOV - 玻利瓦尔"
+												},
+												"BRL": {
+													"displayName": "BRL - 巴西雷亚尔"
+												},
+												"BSD": {
+													"displayName": "BSD - 巴哈马元"
+												},
+												"BTN": {
+													"displayName": "BTN - 努尔特鲁姆"
+												},
+												"BWP": {
+													"displayName": "BWP - 普拉"
+												},
+												"BYN": {
+													"displayName": "白俄罗斯卢布"
+												},
+												"BZD": {
+													"displayName": "BZD - 伯利兹元"
+												},
+												"CAD": {
+													"displayName": "CAD - 加拿大元"
+												},
+												"CDF": {
+													"displayName": "CDF - 刚果法郎"
+												},
+												"CHE": {
+													"displayName": "瑞士 - 欧元"
+												},
+												"CHF": {
+													"displayName": "CHF - 瑞士法郎"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR法郎"
+												},
+												"CLF": {
+													"displayName": "CLF - 发展单位"
+												},
+												"CLP": {
+													"displayName": "CLP - 智利比索"
+												},
+												"CNY": {
+													"displayName": "CNY - 人民币元"
+												},
+												"COP": {
+													"displayName": "COP - 哥伦比亚比索"
+												},
+												"COU": {
+													"displayName": "COU - 实际价值单位"
+												},
+												"CRC": {
+													"displayName": "CRC - 哥斯达黎加科朗"
+												},
+												"CUC": {
+													"displayName": "CUC - 可兑换比索"
+												},
+												"CUP": {
+													"displayName": "CUP - 古巴比索"
+												},
+												"CVE": {
+													"displayName": "CVE - 佛得角埃斯库多"
+												},
+												"CZK": {
+													"displayName": "捷克克朗 - 捷克货币"
+												},
+												"DJF": {
+													"displayName": "DJF - 吉布提法郎"
+												},
+												"DKK": {
+													"displayName": "丹麦克朗 - 丹麦克朗"
+												},
+												"DOP": {
+													"displayName": "DOP - 多米尼加比索"
+												},
+												"DZD": {
+													"displayName": "DZD - 阿尔及利亚第纳尔"
+												},
+												"EGP": {
+													"displayName": "EGP - 埃及镑"
+												},
+												"ERN": {
+													"displayName": "厄立特里亚纳克法"
+												},
+												"ETB": {
+													"displayName": "ETB - 埃塞俄比亚比尔"
+												},
+												"EUR": {
+													"displayName": "EUR - 欧元"
+												},
+												"FJD": {
+													"displayName": "FJD - 斐济元"
+												},
+												"FKP": {
+													"displayName": "FKP - 福克兰群岛镑"
+												},
+												"GBP": {
+													"displayName": "英镑 - 英镑"
+												},
+												"GEL": {
+													"displayName": "格鲁吉亚拉里"
+												},
+												"GHS": {
+													"displayName": "GHS - 加纳塞地"
+												},
+												"GIP": {
+													"displayName": "GIP - 直布罗陀镑"
+												},
+												"GMD": {
+													"displayName": "GMD - 达拉西"
+												},
+												"GNF": {
+													"displayName": "GNF - 几内亚法郎"
+												},
+												"GTQ": {
+													"displayName": "GTQ - 格查尔"
+												},
+												"GYD": {
+													"displayName": "圭亚那元 - 圭亚那元"
+												},
+												"HKD": {
+													"displayName": "HKD - 港币"
+												},
+												"HNL": {
+													"displayName": "HNL - 伦皮拉"
+												},
+												"HRK": {
+													"displayName": "HRK - 库纳"
+												},
+												"HTG": {
+													"displayName": "HTG - 古德"
+												},
+												"HUF": {
+													"displayName": "HUF - 福林"
+												},
+												"IDR": {
+													"displayName": "IDR - 印尼盾"
+												},
+												"ILS": {
+													"displayName": "ILS - 新以色列谢克尔"
+												},
+												"INR": {
+													"displayName": "INR - 印度卢比"
+												},
+												"IQD": {
+													"displayName": "IQD - 伊拉克第纳尔"
+												},
+												"IRR": {
+													"displayName": "IRR - 伊朗里亚尔"
+												},
+												"ISK": {
+													"displayName": "ISK - 冰岛克朗"
+												},
+												"JMD": {
+													"displayName": "JMD - 牙买加元"
+												},
+												"JOD": {
+													"displayName": "JOD - 约旦第纳尔"
+												},
+												"JPY": {
+													"displayName": "JPY - 日元"
+												},
+												"KES": {
+													"displayName": "KES - 肯尼亚先令"
+												},
+												"KGS": {
+													"displayName": "KGS - 总计"
+												},
+												"KHR": {
+													"displayName": "KHR - 瑞尔"
+												},
+												"KMF": {
+													"displayName": "KMF - 科摩罗法郎"
+												},
+												"KPW": {
+													"displayName": "KPW - 朝鲜元"
+												},
+												"KRW": {
+													"displayName": "KRW - 韩元"
+												},
+												"KWD": {
+													"displayName": "KWD - 科威特第纳尔"
+												},
+												"KYD": {
+													"displayName": "KYD - 开曼群岛元"
+												},
+												"KZT": {
+													"displayName": "KZT - 坚戈"
+												},
+												"LAK": {
+													"displayName": "老挝基普"
+												},
+												"LBP": {
+													"displayName": "LBP - 黎巴嫩镑"
+												},
+												"LKR": {
+													"displayName": "LKR - 斯里兰卡卢比"
+												},
+												"LRD": {
+													"displayName": "LRD - 利比里亚元"
+												},
+												"LSL": {
+													"displayName": "LSL - 洛蒂"
+												},
+												"LYD": {
+													"displayName": "LYD - 利比亚第纳尔"
+												},
+												"MAD": {
+													"displayName": "MAD - 摩洛哥迪拉姆"
+												},
+												"MDL": {
+													"displayName": "MDL - 摩尔多瓦列伊"
+												},
+												"MGA": {
+													"displayName": "MGA - 马达加斯加阿里亚里"
+												},
+												"MKD": {
+													"displayName": "MKD - 代纳尔"
+												},
+												"MMK": {
+													"displayName": "MMK - 缅元"
+												},
+												"MNT": {
+													"displayName": "MNT - 图格里克"
+												},
+												"MOP": {
+													"displayName": "MOP - 澳门币"
+												},
+												"MRU": {
+													"displayName": "MRU - 乌吉亚"
+												},
+												"MUR": {
+													"displayName": "MUR - 毛里求斯卢比"
+												},
+												"MVR": {
+													"displayName": "MVR - 拉菲亚"
+												},
+												"MWK": {
+													"displayName": "MWK - 马拉维克瓦查"
+												},
+												"MXN": {
+													"displayName": "MXN - 墨西哥比索"
+												},
+												"MXV": {
+													"displayName": "MXV - 墨西哥投资单位（UDI）"
+												},
+												"MYR": {
+													"displayName": "MYR - 马来西亚林吉特"
+												},
+												"MZN": {
+													"displayName": "MZN - 莫桑比克梅蒂卡尔"
+												},
+												"NAD": {
+													"displayName": "NAD - 纳米比亚元"
+												},
+												"NGN": {
+													"displayName": "NGN - 尼日利亚奈拉"
+												},
+												"NIO": {
+													"displayName": "NIO - 科尔多瓦奥罗"
+												},
+												"NOK": {
+													"displayName": "NOK - 挪威克朗"
+												},
+												"NPR": {
+													"displayName": "尼泊尔卢比"
+												},
+												"NZD": {
+													"displayName": "NZD - 新西兰元"
+												},
+												"OMR": {
+													"displayName": "OMR - 阿曼里亚尔"
+												},
+												"PAB": {
+													"displayName": "PAB - 巴拿马巴波亚"
+												},
+												"PEN": {
+													"displayName": "笔 - 解决方案"
+												},
+												"PGK": {
+													"displayName": "PGK - 基那"
+												},
+												"PHP": {
+													"displayName": "PHP - 菲律宾比索"
+												},
+												"PKR": {
+													"displayName": "PKR - 巴基斯坦卢比"
+												},
+												"PLN": {
+													"displayName": "PLN - 波兰兹罗提"
+												},
+												"PYG": {
+													"displayName": "PYG - 瓜拉尼"
+												},
+												"QAR": {
+													"displayName": "QAR - 卡塔尔里亚尔"
+												},
+												"RON": {
+													"displayName": "RON - 罗马尼亚列伊"
+												},
+												"RSD": {
+													"displayName": "RSD - 塞尔维亚第纳尔"
+												},
+												"RUB": {
+													"displayName": "RUB - 俄罗斯卢布"
+												},
+												"RWF": {
+													"displayName": "RWF - 卢旺达法郎"
+												},
+												"SAR": {
+													"displayName": "沙特里亚尔 - 沙特阿拉伯货币"
+												},
+												"SBD": {
+													"displayName": "SBD - 所罗门群岛元"
+												},
+												"SCR": {
+													"displayName": "SCR - 塞舌尔卢比"
+												},
+												"SDG": {
+													"displayName": "SDG - 苏丹镑"
+												},
+												"SEK": {
+													"displayName": "瑞典克朗"
+												},
+												"SGD": {
+													"displayName": "SGD - 新加坡元"
+												},
+												"SHP": {
+													"displayName": "SHP - 圣赫勒拿镑"
+												},
+												"SLL": {
+													"displayName": "SLL - 利昂"
+												},
+												"SOS": {
+													"displayName": "SOS - 索马里先令"
+												},
+												"SRD": {
+													"displayName": "苏里南元 - SRD"
+												},
+												"SSP": {
+													"displayName": "SSP - 南苏丹镑"
+												},
+												"STN": {
+													"displayName": "STN - 多布拉"
+												},
+												"SVC": {
+													"displayName": "SVC - 萨尔瓦多科朗"
+												},
+												"SYP": {
+													"displayName": "SYP - 叙利亚镑"
+												},
+												"SZL": {
+													"displayName": "SZL - 里兰吉尼"
+												},
+												"THB": {
+													"displayName": "THB - 泰铢"
+												},
+												"TJS": {
+													"displayName": "塔吉克斯坦索莫尼"
+												},
+												"TMT": {
+													"displayName": "土库曼斯坦新马纳特"
+												},
+												"TND": {
+													"displayName": "TND - 突尼斯第纳尔"
+												},
+												"TOP": {
+													"displayName": "TOP - 潘加"
+												},
+												"TRY": {
+													"displayName": "TRY - 土耳其里拉"
+												},
+												"TTD": {
+													"displayName": "TTD - 特立尼达和多巴哥元"
+												},
+												"TWD": {
+													"displayName": "TWD - 新台币"
+												},
+												"TZS": {
+													"displayName": "TZS - 坦桑尼亚先令"
+												},
+												"UAH": {
+													"displayName": "UAH - 格里夫纳"
+												},
+												"UGX": {
+													"displayName": "UGX - 乌干达先令"
+												},
+												"USD": {
+													"displayName": "美元 - 美元"
+												},
+												"USN": {
+													"displayName": "USN - 美元（次日）"
+												},
+												"UYI": {
+													"displayName": "UYI - 乌拉圭比索指数单位（UI）"
+												},
+												"UYU": {
+													"displayName": "乌拉圭比索"
+												},
+												"UYW": {
+													"displayName": "UYW - 预防单位"
+												},
+												"UZS": {
+													"displayName": "UZS - 乌兹别克斯坦苏姆"
+												},
+												"VES": {
+													"displayName": "VES - 主权玻利瓦尔"
+												},
+												"VND": {
+													"displayName": "VND - 越南盾"
+												},
+												"VUV": {
+													"displayName": "VUV - 瓦图"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - 中非金融合作法郎"
+												},
+												"XAG": {
+													"displayName": "XAG - 白银"
+												},
+												"XAU": {
+													"displayName": "XAU - 黄金"
+												},
+												"XBA": {
+													"displayName": "XBA - 债券市场单位欧洲复合单位 (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - 债券市场单位 欧洲货币单位 (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - 债券市场单位 欧洲记账单位9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - 债券市场单位 欧洲记账单位17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - 东加勒比元"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR（特别提款权）"
+												},
+												"XOF": {
+													"displayName": "XOF - 西非法郎 BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - 钯金"
+												},
+												"XPF": {
+													"displayName": "XPF - 太平洋法郎"
+												},
+												"XPT": {
+													"displayName": "XPT - 铂金"
+												},
+												"XSU": {
+													"displayName": "XSU - 苏克雷"
+												},
+												"XTS": {
+													"displayName": "XTS - 专为测试目的保留的代码"
+												},
+												"XUA": {
+													"displayName": "XUA - 非洲开发银行记账单位"
+												},
+												"XXX": {
+													"displayName": "XXX - 为不涉及货币的交易分配的代码"
+												},
+												"YER": {
+													"displayName": "YER - 也门里亚尔"
+												},
+												"ZAR": {
+													"displayName": "ZAR - 兰特"
+												},
+												"ZMW": {
+													"displayName": "ZMW - 赞比亚克瓦查"
+												},
+												"ZWL": {
+													"displayName": "津巴布韦元"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "金额"
+										},
+										"date_time": {
+											"displayName": "日期时间"
+										},
+										"fallback_value": {
+											"displayName": "回退值"
+										}
+									}
+								},
+								"bodyParameters": {
+									"displayName": "参数",
+									"placeholder": "添加参数"
+								}
+							}
+						},
+						"sub_type": {
+							"displayName": "子类型",
+							"options": {
+								"quick_reply": {
+									"displayName": "快速回复",
+									"description": "允许您的客户拨打电话号码并访问网站"
+								},
+								"url": {
+									"displayName": "URL"
+								}
+							}
+						},
+						"index": {
+							"displayName": "索引"
+						},
+						"buttonParameters": {
+							"displayName": "参数",
+							"placeholder": "添加参数",
+							"options": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"payload": {
+													"displayName": "载荷"
+												},
+												"text": {
+													"displayName": "文本"
+												}
+											}
+										},
+										"payload": {
+											"displayName": "载荷"
+										},
+										"text": {
+											"displayName": "文本"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"payload": {
+													"displayName": "载荷"
+												},
+												"text": {
+													"displayName": "文本"
+												}
+											}
+										},
+										"payload": {
+											"displayName": "载荷"
+										},
+										"text": {
+											"displayName": "文本"
+										}
+									}
+								},
+								"buttonParameters": {
+									"displayName": "参数",
+									"placeholder": "添加参数"
+								}
+							}
+						},
+						"headerParameters": {
+							"displayName": "参数",
+							"placeholder": "添加参数",
+							"multipleValueButtonText": "添加参数",
+							"options": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"text": {
+													"displayName": "文本"
+												},
+												"currency": {
+													"displayName": "货币"
+												},
+												"date_time": {
+													"displayName": "日期时间"
+												},
+												"image": {
+													"displayName": "图片"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本"
+										},
+										"code": {
+											"displayName": "货币代码",
+											"placeholder": "美元",
+											"options": {
+												"AED": {
+													"displayName": "AED - 阿联酋迪拉姆"
+												},
+												"AFN": {
+													"displayName": "AFN - 阿富汗尼"
+												},
+												"ALL": {
+													"displayName": "全部 - 低"
+												},
+												"AMD": {
+													"displayName": "AMD - 亚美尼亚德拉姆"
+												},
+												"ANG": {
+													"displayName": "ANG - 荷属安的列斯盾"
+												},
+												"AOA": {
+													"displayName": "安哥拉宽扎"
+												},
+												"ARS": {
+													"displayName": "ARS - 阿根廷比索"
+												},
+												"AUD": {
+													"displayName": "AUD - 澳大利亚元"
+												},
+												"AWG": {
+													"displayName": "AWG - 阿鲁巴弗罗林"
+												},
+												"AZN": {
+													"displayName": "AZN - 阿塞拜疆马纳特"
+												},
+												"BAM": {
+													"displayName": "BAM - 可兑换马克"
+												},
+												"BBD": {
+													"displayName": "巴巴多斯元 - 巴巴多斯元"
+												},
+												"BDT": {
+													"displayName": "孟加拉塔卡 (BDT)"
+												},
+												"BGN": {
+													"displayName": "BGN - 保加利亚列弗"
+												},
+												"BHD": {
+													"displayName": "BHD - 巴林第纳尔"
+												},
+												"BIF": {
+													"displayName": "BIF - 布隆迪法郎"
+												},
+												"BMD": {
+													"displayName": "BMD - 百慕大元"
+												},
+												"BND": {
+													"displayName": "BND - 文莱元"
+												},
+												"BOB": {
+													"displayName": "BOB - 玻利维亚诺"
+												},
+												"BOV": {
+													"displayName": "BOV - 玻利瓦尔"
+												},
+												"BRL": {
+													"displayName": "BRL - 巴西雷亚尔"
+												},
+												"BSD": {
+													"displayName": "BSD - 巴哈马元"
+												},
+												"BTN": {
+													"displayName": "BTN - 努尔特鲁姆"
+												},
+												"BWP": {
+													"displayName": "BWP - 普拉"
+												},
+												"BYN": {
+													"displayName": "白俄罗斯卢布"
+												},
+												"BZD": {
+													"displayName": "BZD - 伯利兹元"
+												},
+												"CAD": {
+													"displayName": "CAD - 加拿大元"
+												},
+												"CDF": {
+													"displayName": "CDF - 刚果法郎"
+												},
+												"CHE": {
+													"displayName": "瑞士 - 欧元"
+												},
+												"CHF": {
+													"displayName": "CHF - 瑞士法郎"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR法郎"
+												},
+												"CLF": {
+													"displayName": "CLF - 发展单位"
+												},
+												"CLP": {
+													"displayName": "CLP - 智利比索"
+												},
+												"CNY": {
+													"displayName": "CNY - 人民币元"
+												},
+												"COP": {
+													"displayName": "COP - 哥伦比亚比索"
+												},
+												"COU": {
+													"displayName": "COU - 实际价值单位"
+												},
+												"CRC": {
+													"displayName": "CRC - 哥斯达黎加科朗"
+												},
+												"CUC": {
+													"displayName": "CUC - 可兑换比索"
+												},
+												"CUP": {
+													"displayName": "CUP - 古巴比索"
+												},
+												"CVE": {
+													"displayName": "CVE - 佛得角埃斯库多"
+												},
+												"CZK": {
+													"displayName": "捷克克朗 - 捷克货币"
+												},
+												"DJF": {
+													"displayName": "DJF - 吉布提法郎"
+												},
+												"DKK": {
+													"displayName": "丹麦克朗 - 丹麦克朗"
+												},
+												"DOP": {
+													"displayName": "DOP - 多米尼加比索"
+												},
+												"DZD": {
+													"displayName": "DZD - 阿尔及利亚第纳尔"
+												},
+												"EGP": {
+													"displayName": "EGP - 埃及镑"
+												},
+												"ERN": {
+													"displayName": "厄立特里亚纳克法"
+												},
+												"ETB": {
+													"displayName": "ETB - 埃塞俄比亚比尔"
+												},
+												"EUR": {
+													"displayName": "EUR - 欧元"
+												},
+												"FJD": {
+													"displayName": "FJD - 斐济元"
+												},
+												"FKP": {
+													"displayName": "FKP - 福克兰群岛镑"
+												},
+												"GBP": {
+													"displayName": "英镑 - 英镑"
+												},
+												"GEL": {
+													"displayName": "格鲁吉亚拉里"
+												},
+												"GHS": {
+													"displayName": "GHS - 加纳塞地"
+												},
+												"GIP": {
+													"displayName": "GIP - 直布罗陀镑"
+												},
+												"GMD": {
+													"displayName": "GMD - 达拉西"
+												},
+												"GNF": {
+													"displayName": "GNF - 几内亚法郎"
+												},
+												"GTQ": {
+													"displayName": "GTQ - 格查尔"
+												},
+												"GYD": {
+													"displayName": "圭亚那元 - 圭亚那元"
+												},
+												"HKD": {
+													"displayName": "HKD - 港币"
+												},
+												"HNL": {
+													"displayName": "HNL - 伦皮拉"
+												},
+												"HRK": {
+													"displayName": "HRK - 库纳"
+												},
+												"HTG": {
+													"displayName": "HTG - 古德"
+												},
+												"HUF": {
+													"displayName": "HUF - 福林"
+												},
+												"IDR": {
+													"displayName": "IDR - 印尼盾"
+												},
+												"ILS": {
+													"displayName": "ILS - 新以色列谢克尔"
+												},
+												"INR": {
+													"displayName": "INR - 印度卢比"
+												},
+												"IQD": {
+													"displayName": "IQD - 伊拉克第纳尔"
+												},
+												"IRR": {
+													"displayName": "IRR - 伊朗里亚尔"
+												},
+												"ISK": {
+													"displayName": "ISK - 冰岛克朗"
+												},
+												"JMD": {
+													"displayName": "JMD - 牙买加元"
+												},
+												"JOD": {
+													"displayName": "JOD - 约旦第纳尔"
+												},
+												"JPY": {
+													"displayName": "JPY - 日元"
+												},
+												"KES": {
+													"displayName": "KES - 肯尼亚先令"
+												},
+												"KGS": {
+													"displayName": "KGS - 总计"
+												},
+												"KHR": {
+													"displayName": "KHR - 瑞尔"
+												},
+												"KMF": {
+													"displayName": "KMF - 科摩罗法郎"
+												},
+												"KPW": {
+													"displayName": "KPW - 朝鲜元"
+												},
+												"KRW": {
+													"displayName": "KRW - 韩元"
+												},
+												"KWD": {
+													"displayName": "KWD - 科威特第纳尔"
+												},
+												"KYD": {
+													"displayName": "KYD - 开曼群岛元"
+												},
+												"KZT": {
+													"displayName": "KZT - 坚戈"
+												},
+												"LAK": {
+													"displayName": "老挝基普"
+												},
+												"LBP": {
+													"displayName": "LBP - 黎巴嫩镑"
+												},
+												"LKR": {
+													"displayName": "LKR - 斯里兰卡卢比"
+												},
+												"LRD": {
+													"displayName": "LRD - 利比里亚元"
+												},
+												"LSL": {
+													"displayName": "LSL - 洛蒂"
+												},
+												"LYD": {
+													"displayName": "LYD - 利比亚第纳尔"
+												},
+												"MAD": {
+													"displayName": "MAD - 摩洛哥迪拉姆"
+												},
+												"MDL": {
+													"displayName": "MDL - 摩尔多瓦列伊"
+												},
+												"MGA": {
+													"displayName": "MGA - 马达加斯加阿里亚里"
+												},
+												"MKD": {
+													"displayName": "MKD - 代纳尔"
+												},
+												"MMK": {
+													"displayName": "MMK - 缅元"
+												},
+												"MNT": {
+													"displayName": "MNT - 图格里克"
+												},
+												"MOP": {
+													"displayName": "MOP - 澳门币"
+												},
+												"MRU": {
+													"displayName": "MRU - 乌吉亚"
+												},
+												"MUR": {
+													"displayName": "MUR - 毛里求斯卢比"
+												},
+												"MVR": {
+													"displayName": "MVR - 拉菲亚"
+												},
+												"MWK": {
+													"displayName": "MWK - 马拉维克瓦查"
+												},
+												"MXN": {
+													"displayName": "MXN - 墨西哥比索"
+												},
+												"MXV": {
+													"displayName": "MXV - 墨西哥投资单位（UDI）"
+												},
+												"MYR": {
+													"displayName": "MYR - 马来西亚林吉特"
+												},
+												"MZN": {
+													"displayName": "MZN - 莫桑比克梅蒂卡尔"
+												},
+												"NAD": {
+													"displayName": "NAD - 纳米比亚元"
+												},
+												"NGN": {
+													"displayName": "NGN - 尼日利亚奈拉"
+												},
+												"NIO": {
+													"displayName": "NIO - 科尔多瓦奥罗"
+												},
+												"NOK": {
+													"displayName": "NOK - 挪威克朗"
+												},
+												"NPR": {
+													"displayName": "尼泊尔卢比"
+												},
+												"NZD": {
+													"displayName": "NZD - 新西兰元"
+												},
+												"OMR": {
+													"displayName": "OMR - 阿曼里亚尔"
+												},
+												"PAB": {
+													"displayName": "PAB - 巴拿马巴波亚"
+												},
+												"PEN": {
+													"displayName": "笔 - 解决方案"
+												},
+												"PGK": {
+													"displayName": "PGK - 基那"
+												},
+												"PHP": {
+													"displayName": "PHP - 菲律宾比索"
+												},
+												"PKR": {
+													"displayName": "PKR - 巴基斯坦卢比"
+												},
+												"PLN": {
+													"displayName": "PLN - 波兰兹罗提"
+												},
+												"PYG": {
+													"displayName": "PYG - 瓜拉尼"
+												},
+												"QAR": {
+													"displayName": "QAR - 卡塔尔里亚尔"
+												},
+												"RON": {
+													"displayName": "RON - 罗马尼亚列伊"
+												},
+												"RSD": {
+													"displayName": "RSD - 塞尔维亚第纳尔"
+												},
+												"RUB": {
+													"displayName": "RUB - 俄罗斯卢布"
+												},
+												"RWF": {
+													"displayName": "RWF - 卢旺达法郎"
+												},
+												"SAR": {
+													"displayName": "沙特里亚尔 - 沙特阿拉伯货币"
+												},
+												"SBD": {
+													"displayName": "SBD - 所罗门群岛元"
+												},
+												"SCR": {
+													"displayName": "SCR - 塞舌尔卢比"
+												},
+												"SDG": {
+													"displayName": "SDG - 苏丹镑"
+												},
+												"SEK": {
+													"displayName": "瑞典克朗"
+												},
+												"SGD": {
+													"displayName": "SGD - 新加坡元"
+												},
+												"SHP": {
+													"displayName": "SHP - 圣赫勒拿镑"
+												},
+												"SLL": {
+													"displayName": "SLL - 利昂"
+												},
+												"SOS": {
+													"displayName": "SOS - 索马里先令"
+												},
+												"SRD": {
+													"displayName": "苏里南元 - SRD"
+												},
+												"SSP": {
+													"displayName": "SSP - 南苏丹镑"
+												},
+												"STN": {
+													"displayName": "STN - 多布拉"
+												},
+												"SVC": {
+													"displayName": "SVC - 萨尔瓦多科朗"
+												},
+												"SYP": {
+													"displayName": "SYP - 叙利亚镑"
+												},
+												"SZL": {
+													"displayName": "SZL - 里兰吉尼"
+												},
+												"THB": {
+													"displayName": "THB - 泰铢"
+												},
+												"TJS": {
+													"displayName": "塔吉克斯坦索莫尼"
+												},
+												"TMT": {
+													"displayName": "土库曼斯坦新马纳特"
+												},
+												"TND": {
+													"displayName": "TND - 突尼斯第纳尔"
+												},
+												"TOP": {
+													"displayName": "TOP - 潘加"
+												},
+												"TRY": {
+													"displayName": "TRY - 土耳其里拉"
+												},
+												"TTD": {
+													"displayName": "TTD - 特立尼达和多巴哥元"
+												},
+												"TWD": {
+													"displayName": "TWD - 新台币"
+												},
+												"TZS": {
+													"displayName": "TZS - 坦桑尼亚先令"
+												},
+												"UAH": {
+													"displayName": "UAH - 格里夫纳"
+												},
+												"UGX": {
+													"displayName": "UGX - 乌干达先令"
+												},
+												"USD": {
+													"displayName": "美元 - 美元"
+												},
+												"USN": {
+													"displayName": "USN - 美元（次日）"
+												},
+												"UYI": {
+													"displayName": "UYI - 乌拉圭比索指数单位（UI）"
+												},
+												"UYU": {
+													"displayName": "乌拉圭比索"
+												},
+												"UYW": {
+													"displayName": "UYW - 预防单位"
+												},
+												"UZS": {
+													"displayName": "UZS - 乌兹别克斯坦苏姆"
+												},
+												"VES": {
+													"displayName": "VES - 主权玻利瓦尔"
+												},
+												"VND": {
+													"displayName": "VND - 越南盾"
+												},
+												"VUV": {
+													"displayName": "VUV - 瓦图"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - 中非金融合作法郎"
+												},
+												"XAG": {
+													"displayName": "XAG - 白银"
+												},
+												"XAU": {
+													"displayName": "XAU - 黄金"
+												},
+												"XBA": {
+													"displayName": "XBA - 债券市场单位欧洲复合单位 (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - 债券市场单位 欧洲货币单位 (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - 债券市场单位 欧洲记账单位9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - 债券市场单位 欧洲记账单位17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - 东加勒比元"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR（特别提款权）"
+												},
+												"XOF": {
+													"displayName": "XOF - 西非法郎 BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - 钯金"
+												},
+												"XPF": {
+													"displayName": "XPF - 太平洋法郎"
+												},
+												"XPT": {
+													"displayName": "XPT - 铂金"
+												},
+												"XSU": {
+													"displayName": "XSU - 苏克雷"
+												},
+												"XTS": {
+													"displayName": "XTS - 专为测试目的保留的代码"
+												},
+												"XUA": {
+													"displayName": "XUA - 非洲开发银行记账单位"
+												},
+												"XXX": {
+													"displayName": "XXX - 为不涉及货币的交易分配的代码"
+												},
+												"YER": {
+													"displayName": "YER - 也门里亚尔"
+												},
+												"ZAR": {
+													"displayName": "ZAR - 兰特"
+												},
+												"ZMW": {
+													"displayName": "ZMW - 赞比亚克瓦查"
+												},
+												"ZWL": {
+													"displayName": "津巴布韦元"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "金额"
+										},
+										"date_time": {
+											"displayName": "日期时间"
+										},
+										"imageLink": {
+											"displayName": "图片链接"
+										}
+									}
+								}
+							},
+							"values": {
+								"parameter": {
+									"displayName": "参数",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"options": {
+												"text": {
+													"displayName": "文本"
+												},
+												"currency": {
+													"displayName": "货币"
+												},
+												"date_time": {
+													"displayName": "日期时间"
+												},
+												"image": {
+													"displayName": "图片"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本"
+										},
+										"code": {
+											"displayName": "货币代码",
+											"placeholder": "美元",
+											"options": {
+												"AED": {
+													"displayName": "AED - 阿联酋迪拉姆"
+												},
+												"AFN": {
+													"displayName": "AFN - 阿富汗尼"
+												},
+												"ALL": {
+													"displayName": "全部 - 低"
+												},
+												"AMD": {
+													"displayName": "AMD - 亚美尼亚德拉姆"
+												},
+												"ANG": {
+													"displayName": "ANG - 荷属安的列斯盾"
+												},
+												"AOA": {
+													"displayName": "安哥拉宽扎"
+												},
+												"ARS": {
+													"displayName": "ARS - 阿根廷比索"
+												},
+												"AUD": {
+													"displayName": "AUD - 澳大利亚元"
+												},
+												"AWG": {
+													"displayName": "AWG - 阿鲁巴弗罗林"
+												},
+												"AZN": {
+													"displayName": "AZN - 阿塞拜疆马纳特"
+												},
+												"BAM": {
+													"displayName": "BAM - 可兑换马克"
+												},
+												"BBD": {
+													"displayName": "巴巴多斯元 - 巴巴多斯元"
+												},
+												"BDT": {
+													"displayName": "孟加拉塔卡 (BDT)"
+												},
+												"BGN": {
+													"displayName": "BGN - 保加利亚列弗"
+												},
+												"BHD": {
+													"displayName": "BHD - 巴林第纳尔"
+												},
+												"BIF": {
+													"displayName": "BIF - 布隆迪法郎"
+												},
+												"BMD": {
+													"displayName": "BMD - 百慕大元"
+												},
+												"BND": {
+													"displayName": "BND - 文莱元"
+												},
+												"BOB": {
+													"displayName": "BOB - 玻利维亚诺"
+												},
+												"BOV": {
+													"displayName": "BOV - 玻利瓦尔"
+												},
+												"BRL": {
+													"displayName": "BRL - 巴西雷亚尔"
+												},
+												"BSD": {
+													"displayName": "BSD - 巴哈马元"
+												},
+												"BTN": {
+													"displayName": "BTN - 努尔特鲁姆"
+												},
+												"BWP": {
+													"displayName": "BWP - 普拉"
+												},
+												"BYN": {
+													"displayName": "白俄罗斯卢布"
+												},
+												"BZD": {
+													"displayName": "BZD - 伯利兹元"
+												},
+												"CAD": {
+													"displayName": "CAD - 加拿大元"
+												},
+												"CDF": {
+													"displayName": "CDF - 刚果法郎"
+												},
+												"CHE": {
+													"displayName": "瑞士 - 欧元"
+												},
+												"CHF": {
+													"displayName": "CHF - 瑞士法郎"
+												},
+												"CHW": {
+													"displayName": "CHW - WIR法郎"
+												},
+												"CLF": {
+													"displayName": "CLF - 发展单位"
+												},
+												"CLP": {
+													"displayName": "CLP - 智利比索"
+												},
+												"CNY": {
+													"displayName": "CNY - 人民币元"
+												},
+												"COP": {
+													"displayName": "COP - 哥伦比亚比索"
+												},
+												"COU": {
+													"displayName": "COU - 实际价值单位"
+												},
+												"CRC": {
+													"displayName": "CRC - 哥斯达黎加科朗"
+												},
+												"CUC": {
+													"displayName": "CUC - 可兑换比索"
+												},
+												"CUP": {
+													"displayName": "CUP - 古巴比索"
+												},
+												"CVE": {
+													"displayName": "CVE - 佛得角埃斯库多"
+												},
+												"CZK": {
+													"displayName": "捷克克朗 - 捷克货币"
+												},
+												"DJF": {
+													"displayName": "DJF - 吉布提法郎"
+												},
+												"DKK": {
+													"displayName": "丹麦克朗 - 丹麦克朗"
+												},
+												"DOP": {
+													"displayName": "DOP - 多米尼加比索"
+												},
+												"DZD": {
+													"displayName": "DZD - 阿尔及利亚第纳尔"
+												},
+												"EGP": {
+													"displayName": "EGP - 埃及镑"
+												},
+												"ERN": {
+													"displayName": "厄立特里亚纳克法"
+												},
+												"ETB": {
+													"displayName": "ETB - 埃塞俄比亚比尔"
+												},
+												"EUR": {
+													"displayName": "EUR - 欧元"
+												},
+												"FJD": {
+													"displayName": "FJD - 斐济元"
+												},
+												"FKP": {
+													"displayName": "FKP - 福克兰群岛镑"
+												},
+												"GBP": {
+													"displayName": "英镑 - 英镑"
+												},
+												"GEL": {
+													"displayName": "格鲁吉亚拉里"
+												},
+												"GHS": {
+													"displayName": "GHS - 加纳塞地"
+												},
+												"GIP": {
+													"displayName": "GIP - 直布罗陀镑"
+												},
+												"GMD": {
+													"displayName": "GMD - 达拉西"
+												},
+												"GNF": {
+													"displayName": "GNF - 几内亚法郎"
+												},
+												"GTQ": {
+													"displayName": "GTQ - 格查尔"
+												},
+												"GYD": {
+													"displayName": "圭亚那元 - 圭亚那元"
+												},
+												"HKD": {
+													"displayName": "HKD - 港币"
+												},
+												"HNL": {
+													"displayName": "HNL - 伦皮拉"
+												},
+												"HRK": {
+													"displayName": "HRK - 库纳"
+												},
+												"HTG": {
+													"displayName": "HTG - 古德"
+												},
+												"HUF": {
+													"displayName": "HUF - 福林"
+												},
+												"IDR": {
+													"displayName": "IDR - 印尼盾"
+												},
+												"ILS": {
+													"displayName": "ILS - 新以色列谢克尔"
+												},
+												"INR": {
+													"displayName": "INR - 印度卢比"
+												},
+												"IQD": {
+													"displayName": "IQD - 伊拉克第纳尔"
+												},
+												"IRR": {
+													"displayName": "IRR - 伊朗里亚尔"
+												},
+												"ISK": {
+													"displayName": "ISK - 冰岛克朗"
+												},
+												"JMD": {
+													"displayName": "JMD - 牙买加元"
+												},
+												"JOD": {
+													"displayName": "JOD - 约旦第纳尔"
+												},
+												"JPY": {
+													"displayName": "JPY - 日元"
+												},
+												"KES": {
+													"displayName": "KES - 肯尼亚先令"
+												},
+												"KGS": {
+													"displayName": "KGS - 总计"
+												},
+												"KHR": {
+													"displayName": "KHR - 瑞尔"
+												},
+												"KMF": {
+													"displayName": "KMF - 科摩罗法郎"
+												},
+												"KPW": {
+													"displayName": "KPW - 朝鲜元"
+												},
+												"KRW": {
+													"displayName": "KRW - 韩元"
+												},
+												"KWD": {
+													"displayName": "KWD - 科威特第纳尔"
+												},
+												"KYD": {
+													"displayName": "KYD - 开曼群岛元"
+												},
+												"KZT": {
+													"displayName": "KZT - 坚戈"
+												},
+												"LAK": {
+													"displayName": "老挝基普"
+												},
+												"LBP": {
+													"displayName": "LBP - 黎巴嫩镑"
+												},
+												"LKR": {
+													"displayName": "LKR - 斯里兰卡卢比"
+												},
+												"LRD": {
+													"displayName": "LRD - 利比里亚元"
+												},
+												"LSL": {
+													"displayName": "LSL - 洛蒂"
+												},
+												"LYD": {
+													"displayName": "LYD - 利比亚第纳尔"
+												},
+												"MAD": {
+													"displayName": "MAD - 摩洛哥迪拉姆"
+												},
+												"MDL": {
+													"displayName": "MDL - 摩尔多瓦列伊"
+												},
+												"MGA": {
+													"displayName": "MGA - 马达加斯加阿里亚里"
+												},
+												"MKD": {
+													"displayName": "MKD - 代纳尔"
+												},
+												"MMK": {
+													"displayName": "MMK - 缅元"
+												},
+												"MNT": {
+													"displayName": "MNT - 图格里克"
+												},
+												"MOP": {
+													"displayName": "MOP - 澳门币"
+												},
+												"MRU": {
+													"displayName": "MRU - 乌吉亚"
+												},
+												"MUR": {
+													"displayName": "MUR - 毛里求斯卢比"
+												},
+												"MVR": {
+													"displayName": "MVR - 拉菲亚"
+												},
+												"MWK": {
+													"displayName": "MWK - 马拉维克瓦查"
+												},
+												"MXN": {
+													"displayName": "MXN - 墨西哥比索"
+												},
+												"MXV": {
+													"displayName": "MXV - 墨西哥投资单位（UDI）"
+												},
+												"MYR": {
+													"displayName": "MYR - 马来西亚林吉特"
+												},
+												"MZN": {
+													"displayName": "MZN - 莫桑比克梅蒂卡尔"
+												},
+												"NAD": {
+													"displayName": "NAD - 纳米比亚元"
+												},
+												"NGN": {
+													"displayName": "NGN - 尼日利亚奈拉"
+												},
+												"NIO": {
+													"displayName": "NIO - 科尔多瓦奥罗"
+												},
+												"NOK": {
+													"displayName": "NOK - 挪威克朗"
+												},
+												"NPR": {
+													"displayName": "尼泊尔卢比"
+												},
+												"NZD": {
+													"displayName": "NZD - 新西兰元"
+												},
+												"OMR": {
+													"displayName": "OMR - 阿曼里亚尔"
+												},
+												"PAB": {
+													"displayName": "PAB - 巴拿马巴波亚"
+												},
+												"PEN": {
+													"displayName": "笔 - 解决方案"
+												},
+												"PGK": {
+													"displayName": "PGK - 基那"
+												},
+												"PHP": {
+													"displayName": "PHP - 菲律宾比索"
+												},
+												"PKR": {
+													"displayName": "PKR - 巴基斯坦卢比"
+												},
+												"PLN": {
+													"displayName": "PLN - 波兰兹罗提"
+												},
+												"PYG": {
+													"displayName": "PYG - 瓜拉尼"
+												},
+												"QAR": {
+													"displayName": "QAR - 卡塔尔里亚尔"
+												},
+												"RON": {
+													"displayName": "RON - 罗马尼亚列伊"
+												},
+												"RSD": {
+													"displayName": "RSD - 塞尔维亚第纳尔"
+												},
+												"RUB": {
+													"displayName": "RUB - 俄罗斯卢布"
+												},
+												"RWF": {
+													"displayName": "RWF - 卢旺达法郎"
+												},
+												"SAR": {
+													"displayName": "沙特里亚尔 - 沙特阿拉伯货币"
+												},
+												"SBD": {
+													"displayName": "SBD - 所罗门群岛元"
+												},
+												"SCR": {
+													"displayName": "SCR - 塞舌尔卢比"
+												},
+												"SDG": {
+													"displayName": "SDG - 苏丹镑"
+												},
+												"SEK": {
+													"displayName": "瑞典克朗"
+												},
+												"SGD": {
+													"displayName": "SGD - 新加坡元"
+												},
+												"SHP": {
+													"displayName": "SHP - 圣赫勒拿镑"
+												},
+												"SLL": {
+													"displayName": "SLL - 利昂"
+												},
+												"SOS": {
+													"displayName": "SOS - 索马里先令"
+												},
+												"SRD": {
+													"displayName": "苏里南元 - SRD"
+												},
+												"SSP": {
+													"displayName": "SSP - 南苏丹镑"
+												},
+												"STN": {
+													"displayName": "STN - 多布拉"
+												},
+												"SVC": {
+													"displayName": "SVC - 萨尔瓦多科朗"
+												},
+												"SYP": {
+													"displayName": "SYP - 叙利亚镑"
+												},
+												"SZL": {
+													"displayName": "SZL - 里兰吉尼"
+												},
+												"THB": {
+													"displayName": "THB - 泰铢"
+												},
+												"TJS": {
+													"displayName": "塔吉克斯坦索莫尼"
+												},
+												"TMT": {
+													"displayName": "土库曼斯坦新马纳特"
+												},
+												"TND": {
+													"displayName": "TND - 突尼斯第纳尔"
+												},
+												"TOP": {
+													"displayName": "TOP - 潘加"
+												},
+												"TRY": {
+													"displayName": "TRY - 土耳其里拉"
+												},
+												"TTD": {
+													"displayName": "TTD - 特立尼达和多巴哥元"
+												},
+												"TWD": {
+													"displayName": "TWD - 新台币"
+												},
+												"TZS": {
+													"displayName": "TZS - 坦桑尼亚先令"
+												},
+												"UAH": {
+													"displayName": "UAH - 格里夫纳"
+												},
+												"UGX": {
+													"displayName": "UGX - 乌干达先令"
+												},
+												"USD": {
+													"displayName": "美元 - 美元"
+												},
+												"USN": {
+													"displayName": "USN - 美元（次日）"
+												},
+												"UYI": {
+													"displayName": "UYI - 乌拉圭比索指数单位（UI）"
+												},
+												"UYU": {
+													"displayName": "乌拉圭比索"
+												},
+												"UYW": {
+													"displayName": "UYW - 预防单位"
+												},
+												"UZS": {
+													"displayName": "UZS - 乌兹别克斯坦苏姆"
+												},
+												"VES": {
+													"displayName": "VES - 主权玻利瓦尔"
+												},
+												"VND": {
+													"displayName": "VND - 越南盾"
+												},
+												"VUV": {
+													"displayName": "VUV - 瓦图"
+												},
+												"WST": {
+													"displayName": "WST - Tala"
+												},
+												"XAF": {
+													"displayName": "XAF - 中非金融合作法郎"
+												},
+												"XAG": {
+													"displayName": "XAG - 白银"
+												},
+												"XAU": {
+													"displayName": "XAU - 黄金"
+												},
+												"XBA": {
+													"displayName": "XBA - 债券市场单位欧洲复合单位 (EURCO)"
+												},
+												"XBB": {
+													"displayName": "XBB - 债券市场单位 欧洲货币单位 (E.M.U.-6)"
+												},
+												"XBC": {
+													"displayName": "XBC - 债券市场单位 欧洲记账单位9 (E.U.A.-9)"
+												},
+												"XBD": {
+													"displayName": "XBD - 债券市场单位 欧洲记账单位17 (E.U.A.-17)"
+												},
+												"XCD": {
+													"displayName": "XCD - 东加勒比元"
+												},
+												"XDR": {
+													"displayName": "XDR - SDR（特别提款权）"
+												},
+												"XOF": {
+													"displayName": "XOF - 西非法郎 BCEAO"
+												},
+												"XPD": {
+													"displayName": "XPD - 钯金"
+												},
+												"XPF": {
+													"displayName": "XPF - 太平洋法郎"
+												},
+												"XPT": {
+													"displayName": "XPT - 铂金"
+												},
+												"XSU": {
+													"displayName": "XSU - 苏克雷"
+												},
+												"XTS": {
+													"displayName": "XTS - 专为测试目的保留的代码"
+												},
+												"XUA": {
+													"displayName": "XUA - 非洲开发银行记账单位"
+												},
+												"XXX": {
+													"displayName": "XXX - 为不涉及货币的交易分配的代码"
+												},
+												"YER": {
+													"displayName": "YER - 也门里亚尔"
+												},
+												"ZAR": {
+													"displayName": "ZAR - 兰特"
+												},
+												"ZMW": {
+													"displayName": "ZMW - 赞比亚克瓦查"
+												},
+												"ZWL": {
+													"displayName": "津巴布韦元"
+												}
+											}
+										},
+										"amount_1000": {
+											"displayName": "金额"
+										},
+										"date_time": {
+											"displayName": "日期时间"
+										},
+										"imageLink": {
+											"displayName": "图片链接"
+										}
+									}
+								},
+								"headerParameters": {
+									"displayName": "参数",
+									"placeholder": "添加参数"
+								}
+							}
+						}
+					}
+				},
+				"components": {
+					"displayName": "组件",
+					"placeholder": "添加组件"
+				}
+			}
+		},
+		"mediaGetId": {
+			"displayName": "媒体ID",
+			"description": "媒体的ID"
+		},
+		"mediaDeleteId": {
+			"displayName": "媒体ID",
+			"description": "媒体的ID"
+		},
+		"message": {
+			"displayName": "消息"
+		},
+		"responseType": {
+			"displayName": "响应类型",
+			"options": {
+				"approval": {
+					"displayName": "审批",
+					"description": "用户可直接在消息内批准/拒绝"
+				},
+				"freeText": {
+					"displayName": "自由文本",
+					"description": "用户可通过表单提交响应"
+				},
+				"customForm": {
+					"displayName": "自定义表单",
+					"description": "用户可通过自定义表单提交响应"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "定义表单",
+			"options": {
+				"fields": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "表单字段"
+		},
+		"formFields": {
+			"displayName": "表单元素",
+			"placeholder": "添加表单元素",
+			"multipleValueButtonText": "添加表单元素",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "表单元素",
+					"placeholder": "添加表单元素"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "审批选项",
+			"placeholder": "添加选项",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "审批选项",
+					"placeholder": "添加选项"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"limitWaitTime": {
+					"displayName": "等待时间限制",
+					"description": "是否限制此节点在继续执行前等待用户响应的时间",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "等待时间限制"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "添加n8n归属声明",
+					"description": "是否在消息末尾包含短语“此消息由n8n自动发送”"
+				},
+				"messageButtonLabel": {
+					"displayName": "消息按钮标签"
+				},
+				"responseFormTitle": {
+					"displayName": "响应表单标题",
+					"description": "用户可访问以提供其响应的表单标题"
+				},
+				"responseFormDescription": {
+					"displayName": "响应表单描述",
+					"description": "用户可访问以提供其响应的表单描述"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "响应表单按钮标签"
+				},
+				"responseFormCustomCss": {
+					"displayName": "响应表单自定义样式",
+					"description": "使用CSS覆盖响应表单的默认样式"
+				}
+			}
+		}
+	}
+}

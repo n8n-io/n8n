@@ -1,0 +1,96 @@
+{
+	"header": {
+		"displayName": "urlscan.io",
+		"description": "Provides various utilities for monitoring websites like health checks or screenshots"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"scan": {
+					"displayName": "Scan"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"perform": {
+					"displayName": "Perform"
+				}
+			}
+		},
+		"scanId": {
+			"displayName": "Scan ID",
+			"description": "ID of the scan to retrieve"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"query": {
+					"displayName": "Query",
+					"description": "Query using the <a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-dsl-query-string-query\">Elastic Search Query String syntax</a>. See <a href=\"https://urlscan.io/docs/search/\">supported fields</a> in the documentation.",
+					"placeholder": "domain:n8n.io"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "URL to scan",
+			"placeholder": "https://n8n.io"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"customAgent": {
+					"displayName": "Custom Agent",
+					"description": "<code>User-Agent</code> header to set for this scan. Defaults to <code>n8n</code>"
+				},
+				"overrideSafety": {
+					"displayName": "Override Safety",
+					"description": "Disable reclassification of URLs with potential PII in them"
+				},
+				"referer": {
+					"displayName": "Referer",
+					"description": "HTTP referer to set for this scan",
+					"placeholder": "https://n8n.io"
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Comma-separated list of user-defined tags to add to this scan. Limited to 10 tags.",
+					"placeholder": "phishing, malicious"
+				},
+				"visibility": {
+					"displayName": "Visibility",
+					"options": {
+						"private": {
+							"displayName": "Private"
+						},
+						"public": {
+							"displayName": "Public"
+						},
+						"unlisted": {
+							"displayName": "Unlisted"
+						}
+					}
+				}
+			}
+		}
+	}
+}

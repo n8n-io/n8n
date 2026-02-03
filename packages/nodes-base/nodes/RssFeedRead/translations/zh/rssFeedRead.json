@@ -1,0 +1,26 @@
+{
+	"header": {
+		"displayName": "RSS 读取",
+		"description": "从 RSS 订阅源读取数据"
+	},
+	"nodeView": {
+		"url": {
+			"displayName": "URL",
+			"description": "RSS源的URL"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"customFields": {
+					"displayName": "自定义字段",
+					"description": "输出中包含的自定义字段的逗号分隔列表。例如：“author, contentSnippet”。"
+				},
+				"ignoreSSL": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否忽略SSL/TLS证书问题"
+				}
+			}
+		}
+	}
+}

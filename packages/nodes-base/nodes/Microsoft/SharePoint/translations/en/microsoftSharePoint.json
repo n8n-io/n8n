@@ -1,0 +1,185 @@
+{
+	"header": {
+		"displayName": "Microsoft SharePoint",
+		"description": "Interact with Microsoft SharePoint API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"file": {
+					"displayName": "File"
+				},
+				"item": {
+					"displayName": "Item"
+				},
+				"list": {
+					"displayName": "List"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"download": {
+					"displayName": "Download",
+					"description": "Download a file"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update an item in an existing list"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload an existing file"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create an item in an existing list"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new item, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an item from a list"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve details of a single list"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve a list of lists"
+				}
+			}
+		},
+		"site": {
+			"displayName": "Site",
+			"description": "Select the site to retrieve lists from"
+		},
+		"folder": {
+			"displayName": "Parent Folder",
+			"description": "Select the folder to upload the file to",
+			"placeholder": "/ (Library root)"
+		},
+		"file": {
+			"displayName": "File",
+			"description": "Select the file to update",
+			"placeholder": "eg. my-file.pdf"
+		},
+		"fileName": {
+			"displayName": "File Name",
+			"description": "The name of the file being uploaded",
+			"placeholder": "e.g. My New File"
+		},
+		"changeFileContent": {
+			"displayName": "Change File Content",
+			"description": "Whether to update the file contents",
+			"placeholder": "e.g. My New File"
+		},
+		"fileContents": {
+			"displayName": "File Contents",
+			"description": "Find the name of input field containing the binary data to upload in the Input panel on the left, in the Binary tab",
+			"placeholder": "data"
+		},
+		"list": {
+			"displayName": "List",
+			"description": "Select the list you want to retrieve"
+		},
+		"noticeUnsupportedFields": {
+			"displayName": "Due to API restrictions, the following column types cannot be updated: Hyperlink, Location, Metadata"
+		},
+		"columns": {
+			"displayName": "Columns"
+		},
+		"item": {
+			"displayName": "Item",
+			"description": "Select the item you want to get"
+		},
+		"simplify": {
+			"displayName": "Simplify"
+		},
+		"filter": {
+			"displayName": "Filter by Formula",
+			"description": "The formula will be evaluated for each record. <a href=\"https://learn.microsoft.com/en-us/graph/filter-query-parameter\">More info</a>.",
+			"placeholder": "e.g. fields/Title eq 'item1'"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "The fields you want to include in the output"
+				}
+			}
+		},
+		"requestOptions": {
+			"displayName": "Request Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batching": {
+					"displayName": "Batching",
+					"placeholder": "Add Batching",
+					"options": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						},
+						"batching": {
+							"displayName": "Batching",
+							"placeholder": "Add Batching"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to accept the response even if SSL certificate validation is not possible"
+				},
+				"proxy": {
+					"displayName": "Proxy",
+					"description": "HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128",
+					"placeholder": "e.g. http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for the server to send response headers (and start the response body) before aborting the request"
+				}
+			}
+		}
+	}
+}

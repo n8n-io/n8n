@@ -1,0 +1,30 @@
+{
+	"header": {
+		"displayName": "MQTT触发器",
+		"description": "监听MQTT事件"
+	},
+	"nodeView": {
+		"topics": {
+			"displayName": "主题",
+			"description": "要订阅的主题，多个主题可用逗号分隔。支持通配符（+ 表示单层，# 表示多层）。默认所有订阅使用 QoS=0。如需设置不同 QoS，请在主题后添加冒号和 QoS 值。例如：topicA:1,topicB:2"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"jsonParseBody": {
+					"displayName": "JSON解析正文",
+					"description": "是否尝试将消息解析为对象"
+				},
+				"onlyMessage": {
+					"displayName": "仅返回消息",
+					"description": "是否仅返回消息属性"
+				},
+				"parallelProcessing": {
+					"displayName": "并行处理",
+					"description": "是否并行处理消息或保持消息顺序处理"
+				}
+			}
+		}
+	}
+}

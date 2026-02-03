@@ -1,0 +1,71 @@
+{
+	"header": {
+		"displayName": "Mocean",
+		"description": "Send SMS and voice messages via Mocean"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"sms": {
+					"displayName": "SMS"
+				},
+				"voice": {
+					"displayName": "Voice"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"send": {
+					"displayName": "Send",
+					"description": "Send SMS/Voice message"
+				}
+			}
+		},
+		"from": {
+			"displayName": "From",
+			"description": "Number to which to send the message",
+			"placeholder": "Sender Number"
+		},
+		"to": {
+			"displayName": "To",
+			"description": "Number from which to send the message",
+			"placeholder": "Receipient number"
+		},
+		"language": {
+			"displayName": "Language",
+			"options": {
+				"cmn-CN": {
+					"displayName": "Chinese Mandarin (China)"
+				},
+				"en-GB": {
+					"displayName": "English (United Kingdom)"
+				},
+				"en-US": {
+					"displayName": "English (United States)"
+				},
+				"ja-JP": {
+					"displayName": "Japanese (Japan)"
+				},
+				"ko-KR": {
+					"displayName": "Korean (Korea)"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "Message to send"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"dlrUrl": {
+					"displayName": "Delivery Report URL"
+				}
+			}
+		}
+	}
+}

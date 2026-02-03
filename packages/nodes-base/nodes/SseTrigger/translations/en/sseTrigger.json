@@ -1,0 +1,13 @@
+{
+	"header": {
+		"displayName": "SSE Trigger",
+		"description": "Triggers the workflow when Server-Sent Events occur"
+	},
+	"nodeView": {
+		"url": {
+			"displayName": "URL",
+			"description": "The URL to receive the SSE from",
+			"placeholder": "http://example.com"
+		}
+	}
+}

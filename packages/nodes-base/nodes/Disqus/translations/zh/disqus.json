@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "Disqus",
+		"description": "访问Disqus上的数据"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"forum": {
+					"displayName": "论坛"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "返回论坛详情"
+				},
+				"getCategories": {
+					"displayName": "获取所有分类",
+					"description": "返回论坛内的分类列表"
+				},
+				"getThreads": {
+					"displayName": "获取所有主题",
+					"description": "返回论坛内的主题列表"
+				},
+				"getPosts": {
+					"displayName": "获取所有帖子",
+					"description": "返回论坛内的帖子列表"
+				}
+			}
+		},
+		"id": {
+			"displayName": "论坛名称",
+			"description": "要获取主题的论坛短名称（即ID）"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"attach": {
+					"displayName": "附加"
+				},
+				"related": {
+					"displayName": "相关",
+					"description": "您可以在响应中包含指定关联关系"
+				},
+				"filters": {
+					"displayName": "筛选器",
+					"description": "您可以为响应指定过滤器"
+				},
+				"include": {
+					"displayName": "包含",
+					"description": "您可以在响应中包含指定关联关系"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "您可以指定排序方式以整理响应",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "您可以为选项指定查询：asc（升序）、desc（降序）"
+				},
+				"since": {
+					"displayName": "自",
+					"description": "Unix时间戳（或ISO日期时间标准）"
+				},
+				"thread": {
+					"displayName": "主题",
+					"description": "通过ID查找主题。您可以通过包含“forum”来传递“ident”查询类型而非ID。您可以使用“link”查询类型按URL筛选。如果您没有Pro API Access附加组件，则必须传递“forum”。"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

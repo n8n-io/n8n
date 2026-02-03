@@ -1,0 +1,1411 @@
+{
+	"header": {
+		"displayName": "Telegram",
+		"description": "Sends data to Telegram"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"chat": {
+					"displayName": "Chat"
+				},
+				"callback": {
+					"displayName": "Callback"
+				},
+				"file": {
+					"displayName": "File"
+				},
+				"message": {
+					"displayName": "Message"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a file"
+				},
+				"administrators": {
+					"displayName": "Get Administrators",
+					"description": "Get the Administrators of a chat"
+				},
+				"member": {
+					"displayName": "Get Member",
+					"description": "Get the member of a chat"
+				},
+				"leave": {
+					"displayName": "Leave",
+					"description": "Leave a group, supergroup or channel"
+				},
+				"setDescription": {
+					"displayName": "Set Description",
+					"description": "Set the description of a chat"
+				},
+				"setTitle": {
+					"displayName": "Set Title",
+					"description": "Set the title of a chat"
+				},
+				"answerQuery": {
+					"displayName": "Answer Query",
+					"description": "Send answer to callback query sent from inline keyboard"
+				},
+				"answerInlineQuery": {
+					"displayName": "Answer Inline Query",
+					"description": "Send answer to callback query sent from inline bot"
+				},
+				"deleteMessage": {
+					"displayName": "Delete Chat Message",
+					"description": "Delete a chat message"
+				},
+				"editMessageText": {
+					"displayName": "Edit Message Text",
+					"description": "Edit a text message"
+				},
+				"pinChatMessage": {
+					"displayName": "Pin Chat Message",
+					"description": "Pin a chat message"
+				},
+				"sendAnimation": {
+					"displayName": "Send Animation",
+					"description": "Send an animated file"
+				},
+				"sendAudio": {
+					"displayName": "Send Audio",
+					"description": "Send a audio file"
+				},
+				"sendChatAction": {
+					"displayName": "Send Chat Action",
+					"description": "Send a chat action"
+				},
+				"sendDocument": {
+					"displayName": "Send Document",
+					"description": "Send a document"
+				},
+				"sendLocation": {
+					"displayName": "Send Location",
+					"description": "Send a location"
+				},
+				"sendMediaGroup": {
+					"displayName": "Send Media Group",
+					"description": "Send group of photos or videos to album"
+				},
+				"sendMessage": {
+					"displayName": "Send Message",
+					"description": "Send a text message"
+				},
+				"sendAndWait": {
+					"displayName": "Send and Wait for Response",
+					"description": "Send a message and wait for response"
+				},
+				"sendPhoto": {
+					"displayName": "Send Photo",
+					"description": "Send a photo"
+				},
+				"sendSticker": {
+					"displayName": "Send Sticker",
+					"description": "Send a sticker"
+				},
+				"sendVideo": {
+					"displayName": "Send Video",
+					"description": "Send a video"
+				},
+				"unpinChatMessage": {
+					"displayName": "Unpin Chat Message",
+					"description": "Unpin a chat message"
+				}
+			}
+		},
+		"chatId": {
+			"displayName": "Chat ID",
+			"description": "Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot."
+		},
+		"messageId": {
+			"displayName": "Message ID",
+			"description": "Unique identifier of the message to edit"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"disable_notification": {
+					"displayName": "Disable Notification",
+					"description": "Whether to send the message silently. Users will receive a notification with no sound."
+				},
+				"cache_time": {
+					"displayName": "Cache Time",
+					"description": "The maximum amount of time in seconds that the result of the callback query may be cached client-side"
+				},
+				"show_alert": {
+					"displayName": "Show Alert",
+					"description": "Whether an alert will be shown by the client instead of a notification at the top of the chat screen"
+				},
+				"text": {
+					"displayName": "Text",
+					"description": "Text of the notification. If not specified, nothing will be shown to the user, 0-200 characters."
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "URL that will be opened by the user's client"
+				},
+				"mimeType": {
+					"displayName": "MIME Type",
+					"description": "The MIME type of the file. If not specified, the MIME type will be determined by the file extension.",
+					"placeholder": "image/jpeg"
+				},
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the phrase “This message was sent automatically with n8n” to the end of the message"
+				},
+				"caption": {
+					"displayName": "Caption",
+					"description": "Caption text to set, 0-1024 characters"
+				},
+				"disable_web_page_preview": {
+					"displayName": "Disable WebPage Preview",
+					"description": "Whether to disable link previews for links in this message"
+				},
+				"duration": {
+					"displayName": "Duration",
+					"description": "Duration of clip in seconds"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"placeholder": "image.jpeg"
+				},
+				"height": {
+					"displayName": "Height",
+					"description": "Height of the video"
+				},
+				"parse_mode": {
+					"displayName": "Parse Mode",
+					"description": "How to parse the text",
+					"options": {
+						"Markdown": {
+							"displayName": "Markdown (Legacy)"
+						},
+						"MarkdownV2": {
+							"displayName": "MarkdownV2"
+						},
+						"HTML": {
+							"displayName": "HTML"
+						}
+					}
+				},
+				"performer": {
+					"displayName": "Performer",
+					"description": "Name of the performer"
+				},
+				"reply_to_message_id": {
+					"displayName": "Reply To Message ID",
+					"description": "If the message is a reply, ID of the original message"
+				},
+				"message_thread_id": {
+					"displayName": "Message Thread ID",
+					"description": "The unique identifier of the forum topic"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the track"
+				},
+				"thumb": {
+					"displayName": "Thumbnail",
+					"description": "Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side. The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail‘s width and height should not exceed 320."
+				},
+				"width": {
+					"displayName": "Width",
+					"description": "Width of the video"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "Unique identifier of the target user"
+		},
+		"description": {
+			"displayName": "Description",
+			"description": "New chat description, 0-255 characters"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "New chat title, 1-255 characters"
+		},
+		"queryId": {
+			"displayName": "Query ID",
+			"description": "Unique identifier for the answered query"
+		},
+		"results": {
+			"displayName": "Results",
+			"description": "A JSON-serialized array of results for the inline query"
+		},
+		"fileId": {
+			"displayName": "File ID",
+			"description": "The ID of the file"
+		},
+		"download": {
+			"displayName": "Download",
+			"description": "Whether to download the file"
+		},
+		"messageType": {
+			"displayName": "Message Type",
+			"description": "The type of the message to edit",
+			"options": {
+				"inlineMessage": {
+					"displayName": "Inline Message"
+				},
+				"message": {
+					"displayName": "Message"
+				}
+			}
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "Whether the data to upload should be taken from binary field"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field",
+			"description": "Name of the binary property that contains the data to upload"
+		},
+		"inlineMessageId": {
+			"displayName": "Inline Message ID",
+			"description": "Unique identifier of the inline message to edit"
+		},
+		"replyMarkup": {
+			"displayName": "Reply Markup",
+			"description": "Additional interface options",
+			"options": {
+				"none": {
+					"displayName": "None"
+				},
+				"inlineKeyboard": {
+					"displayName": "Inline Keyboard"
+				},
+				"forceReply": {
+					"displayName": "Force Reply"
+				},
+				"replyKeyboard": {
+					"displayName": "Reply Keyboard"
+				},
+				"replyKeyboardRemove": {
+					"displayName": "Reply Keyboard Remove"
+				}
+			}
+		},
+		"file": {
+			"displayName": "Video",
+			"description": "Video file to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), an HTTP URL for Telegram to get a file from the Internet."
+		},
+		"action": {
+			"displayName": "Action",
+			"description": "Type of action to broadcast. Choose one, depending on what the user is about to receive. The status is set for 5 seconds or less (when a message arrives from your bot).",
+			"options": {
+				"find_location": {
+					"displayName": "Find Location"
+				},
+				"record_audio": {
+					"displayName": "Record Audio"
+				},
+				"record_video": {
+					"displayName": "Record Video"
+				},
+				"record_video_note": {
+					"displayName": "Record Video Note"
+				},
+				"typing": {
+					"displayName": "Typing"
+				},
+				"upload_audio": {
+					"displayName": "Upload Audio"
+				},
+				"upload_document": {
+					"displayName": "Upload Document"
+				},
+				"upload_photo": {
+					"displayName": "Upload Photo"
+				},
+				"upload_video": {
+					"displayName": "Upload Video"
+				},
+				"upload_video_note": {
+					"displayName": "Upload Video Note"
+				}
+			}
+		},
+		"latitude": {
+			"displayName": "Latitude",
+			"description": "Location latitude"
+		},
+		"longitude": {
+			"displayName": "Longitude",
+			"description": "Location longitude"
+		},
+		"media": {
+			"displayName": "Media",
+			"description": "The media to add",
+			"placeholder": "Add Media",
+			"multipleValueButtonText": "Add Media",
+			"options": {
+				"media": {
+					"displayName": "Media",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "The type of the media to add",
+							"options": {
+								"photo": {
+									"displayName": "Photo"
+								},
+								"video": {
+									"displayName": "Video"
+								}
+							}
+						},
+						"media": {
+							"displayName": "Media File",
+							"description": "Media to send. Pass a file_id to send a file that exists on the Telegram servers (recommended) or pass an HTTP URL for Telegram to get a file from the Internet."
+						},
+						"additionalFields": {
+							"displayName": "Additional Fields",
+							"placeholder": "Add Field",
+							"options": {
+								"caption": {
+									"displayName": "Caption",
+									"description": "Caption text to set, 0-1024 characters"
+								},
+								"parse_mode": {
+									"displayName": "Parse Mode",
+									"description": "How to parse the text",
+									"options": {
+										"Markdown": {
+											"displayName": "Markdown (Legacy)"
+										},
+										"MarkdownV2": {
+											"displayName": "MarkdownV2"
+										},
+										"HTML": {
+											"displayName": "HTML"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"media": {
+					"displayName": "Media",
+					"placeholder": "Add Media"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "Text of the message to be sent"
+		},
+		"forceReply": {
+			"displayName": "Force Reply",
+			"placeholder": "Add Field",
+			"options": {
+				"force_reply": {
+					"displayName": "Force Reply",
+					"description": "Whether to show reply interface to the user, as if they manually selected the bot‘s message and tapped ’Reply"
+				},
+				"selective": {
+					"displayName": "Selective",
+					"description": "Whether to force reply from specific users only"
+				}
+			}
+		},
+		"inlineKeyboard": {
+			"displayName": "Inline Keyboard",
+			"description": "Adds an inline keyboard that appears right next to the message it belongs to",
+			"placeholder": "Add Keyboard Row",
+			"multipleValueButtonText": "Add Keyboard Row",
+			"options": {
+				"rows": {
+					"displayName": "Rows",
+					"options": {
+						"row": {
+							"displayName": "Row",
+							"description": "The value to set",
+							"placeholder": "Add Button",
+							"multipleValueButtonText": "Add Button",
+							"options": {
+								"buttons": {
+									"displayName": "Buttons",
+									"options": {
+										"text": {
+											"displayName": "Text",
+											"description": "Label text on the button"
+										},
+										"additionalFields": {
+											"displayName": "Additional Fields",
+											"placeholder": "Add Field",
+											"options": {
+												"callback_data": {
+													"displayName": "Callback Data",
+													"description": "Data to be sent in a callback query to the bot when button is pressed, 1-64 bytes"
+												},
+												"pay": {
+													"displayName": "Pay",
+													"description": "Whether to send a Pay button"
+												},
+												"switch_inline_query_current_chat": {
+													"displayName": "Switch Inline Query Current Chat",
+													"description": "If set, pressing the button will insert the bot‘s username and the specified inline query in the current chat's input field.Can be empty, in which case only the bot’s username will be inserted"
+												},
+												"switch_inline_query": {
+													"displayName": "Switch Inline Query",
+													"description": "If set, pressing the button will prompt the user to select one of their chats, open that chat and insert the bot‘s username and the specified inline query in the input field. Can be empty, in which case just the bot’s username will be inserted."
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "HTTP or tg:// URL to be opened when button is pressed"
+												},
+												"web_app": {
+													"displayName": "Web App",
+													"description": "Launch the Telegram Web App",
+													"placeholder": "Set Telegram Web App URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "An HTTPS URL of a Web App to be opened"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"buttons": {
+									"displayName": "Buttons",
+									"options": {
+										"text": {
+											"displayName": "Text",
+											"description": "Label text on the button"
+										},
+										"additionalFields": {
+											"displayName": "Additional Fields",
+											"placeholder": "Add Field",
+											"options": {
+												"callback_data": {
+													"displayName": "Callback Data",
+													"description": "Data to be sent in a callback query to the bot when button is pressed, 1-64 bytes"
+												},
+												"pay": {
+													"displayName": "Pay",
+													"description": "Whether to send a Pay button"
+												},
+												"switch_inline_query_current_chat": {
+													"displayName": "Switch Inline Query Current Chat",
+													"description": "If set, pressing the button will insert the bot‘s username and the specified inline query in the current chat's input field.Can be empty, in which case only the bot’s username will be inserted"
+												},
+												"switch_inline_query": {
+													"displayName": "Switch Inline Query",
+													"description": "If set, pressing the button will prompt the user to select one of their chats, open that chat and insert the bot‘s username and the specified inline query in the input field. Can be empty, in which case just the bot’s username will be inserted."
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "HTTP or tg:// URL to be opened when button is pressed"
+												},
+												"web_app": {
+													"displayName": "Web App",
+													"description": "Launch the Telegram Web App",
+													"placeholder": "Set Telegram Web App URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "An HTTPS URL of a Web App to be opened"
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								"row": {
+									"displayName": "Row",
+									"placeholder": "Add Button"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"rows": {
+					"displayName": "Rows",
+					"options": {
+						"row": {
+							"displayName": "Row",
+							"description": "The value to set",
+							"placeholder": "Add Button",
+							"multipleValueButtonText": "Add Button",
+							"options": {
+								"buttons": {
+									"displayName": "Buttons",
+									"options": {
+										"text": {
+											"displayName": "Text",
+											"description": "Label text on the button"
+										},
+										"additionalFields": {
+											"displayName": "Additional Fields",
+											"placeholder": "Add Field",
+											"options": {
+												"callback_data": {
+													"displayName": "Callback Data",
+													"description": "Data to be sent in a callback query to the bot when button is pressed, 1-64 bytes"
+												},
+												"pay": {
+													"displayName": "Pay",
+													"description": "Whether to send a Pay button"
+												},
+												"switch_inline_query_current_chat": {
+													"displayName": "Switch Inline Query Current Chat",
+													"description": "If set, pressing the button will insert the bot‘s username and the specified inline query in the current chat's input field.Can be empty, in which case only the bot’s username will be inserted"
+												},
+												"switch_inline_query": {
+													"displayName": "Switch Inline Query",
+													"description": "If set, pressing the button will prompt the user to select one of their chats, open that chat and insert the bot‘s username and the specified inline query in the input field. Can be empty, in which case just the bot’s username will be inserted."
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "HTTP or tg:// URL to be opened when button is pressed"
+												},
+												"web_app": {
+													"displayName": "Web App",
+													"description": "Launch the Telegram Web App",
+													"placeholder": "Set Telegram Web App URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "An HTTPS URL of a Web App to be opened"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"buttons": {
+									"displayName": "Buttons",
+									"options": {
+										"text": {
+											"displayName": "Text",
+											"description": "Label text on the button"
+										},
+										"additionalFields": {
+											"displayName": "Additional Fields",
+											"placeholder": "Add Field",
+											"options": {
+												"callback_data": {
+													"displayName": "Callback Data",
+													"description": "Data to be sent in a callback query to the bot when button is pressed, 1-64 bytes"
+												},
+												"pay": {
+													"displayName": "Pay",
+													"description": "Whether to send a Pay button"
+												},
+												"switch_inline_query_current_chat": {
+													"displayName": "Switch Inline Query Current Chat",
+													"description": "If set, pressing the button will insert the bot‘s username and the specified inline query in the current chat's input field.Can be empty, in which case only the bot’s username will be inserted"
+												},
+												"switch_inline_query": {
+													"displayName": "Switch Inline Query",
+													"description": "If set, pressing the button will prompt the user to select one of their chats, open that chat and insert the bot‘s username and the specified inline query in the input field. Can be empty, in which case just the bot’s username will be inserted."
+												},
+												"url": {
+													"displayName": "URL",
+													"description": "HTTP or tg:// URL to be opened when button is pressed"
+												},
+												"web_app": {
+													"displayName": "Web App",
+													"description": "Launch the Telegram Web App",
+													"placeholder": "Set Telegram Web App URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "An HTTPS URL of a Web App to be opened"
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								"row": {
+									"displayName": "Row",
+									"placeholder": "Add Button"
+								}
+							}
+						}
+					}
+				},
+				"inlineKeyboard": {
+					"displayName": "Inline Keyboard",
+					"placeholder": "Add Keyboard Row"
+				}
+			}
+		},
+		"replyKeyboard": {
+			"displayName": "Reply Keyboard",
+			"description": "Adds a custom keyboard with reply options",
+			"placeholder": "Add Reply Keyboard Row",
+			"multipleValueButtonText": "Add Reply Keyboard Row",
+			"options": {
+				"rows": {
+					"displayName": "Rows",
+					"options": {
+						"row": {
+							"displayName": "Row",
+							"description": "The value to set",
+							"placeholder": "Add Button",
+							"multipleValueButtonText": "Add Button",
+							"options": {
+								"buttons": {
+									"displayName": "Buttons",
+									"options": {
+										"text": {
+											"displayName": "Text",
+											"description": "Text of the button. If none of the optional fields are used, it will be sent as a message when the button is pressed."
+										},
+										"additionalFields": {
+											"displayName": "Additional Fields",
+											"placeholder": "Add Field",
+											"options": {
+												"request_contact": {
+													"displayName": "Request Contact",
+													"description": "Whether the user's phone number will be sent as a contact when the button is pressed.Available in private chats only"
+												},
+												"request_location": {
+													"displayName": "Request Location",
+													"description": "Whether the user's request_location"
+												},
+												"web_app": {
+													"displayName": "Web App",
+													"description": "Launch the Telegram Web App",
+													"placeholder": "Set Telegram Web App URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "An HTTPS URL of a Web App to be opened"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"buttons": {
+									"displayName": "Buttons",
+									"options": {
+										"text": {
+											"displayName": "Text",
+											"description": "Text of the button. If none of the optional fields are used, it will be sent as a message when the button is pressed."
+										},
+										"additionalFields": {
+											"displayName": "Additional Fields",
+											"placeholder": "Add Field",
+											"options": {
+												"request_contact": {
+													"displayName": "Request Contact",
+													"description": "Whether the user's phone number will be sent as a contact when the button is pressed.Available in private chats only"
+												},
+												"request_location": {
+													"displayName": "Request Location",
+													"description": "Whether the user's request_location"
+												},
+												"web_app": {
+													"displayName": "Web App",
+													"description": "Launch the Telegram Web App",
+													"placeholder": "Set Telegram Web App URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "An HTTPS URL of a Web App to be opened"
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								"row": {
+									"displayName": "Row",
+									"placeholder": "Add Button"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"rows": {
+					"displayName": "Rows",
+					"options": {
+						"row": {
+							"displayName": "Row",
+							"description": "The value to set",
+							"placeholder": "Add Button",
+							"multipleValueButtonText": "Add Button",
+							"options": {
+								"buttons": {
+									"displayName": "Buttons",
+									"options": {
+										"text": {
+											"displayName": "Text",
+											"description": "Text of the button. If none of the optional fields are used, it will be sent as a message when the button is pressed."
+										},
+										"additionalFields": {
+											"displayName": "Additional Fields",
+											"placeholder": "Add Field",
+											"options": {
+												"request_contact": {
+													"displayName": "Request Contact",
+													"description": "Whether the user's phone number will be sent as a contact when the button is pressed.Available in private chats only"
+												},
+												"request_location": {
+													"displayName": "Request Location",
+													"description": "Whether the user's request_location"
+												},
+												"web_app": {
+													"displayName": "Web App",
+													"description": "Launch the Telegram Web App",
+													"placeholder": "Set Telegram Web App URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "An HTTPS URL of a Web App to be opened"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"buttons": {
+									"displayName": "Buttons",
+									"options": {
+										"text": {
+											"displayName": "Text",
+											"description": "Text of the button. If none of the optional fields are used, it will be sent as a message when the button is pressed."
+										},
+										"additionalFields": {
+											"displayName": "Additional Fields",
+											"placeholder": "Add Field",
+											"options": {
+												"request_contact": {
+													"displayName": "Request Contact",
+													"description": "Whether the user's phone number will be sent as a contact when the button is pressed.Available in private chats only"
+												},
+												"request_location": {
+													"displayName": "Request Location",
+													"description": "Whether the user's request_location"
+												},
+												"web_app": {
+													"displayName": "Web App",
+													"description": "Launch the Telegram Web App",
+													"placeholder": "Set Telegram Web App URL",
+													"options": {
+														"url": {
+															"displayName": "URL",
+															"description": "An HTTPS URL of a Web App to be opened"
+														}
+													}
+												}
+											}
+										}
+									}
+								},
+								"row": {
+									"displayName": "Row",
+									"placeholder": "Add Button"
+								}
+							}
+						}
+					}
+				},
+				"replyKeyboard": {
+					"displayName": "Reply Keyboard",
+					"placeholder": "Add Reply Keyboard Row"
+				}
+			}
+		},
+		"replyKeyboardOptions": {
+			"displayName": "Reply Keyboard Options",
+			"placeholder": "Add option",
+			"options": {
+				"resize_keyboard": {
+					"displayName": "Resize Keyboard",
+					"description": "Whether to request clients to resize the keyboard vertically for optimal fit"
+				},
+				"one_time_keyboard": {
+					"displayName": "One Time Keyboard",
+					"description": "Whether to request clients to hide the keyboard as soon as it's been used"
+				},
+				"selective": {
+					"displayName": "Selective",
+					"description": "Whether to show the keyboard to specific users only"
+				}
+			}
+		},
+		"replyKeyboardRemove": {
+			"displayName": "Reply Keyboard Remove",
+			"placeholder": "Add Field",
+			"options": {
+				"remove_keyboard": {
+					"displayName": "Remove Keyboard",
+					"description": "Whether to request clients to remove the custom keyboard"
+				},
+				"selective": {
+					"displayName": "Selective",
+					"description": "Whether to force reply from specific users only"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message"
+		},
+		"responseType": {
+			"displayName": "Response Type",
+			"options": {
+				"approval": {
+					"displayName": "Approval",
+					"description": "User can approve/disapprove from within the message"
+				},
+				"freeText": {
+					"displayName": "Free Text",
+					"description": "User can submit a response via a form"
+				},
+				"customForm": {
+					"displayName": "Custom Form",
+					"description": "User can submit a response via a custom form"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "Define Form",
+			"options": {
+				"fields": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "Form Fields"
+		},
+		"formFields": {
+			"displayName": "Form Elements",
+			"placeholder": "Add Form Element",
+			"multipleValueButtonText": "Add Form Element",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "Form Elements",
+					"placeholder": "Add Form Element"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "Approval Options",
+			"placeholder": "Add option",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "Approval Options",
+					"placeholder": "Add option"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"limitWaitTime": {
+					"displayName": "Limit Wait Time",
+					"description": "Whether to limit the time this node should wait for a user response before execution resumes",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "Limit Wait Time"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the phrase \"This message was sent automatically with n8n\" to the end of the message"
+				},
+				"messageButtonLabel": {
+					"displayName": "Message Button Label"
+				},
+				"responseFormTitle": {
+					"displayName": "Response Form Title",
+					"description": "Title of the form that the user can access to provide their response"
+				},
+				"responseFormDescription": {
+					"displayName": "Response Form Description",
+					"description": "Description of the form that the user can access to provide their response"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "Response Form Button Label"
+				},
+				"responseFormCustomCss": {
+					"displayName": "Response Form Custom Styling",
+					"description": "Override default styling of the response form with CSS"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,45 @@
+{
+	"header": {
+		"displayName": "MQTT",
+		"description": "推送消息到MQTT"
+	},
+	"nodeView": {
+		"topic": {
+			"displayName": "主题",
+			"description": "要发布到的主题"
+		},
+		"sendInputData": {
+			"displayName": "发送输入数据",
+			"description": "是否将节点接收的数据作为JSON发送"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发布的消息"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"qos": {
+					"displayName": "服务质量",
+					"description": "服务质量订阅级别",
+					"options": {
+						"0": {
+							"displayName": "最多接收一次"
+						},
+						"1": {
+							"displayName": "至少接收一次"
+						},
+						"2": {
+							"displayName": "恰好一次"
+						}
+					}
+				},
+				"retain": {
+					"displayName": "保留",
+					"description": "通常，如果发布者向某个主题发布消息，而该主题没有订阅者，代理会直接丢弃该消息。但是，发布者可以通过将保留标志设为 true 来告诉代理保留该主题上的最后一条消息。"
+				}
+			}
+		}
+	}
+}

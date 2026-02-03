@@ -1,0 +1,324 @@
+{
+	"header": {
+		"displayName": "Intercom",
+		"description": "Consume Intercom API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"company": {
+					"displayName": "Company",
+					"description": "Companies allow you to represent commercial organizations using your product"
+				},
+				"lead": {
+					"displayName": "Lead",
+					"description": "Leads are useful for representing logged-out users of your application"
+				},
+				"user": {
+					"displayName": "User",
+					"description": "The Users resource is the primary way of interacting with Intercom"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new company"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get data of a company"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get data of many companies"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a company"
+				},
+				"users": {
+					"displayName": "Users",
+					"description": "List company's users"
+				}
+			}
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "The Intercom defined ID representing the Lead"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"company_id": {
+					"displayName": "Company ID",
+					"description": "Company ID representing the user"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The email address of the lead",
+					"placeholder": "name@email.com"
+				},
+				"segment_id": {
+					"displayName": "Segment ID",
+					"description": "Segment representing the Lead"
+				},
+				"tag_id": {
+					"displayName": "Tag ID",
+					"description": "Tag representing the Lead"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "The phone number of the lead"
+				}
+			}
+		},
+		"selectBy": {
+			"displayName": "Select By",
+			"description": "What property to use to query the company",
+			"options": {
+				"id": {
+					"displayName": "ID",
+					"description": "The Intercom defined ID representing the company"
+				},
+				"userId": {
+					"displayName": "User ID",
+					"description": "Automatically generated identifier for the Lead"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email representing the Lead"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "Phone representing the Lead"
+				},
+				"companyId": {
+					"displayName": "Company ID",
+					"description": "The company_id you have given to the company"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "The name of the company"
+				}
+			}
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "View by value"
+		},
+		"updateBy": {
+			"displayName": "Update By",
+			"description": "The property via which to query the lead",
+			"options": {
+				"id": {
+					"displayName": "ID",
+					"description": "The Intercom defined ID representing the Lead"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The email address of user"
+				},
+				"userId": {
+					"displayName": "User ID",
+					"description": "Automatically generated identifier for the Lead"
+				}
+			}
+		},
+		"identifierType": {
+			"displayName": "Identifier Type",
+			"description": "Unique string identifier",
+			"options": {
+				"userId": {
+					"displayName": "User ID",
+					"description": "A unique string identifier for the user. It is required on creation if an email is not supplied."
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The user's email address. It is required on creation if a user_id is not supplied."
+				}
+			}
+		},
+		"idValue": {
+			"displayName": "Value",
+			"description": "Unique string identifier value"
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"avatar": {
+					"displayName": "Avatar",
+					"description": "An avatar image URL. note: the image URL needs to be https."
+				},
+				"companies": {
+					"displayName": "Company Names or IDs",
+					"description": "Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The email of the user",
+					"placeholder": "name@email.com"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the user"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "The phone number of the user"
+				},
+				"sessionCount": {
+					"displayName": "Session Count",
+					"description": "How many sessions the user has recorded"
+				},
+				"userId": {
+					"displayName": "User ID",
+					"description": "Email of the user"
+				},
+				"unsubscribedFromEmails": {
+					"displayName": "Unsubscribed From Emails",
+					"description": "Whether the Lead is unsubscribed from emails"
+				},
+				"updateLastRequestAt": {
+					"displayName": "Update Last Request At",
+					"description": "Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC. default value if not sent is false."
+				},
+				"utmCampaign": {
+					"displayName": "UTM Campaign",
+					"description": "Identifies a specific product promotion or strategic campaign"
+				},
+				"utmContent": {
+					"displayName": "UTM Content",
+					"description": "Identifies what specifically was clicked to bring the user to the site"
+				},
+				"utmMedium": {
+					"displayName": "UTM Medium",
+					"description": "Identifies what type of link was used"
+				},
+				"utmSource": {
+					"displayName": "UTM Source",
+					"description": "An avatar image URL. note: the image URL needs to be https."
+				},
+				"utmTerm": {
+					"displayName": "UTM Term",
+					"description": "Identifies search terms"
+				},
+				"industry": {
+					"displayName": "Industry",
+					"description": "The industry that this company operates in"
+				},
+				"monthlySpend": {
+					"displayName": "Monthly Spend",
+					"description": "The phone number of the user"
+				},
+				"plan": {
+					"displayName": "Plan",
+					"description": "The name of the plan you have associated with the company"
+				},
+				"size": {
+					"displayName": "Size",
+					"description": "The number of employees in this company"
+				},
+				"website": {
+					"displayName": "Website",
+					"description": "The URL for this company's website. Please note that the value specified here is not validated. Accepts any string."
+				}
+			}
+		},
+		"customAttributesJson": {
+			"displayName": "Custom Attributes",
+			"description": "A hash of key/value pairs to represent custom data you want to attribute to a user"
+		},
+		"customAttributesUi": {
+			"displayName": "Custom Attributes",
+			"description": "A hash of key/value pairs to represent custom data you want to attribute to a user",
+			"placeholder": "Add Attribute",
+			"multipleValueButtonText": "Add Attribute",
+			"options": {
+				"customAttributesValues": {
+					"displayName": "Attributes",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"customAttributesValues": {
+					"displayName": "Attributes",
+					"options": {
+						"name": {
+							"displayName": "Name"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"customAttributesUi": {
+					"displayName": "Custom Attributes",
+					"placeholder": "Add Attribute"
+				}
+			}
+		},
+		"deleteBy": {
+			"displayName": "Delete By",
+			"options": {
+				"id": {
+					"displayName": "ID",
+					"description": "The Intercom defined ID representing the Lead"
+				},
+				"userId": {
+					"displayName": "User ID",
+					"description": "Automatically generated identifier for the Lead"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email of the user",
+			"placeholder": "name@email.com"
+		},
+		"listBy": {
+			"displayName": "List By",
+			"options": {
+				"id": {
+					"displayName": "ID",
+					"description": "The Intercom defined ID representing the company"
+				},
+				"companyId": {
+					"displayName": "Company ID",
+					"description": "The company_id you have given to the company"
+				}
+			}
+		},
+		"companyId": {
+			"displayName": "Company ID",
+			"description": "The company ID you have defined for the company"
+		}
+	}
+}

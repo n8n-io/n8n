@@ -1,0 +1,60 @@
+{
+	"header": {
+		"displayName": "Zep向量存储：加载",
+		"description": "从Zep向量存储索引加载数据"
+	},
+	"nodeView": {
+		"deprecationNotice": {
+			"displayName": "此Zep集成已弃用，将在未来版本中移除。"
+		},
+		"collectionName": {
+			"displayName": "集合名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"embeddingDimensions": {
+					"displayName": "嵌入维度",
+					"description": "是否允许使用Unicode代理块中的字符"
+				},
+				"metadata": {
+					"displayName": "元数据过滤器",
+					"description": "用于筛选文档的元数据",
+					"placeholder": "添加筛选字段",
+					"multipleValueButtonText": "添加筛选字段",
+					"options": {
+						"metadataValues": {
+							"displayName": "要设置的字段",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "要设置的字段",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "元数据过滤器",
+							"placeholder": "添加筛选字段"
+						}
+					}
+				}
+			}
+		}
+	}
+}

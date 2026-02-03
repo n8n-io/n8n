@@ -1,0 +1,879 @@
+{
+	"header": {
+		"displayName": "Gmail",
+		"description": "使用Gmail API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				},
+				"serviceAccount": {
+					"displayName": "服务账号"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"message": {
+					"displayName": "消息"
+				},
+				"label": {
+					"displayName": "标签"
+				},
+				"draft": {
+					"displayName": "草稿"
+				},
+				"thread": {
+					"displayName": "主题"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"addLabels": {
+					"displayName": "添加标签"
+				},
+				"markAsRead": {
+					"displayName": "标记为已读"
+				},
+				"markAsUnread": {
+					"displayName": "标记为未读"
+				},
+				"removeLabels": {
+					"displayName": "移除标签"
+				},
+				"reply": {
+					"displayName": "回复"
+				},
+				"send": {
+					"displayName": "发送"
+				},
+				"sendAndWait": {
+					"displayName": "发送并等待响应"
+				},
+				"trash": {
+					"displayName": "回收站"
+				},
+				"untrash": {
+					"displayName": "从回收站恢复"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "Message Snippet or ID",
+			"placeholder": "172ce2c4a72cc243",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"subject": {
+			"displayName": "主题",
+			"placeholder": "例如：需要审批"
+		},
+		"threadNotice": {
+			"displayName": "要回复现有主题，请指定该主题的确切标题。"
+		},
+		"emailType": {
+			"displayName": "邮件类型",
+			"options": {
+				"html": {
+					"displayName": "HTML"
+				},
+				"text": {
+					"displayName": "文本"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"attachmentsUi": {
+					"displayName": "附件",
+					"description": "要添加到消息中的受支持附件数组",
+					"placeholder": "添加附件",
+					"multipleValueButtonText": "添加附件",
+					"options": {
+						"attachmentsBinary": {
+							"displayName": "附件二进制",
+							"options": {
+								"property": {
+									"displayName": "附件字段名称",
+									"description": "添加来自输入节点的字段名称。多个属性可以用逗号分隔设置。"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachmentsBinary": {
+							"displayName": "附件二进制",
+							"options": {
+								"property": {
+									"displayName": "附件字段名称",
+									"description": "添加来自输入节点的字段名称。多个属性可以用逗号分隔设置。"
+								}
+							}
+						},
+						"attachmentsUi": {
+							"displayName": "附件",
+							"placeholder": "添加附件"
+						}
+					}
+				},
+				"bccList": {
+					"displayName": "密件抄送",
+					"description": "密件抄送收件人的电子邮件地址。多个地址可以用逗号分隔。例如：jay@getsby.com, jon@smith.com。",
+					"placeholder": "info@example.com"
+				},
+				"ccList": {
+					"displayName": "抄送",
+					"description": "抄送收件人的电子邮件地址。多个地址可以用逗号分隔，例如：jay@getsby.com, jon@smith.com。",
+					"placeholder": "info@example.com"
+				},
+				"fromAlias": {
+					"displayName": "从别名名称或ID",
+					"description": "选择发送邮件的别名。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"replyTo": {
+					"displayName": "发送回复至",
+					"description": "回复消息发送到的电子邮件地址",
+					"placeholder": "reply@example.com"
+				},
+				"threadId": {
+					"displayName": "线程ID",
+					"description": "要附加草稿的线程标识符",
+					"placeholder": "18cc573e2431878f"
+				},
+				"sendTo": {
+					"displayName": "收件人邮箱",
+					"description": "收件人的电子邮件地址。多个地址可以用逗号分隔。例如：jay@getsby.com, jon@smith.com。",
+					"placeholder": "info@example.com"
+				},
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "附件前缀",
+					"description": "用于写入附件的二进制属性名称前缀。将添加从0开始的索引。例如，如果名称为'attachment_'，则第一个附件将保存为'attachment_0'。"
+				},
+				"downloadAttachments": {
+					"displayName": "下载附件",
+					"description": "Whether the email's attachments will be downloaded and included in the output"
+				},
+				"includeSpamTrash": {
+					"displayName": "包含垃圾邮件和已删除邮件",
+					"description": "是否在结果中包含来自垃圾邮件和已删除邮件的消息"
+				},
+				"labelListVisibility": {
+					"displayName": "标签列表可见性",
+					"description": "标签在Gmail网页界面标签列表中的可见性",
+					"options": {
+						"labelHide": {
+							"displayName": "隐藏"
+						},
+						"labelShow": {
+							"displayName": "显示"
+						},
+						"labelShowIfUnread": {
+							"displayName": "显示未读"
+						}
+					}
+				},
+				"messageListVisibility": {
+					"displayName": "邮件列表可见性",
+					"description": "在Gmail网页界面中，带有此标签的邮件在邮件列表中的可见性",
+					"options": {
+						"hide": {
+							"displayName": "隐藏"
+						},
+						"show": {
+							"displayName": "显示"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "添加n8n归属声明",
+					"description": "是否在消息末尾包含短语“此消息由n8n自动发送”"
+				},
+				"senderName": {
+					"displayName": "发件人名称",
+					"description": "在联系人收件箱中显示的名称",
+					"placeholder": "例如：Nathan"
+				},
+				"replyToSenderOnly": {
+					"displayName": "[0]仅回复发件人\n[1]是否仅回复发件人还是回复所有收件人",
+					"description": "Whether to reply to the sender only or to the entire list of recipients"
+				},
+				"limitWaitTime": {
+					"displayName": "等待时间限制",
+					"description": "是否限制此节点在继续执行前等待用户响应的时间",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"limitType": {
+									"displayName": "限制类型",
+									"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "时间间隔后",
+											"description": "等待指定时间"
+										},
+										"atSpecifiedTime": {
+											"displayName": "在指定时间",
+											"description": "等待至设定的日期和时间再继续"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "金额",
+									"description": "等待时间"
+								},
+								"resumeUnit": {
+									"displayName": "单位",
+									"description": "间隔值的单位",
+									"options": {
+										"minutes": {
+											"displayName": "分钟"
+										},
+										"hours": {
+											"displayName": "小时"
+										},
+										"days": {
+											"displayName": "天"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "最大日期和时间",
+									"description": "在指定日期和时间后继续执行"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "等待时间限制"
+						}
+					}
+				},
+				"messageButtonLabel": {
+					"displayName": "消息按钮标签"
+				},
+				"responseFormTitle": {
+					"displayName": "响应表单标题",
+					"description": "用户可访问以提供其响应的表单标题"
+				},
+				"responseFormDescription": {
+					"displayName": "响应表单描述",
+					"description": "用户可访问以提供其响应的表单描述"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "响应表单按钮标签"
+				},
+				"responseFormCustomCss": {
+					"displayName": "响应表单自定义样式",
+					"description": "使用CSS覆盖响应表单的默认样式"
+				},
+				"replyToRecipientsOnly": {
+					"displayName": "仅回复收件人",
+					"description": "是否排除发件人"
+				},
+				"returnOnlyMessages": {
+					"displayName": "仅返回消息",
+					"description": "是否仅返回线程消息"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "标签名称",
+			"placeholder": "发票"
+		},
+		"labelId": {
+			"displayName": "标签ID",
+			"description": "标签的ID"
+		},
+		"sendTo": {
+			"displayName": "收件人",
+			"description": "收件人的电子邮件地址。多个地址可以用逗号分隔。例如：jay@getsby.com, jon@smith.com。",
+			"placeholder": "例如 info@example.com"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"filtersNotice": {
+			"displayName": "获取大量消息可能需要较长时间。建议使用过滤器来加快速度"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"includeSpamTrash": {
+					"displayName": "包含垃圾邮件和已删除邮件",
+					"description": "是否在结果中包含来自垃圾邮件和已删除邮件的线程"
+				},
+				"labelIds": {
+					"displayName": "标签ID名称或ID",
+					"description": "仅返回标签与所有指定标签ID匹配的线程。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"q": {
+					"displayName": "搜索",
+					"description": "仅返回匹配指定查询的消息",
+					"placeholder": "包含附件"
+				},
+				"readStatus": {
+					"displayName": "读取状态",
+					"options": {
+						"both": {
+							"displayName": "未读和已读邮件"
+						},
+						"unread": {
+							"displayName": "仅未读邮件"
+						},
+						"read": {
+							"displayName": "仅读取邮件"
+						}
+					}
+				},
+				"receivedAfter": {
+					"displayName": "接收时间晚于",
+					"description": "获取指定日期之后收到的所有邮件。在表达式中，您可以使用ISO格式的字符串或毫秒时间戳来设置日期。"
+				},
+				"receivedBefore": {
+					"displayName": "在指定日期前接收",
+					"description": "获取在指定日期之前收到的所有邮件。在表达式中，您可以使用ISO格式的字符串或毫秒时间戳来设置日期。"
+				},
+				"sender": {
+					"displayName": "发送方",
+					"description": "用于筛选的发件人姓名或邮箱"
+				}
+			}
+		},
+		"labelIds": {
+			"displayName": "标签名称或ID",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"responseType": {
+			"displayName": "响应类型",
+			"options": {
+				"approval": {
+					"displayName": "审批",
+					"description": "用户可直接在消息内批准/拒绝"
+				},
+				"freeText": {
+					"displayName": "自由文本",
+					"description": "用户可通过表单提交响应"
+				},
+				"customForm": {
+					"displayName": "自定义表单",
+					"description": "用户可通过自定义表单提交响应"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "定义表单",
+			"options": {
+				"fields": {
+					"displayName": "使用下方字段"
+				},
+				"json": {
+					"displayName": "使用JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "表单字段"
+		},
+		"formFields": {
+			"displayName": "表单元素",
+			"placeholder": "添加表单元素",
+			"multipleValueButtonText": "添加表单元素",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "表单元素",
+					"placeholder": "添加表单元素"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "审批选项",
+			"placeholder": "添加选项",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "批准按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "拒绝按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"approvalType": {
+							"displayName": "审批类型",
+							"placeholder": "添加选项",
+							"options": {
+								"single": {
+									"displayName": "仅批准"
+								},
+								"double": {
+									"displayName": "批准与拒绝"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "批准按钮标签"
+						},
+						"buttonApprovalStyle": {
+							"displayName": "批准按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						},
+						"disapproveLabel": {
+							"displayName": "拒绝按钮标签"
+						},
+						"buttonDisapprovalStyle": {
+							"displayName": "拒绝按钮样式",
+							"options": {
+								"primary": {
+									"displayName": "主要"
+								},
+								"secondary": {
+									"displayName": "次要"
+								}
+							}
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "审批选项",
+					"placeholder": "添加选项"
+				}
+			}
+		},
+		"threadId": {
+			"displayName": "线程ID",
+			"description": "您正在操作的线程ID",
+			"placeholder": "172ce2c4a72cc243"
+		}
+	}
+}

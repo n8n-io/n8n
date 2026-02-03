@@ -1,0 +1,32 @@
+{
+	"header": {
+		"displayName": "Typeform触发器",
+		"description": "在Typeform表单提交时启动工作流"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"formId": {
+			"displayName": "表单名称或ID",
+			"description": "提交时应触发工作流的表单。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"options": {}
+		},
+		"simplifyAnswers": {
+			"displayName": "简化回答",
+			"description": "是否将回答转换为键值对（\"字段标题\":\"用户回答\"）以便于处理"
+		},
+		"onlyAnswers": {
+			"displayName": "仅返回答案",
+			"description": "是否仅返回表单的答案而不返回任何其他数据"
+		}
+	}
+}

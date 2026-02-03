@@ -1,0 +1,47 @@
+{
+	"header": {
+		"displayName": "Summarization Chain",
+		"description": "Transforms text into a concise summary"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "Save time with an <a href=\"/templates/1951\" target=\"_blank\">example</a> of how this node works"
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "The type of summarization to run",
+			"options": {
+				"map_reduce": {
+					"displayName": "Map Reduce (Recommended)",
+					"description": "Summarize each document (or chunk) individually, then summarize those summaries"
+				},
+				"refine": {
+					"displayName": "Refine",
+					"description": "Summarize the first document (or chunk). Then update that summary based on the next document (or chunk), and repeat."
+				},
+				"stuff": {
+					"displayName": "Stuff",
+					"description": "Pass all documents (or chunks) at once. Ideal for small datasets."
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"combineMapPrompt": {
+					"displayName": "Final Prompt to Combine"
+				},
+				"prompt": {
+					"displayName": "Prompt"
+				},
+				"refinePrompt": {
+					"displayName": "Subsequent (Refine) Prompt"
+				},
+				"refineQuestionPrompt": {
+					"displayName": "Initial Prompt"
+				}
+			}
+		}
+	}
+}

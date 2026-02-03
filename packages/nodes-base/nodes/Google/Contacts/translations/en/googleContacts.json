@@ -1,0 +1,1204 @@
+{
+	"header": {
+		"displayName": "Google Contacts",
+		"description": "Consume Google Contacts API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a contact"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a contact"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a contact"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many contacts"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a contact"
+				}
+			}
+		},
+		"familyName": {
+			"displayName": "Family Name"
+		},
+		"givenName": {
+			"displayName": "Given Name"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"addressesUi": {
+					"displayName": "Addresses",
+					"placeholder": "Add Address",
+					"options": {
+						"addressesValues": {
+							"displayName": "Address",
+							"options": {
+								"streetAddress": {
+									"displayName": "Street Address"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"region": {
+									"displayName": "Region"
+								},
+								"countryCode": {
+									"displayName": "Country Code"
+								},
+								"postalCode": {
+									"displayName": "Postal Code"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"addressesValues": {
+							"displayName": "Address",
+							"options": {
+								"streetAddress": {
+									"displayName": "Street Address"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"region": {
+									"displayName": "Region"
+								},
+								"countryCode": {
+									"displayName": "Country Code"
+								},
+								"postalCode": {
+									"displayName": "Postal Code"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								}
+							}
+						},
+						"addressesUi": {
+							"displayName": "Addresses",
+							"placeholder": "Add Address"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "Birthday"
+				},
+				"companyUi": {
+					"displayName": "Company",
+					"placeholder": "Add Company",
+					"multipleValueButtonText": "Add Company",
+					"options": {
+						"companyValues": {
+							"displayName": "Company",
+							"options": {
+								"current": {
+									"displayName": "Current"
+								},
+								"domain": {
+									"displayName": "Domain"
+								},
+								"name": {
+									"displayName": "Name"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						}
+					},
+					"values": {
+						"companyValues": {
+							"displayName": "Company",
+							"options": {
+								"current": {
+									"displayName": "Current"
+								},
+								"domain": {
+									"displayName": "Domain"
+								},
+								"name": {
+									"displayName": "Name"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						},
+						"companyUi": {
+							"displayName": "Company",
+							"placeholder": "Add Company"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The end user specified key of the user defined data"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The end user specified key of the user defined data"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"emailsUi": {
+					"displayName": "Emails",
+					"placeholder": "Add Email",
+					"multipleValueButtonText": "Add Email",
+					"options": {
+						"emailsValues": {
+							"displayName": "Email",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the email address. The type can be custom or one of these predefined values.",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The email address"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailsValues": {
+							"displayName": "Email",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the email address. The type can be custom or one of these predefined values.",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The email address"
+								}
+							}
+						},
+						"emailsUi": {
+							"displayName": "Emails",
+							"placeholder": "Add Email"
+						}
+					}
+				},
+				"eventsUi": {
+					"displayName": "Events",
+					"description": "An event related to the person",
+					"placeholder": "Add Event",
+					"multipleValueButtonText": "Add Event",
+					"options": {
+						"eventsValues": {
+							"displayName": "Event",
+							"options": {
+								"date": {
+									"displayName": "Date",
+									"description": "The date of the event"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the event. The type can be custom or one of these predefined values.",
+									"options": {
+										"anniversary": {
+											"displayName": "Anniversary"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"eventsValues": {
+							"displayName": "Event",
+							"options": {
+								"date": {
+									"displayName": "Date",
+									"description": "The date of the event"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the event. The type can be custom or one of these predefined values.",
+									"options": {
+										"anniversary": {
+											"displayName": "Anniversary"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								}
+							}
+						},
+						"eventsUi": {
+							"displayName": "Events",
+							"placeholder": "Add Event"
+						}
+					}
+				},
+				"fileAs": {
+					"displayName": "File As",
+					"description": "The name that should be used to sort the person in a list"
+				},
+				"group": {
+					"displayName": "Group Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"honorificPrefix": {
+					"displayName": "Honorific Prefix"
+				},
+				"honorificSuffix": {
+					"displayName": "Honorific Suffix"
+				},
+				"middleName": {
+					"displayName": "Middle Name"
+				},
+				"biographies": {
+					"displayName": "Notes"
+				},
+				"phoneUi": {
+					"displayName": "Phone",
+					"placeholder": "Add Phone",
+					"multipleValueButtonText": "Add Phone",
+					"options": {
+						"phoneValues": {
+							"displayName": "Phone",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"googleVoice": {
+											"displayName": "Google Voice"
+										},
+										"home": {
+											"displayName": "Home"
+										},
+										"homeFax": {
+											"displayName": "Home Fax"
+										},
+										"main": {
+											"displayName": "Main"
+										},
+										"mobile": {
+											"displayName": "Mobile"
+										},
+										"other": {
+											"displayName": "Other"
+										},
+										"otherFax": {
+											"displayName": "Other Fax"
+										},
+										"pager": {
+											"displayName": "Pager"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"workFax": {
+											"displayName": "Work Fax"
+										},
+										"workMobile": {
+											"displayName": "Work Mobile"
+										},
+										"workPager": {
+											"displayName": "Work Pager"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The phone number"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneValues": {
+							"displayName": "Phone",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"googleVoice": {
+											"displayName": "Google Voice"
+										},
+										"home": {
+											"displayName": "Home"
+										},
+										"homeFax": {
+											"displayName": "Home Fax"
+										},
+										"main": {
+											"displayName": "Main"
+										},
+										"mobile": {
+											"displayName": "Mobile"
+										},
+										"other": {
+											"displayName": "Other"
+										},
+										"otherFax": {
+											"displayName": "Other Fax"
+										},
+										"pager": {
+											"displayName": "Pager"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"workFax": {
+											"displayName": "Work Fax"
+										},
+										"workMobile": {
+											"displayName": "Work Mobile"
+										},
+										"workPager": {
+											"displayName": "Work Pager"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The phone number"
+								}
+							}
+						},
+						"phoneUi": {
+							"displayName": "Phone",
+							"placeholder": "Add Phone"
+						}
+					}
+				},
+				"relationsUi": {
+					"displayName": "Relations",
+					"placeholder": "Add Relation",
+					"multipleValueButtonText": "Add Relation",
+					"options": {
+						"relationsValues": {
+							"displayName": "Relation",
+							"options": {
+								"person": {
+									"displayName": "Person",
+									"description": "The name of the other person this relation refers to"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The person's relation to the other person. The type can be custom or one of these predefined values.",
+									"options": {
+										"assistant": {
+											"displayName": "Assistant"
+										},
+										"brother": {
+											"displayName": "Brother"
+										},
+										"child": {
+											"displayName": "Child"
+										},
+										"domesticPartner": {
+											"displayName": "Domestic Partner"
+										},
+										"father": {
+											"displayName": "Father"
+										},
+										"friend": {
+											"displayName": "Friend"
+										},
+										"manager": {
+											"displayName": "Manager"
+										},
+										"mother": {
+											"displayName": "Mother"
+										},
+										"parent": {
+											"displayName": "Parent"
+										},
+										"referredBy": {
+											"displayName": "Referred By"
+										},
+										"relative": {
+											"displayName": "Relative"
+										},
+										"sister": {
+											"displayName": "Sister"
+										},
+										"spouse": {
+											"displayName": "Spouse"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"relationsValues": {
+							"displayName": "Relation",
+							"options": {
+								"person": {
+									"displayName": "Person",
+									"description": "The name of the other person this relation refers to"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The person's relation to the other person. The type can be custom or one of these predefined values.",
+									"options": {
+										"assistant": {
+											"displayName": "Assistant"
+										},
+										"brother": {
+											"displayName": "Brother"
+										},
+										"child": {
+											"displayName": "Child"
+										},
+										"domesticPartner": {
+											"displayName": "Domestic Partner"
+										},
+										"father": {
+											"displayName": "Father"
+										},
+										"friend": {
+											"displayName": "Friend"
+										},
+										"manager": {
+											"displayName": "Manager"
+										},
+										"mother": {
+											"displayName": "Mother"
+										},
+										"parent": {
+											"displayName": "Parent"
+										},
+										"referredBy": {
+											"displayName": "Referred By"
+										},
+										"relative": {
+											"displayName": "Relative"
+										},
+										"sister": {
+											"displayName": "Sister"
+										},
+										"spouse": {
+											"displayName": "Spouse"
+										}
+									}
+								}
+							}
+						},
+						"relationsUi": {
+							"displayName": "Relations",
+							"placeholder": "Add Relation"
+						}
+					}
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "Contact ID"
+		},
+		"fields": {
+			"displayName": "Fields",
+			"description": "A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas."
+		},
+		"rawData": {
+			"displayName": "RAW Data",
+			"description": "Whether to return the data exactly in the way it got received from the API"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"useQuery": {
+			"displayName": "Use Query",
+			"description": "Whether or not to use a query to filter the results"
+		},
+		"query": {
+			"displayName": "Query",
+			"description": "The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name \"foo name\" matches queries such as \"f\", \"fo\", \"foo\", \"foo n\", \"nam\", etc., but not \"oo n\"."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"sortOrder": {
+					"displayName": "Sort Order",
+					"description": "The order of the contacts returned in the result",
+					"options": {
+						"LAST_MODIFIED_ASCENDING": {
+							"displayName": "Last Modified Ascending",
+							"description": "Sort people by when they were changed; older entries first"
+						},
+						"LAST_MODIFIED_DESCENDING": {
+							"displayName": "Last Modified Descending",
+							"description": "Sort people by when they were changed; newer entries first"
+						},
+						"FIRST_NAME_ASCENDING": {
+							"displayName": "First Name Ascending",
+							"description": "Sort people by first name"
+						},
+						"LAST_NAME_ASCENDING": {
+							"displayName": "Last Name Ascending",
+							"description": "Sort people by last name"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"etag": {
+					"displayName": "Etag",
+					"description": "The etag field in the person is nedded to make sure the contact has not changed since your last read"
+				},
+				"familyName": {
+					"displayName": "Family Name"
+				},
+				"givenName": {
+					"displayName": "Given Name"
+				},
+				"addressesUi": {
+					"displayName": "Addresses",
+					"placeholder": "Add Address",
+					"options": {
+						"addressesValues": {
+							"displayName": "Address",
+							"options": {
+								"streetAddress": {
+									"displayName": "Street Address"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"region": {
+									"displayName": "Region"
+								},
+								"countryCode": {
+									"displayName": "Country Code"
+								},
+								"postalCode": {
+									"displayName": "Postal Code"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"addressesValues": {
+							"displayName": "Address",
+							"options": {
+								"streetAddress": {
+									"displayName": "Street Address"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"region": {
+									"displayName": "Region"
+								},
+								"countryCode": {
+									"displayName": "Country Code"
+								},
+								"postalCode": {
+									"displayName": "Postal Code"
+								},
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								}
+							}
+						},
+						"addressesUi": {
+							"displayName": "Addresses",
+							"placeholder": "Add Address"
+						}
+					}
+				},
+				"birthday": {
+					"displayName": "Birthday"
+				},
+				"companyUi": {
+					"displayName": "Company",
+					"placeholder": "Add Company",
+					"multipleValueButtonText": "Add Company",
+					"options": {
+						"companyValues": {
+							"displayName": "Company",
+							"options": {
+								"current": {
+									"displayName": "Current"
+								},
+								"domain": {
+									"displayName": "Domain"
+								},
+								"name": {
+									"displayName": "Name"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						}
+					},
+					"values": {
+						"companyValues": {
+							"displayName": "Company",
+							"options": {
+								"current": {
+									"displayName": "Current"
+								},
+								"domain": {
+									"displayName": "Domain"
+								},
+								"name": {
+									"displayName": "Name"
+								},
+								"title": {
+									"displayName": "Title"
+								}
+							}
+						},
+						"companyUi": {
+							"displayName": "Company",
+							"placeholder": "Add Company"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The end user specified key of the user defined data"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The end user specified key of the user defined data"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"emailsUi": {
+					"displayName": "Emails",
+					"placeholder": "Add Email",
+					"multipleValueButtonText": "Add Email",
+					"options": {
+						"emailsValues": {
+							"displayName": "Email",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the email address. The type can be custom or one of these predefined values.",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The email address"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailsValues": {
+							"displayName": "Email",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the email address. The type can be custom or one of these predefined values.",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The email address"
+								}
+							}
+						},
+						"emailsUi": {
+							"displayName": "Emails",
+							"placeholder": "Add Email"
+						}
+					}
+				},
+				"eventsUi": {
+					"displayName": "Events",
+					"description": "An event related to the person",
+					"placeholder": "Add Event",
+					"multipleValueButtonText": "Add Event",
+					"options": {
+						"eventsValues": {
+							"displayName": "Event",
+							"options": {
+								"date": {
+									"displayName": "Date",
+									"description": "The date of the event"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the event. The type can be custom or one of these predefined values.",
+									"options": {
+										"anniversary": {
+											"displayName": "Anniversary"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"eventsValues": {
+							"displayName": "Event",
+							"options": {
+								"date": {
+									"displayName": "Date",
+									"description": "The date of the event"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The type of the event. The type can be custom or one of these predefined values.",
+									"options": {
+										"anniversary": {
+											"displayName": "Anniversary"
+										},
+										"other": {
+											"displayName": "Other"
+										}
+									}
+								}
+							}
+						},
+						"eventsUi": {
+							"displayName": "Events",
+							"placeholder": "Add Event"
+						}
+					}
+				},
+				"fileAs": {
+					"displayName": "File As",
+					"description": "The name that should be used to sort the person in a list"
+				},
+				"group": {
+					"displayName": "Group Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"honorificPrefix": {
+					"displayName": "Honorific Prefix"
+				},
+				"honorificSuffix": {
+					"displayName": "Honorific Suffix"
+				},
+				"middleName": {
+					"displayName": "Middle Name"
+				},
+				"biographies": {
+					"displayName": "Notes"
+				},
+				"phoneUi": {
+					"displayName": "Phone",
+					"placeholder": "Add Phone",
+					"multipleValueButtonText": "Add Phone",
+					"options": {
+						"phoneValues": {
+							"displayName": "Phone",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"googleVoice": {
+											"displayName": "Google Voice"
+										},
+										"home": {
+											"displayName": "Home"
+										},
+										"homeFax": {
+											"displayName": "Home Fax"
+										},
+										"main": {
+											"displayName": "Main"
+										},
+										"mobile": {
+											"displayName": "Mobile"
+										},
+										"other": {
+											"displayName": "Other"
+										},
+										"otherFax": {
+											"displayName": "Other Fax"
+										},
+										"pager": {
+											"displayName": "Pager"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"workFax": {
+											"displayName": "Work Fax"
+										},
+										"workMobile": {
+											"displayName": "Work Mobile"
+										},
+										"workPager": {
+											"displayName": "Work Pager"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The phone number"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneValues": {
+							"displayName": "Phone",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"googleVoice": {
+											"displayName": "Google Voice"
+										},
+										"home": {
+											"displayName": "Home"
+										},
+										"homeFax": {
+											"displayName": "Home Fax"
+										},
+										"main": {
+											"displayName": "Main"
+										},
+										"mobile": {
+											"displayName": "Mobile"
+										},
+										"other": {
+											"displayName": "Other"
+										},
+										"otherFax": {
+											"displayName": "Other Fax"
+										},
+										"pager": {
+											"displayName": "Pager"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"workFax": {
+											"displayName": "Work Fax"
+										},
+										"workMobile": {
+											"displayName": "Work Mobile"
+										},
+										"workPager": {
+											"displayName": "Work Pager"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The phone number"
+								}
+							}
+						},
+						"phoneUi": {
+							"displayName": "Phone",
+							"placeholder": "Add Phone"
+						}
+					}
+				},
+				"relationsUi": {
+					"displayName": "Relations",
+					"placeholder": "Add Relation",
+					"multipleValueButtonText": "Add Relation",
+					"options": {
+						"relationsValues": {
+							"displayName": "Relation",
+							"options": {
+								"person": {
+									"displayName": "Person",
+									"description": "The name of the other person this relation refers to"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The person's relation to the other person. The type can be custom or one of these predefined values.",
+									"options": {
+										"assistant": {
+											"displayName": "Assistant"
+										},
+										"brother": {
+											"displayName": "Brother"
+										},
+										"child": {
+											"displayName": "Child"
+										},
+										"domesticPartner": {
+											"displayName": "Domestic Partner"
+										},
+										"father": {
+											"displayName": "Father"
+										},
+										"friend": {
+											"displayName": "Friend"
+										},
+										"manager": {
+											"displayName": "Manager"
+										},
+										"mother": {
+											"displayName": "Mother"
+										},
+										"parent": {
+											"displayName": "Parent"
+										},
+										"referredBy": {
+											"displayName": "Referred By"
+										},
+										"relative": {
+											"displayName": "Relative"
+										},
+										"sister": {
+											"displayName": "Sister"
+										},
+										"spouse": {
+											"displayName": "Spouse"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"relationsValues": {
+							"displayName": "Relation",
+							"options": {
+								"person": {
+									"displayName": "Person",
+									"description": "The name of the other person this relation refers to"
+								},
+								"type": {
+									"displayName": "Type",
+									"description": "The person's relation to the other person. The type can be custom or one of these predefined values.",
+									"options": {
+										"assistant": {
+											"displayName": "Assistant"
+										},
+										"brother": {
+											"displayName": "Brother"
+										},
+										"child": {
+											"displayName": "Child"
+										},
+										"domesticPartner": {
+											"displayName": "Domestic Partner"
+										},
+										"father": {
+											"displayName": "Father"
+										},
+										"friend": {
+											"displayName": "Friend"
+										},
+										"manager": {
+											"displayName": "Manager"
+										},
+										"mother": {
+											"displayName": "Mother"
+										},
+										"parent": {
+											"displayName": "Parent"
+										},
+										"referredBy": {
+											"displayName": "Referred By"
+										},
+										"relative": {
+											"displayName": "Relative"
+										},
+										"sister": {
+											"displayName": "Sister"
+										},
+										"spouse": {
+											"displayName": "Spouse"
+										}
+									}
+								}
+							}
+						},
+						"relationsUi": {
+							"displayName": "Relations",
+							"placeholder": "Add Relation"
+						}
+					}
+				}
+			}
+		}
+	}
+}

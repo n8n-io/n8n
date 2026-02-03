@@ -1,0 +1,84 @@
+{
+	"header": {
+		"displayName": "文本分类器",
+		"description": "将文本分类到不同类别"
+	},
+	"nodeView": {
+		"inputText": {
+			"displayName": "文本分类",
+			"description": "使用表达式引用先前节点中的数据或输入静态文本"
+		},
+		"categories": {
+			"displayName": "分类",
+			"placeholder": "添加分类",
+			"multipleValueButtonText": "添加分类",
+			"options": {
+				"categories": {
+					"displayName": "分类",
+					"options": {
+						"category": {
+							"displayName": "分类",
+							"description": "添加类别"
+						},
+						"description": {
+							"displayName": "描述",
+							"description": "Describe your category if it's not obvious"
+						}
+					}
+				}
+			},
+			"values": {
+				"categories": {
+					"displayName": "分类",
+					"placeholder": "添加分类"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"multiClass": {
+					"displayName": "允许多个类为真"
+				},
+				"fallback": {
+					"displayName": "无明确匹配时",
+					"description": "如何处理不完全匹配类别的项目",
+					"options": {
+						"discard": {
+							"displayName": "丢弃项目",
+							"description": "忽略该项目并将其从输出中删除"
+						},
+						"other": {
+							"displayName": "在'其他'分支上输出",
+							"description": "创建一个名为'其他'的独立输出分支"
+						}
+					}
+				},
+				"systemPromptTemplate": {
+					"displayName": "系统提示词模板",
+					"description": "直接用作系统提示词的字符串"
+				},
+				"enableAutoFixing": {
+					"displayName": "启用自动修复",
+					"description": "是否启用自动修复（若输出损坏可能触发额外的LLM调用）"
+				},
+				"batching": {
+					"displayName": "批量处理",
+					"description": "用于速率限制的批量处理选项",
+					"placeholder": "添加批量处理选项",
+					"options": {
+						"batchSize": {
+							"displayName": "批次大小",
+							"description": "并行处理的项目数量。这对速率限制很有用，但可能会影响日志输出顺序。"
+						},
+						"delayBetweenBatches": {
+							"displayName": "批次间延迟",
+							"description": "批次之间的延迟时间（毫秒）。适用于速率限制场景。"
+						}
+					}
+				}
+			}
+		}
+	}
+}

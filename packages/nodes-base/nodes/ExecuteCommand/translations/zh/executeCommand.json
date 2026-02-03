@@ -1,0 +1,17 @@
+{
+	"header": {
+		"displayName": "执行命令",
+		"description": "在主机上执行命令"
+	},
+	"nodeView": {
+		"executeOnce": {
+			"displayName": "执行一次",
+			"description": "是否仅执行一次，而不是为每个条目执行一次"
+		},
+		"command": {
+			"displayName": "命令",
+			"description": "要执行的命令",
+			"placeholder": "echo \"test\""
+		}
+	}
+}

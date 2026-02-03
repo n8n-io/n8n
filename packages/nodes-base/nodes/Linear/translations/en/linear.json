@@ -1,0 +1,172 @@
+{
+	"header": {
+		"displayName": "Linear",
+		"description": "Consume Linear API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiToken": {
+					"displayName": "API Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"comment": {
+					"displayName": "Comment"
+				},
+				"issue": {
+					"displayName": "Issue"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"addComment": {
+					"displayName": "Add Comment",
+					"description": "Add a comment to an issue"
+				},
+				"addLink": {
+					"displayName": "Add Link",
+					"description": "Add a link to an issue"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create an issue"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an issue"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get an issue"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many issues"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update an issue"
+				}
+			}
+		},
+		"issueId": {
+			"displayName": "Issue ID"
+		},
+		"comment": {
+			"displayName": "Comment"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"parentId": {
+					"displayName": "Parent Comment ID",
+					"description": "ID of the parent comment if this is a reply"
+				},
+				"assigneeId": {
+					"displayName": "Assignee Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"priorityId": {
+					"displayName": "Priority",
+					"options": {
+						"0": {
+							"displayName": "No Priority"
+						},
+						"1": {
+							"displayName": "Urgent"
+						},
+						"2": {
+							"displayName": "High"
+						},
+						"3": {
+							"displayName": "Normal"
+						},
+						"4": {
+							"displayName": "Low"
+						}
+					}
+				},
+				"stateId": {
+					"displayName": "State Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				}
+			}
+		},
+		"teamId": {
+			"displayName": "Team Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"title": {
+			"displayName": "Title"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assigneeId": {
+					"displayName": "Assignee Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"priorityId": {
+					"displayName": "Priority Name/ID",
+					"options": {
+						"0": {
+							"displayName": "No Priority"
+						},
+						"1": {
+							"displayName": "Urgent"
+						},
+						"2": {
+							"displayName": "High"
+						},
+						"3": {
+							"displayName": "Medium"
+						},
+						"4": {
+							"displayName": "Low"
+						}
+					}
+				},
+				"stateId": {
+					"displayName": "State Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"teamId": {
+					"displayName": "Team Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"title": {
+					"displayName": "Title"
+				}
+			}
+		},
+		"link": {
+			"displayName": "Link"
+		}
+	}
+}

@@ -1,0 +1,198 @@
+{
+	"header": {
+		"displayName": "Todoist",
+		"description": "使用Todoist API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiKey": {
+					"displayName": "API密钥"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"task": {
+					"displayName": "任务",
+					"description": "任务资源"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"close": {
+					"displayName": "关闭",
+					"description": "关闭任务"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新任务"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除任务"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取任务"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个任务"
+				},
+				"move": {
+					"displayName": "移动",
+					"description": "移动任务"
+				},
+				"reopen": {
+					"displayName": "重新打开",
+					"description": "重新打开任务"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新任务"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "任务ID"
+		},
+		"project": {
+			"displayName": "项目名称或ID",
+			"description": "您要操作的项目。从列表中选择，或指定一个ID。"
+		},
+		"section": {
+			"displayName": "分区名称或ID",
+			"description": "要移动任务的目标分区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"labels": {
+			"displayName": "标签名称或ID",
+			"description": "将分配给创建任务的可选标签。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "任务内容"
+		},
+		"commands": {
+			"displayName": "同步命令",
+			"description": "同步主体"
+		},
+		"options": {
+			"displayName": "附加字段",
+			"placeholder": "添加选项",
+			"options": {
+				"description": {
+					"displayName": "描述",
+					"description": "任务描述"
+				},
+				"dueDateTime": {
+					"displayName": "到期日期时间",
+					"description": "RFC3339格式的UTC具体日期和时间"
+				},
+				"dueLang": {
+					"displayName": "到期字符串语言环境",
+					"description": "当due_string不是英文时，指定语言的2字母代码"
+				},
+				"dueString": {
+					"displayName": "截止日期字符串",
+					"description": "用户定义的任务截止日期（例如：“下周一”、“明天”）。使用本地（非UTC）时间设置值。"
+				},
+				"parentId": {
+					"displayName": "父级名称或ID",
+					"description": "要操作的父任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"description": "任务优先级从1（普通）到4（紧急）"
+				},
+				"section": {
+					"displayName": "分区名称或ID",
+					"description": "您想要操作的部分。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定一个ID。"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加选项",
+			"options": {
+				"filter": {
+					"displayName": "筛选器",
+					"description": "Filter by any <a href=\"https://get.todoist.help/hc/en-us/articles/205248842\">supported filter.</a>"
+				},
+				"ids": {
+					"displayName": "ID",
+					"description": "要检索的任务ID列表，这应该是一个逗号分隔的列表"
+				},
+				"labelId": {
+					"displayName": "标签名称或ID",
+					"description": "按标签筛选任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"lang": {
+					"displayName": "语言",
+					"description": "IETF语言标签，定义过滤器使用的语言（如果与默认英语不同）"
+				},
+				"parentId": {
+					"displayName": "父级名称或ID",
+					"description": "按父任务ID筛选任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"projectId": {
+					"displayName": "项目名称或ID",
+					"description": "Filter tasks by project ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"sectionId": {
+					"displayName": "分区名称或ID",
+					"description": "按分区ID筛选任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"content": {
+					"displayName": "内容",
+					"description": "Task content"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "任务描述"
+				},
+				"dueDateTime": {
+					"displayName": "到期日期时间",
+					"description": "RFC3339格式的UTC具体日期和时间"
+				},
+				"dueLang": {
+					"displayName": "到期字符串语言环境",
+					"description": "当due_string不是英文时，指定语言的2字母代码"
+				},
+				"dueString": {
+					"displayName": "截止日期字符串",
+					"description": "用户定义的任务截止日期（例如：“下周一”、“明天”）。使用本地（非UTC）时间设置值。"
+				},
+				"labels": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"description": "任务优先级从1（普通）到4（紧急）"
+				}
+			}
+		}
+	}
+}

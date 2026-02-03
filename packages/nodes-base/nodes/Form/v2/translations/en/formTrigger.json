@@ -1,0 +1,472 @@
+{
+	"header": {
+		"displayName": "n8n Form Trigger",
+		"description": "Generate webforms in n8n and pass their responses to the workflow"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"basicAuth": {
+					"displayName": "Basic Auth"
+				},
+				"none": {
+					"displayName": "None"
+				}
+			}
+		},
+		"path": {
+			"displayName": "Form Path",
+			"description": "The final segment of the form's URL, both for test and production",
+			"placeholder": "webhook"
+		},
+		"formTitle": {
+			"displayName": "Form Title",
+			"description": "Shown at the top of the form",
+			"placeholder": "e.g. Contact us"
+		},
+		"formDescription": {
+			"displayName": "Form Description",
+			"description": "Shown underneath the Form Title. Can be used to prompt the user on how to complete the form. Accepts HTML. Does not accept <code>&lt;script&gt;</code>, <code>&lt;style&gt;</code> or <code>&lt;input&gt;</code> tags.",
+			"placeholder": "e.g. We'll get back to you soon"
+		},
+		"formFields": {
+			"displayName": "Form Elements",
+			"placeholder": "Add Form Element",
+			"multipleValueButtonText": "Add Form Element",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "Form Elements",
+					"placeholder": "Add Form Element"
+				}
+			}
+		},
+		"responseMode": {
+			"displayName": "Respond When",
+			"description": "When to respond to the form submission",
+			"options": {
+				"onReceived": {
+					"displayName": "Form Is Submitted",
+					"description": "As soon as this node receives the form submission"
+				},
+				"lastNode": {
+					"displayName": "Workflow Finishes",
+					"description": "When the last node of the workflow is executed"
+				},
+				"responseNode": {
+					"displayName": "Using 'Respond to Webhook' Node",
+					"description": "When the 'Respond to Webhook' node is executed"
+				}
+			}
+		},
+		"formNotice": {
+			"displayName": "In the 'Respond to Webhook' node, select 'Respond With JSON' and set the <strong>formSubmittedText</strong> key to display a custom response in the form, or the <strong>redirectURL</strong> key to redirect users to a URL"
+		},
+		"addFormPage": {
+			"displayName": "Build multi-step forms by adding a form page later in your workflow"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the link “Form automated with n8n” at the bottom of the form"
+				},
+				"buttonLabel": {
+					"displayName": "Button Label",
+					"description": "The label of the submit button in the form"
+				},
+				"path": {
+					"displayName": "Form Path",
+					"description": "The final segment of the form's URL, both for test and production",
+					"placeholder": "webhook"
+				},
+				"respondWithOptions": {
+					"displayName": "Form Response",
+					"placeholder": "Add option",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"respondWith": {
+									"displayName": "Respond With",
+									"options": {
+										"text": {
+											"displayName": "Form Submitted Text",
+											"description": "Show a response text to the user"
+										},
+										"redirect": {
+											"displayName": "Redirect URL",
+											"description": "Redirect the user to a URL"
+										}
+									}
+								},
+								"formSubmittedText": {
+									"displayName": "Text to Show",
+									"description": "The text displayed to users after they fill the form. Leave it empty if don't want to show any additional text."
+								},
+								"redirectUrl": {
+									"displayName": "URL to Redirect to",
+									"description": "The URL to redirect users to after they fill the form. Must be a valid URL.",
+									"placeholder": "e.g. http://www.n8n.io"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"respondWith": {
+									"displayName": "Respond With",
+									"options": {
+										"text": {
+											"displayName": "Form Submitted Text",
+											"description": "Show a response text to the user"
+										},
+										"redirect": {
+											"displayName": "Redirect URL",
+											"description": "Redirect the user to a URL"
+										}
+									}
+								},
+								"formSubmittedText": {
+									"displayName": "Text to Show",
+									"description": "The text displayed to users after they fill the form. Leave it empty if don't want to show any additional text."
+								},
+								"redirectUrl": {
+									"displayName": "URL to Redirect to",
+									"description": "The URL to redirect users to after they fill the form. Must be a valid URL.",
+									"placeholder": "e.g. http://www.n8n.io"
+								}
+							}
+						},
+						"respondWithOptions": {
+							"displayName": "Form Response",
+							"placeholder": "Add option"
+						}
+					}
+				},
+				"ignoreBots": {
+					"displayName": "Ignore Bots",
+					"description": "Whether to ignore requests from bots like link previewers and web crawlers"
+				},
+				"useWorkflowTimezone": {
+					"displayName": "Use Workflow Timezone",
+					"description": "Whether to use the workflow timezone in 'submittedAt' field or UTC"
+				},
+				"customCss": {
+					"displayName": "Custom Form Styling",
+					"description": "Override default styling of the public form interface with CSS"
+				}
+			}
+		}
+	}
+}

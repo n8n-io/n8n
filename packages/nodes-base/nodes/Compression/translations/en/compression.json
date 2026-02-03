@@ -1,0 +1,50 @@
+{
+	"header": {
+		"displayName": "Compression",
+		"description": "Compress and decompress files"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"compress": {
+					"displayName": "Compress",
+					"description": "Compress files into a zip or gzip archive"
+				},
+				"decompress": {
+					"displayName": "Decompress",
+					"description": "Decompress zip or gzip archives"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field(s)",
+			"description": "To process more than one file, use a comma-separated list of the binary fields names",
+			"placeholder": "e.g. data"
+		},
+		"outputFormat": {
+			"displayName": "Output Format",
+			"description": "Format of the output",
+			"options": {
+				"gzip": {
+					"displayName": "Gzip"
+				},
+				"zip": {
+					"displayName": "Zip"
+				}
+			}
+		},
+		"fileName": {
+			"displayName": "File Name",
+			"description": "Name of the output file",
+			"placeholder": "e.g. data.txt"
+		},
+		"binaryPropertyOutput": {
+			"displayName": "Put Output File in Field"
+		},
+		"outputPrefix": {
+			"displayName": "Output Prefix",
+			"description": "Prefix to add to the decompressed files"
+		}
+	}
+}

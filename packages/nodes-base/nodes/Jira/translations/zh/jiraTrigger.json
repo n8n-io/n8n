@@ -1,0 +1,60 @@
+{
+	"header": {
+		"displayName": "Jira触发器",
+		"description": "当Jira事件发生时启动工作流"
+	},
+	"nodeView": {
+		"jiraVersion": {
+			"displayName": "Jira版本",
+			"options": {
+				"cloud": {
+					"displayName": "云端"
+				},
+				"server": {
+					"displayName": "服务器（自托管）"
+				},
+				"serverPat": {
+					"displayName": "服务器 (Pat) (自托管)"
+				}
+			}
+		},
+		"authenticateWebhook": {
+			"displayName": "验证传入Webhook",
+			"description": "是否应为传入的Webhook启用身份验证（提高安全性）"
+		},
+		"incomingAuthentication": {
+			"displayName": "Webhook身份验证方式",
+			"description": "是否启用Webhook身份验证（提高安全性）",
+			"options": {
+				"queryAuth": {
+					"displayName": "查询认证"
+				},
+				"none": {
+					"displayName": "无"
+				}
+			}
+		},
+		"events": {
+			"displayName": "事件",
+			"description": "要监听的事件"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"excludeBody": {
+					"displayName": "排除正文",
+					"description": "是否将空正文的请求发送到URL。如果要接收JSON，请勿勾选。"
+				},
+				"filter": {
+					"displayName": "筛选器",
+					"description": "您可以指定JQL查询，仅发送由匹配问题触发的事件。JQL筛选器仅适用于“问题”和“评论”列下的事件。",
+					"placeholder": "项目 = JRA AND 解决状态 = 已修复"
+				},
+				"includeFields": {
+					"displayName": "包含字段"
+				}
+			}
+		}
+	}
+}

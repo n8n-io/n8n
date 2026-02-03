@@ -1,0 +1,209 @@
+{
+	"header": {
+		"displayName": "Google BigQuery",
+		"description": "Consume Google BigQuery API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				},
+				"serviceAccount": {
+					"displayName": "Service Account"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource"
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"executeQuery": {
+					"displayName": "Execute Query",
+					"description": "Execute a SQL query"
+				},
+				"insert": {
+					"displayName": "Insert",
+					"description": "Insert rows in a table"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "Project",
+			"description": "Projects to which you have been granted any project role"
+		},
+		"datasetId": {
+			"displayName": "Dataset"
+		},
+		"tableId": {
+			"displayName": "Table"
+		},
+		"sqlQuery": {
+			"displayName": "SQL Query",
+			"description": "SQL query to execute, you can find more information about Legacy SQL syntax <a href=\"https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax\" target=\"_blank\">here</a>",
+			"placeholder": "SELECT * FROM [project:dataset.table] LIMIT 100;"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"defaultDataset": {
+					"displayName": "Default Dataset Name or ID",
+					"description": "If not set, all table names in the query string must be qualified in the format 'datasetId.tableId'. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"dryRun": {
+					"displayName": "Dry Run",
+					"description": "Whether set to true BigQuery doesn't run the job. Instead, if the query is valid, BigQuery returns statistics about the job such as how many bytes would be processed. If the query is invalid, an error returns."
+				},
+				"includeSchema": {
+					"displayName": "Include Schema in Output",
+					"description": "Whether to include the schema in the output. If set to true, the output will contain key '_schema' with the schema of the table."
+				},
+				"location": {
+					"displayName": "Location (Region)",
+					"description": "Location or the region where data would be stored and processed. Pricing for storage and analysis is also defined by location of data and reservations, more information <a href=\"https://cloud.google.com/bigquery/docs/locations\" target=\"_blank\">here</a>.",
+					"placeholder": "e.g. europe-west3"
+				},
+				"maximumBytesBilled": {
+					"displayName": "Maximum Bytes Billed",
+					"description": "Limits the bytes billed for this query. Queries with bytes billed above this limit will fail (without incurring a charge). String in <a href=\"https://developers.google.com/discovery/v1/type-format?utm_source=cloud.google.com&utm_medium=referral\" target=\"_blank\">Int64Value</a> format"
+				},
+				"maxResults": {
+					"displayName": "Max Results Per Page",
+					"description": "Maximum number of results to return per page of results. This is particularly useful when dealing with large datasets. It will not affect the total number of results returned, e.g. rows in a table. You can use LIMIT in your SQL query to limit the number of rows returned."
+				},
+				"timeoutMs": {
+					"displayName": "Timeout",
+					"description": "Specifies the maximum amount of time, in milliseconds, that the client is willing to wait for the query to complete. Be aware that the call is not guaranteed to wait for the specified timeout; it typically returns after around 200 seconds (200,000 milliseconds), even if the query is not complete."
+				},
+				"rawOutput": {
+					"displayName": "Raw Output"
+				},
+				"useLegacySql": {
+					"displayName": "Use Legacy SQL",
+					"description": "Whether to use BigQuery's legacy SQL dialect for this query. If set to false, the query will use BigQuery's standard SQL."
+				},
+				"returnAsNumbers": {
+					"displayName": "Return Integers as Numbers",
+					"description": "Whether all integer values will be returned as numbers. If set to false, all integer values will be returned as strings."
+				},
+				"queryParameters": {
+					"displayName": "Query Parameters (Named)",
+					"description": "Use <a href=\"https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized_queries\" target=\"_blank\">parameterized queries</a> to prevent SQL injections. Positional arguments are not supported at the moment. This feature won't be available when using legacy SQL.",
+					"placeholder": "Add Parameter",
+					"multipleValueButtonText": "Add Parameter",
+					"options": {
+						"namedParameters": {
+							"displayName": "Named Parameter",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the parameter"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The substitute value. It must be a string. Arrays, dates and struct types mentioned in <a href=\"https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized_queries\" target=\"_blank\">the official documentation</a> are not yet supported."
+								}
+							}
+						}
+					},
+					"values": {
+						"namedParameters": {
+							"displayName": "Named Parameter",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the parameter"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The substitute value. It must be a string. Arrays, dates and struct types mentioned in <a href=\"https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized_queries\" target=\"_blank\">the official documentation</a> are not yet supported."
+								}
+							}
+						},
+						"queryParameters": {
+							"displayName": "Query Parameters (Named)",
+							"placeholder": "Add Parameter"
+						}
+					}
+				},
+				"batchSize": {
+					"displayName": "Batch Size"
+				},
+				"ignoreUnknownValues": {
+					"displayName": "Ignore Unknown Values",
+					"description": "Whether to gnore row values that do not match the schema"
+				},
+				"skipInvalidRows": {
+					"displayName": "Skip Invalid Rows",
+					"description": "Whether to skip rows with values that do not match the schema"
+				},
+				"templateSuffix": {
+					"displayName": "Template Suffix",
+					"description": "Create a new table based on the destination table and insert rows into the new table. The new table will be named <code>{destinationTable}{templateSuffix}</code>"
+				},
+				"traceId": {
+					"displayName": "Trace ID",
+					"description": "Unique ID for the request, for debugging only. It is case-sensitive, limited to up to 36 ASCII characters. A UUID is recommended."
+				}
+			}
+		},
+		"dataMode": {
+			"displayName": "Data Mode",
+			"description": "Whether to insert the input data this node receives in the new row",
+			"options": {
+				"autoMap": {
+					"displayName": "Auto-Map Input Data",
+					"description": "Use when node input properties match destination field names"
+				},
+				"define": {
+					"displayName": "Map Each Field Below",
+					"description": "Set the value for each destination field"
+				}
+			}
+		},
+		"info": {
+			"displayName": "In this mode, make sure the incoming data fields are named the same as the columns in BigQuery. (Use an 'Edit Fields' node before this node to change them if required.)"
+		},
+		"fieldsUi": {
+			"displayName": "Fields to Send",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field",
+			"options": {
+				"values": {
+					"displayName": "Field",
+					"values": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Field",
+					"values": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "Fields to Send",
+					"placeholder": "Add Field"
+				}
+			}
+		}
+	}
+}

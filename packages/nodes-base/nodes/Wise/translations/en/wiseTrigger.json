@@ -1,0 +1,33 @@
+{
+	"header": {
+		"displayName": "Wise Trigger",
+		"description": "Handle Wise events via webhooks"
+	},
+	"nodeView": {
+		"profileId": {
+			"displayName": "Profile Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"balanceCredit": {
+					"displayName": "Balance Credit",
+					"description": "Triggered every time a balance account is credited"
+				},
+				"balanceUpdate": {
+					"displayName": "Balance Update",
+					"description": "Triggered every time a balance account is credited or debited"
+				},
+				"transferActiveCases": {
+					"displayName": "Transfer Active Case",
+					"description": "Triggered every time a transfer's list of active cases is updated"
+				},
+				"tranferStateChange": {
+					"displayName": "Transfer State Changed",
+					"description": "Triggered every time a transfer's status is updated"
+				}
+			}
+		}
+	}
+}

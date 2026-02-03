@@ -1,0 +1,106 @@
+{
+	"header": {
+		"displayName": "FTP",
+		"description": "Transfer files via FTP or SFTP"
+	},
+	"nodeView": {
+		"protocol": {
+			"displayName": "Protocol",
+			"description": "File transfer protocol",
+			"options": {
+				"ftp": {
+					"displayName": "FTP"
+				},
+				"sftp": {
+					"displayName": "SFTP"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a file/folder"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a file"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "List folder content"
+				},
+				"rename": {
+					"displayName": "Rename",
+					"description": "Rename/move oldPath to newPath"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a file"
+				}
+			}
+		},
+		"path": {
+			"displayName": "Path",
+			"description": "Path of directory to list contents of",
+			"placeholder": "e.g. /public/folder"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"folder": {
+					"displayName": "Folder",
+					"description": "Whether folders can be deleted"
+				},
+				"recursive": {
+					"displayName": "Recursive",
+					"description": "Whether to remove all files and directories in target directory"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Connection timeout in milliseconds"
+				},
+				"enableConcurrentReads": {
+					"displayName": "Enable Concurrent Reads",
+					"description": "Whether to enable concurrent reads for downloading files"
+				},
+				"maxConcurrentReads": {
+					"displayName": "Max Concurrent Reads"
+				},
+				"chunkSize": {
+					"displayName": "Chunk Size",
+					"description": "Size of each chunk in KB to download, Not all servers support this"
+				},
+				"createDirectories": {
+					"displayName": "Create Directories",
+					"description": "Whether to recursively create destination directory when renaming an existing file or folder"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"oldPath": {
+			"displayName": "Old Path",
+			"placeholder": "e.g. /public/documents/old-file.txt"
+		},
+		"newPath": {
+			"displayName": "New Path",
+			"placeholder": "e.g. /public/documents/new-file.txt"
+		},
+		"binaryData": {
+			"displayName": "Binary File",
+			"description": "The text content of the file to upload"
+		},
+		"fileContent": {
+			"displayName": "File Content",
+			"description": "The text content of the file to upload"
+		},
+		"recursive": {
+			"displayName": "Recursive",
+			"description": "Whether to return object representing all directories / objects recursively found within SFTP server"
+		}
+	}
+}

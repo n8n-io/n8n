@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "令牌分割器",
+		"description": "按令牌将文本分割成块"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到文档加载器。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_document'>插入一个</a>"
+		},
+		"chunkSize": {
+			"displayName": "分块大小",
+			"description": "每个分块的最大令牌数"
+		},
+		"chunkOverlap": {
+			"displayName": "分块重叠",
+			"description": "连续分块之间共享的令牌数量，用于保持上下文"
+		}
+	}
+}

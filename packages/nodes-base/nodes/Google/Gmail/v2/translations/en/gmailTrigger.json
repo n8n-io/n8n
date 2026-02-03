@@ -1,0 +1,282 @@
+{
+	"header": {
+		"displayName": "Gmail Trigger",
+		"description": "Fetches emails from Gmail and starts the workflow on specified polling intervals."
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "Poll Times",
+			"description": "Time at which polling should occur",
+			"placeholder": "Add Poll Time",
+			"multipleValueButtonText": "Add Poll Time",
+			"options": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "Item",
+					"options": {
+						"mode": {
+							"displayName": "Mode",
+							"description": "How often to trigger.",
+							"options": {
+								"everyMinute": {
+									"displayName": "Every Minute"
+								},
+								"everyHour": {
+									"displayName": "Every Hour"
+								},
+								"everyDay": {
+									"displayName": "Every Day"
+								},
+								"everyWeek": {
+									"displayName": "Every Week"
+								},
+								"everyMonth": {
+									"displayName": "Every Month"
+								},
+								"everyX": {
+									"displayName": "Every X"
+								},
+								"custom": {
+									"displayName": "Custom"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "Hour",
+							"description": "The hour of the day to trigger (24h format)"
+						},
+						"minute": {
+							"displayName": "Minute",
+							"description": "The minute of the day to trigger"
+						},
+						"dayOfMonth": {
+							"displayName": "Day of Month",
+							"description": "The day of the month to trigger"
+						},
+						"weekday": {
+							"displayName": "Weekday",
+							"description": "The weekday to trigger",
+							"options": {
+								"0": {
+									"displayName": "Sunday"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "Tuesday"
+								},
+								"3": {
+									"displayName": "Wednesday"
+								},
+								"4": {
+									"displayName": "Thursday"
+								},
+								"5": {
+									"displayName": "Friday"
+								},
+								"6": {
+									"displayName": "Saturday"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron Expression",
+							"description": "Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "All how many X minutes/hours it should trigger"
+						},
+						"unit": {
+							"displayName": "Unit",
+							"description": "If it should trigger all X minutes or hours",
+							"options": {
+								"minutes": {
+									"displayName": "Minutes"
+								},
+								"hours": {
+									"displayName": "Hours"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "Poll Times",
+					"placeholder": "Add Poll Time"
+				}
+			}
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				},
+				"serviceAccount": {
+					"displayName": "Service Account"
+				}
+			}
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"messageReceived": {
+					"displayName": "Message Received"
+				}
+			}
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"includeSpamTrash": {
+					"displayName": "Include Spam and Trash",
+					"description": "Whether to include messages from SPAM and TRASH in the results"
+				},
+				"includeDrafts": {
+					"displayName": "Include Drafts",
+					"description": "Whether to include email drafts in the results"
+				},
+				"labelIds": {
+					"displayName": "Label Names or IDs",
+					"description": "Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"q": {
+					"displayName": "Search",
+					"description": "Only return messages matching the specified query",
+					"placeholder": "has:attachment"
+				},
+				"readStatus": {
+					"displayName": "Read Status",
+					"options": {
+						"both": {
+							"displayName": "Unread and read emails"
+						},
+						"unread": {
+							"displayName": "Unread emails only"
+						},
+						"read": {
+							"displayName": "Read emails only"
+						}
+					}
+				},
+				"sender": {
+					"displayName": "Sender",
+					"description": "Sender name or email to filter by"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"dataPropertyAttachmentsPrefixName": {
+					"displayName": "Attachment Prefix",
+					"description": "Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'."
+				},
+				"downloadAttachments": {
+					"displayName": "Download Attachments",
+					"description": "Whether the email's attachments will be downloaded"
+				}
+			}
+		}
+	}
+}

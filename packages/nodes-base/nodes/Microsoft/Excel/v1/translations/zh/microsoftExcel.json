@@ -1,0 +1,145 @@
+{
+	"header": {
+		"displayName": "Microsoft Excel",
+		"description": "使用 Microsoft Excel API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"table": {
+					"displayName": "表格",
+					"description": "表示一个Excel表格"
+				},
+				"workbook": {
+					"displayName": "工作簿",
+					"description": "工作簿是包含相关工作簿对象（如工作表、表格、范围等）的顶层对象"
+				},
+				"worksheet": {
+					"displayName": "工作表",
+					"description": "Excel工作表是一个单元格网格。它可以包含数据、表格、图表等。"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"addWorksheet": {
+					"displayName": "添加工作表",
+					"description": "向工作簿中添加新的工作表"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个工作表"
+				},
+				"getContent": {
+					"displayName": "获取内容",
+					"description": "获取工作表内容"
+				},
+				"addRow": {
+					"displayName": "添加行",
+					"description": "将行添加到表格末尾"
+				},
+				"getColumns": {
+					"displayName": "获取列",
+					"description": "获取表列列表"
+				},
+				"getRows": {
+					"displayName": "获取行数据",
+					"description": "检索表格行列表"
+				},
+				"lookup": {
+					"displayName": "查找",
+					"description": "查找特定列值并返回匹配行"
+				}
+			}
+		},
+		"workbook": {
+			"displayName": "工作簿名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "要添加的工作表名称。如果指定，名称应为唯一。如未指定，Excel将自动确定新工作表的名称。"
+				},
+				"index": {
+					"displayName": "索引",
+					"description": "指定新行的相对位置。如果未定义，则在末尾添加。插入行下方的所有行将向下移动。索引从零开始"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "Fields the response will containt. Multiple can be added separated by ,."
+				}
+			}
+		},
+		"worksheet": {
+			"displayName": "工作表名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"range": {
+			"displayName": "范围",
+			"description": "地址或范围名称。如果未指定，则返回整个工作表范围。"
+		},
+		"rawData": {
+			"displayName": "原始数据",
+			"description": "数据是否应返回原始格式，而非根据标题解析为键值"
+		},
+		"dataProperty": {
+			"displayName": "数据属性",
+			"description": "用于写入RAW数据的属性名称"
+		},
+		"dataStartRow": {
+			"displayName": "数据起始行",
+			"description": "包含实际数据而非键名的首行索引。从0开始计数。"
+		},
+		"keyRow": {
+			"displayName": "键行",
+			"description": "包含键的行索引。从0开始。传入的节点数据将与键进行匹配以进行赋值。匹配区分大小写。"
+		},
+		"table": {
+			"displayName": "表名或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"lookupColumn": {
+			"displayName": "查找列",
+			"description": "要在其中查找值的列名",
+			"placeholder": "邮箱"
+		},
+		"lookupValue": {
+			"displayName": "查找值",
+			"description": "要在列中查找的值",
+			"placeholder": "frank@example.com"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"returnAllMatches": {
+					"displayName": "Return All Matches",
+					"description": "By default only the first result gets returned. If options gets set all found matches get returned."
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "Embeddings Ollama",
+		"description": "Use Ollama Embeddings"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a vector store. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>Insert one</a>"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will generate the completion. To download models, visit <a href=\"https://ollama.ai/library\">Ollama Models Library</a>."
+		}
+	}
+}

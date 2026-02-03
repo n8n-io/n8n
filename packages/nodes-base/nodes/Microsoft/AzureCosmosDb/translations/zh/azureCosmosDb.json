@@ -1,0 +1,195 @@
+{
+	"header": {
+		"displayName": "Azure Cosmos DB",
+		"description": "与 Azure Cosmos DB API 交互"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"container": {
+					"displayName": "容器"
+				},
+				"item": {
+					"displayName": "项目"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新项目"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除现有项目"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索项目"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取项目列表"
+				},
+				"query": {
+					"displayName": "执行查询"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新现有项目"
+				}
+			}
+		},
+		"containerCreate": {
+			"displayName": "ID",
+			"description": "新容器的唯一标识符",
+			"placeholder": "例如：Container1"
+		},
+		"partitionKey": {
+			"displayName": "分区键",
+			"description": "分区键用于自动跨分区分布数据以实现可扩展性。请选择JSON文档中具有广泛值范围且能均匀分配请求量的属性。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加分区键",
+			"options": {
+				"indexingPolicy": {
+					"displayName": "索引策略",
+					"description": "此值用于配置索引策略"
+				},
+				"maxThroughput": {
+					"displayName": "最大RU/s（用于自动缩放）",
+					"description": "用户指定的自动缩放最大RU/s"
+				},
+				"offerThroughput": {
+					"displayName": "手动吞吐量 RU/s",
+					"description": "用户为集合指定的手动吞吐量（RU/s），以每秒100个请求单位为计量单位"
+				},
+				"partitionKey": {
+					"displayName": "分区键"
+				}
+			}
+		},
+		"container": {
+			"displayName": "容器",
+			"description": "选择要使用的容器"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"customProperties": {
+			"displayName": "项目内容",
+			"description": "项目内容作为JSON对象"
+		},
+		"item": {
+			"displayName": "项",
+			"description": "选择要更新的项"
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "要执行的SQL查询。使用$1、$2、$3等来引用下方选项设置的'查询参数'。",
+			"placeholder": "例如：SELECT id, name FROM c WHERE c.name = $1"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"queryOptions": {
+					"displayName": "查询选项",
+					"options": {
+						"queryParameters": {
+							"displayName": "查询参数",
+							"description": "用作查询参数的逗号分隔值列表。在查询中使用 $1、$2、$3 等占位符。",
+							"placeholder": "例如：value1,value2,value3"
+						}
+					}
+				}
+			},
+			"values": {
+				"queryOptions": {
+					"displayName": "查询选项",
+					"options": {
+						"queryParameters": {
+							"displayName": "查询参数",
+							"description": "用作查询参数的逗号分隔值列表。在查询中使用 $1、$2、$3 等占位符。",
+							"placeholder": "例如：value1,value2,value3"
+						}
+					}
+				},
+				"options": {
+					"displayName": "选项",
+					"placeholder": "添加选项"
+				}
+			}
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

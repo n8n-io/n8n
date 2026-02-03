@@ -1,0 +1,164 @@
+{
+	"header": {
+		"displayName": "AWS SQS",
+		"description": "Sends messages to AWS SQS"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"sendMessage": {
+					"displayName": "Send Message",
+					"description": "Send a message to a queue"
+				}
+			}
+		},
+		"queue": {
+			"displayName": "Queue Name or ID",
+			"description": "Queue to send a message to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		},
+		"queueType": {
+			"displayName": "Queue Type",
+			"options": {
+				"fifo": {
+					"displayName": "FIFO",
+					"description": "FIFO SQS queue"
+				},
+				"standard": {
+					"displayName": "Standard",
+					"description": "Standard SQS queue"
+				}
+			}
+		},
+		"sendInputData": {
+			"displayName": "Send Input Data",
+			"description": "Whether to send the data the node receives as JSON to SQS"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "Message to send to the queue"
+		},
+		"messageGroupId": {
+			"displayName": "Message Group ID",
+			"description": "Tag that specifies that a message belongs to a specific message group. Applies only to FIFO (first-in-first-out) queues."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"delaySeconds": {
+					"displayName": "Delay Seconds",
+					"description": "How long, in seconds, to delay a message for"
+				},
+				"messageAttributes": {
+					"displayName": "Message Attributes",
+					"description": "Attributes to set",
+					"placeholder": "Add Attribute",
+					"multipleValueButtonText": "Add Attribute",
+					"options": {
+						"binary": {
+							"displayName": "Binary",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the attribute"
+								},
+								"dataPropertyName": {
+									"displayName": "Property Name",
+									"description": "Name of the binary property which contains the data for the message attribute"
+								}
+							}
+						},
+						"number": {
+							"displayName": "Number",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the attribute"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Number value of the attribute"
+								}
+							}
+						},
+						"string": {
+							"displayName": "String",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the attribute"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "String value of attribute"
+								}
+							}
+						}
+					},
+					"values": {
+						"binary": {
+							"displayName": "Binary",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the attribute"
+								},
+								"dataPropertyName": {
+									"displayName": "Property Name",
+									"description": "Name of the binary property which contains the data for the message attribute"
+								}
+							}
+						},
+						"number": {
+							"displayName": "Number",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the attribute"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Number value of the attribute"
+								}
+							}
+						},
+						"string": {
+							"displayName": "String",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the attribute"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "String value of attribute"
+								}
+							}
+						},
+						"messageAttributes": {
+							"displayName": "Message Attributes",
+							"placeholder": "Add Attribute"
+						}
+					}
+				},
+				"messageDeduplicationId": {
+					"displayName": "Message Deduplication ID",
+					"description": "Token used for deduplication of sent messages. Applies only to FIFO (first-in-first-out) queues."
+				}
+			}
+		}
+	}
+}

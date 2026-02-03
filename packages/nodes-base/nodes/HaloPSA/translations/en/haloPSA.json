@@ -1,0 +1,252 @@
+{
+	"header": {
+		"displayName": "HaloPSA",
+		"description": "Consume HaloPSA API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"client": {
+					"displayName": "Client"
+				},
+				"site": {
+					"displayName": "Site"
+				},
+				"ticket": {
+					"displayName": "Ticket"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a user"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many users"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a user"
+				}
+			}
+		},
+		"clientName": {
+			"displayName": "Name",
+			"description": "Enter client name"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"inactive": {
+					"displayName": "User Is Inactive",
+					"options": {
+						"false": {
+							"displayName": "Active"
+						},
+						"true": {
+							"displayName": "Inactive"
+						}
+					}
+				},
+				"notes": {
+					"displayName": "Notes"
+				},
+				"is_vip": {
+					"displayName": "VIP",
+					"description": "Whether the client is VIP or not"
+				},
+				"website": {
+					"displayName": "Website"
+				},
+				"agent_id": {
+					"displayName": "Assigned Agent Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"startdate": {
+					"displayName": "Start Date"
+				},
+				"targetdate": {
+					"displayName": "Target Date"
+				},
+				"maincontact_name": {
+					"displayName": "Main Contact"
+				},
+				"phonenumber": {
+					"displayName": "Phone Number"
+				},
+				"emailaddress": {
+					"displayName": "Email"
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character"
+				},
+				"surname": {
+					"displayName": "Surname"
+				}
+			}
+		},
+		"clientId": {
+			"displayName": "Client Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"simplify": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"activeStatus": {
+					"displayName": "Active Status",
+					"options": {
+						"active": {
+							"displayName": "Active Only",
+							"description": "Whether to include active customers in the response"
+						},
+						"all": {
+							"displayName": "All",
+							"description": "Whether to include active and inactive customers in the response"
+						},
+						"inactive": {
+							"displayName": "Inactive Only",
+							"description": "Whether to include inactive Customers in the response"
+						}
+					}
+				},
+				"search": {
+					"displayName": "Text To Filter By",
+					"description": "Filter users by your search string"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"inactive": {
+					"displayName": "User Is Inactive",
+					"options": {
+						"false": {
+							"displayName": "Active"
+						},
+						"true": {
+							"displayName": "Inactive"
+						}
+					}
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Enter user name"
+				},
+				"notes": {
+					"displayName": "Notes"
+				},
+				"is_vip": {
+					"displayName": "VIP",
+					"description": "Whether the client is VIP or not"
+				},
+				"website": {
+					"displayName": "Website"
+				},
+				"agent_id": {
+					"displayName": "Assigned Agent Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"details": {
+					"displayName": "Details"
+				},
+				"startdate": {
+					"displayName": "Start Date"
+				},
+				"summary": {
+					"displayName": "Summary"
+				},
+				"targetdate": {
+					"displayName": "Target Date"
+				},
+				"client_id": {
+					"displayName": "Client ID"
+				},
+				"maincontact_name": {
+					"displayName": "Main Contact"
+				},
+				"phonenumber": {
+					"displayName": "Phone Number"
+				},
+				"emailaddress": {
+					"displayName": "Email"
+				},
+				"password": {
+					"displayName": "Password",
+					"description": "Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character"
+				},
+				"site_id": {
+					"displayName": "Site Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"surname": {
+					"displayName": "Surname"
+				}
+			}
+		},
+		"ticketType": {
+			"displayName": "Ticket Type Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"summary": {
+			"displayName": "Summary"
+		},
+		"details": {
+			"displayName": "Details"
+		},
+		"ticketId": {
+			"displayName": "Ticket ID"
+		},
+		"siteName": {
+			"displayName": "Name",
+			"description": "Enter site name"
+		},
+		"selectOption": {
+			"displayName": "Select Client by ID",
+			"description": "Whether client can be selected by ID"
+		},
+		"siteId": {
+			"displayName": "Site Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"userName": {
+			"displayName": "Name",
+			"description": "Enter user name"
+		},
+		"userId": {
+			"displayName": "User ID"
+		}
+	}
+}

@@ -1,0 +1,186 @@
+{
+	"header": {
+		"displayName": "QuickChart",
+		"description": "通过QuickChart创建图表"
+	},
+	"nodeView": {
+		"chartType": {
+			"displayName": "图表类型",
+			"description": "要创建的图表类型",
+			"options": {
+				"bar": {
+					"displayName": "条形图"
+				},
+				"doughnut": {
+					"displayName": "环形图"
+				},
+				"line": {
+					"displayName": "折线图"
+				},
+				"pie": {
+					"displayName": "饼图"
+				},
+				"polarArea": {
+					"displayName": "极坐标图"
+				}
+			}
+		},
+		"labelsMode": {
+			"displayName": "添加标签",
+			"options": {
+				"manually": {
+					"displayName": "手动"
+				},
+				"array": {
+					"displayName": "从数组"
+				}
+			}
+		},
+		"labelsUi": {
+			"displayName": "标签",
+			"description": "图表中使用的标签",
+			"placeholder": "添加标签",
+			"multipleValueButtonText": "添加标签",
+			"options": {
+				"labelsValues": {
+					"displayName": "标签",
+					"options": {
+						"label": {
+							"displayName": "标签"
+						}
+					}
+				}
+			},
+			"values": {
+				"labelsValues": {
+					"displayName": "标签",
+					"options": {
+						"label": {
+							"displayName": "标签"
+						}
+					}
+				},
+				"labelsUi": {
+					"displayName": "标签",
+					"placeholder": "添加标签"
+				}
+			}
+		},
+		"labelsArray": {
+			"displayName": "标签数组",
+			"description": "图表中使用的标签数组",
+			"placeholder": "例如：[\"柏林\", \"巴黎\", \"罗马\", \"纽约\"]"
+		},
+		"data": {
+			"displayName": "数据",
+			"description": "用于数据集的数据，文档和示例请参见<a href=\"https://quickchart.io/documentation/chart-types/\" target=\"_blank\">此处</a>",
+			"placeholder": "例如：[60, 10, 12, 20]"
+		},
+		"output": {
+			"displayName": "将输出放入字段",
+			"description": "二进制数据将显示在右侧输出面板的Binary选项卡下"
+		},
+		"chartOptions": {
+			"displayName": "图表选项",
+			"placeholder": "添加选项",
+			"options": {
+				"backgroundColor": {
+					"displayName": "背景颜色",
+					"description": "图表背景色"
+				},
+				"devicePixelRatio": {
+					"displayName": "设备像素比",
+					"description": "图表像素比"
+				},
+				"format": {
+					"displayName": "格式",
+					"description": "生成图表的文件格式",
+					"options": {
+						"png": {
+							"displayName": "PNG"
+						},
+						"pdf": {
+							"displayName": "PDF"
+						},
+						"svg": {
+							"displayName": "SVG"
+						},
+						"webp": {
+							"displayName": "WebP"
+						}
+					}
+				},
+				"height": {
+					"displayName": "高度",
+					"description": "图表高度"
+				},
+				"horizontal": {
+					"displayName": "水平",
+					"description": "图表是否应水平使用其Y轴"
+				},
+				"width": {
+					"displayName": "宽度",
+					"description": "图表宽度"
+				}
+			}
+		},
+		"datasetOptions": {
+			"displayName": "数据集选项",
+			"placeholder": "添加选项",
+			"options": {
+				"backgroundColor": {
+					"displayName": "背景颜色",
+					"description": "用于数据集背景的颜色（折线图区域、条形图填充等）"
+				},
+				"borderColor": {
+					"displayName": "边框颜色",
+					"description": "数据集线条使用的颜色"
+				},
+				"fill": {
+					"displayName": "填充",
+					"description": "是否填充数据集的区域"
+				},
+				"label": {
+					"displayName": "标签",
+					"description": "数据集的标签"
+				},
+				"pointStyle": {
+					"displayName": "点样式",
+					"description": "数据集点的显示样式",
+					"options": {
+						"circle": {
+							"displayName": "圆形"
+						},
+						"cross": {
+							"displayName": "交叉"
+						},
+						"crossRot": {
+							"displayName": "交叉旋转"
+						},
+						"dash": {
+							"displayName": "仪表板"
+						},
+						"line": {
+							"displayName": "线条"
+						},
+						"rect": {
+							"displayName": "矩形"
+						},
+						"rectRot": {
+							"displayName": "矩形旋转"
+						},
+						"rectRounded": {
+							"displayName": "圆角矩形"
+						},
+						"star": {
+							"displayName": "星标"
+						},
+						"triangle": {
+							"displayName": "三角形"
+						}
+					}
+				}
+			}
+		}
+	}
+}

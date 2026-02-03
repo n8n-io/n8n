@@ -1,0 +1,116 @@
+{
+	"header": {
+		"displayName": "Redis向量存储",
+		"description": "在Redis向量索引中处理您的数据"
+	},
+	"nodeView": {
+		"ragStarterCallout": {
+			"displayName": "提示：通过我们的示例体验n8n中的向量存储"
+		},
+		"mode": {
+			"displayName": "操作模式",
+			"options": {
+				"load": {
+					"displayName": "获取多个",
+					"description": "从向量存储中获取多个与查询相关的排序文档"
+				},
+				"insert": {
+					"displayName": "插入文档",
+					"description": "将文档插入向量存储"
+				},
+				"retrieve": {
+					"displayName": "检索文档（作为链/工具的向量存储）",
+					"description": "从向量存储中检索文档，用作AI节点的向量存储"
+				},
+				"retrieve-as-tool": {
+					"displayName": "检索文档（作为AI代理工具）",
+					"description": "从向量存储检索文档，用作AI节点的工具"
+				},
+				"update": {
+					"displayName": "更新文档",
+					"description": "按ID更新向量存储中的文档"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "此节点必须连接到向量存储检索器。<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_retriever'>插入一个</a>"
+		},
+		"toolName": {
+			"displayName": "名称",
+			"description": "向量存储名称",
+			"placeholder": "例如：公司知识库"
+		},
+		"toolDescription": {
+			"displayName": "描述",
+			"description": "向LLM解释此工具的功能，一个良好、具体的描述能让LLM更频繁地生成预期结果",
+			"placeholder": "例如：在Redis向量索引中处理您的数据"
+		},
+		"redisIndex": {
+			"displayName": "Redis索引"
+		},
+		"embeddingBatchSize": {
+			"displayName": "嵌入批处理大小",
+			"description": "单批次嵌入的文档数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"keyPrefix": {
+					"displayName": "键前缀",
+					"description": "存储文档的Redis键前缀",
+					"placeholder": "文档"
+				},
+				"overwriteDocuments": {
+					"displayName": "覆盖文档",
+					"description": "是否覆盖现有文档和索引"
+				},
+				"metadataKey": {
+					"displayName": "元数据键",
+					"description": "用于存储文档元数据的哈希键",
+					"placeholder": "元数据"
+				},
+				"contentKey": {
+					"displayName": "内容键",
+					"description": "用于存储文档内容的哈希键",
+					"placeholder": "内容"
+				},
+				"vectorKey": {
+					"displayName": "嵌入键",
+					"description": "用于存储文档嵌入向量的哈希键",
+					"placeholder": "内容向量"
+				},
+				"ttl": {
+					"displayName": "生存时间",
+					"description": "文档生存时间（秒）",
+					"placeholder": "0"
+				},
+				"metadataFilter": {
+					"displayName": "元数据过滤器",
+					"description": "用于应用额外全文元数据过滤的逗号分隔单词列表",
+					"placeholder": "项目1,项目2,项目3"
+				}
+			}
+		},
+		"prompt": {
+			"displayName": "提示",
+			"description": "使用相似度排序从向量存储中检索匹配文档的搜索提示"
+		},
+		"topK": {
+			"displayName": "限制",
+			"description": "从向量存储中获取的顶部结果数量"
+		},
+		"includeDocumentMetadata": {
+			"displayName": "包含元数据",
+			"description": "是否包含文档元数据"
+		},
+		"useReranker": {
+			"displayName": "重新排序结果",
+			"description": "是否重新排序结果"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "嵌入条目的ID"
+		}
+	}
+}

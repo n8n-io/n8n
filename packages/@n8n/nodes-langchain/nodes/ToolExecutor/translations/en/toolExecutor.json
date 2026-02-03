@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "Tool Executor",
+		"description": "Node to execute tools without an AI Agent"
+	},
+	"nodeView": {
+		"query": {
+			"displayName": "Query",
+			"description": "Key-value pairs, where key is the name of the tool name and value is the parameters to pass to the tool"
+		},
+		"toolName": {
+			"displayName": "Tool Name",
+			"description": "Name of the tool to execute if the connected tool is a toolkit"
+		},
+		"node": {
+			"displayName": "Node",
+			"description": "Name of the node that is being executed"
+		}
+	}
+}

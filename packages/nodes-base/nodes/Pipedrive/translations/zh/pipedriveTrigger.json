@@ -1,0 +1,147 @@
+{
+	"header": {
+		"displayName": "Pipedrive触发器",
+		"description": "当Pipedrive事件发生时启动工作流"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiToken": {
+					"displayName": "API令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"incomingAuthentication": {
+			"displayName": "入站身份验证",
+			"description": "是否启用Webhook身份验证（提高安全性）",
+			"options": {
+				"basicAuth": {
+					"displayName": "基础认证"
+				},
+				"none": {
+					"displayName": "无"
+				}
+			}
+		},
+		"action": {
+			"displayName": "操作",
+			"description": "接收通知的操作类型",
+			"options": {
+				"added": {
+					"displayName": "已添加",
+					"description": "数据已添加"
+				},
+				"*": {
+					"displayName": "全部",
+					"description": "任何更改"
+				},
+				"deleted": {
+					"displayName": "已删除",
+					"description": "数据已删除"
+				},
+				"merged": {
+					"displayName": "已合并",
+					"description": "数据已合并"
+				},
+				"updated": {
+					"displayName": "已更新",
+					"description": "数据已更新"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "数据已添加"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "数据已删除"
+				},
+				"change": {
+					"displayName": "更改",
+					"description": "数据已更改"
+				}
+			}
+		},
+		"entity": {
+			"displayName": "实体",
+			"description": "接收通知的对象类型",
+			"options": {
+				"activity": {
+					"displayName": "活动"
+				},
+				"activityType": {
+					"displayName": "活动类型"
+				},
+				"*": {
+					"displayName": "全部"
+				},
+				"deal": {
+					"displayName": "交易"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"person": {
+					"displayName": "人员"
+				},
+				"pipeline": {
+					"displayName": "工作流"
+				},
+				"product": {
+					"displayName": "产品"
+				},
+				"stage": {
+					"displayName": "阶段"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"object": {
+			"displayName": "对象",
+			"description": "接收通知的对象类型",
+			"options": {
+				"activity": {
+					"displayName": "活动"
+				},
+				"activityType": {
+					"displayName": "活动类型"
+				},
+				"*": {
+					"displayName": "全部"
+				},
+				"deal": {
+					"displayName": "交易"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"person": {
+					"displayName": "人员"
+				},
+				"pipeline": {
+					"displayName": "工作流"
+				},
+				"product": {
+					"displayName": "产品"
+				},
+				"stage": {
+					"displayName": "阶段"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,60 @@
+{
+	"header": {
+		"displayName": "发送邮件",
+		"description": "发送一封邮件"
+	},
+	"nodeView": {
+		"fromEmail": {
+			"displayName": "发件邮箱",
+			"description": "发件人邮箱地址（可选，可包含姓名）",
+			"placeholder": "admin@example.com"
+		},
+		"toEmail": {
+			"displayName": "收件人邮箱",
+			"description": "收件人邮箱地址",
+			"placeholder": "info@example.com"
+		},
+		"ccEmail": {
+			"displayName": "抄送邮箱",
+			"description": "抄送收件人的邮箱地址",
+			"placeholder": "cc@example.com"
+		},
+		"bccEmail": {
+			"displayName": "密送邮箱",
+			"description": "密送收件人邮箱地址",
+			"placeholder": "bcc@example.com"
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "邮件主题行",
+			"placeholder": "我的主题行"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "电子邮件的纯文本消息"
+		},
+		"html": {
+			"displayName": "HTML",
+			"description": "电子邮件的HTML文本消息"
+		},
+		"attachments": {
+			"displayName": "附件",
+			"description": "包含要作为附件添加到邮件中的数据的二进制属性名称。多个属性可用逗号分隔。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "即使无法进行SSL证书验证也连接"
+				},
+				"replyTo": {
+					"displayName": "回复至",
+					"description": "回复邮件的收件地址",
+					"placeholder": "info@example.com"
+				}
+			}
+		}
+	}
+}

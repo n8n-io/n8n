@@ -1,0 +1,7 @@
+{
+	"header": {
+		"displayName": "上下文压缩检索器",
+		"description": "通过上下文压缩增强文档相似性搜索。"
+	},
+	"nodeView": {}
+}

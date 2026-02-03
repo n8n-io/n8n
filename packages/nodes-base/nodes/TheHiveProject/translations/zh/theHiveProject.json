@@ -1,0 +1,658 @@
+{
+	"header": {
+		"displayName": "TheHive 5",
+		"description": "使用 TheHive 5 API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"alert": {
+					"displayName": "警报"
+				},
+				"case": {
+					"displayName": "用例"
+				},
+				"comment": {
+					"displayName": "评论"
+				},
+				"observable": {
+					"displayName": "可观察对象"
+				},
+				"page": {
+					"displayName": "页面"
+				},
+				"query": {
+					"displayName": "查询"
+				},
+				"task": {
+					"displayName": "任务"
+				},
+				"log": {
+					"displayName": "任务日志"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"deleteAlert": {
+					"displayName": "删除"
+				},
+				"executeResponder": {
+					"displayName": "执行响应器"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"merge": {
+					"displayName": "合并到案例"
+				},
+				"promote": {
+					"displayName": "提升为案例"
+				},
+				"search": {
+					"displayName": "搜索"
+				},
+				"update": {
+					"displayName": "更新"
+				},
+				"status": {
+					"displayName": "更新状态"
+				},
+				"addAttachment": {
+					"displayName": "添加附件"
+				},
+				"deleteAttachment": {
+					"displayName": "删除附件"
+				},
+				"deleteCase": {
+					"displayName": "删除案例"
+				},
+				"getAttachment": {
+					"displayName": "获取附件"
+				},
+				"getTimeline": {
+					"displayName": "获取时间线"
+				},
+				"add": {
+					"displayName": "创建"
+				},
+				"deleteComment": {
+					"displayName": "删除"
+				},
+				"deleteLog": {
+					"displayName": "删除"
+				},
+				"deleteObservable": {
+					"displayName": "删除"
+				},
+				"executeAnalyzer": {
+					"displayName": "执行分析器"
+				},
+				"deletePage": {
+					"displayName": "删除"
+				},
+				"executeQuery": {
+					"displayName": "执行查询"
+				},
+				"deleteTask": {
+					"displayName": "删除"
+				}
+			}
+		},
+		"alertFields": {
+			"displayName": "字段"
+		},
+		"observableUi": {
+			"displayName": "可观察对象",
+			"placeholder": "添加可观察对象",
+			"multipleValueButtonText": "添加可观察对象",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"dataType": {
+							"displayName": "数据类型",
+							"description": "可观察对象的类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"data": {
+							"displayName": "数据"
+						},
+						"binaryProperty": {
+							"displayName": "输入二进制字段"
+						},
+						"message": {
+							"displayName": "消息"
+						},
+						"tags": {
+							"displayName": "标签"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"dataType": {
+							"displayName": "数据类型",
+							"description": "可观察对象的类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"data": {
+							"displayName": "数据"
+						},
+						"binaryProperty": {
+							"displayName": "输入二进制字段"
+						},
+						"message": {
+							"displayName": "消息"
+						},
+						"tags": {
+							"displayName": "标签"
+						}
+					}
+				},
+				"observableUi": {
+					"displayName": "可观察对象",
+					"placeholder": "添加可观察对象"
+				}
+			}
+		},
+		"alertId": {
+			"displayName": "警报"
+		},
+		"id": {
+			"displayName": "任务"
+		},
+		"responder": {
+			"displayName": "响应者名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"includeSimilarAlerts": {
+					"displayName": "包含类似警报",
+					"description": "是否包含相似案例"
+				},
+				"includeSimilarCases": {
+					"displayName": "包含相似案例",
+					"description": "是否包含相似案例"
+				},
+				"returnCount": {
+					"displayName": "返回数量",
+					"description": "是否仅返回结果数量"
+				},
+				"extraData": {
+					"displayName": "额外数据",
+					"description": "响应中包含的额外数据"
+				},
+				"caseTemplate": {
+					"displayName": "用例模板名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"canRename": {
+					"displayName": "重命名文件",
+					"description": "当同名文件已存在时是否重命名文件"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "下载时重命名文件"
+				},
+				"dataPropertyName": {
+					"displayName": "数据属性名称",
+					"description": "要写入附件数据的二进制属性名称"
+				},
+				"category": {
+					"displayName": "分类"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"order": {
+					"displayName": "排序"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"multipleValueButtonText": "添加过滤器",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"category": {
+									"displayName": "分类"
+								},
+								"content": {
+									"displayName": "内容"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						},
+						"operator": {
+							"displayName": "操作员",
+							"options": {
+								"_between": {
+									"displayName": "介于",
+									"description": "字段值介于两个值之间（'从'值包含，'到'值不包含）"
+								},
+								"_like": {
+									"displayName": "包含",
+									"description": "字段包含来自值的子字符串"
+								},
+								"_endsWith": {
+									"displayName": "以...结尾",
+									"description": "字段以值结尾"
+								},
+								"_eq": {
+									"displayName": "等于",
+									"description": "字段等于值"
+								},
+								"_gt": {
+									"displayName": "大于",
+									"description": "字段大于值"
+								},
+								"_gte": {
+									"displayName": "大于或等于",
+									"description": "字段大于或等于值"
+								},
+								"_in": {
+									"displayName": "在",
+									"description": "字段是以下值之一"
+								},
+								"_lt": {
+									"displayName": "小于",
+									"description": "字段小于值"
+								},
+								"_lte": {
+									"displayName": "小于或等于",
+									"description": "字段小于或等于值"
+								},
+								"_match": {
+									"displayName": "匹配单词",
+									"description": "字段包含该值作为单词"
+								},
+								"_ne": {
+									"displayName": "不等于",
+									"description": "字段不等于值"
+								},
+								"_startsWith": {
+									"displayName": "以...开头",
+									"description": "字段以值开头"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						},
+						"values": {
+							"displayName": "值",
+							"description": "逗号分隔的值列表",
+							"placeholder": "例如：value1,value2"
+						},
+						"from": {
+							"displayName": "从"
+						},
+						"to": {
+							"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"category": {
+									"displayName": "分类"
+								},
+								"content": {
+									"displayName": "内容"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						},
+						"operator": {
+							"displayName": "操作员",
+							"options": {
+								"_between": {
+									"displayName": "介于",
+									"description": "字段值介于两个值之间（'从'值包含，'到'值不包含）"
+								},
+								"_like": {
+									"displayName": "包含",
+									"description": "字段包含来自值的子字符串"
+								},
+								"_endsWith": {
+									"displayName": "以...结尾",
+									"description": "字段以值结尾"
+								},
+								"_eq": {
+									"displayName": "等于",
+									"description": "字段等于值"
+								},
+								"_gt": {
+									"displayName": "大于",
+									"description": "字段大于值"
+								},
+								"_gte": {
+									"displayName": "大于或等于",
+									"description": "字段大于或等于值"
+								},
+								"_in": {
+									"displayName": "在",
+									"description": "字段是以下值之一"
+								},
+								"_lt": {
+									"displayName": "小于",
+									"description": "字段小于值"
+								},
+								"_lte": {
+									"displayName": "小于或等于",
+									"description": "字段小于或等于值"
+								},
+								"_match": {
+									"displayName": "匹配单词",
+									"description": "字段包含该值作为单词"
+								},
+								"_ne": {
+									"displayName": "不等于",
+									"description": "字段不等于值"
+								},
+								"_startsWith": {
+									"displayName": "以...开头",
+									"description": "字段以值开头"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						},
+						"values": {
+							"displayName": "值",
+							"description": "逗号分隔的值列表",
+							"placeholder": "例如：value1,value2"
+						},
+						"from": {
+							"displayName": "从"
+						},
+						"to": {
+							"displayName": "会议结束日期和时间（包含）。可接受的<a href=\"https://datatracker.ietf.org/doc/html/rfc2445\">格式</a>。"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "筛选器",
+					"placeholder": "添加筛选器"
+				}
+			}
+		},
+		"sort": {
+			"displayName": "排序",
+			"placeholder": "添加排序规则",
+			"multipleValueButtonText": "添加排序规则",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"category": {
+									"displayName": "分类"
+								},
+								"content": {
+									"displayName": "内容"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						},
+						"direction": {
+							"displayName": "方向",
+							"options": {
+								"asc": {
+									"displayName": "升序"
+								},
+								"desc": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "字段",
+					"options": {
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"category": {
+									"displayName": "分类"
+								},
+								"content": {
+									"displayName": "内容"
+								},
+								"title": {
+									"displayName": "标题"
+								}
+							}
+						},
+						"direction": {
+							"displayName": "方向",
+							"options": {
+								"asc": {
+									"displayName": "升序"
+								},
+								"desc": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				},
+				"sort": {
+					"displayName": "排序",
+					"placeholder": "添加排序规则"
+				}
+			}
+		},
+		"status": {
+			"displayName": "状态名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"caseId": {
+			"displayName": "用例"
+		},
+		"alertUpdateFields": {
+			"displayName": "字段"
+		},
+		"attachmentsUi": {
+			"displayName": "附件",
+			"description": "要添加到消息中的支持附件数组",
+			"placeholder": "添加附件",
+			"multipleValueButtonText": "添加附件",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field": {
+							"displayName": "附件字段名称",
+							"description": "添加来自输入节点的字段名称"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field": {
+							"displayName": "附件字段名称",
+							"description": "添加来自输入节点的字段名称"
+						}
+					}
+				},
+				"attachmentsUi": {
+					"displayName": "附件",
+					"placeholder": "添加附件"
+				}
+			}
+		},
+		"caseFields": {
+			"displayName": "字段"
+		},
+		"attachmentId": {
+			"displayName": "附件名称或ID",
+			"description": "附件ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"caseUpdateFields": {
+			"displayName": "字段"
+		},
+		"addTo": {
+			"displayName": "添加到",
+			"options": {
+				"alert": {
+					"displayName": "警报"
+				},
+				"case": {
+					"displayName": "用例"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息"
+		},
+		"commentId": {
+			"displayName": "评论"
+		},
+		"searchIn": {
+			"displayName": "搜索范围",
+			"description": "选择在所有告警和案例中搜索可观察项，还是在特定案例或告警中搜索",
+			"options": {
+				"all": {
+					"displayName": "警报与案例"
+				},
+				"alert": {
+					"displayName": "警报"
+				},
+				"case": {
+					"displayName": "用例"
+				}
+			}
+		},
+		"logId": {
+			"displayName": "任务日志"
+		},
+		"taskId": {
+			"displayName": "任务"
+		},
+		"logFields": {
+			"displayName": "字段"
+		},
+		"allTasks": {
+			"displayName": "在所有任务中搜索",
+			"description": "是否在所有任务中搜索，还是仅在选定任务中搜索"
+		},
+		"createIn": {
+			"displayName": "创建于",
+			"options": {
+				"case": {
+					"displayName": "用例"
+				},
+				"alert": {
+					"displayName": "警报"
+				}
+			}
+		},
+		"dataType": {
+			"displayName": "数据类型",
+			"description": "可观察对象的类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"data": {
+			"displayName": "数据"
+		},
+		"observableFields": {
+			"displayName": "字段"
+		},
+		"observableId": {
+			"displayName": "可观察对象"
+		},
+		"analyzers": {
+			"displayName": "分析器名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"observableUpdateFields": {
+			"displayName": "字段"
+		},
+		"location": {
+			"displayName": "更新于",
+			"options": {
+				"case": {
+					"displayName": "用例"
+				},
+				"knowledgeBase": {
+					"displayName": "知识库"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"category": {
+			"displayName": "分类"
+		},
+		"content": {
+			"displayName": "内容"
+		},
+		"pageId": {
+			"displayName": "页面"
+		},
+		"searchInKnowledgeBase": {
+			"displayName": "在知识库中搜索",
+			"description": "是否在知识库中搜索，或仅在所选案例中搜索"
+		},
+		"queryJson": {
+			"displayName": "查询",
+			"description": "支持筛选和排序的对象搜索"
+		},
+		"taskFields": {
+			"displayName": "字段"
+		},
+		"allCases": {
+			"displayName": "在所有案例中搜索",
+			"description": "是否在所有案例中搜索，还是仅在选定案例中搜索"
+		},
+		"taskUpdateFields": {
+			"displayName": "字段"
+		}
+	}
+}

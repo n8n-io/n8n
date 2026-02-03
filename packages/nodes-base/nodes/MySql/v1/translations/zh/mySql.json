@@ -1,0 +1,71 @@
+{
+	"header": {
+		"displayName": "MySQL",
+		"description": "在MySQL中获取、添加和更新数据"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"executeQuery": {
+					"displayName": "执行查询",
+					"description": "执行SQL查询"
+				},
+				"insert": {
+					"displayName": "插入",
+					"description": "在数据库中插入行"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新数据库中的行"
+				}
+			}
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "要执行的SQL查询",
+			"placeholder": "SELECT id, name FROM product WHERE id < 40"
+		},
+		"table": {
+			"displayName": "表",
+			"description": "要更新数据的目标表名称"
+		},
+		"columns": {
+			"displayName": "列",
+			"description": "以逗号分隔的属性列表，这些属性将用作要更新行的列",
+			"placeholder": "名称,描述"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "INSERT语句修饰符",
+			"placeholder": "添加修饰符",
+			"options": {
+				"ignore": {
+					"displayName": "忽略",
+					"description": "是否忽略执行INSERT语句时出现的任何可忽略错误"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"description": "执行INSERT语句时忽略任何可忽略的错误",
+					"options": {
+						"LOW_PRIORITY": {
+							"displayName": "低优先级",
+							"description": "延迟执行INSERT操作，直到没有其他客户端正在读取该表"
+						},
+						"HIGH_PRIORITY": {
+							"displayName": "高优先级",
+							"description": "Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used."
+						}
+					}
+				}
+			}
+		},
+		"updateKey": {
+			"displayName": "更新键",
+			"description": "决定数据库中哪些行应被更新的属性名称。通常为“id”。"
+		}
+	}
+}

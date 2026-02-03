@@ -1,0 +1,245 @@
+{
+	"header": {
+		"displayName": "E-goi",
+		"description": "Consume E-goi API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a member"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a member"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many members"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a member"
+				}
+			}
+		},
+		"list": {
+			"displayName": "List Name or ID",
+			"description": "ID of list to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email address for subscriber",
+			"placeholder": "name@email.com"
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "Contact ID of the subscriber"
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "By default the response just includes the contact ID. If this option gets activated, it will resolve the data automatically."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"birth_date": {
+					"displayName": "Birth Date",
+					"description": "Birth date of a subscriber"
+				},
+				"cellphone": {
+					"displayName": "Cellphone",
+					"description": "Cellphone of a subscriber"
+				},
+				"extraFieldsUi": {
+					"displayName": "Extra Fields",
+					"placeholder": "Add Field",
+					"multipleValueButtonText": "Add Field",
+					"options": {
+						"extraFieldValues": {
+							"displayName": "Extra Field",
+							"options": {
+								"field_id": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"extraFieldValues": {
+							"displayName": "Extra Field",
+							"options": {
+								"field_id": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"extraFieldsUi": {
+							"displayName": "Extra Fields",
+							"placeholder": "Add Field"
+						}
+					}
+				},
+				"first_name": {
+					"displayName": "First Name",
+					"description": "Name of a subscriber"
+				},
+				"last_name": {
+					"displayName": "Last Name",
+					"description": "Name of a subscriber"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Subscriber's current status",
+					"options": {
+						"unconfirmed": {
+							"displayName": "Unconfirmed"
+						},
+						"active": {
+							"displayName": "Active"
+						},
+						"inactive": {
+							"displayName": "Inactive"
+						},
+						"removed": {
+							"displayName": "Removed"
+						}
+					}
+				},
+				"tagIds": {
+					"displayName": "Tag Names or IDs",
+					"description": "List of tag IDs to be added. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"birth_date": {
+					"displayName": "Birth Date",
+					"description": "Birth date of subscriber"
+				},
+				"cellphone": {
+					"displayName": "Cellphone",
+					"description": "Cellphone of subscriber"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email address for subscriber",
+					"placeholder": "name@email.com"
+				},
+				"extraFieldsUi": {
+					"displayName": "Extra Fields",
+					"placeholder": "Add Field",
+					"multipleValueButtonText": "Add Field",
+					"options": {
+						"extraFieldValues": {
+							"displayName": "Extra Field",
+							"options": {
+								"field_id": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"extraFieldValues": {
+							"displayName": "Extra Field",
+							"options": {
+								"field_id": {
+									"displayName": "Field Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"extraFieldsUi": {
+							"displayName": "Extra Fields",
+							"placeholder": "Add Field"
+						}
+					}
+				},
+				"first_name": {
+					"displayName": "First Name",
+					"description": "Name of subscriber"
+				},
+				"last_name": {
+					"displayName": "Last Name",
+					"description": "Name of subscriber"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Subscriber's current status",
+					"options": {
+						"unconfirmed": {
+							"displayName": "Unconfirmed"
+						},
+						"active": {
+							"displayName": "Active"
+						},
+						"inactive": {
+							"displayName": "Inactive"
+						},
+						"removed": {
+							"displayName": "Removed"
+						}
+					}
+				},
+				"tagIds": {
+					"displayName": "Tag Names or IDs",
+					"description": "List of tag IDs to be added. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		},
+		"by": {
+			"displayName": "By",
+			"description": "Search by",
+			"options": {
+				"id": {
+					"displayName": "Contact ID"
+				},
+				"email": {
+					"displayName": "Email"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		}
+	}
+}

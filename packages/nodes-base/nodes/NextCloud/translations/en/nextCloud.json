@@ -1,0 +1,292 @@
+{
+	"header": {
+		"displayName": "Nextcloud",
+		"description": "Access data on Nextcloud"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"file": {
+					"displayName": "File"
+				},
+				"folder": {
+					"displayName": "Folder"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"copy": {
+					"displayName": "Copy",
+					"description": "Copy a folder"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a file"
+				},
+				"move": {
+					"displayName": "Move",
+					"description": "Move a folder"
+				},
+				"share": {
+					"displayName": "Share",
+					"description": "Share a folder"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a file"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Invite a user to a NextCloud organization"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "Return the contents of a given folder"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve information about a single user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve a list of users"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Edit attributes related to a user"
+				}
+			}
+		},
+		"path": {
+			"displayName": "Folder Path",
+			"description": "The path of which to list the content. The path should start with \"/\".",
+			"placeholder": "/invoices/2019/"
+		},
+		"toPath": {
+			"displayName": "To Path",
+			"description": "The new path of file or folder. The path should start with \"/\".",
+			"placeholder": "/invoices/new_name.txt"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"binaryDataUpload": {
+			"displayName": "Binary File"
+		},
+		"fileContent": {
+			"displayName": "File Content",
+			"description": "The text content of the file to upload"
+		},
+		"shareType": {
+			"displayName": "Share Type",
+			"description": "The share permissions to set",
+			"options": {
+				"0": {
+					"displayName": "User"
+				},
+				"1": {
+					"displayName": "Group"
+				},
+				"3": {
+					"displayName": "Public Link"
+				},
+				"4": {
+					"displayName": "Email"
+				},
+				"7": {
+					"displayName": "Circle"
+				}
+			}
+		},
+		"circleId": {
+			"displayName": "Circle ID",
+			"description": "The ID of the circle to share with"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email of the user to invite",
+			"placeholder": "john@email.com"
+		},
+		"groupId": {
+			"displayName": "Group ID",
+			"description": "The ID of the group to share with"
+		},
+		"user": {
+			"displayName": "User",
+			"description": "The user to share with"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"password": {
+					"displayName": "Password",
+					"description": "Optional search string"
+				},
+				"permissions": {
+					"displayName": "Permissions",
+					"description": "The share permissions to set",
+					"options": {
+						"1": {
+							"displayName": "Read"
+						},
+						"2": {
+							"displayName": "Update"
+						},
+						"4": {
+							"displayName": "Create"
+						},
+						"8": {
+							"displayName": "Delete"
+						},
+						"31": {
+							"displayName": "All"
+						}
+					}
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Optional search string"
+				},
+				"offset": {
+					"displayName": "Offset",
+					"description": "Optional offset value"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "Username",
+			"description": "Username the user will have",
+			"placeholder": "john"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"displayName": {
+					"displayName": "Display Name",
+					"description": "The display name of the user to invite"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add option",
+			"options": {
+				"field": {
+					"displayName": "Fields",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Key of the updated attribute",
+							"options": {
+								"address": {
+									"displayName": "Address",
+									"description": "The new address for the user"
+								},
+								"displayname": {
+									"displayName": "Display Name",
+									"description": "The new display name for the user"
+								},
+								"email": {
+									"displayName": "Email",
+									"description": "The new email for the user"
+								},
+								"password": {
+									"displayName": "Password",
+									"description": "The new password for the user"
+								},
+								"twitter": {
+									"displayName": "Twitter",
+									"description": "The new twitter handle for the user"
+								},
+								"website": {
+									"displayName": "Website",
+									"description": "The new website for the user"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the updated attribute"
+						}
+					}
+				}
+			},
+			"values": {
+				"field": {
+					"displayName": "Fields",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Key of the updated attribute",
+							"options": {
+								"address": {
+									"displayName": "Address",
+									"description": "The new address for the user"
+								},
+								"displayname": {
+									"displayName": "Display Name",
+									"description": "The new display name for the user"
+								},
+								"email": {
+									"displayName": "Email",
+									"description": "The new email for the user"
+								},
+								"password": {
+									"displayName": "Password",
+									"description": "The new password for the user"
+								},
+								"twitter": {
+									"displayName": "Twitter",
+									"description": "The new twitter handle for the user"
+								},
+								"website": {
+									"displayName": "Website",
+									"description": "The new website for the user"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the updated attribute"
+						}
+					}
+				},
+				"updateFields": {
+					"displayName": "Update Fields",
+					"placeholder": "Add option"
+				}
+			}
+		}
+	}
+}

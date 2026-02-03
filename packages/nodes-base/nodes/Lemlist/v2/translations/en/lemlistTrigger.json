@@ -1,0 +1,171 @@
+{
+	"header": {
+		"displayName": "Lemlist Trigger",
+		"description": "Handle Lemlist events via webhooks"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"*": {
+					"displayName": "*"
+				},
+				"contacted": {
+					"displayName": "Contacted"
+				},
+				"hooked": {
+					"displayName": "Hooked"
+				},
+				"attracted": {
+					"displayName": "Attracted"
+				},
+				"warmed": {
+					"displayName": "Warmed"
+				},
+				"interested": {
+					"displayName": "Interested"
+				},
+				"skipped": {
+					"displayName": "Skipped"
+				},
+				"notInterested": {
+					"displayName": "Not Interested"
+				},
+				"emailsSent": {
+					"displayName": "Emails Sent"
+				},
+				"emailsOpened": {
+					"displayName": "Emails Opened"
+				},
+				"emailsClicked": {
+					"displayName": "Emails Clicked"
+				},
+				"emailsReplied": {
+					"displayName": "Emails Replied"
+				},
+				"emailsBounced": {
+					"displayName": "Emails Bounced"
+				},
+				"emailsSendFailed": {
+					"displayName": "Emails Send Failed"
+				},
+				"emailsFailed": {
+					"displayName": "Emails Failed"
+				},
+				"emailsUnsubscribed": {
+					"displayName": "Emails Unsubscribed"
+				},
+				"emailsInterested": {
+					"displayName": "Emails Interested"
+				},
+				"emailsNotInterested": {
+					"displayName": "Emails Not Interested"
+				},
+				"opportunitiesDone": {
+					"displayName": "Opportunities Done"
+				},
+				"aircallCreated": {
+					"displayName": "Aircall Created"
+				},
+				"aircallEnded": {
+					"displayName": "Aircall Ended"
+				},
+				"aircallDone": {
+					"displayName": "Aircall Done"
+				},
+				"aircallInterested": {
+					"displayName": "Aircall Interested"
+				},
+				"aircallNotInterested": {
+					"displayName": "Aircall Not Interested"
+				},
+				"apiDone": {
+					"displayName": "Api Done"
+				},
+				"apiInterested": {
+					"displayName": "Api Interested"
+				},
+				"apiNotInterested": {
+					"displayName": "Api Not Interested"
+				},
+				"apiFailed": {
+					"displayName": "Api Failed"
+				},
+				"linkedinVisitDone": {
+					"displayName": "LinkedIn Visit Done"
+				},
+				"linkedinVisitFailed": {
+					"displayName": "LinkedIn Visit Failed"
+				},
+				"linkedinInviteDone": {
+					"displayName": "LinkedIn Invite Done"
+				},
+				"linkedinInviteFailed": {
+					"displayName": "LinkedIn Invite Failed"
+				},
+				"linkedinInviteAccepted": {
+					"displayName": "LinkedIn Invite Accepted"
+				},
+				"linkedinReplied": {
+					"displayName": "LinkedIn Replied"
+				},
+				"linkedinSent": {
+					"displayName": "LinkedIn Sent"
+				},
+				"linkedinVoiceNoteDone": {
+					"displayName": "LinkedIn Voice Note Done"
+				},
+				"linkedinVoiceNoteFailed": {
+					"displayName": "LinkedIn Voice Note Failed"
+				},
+				"linkedinInterested": {
+					"displayName": "LinkedIn Interested"
+				},
+				"linkedinNotInterested": {
+					"displayName": "LinkedIn Not Interested"
+				},
+				"linkedinSendFailed": {
+					"displayName": "LinkedIn Send Failed"
+				},
+				"manualInterested": {
+					"displayName": "Manual Interested"
+				},
+				"manualNotInterested": {
+					"displayName": "Manual Not Interested"
+				},
+				"paused": {
+					"displayName": "Paused"
+				},
+				"resumed": {
+					"displayName": "Resumed"
+				},
+				"customDomainErrors": {
+					"displayName": "Custom Domain Errors"
+				},
+				"connectionIssue": {
+					"displayName": "Connection Issue"
+				},
+				"sendLimitReached": {
+					"displayName": "Send Limit Reached"
+				},
+				"lemwarmPaused": {
+					"displayName": "Lemwarm Paused"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"campaignId": {
+					"displayName": "Campaign Name or ID",
+					"description": "We'll call this hook only for this campaignId. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"isFirst": {
+					"displayName": "Is First",
+					"description": "Whether to call this hook only the first time this activity happened"
+				}
+			}
+		}
+	}
+}

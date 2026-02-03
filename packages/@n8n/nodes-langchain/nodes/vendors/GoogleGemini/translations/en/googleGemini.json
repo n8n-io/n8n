@@ -1,0 +1,428 @@
+{
+	"header": {
+		"displayName": "Google Gemini",
+		"description": "Interact with Google Gemini AI models"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"audio": {
+					"displayName": "Audio"
+				},
+				"document": {
+					"displayName": "Document"
+				},
+				"fileSearch": {
+					"displayName": "File Search"
+				},
+				"image": {
+					"displayName": "Image"
+				},
+				"file": {
+					"displayName": "Media File"
+				},
+				"text": {
+					"displayName": "Text"
+				},
+				"video": {
+					"displayName": "Video"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"analyze": {
+					"displayName": "Analyze Video",
+					"description": "Take in videos and answer questions about them"
+				},
+				"transcribe": {
+					"displayName": "Transcribe a Recording",
+					"description": "Transcribes audio into the text"
+				},
+				"upload": {
+					"displayName": "Upload Media File",
+					"description": "Upload a file to the Google Gemini API for later use"
+				},
+				"createStore": {
+					"displayName": "Create File Search Store",
+					"description": "Create a new File Search store for RAG (Retrieval Augmented Generation)"
+				},
+				"deleteStore": {
+					"displayName": "Delete File Search Store",
+					"description": "Delete a File Search store"
+				},
+				"listStores": {
+					"displayName": "List File Search Stores",
+					"description": "List all File Search stores owned by the user"
+				},
+				"uploadToStore": {
+					"displayName": "Upload to File Search Store",
+					"description": "Upload a file to a File Search store for RAG (Retrieval Augmented Generation)"
+				},
+				"generate": {
+					"displayName": "Generate a Video",
+					"description": "Creates a video from a text prompt"
+				},
+				"edit": {
+					"displayName": "Edit Image",
+					"description": "Upload one or more images and apply edits based on a prompt"
+				},
+				"message": {
+					"displayName": "Message a Model",
+					"description": "Create a completion with Google Gemini model"
+				},
+				"download": {
+					"displayName": "Download Video",
+					"description": "Download a generated video from the Google Gemini API using a URL"
+				}
+			}
+		},
+		"modelId": {
+			"displayName": "Model"
+		},
+		"text": {
+			"displayName": "Text Input",
+			"placeholder": "e.g. What's in this video?"
+		},
+		"inputType": {
+			"displayName": "Input Type",
+			"options": {
+				"url": {
+					"displayName": "Video URL(s)"
+				},
+				"binary": {
+					"displayName": "Binary File(s)"
+				}
+			}
+		},
+		"audioUrls": {
+			"displayName": "URL(s)",
+			"description": "URL(s) of the audio(s) to transcribe, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/audio.mp3"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Data Field Name(s)",
+			"description": "Name of the binary field(s) which contains the video(s), seperate multiple field names with commas",
+			"placeholder": "e.g. data"
+		},
+		"simplify": {
+			"displayName": "Simplify Output",
+			"description": "Whether to simplify the response or not"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"maxOutputTokens": {
+					"displayName": "Length of Description (Max Tokens)",
+					"description": "Fewer tokens will result in shorter, less detailed video description"
+				},
+				"startTime": {
+					"displayName": "Start Time",
+					"description": "The start time of the audio in MM:SS or HH:MM:SS format",
+					"placeholder": "e.g. 00:15"
+				},
+				"endTime": {
+					"displayName": "End Time",
+					"description": "The end time of the audio in MM:SS or HH:MM:SS format",
+					"placeholder": "e.g. 02:15"
+				},
+				"binaryPropertyOutput": {
+					"displayName": "Put Output in Field"
+				},
+				"sampleCount": {
+					"displayName": "Number of Videos",
+					"description": "How many videos to generate"
+				},
+				"includeMergedResponse": {
+					"displayName": "Include Merged Response",
+					"description": "Whether to include a single output string merging all text parts of the response"
+				},
+				"systemMessage": {
+					"displayName": "System Message",
+					"placeholder": "e.g. You are a helpful assistant"
+				},
+				"codeExecution": {
+					"displayName": "Code Execution",
+					"description": "Whether to allow the model to execute code it generates to produce a response. Supported only by certain models."
+				},
+				"frequencyPenalty": {
+					"displayName": "Frequency Penalty",
+					"description": "Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim"
+				},
+				"candidateCount": {
+					"displayName": "Number of Completions",
+					"description": "How many completions to generate for each prompt"
+				},
+				"presencePenalty": {
+					"displayName": "Presence Penalty",
+					"description": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics"
+				},
+				"temperature": {
+					"displayName": "Output Randomness (Temperature)",
+					"description": "Controls the randomness of the output. Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive"
+				},
+				"topP": {
+					"displayName": "Output Randomness (Top P)",
+					"description": "The maximum cumulative probability of tokens to consider when sampling"
+				},
+				"topK": {
+					"displayName": "Output Randomness (Top K)",
+					"description": "The maximum number of tokens to consider when sampling"
+				},
+				"thinkingBudget": {
+					"displayName": "Thinking Budget",
+					"description": "Controls reasoning tokens for thinking models. Set to 0 to disable automatic thinking. Set to -1 for dynamic thinking. Leave empty for auto mode."
+				},
+				"maxToolsIterations": {
+					"displayName": "Max Tool Calls Iterations",
+					"description": "The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit"
+				},
+				"durationSeconds": {
+					"displayName": "Duration (Seconds)",
+					"description": "Length of the generated video in seconds. Supported only by certain models."
+				},
+				"aspectRatio": {
+					"displayName": "Aspect Ratio",
+					"options": {
+						"16:9": {
+							"displayName": "Widescreen (16:9)",
+							"description": "Most common aspect ratio for televisions and monitors"
+						},
+						"9:16": {
+							"displayName": "Portrait (9:16)",
+							"description": "Popular for short-form videos like YouTube Shorts"
+						}
+					}
+				},
+				"personGeneration": {
+					"displayName": "Person Generation",
+					"options": {
+						"dont_allow": {
+							"displayName": "Don't Allow",
+							"description": "Prevent generation of people in the video"
+						},
+						"allow_adult": {
+							"displayName": "Allow Adult",
+							"description": "Allow generation of adult people in the video"
+						},
+						"allow_all": {
+							"displayName": "Allow All",
+							"description": "Allow generation of all people in the video"
+						}
+					}
+				}
+			}
+		},
+		"documentUrls": {
+			"displayName": "URL(s)",
+			"description": "URL(s) of the document(s) to analyze, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/document.pdf"
+		},
+		"fileUrl": {
+			"displayName": "URL",
+			"description": "URL of the file to upload",
+			"placeholder": "e.g. https://example.com/file.pdf"
+		},
+		"displayName": {
+			"displayName": "File Display Name",
+			"description": "A human-readable name for the file (will be visible in citations)",
+			"placeholder": "e.g. My Document"
+		},
+		"fileSearchStoreName": {
+			"displayName": "File Search Store Name",
+			"description": "The full name of the File Search store to upload to (format: fileSearchStores/...)",
+			"placeholder": "e.g. fileSearchStores/abc123"
+		},
+		"force": {
+			"displayName": "Force Delete",
+			"description": "Whether to delete related Documents and objects. If false, deletion will fail if the store contains any Documents."
+		},
+		"pageSize": {
+			"displayName": "Page Size",
+			"description": "Maximum number of File Search stores to return per page (max 20)"
+		},
+		"pageToken": {
+			"displayName": "Page Token",
+			"description": "Token from a previous page to retrieve the next page of results"
+		},
+		"imageUrls": {
+			"displayName": "URL(s)",
+			"description": "URL(s) of the image(s) to analyze, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/image.png"
+		},
+		"prompt": {
+			"displayName": "Prompt",
+			"description": "A text description of the desired video",
+			"placeholder": "e.g. Panning wide shot of a calico kitten sleeping in the sunshine"
+		},
+		"images": {
+			"displayName": "Images",
+			"description": "Add one or more binary fields to include images with your prompt",
+			"placeholder": "Add Image",
+			"multipleValueButtonText": "Add Image",
+			"options": {
+				"values": {
+					"displayName": "Image",
+					"values": {
+						"binaryPropertyName": {
+							"displayName": "Binary Field Name",
+							"description": "The name of the binary field containing the image data",
+							"placeholder": "e.g. data"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Image",
+					"values": {
+						"binaryPropertyName": {
+							"displayName": "Binary Field Name",
+							"description": "The name of the binary field containing the image data",
+							"placeholder": "e.g. data"
+						}
+					}
+				},
+				"images": {
+					"displayName": "Images",
+					"placeholder": "Add Image"
+				}
+			}
+		},
+		"messages": {
+			"displayName": "Messages",
+			"placeholder": "Add Message",
+			"multipleValueButtonText": "Add Message",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be send",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"model": {
+									"displayName": "Model",
+									"description": "Tell the model to adopt a specific tone or personality"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be send",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"model": {
+									"displayName": "Model",
+									"description": "Tell the model to adopt a specific tone or personality"
+								}
+							}
+						}
+					}
+				},
+				"messages": {
+					"displayName": "Messages",
+					"placeholder": "Add Message"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "Output Content as JSON",
+			"description": "Whether to attempt to return the response in JSON format"
+		},
+		"builtInTools": {
+			"displayName": "Built-in Tools",
+			"placeholder": "Add Built-in Tool",
+			"options": {
+				"googleSearch": {
+					"displayName": "Google Search",
+					"description": "Whether to allow the model to search the web using Google Search to get real-time information"
+				},
+				"googleMaps": {
+					"displayName": "Google Maps",
+					"options": {
+						"latitude": {
+							"displayName": "Latitude",
+							"description": "The latitude coordinate for location-based queries"
+						},
+						"longitude": {
+							"displayName": "Longitude",
+							"description": "The longitude coordinate for location-based queries"
+						}
+					}
+				},
+				"urlContext": {
+					"displayName": "URL Context",
+					"description": "Whether to allow the model to read and analyze content from specific URLs"
+				},
+				"fileSearch": {
+					"displayName": "File Search",
+					"options": {
+						"fileSearchStoreNames": {
+							"displayName": "File Search Store Names",
+							"description": "The file search store names to use for the file search. File search stores are managed via Google AI Studio."
+						},
+						"metadataFilter": {
+							"displayName": "Metadata Filter",
+							"description": "Use metadata filter to search within a subset of documents. Example: author=\"Robert Graves\".",
+							"placeholder": "e.g. author=\"John Doe\""
+						}
+					}
+				},
+				"codeExecution": {
+					"displayName": "Code Execution",
+					"description": "Whether to allow the model to execute code it generates to produce a response. Supported only by certain models."
+				}
+			}
+		},
+		"videoUrls": {
+			"displayName": "URL(s)",
+			"description": "URL(s) of the video(s) to analyze, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/video.mp4"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "The URL from Google Gemini API to download the video from",
+			"placeholder": "e.g. https://generativelanguage.googleapis.com/v1beta/files/abcdefg:download"
+		},
+		"returnAs": {
+			"displayName": "Return As",
+			"description": "Whether to return the video as a binary file or a URL that can be used to download the video later",
+			"options": {
+				"video": {
+					"displayName": "Video"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		}
+	}
+}

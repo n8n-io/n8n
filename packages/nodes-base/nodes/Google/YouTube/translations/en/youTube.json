@@ -1,0 +1,611 @@
+{
+	"header": {
+		"displayName": "YouTube",
+		"description": "Consume YouTube API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"channel": {
+					"displayName": "Channel"
+				},
+				"playlist": {
+					"displayName": "Playlist"
+				},
+				"playlistItem": {
+					"displayName": "Playlist Item"
+				},
+				"video": {
+					"displayName": "Video"
+				},
+				"videoCategory": {
+					"displayName": "Video Category"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a video"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many video categories"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a video"
+				},
+				"uploadBanner": {
+					"displayName": "Upload Banner",
+					"description": "Upload a channel banner"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a playlist"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a video"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add an item to a playlist"
+				},
+				"rate": {
+					"displayName": "Rate",
+					"description": "Rate a video"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a video"
+				}
+			}
+		},
+		"part": {
+			"displayName": "Fields",
+			"description": "The fields parameter specifies a comma-separated list of one or more video resource properties that the API response will include"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add option",
+			"options": {
+				"categoryId": {
+					"displayName": "Category ID",
+					"description": "The categoryId parameter specifies a YouTube guide category, thereby requesting YouTube channels associated with that category"
+				},
+				"forUsername": {
+					"displayName": "For Username",
+					"description": "The forUsername parameter specifies a YouTube username, thereby requesting the channel associated with that username"
+				},
+				"id": {
+					"displayName": "ID",
+					"description": "The ID parameter specifies a comma-separated list of the YouTube playlist ID(s) for the resource(s) that are being retrieved. In a playlist resource, the ID property specifies the playlist's YouTube playlist ID."
+				},
+				"managedByMe": {
+					"displayName": "Managed By Me",
+					"description": "Whether to instruct the API to only return channels managed by the content owner that the onBehalfOfContentOwner parameter specifies"
+				},
+				"channelId": {
+					"displayName": "Channel ID",
+					"description": "The channelId parameter indicates that the API response should only contain resources created by the channel"
+				},
+				"forDeveloper": {
+					"displayName": "For Developer",
+					"description": "Whether to restrict the search to only retrieve videos uploaded via the developer's application or website"
+				},
+				"publishedAfter": {
+					"displayName": "Published After",
+					"description": "The publishedAfter parameter indicates that the API response should only contain resources created at or after the specified time"
+				},
+				"publishedBefore": {
+					"displayName": "Published Before",
+					"description": "The publishedBefore parameter indicates that the API response should only contain resources created before or at the specified time"
+				},
+				"q": {
+					"displayName": "Query",
+					"description": "The q parameter specifies the query term to search for"
+				},
+				"regionCode": {
+					"displayName": "Region Code",
+					"description": "The regionCode parameter instructs the API to select a video chart available in the specified region. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"relatedToVideoId": {
+					"displayName": "Related To Video ID",
+					"description": "The relatedToVideoId parameter retrieves a list of videos that are related to the video that the parameter value identifies"
+				},
+				"videoCategoryId": {
+					"displayName": "Video Category ID",
+					"description": "The videoCategoryId parameter identifies the video category for which the chart should be retrieved"
+				},
+				"videoSyndicated": {
+					"displayName": "Video Syndicated",
+					"description": "Whether to restrict a search to only videos that can be played outside youtube.com"
+				},
+				"videoType": {
+					"displayName": "Video Type",
+					"description": "The videoType parameter lets you restrict a search to a particular type of videos",
+					"options": {
+						"any": {
+							"displayName": "Any"
+						},
+						"episode": {
+							"displayName": "Episode"
+						},
+						"movie": {
+							"displayName": "Movie"
+						}
+					}
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"h1": {
+					"displayName": "Language Code",
+					"description": "The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"onBehalfOfContentOwner": {
+					"displayName": "On Behalf Of Content Owner",
+					"description": "The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The playlist's description"
+				},
+				"privacyStatus": {
+					"displayName": "Privacy Status",
+					"description": "The playlist's privacy status",
+					"options": {
+						"private": {
+							"displayName": "Private"
+						},
+						"public": {
+							"displayName": "Public"
+						},
+						"unlisted": {
+							"displayName": "Unlisted"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Keyword tags associated with the playlist. Mulplie can be defined separated by comma."
+				},
+				"defaultLanguage": {
+					"displayName": "Default Language Name or ID",
+					"description": "The language of the text in the playlist resource's title and description properties. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"onBehalfOfContentOwnerChannel": {
+					"displayName": "On Behalf Of Content Owner Channel",
+					"description": "The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added. This parameter is required when a request specifies a value for the onBehalfOfContentOwner parameter, and it can only be used in conjunction with that parameter."
+				},
+				"endAt": {
+					"displayName": "End At",
+					"description": "The time, measured in seconds from the start of the video, when the video should stop playing"
+				},
+				"note": {
+					"displayName": "Note",
+					"description": "A user-generated note for this item. The property value has a maximum length of 280 characters."
+				},
+				"position": {
+					"displayName": "Position",
+					"description": "The order in which the item appears in the playlist. The value uses a zero-based index, so the first item has a position of 0, the second item has a position of 1, and so forth."
+				},
+				"startAt": {
+					"displayName": "Start At",
+					"description": "The time, measured in seconds from the start of the video, when the video should start playing"
+				},
+				"embeddable": {
+					"displayName": "Embeddable",
+					"description": "Whether the video can be embedded on another website"
+				},
+				"license": {
+					"displayName": "License",
+					"description": "The video's license",
+					"options": {
+						"creativeCommon": {
+							"displayName": "Creative Common"
+						},
+						"youtube": {
+							"displayName": "Youtube"
+						}
+					}
+				},
+				"notifySubscribers": {
+					"displayName": "Notify Subscribers",
+					"description": "Whether YouTube should send a notification about the new video to users who subscribe to the video's channel"
+				},
+				"publicStatsViewable": {
+					"displayName": "Public Stats Viewable",
+					"description": "Whether the extended video statistics on the video's watch page are publicly viewable"
+				},
+				"publishAt": {
+					"displayName": "Publish At",
+					"description": "If you set a value for this property, you must also set the status.privacyStatus property to private"
+				},
+				"recordingDate": {
+					"displayName": "Recording Date",
+					"description": "The date and time when the video was recorded"
+				},
+				"selfDeclaredMadeForKids": {
+					"displayName": "Self Declared Made For Kids",
+					"description": "Whether the video is designated as child-directed, and it contains the current \"made for kids\" status of the video"
+				},
+				"order": {
+					"displayName": "Order",
+					"options": {
+						"date": {
+							"displayName": "Date"
+						},
+						"relevance": {
+							"displayName": "Relevance"
+						}
+					}
+				},
+				"safeSearch": {
+					"displayName": "Safe Search",
+					"options": {
+						"moderate": {
+							"displayName": "Moderate",
+							"description": "YouTube will filter some content from search results and, at the least, will filter content that is restricted in your locale"
+						},
+						"none": {
+							"displayName": "None",
+							"description": "YouTube will not filter the search result set"
+						},
+						"strict": {
+							"displayName": "Strict",
+							"description": "YouTube will try to exclude all restricted content from the search result set"
+						}
+					}
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "Channel ID",
+			"description": "ID of the channel"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add option",
+			"options": {
+				"brandingSettingsUi": {
+					"displayName": "Branding Settings",
+					"description": "Encapsulates information about the branding of the channel",
+					"placeholder": "Add Branding Settings",
+					"options": {
+						"channelSettingsValues": {
+							"displayName": "Channel Settings",
+							"options": {
+								"channel": {
+									"displayName": "Channel",
+									"placeholder": "Add Channel Settings",
+									"options": {
+										"country": {
+											"displayName": "Country",
+											"description": "The country with which the channel is associated. Update this property to set the value of the snippet.country property."
+										},
+										"description": {
+											"displayName": "Description",
+											"description": "The channel description, which appears in the channel information box on your channel page. The property's value has a maximum length of 1000 characters."
+										},
+										"defaultLanguage": {
+											"displayName": "Default Language",
+											"description": "The content tab that users should display by default when viewers arrive at your channel page"
+										},
+										"defaultTab": {
+											"displayName": "Default Tab"
+										},
+										"featuredChannelsTitle": {
+											"displayName": "Featured Channels Title",
+											"description": "The title that displays above the featured channels module. The title has a maximum length of 30 characters."
+										},
+										"featuredChannelsUrls": {
+											"displayName": "Featured Channels Urls",
+											"description": "A list of up to 100 channels that you would like to link to from the featured channels module. The property value is a list of YouTube channel ID values, each of which uniquely identifies a channel."
+										},
+										"keywords": {
+											"displayName": "Keywords",
+											"description": "Keywords associated with your channel. The value is a space-separated list of strings.",
+											"placeholder": "tech,news"
+										},
+										"moderateComments": {
+											"displayName": "Moderate Comments",
+											"description": "Whether user-submitted comments left on the channel page need to be approved by the channel owner to be publicly visible"
+										},
+										"profileColor": {
+											"displayName": "Profile Color",
+											"description": "A prominent color that complements the channel's content"
+										},
+										"showRelatedChannels": {
+											"displayName": "Show Related Channels",
+											"description": "Whether YouTube should show an algorithmically generated list of related channels on your channel page"
+										},
+										"showBrowseView": {
+											"displayName": "Show Browse View",
+											"description": "Whether the channel page should display content in a browse or feed view"
+										},
+										"trackingAnalyticsAccountId": {
+											"displayName": "Tracking Analytics AccountId",
+											"description": "The ID for a Google Analytics account that you want to use to track and measure traffic to your channel"
+										},
+										"unsubscribedTrailer": {
+											"displayName": "Unsubscribed Trailer",
+											"description": "The video that should play in the featured video module in the channel page's browse view for unsubscribed viewers"
+										}
+									}
+								}
+							}
+						},
+						"imageSettingsValues": {
+							"displayName": "Image Settings",
+							"options": {
+								"image": {
+									"displayName": "Image",
+									"description": "The image object encapsulates information about images that display on the channel's channel page or video watch pages",
+									"placeholder": "Add Channel Settings",
+									"options": {
+										"bannerExternalUrl": {
+											"displayName": "Banner External Url"
+										},
+										"trackingImageUrl": {
+											"displayName": "Tracking Image Url"
+										},
+										"watchIconImageUrl": {
+											"displayName": "Watch Icon Image Url"
+										}
+									}
+								}
+							}
+						},
+						"statusValue": {
+							"displayName": "Status",
+							"options": {
+								"status": {
+									"displayName": "Status",
+									"placeholder": "Add Status",
+									"options": {
+										"selfDeclaredMadeForKids": {
+											"displayName": "Self Declared Made For Kids"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"channelSettingsValues": {
+							"displayName": "Channel Settings",
+							"options": {
+								"channel": {
+									"displayName": "Channel",
+									"placeholder": "Add Channel Settings",
+									"options": {
+										"country": {
+											"displayName": "Country",
+											"description": "The country with which the channel is associated. Update this property to set the value of the snippet.country property."
+										},
+										"description": {
+											"displayName": "Description",
+											"description": "The channel description, which appears in the channel information box on your channel page. The property's value has a maximum length of 1000 characters."
+										},
+										"defaultLanguage": {
+											"displayName": "Default Language",
+											"description": "The content tab that users should display by default when viewers arrive at your channel page"
+										},
+										"defaultTab": {
+											"displayName": "Default Tab"
+										},
+										"featuredChannelsTitle": {
+											"displayName": "Featured Channels Title",
+											"description": "The title that displays above the featured channels module. The title has a maximum length of 30 characters."
+										},
+										"featuredChannelsUrls": {
+											"displayName": "Featured Channels Urls",
+											"description": "A list of up to 100 channels that you would like to link to from the featured channels module. The property value is a list of YouTube channel ID values, each of which uniquely identifies a channel."
+										},
+										"keywords": {
+											"displayName": "Keywords",
+											"description": "Keywords associated with your channel. The value is a space-separated list of strings.",
+											"placeholder": "tech,news"
+										},
+										"moderateComments": {
+											"displayName": "Moderate Comments",
+											"description": "Whether user-submitted comments left on the channel page need to be approved by the channel owner to be publicly visible"
+										},
+										"profileColor": {
+											"displayName": "Profile Color",
+											"description": "A prominent color that complements the channel's content"
+										},
+										"showRelatedChannels": {
+											"displayName": "Show Related Channels",
+											"description": "Whether YouTube should show an algorithmically generated list of related channels on your channel page"
+										},
+										"showBrowseView": {
+											"displayName": "Show Browse View",
+											"description": "Whether the channel page should display content in a browse or feed view"
+										},
+										"trackingAnalyticsAccountId": {
+											"displayName": "Tracking Analytics AccountId",
+											"description": "The ID for a Google Analytics account that you want to use to track and measure traffic to your channel"
+										},
+										"unsubscribedTrailer": {
+											"displayName": "Unsubscribed Trailer",
+											"description": "The video that should play in the featured video module in the channel page's browse view for unsubscribed viewers"
+										}
+									}
+								}
+							}
+						},
+						"imageSettingsValues": {
+							"displayName": "Image Settings",
+							"options": {
+								"image": {
+									"displayName": "Image",
+									"description": "The image object encapsulates information about images that display on the channel's channel page or video watch pages",
+									"placeholder": "Add Channel Settings",
+									"options": {
+										"bannerExternalUrl": {
+											"displayName": "Banner External Url"
+										},
+										"trackingImageUrl": {
+											"displayName": "Tracking Image Url"
+										},
+										"watchIconImageUrl": {
+											"displayName": "Watch Icon Image Url"
+										}
+									}
+								}
+							}
+						},
+						"statusValue": {
+							"displayName": "Status",
+							"options": {
+								"status": {
+									"displayName": "Status",
+									"placeholder": "Add Status",
+									"options": {
+										"selfDeclaredMadeForKids": {
+											"displayName": "Self Declared Made For Kids"
+										}
+									}
+								}
+							}
+						},
+						"brandingSettingsUi": {
+							"displayName": "Branding Settings",
+							"placeholder": "Add Branding Settings"
+						}
+					}
+				},
+				"onBehalfOfContentOwner": {
+					"displayName": "On Behalf Of Content Owner",
+					"description": "The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value"
+				},
+				"defaultLanguage": {
+					"displayName": "Default Language Name or ID",
+					"description": "The language of the text in the playlist resource's title and description properties. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "The playlist's description"
+				},
+				"privacyStatus": {
+					"displayName": "Privacy Status",
+					"description": "The playlist's privacy status",
+					"options": {
+						"private": {
+							"displayName": "Private"
+						},
+						"public": {
+							"displayName": "Public"
+						},
+						"unlisted": {
+							"displayName": "Unlisted"
+						},
+						"unlistef": {
+							"displayName": "Unlisted"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Keyword tags associated with the playlist. Mulplie can be defined separated by comma."
+				},
+				"embeddable": {
+					"displayName": "Embeddable",
+					"description": "Whether the video can be embedded on another website"
+				},
+				"license": {
+					"displayName": "License",
+					"description": "The video's license",
+					"options": {
+						"creativeCommon": {
+							"displayName": "Creative Common"
+						},
+						"youtube": {
+							"displayName": "Youtube"
+						}
+					}
+				},
+				"notifySubscribers": {
+					"displayName": "Notify Subscribers",
+					"description": "Whether YouTube should send a notification about the new video to users who subscribe to the video's channel"
+				},
+				"publicStatsViewable": {
+					"displayName": "Public Stats Viewable",
+					"description": "Whether the extended video statistics on the video's watch page are publicly viewable"
+				},
+				"publishAt": {
+					"displayName": "Publish At",
+					"description": "If you set a value for this property, you must also set the status.privacyStatus property to private"
+				},
+				"recordingDate": {
+					"displayName": "Recording Date",
+					"description": "The date and time when the video was recorded"
+				},
+				"selfDeclaredMadeForKids": {
+					"displayName": "Self Declared Made For Kids",
+					"description": "Whether the video is designated as child-directed, and it contains the current \"made for kids\" status of the video"
+				}
+			}
+		},
+		"binaryProperty": {
+			"displayName": "Input Binary Field"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "The playlist's title"
+		},
+		"playlistId": {
+			"displayName": "Playlist Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"videoId": {
+			"displayName": "Video ID",
+			"description": "ID of the video"
+		},
+		"playlistItemId": {
+			"displayName": "Playlist Item ID"
+		},
+		"regionCode": {
+			"displayName": "Region Code",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"categoryId": {
+			"displayName": "Category Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"rating": {
+			"displayName": "Rating",
+			"options": {
+				"dislike": {
+					"displayName": "Dislike",
+					"description": "Records that the authenticated user disliked the video"
+				},
+				"like": {
+					"displayName": "Like",
+					"description": "Records that the authenticated user liked the video"
+				},
+				"none": {
+					"displayName": "None",
+					"description": "Removes any rating that the authenticated user had previously set for the video"
+				}
+			}
+		}
+	}
+}

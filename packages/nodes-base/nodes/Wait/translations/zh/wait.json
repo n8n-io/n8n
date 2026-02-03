@@ -1,0 +1,683 @@
+{
+	"header": {
+		"displayName": "等待",
+		"description": "等待后继续执行"
+	},
+	"nodeView": {
+		"resume": {
+			"displayName": "恢复",
+			"description": "确定工作流继续前使用的等待模式",
+			"options": {
+				"timeInterval": {
+					"displayName": "时间间隔后",
+					"description": "等待指定时间"
+				},
+				"specificTime": {
+					"displayName": "在指定时间",
+					"description": "等待到特定日期和时间后继续"
+				},
+				"webhook": {
+					"displayName": "Webhook调用时",
+					"description": "等待Webhook调用后再继续"
+				},
+				"form": {
+					"displayName": "表单提交时",
+					"description": "等待表单提交后继续"
+				}
+			}
+		},
+		"incomingAuthentication": {
+			"displayName": "身份验证",
+			"description": "传入的简历Webhook请求到$execution.resumeUrl是否以及如何进行身份验证以增强安全性",
+			"options": {
+				"basicAuth": {
+					"displayName": "基础认证"
+				},
+				"none": {
+					"displayName": "无"
+				},
+				"headerAuth": {
+					"displayName": "Header 认证"
+				},
+				"jwtAuth": {
+					"displayName": "JWT认证"
+				}
+			}
+		},
+		"dateTime": {
+			"displayName": "日期和时间",
+			"description": "继续执行前等待的日期和时间"
+		},
+		"amount": {
+			"displayName": "等待时长",
+			"description": "等待的时间"
+		},
+		"unit": {
+			"displayName": "等待单位",
+			"description": "等待时长值的时间单位",
+			"options": {
+				"seconds": {
+					"displayName": "秒"
+				},
+				"minutes": {
+					"displayName": "分钟"
+				},
+				"hours": {
+					"displayName": "小时"
+				},
+				"days": {
+					"displayName": "天"
+				}
+			}
+		},
+		"webhookNotice": {
+			"displayName": "Webhook URL将在运行时生成。可通过<strong>$execution.resumeUrl</strong>变量引用。在到达此节点前将其发送到某处。<a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait\" target=\"_blank\">更多信息</a>"
+		},
+		"formNotice": {
+			"displayName": "表单URL将在运行时生成。可通过<strong>$execution.resumeFormUrl</strong>变量引用。在到达此节点前将其发送到某处。<a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait\" target=\"_blank\">更多信息</a>"
+		},
+		"formTitle": {
+			"displayName": "表单标题",
+			"description": "显示在表单顶部",
+			"placeholder": "例如：联系我们"
+		},
+		"formDescription": {
+			"displayName": "表单描述",
+			"description": "显示在表单标题下方。可用于提示用户如何填写表单。支持HTML。不接受<code>&lt;script&gt;</code>、<code>&lt;style&gt;</code>或<code>&lt;input&gt;</code>标签。",
+			"placeholder": "例如：我们会尽快回复您"
+		},
+		"formFields": {
+			"displayName": "表单元素",
+			"placeholder": "添加表单元素",
+			"multipleValueButtonText": "添加表单元素",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"fieldName": {
+							"displayName": "自定义字段名称",
+							"description": "字段名称，用于输入属性中，并可被工作流引用"
+						},
+						"fieldLabel": {
+							"displayName": "字段名称",
+							"description": "输入框上方显示的标签",
+							"placeholder": "例如：您的姓名是？"
+						},
+						"fieldType": {
+							"displayName": "元素类型",
+							"description": "要添加到表单的字段类型",
+							"options": {
+								"checkbox": {
+									"displayName": "复选框"
+								},
+								"html": {
+									"displayName": "自定义HTML"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"dropdown": {
+									"displayName": "下拉菜单"
+								},
+								"email": {
+									"displayName": "电子邮件"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"hiddenField": {
+									"displayName": "隐藏字段"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"password": {
+									"displayName": "密码"
+								},
+								"radio": {
+									"displayName": "单选按钮"
+								},
+								"text": {
+									"displayName": "文本输入"
+								},
+								"textarea": {
+									"displayName": "文本域"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "元素名称",
+							"description": "可选字段。可用于在输出中包含HTML。",
+							"placeholder": "例如：内容区块"
+						},
+						"placeholder": {
+							"displayName": "占位符",
+							"description": "字段内显示的示例文本"
+						},
+						"defaultValue": {
+							"displayName": "默认值",
+							"description": "将预选的一个或多个默认值。必须与一个或多个选项标签匹配。多个预选选项用逗号分隔。"
+						},
+						"fieldValue": {
+							"displayName": "字段值",
+							"description": "可在此处设置输入值，如果未设置，将通过字段名作为查询参数传递"
+						},
+						"fieldOptions": {
+							"displayName": "单选按钮",
+							"placeholder": "添加单选按钮",
+							"multipleValueButtonText": "添加单选按钮",
+							"options": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "值",
+									"values": {
+										"option": {
+											"displayName": "单选按钮标签"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "单选按钮",
+									"placeholder": "添加单选按钮"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice是遗留选项，请改用Checkboxes或Radio Buttons字段类型"
+						},
+						"multiselect": {
+							"displayName": "多项选择",
+							"description": "是否允许用户从下拉列表中选择多个选项"
+						},
+						"limitSelection": {
+							"displayName": "限制选择",
+							"options": {
+								"exact": {
+									"displayName": "精确数字"
+								},
+								"range": {
+									"displayName": "范围"
+								},
+								"unlimited": {
+									"displayName": "无限制"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "选择数量"
+						},
+						"minSelections": {
+							"displayName": "最少选择数"
+						},
+						"maxSelections": {
+							"displayName": "最大选择数"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "表单页面上要显示的HTML元素"
+						},
+						"multipleFiles": {
+							"displayName": "多个文件",
+							"description": "是否允许用户从文件输入中选择多个文件还是仅一个"
+						},
+						"acceptFileTypes": {
+							"displayName": "接受的文件类型",
+							"description": "逗号分隔的允许文件扩展名列表",
+							"placeholder": "例如：.jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "显示的日期基于用户浏览器的区域设置进行格式化"
+						},
+						"requiredField": {
+							"displayName": "必填字段",
+							"description": "是否要求用户在提交表单前必须为此字段输入值"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "表单元素",
+					"placeholder": "添加表单元素"
+				}
+			}
+		},
+		"responseMode": {
+			"displayName": "响应",
+			"description": "何时以及如何响应Webhook",
+			"options": {
+				"onReceived": {
+					"displayName": "立即",
+					"description": "当此节点执行时"
+				},
+				"lastNode": {
+					"displayName": "当最后一个节点完成时",
+					"description": "返回最后执行节点的数据"
+				},
+				"responseNode": {
+					"displayName": "使用'响应Webhook'节点",
+					"description": "在该节点中定义的响应"
+				}
+			}
+		},
+		"httpMethod": {
+			"displayName": "HTTP方法",
+			"description": "Webhook调用的HTTP方法",
+			"options": {
+				"DELETE": {
+					"displayName": "删除"
+				},
+				"GET": {
+					"displayName": "获取"
+				},
+				"HEAD": {
+					"displayName": "HEAD"
+				},
+				"PATCH": {
+					"displayName": "PATCH"
+				},
+				"POST": {
+					"displayName": "POST"
+				},
+				"PUT": {
+					"displayName": "PUT"
+				}
+			}
+		},
+		"responseCode": {
+			"displayName": "响应代码",
+			"description": "要返回的HTTP响应代码"
+		},
+		"responseData": {
+			"displayName": "响应数据",
+			"description": "应返回什么数据。是返回所有项目作为数组，还是仅返回第一个项目作为对象。",
+			"options": {
+				"allEntries": {
+					"displayName": "所有条目",
+					"description": "返回上一个节点的所有条目。始终返回一个数组。"
+				},
+				"firstEntryJson": {
+					"displayName": "首个条目JSON",
+					"description": "返回最后节点的首个条目的JSON数据。始终返回JSON对象。"
+				},
+				"firstEntryBinary": {
+					"displayName": "首个条目的二进制数据",
+					"description": "返回最后一个节点的第一个条目的二进制数据。始终返回二进制文件。"
+				},
+				"noData": {
+					"displayName": "无响应体",
+					"description": "无响应体返回"
+				}
+			}
+		},
+		"responseBinaryPropertyName": {
+			"displayName": "属性名称",
+			"description": "要返回的二进制属性名称"
+		},
+		"limitWaitTime": {
+			"displayName": "限制等待时间",
+			"description": "是否限制此节点在继续执行前等待用户响应的时间"
+		},
+		"limitType": {
+			"displayName": "限制类型",
+			"description": "设置执行恢复的条件。可以是特定日期或一段时间后。",
+			"options": {
+				"afterTimeInterval": {
+					"displayName": "时间间隔后",
+					"description": "等待指定时间"
+				},
+				"atSpecifiedTime": {
+					"displayName": "在指定时间",
+					"description": "等待至设定的日期和时间再继续"
+				}
+			}
+		},
+		"resumeAmount": {
+			"displayName": "金额",
+			"description": "等待时间"
+		},
+		"resumeUnit": {
+			"displayName": "单位",
+			"description": "间隔值的单位",
+			"options": {
+				"seconds": {
+					"displayName": "秒"
+				},
+				"minutes": {
+					"displayName": "分钟"
+				},
+				"hours": {
+					"displayName": "小时"
+				},
+				"days": {
+					"displayName": "天"
+				}
+			}
+		},
+		"maxDateAndTime": {
+			"displayName": "最大日期和时间",
+			"description": "在指定日期和时间后继续执行"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"binaryData": {
+					"displayName": "二进制文件",
+					"description": "Webhook是否接收二进制数据"
+				},
+				"binaryPropertyName": {
+					"displayName": "二进制数据的字段名称",
+					"description": "用于存放二进制文件数据的输出字段名称。仅在接收到二进制数据时相关。"
+				},
+				"ignoreBots": {
+					"displayName": "忽略机器人",
+					"description": "是否忽略来自链接预览器和网络爬虫等机器人的请求"
+				},
+				"ipWhitelist": {
+					"displayName": "IP白名单",
+					"description": "允许的IP地址列表，用逗号分隔。留空则允许所有IP。",
+					"placeholder": "例如：127.0.0.1"
+				},
+				"noResponseBody": {
+					"displayName": "无响应体",
+					"description": "是否在响应中发送任何正文"
+				},
+				"rawBody": {
+					"displayName": "原始正文",
+					"description": "是否返回原始正文"
+				},
+				"responseData": {
+					"displayName": "响应数据",
+					"description": "要发送的自定义响应数据",
+					"placeholder": "成功"
+				},
+				"responseContentType": {
+					"displayName": "响应内容类型",
+					"description": "设置自定义内容类型，以便在需要返回非\"application/json\"类型时使用",
+					"placeholder": "application/xml"
+				},
+				"responseHeaders": {
+					"displayName": "响应头",
+					"description": "向Webhook响应添加头信息",
+					"placeholder": "添加响应头",
+					"multipleValueButtonText": "添加响应头",
+					"options": {
+						"entries": {
+							"displayName": "条目",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "标头的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"entries": {
+							"displayName": "条目",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "标头的值"
+								}
+							}
+						},
+						"responseHeaders": {
+							"displayName": "响应头",
+							"placeholder": "添加响应头"
+						}
+					}
+				},
+				"responsePropertyName": {
+					"displayName": "属性名称",
+					"description": "要返回其数据而非整个JSON的属性名称"
+				},
+				"webhookSuffix": {
+					"displayName": "Webhook后缀",
+					"description": "此后缀路径将附加到重启URL。在使用多个等待节点时很有帮助。",
+					"placeholder": "Webhook"
+				},
+				"appendAttribution": {
+					"displayName": "添加n8n归属声明",
+					"description": "是否在表单底部包含“使用n8n自动化的表单”链接"
+				},
+				"respondWithOptions": {
+					"displayName": "表单响应",
+					"placeholder": "添加选项",
+					"options": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"respondWith": {
+									"displayName": "响应方式",
+									"options": {
+										"text": {
+											"displayName": "表单提交文本",
+											"description": "向用户显示响应文本"
+										},
+										"redirect": {
+											"displayName": "重定向 URL",
+											"description": "将用户重定向到URL"
+										}
+									}
+								},
+								"formSubmittedText": {
+									"displayName": "显示文本",
+									"description": "用户填写表单后显示的文本。如果不想显示额外文本，请留空。"
+								},
+								"redirectUrl": {
+									"displayName": "重定向URL",
+									"description": "用户填写表单后重定向到的URL。必须是有效的URL。",
+									"placeholder": "例如：http://www.n8n.io"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "值",
+							"values": {
+								"respondWith": {
+									"displayName": "响应方式",
+									"options": {
+										"text": {
+											"displayName": "表单提交文本",
+											"description": "向用户显示响应文本"
+										},
+										"redirect": {
+											"displayName": "重定向 URL",
+											"description": "将用户重定向到URL"
+										}
+									}
+								},
+								"formSubmittedText": {
+									"displayName": "显示文本",
+									"description": "用户填写表单后显示的文本。如果不想显示额外文本，请留空。"
+								},
+								"redirectUrl": {
+									"displayName": "重定向URL",
+									"description": "用户填写表单后重定向到的URL。必须是有效的URL。",
+									"placeholder": "例如：http://www.n8n.io"
+								}
+							}
+						},
+						"respondWithOptions": {
+							"displayName": "表单响应",
+							"placeholder": "添加选项"
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,153 @@
+{
+	"header": {
+		"displayName": "Cockpit",
+		"description": "Consume Cockpit API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"collection": {
+					"displayName": "Collection"
+				},
+				"form": {
+					"displayName": "Form"
+				},
+				"singleton": {
+					"displayName": "Singleton"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create an Entry",
+					"description": "Create a collection entry"
+				},
+				"getAll": {
+					"displayName": "Get Many Entries",
+					"description": "Get many collection entries"
+				},
+				"update": {
+					"displayName": "Update an Entry",
+					"description": "Update a collection entry"
+				},
+				"submit": {
+					"displayName": "Submit a Form",
+					"description": "Store data from a form submission"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a singleton"
+				}
+			}
+		},
+		"collection": {
+			"displayName": "Collection Name or ID",
+			"description": "Name of the collection to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"description": "Comma-separated list of fields to get",
+					"placeholder": "_id,name"
+				},
+				"filter": {
+					"displayName": "Filter Query",
+					"description": "Filter query in <a href=\"https://jeroen.github.io/mongolite/query-data.html\">Mongolite format</a>",
+					"placeholder": "{\"name\": \"Jim\"}"
+				},
+				"language": {
+					"displayName": "Language",
+					"description": "Return normalized language fields"
+				},
+				"populate": {
+					"displayName": "Populate",
+					"description": "Whether to resolve linked collection items"
+				},
+				"rawData": {
+					"displayName": "RAW Data",
+					"description": "Whether to return the data exactly in the way it got received from the API"
+				},
+				"skip": {
+					"displayName": "Skip",
+					"description": "Skip number of entries"
+				},
+				"sort": {
+					"displayName": "Sort Query",
+					"description": "Sort query in <a href=\"https://jeroen.github.io/mongolite/query-data.html\">Mongolite format</a>",
+					"placeholder": "{\"price\": -1}"
+				}
+			}
+		},
+		"id": {
+			"displayName": "Entry ID"
+		},
+		"jsonDataFields": {
+			"displayName": "JSON Data Fields",
+			"description": "Whether form fields should be set via the value-key pair UI or JSON"
+		},
+		"dataFieldsJson": {
+			"displayName": "Form Data",
+			"description": "Form data to send as JSON"
+		},
+		"dataFieldsUi": {
+			"displayName": "Form Data",
+			"description": "Form data to send",
+			"multipleValueButtonText": "Add",
+			"options": {
+				"field": {
+					"displayName": "Field",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the field"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the field"
+						}
+					}
+				}
+			},
+			"values": {
+				"field": {
+					"displayName": "Field",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the field"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the field"
+						}
+					}
+				},
+				"dataFieldsUi": {
+					"displayName": "Form Data"
+				}
+			}
+		},
+		"form": {
+			"displayName": "Form",
+			"description": "Name of the form to operate on"
+		},
+		"singleton": {
+			"displayName": "Singleton Name or ID",
+			"description": "Name of the singleton to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

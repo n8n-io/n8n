@@ -1,0 +1,102 @@
+{
+	"header": {
+		"displayName": "Unleashed Software",
+		"description": "使用 Unleashed Software API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"salesOrder": {
+					"displayName": "销售订单"
+				},
+				"stockOnHand": {
+					"displayName": "库存数量"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个现货库存"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取库存数量"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"customerId": {
+					"displayName": "客户ID",
+					"description": "仅返回指定客户GUID的订单。CustomerId可指定为逗号分隔的GUID列表。",
+					"placeholder": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+				},
+				"customerCode": {
+					"displayName": "客户代码",
+					"description": "返回以特定客户代码开头的订单"
+				},
+				"endDate": {
+					"displayName": "结束日期",
+					"description": "返回订单日期早于指定日期的订单。UTC时间。"
+				},
+				"modifiedSince": {
+					"displayName": "修改时间晚于",
+					"description": "返回在特定日期之后修改的库存现有量值"
+				},
+				"orderNumber": {
+					"displayName": "订单编号",
+					"description": "返回具有指定订单号的单个订单。如果设置，它将覆盖所有其他筛选条件。"
+				},
+				"orderStatus": {
+					"displayName": "订单状态",
+					"description": "返回具有指定状态的订单。如果未指定orderStatus筛选器，则默认排除“已删除”状态。"
+				},
+				"startDate": {
+					"displayName": "开始日期",
+					"description": "返回指定日期之后下单的订单。使用UTC时间。"
+				},
+				"asAtDate": {
+					"displayName": "截至日期",
+					"description": "返回指定日期的库存数量"
+				},
+				"IsAssembled": {
+					"displayName": "是否已组装",
+					"description": "可用数量是否包含可组装数量"
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"description": "按指定列排序列表，默认按productCode排序"
+				},
+				"productId": {
+					"displayName": "产品ID",
+					"description": "返回具有指定产品GUID的产品。您可以输入多个产品ID，用逗号分隔。"
+				},
+				"warehouseCode": {
+					"displayName": "仓库代码",
+					"description": "返回指定仓库代码的现有库存"
+				},
+				"warehouseName": {
+					"displayName": "仓库名称",
+					"description": "返回指定仓库名称的库存数量"
+				}
+			}
+		},
+		"productId": {
+			"displayName": "产品ID"
+		}
+	}
+}

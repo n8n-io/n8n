@@ -1,0 +1,30 @@
+{
+	"header": {
+		"displayName": "筛选",
+		"description": "移除符合条件的数据项"
+	},
+	"nodeView": {
+		"conditions": {
+			"displayName": "条件",
+			"placeholder": "添加条件"
+		},
+		"looseTypeValidation": {
+			"displayName": "在需要时转换类型",
+			"description": "如果表达式的类型与比较类型不匹配，n8n会尝试将表达式转换为所需类型。例如，对于布尔值，<code>\"false\"</code>或<code>0</code>将被转换为<code>false</code>"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"ignoreCase": {
+					"displayName": "忽略大小写",
+					"description": "评估条件时是否忽略字母大小写"
+				},
+				"looseTypeValidation": {
+					"displayName": "在需要时转换类型",
+					"description": "如果表达式的类型与比较类型不匹配，n8n会尝试将表达式转换为所需类型。例如，对于布尔值，<code>\"false\"</code>或<code>0</code>将被转换为<code>false</code>。"
+				}
+			}
+		}
+	}
+}

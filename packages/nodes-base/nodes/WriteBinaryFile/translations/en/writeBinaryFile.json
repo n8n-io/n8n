@@ -1,0 +1,27 @@
+{
+	"header": {
+		"displayName": "Write Binary File",
+		"description": "Writes a binary file to disk"
+	},
+	"nodeView": {
+		"fileName": {
+			"displayName": "File Name",
+			"description": "Path to which the file should be written",
+			"placeholder": "/data/example.jpg"
+		},
+		"dataPropertyName": {
+			"displayName": "Property Name",
+			"description": "Name of the binary property which contains the data for the file to be written"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"append": {
+					"displayName": "Append",
+					"description": "Whether to append to an existing file"
+				}
+			}
+		}
+	}
+}

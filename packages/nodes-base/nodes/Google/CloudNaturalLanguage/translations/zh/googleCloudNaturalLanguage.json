@@ -1,0 +1,134 @@
+{
+	"header": {
+		"displayName": "Google Cloud Natural Language",
+		"description": "使用 Google Cloud Natural Language API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"document": {
+					"displayName": "文档"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"analyzeSentiment": {
+					"displayName": "分析情感"
+				}
+			}
+		},
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "文档来源：包含内容的字符串或Google Cloud Storage URI",
+			"options": {
+				"content": {
+					"displayName": "内容"
+				},
+				"gcsContentUri": {
+					"displayName": "Google Cloud Storage URI"
+				}
+			}
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "输入内容的字符串格式。基于用户数据，因此免除云审计日志记录。"
+		},
+		"gcsContentUri": {
+			"displayName": "Google Cloud Storage URI",
+			"description": "文件内容所在的Google Cloud Storage URI。此URI必须采用以下格式：<code>gs://bucket_name/object_name</code>。更多详情，请参阅<a href=\"https://cloud.google.com/storage/docs/reference-uris.\">参考文档</a>。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"documentType": {
+					"displayName": "文档类型",
+					"description": "输入文档的类型",
+					"options": {
+						"HTML": {
+							"displayName": "HTML"
+						},
+						"PLAIN_TEXT": {
+							"displayName": "纯文本"
+						}
+					}
+				},
+				"encodingType": {
+					"displayName": "编码类型",
+					"description": "API用于计算句子偏移量的编码类型",
+					"options": {
+						"NONE": {
+							"displayName": "无"
+						},
+						"UTF8": {
+							"displayName": "UTF-8"
+						},
+						"UTF16": {
+							"displayName": "UTF-16"
+						},
+						"UTF32": {
+							"displayName": "UTF-32"
+						}
+					}
+				},
+				"language": {
+					"displayName": "语言",
+					"description": "文档语言（如未指定，将自动检测）。接受ISO和BCP-47语言代码。",
+					"options": {
+						"ar": {
+							"displayName": "阿拉伯语"
+						},
+						"zh": {
+							"displayName": "简体中文"
+						},
+						"zh-Hant": {
+							"displayName": "繁體中文"
+						},
+						"nl": {
+							"displayName": "荷兰语"
+						},
+						"en": {
+							"displayName": "英文"
+						},
+						"fr": {
+							"displayName": "法语"
+						},
+						"de": {
+							"displayName": "德语"
+						},
+						"id": {
+							"displayName": "印尼语"
+						},
+						"it": {
+							"displayName": "意大利语"
+						},
+						"ja": {
+							"displayName": "日语"
+						},
+						"ko": {
+							"displayName": "韩语"
+						},
+						"pt": {
+							"displayName": "葡萄牙语（巴西与欧洲）"
+						},
+						"es": {
+							"displayName": "西班牙语"
+						},
+						"th": {
+							"displayName": "泰语"
+						},
+						"tr": {
+							"displayName": "土耳其语"
+						},
+						"vi": {
+							"displayName": "越南语"
+						}
+					}
+				}
+			}
+		}
+	}
+}

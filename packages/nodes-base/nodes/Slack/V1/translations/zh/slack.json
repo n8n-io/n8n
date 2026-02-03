@@ -1,0 +1,4374 @@
+{
+	"header": {
+		"displayName": "Slack",
+		"description": "使用Slack API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"channel": {
+					"displayName": "频道"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"message": {
+					"displayName": "消息"
+				},
+				"reaction": {
+					"displayName": "反应"
+				},
+				"star": {
+					"displayName": "星标"
+				},
+				"user": {
+					"displayName": "用户"
+				},
+				"userGroup": {
+					"displayName": "用户组"
+				},
+				"userProfile": {
+					"displayName": "用户资料"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"archive": {
+					"displayName": "归档",
+					"description": "归档对话"
+				},
+				"close": {
+					"displayName": "关闭",
+					"description": "关闭私信或多人私信"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建用户组"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户个人资料"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户组"
+				},
+				"history": {
+					"displayName": "历史记录",
+					"description": "获取对话的消息和事件历史记录"
+				},
+				"invite": {
+					"displayName": "邀请",
+					"description": "邀请用户加入频道"
+				},
+				"join": {
+					"displayName": "加入",
+					"description": "加入现有对话"
+				},
+				"kick": {
+					"displayName": "踢出",
+					"description": "从频道中移除用户"
+				},
+				"leave": {
+					"displayName": "离开",
+					"description": "离开对话"
+				},
+				"member": {
+					"displayName": "成员",
+					"description": "列出对话成员"
+				},
+				"open": {
+					"displayName": "打开",
+					"description": "打开或恢复私聊或多人私聊"
+				},
+				"rename": {
+					"displayName": "重命名",
+					"description": "重命名对话"
+				},
+				"replies": {
+					"displayName": "回复",
+					"description": "获取频道消息线程"
+				},
+				"setPurpose": {
+					"displayName": "设置对话目的",
+					"description": "为对话设置目的"
+				},
+				"setTopic": {
+					"displayName": "设置主题",
+					"description": "为对话设置主题"
+				},
+				"unarchive": {
+					"displayName": "取消归档",
+					"description": "解档对话"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从项目中删除星标"
+				},
+				"getPermalink": {
+					"displayName": "获取永久链接",
+					"description": "获取消息的永久链接"
+				},
+				"post": {
+					"displayName": "发布",
+					"description": "向频道发布消息"
+				},
+				"postEphemeral": {
+					"displayName": "发布（临时消息）",
+					"description": "向频道中的用户发布临时消息"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新用户资料"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "向消息添加反应"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "创建或上传现有文件"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "移除消息的反应"
+				},
+				"info": {
+					"displayName": "信息",
+					"description": "获取用户信息"
+				},
+				"getPresence": {
+					"displayName": "获取在线状态",
+					"description": "获取用户的在线状态"
+				},
+				"disable": {
+					"displayName": "禁用",
+					"description": "禁用用户组"
+				},
+				"enable": {
+					"displayName": "启用",
+					"description": "启用用户组"
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "频道名称或ID",
+			"description": "包含消息的频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。",
+			"placeholder": "频道名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"isPrivate": {
+					"displayName": "是否私有",
+					"description": "是否创建私有频道而非公共频道"
+				},
+				"includeNumMembers": {
+					"displayName": "包含成员数量"
+				},
+				"channelIds": {
+					"displayName": "频道名称或ID",
+					"description": "用户组用作默认设置的编码频道ID的逗号分隔字符串。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "用户组的简短描述"
+				},
+				"handle": {
+					"displayName": "处理",
+					"description": "提及句柄。必须在频道、用户和用户组中保持唯一。"
+				},
+				"include_count": {
+					"displayName": "包含计数",
+					"description": "是否包含每个用户组中的用户数量"
+				},
+				"include_disabled": {
+					"displayName": "包含已停用",
+					"description": "是否包含已停用的用户组"
+				},
+				"include_users": {
+					"displayName": "包含用户",
+					"description": "是否包含每个用户组的用户列表"
+				},
+				"customFieldUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"id": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								},
+								"alt": {
+									"displayName": "Alt"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "自定义字段",
+							"options": {
+								"id": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								},
+								"alt": {
+									"displayName": "Alt"
+								}
+							}
+						},
+						"customFieldUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "此字段仅可由管理员为付费团队中的用户更改",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "名字"
+				},
+				"last_name": {
+					"displayName": "姓氏"
+				},
+				"status_emoji": {
+					"displayName": "状态表情符号",
+					"description": "引用Slack团队启用的表情符号字符串，例如:mountain_railway:"
+				},
+				"status_expiration": {
+					"displayName": "状态过期时间",
+					"description": "指定自纪元以来的秒数（通常称为“UNIX时间”）的整数。提供0或省略此字段将创建一个永不过期的自定义状态。"
+				},
+				"status_text": {
+					"displayName": "状态文本",
+					"description": "最多允许100个字符，但我们强烈建议保持简洁"
+				},
+				"user": {
+					"displayName": "用户ID",
+					"description": "要检索其个人资料信息的用户"
+				},
+				"include_labels": {
+					"displayName": "包含标签",
+					"description": "是否在自定义资料字段中为每个ID包含标签"
+				}
+			}
+		},
+		"userIds": {
+			"displayName": "用户名称或ID",
+			"description": "要邀请加入频道的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"userId": {
+			"displayName": "用户名或ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量",
+			"placeholder": "限制"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"excludeArchived": {
+					"displayName": "排除已归档",
+					"description": "是否从列表中排除已归档的频道"
+				},
+				"types": {
+					"displayName": "类型",
+					"description": "按文件类型筛选文件"
+				},
+				"inclusive": {
+					"displayName": "包含",
+					"description": "是否仅在指定时间戳时包含最新或最旧时间戳的消息"
+				},
+				"latest": {
+					"displayName": "最新",
+					"description": "要包含在结果中的消息时间范围结束时间"
+				},
+				"oldest": {
+					"displayName": "最旧",
+					"description": "包含在结果中的消息起始时间范围"
+				},
+				"channelId": {
+					"displayName": "频道名称或ID",
+					"description": "包含待列出文件的频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"showFilesHidden": {
+					"displayName": "显示因限制隐藏的文件",
+					"description": "是否显示因文件过旧且所属团队超出文件限制而被截断的文件信息"
+				},
+				"tsFrom": {
+					"displayName": "时间戳起始",
+					"description": "筛选在此时间戳之后（含）创建的文件"
+				},
+				"tsTo": {
+					"displayName": "时间戳至",
+					"description": "筛选在此时间戳之前（含）创建的文件"
+				},
+				"userId": {
+					"displayName": "用户名或ID",
+					"description": "筛选由单个用户创建的文件。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "是否自动解析数据。默认情况下响应仅包含资源的ID。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"channelId": {
+					"displayName": "频道名称或ID",
+					"description": "要添加星标的频道，或包含待加星消息的频道（需与时间戳配合使用）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"returnIm": {
+					"displayName": "返回即时通讯",
+					"description": "是否需要在响应中包含完整的即时通讯通道定义"
+				},
+				"users": {
+					"displayName": "用户名称或ID",
+					"description": "如果只包含一个用户，这将创建一个1:1私信。返回多人私信时，用户顺序会被保留。不提供用户时需提供频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"fileComment": {
+					"displayName": "文件注释",
+					"description": "添加星标文件注释"
+				},
+				"fileId": {
+					"displayName": "文件ID",
+					"description": "要添加星标的文件"
+				},
+				"timestamp": {
+					"displayName": "时间戳",
+					"description": "要添加星标的消息时间戳"
+				},
+				"channelIds": {
+					"displayName": "频道名称或ID",
+					"description": "发送文件的目标频道。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "文件名"
+				},
+				"initialComment": {
+					"displayName": "初始评论",
+					"description": "在指定频道中介绍文件的消息文本"
+				},
+				"threadTs": {
+					"displayName": "线程时间戳",
+					"description": "提供另一条消息的时间戳值，将此文件作为回复上传。切勿使用回复的时间戳值；请使用其父消息的时间戳。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "文件标题"
+				}
+			},
+			"description": "其他选项设置"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "用户组的名称。必须在所有用户组中保持唯一。",
+			"placeholder": "[0]+1"
+		},
+		"ts": {
+			"displayName": "TS",
+			"description": "要更新的消息时间戳"
+		},
+		"purpose": {
+			"displayName": "用途",
+			"description": "一个新的、更特殊的用途"
+		},
+		"topic": {
+			"displayName": "主题",
+			"description": "新主题字符串。不支持格式化或链接化。"
+		},
+		"timestamp": {
+			"displayName": "时间戳",
+			"description": "消息时间戳"
+		},
+		"channel": {
+			"displayName": "频道",
+			"description": "发送消息的频道",
+			"placeholder": "频道名称"
+		},
+		"user": {
+			"displayName": "用户ID",
+			"description": "要获取在线状态的用户ID",
+			"placeholder": "用户ID"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "消息的新文本，使用默认格式规则。当呈现附件时不需要。"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"otherOptions": {
+			"displayName": "选项",
+			"description": "其他要设置的选项",
+			"placeholder": "添加选项",
+			"options": {
+				"icon_emoji": {
+					"displayName": "图标表情符号",
+					"description": "用作此消息图标的表情符号。将覆盖icon_url。"
+				},
+				"icon_url": {
+					"displayName": "图标URL",
+					"description": "用作此消息图标的图像URL"
+				},
+				"link_names": {
+					"displayName": "链接名称",
+					"description": "是否查找并链接频道名称和用户名"
+				},
+				"thread_ts": {
+					"displayName": "回复消息",
+					"description": "提供另一条消息的ts值，使此消息成为回复"
+				},
+				"mrkdwn": {
+					"displayName": "Markdown",
+					"description": "是否使用Slack Markdown解析"
+				},
+				"reply_broadcast": {
+					"displayName": "回复广播",
+					"description": "是否让频道或对话中的所有成员都能看到此回复。需与thread_ts参数配合使用。"
+				},
+				"unfurl_links": {
+					"displayName": "链接预览",
+					"description": "是否启用以文本为主的内容预览"
+				},
+				"unfurl_media": {
+					"displayName": "媒体内容展开",
+					"description": "是否禁用媒体内容的自动展开"
+				},
+				"sendAsUser": {
+					"displayName": "以用户身份发送",
+					"description": "消息将从此用户名发送（即如同该用户本人发送了消息）。"
+				}
+			}
+		},
+		"attachments": {
+			"displayName": "附件",
+			"description": "要添加的附件",
+			"placeholder": "添加附件项",
+			"multipleValueButtonText": "添加附件",
+			"options": {
+				"fallback": {
+					"displayName": "备用文本",
+					"description": "附件的必需纯文本摘要"
+				},
+				"text": {
+					"displayName": "文本",
+					"description": "要发送的文本"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "消息标题"
+				},
+				"title_link": {
+					"displayName": "标题链接",
+					"description": "标题链接"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "文本左侧线条颜色"
+				},
+				"pretext": {
+					"displayName": "前置文本",
+					"description": "消息块前显示的文本"
+				},
+				"author_name": {
+					"displayName": "作者姓名",
+					"description": "应显示的名称"
+				},
+				"author_link": {
+					"displayName": "作者链接",
+					"description": "作者链接"
+				},
+				"author_icon": {
+					"displayName": "作者图标",
+					"description": "应为用户显示的图标"
+				},
+				"image_url": {
+					"displayName": "图片URL",
+					"description": "图片URL"
+				},
+				"thumb_url": {
+					"displayName": "缩略图URL",
+					"description": "缩略图URL"
+				},
+				"footer": {
+					"displayName": "页脚",
+					"description": "要添加的页脚文本"
+				},
+				"footer_icon": {
+					"displayName": "页脚图标",
+					"description": "应显示在页脚旁的图标"
+				},
+				"ts": {
+					"displayName": "时间戳",
+					"description": "时间消息关联于"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "要添加到消息的字段",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"item": {
+							"displayName": "项目",
+							"options": {
+								"title": {
+									"displayName": "标题",
+									"description": "项目标题"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "项目值"
+								},
+								"short": {
+									"displayName": "简短",
+									"description": "项目是否可以并排显示"
+								}
+							}
+						}
+					},
+					"values": {
+						"item": {
+							"displayName": "项目",
+							"options": {
+								"title": {
+									"displayName": "标题",
+									"description": "项目标题"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "项目值"
+								},
+								"short": {
+									"displayName": "简短",
+									"description": "项目是否可以并排显示"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "字段",
+							"placeholder": "添加字段"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"link_names": {
+					"displayName": "链接名称",
+					"description": "是否查找并链接频道名称和用户名"
+				},
+				"parse": {
+					"displayName": "解析",
+					"description": "更改消息处理方式",
+					"options": {
+						"client": {
+							"displayName": "客户端"
+						},
+						"full": {
+							"displayName": "完整"
+						},
+						"none": {
+							"displayName": "无"
+						}
+					}
+				},
+				"channels": {
+					"displayName": "频道名称或ID",
+					"description": "用户组用作默认设置的编码频道ID的逗号分隔字符串。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "用户组的简短描述"
+				},
+				"handle": {
+					"displayName": "处理",
+					"description": "提及句柄。必须在频道、用户和用户组中保持唯一。"
+				},
+				"include_count": {
+					"displayName": "包含计数",
+					"description": "是否包含每个用户组中的用户数量"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "用户组的名称。必须在所有用户组中保持唯一。"
+				}
+			}
+		},
+		"attachmentsJson": {
+			"displayName": "附件",
+			"description": "要添加的附件"
+		},
+		"blocksJson": {
+			"displayName": "区块",
+			"description": "要添加的区块"
+		},
+		"blocksUi": {
+			"displayName": "区块",
+			"description": "要添加的区块",
+			"placeholder": "添加区块",
+			"multipleValueButtonText": "添加区块",
+			"options": {
+				"blocksValues": {
+					"displayName": "块",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"actions": {
+									"displayName": "操作"
+								},
+								"section": {
+									"displayName": "部分"
+								}
+							}
+						},
+						"blockId": {
+							"displayName": "块ID",
+							"description": "作为块唯一标识符的字符串。当您收到交互负载时，可以使用此 block_id 来识别操作的来源。如果未指定，将生成一个 block_id。此字段的最大长度为 255 个字符。"
+						},
+						"elementsUi": {
+							"displayName": "元素",
+							"placeholder": "添加元素",
+							"multipleValueButtonText": "添加元素",
+							"options": {
+								"elementsValues": {
+									"displayName": "元素",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "元素类型",
+											"options": {
+												"button": {
+													"displayName": "按钮"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "块的文本"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format"
+										},
+										"actionId": {
+											"displayName": "操作ID",
+											"description": "此操作的标识符。当您收到交互负载时，可以使用此标识符来识别操作的来源。该ID应在您应用使用的所有其他action_id中保持唯一。"
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "点击按钮时在用户浏览器中加载的URL。此字段最大长度为3000个字符。如果使用URL，您仍会收到交互负载，并且需要发送确认响应。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "随交互载荷一起发送的值"
+										},
+										"style": {
+											"displayName": "样式",
+											"description": "为按钮提供替代视觉配色方案",
+											"options": {
+												"danger": {
+													"displayName": "危险"
+												},
+												"default": {
+													"displayName": "默认"
+												},
+												"primary": {
+													"displayName": "主要"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "确认",
+											"description": "定义点击按钮后显示的可选确认对话框",
+											"placeholder": "添加确认",
+											"options": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义对话框标题",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认操作的按钮文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义对话框标题",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认操作的按钮文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "确认",
+													"placeholder": "添加确认"
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"elementsValues": {
+									"displayName": "元素",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "元素类型",
+											"options": {
+												"button": {
+													"displayName": "按钮"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "块的文本"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+										},
+										"actionId": {
+											"displayName": "操作ID",
+											"description": "此操作的标识符。当您收到交互负载时，可以使用此标识符来识别操作的来源。该ID应在您应用使用的所有其他action_id中保持唯一。"
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "点击按钮时在用户浏览器中加载的URL。此字段最大长度为3000个字符。如果使用URL，您仍会收到交互负载，并且需要发送确认响应。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "随交互载荷一起发送的值"
+										},
+										"style": {
+											"displayName": "样式",
+											"description": "为按钮提供替代视觉配色方案",
+											"options": {
+												"danger": {
+													"displayName": "危险"
+												},
+												"default": {
+													"displayName": "默认"
+												},
+												"primary": {
+													"displayName": "主要"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "确认",
+											"description": "定义点击按钮后显示的可选确认对话框",
+											"placeholder": "添加确认",
+											"options": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义对话框标题",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认操作的按钮文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义对话框标题",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认操作的按钮文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "确认",
+													"placeholder": "添加确认"
+												}
+											}
+										}
+									}
+								},
+								"elementsUi": {
+									"displayName": "元素",
+									"placeholder": "添加元素"
+								}
+							}
+						},
+						"textUi": {
+							"displayName": "文本",
+							"description": "定义取消操作的按钮文本",
+							"placeholder": "添加文本",
+							"options": {
+								"textValue": {
+									"displayName": "文本",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "此文本对象使用的格式",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "纯文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "逐字显示",
+											"description": "是否设置为false（默认值）：URL将自动转换为链接，会话名称将被链接化，并且某些提及将被自动解析。"
+										}
+									}
+								}
+							},
+							"values": {
+								"textValue": {
+									"displayName": "文本",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "此文本对象使用的格式",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "纯文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn."
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "逐字显示",
+											"description": "是否设置为false（默认值）：URL将自动转换为链接，会话名称将被链接化，并且某些提及将被自动解析。"
+										}
+									}
+								},
+								"textUi": {
+									"displayName": "文本",
+									"placeholder": "添加文本"
+								}
+							}
+						},
+						"fieldsUi": {
+							"displayName": "字段",
+							"description": "一个文本对象数组。包含字段的任何文本对象将以紧凑格式呈现，允许并排显示两列文本。最大项目数为10。",
+							"placeholder": "添加字段",
+							"multipleValueButtonText": "添加字段",
+							"options": {
+								"fieldsValues": {
+									"displayName": "文本",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "此文本对象使用的格式",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "纯文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "区块的文本内容。当类型为 mrkdwn 时，此字段接受任何标准文本格式化标记。"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "逐字显示",
+											"description": "当设置为false（默认值）时，URL将自动转换为链接，会话名称将被链接化，并且某些提及将被自动解析"
+										}
+									}
+								}
+							},
+							"values": {
+								"fieldsValues": {
+									"displayName": "文本",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "此文本对象使用的格式",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "纯文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "区块的文本内容。当类型为 mrkdwn 时，此字段接受任何标准文本格式化标记。"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "逐字显示",
+											"description": "当设置为false（默认值）时，URL将自动转换为链接，会话名称将被链接化，并且某些提及将被自动解析"
+										}
+									}
+								},
+								"fieldsUi": {
+									"displayName": "字段",
+									"placeholder": "添加字段"
+								}
+							}
+						},
+						"accessoryUi": {
+							"displayName": "附件",
+							"placeholder": "添加附件",
+							"options": {
+								"accessoriesValues": {
+									"displayName": "附件",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "元素类型",
+											"options": {
+												"button": {
+													"displayName": "按钮"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "块的文本"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+										},
+										"actionId": {
+											"displayName": "操作ID",
+											"description": "此操作的标识符。当您收到交互负载时，可以使用此标识符来识别操作的来源。该ID应在您应用使用的所有其他action_id中保持唯一。"
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "点击按钮时在用户浏览器中加载的URL。此字段最大长度为3000个字符。如果使用URL，您仍会收到交互负载，并且需要发送确认响应。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "随交互载荷一起发送的值"
+										},
+										"style": {
+											"displayName": "样式",
+											"description": "为按钮提供替代视觉配色方案",
+											"options": {
+												"danger": {
+													"displayName": "危险"
+												},
+												"default": {
+													"displayName": "默认"
+												},
+												"primary": {
+													"displayName": "主要"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "确认",
+											"description": "定义点击按钮后显示的可选确认对话框",
+											"placeholder": "添加确认",
+											"options": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义点击按钮后显示的可选确认对话框",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义点击按钮后显示的可选确认对话框",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "确认",
+													"placeholder": "添加确认"
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"accessoriesValues": {
+									"displayName": "附件",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "元素类型",
+											"options": {
+												"button": {
+													"displayName": "按钮"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "块的文本"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+										},
+										"actionId": {
+											"displayName": "操作ID",
+											"description": "此操作的标识符。当您收到交互负载时，可以使用此标识符来识别操作的来源。该ID应在您应用使用的所有其他action_id中保持唯一。"
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "点击按钮时在用户浏览器中加载的URL。此字段最大长度为3000个字符。如果使用URL，您仍会收到交互负载，并且需要发送确认响应。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "随交互载荷一起发送的值"
+										},
+										"style": {
+											"displayName": "样式",
+											"description": "为按钮提供替代视觉配色方案",
+											"options": {
+												"danger": {
+													"displayName": "危险"
+												},
+												"default": {
+													"displayName": "默认"
+												},
+												"primary": {
+													"displayName": "主要"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "确认",
+											"description": "定义点击按钮后显示的可选确认对话框",
+											"placeholder": "添加确认",
+											"options": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义点击按钮后显示的可选确认对话框",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义点击按钮后显示的可选确认对话框",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "确认",
+													"placeholder": "添加确认"
+												}
+											}
+										}
+									}
+								},
+								"accessoryUi": {
+									"displayName": "附件",
+									"placeholder": "添加附件"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"blocksValues": {
+					"displayName": "块",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"actions": {
+									"displayName": "操作"
+								},
+								"section": {
+									"displayName": "部分"
+								}
+							}
+						},
+						"blockId": {
+							"displayName": "块ID",
+							"description": "作为块唯一标识符的字符串。当您收到交互负载时，可以使用此 block_id 来识别操作的来源。如果未指定，将生成一个 block_id。此字段的最大长度为 255 个字符。"
+						},
+						"elementsUi": {
+							"displayName": "元素",
+							"placeholder": "添加元素",
+							"multipleValueButtonText": "添加元素",
+							"options": {
+								"elementsValues": {
+									"displayName": "元素",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "元素类型",
+											"options": {
+												"button": {
+													"displayName": "按钮"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "块的文本"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+										},
+										"actionId": {
+											"displayName": "操作ID",
+											"description": "此操作的标识符。当您收到交互负载时，可以使用此标识符来识别操作的来源。该ID应在您应用使用的所有其他action_id中保持唯一。"
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "点击按钮时在用户浏览器中加载的URL。此字段最大长度为3000个字符。如果使用URL，您仍会收到交互负载，并且需要发送确认响应。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "随交互载荷一起发送的值"
+										},
+										"style": {
+											"displayName": "样式",
+											"description": "为按钮提供替代视觉配色方案",
+											"options": {
+												"danger": {
+													"displayName": "危险"
+												},
+												"default": {
+													"displayName": "默认"
+												},
+												"primary": {
+													"displayName": "主要"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "确认",
+											"description": "定义点击按钮后显示的可选确认对话框",
+											"placeholder": "添加确认",
+											"options": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义对话框标题",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认操作的按钮文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义对话框标题",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认操作的按钮文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "确认",
+													"placeholder": "添加确认"
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"elementsValues": {
+									"displayName": "元素",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "元素类型",
+											"options": {
+												"button": {
+													"displayName": "按钮"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "块的文本"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+										},
+										"actionId": {
+											"displayName": "操作ID",
+											"description": "此操作的标识符。当您收到交互负载时，可以使用此标识符来识别操作的来源。该ID应在您应用使用的所有其他action_id中保持唯一。"
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "点击按钮时在用户浏览器中加载的URL。此字段最大长度为3000个字符。如果使用URL，您仍会收到交互负载，并且需要发送确认响应。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "随交互载荷一起发送的值"
+										},
+										"style": {
+											"displayName": "样式",
+											"description": "为按钮提供替代视觉配色方案",
+											"options": {
+												"danger": {
+													"displayName": "危险"
+												},
+												"default": {
+													"displayName": "默认"
+												},
+												"primary": {
+													"displayName": "主要"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "确认",
+											"description": "定义点击按钮后显示的可选确认对话框",
+											"placeholder": "添加确认",
+											"options": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义对话框标题",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认操作的按钮文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义对话框标题",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认操作的按钮文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "确认",
+													"placeholder": "添加确认"
+												}
+											}
+										}
+									}
+								},
+								"elementsUi": {
+									"displayName": "元素",
+									"placeholder": "添加元素"
+								}
+							}
+						},
+						"textUi": {
+							"displayName": "文本",
+							"description": "定义取消操作的按钮文本",
+							"placeholder": "添加文本",
+							"options": {
+								"textValue": {
+									"displayName": "文本",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "此文本对象使用的格式",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "纯文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "区块的文本内容。当类型为 mrkdwn 时，此字段接受任何标准文本格式化标记。"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "逐字显示",
+											"description": "是否设置为false（默认值）：URL将自动转换为链接，会话名称将被链接化，并且某些提及将被自动解析。"
+										}
+									}
+								}
+							},
+							"values": {
+								"textValue": {
+									"displayName": "文本",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "此文本对象使用的格式",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "纯文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "区块的文本内容。当类型为 mrkdwn 时，此字段接受任何标准文本格式化标记。"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "逐字显示",
+											"description": "是否设置为false（默认值）：URL将自动转换为链接，会话名称将被链接化，并且某些提及将被自动解析。"
+										}
+									}
+								},
+								"textUi": {
+									"displayName": "文本",
+									"placeholder": "添加文本"
+								}
+							}
+						},
+						"fieldsUi": {
+							"displayName": "字段",
+							"description": "一个文本对象数组。包含字段的任何文本对象将以紧凑格式呈现，允许并排显示两列文本。最大项目数为10。",
+							"placeholder": "添加字段",
+							"multipleValueButtonText": "添加字段",
+							"options": {
+								"fieldsValues": {
+									"displayName": "文本",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "此文本对象使用的格式",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "纯文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "区块的文本内容。当类型为 mrkdwn 时，此字段接受任何标准文本格式化标记。"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "逐字显示",
+											"description": "当设置为false（默认值）时，URL将自动转换为链接，会话名称将被链接化，并且某些提及将被自动解析"
+										}
+									}
+								}
+							},
+							"values": {
+								"fieldsValues": {
+									"displayName": "文本",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "此文本对象使用的格式",
+											"options": {
+												"mrkwdn": {
+													"displayName": "Markdown"
+												},
+												"plainText": {
+													"displayName": "纯文本"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "区块的文本内容。当类型为 mrkdwn 时，此字段接受任何标准文本格式化标记。"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "Whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text."
+										},
+										"verbatim": {
+											"displayName": "逐字显示",
+											"description": "当设置为false（默认值）时，URL将自动转换为链接，会话名称将被链接化，并且某些提及将被自动解析"
+										}
+									}
+								},
+								"fieldsUi": {
+									"displayName": "字段",
+									"placeholder": "添加字段"
+								}
+							}
+						},
+						"accessoryUi": {
+							"displayName": "附件",
+							"placeholder": "添加附件",
+							"options": {
+								"accessoriesValues": {
+									"displayName": "附件",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "元素类型",
+											"options": {
+												"button": {
+													"displayName": "按钮"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "块的文本"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+										},
+										"actionId": {
+											"displayName": "操作ID",
+											"description": "此操作的标识符。当您收到交互负载时，可以使用此标识符来识别操作的来源。该ID应在您应用使用的所有其他action_id中保持唯一。"
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "点击按钮时在用户浏览器中加载的URL。此字段最大长度为3000个字符。如果使用URL，您仍会收到交互负载，并且需要发送确认响应。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "随交互载荷一起发送的值"
+										},
+										"style": {
+											"displayName": "样式",
+											"description": "为按钮提供替代视觉配色方案",
+											"options": {
+												"danger": {
+													"displayName": "危险"
+												},
+												"default": {
+													"displayName": "默认"
+												},
+												"primary": {
+													"displayName": "主要"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "确认",
+											"description": "定义点击按钮后显示的可选确认对话框",
+											"placeholder": "添加确认",
+											"options": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义点击按钮后显示的可选确认对话框",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义点击按钮后显示的可选确认对话框",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "确认",
+													"placeholder": "添加确认"
+												}
+											}
+										}
+									}
+								}
+							},
+							"values": {
+								"accessoriesValues": {
+									"displayName": "附件",
+									"options": {
+										"type": {
+											"displayName": "类型",
+											"description": "元素类型",
+											"options": {
+												"button": {
+													"displayName": "按钮"
+												}
+											}
+										},
+										"text": {
+											"displayName": "文本",
+											"description": "块的文本"
+										},
+										"emoji": {
+											"displayName": "表情符号",
+											"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+										},
+										"actionId": {
+											"displayName": "操作ID",
+											"description": "此操作的标识符。当您收到交互负载时，可以使用此标识符来识别操作的来源。该ID应在您应用使用的所有其他action_id中保持唯一。"
+										},
+										"url": {
+											"displayName": "URL",
+											"description": "点击按钮时在用户浏览器中加载的URL。此字段最大长度为3000个字符。如果使用URL，您仍会收到交互负载，并且需要发送确认响应。"
+										},
+										"value": {
+											"displayName": "值",
+											"description": "随交互载荷一起发送的值"
+										},
+										"style": {
+											"displayName": "样式",
+											"description": "为按钮提供替代视觉配色方案",
+											"options": {
+												"danger": {
+													"displayName": "危险"
+												},
+												"default": {
+													"displayName": "默认"
+												},
+												"primary": {
+													"displayName": "主要"
+												}
+											}
+										},
+										"confirmUi": {
+											"displayName": "确认",
+											"description": "定义点击按钮后显示的可选确认对话框",
+											"placeholder": "添加确认",
+											"options": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义点击按钮后显示的可选确认对话框",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												}
+											},
+											"values": {
+												"confirmValue": {
+													"displayName": "确认",
+													"options": {
+														"titleUi": {
+															"displayName": "标题",
+															"description": "定义点击按钮后显示的可选确认对话框",
+															"placeholder": "添加标题",
+															"options": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"titleValue": {
+																	"displayName": "标题",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "标题文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"titleUi": {
+																	"displayName": "标题",
+																	"placeholder": "添加标题"
+																}
+															}
+														},
+														"textUi": {
+															"displayName": "文本",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加文本",
+															"options": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"textValue": {
+																	"displayName": "文本",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "块的文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"textUi": {
+																	"displayName": "文本",
+																	"placeholder": "添加文本"
+																}
+															}
+														},
+														"confirmTextUi": {
+															"displayName": "确认",
+															"description": "定义确认对话框中显示的说明文本",
+															"placeholder": "添加确认",
+															"options": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"confirmValue": {
+																	"displayName": "确认",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义确认对话框中显示的说明文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"confirmTextUi": {
+																	"displayName": "确认",
+																	"placeholder": "添加确认"
+																}
+															}
+														},
+														"denyUi": {
+															"displayName": "拒绝",
+															"description": "定义取消操作的按钮文本",
+															"placeholder": "添加拒绝",
+															"options": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																}
+															},
+															"values": {
+																"denyValue": {
+																	"displayName": "拒绝",
+																	"options": {
+																		"text": {
+																			"displayName": "文本",
+																			"description": "定义取消操作的按钮文本"
+																		},
+																		"emoji": {
+																			"displayName": "表情符号",
+																			"description": "文本字段中的表情符号是否应转义为冒号表情格式"
+																		}
+																	}
+																},
+																"denyUi": {
+																	"displayName": "拒绝",
+																	"placeholder": "添加拒绝"
+																}
+															}
+														},
+														"style": {
+															"displayName": "样式",
+															"description": "定义应用于确认按钮的配色方案",
+															"options": {
+																"danger": {
+																	"displayName": "危险"
+																},
+																"default": {
+																	"displayName": "默认"
+																},
+																"primary": {
+																	"displayName": "主要"
+																}
+															}
+														}
+													}
+												},
+												"confirmUi": {
+													"displayName": "确认",
+													"placeholder": "添加确认"
+												}
+											}
+										}
+									}
+								},
+								"accessoryUi": {
+									"displayName": "附件",
+									"placeholder": "添加附件"
+								}
+							}
+						}
+					}
+				},
+				"blocksUi": {
+					"displayName": "区块",
+					"placeholder": "添加区块"
+				}
+			}
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "要上传文件的文本内容"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"fileId": {
+			"displayName": "文件ID"
+		},
+		"userGroupId": {
+			"displayName": "用户组ID",
+			"description": "要更新的用户组的编码ID"
+		}
+	}
+}

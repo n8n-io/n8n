@@ -1,0 +1,790 @@
+{
+	"header": {
+		"displayName": "Mautic",
+		"description": "使用Mautic API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"credentials": {
+					"displayName": "凭据"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"campaignContact": {
+					"displayName": "活动联系人",
+					"description": "向活动添加/移除联系人"
+				},
+				"company": {
+					"displayName": "公司",
+					"description": "创建或修改公司"
+				},
+				"companyContact": {
+					"displayName": "公司联系人",
+					"description": "向公司添加/移除联系人"
+				},
+				"contact": {
+					"displayName": "联系人",
+					"description": "创建与修改联系人"
+				},
+				"contactSegment": {
+					"displayName": "联系人细分",
+					"description": "向细分中添加/移除联系人"
+				},
+				"segmentEmail": {
+					"displayName": "分段邮件",
+					"description": "发送邮件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新联系人"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除联系人"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取联系人数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个联系人的数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新联系人"
+				},
+				"editContactPoint": {
+					"displayName": "编辑联系点",
+					"description": "编辑联系人的积分"
+				},
+				"editDoNotContactList": {
+					"displayName": "编辑请勿联系列表",
+					"description": "向/从请勿联系列表添加/移除联系人"
+				},
+				"sendEmail": {
+					"displayName": "发送邮件",
+					"description": "发送邮件给联系人"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "将联系人添加到公司"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从公司移除联系人"
+				},
+				"send": {
+					"displayName": "发送"
+				}
+			}
+		},
+		"name": {
+			"displayName": "公司名称",
+			"description": "要创建的公司名称"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addressUi": {
+					"displayName": "地址",
+					"placeholder": "地址",
+					"options": {
+						"addressValues": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"zipCode": {
+									"displayName": "邮政编码"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressValues": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"zipCode": {
+									"displayName": "邮政编码"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "地址",
+							"placeholder": "地址"
+						}
+					}
+				},
+				"annualRevenue": {
+					"displayName": "年度营收"
+				},
+				"companyEmail": {
+					"displayName": "公司邮箱"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"description": "添加自定义字段以设置未预定义的值",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"fax": {
+					"displayName": "传真"
+				},
+				"industry": {
+					"displayName": "行业名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"isPublished": {
+					"displayName": "已发布"
+				},
+				"numberOfEmpoyees": {
+					"displayName": "员工数量"
+				},
+				"overwriteWithBlank": {
+					"displayName": "清空覆盖",
+					"description": "是否将空值设置到字段。否则将跳过空值。"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"website": {
+					"displayName": "网站"
+				},
+				"orderByDir": {
+					"displayName": "排序方向",
+					"description": "排序方向：升序或降序",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"orderBy": {
+					"displayName": "按名称或ID排序",
+					"description": "要排序的列。可以使用响应中列出的任何列。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "用于筛选实体的字符串或搜索命令"
+				},
+				"b2bOrb2c": {
+					"displayName": "B2B或B2C",
+					"options": {
+						"B2B": {
+							"displayName": "B2B"
+						},
+						"B2C": {
+							"displayName": "B2C"
+						}
+					}
+				},
+				"crmId": {
+					"displayName": "CRM ID"
+				},
+				"hasPurchased": {
+					"displayName": "已购买"
+				},
+				"ipAddress": {
+					"displayName": "IP地址",
+					"description": "要与联系人关联的IP地址"
+				},
+				"lastActive": {
+					"displayName": "最后活跃",
+					"description": "UTC日期/时间"
+				},
+				"mobile": {
+					"displayName": "移动端"
+				},
+				"ownerId": {
+					"displayName": "所有者ID",
+					"description": "分配给此联系人的Mautic用户ID"
+				},
+				"prospectOrCustomer": {
+					"displayName": "潜在客户或客户",
+					"options": {
+						"Prospect": {
+							"displayName": "潜在客户"
+						},
+						"Customer": {
+							"displayName": "客户"
+						}
+					}
+				},
+				"sandbox": {
+					"displayName": "沙盒"
+				},
+				"stage": {
+					"displayName": "阶段名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"socialMediaUi": {
+					"displayName": "社交媒体",
+					"placeholder": "社交媒体",
+					"options": {
+						"socialMediaValues": {
+							"displayName": "社交媒体",
+							"options": {
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"foursquare": {
+									"displayName": "Foursquare"
+								},
+								"instagram": {
+									"displayName": "Instagram"
+								},
+								"linkedIn": {
+									"displayName": "LinkedIn"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						}
+					},
+					"values": {
+						"socialMediaValues": {
+							"displayName": "社交媒体",
+							"options": {
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"foursquare": {
+									"displayName": "Foursquare"
+								},
+								"instagram": {
+									"displayName": "Instagram"
+								},
+								"linkedIn": {
+									"displayName": "LinkedIn"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						},
+						"socialMediaUi": {
+							"displayName": "社交媒体",
+							"placeholder": "社交媒体"
+						}
+					}
+				},
+				"reason": {
+					"displayName": "不联系的原因",
+					"options": {
+						"1": {
+							"displayName": "已取消订阅"
+						},
+						"2": {
+							"displayName": "退回"
+						},
+						"3": {
+							"displayName": "手动"
+						}
+					}
+				},
+				"comments": {
+					"displayName": "评论",
+					"description": "描述'请勿联系'条目详情的文本"
+				}
+			}
+		},
+		"companyId": {
+			"displayName": "公司ID",
+			"description": "公司的ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"addressUi": {
+					"displayName": "地址",
+					"placeholder": "地址",
+					"options": {
+						"addressValues": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"zipCode": {
+									"displayName": "邮政编码"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressValues": {
+							"displayName": "地址",
+							"options": {
+								"address1": {
+									"displayName": "地址行1"
+								},
+								"address2": {
+									"displayName": "地址行2"
+								},
+								"city": {
+									"displayName": "城市"
+								},
+								"state": {
+									"displayName": "状态"
+								},
+								"country": {
+									"displayName": "国家"
+								},
+								"zipCode": {
+									"displayName": "邮政编码"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "地址",
+							"placeholder": "地址"
+						}
+					}
+				},
+				"annualRevenue": {
+					"displayName": "年度营收"
+				},
+				"companyEmail": {
+					"displayName": "公司邮箱"
+				},
+				"name": {
+					"displayName": "公司名称"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"description": "添加自定义字段以设置未预定义的值",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "字段",
+							"options": {
+								"fieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"fax": {
+					"displayName": "传真"
+				},
+				"industry": {
+					"displayName": "行业名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"isPublished": {
+					"displayName": "已发布"
+				},
+				"numberOfEmpoyees": {
+					"displayName": "员工数量"
+				},
+				"overwriteWithBlank": {
+					"displayName": "清空覆盖",
+					"description": "是否将空值设置到字段。否则，空值将被跳过。"
+				},
+				"phone": {
+					"displayName": "电话"
+				},
+				"website": {
+					"displayName": "网站"
+				},
+				"bodyJson": {
+					"displayName": "正文",
+					"description": "联系人参数"
+				},
+				"b2bOrb2c": {
+					"displayName": "B2B或B2C",
+					"options": {
+						"B2B": {
+							"displayName": "B2B"
+						},
+						"B2C": {
+							"displayName": "B2C"
+						}
+					}
+				},
+				"crmId": {
+					"displayName": "CRM ID"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "联系人的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "名字"
+				},
+				"hasPurchased": {
+					"displayName": "已购买"
+				},
+				"ipAddress": {
+					"displayName": "IP地址",
+					"description": "要与联系人关联的IP地址"
+				},
+				"lastActive": {
+					"displayName": "最后活跃",
+					"description": "UTC日期/时间"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "姓氏"
+				},
+				"mobile": {
+					"displayName": "移动端"
+				},
+				"ownerId": {
+					"displayName": "所有者ID",
+					"description": "分配给此联系人的Mautic用户ID"
+				},
+				"position": {
+					"displayName": "位置"
+				},
+				"company": {
+					"displayName": "主要公司名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"prospectOrCustomer": {
+					"displayName": "潜在客户或客户",
+					"options": {
+						"Prospect": {
+							"displayName": "潜在客户"
+						},
+						"Customer": {
+							"displayName": "客户"
+						}
+					}
+				},
+				"sandbox": {
+					"displayName": "沙盒"
+				},
+				"stage": {
+					"displayName": "阶段名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"socialMediaUi": {
+					"displayName": "社交媒体",
+					"placeholder": "社交媒体",
+					"options": {
+						"socialMediaValues": {
+							"displayName": "社交媒体",
+							"options": {
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"foursquare": {
+									"displayName": "Foursquare"
+								},
+								"instagram": {
+									"displayName": "Instagram"
+								},
+								"linkedIn": {
+									"displayName": "LinkedIn"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						}
+					},
+					"values": {
+						"socialMediaValues": {
+							"displayName": "社交媒体",
+							"options": {
+								"facebook": {
+									"displayName": "Facebook"
+								},
+								"foursquare": {
+									"displayName": "Foursquare"
+								},
+								"instagram": {
+									"displayName": "Instagram"
+								},
+								"linkedIn": {
+									"displayName": "LinkedIn"
+								},
+								"skype": {
+									"displayName": "Skype"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						},
+						"socialMediaUi": {
+							"displayName": "社交媒体",
+							"placeholder": "社交媒体"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "联系人的电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"firstName": {
+			"displayName": "名字"
+		},
+		"lastName": {
+			"displayName": "姓氏"
+		},
+		"company": {
+			"displayName": "主要公司名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"position": {
+			"displayName": "位置"
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"bodyJson": {
+			"displayName": "正文",
+			"description": "联系人参数"
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "联系人的ID"
+		},
+		"action": {
+			"displayName": "操作",
+			"options": {
+				"add": {
+					"displayName": "添加"
+				},
+				"remove": {
+					"displayName": "移除"
+				}
+			}
+		},
+		"channel": {
+			"displayName": "频道",
+			"options": {
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"sms": {
+					"displayName": "短信"
+				}
+			}
+		},
+		"points": {
+			"displayName": "积分"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"search": {
+					"displayName": "搜索",
+					"description": "用于筛选实体的字符串或搜索命令"
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"description": "用于排序的列。可以使用响应中列出的任何列。"
+				},
+				"orderByDir": {
+					"displayName": "排序方向",
+					"description": "排序方向：升序（ASC）或降序（DESC）",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"publishedOnly": {
+					"displayName": "仅限已发布",
+					"description": "是否返回当前已发布的实体"
+				},
+				"minimal": {
+					"displayName": "最小化",
+					"description": "是否返回不包含额外列表的实体数组"
+				},
+				"rawData": {
+					"displayName": "原始数据",
+					"description": "默认只返回字段数据。如果设置此选项，将返回包含所有数据的原始响应。"
+				}
+			}
+		},
+		"campaignEmailId": {
+			"displayName": "营销活动邮件名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"segmentId": {
+			"displayName": "分段名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"campaignId": {
+			"displayName": "活动名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"segmentEmailId": {
+			"displayName": "分段电子邮件名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		}
+	}
+}

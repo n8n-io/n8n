@@ -1,0 +1,527 @@
+{
+	"header": {
+		"displayName": "Segment",
+		"description": "Consume Segment API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"group": {
+					"displayName": "Group",
+					"description": "Group lets you associate an identified user with a group"
+				},
+				"identify": {
+					"displayName": "Identify",
+					"description": "Identify lets you tie a user to their actions"
+				},
+				"track": {
+					"displayName": "Track",
+					"description": "Track lets you record events"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"add": {
+					"displayName": "Add",
+					"description": "Add a user to a group"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create an identity"
+				},
+				"event": {
+					"displayName": "Event",
+					"description": "Record the actions your users perform. Every action triggers an event, which can also have associated properties."
+				},
+				"page": {
+					"displayName": "Page",
+					"description": "Record page views on your website, along with optional extra information about the page being viewed"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "User ID"
+		},
+		"groupId": {
+			"displayName": "Group ID",
+			"description": "A Group ID is the unique identifier which you recognize a group by in your own database"
+		},
+		"traits": {
+			"displayName": "Traits",
+			"placeholder": "Add Trait",
+			"multipleValueButtonText": "Add Trait",
+			"options": {
+				"traitsUi": {
+					"displayName": "Trait",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"traitsUi": {
+					"displayName": "Trait",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"traits": {
+					"displayName": "Traits",
+					"placeholder": "Add Trait"
+				}
+			}
+		},
+		"context": {
+			"displayName": "Context",
+			"placeholder": "Add Context",
+			"options": {
+				"contextUi": {
+					"displayName": "Context",
+					"options": {
+						"active": {
+							"displayName": "Active",
+							"description": "Whether a user is active"
+						},
+						"ip": {
+							"displayName": "IP",
+							"description": "Current user’s IP address"
+						},
+						"locate": {
+							"displayName": "Locale",
+							"description": "Locale string for the current user, for example en-US"
+						},
+						"page": {
+							"displayName": "Page",
+							"description": "Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL"
+						},
+						"timezone": {
+							"displayName": "Timezone",
+							"description": "Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York"
+						},
+						"app": {
+							"displayName": "App",
+							"placeholder": "Add App",
+							"options": {
+								"appUi": {
+									"displayName": "App",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"version": {
+											"displayName": "Version"
+										},
+										"build": {
+											"displayName": "Build"
+										}
+									}
+								}
+							},
+							"values": {
+								"appUi": {
+									"displayName": "App",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"version": {
+											"displayName": "Version"
+										},
+										"build": {
+											"displayName": "Build"
+										}
+									}
+								},
+								"app": {
+									"displayName": "App",
+									"placeholder": "Add App"
+								}
+							}
+						},
+						"campaign": {
+							"displayName": "Campaign",
+							"placeholder": "Campaign App",
+							"options": {
+								"campaignUi": {
+									"displayName": "Campaign",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"source": {
+											"displayName": "Source"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"term": {
+											"displayName": "Term"
+										},
+										"content": {
+											"displayName": "Content"
+										}
+									}
+								}
+							},
+							"values": {
+								"campaignUi": {
+									"displayName": "Campaign",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"source": {
+											"displayName": "Source"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"term": {
+											"displayName": "Term"
+										},
+										"content": {
+											"displayName": "Content"
+										}
+									}
+								},
+								"campaign": {
+									"displayName": "Campaign",
+									"placeholder": "Campaign App"
+								}
+							}
+						},
+						"device": {
+							"displayName": "Device",
+							"placeholder": "Add Device",
+							"options": {
+								"deviceUi": {
+									"displayName": "Device",
+									"options": {
+										"id": {
+											"displayName": "ID"
+										},
+										"manufacturer": {
+											"displayName": "Manufacturer"
+										},
+										"model": {
+											"displayName": "Model"
+										},
+										"name": {
+											"displayName": "Name"
+										},
+										"type": {
+											"displayName": "Type"
+										},
+										"version": {
+											"displayName": "Version"
+										}
+									}
+								}
+							},
+							"values": {
+								"deviceUi": {
+									"displayName": "Device",
+									"options": {
+										"id": {
+											"displayName": "ID"
+										},
+										"manufacturer": {
+											"displayName": "Manufacturer"
+										},
+										"model": {
+											"displayName": "Model"
+										},
+										"name": {
+											"displayName": "Name"
+										},
+										"type": {
+											"displayName": "Type"
+										},
+										"version": {
+											"displayName": "Version"
+										}
+									}
+								},
+								"device": {
+									"displayName": "Device",
+									"placeholder": "Add Device"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"contextUi": {
+					"displayName": "Context",
+					"options": {
+						"active": {
+							"displayName": "Active",
+							"description": "Whether a user is active"
+						},
+						"ip": {
+							"displayName": "IP",
+							"description": "Current user’s IP address"
+						},
+						"locate": {
+							"displayName": "Locale",
+							"description": "Locale string for the current user, for example en-US"
+						},
+						"page": {
+							"displayName": "Page",
+							"description": "Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL"
+						},
+						"timezone": {
+							"displayName": "Timezone",
+							"description": "Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York"
+						},
+						"app": {
+							"displayName": "App",
+							"placeholder": "Add App",
+							"options": {
+								"appUi": {
+									"displayName": "App",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"version": {
+											"displayName": "Version"
+										},
+										"build": {
+											"displayName": "Build"
+										}
+									}
+								}
+							},
+							"values": {
+								"appUi": {
+									"displayName": "App",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"version": {
+											"displayName": "Version"
+										},
+										"build": {
+											"displayName": "Build"
+										}
+									}
+								},
+								"app": {
+									"displayName": "App",
+									"placeholder": "Add App"
+								}
+							}
+						},
+						"campaign": {
+							"displayName": "Campaign",
+							"placeholder": "Campaign App",
+							"options": {
+								"campaignUi": {
+									"displayName": "Campaign",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"source": {
+											"displayName": "Source"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"term": {
+											"displayName": "Term"
+										},
+										"content": {
+											"displayName": "Content"
+										}
+									}
+								}
+							},
+							"values": {
+								"campaignUi": {
+									"displayName": "Campaign",
+									"options": {
+										"name": {
+											"displayName": "Name"
+										},
+										"source": {
+											"displayName": "Source"
+										},
+										"medium": {
+											"displayName": "Medium"
+										},
+										"term": {
+											"displayName": "Term"
+										},
+										"content": {
+											"displayName": "Content"
+										}
+									}
+								},
+								"campaign": {
+									"displayName": "Campaign",
+									"placeholder": "Campaign App"
+								}
+							}
+						},
+						"device": {
+							"displayName": "Device",
+							"placeholder": "Add Device",
+							"options": {
+								"deviceUi": {
+									"displayName": "Device",
+									"options": {
+										"id": {
+											"displayName": "ID"
+										},
+										"manufacturer": {
+											"displayName": "Manufacturer"
+										},
+										"model": {
+											"displayName": "Model"
+										},
+										"name": {
+											"displayName": "Name"
+										},
+										"type": {
+											"displayName": "Type"
+										},
+										"version": {
+											"displayName": "Version"
+										}
+									}
+								}
+							},
+							"values": {
+								"deviceUi": {
+									"displayName": "Device",
+									"options": {
+										"id": {
+											"displayName": "ID"
+										},
+										"manufacturer": {
+											"displayName": "Manufacturer"
+										},
+										"model": {
+											"displayName": "Model"
+										},
+										"name": {
+											"displayName": "Name"
+										},
+										"type": {
+											"displayName": "Type"
+										},
+										"version": {
+											"displayName": "Version"
+										}
+									}
+								},
+								"device": {
+									"displayName": "Device",
+									"placeholder": "Add Device"
+								}
+							}
+						}
+					}
+				},
+				"context": {
+					"displayName": "Context",
+					"placeholder": "Add Context"
+				}
+			}
+		},
+		"integrations": {
+			"displayName": "Integration",
+			"placeholder": "Add Integration",
+			"options": {
+				"integrationsUi": {
+					"displayName": "Integration",
+					"options": {
+						"all": {
+							"displayName": "All"
+						},
+						"salesforce": {
+							"displayName": "Salesforce"
+						}
+					}
+				}
+			},
+			"values": {
+				"integrationsUi": {
+					"displayName": "Integration",
+					"options": {
+						"all": {
+							"displayName": "All"
+						},
+						"salesforce": {
+							"displayName": "Salesforce"
+						}
+					}
+				},
+				"integrations": {
+					"displayName": "Integration",
+					"placeholder": "Add Integration"
+				}
+			}
+		},
+		"event": {
+			"displayName": "Event",
+			"description": "Name of the action that a user has performed"
+		},
+		"properties": {
+			"displayName": "Properties",
+			"placeholder": "Add Properties",
+			"multipleValueButtonText": "Add Properties",
+			"options": {
+				"propertiesUi": {
+					"displayName": "Property",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"propertiesUi": {
+					"displayName": "Property",
+					"options": {
+						"key": {
+							"displayName": "Key"
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"properties": {
+					"displayName": "Properties",
+					"placeholder": "Add Properties"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the page For example, most sites have a “Signup” page that can be useful to tag, so you can see users as they move through your funnel"
+		}
+	}
+}

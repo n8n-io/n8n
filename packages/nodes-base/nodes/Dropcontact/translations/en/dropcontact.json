@@ -1,0 +1,101 @@
+{
+	"header": {
+		"displayName": "Dropcontact",
+		"description": "Find B2B emails and enrich contacts"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"enrich": {
+					"displayName": "Enrich",
+					"description": "Find B2B emails and enrich your contact from his name and his website"
+				},
+				"fetchRequest": {
+					"displayName": "Fetch Request"
+				}
+			}
+		},
+		"requestId": {
+			"displayName": "Request ID"
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "name@email.com"
+		},
+		"simplify": {
+			"displayName": "Simplify Output (Faster)",
+			"description": "When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"num_siren": {
+					"displayName": "Company SIREN Number"
+				},
+				"siret": {
+					"displayName": "Company SIRET Code"
+				},
+				"company": {
+					"displayName": "Company Name"
+				},
+				"country": {
+					"displayName": "Country"
+				},
+				"first_name": {
+					"displayName": "First Name"
+				},
+				"full_name": {
+					"displayName": "Full Name"
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"linkedin": {
+					"displayName": "LinkedIn Profile"
+				},
+				"phone": {
+					"displayName": "Phone Number"
+				},
+				"website": {
+					"displayName": "Website"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"waitTime": {
+					"displayName": "Data Fetch Wait Time",
+					"description": "When not simplifying the response, data will be fetched in two steps. This parameter controls how long to wait (in seconds) before trying the second step."
+				},
+				"siren": {
+					"displayName": "French Company Enrich",
+					"description": "Whether you want the <a href=\"https://en.wikipedia.org/wiki/SIREN_code\" target=\"_blank\">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader. Only applies to french companies."
+				},
+				"language": {
+					"displayName": "Language",
+					"description": "Whether the response is in English or French",
+					"options": {
+						"en": {
+							"displayName": "English"
+						},
+						"fr": {
+							"displayName": "French"
+						}
+					}
+				}
+			}
+		}
+	}
+}

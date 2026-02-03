@@ -1,0 +1,69 @@
+{
+	"header": {
+		"displayName": "Hacker News",
+		"description": "Consume Hacker News API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"all": {
+					"displayName": "All"
+				},
+				"article": {
+					"displayName": "Article"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many items"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a Hacker News user"
+				}
+			}
+		},
+		"articleId": {
+			"displayName": "Article ID",
+			"description": "The ID of the Hacker News article to be returned"
+		},
+		"username": {
+			"displayName": "Username",
+			"description": "The Hacker News user to be returned"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"includeComments": {
+					"displayName": "Include Comments",
+					"description": "Whether to include all the comments in a Hacker News article"
+				},
+				"keyword": {
+					"displayName": "Keyword",
+					"description": "The keyword for filtering the results of the query"
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Tags for filtering the results of the query"
+				}
+			}
+		}
+	}
+}

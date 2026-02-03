@@ -1,0 +1,106 @@
+{
+	"header": {
+		"displayName": "Ollama Model",
+		"description": "Language Model Ollama"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will generate the completion. To download models, visit <a href=\"https://ollama.ai/library\">Ollama Models Library</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls the randomness of the generated text. Lower values make the output more focused and deterministic, while higher values make it more diverse and random."
+				},
+				"topK": {
+					"displayName": "Top K",
+					"description": "Limits the number of highest probability vocabulary tokens to consider at each step. A higher value increases diversity but may reduce coherence. Set to -1 to disable."
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "Chooses from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p. Helps generate more human-like text by reducing repetitions."
+				},
+				"frequencyPenalty": {
+					"displayName": "Frequency Penalty",
+					"description": "Adjusts the penalty for tokens that have already appeared in the generated text. Higher values discourage repetition."
+				},
+				"keepAlive": {
+					"displayName": "Keep Alive",
+					"description": "Specifies the duration to keep the loaded model in memory after use. Useful for frequently used models. Format: 1h30m (1 hour 30 minutes)."
+				},
+				"lowVram": {
+					"displayName": "Low VRAM Mode",
+					"description": "Whether to Activate low VRAM mode, which reduces memory usage at the cost of slower generation speed. Useful for GPUs with limited memory."
+				},
+				"mainGpu": {
+					"displayName": "Main GPU ID",
+					"description": "Specifies the ID of the GPU to use for the main computation. Only change this if you have multiple GPUs."
+				},
+				"numBatch": {
+					"displayName": "Context Batch Size",
+					"description": "Sets the batch size for prompt processing. Larger batch sizes may improve generation speed but increase memory usage."
+				},
+				"numCtx": {
+					"displayName": "Context Length",
+					"description": "The maximum number of tokens to use as context for generating the next token. Smaller values reduce memory usage, while larger values provide more context to the model."
+				},
+				"numGpu": {
+					"displayName": "Number of GPUs",
+					"description": "Specifies the number of GPUs to use for parallel processing. Set to -1 for auto-detection."
+				},
+				"numPredict": {
+					"displayName": "Max Tokens to Generate",
+					"description": "The maximum number of tokens to generate. Set to -1 for no limit. Be cautious when setting this to a large value, as it can lead to very long outputs."
+				},
+				"numThread": {
+					"displayName": "Number of CPU Threads",
+					"description": "Specifies the number of CPU threads to use for processing. Set to 0 for auto-detection."
+				},
+				"penalizeNewline": {
+					"displayName": "Penalize Newlines",
+					"description": "Whether the model will be less likely to generate newline characters, encouraging longer continuous sequences of text"
+				},
+				"presencePenalty": {
+					"displayName": "Presence Penalty",
+					"description": "Adjusts the penalty for tokens based on their presence in the generated text so far. Positive values penalize tokens that have already appeared, encouraging diversity."
+				},
+				"repeatPenalty": {
+					"displayName": "Repetition Penalty",
+					"description": "Adjusts the penalty factor for repeated tokens. Higher values more strongly discourage repetition. Set to 1.0 to disable repetition penalty."
+				},
+				"useMLock": {
+					"displayName": "Use Memory Locking",
+					"description": "Whether to lock the model in memory to prevent swapping. This can improve performance but requires sufficient available memory."
+				},
+				"useMMap": {
+					"displayName": "Use Memory Mapping",
+					"description": "Whether to use memory mapping for loading the model. This can reduce memory usage but may impact performance. Recommended to keep enabled."
+				},
+				"vocabOnly": {
+					"displayName": "Load Vocabulary Only",
+					"description": "Whether to only load the model vocabulary without the weights. Useful for quickly testing tokenization."
+				},
+				"format": {
+					"displayName": "Output Format",
+					"description": "Specifies the format of the API response",
+					"options": {
+						"default": {
+							"displayName": "Default"
+						},
+						"json": {
+							"displayName": "JSON"
+						}
+					}
+				}
+			}
+		}
+	}
+}

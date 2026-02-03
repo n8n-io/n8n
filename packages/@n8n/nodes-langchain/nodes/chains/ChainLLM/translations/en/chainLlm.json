@@ -1,0 +1,202 @@
+{
+	"header": {
+		"displayName": "Basic LLM Chain",
+		"description": "A simple chain to prompt a large language model"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>output parser</a> on the canvas to specify the output format you require"
+		},
+		"prompt": {
+			"displayName": "Prompt"
+		},
+		"promptType": {
+			"displayName": "Source for Prompt (User Message)",
+			"options": {
+				"auto": {
+					"displayName": "Connected Chat Trigger Node",
+					"description": "Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger"
+				},
+				"guardrails": {
+					"displayName": "Connected Guardrails Node",
+					"description": "Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node"
+				},
+				"define": {
+					"displayName": "Define below",
+					"description": "Use an expression to reference data in previous nodes or enter static text"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Prompt (User Message)",
+			"placeholder": "e.g. Hello, how can you help me?"
+		},
+		"hasOutputParser": {
+			"displayName": "Require Specific Output Format"
+		},
+		"needsFallback": {
+			"displayName": "Enable Fallback Model"
+		},
+		"messages": {
+			"displayName": "Chat Messages (if Using a Chat Model)",
+			"placeholder": "Add prompt",
+			"multipleValueButtonText": "Add prompt",
+			"options": {
+				"messageValues": {
+					"displayName": "Prompt",
+					"options": {
+						"type": {
+							"displayName": "Type Name or ID",
+							"options": {
+								"AIMessagePromptTemplate": {
+									"displayName": "AI"
+								},
+								"SystemMessagePromptTemplate": {
+									"displayName": "System"
+								},
+								"HumanMessagePromptTemplate": {
+									"displayName": "User"
+								}
+							}
+						},
+						"messageType": {
+							"displayName": "Message Type",
+							"options": {
+								"text": {
+									"displayName": "Text",
+									"description": "Simple text message"
+								},
+								"imageBinary": {
+									"displayName": "Image (Binary)",
+									"description": "Process the binary input from the previous node"
+								},
+								"imageUrl": {
+									"displayName": "Image (URL)",
+									"description": "Process the image from the specified URL"
+								}
+							}
+						},
+						"binaryImageDataKey": {
+							"displayName": "Image Data Field Name",
+							"description": "The name of the field in the chain's input that contains the binary image file to be processed"
+						},
+						"imageUrl": {
+							"displayName": "Image URL",
+							"description": "URL to the image to be processed"
+						},
+						"imageDetail": {
+							"displayName": "Image Details",
+							"description": "Control how the model processes the image and generates its textual understanding",
+							"options": {
+								"auto": {
+									"displayName": "Auto",
+									"description": "Model will use the auto setting which will look at the image input size and decide if it should use the low or high setting"
+								},
+								"low": {
+									"displayName": "Low",
+									"description": "The model will receive a low-res 512px x 512px version of the image, and represent the image with a budget of 65 tokens. This allows the API to return faster responses and consume fewer input tokens for use cases that do not require high detail."
+								},
+								"high": {
+									"displayName": "High",
+									"description": "Allows the model to see the low res image and then creates detailed crops of input images as 512px squares based on the input image size. Each of the detailed crops uses twice the token budget (65 tokens) for a total of 129 tokens."
+								}
+							}
+						},
+						"message": {
+							"displayName": "Message"
+						}
+					}
+				}
+			},
+			"values": {
+				"messageValues": {
+					"displayName": "Prompt",
+					"options": {
+						"type": {
+							"displayName": "Type Name or ID",
+							"options": {
+								"AIMessagePromptTemplate": {
+									"displayName": "AI"
+								},
+								"SystemMessagePromptTemplate": {
+									"displayName": "System"
+								},
+								"HumanMessagePromptTemplate": {
+									"displayName": "User"
+								}
+							}
+						},
+						"messageType": {
+							"displayName": "Message Type",
+							"options": {
+								"text": {
+									"displayName": "Text",
+									"description": "Simple text message"
+								},
+								"imageBinary": {
+									"displayName": "Image (Binary)",
+									"description": "Process the binary input from the previous node"
+								},
+								"imageUrl": {
+									"displayName": "Image (URL)",
+									"description": "Process the image from the specified URL"
+								}
+							}
+						},
+						"binaryImageDataKey": {
+							"displayName": "Image Data Field Name",
+							"description": "The name of the field in the chain's input that contains the binary image file to be processed"
+						},
+						"imageUrl": {
+							"displayName": "Image URL",
+							"description": "URL to the image to be processed"
+						},
+						"imageDetail": {
+							"displayName": "Image Details",
+							"description": "Control how the model processes the image and generates its textual understanding",
+							"options": {
+								"auto": {
+									"displayName": "Auto",
+									"description": "Model will use the auto setting which will look at the image input size and decide if it should use the low or high setting"
+								},
+								"low": {
+									"displayName": "Low",
+									"description": "The model will receive a low-res 512px x 512px version of the image, and represent the image with a budget of 65 tokens. This allows the API to return faster responses and consume fewer input tokens for use cases that do not require high detail."
+								},
+								"high": {
+									"displayName": "High",
+									"description": "Allows the model to see the low res image and then creates detailed crops of input images as 512px squares based on the input image size. Each of the detailed crops uses twice the token budget (65 tokens) for a total of 129 tokens."
+								}
+							}
+						},
+						"message": {
+							"displayName": "Message"
+						}
+					}
+				},
+				"messages": {
+					"displayName": "Chat Messages (if Using a Chat Model)",
+					"placeholder": "Add prompt"
+				}
+			}
+		},
+		"batching": {
+			"displayName": "Batch Processing",
+			"description": "Batch processing options for rate limiting",
+			"placeholder": "Add Batch Processing Option",
+			"options": {
+				"batchSize": {
+					"displayName": "Batch Size",
+					"description": "How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering."
+				},
+				"delayBetweenBatches": {
+					"displayName": "Delay Between Batches",
+					"description": "Delay in milliseconds between batches. This is useful for rate limiting."
+				}
+			}
+		},
+		"fallbackNotice": {
+			"displayName": "Connect an additional language model on the canvas to use it as a fallback if the main model fails"
+		}
+	}
+}

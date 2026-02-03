@@ -1,0 +1,263 @@
+{
+	"header": {
+		"displayName": "LangChain Code",
+		"description": "LangChain Code Node"
+	},
+	"nodeView": {
+		"code": {
+			"displayName": "Code",
+			"placeholder": "Add Code",
+			"options": {
+				"execute": {
+					"displayName": "Execute",
+					"options": {
+						"code": {
+							"displayName": "JavaScript - Execute"
+						}
+					}
+				},
+				"supplyData": {
+					"displayName": "Supply Data",
+					"options": {
+						"code": {
+							"displayName": "JavaScript - Supply Data"
+						}
+					}
+				}
+			},
+			"values": {
+				"execute": {
+					"displayName": "Execute",
+					"options": {
+						"code": {
+							"displayName": "JavaScript - Execute"
+						}
+					}
+				},
+				"supplyData": {
+					"displayName": "Supply Data",
+					"options": {
+						"code": {
+							"displayName": "JavaScript - Supply Data"
+						}
+					}
+				},
+				"code": {
+					"displayName": "Code",
+					"placeholder": "Add Code"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "You can import LangChain and use all available functionality. Debug by using <code>console.log()</code> statements and viewing their output in the browser console."
+		},
+		"inputs": {
+			"displayName": "Inputs",
+			"description": "The input to add",
+			"placeholder": "Add Input",
+			"multipleValueButtonText": "Add Input",
+			"options": {
+				"input": {
+					"displayName": "Input",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "The type of the input",
+							"options": {
+								"ai_chain": {
+									"displayName": "Chain"
+								},
+								"ai_document": {
+									"displayName": "Document"
+								},
+								"ai_embedding": {
+									"displayName": "Embedding"
+								},
+								"ai_languageModel": {
+									"displayName": "Language Model"
+								},
+								"ai_memory": {
+									"displayName": "Memory"
+								},
+								"ai_outputParser": {
+									"displayName": "Output Parser"
+								},
+								"ai_textSplitter": {
+									"displayName": "Text Splitter"
+								},
+								"ai_tool": {
+									"displayName": "Tool"
+								},
+								"ai_vectorStore": {
+									"displayName": "Vector Store"
+								},
+								"main": {
+									"displayName": "Main"
+								}
+							}
+						},
+						"maxConnections": {
+							"displayName": "Max Connections",
+							"description": "How many nodes of this type are allowed to be connected. Set it to -1 for unlimited."
+						},
+						"required": {
+							"displayName": "Required",
+							"description": "Whether the input needs a connection"
+						}
+					}
+				}
+			},
+			"values": {
+				"input": {
+					"displayName": "Input",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "The type of the input",
+							"options": {
+								"ai_chain": {
+									"displayName": "Chain"
+								},
+								"ai_document": {
+									"displayName": "Document"
+								},
+								"ai_embedding": {
+									"displayName": "Embedding"
+								},
+								"ai_languageModel": {
+									"displayName": "Language Model"
+								},
+								"ai_memory": {
+									"displayName": "Memory"
+								},
+								"ai_outputParser": {
+									"displayName": "Output Parser"
+								},
+								"ai_textSplitter": {
+									"displayName": "Text Splitter"
+								},
+								"ai_tool": {
+									"displayName": "Tool"
+								},
+								"ai_vectorStore": {
+									"displayName": "Vector Store"
+								},
+								"main": {
+									"displayName": "Main"
+								}
+							}
+						},
+						"maxConnections": {
+							"displayName": "Max Connections",
+							"description": "How many nodes of this type are allowed to be connected. Set it to -1 for unlimited."
+						},
+						"required": {
+							"displayName": "Required",
+							"description": "Whether the input needs a connection"
+						}
+					}
+				},
+				"inputs": {
+					"displayName": "Inputs",
+					"placeholder": "Add Input"
+				}
+			}
+		},
+		"outputs": {
+			"displayName": "Outputs",
+			"description": "The output to add",
+			"placeholder": "Add Output",
+			"multipleValueButtonText": "Add Output",
+			"options": {
+				"output": {
+					"displayName": "Output",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "The type of the input",
+							"options": {
+								"ai_chain": {
+									"displayName": "Chain"
+								},
+								"ai_document": {
+									"displayName": "Document"
+								},
+								"ai_embedding": {
+									"displayName": "Embedding"
+								},
+								"ai_languageModel": {
+									"displayName": "Language Model"
+								},
+								"ai_memory": {
+									"displayName": "Memory"
+								},
+								"ai_outputParser": {
+									"displayName": "Output Parser"
+								},
+								"ai_textSplitter": {
+									"displayName": "Text Splitter"
+								},
+								"ai_tool": {
+									"displayName": "Tool"
+								},
+								"ai_vectorStore": {
+									"displayName": "Vector Store"
+								},
+								"main": {
+									"displayName": "Main"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"output": {
+					"displayName": "Output",
+					"options": {
+						"type": {
+							"displayName": "Type",
+							"description": "The type of the input",
+							"options": {
+								"ai_chain": {
+									"displayName": "Chain"
+								},
+								"ai_document": {
+									"displayName": "Document"
+								},
+								"ai_embedding": {
+									"displayName": "Embedding"
+								},
+								"ai_languageModel": {
+									"displayName": "Language Model"
+								},
+								"ai_memory": {
+									"displayName": "Memory"
+								},
+								"ai_outputParser": {
+									"displayName": "Output Parser"
+								},
+								"ai_textSplitter": {
+									"displayName": "Text Splitter"
+								},
+								"ai_tool": {
+									"displayName": "Tool"
+								},
+								"ai_vectorStore": {
+									"displayName": "Vector Store"
+								},
+								"main": {
+									"displayName": "Main"
+								}
+							}
+						}
+					}
+				},
+				"outputs": {
+					"displayName": "Outputs",
+					"placeholder": "Add Output"
+				}
+			}
+		}
+	}
+}

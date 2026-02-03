@@ -1,0 +1,421 @@
+{
+	"header": {
+		"displayName": "Baserow",
+		"description": "Consume the Baserow API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"row": {
+					"displayName": "Row"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a row"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a row"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a row"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many rows"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a row"
+				}
+			}
+		},
+		"databaseId": {
+			"displayName": "Database Name or ID",
+			"description": "Database to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"tableId": {
+			"displayName": "Table Name or ID",
+			"description": "Table to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"rowId": {
+			"displayName": "Row ID",
+			"description": "ID of the row to delete"
+		},
+		"dataToSend": {
+			"displayName": "Data to Send",
+			"description": "Whether to insert the input data this node receives in the new row",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "Auto-Map Input Data to Columns",
+					"description": "Use when node input properties match destination column names"
+				},
+				"defineBelow": {
+					"displayName": "Define Below for Each Column",
+					"description": "Set the value for each destination column"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "Inputs to Ignore",
+			"description": "List of input properties to avoid sending, separated by commas. Leave empty to send all properties.",
+			"placeholder": "Enter properties..."
+		},
+		"fieldsUi": {
+			"displayName": "Fields to Send",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field to Send",
+			"options": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"fieldValue": {
+							"displayName": "Field Value"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "Fields to Send",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"additionalOptions": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"filters": {
+					"displayName": "Filters",
+					"description": "Filter rows based on comparison operators",
+					"placeholder": "Add Filter",
+					"multipleValueButtonText": "Add Filter",
+					"options": {
+						"fields": {
+							"displayName": "Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Field to compare. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"operator": {
+									"displayName": "Filter",
+									"description": "Operator to compare field and value with",
+									"options": {
+										"contains": {
+											"displayName": "Contains",
+											"description": "Field contains value"
+										},
+										"contains_not": {
+											"displayName": "Contains Not",
+											"description": "Field does not contain value"
+										},
+										"date_after": {
+											"displayName": "Date After Date",
+											"description": "Field after this date. Format: 'YYYY-MM-DD'."
+										},
+										"date_before": {
+											"displayName": "Date Before Date",
+											"description": "Field before this date. Format: 'YYYY-MM-DD'."
+										},
+										"date_equal": {
+											"displayName": "Date Equal",
+											"description": "Field is date. Format: 'YYYY-MM-DD'."
+										},
+										"date_equals_month": {
+											"displayName": "Date Equals Month",
+											"description": "Field in this month. Format: string."
+										},
+										"date_equals_today": {
+											"displayName": "Date Equals Today",
+											"description": "Field is today. Format: string."
+										},
+										"date_equals_year": {
+											"displayName": "Date Equals Year",
+											"description": "Field in this year. Format: string."
+										},
+										"date_not_equal": {
+											"displayName": "Date Not Equal",
+											"description": "Field is not date. Format: 'YYYY-MM-DD'."
+										},
+										"equal": {
+											"displayName": "Equal",
+											"description": "Field is equal to value"
+										},
+										"filename_contains": {
+											"displayName": "Filename Contains",
+											"description": "Field filename contains value"
+										},
+										"higher_than": {
+											"displayName": "Higher Than",
+											"description": "Field is higher than value"
+										},
+										"empty": {
+											"displayName": "Is Empty",
+											"description": "Field is empty"
+										},
+										"not_empty": {
+											"displayName": "Is Not Empty",
+											"description": "Field is not empty"
+										},
+										"boolean": {
+											"displayName": "Is True",
+											"description": "Boolean field is true"
+										},
+										"link_row_has_not": {
+											"displayName": "Link Row Does Not Have",
+											"description": "Field does not have link ID"
+										},
+										"link_row_has": {
+											"displayName": "Link Row Has",
+											"description": "Field has link ID"
+										},
+										"lower_than": {
+											"displayName": "Lower Than",
+											"description": "Field is lower than value"
+										},
+										"not_equal": {
+											"displayName": "Not Equal",
+											"description": "Field is not equal to value"
+										},
+										"single_select_equal": {
+											"displayName": "Single Select Equal",
+											"description": "Field selected option is value"
+										},
+										"single_select_not_equal": {
+											"displayName": "Single Select Not Equal",
+											"description": "Field selected option is not value"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to compare to"
+								}
+							}
+						}
+					},
+					"values": {
+						"fields": {
+							"displayName": "Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Field to compare. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"operator": {
+									"displayName": "Filter",
+									"description": "Operator to compare field and value with",
+									"options": {
+										"contains": {
+											"displayName": "Contains",
+											"description": "Field contains value"
+										},
+										"contains_not": {
+											"displayName": "Contains Not",
+											"description": "Field does not contain value"
+										},
+										"date_after": {
+											"displayName": "Date After Date",
+											"description": "Field after this date. Format: 'YYYY-MM-DD'."
+										},
+										"date_before": {
+											"displayName": "Date Before Date",
+											"description": "Field before this date. Format: 'YYYY-MM-DD'."
+										},
+										"date_equal": {
+											"displayName": "Date Equal",
+											"description": "Field is date. Format: 'YYYY-MM-DD'."
+										},
+										"date_equals_month": {
+											"displayName": "Date Equals Month",
+											"description": "Field in this month. Format: string."
+										},
+										"date_equals_today": {
+											"displayName": "Date Equals Today",
+											"description": "Field is today. Format: string."
+										},
+										"date_equals_year": {
+											"displayName": "Date Equals Year",
+											"description": "Field in this year. Format: string."
+										},
+										"date_not_equal": {
+											"displayName": "Date Not Equal",
+											"description": "Field is not date. Format: 'YYYY-MM-DD'."
+										},
+										"equal": {
+											"displayName": "Equal",
+											"description": "Field is equal to value"
+										},
+										"filename_contains": {
+											"displayName": "Filename Contains",
+											"description": "Field filename contains value"
+										},
+										"higher_than": {
+											"displayName": "Higher Than",
+											"description": "Field is higher than value"
+										},
+										"empty": {
+											"displayName": "Is Empty",
+											"description": "Field is empty"
+										},
+										"not_empty": {
+											"displayName": "Is Not Empty",
+											"description": "Field is not empty"
+										},
+										"boolean": {
+											"displayName": "Is True",
+											"description": "Boolean field is true"
+										},
+										"link_row_has_not": {
+											"displayName": "Link Row Does Not Have",
+											"description": "Field does not have link ID"
+										},
+										"link_row_has": {
+											"displayName": "Link Row Has",
+											"description": "Field has link ID"
+										},
+										"lower_than": {
+											"displayName": "Lower Than",
+											"description": "Field is lower than value"
+										},
+										"not_equal": {
+											"displayName": "Not Equal",
+											"description": "Field is not equal to value"
+										},
+										"single_select_equal": {
+											"displayName": "Single Select Equal",
+											"description": "Field selected option is value"
+										},
+										"single_select_not_equal": {
+											"displayName": "Single Select Not Equal",
+											"description": "Field selected option is not value"
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to compare to"
+								}
+							}
+						},
+						"filters": {
+							"displayName": "Filters",
+							"placeholder": "Add Filter"
+						}
+					}
+				},
+				"filterType": {
+					"displayName": "Filter Type",
+					"description": "This works only if two or more filters are provided. Defaults to <code>AND</code>",
+					"options": {
+						"AND": {
+							"displayName": "AND",
+							"description": "Indicates that the rows must match all the provided filters"
+						},
+						"OR": {
+							"displayName": "OR",
+							"description": "Indicates that the rows only have to match one of the filters"
+						}
+					}
+				},
+				"search": {
+					"displayName": "Search Term",
+					"description": "Text to match (can be in any column)"
+				},
+				"order": {
+					"displayName": "Sorting",
+					"description": "Set the sort order of the result rows",
+					"placeholder": "Add Sort Order",
+					"multipleValueButtonText": "Add Sort Order",
+					"options": {
+						"fields": {
+							"displayName": "Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Field name to sort by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"direction": {
+									"displayName": "Direction",
+									"description": "Sort direction, either ascending or descending",
+									"options": {
+										"": {
+											"displayName": "ASC",
+											"description": "Sort in ascending order"
+										},
+										"-": {
+											"displayName": "DESC",
+											"description": "Sort in descending order"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"fields": {
+							"displayName": "Field",
+							"options": {
+								"field": {
+									"displayName": "Field Name or ID",
+									"description": "Field name to sort by. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"direction": {
+									"displayName": "Direction",
+									"description": "Sort direction, either ascending or descending",
+									"options": {
+										"": {
+											"displayName": "ASC",
+											"description": "Sort in ascending order"
+										},
+										"-": {
+											"displayName": "DESC",
+											"description": "Sort in descending order"
+										}
+									}
+								}
+							}
+						},
+						"order": {
+							"displayName": "Sorting",
+							"placeholder": "Add Sort Order"
+						}
+					}
+				}
+			}
+		}
+	}
+}

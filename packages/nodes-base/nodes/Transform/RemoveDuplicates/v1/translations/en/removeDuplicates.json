@@ -1,0 +1,47 @@
+{
+	"header": {
+		"displayName": "Remove Duplicates",
+		"description": "Delete items with matching field values"
+	},
+	"nodeView": {
+		"compare": {
+			"displayName": "Compare",
+			"description": "The fields of the input items to compare to see if they are the same",
+			"options": {
+				"allFields": {
+					"displayName": "All Fields"
+				},
+				"allFieldsExcept": {
+					"displayName": "All Fields Except"
+				},
+				"selectedFields": {
+					"displayName": "Selected Fields"
+				}
+			}
+		},
+		"fieldsToExclude": {
+			"displayName": "Fields To Exclude",
+			"description": "Fields in the input to exclude from the comparison",
+			"placeholder": "e.g. email, name"
+		},
+		"fieldsToCompare": {
+			"displayName": "Fields To Compare",
+			"description": "Fields in the input to add to the comparison",
+			"placeholder": "e.g. email, name"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "Disable Dot Notation",
+					"description": "Whether to disallow referencing child fields using `parent.child` in the field name"
+				},
+				"removeOtherFields": {
+					"displayName": "Remove Other Fields",
+					"description": "Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates."
+				}
+			}
+		}
+	}
+}

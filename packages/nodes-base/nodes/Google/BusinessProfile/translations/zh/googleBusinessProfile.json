@@ -1,0 +1,281 @@
+{
+	"header": {
+		"displayName": "Google商家档案",
+		"description": "使用Google商家档案API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"post": {
+					"displayName": "发布"
+				},
+				"review": {
+					"displayName": "审阅"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "在Google商家档案上创建新帖子"
+				},
+				"delete": {
+					"displayName": "删除回复",
+					"description": "删除对评论的回复"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取Google商家档案中特定评价的详细信息"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个评论"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新现有帖子"
+				},
+				"reply": {
+					"displayName": "回复",
+					"description": "回复评论"
+				}
+			}
+		},
+		"account": {
+			"displayName": "账户",
+			"description": "Google 商家资料账户"
+		},
+		"location": {
+			"displayName": "位置",
+			"description": "与该账户关联的具体位置或业务"
+		},
+		"postType": {
+			"displayName": "帖子类型",
+			"description": "要创建的帖子类型（标准、活动、优惠或提醒）",
+			"options": {
+				"STANDARD": {
+					"displayName": "标准"
+				},
+				"EVENT": {
+					"displayName": "事件"
+				},
+				"OFFER": {
+					"displayName": "提供"
+				},
+				"ALERT": {
+					"displayName": "警报"
+				}
+			}
+		},
+		"summary": {
+			"displayName": "摘要",
+			"description": "帖子正文"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "例如，店内或线上购物享8折优惠。"
+		},
+		"startDateTime": {
+			"displayName": "开始日期和时间",
+			"description": "事件的开始日期和时间"
+		},
+		"endDateTime": {
+			"displayName": "结束日期和时间",
+			"description": "事件的结束日期和时间"
+		},
+		"startDate": {
+			"displayName": "开始日期",
+			"description": "报价的开始日期",
+			"placeholder": "YYYY-MM-DD"
+		},
+		"endDate": {
+			"displayName": "结束日期",
+			"description": "优惠结束日期",
+			"placeholder": "YYYY-MM-DD"
+		},
+		"alertType": {
+			"displayName": "警报类型",
+			"description": "警报的子类型",
+			"options": {
+				"COVID_19": {
+					"displayName": "Covid 19",
+					"description": "此警报与2019冠状病毒病（COVID-19）大流行相关"
+				}
+			}
+		},
+		"additionalOptions": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"languageCode": {
+					"displayName": "语言",
+					"description": "帖子内容的语言代码。<a href=\"https://cloud.google.com/translate/docs/languages\" target=\"_blank\">更多信息</a>。",
+					"placeholder": "例如：en"
+				},
+				"callToActionType": {
+					"displayName": "行动号召类型",
+					"description": "行动号召的类型",
+					"options": {
+						"ACTION_TYPE_UNSPECIFIED": {
+							"displayName": "操作类型未指定",
+							"description": "类型未指定"
+						},
+						"BOOK": {
+							"displayName": "预订",
+							"description": "此帖子希望用户预订预约/餐桌等"
+						},
+						"CALL": {
+							"displayName": "调用",
+							"description": "此帖子希望用户致电商家"
+						},
+						"LEARN_MORE": {
+							"displayName": "了解更多",
+							"description": "此帖子希望用户（在其网站上）了解更多信息"
+						},
+						"ORDER": {
+							"displayName": "排序",
+							"description": "此帖子希望用户订购某物"
+						},
+						"SHOP": {
+							"displayName": "商店",
+							"description": "此帖子希望用户浏览产品目录"
+						},
+						"SIGN_UP": {
+							"displayName": "注册",
+							"description": "此帖希望用户注册/报名/加入某事物"
+						},
+						"GET_OFFER": {
+							"displayName": "获取优惠",
+							"description": "已弃用。请使用 LocalPostTopicType 中的 OFFER 来创建包含优惠内容的帖子。"
+						}
+					}
+				},
+				"url": {
+					"displayName": "行动号召网址",
+					"description": "用户点击推广内容时跳转的网址"
+				},
+				"couponCode": {
+					"displayName": "优惠券代码",
+					"description": "优惠活动的优惠券代码"
+				},
+				"redeemOnlineUrl": {
+					"displayName": "在线兑换链接",
+					"description": "优惠兑换链接"
+				},
+				"termsConditions": {
+					"displayName": "条款与条件",
+					"description": "要约的条款与条件"
+				},
+				"summary": {
+					"displayName": "摘要",
+					"description": "帖子正文"
+				},
+				"startDateTime": {
+					"displayName": "开始日期和时间",
+					"description": "事件的开始日期和时间"
+				},
+				"endDateTime": {
+					"displayName": "结束日期和时间",
+					"description": "事件的结束日期和时间"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "例如，店内或线上购物享八折优惠。"
+				},
+				"startDate": {
+					"displayName": "开始日期",
+					"description": "报价开始日期",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"endDate": {
+					"displayName": "结束日期",
+					"description": "优惠结束日期",
+					"placeholder": "YYYY-MM-DD"
+				}
+			}
+		},
+		"post": {
+			"displayName": "帖子",
+			"description": "选择要获取详情的帖子"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"notice": {
+			"displayName": "确保更新后的选项受帖子类型支持。<a target='_blank' href='https://developers.google.com/my-business/reference/rest/v4/accounts.locations.localPosts#resource:-localpost'>更多信息</a>。"
+		},
+		"review": {
+			"displayName": "审核",
+			"description": "选择要查看详情的审核"
+		},
+		"reply": {
+			"displayName": "回复",
+			"description": "回复正文（最多4096个字符）"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

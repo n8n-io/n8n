@@ -1,0 +1,87 @@
+{
+	"header": {
+		"displayName": "XML",
+		"description": "Convert data from and to XML"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "Mode",
+			"description": "From and to what format the data should be converted",
+			"options": {
+				"jsonToxml": {
+					"displayName": "JSON to XML",
+					"description": "Converts data from JSON to XML"
+				},
+				"xmlToJson": {
+					"displayName": "XML to JSON",
+					"description": "Converts data from XML to JSON"
+				}
+			}
+		},
+		"xmlNotice": {
+			"displayName": "If your XML is inside a binary file, use the 'Extract from File' node to convert it to text first"
+		},
+		"dataPropertyName": {
+			"displayName": "Property Name",
+			"description": "Name of the property which contains the XML data to convert"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"allowSurrogateChars": {
+					"displayName": "Allow Surrogate Chars",
+					"description": "Whether to allow using characters from the Unicode surrogate blocks"
+				},
+				"attrkey": {
+					"displayName": "Attribute Key",
+					"description": "Prefix that is used to access the attributes"
+				},
+				"cdata": {
+					"displayName": "Cdata",
+					"description": "Whether to wrap text nodes in &lt;![CDATA[ ... ]]&gt; instead of escaping when necessary. Does not add &lt;![CDATA[ ... ]]&gt; if it is not required."
+				},
+				"charkey": {
+					"displayName": "Character Key",
+					"description": "Prefix that is used to access the character content"
+				},
+				"headless": {
+					"displayName": "Headless",
+					"description": "Whether to omit the XML header"
+				},
+				"rootName": {
+					"displayName": "Root Name",
+					"description": "Root element name to be used"
+				},
+				"explicitArray": {
+					"displayName": "Explicit Array",
+					"description": "Whether to always put child nodes in an array if true; otherwise an array is created only if there is more than one"
+				},
+				"explicitRoot": {
+					"displayName": "Explicit Root",
+					"description": "Whether to set this if you want to get the root node in the resulting object"
+				},
+				"ignoreAttrs": {
+					"displayName": "Ignore Attributes",
+					"description": "Whether to ignore all XML attributes and only create text nodes"
+				},
+				"mergeAttrs": {
+					"displayName": "Merge Attributes",
+					"description": "Whether to merge attributes and child elements as properties of the parent, instead of keying attributes off a child attribute object. This option is ignored if ignoreAttrs is true."
+				},
+				"normalize": {
+					"displayName": "Normalize",
+					"description": "Whether to trim whitespaces inside text nodes"
+				},
+				"normalizeTags": {
+					"displayName": "Normalize Tags",
+					"description": "Whether to normalize all tag names to lowercase"
+				},
+				"trim": {
+					"displayName": "Trim",
+					"description": "Whether to trim the whitespace at the beginning and end of text nodes"
+				}
+			}
+		}
+	}
+}

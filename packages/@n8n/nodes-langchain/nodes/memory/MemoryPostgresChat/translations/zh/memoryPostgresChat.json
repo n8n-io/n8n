@@ -1,0 +1,35 @@
+{
+	"header": {
+		"displayName": "Postgres聊天记忆",
+		"description": "将聊天历史存储在Postgres表中。"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"sessionIdType": {
+			"displayName": "会话ID",
+			"options": {
+				"fromInput": {
+					"displayName": "已连接的聊天触发器节点",
+					"description": "查找来自直接连接的聊天触发器的名为'sessionId'的输入字段"
+				},
+				"customKey": {
+					"displayName": "定义如下",
+					"description": "使用表达式引用先前节点中的数据或输入静态文本"
+				}
+			}
+		},
+		"sessionKey": {
+			"displayName": "键",
+			"description": "用于在内存中存储会话ID的键"
+		},
+		"tableName": {
+			"displayName": "表名",
+			"description": "存储聊天历史的表名。如果表不存在，将会被创建。"
+		},
+		"contextWindowLength": {
+			"displayName": "上下文窗口长度"
+		}
+	}
+}

@@ -1,0 +1,218 @@
+{
+	"header": {
+		"displayName": "Postgres PGVector Store",
+		"description": "Work with your data in Postgresql with the PGVector extension"
+	},
+	"nodeView": {
+		"ragStarterCallout": {
+			"displayName": "Tip: Get a feel for vector stores in n8n with our"
+		},
+		"mode": {
+			"displayName": "Operation Mode",
+			"options": {
+				"load": {
+					"displayName": "Get Many",
+					"description": "Get many ranked documents from vector store for query"
+				},
+				"insert": {
+					"displayName": "Insert Documents",
+					"description": "Insert documents into vector store"
+				},
+				"retrieve": {
+					"displayName": "Retrieve Documents (As Vector Store for Chain/Tool)",
+					"description": "Retrieve documents from vector store to be used as vector store with AI nodes"
+				},
+				"retrieve-as-tool": {
+					"displayName": "Retrieve Documents (As Tool for AI Agent)",
+					"description": "Retrieve documents from vector store to be used as tool with AI nodes"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "This node must be connected to a vector store retriever. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_retriever'>Insert one</a>"
+		},
+		"toolName": {
+			"displayName": "Name",
+			"description": "Name of the vector store",
+			"placeholder": "e.g. company_knowledge_base"
+		},
+		"toolDescription": {
+			"displayName": "Description",
+			"description": "Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often",
+			"placeholder": "e.g. Work with your data in Postgresql with the PGVector extension"
+		},
+		"tableName": {
+			"displayName": "Table Name",
+			"description": "The table name to store the vectors in. If table does not exist, it will be created."
+		},
+		"embeddingBatchSize": {
+			"displayName": "Embedding Batch Size",
+			"description": "Number of documents to embed in a single batch"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"collection": {
+					"displayName": "Collection",
+					"description": "Collection of vectors",
+					"placeholder": "Add Collection Settings",
+					"options": {
+						"values": {
+							"displayName": "Collection Settings",
+							"values": {
+								"useCollection": {
+									"displayName": "Use Collection"
+								},
+								"collectionName": {
+									"displayName": "Collection Name"
+								},
+								"collectionTableName": {
+									"displayName": "Collection Table Name"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Collection Settings",
+							"values": {
+								"useCollection": {
+									"displayName": "Use Collection"
+								},
+								"collectionName": {
+									"displayName": "Collection Name"
+								},
+								"collectionTableName": {
+									"displayName": "Collection Table Name"
+								}
+							}
+						},
+						"collection": {
+							"displayName": "Collection",
+							"placeholder": "Add Collection Settings"
+						}
+					}
+				},
+				"columnNames": {
+					"displayName": "Column Names",
+					"description": "The names of the columns in the PGVector table",
+					"placeholder": "Set Column Names",
+					"options": {
+						"values": {
+							"displayName": "Column Name Settings",
+							"values": {
+								"idColumnName": {
+									"displayName": "ID Column Name"
+								},
+								"vectorColumnName": {
+									"displayName": "Vector Column Name"
+								},
+								"contentColumnName": {
+									"displayName": "Content Column Name"
+								},
+								"metadataColumnName": {
+									"displayName": "Metadata Column Name"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Column Name Settings",
+							"values": {
+								"idColumnName": {
+									"displayName": "ID Column Name"
+								},
+								"vectorColumnName": {
+									"displayName": "Vector Column Name"
+								},
+								"contentColumnName": {
+									"displayName": "Content Column Name"
+								},
+								"metadataColumnName": {
+									"displayName": "Metadata Column Name"
+								}
+							}
+						},
+						"columnNames": {
+							"displayName": "Column Names",
+							"placeholder": "Set Column Names"
+						}
+					}
+				},
+				"distanceStrategy": {
+					"displayName": "Distance Strategy",
+					"description": "The method to calculate the distance between two vectors",
+					"options": {
+						"cosine": {
+							"displayName": "Cosine"
+						},
+						"innerProduct": {
+							"displayName": "Inner Product"
+						},
+						"euclidean": {
+							"displayName": "Euclidean"
+						}
+					}
+				},
+				"metadata": {
+					"displayName": "Metadata Filter",
+					"description": "Metadata to filter the document by",
+					"placeholder": "Add filter field",
+					"multipleValueButtonText": "Add filter field",
+					"options": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataValues": {
+							"displayName": "Fields to Set",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "Metadata Filter",
+							"placeholder": "Add filter field"
+						}
+					}
+				}
+			}
+		},
+		"prompt": {
+			"displayName": "Prompt",
+			"description": "Search prompt to retrieve matching documents from the vector store using similarity-based ranking"
+		},
+		"topK": {
+			"displayName": "Limit",
+			"description": "Number of top results to fetch from vector store"
+		},
+		"includeDocumentMetadata": {
+			"displayName": "Include Metadata",
+			"description": "Whether or not to include document metadata"
+		},
+		"useReranker": {
+			"displayName": "Rerank Results",
+			"description": "Whether or not to rerank results"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "ID of an embedding entry"
+		}
+	}
+}

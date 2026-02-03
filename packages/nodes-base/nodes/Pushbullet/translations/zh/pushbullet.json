@@ -1,0 +1,121 @@
+{
+	"header": {
+		"displayName": "Pushbullet",
+		"description": "使用 Pushbullet API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"push": {
+					"displayName": "推送"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建推送"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除推送"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个推送"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新推送"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"link": {
+					"displayName": "链接"
+				},
+				"note": {
+					"displayName": "备注"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "推送标题"
+		},
+		"body": {
+			"displayName": "正文",
+			"description": "推送消息正文"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "推送的URL"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"target": {
+			"displayName": "目标",
+			"description": "定义用于发送推送的媒介",
+			"options": {
+				"channel_tag": {
+					"displayName": "频道标签",
+					"description": "将推送发送给您频道中所有订阅了此标签的用户"
+				},
+				"default": {
+					"displayName": "默认",
+					"description": "广播到用户的所有设备"
+				},
+				"device_iden": {
+					"displayName": "设备ID",
+					"description": "向特定设备发送推送"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "将推送发送到此电子邮件地址"
+				}
+			}
+		},
+		"value": {
+			"displayName": "值名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"pushId": {
+			"displayName": "推送ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"active": {
+					"displayName": "激活状态",
+					"description": "不返回已删除的推送"
+				},
+				"modified_after": {
+					"displayName": "修改时间晚于",
+					"description": "请求推送修改时间晚于此时间戳"
+				}
+			}
+		},
+		"dismissed": {
+			"displayName": "已关闭",
+			"description": "是否将推送标记为用户已关闭，如果可能，这将隐藏该推送的所有通知"
+		}
+	}
+}

@@ -1,0 +1,147 @@
+{
+	"header": {
+		"displayName": "Pipedrive Trigger",
+		"description": "Starts the workflow when Pipedrive events occur"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiToken": {
+					"displayName": "API Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"incomingAuthentication": {
+			"displayName": "Incoming Authentication",
+			"description": "If authentication should be activated for the webhook (makes it more secure)",
+			"options": {
+				"basicAuth": {
+					"displayName": "Basic Auth"
+				},
+				"none": {
+					"displayName": "None"
+				}
+			}
+		},
+		"action": {
+			"displayName": "Action",
+			"description": "Type of action to receive notifications about",
+			"options": {
+				"added": {
+					"displayName": "Added",
+					"description": "Data got added"
+				},
+				"*": {
+					"displayName": "All",
+					"description": "Any change"
+				},
+				"deleted": {
+					"displayName": "Deleted",
+					"description": "Data got deleted"
+				},
+				"merged": {
+					"displayName": "Merged",
+					"description": "Data got merged"
+				},
+				"updated": {
+					"displayName": "Updated",
+					"description": "Data got updated"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Data got added"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Data got deleted"
+				},
+				"change": {
+					"displayName": "Change",
+					"description": "Data got changed"
+				}
+			}
+		},
+		"entity": {
+			"displayName": "Entity",
+			"description": "Type of object to receive notifications about",
+			"options": {
+				"activity": {
+					"displayName": "Activity"
+				},
+				"activityType": {
+					"displayName": "Activity Type"
+				},
+				"*": {
+					"displayName": "All"
+				},
+				"deal": {
+					"displayName": "Deal"
+				},
+				"note": {
+					"displayName": "Note"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"person": {
+					"displayName": "Person"
+				},
+				"pipeline": {
+					"displayName": "Pipeline"
+				},
+				"product": {
+					"displayName": "Product"
+				},
+				"stage": {
+					"displayName": "Stage"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"object": {
+			"displayName": "Object",
+			"description": "Type of object to receive notifications about",
+			"options": {
+				"activity": {
+					"displayName": "Activity"
+				},
+				"activityType": {
+					"displayName": "Activity Type"
+				},
+				"*": {
+					"displayName": "All"
+				},
+				"deal": {
+					"displayName": "Deal"
+				},
+				"note": {
+					"displayName": "Note"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"person": {
+					"displayName": "Person"
+				},
+				"pipeline": {
+					"displayName": "Pipeline"
+				},
+				"product": {
+					"displayName": "Product"
+				},
+				"stage": {
+					"displayName": "Stage"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		}
+	}
+}

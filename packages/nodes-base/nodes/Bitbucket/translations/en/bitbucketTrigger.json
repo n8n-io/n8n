@@ -1,0 +1,42 @@
+{
+	"header": {
+		"displayName": "Bitbucket Trigger",
+		"description": "Handle Bitbucket events via webhooks"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"password": {
+					"displayName": "Password (Deprecated)"
+				},
+				"accessToken": {
+					"displayName": "Access Token"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"repository": {
+					"displayName": "Repository"
+				},
+				"workspace": {
+					"displayName": "Workspace"
+				}
+			}
+		},
+		"workspace": {
+			"displayName": "Workspace Name or ID",
+			"description": "The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"events": {
+			"displayName": "Event Names or IDs",
+			"description": "The events to listen to. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"repository": {
+			"displayName": "Repository Name or ID",
+			"description": "The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

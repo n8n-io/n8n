@@ -1,0 +1,76 @@
+{
+	"header": {
+		"displayName": "CrateDB",
+		"description": "在CrateDB中添加和更新数据"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"executeQuery": {
+					"displayName": "执行查询",
+					"description": "执行SQL查询"
+				},
+				"insert": {
+					"displayName": "插入",
+					"description": "在数据库中插入行"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新数据库中的行"
+				}
+			}
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "要执行的SQL查询。您可以使用n8n表达式或结合查询参数使用$1和$2。",
+			"placeholder": "SELECT id, name FROM product WHERE quantity > $1 AND price <= $2"
+		},
+		"schema": {
+			"displayName": "架构",
+			"description": "表所属的模式名称"
+		},
+		"table": {
+			"displayName": "表",
+			"description": "要更新数据的目标表名称"
+		},
+		"columns": {
+			"displayName": "列",
+			"description": "以逗号分隔的属性列表，这些属性将用作要更新行的列",
+			"placeholder": "名称,描述"
+		},
+		"updateKey": {
+			"displayName": "更新键",
+			"description": "决定更新数据库中哪些行的属性列表（逗号分隔）。通常为\"id\"。"
+		},
+		"returnFields": {
+			"displayName": "返回字段",
+			"description": "操作将返回的字段列表，以逗号分隔"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"mode": {
+					"displayName": "模式",
+					"description": "查询发送到数据库的方式。可与<b>失败时继续</b>结合使用。更多示例请参阅<a href=\"https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cratedb/\">文档</a>。",
+					"options": {
+						"independently": {
+							"displayName": "独立地",
+							"description": "独立执行每个查询"
+						},
+						"multiple": {
+							"displayName": "多重查询",
+							"description": "<b>默认</b>。一次性向数据库发送多个查询。"
+						}
+					}
+				},
+				"queryParams": {
+					"displayName": "查询参数",
+					"description": "逗号分隔的属性列表，将用作查询参数",
+					"placeholder": "quantity,price"
+				}
+			}
+		}
+	}
+}

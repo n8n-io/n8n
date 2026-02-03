@@ -1,0 +1,536 @@
+{
+	"header": {
+		"displayName": "GoToWebinar",
+		"description": "Consume the GoToWebinar API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"attendee": {
+					"displayName": "Attendee"
+				},
+				"coorganizer": {
+					"displayName": "Co-Organizer"
+				},
+				"panelist": {
+					"displayName": "Panelist"
+				},
+				"registrant": {
+					"displayName": "Registrant"
+				},
+				"session": {
+					"displayName": "Session"
+				},
+				"webinar": {
+					"displayName": "Webinar"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"getDetails": {
+					"displayName": "Get Details"
+				},
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"reinvite": {
+					"displayName": "Reinvite"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"webinarKey": {
+			"displayName": "Webinar Key",
+			"description": "Key of the webinar to update"
+		},
+		"sessionKey": {
+			"displayName": "Session Key",
+			"description": "Key of the session that the attendee attended. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"registrantKey": {
+			"displayName": "Registrant Key",
+			"description": "Key of the registrant to retrieve"
+		},
+		"details": {
+			"displayName": "Details",
+			"description": "The details to retrieve for the attendee",
+			"options": {
+				"polls": {
+					"displayName": "Polls",
+					"description": "Questions and answers for polls from a webinar session"
+				},
+				"questions": {
+					"displayName": "Questions",
+					"description": "Questions and answers for a past webinar session"
+				},
+				"surveyAnswers": {
+					"displayName": "Survey Answers",
+					"description": "Survey answers from the attendee in a webinar session"
+				},
+				"performance": {
+					"displayName": "Performance",
+					"description": "Performance details for a webinar session"
+				},
+				"surveys": {
+					"displayName": "Surveys",
+					"description": "Surveys for a past webinar session"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"isExternal": {
+			"displayName": "Is External",
+			"description": "Whether the co-organizer has no GoToWebinar account"
+		},
+		"organizerKey": {
+			"displayName": "Organizer Key",
+			"description": "The co-organizer's organizer key for the webinar"
+		},
+		"givenName": {
+			"displayName": "Given Name",
+			"description": "The co-organizer's given name"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email address of the registrant to create",
+			"placeholder": "name@email.com"
+		},
+		"coorganizerKey": {
+			"displayName": "Co-Organizer Key",
+			"description": "Key of the co-organizer to reinvite"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the panelist to create"
+		},
+		"panelistKey": {
+			"displayName": "Panelist Key",
+			"description": "Key of the panelist to reinvite"
+		},
+		"firstName": {
+			"displayName": "First Name",
+			"description": "First name of the registrant to create"
+		},
+		"lastName": {
+			"displayName": "Last Name",
+			"description": "Last name of the registrant to create"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"fullAddress": {
+					"displayName": "Full Address",
+					"description": "Full address of the registrant to create",
+					"placeholder": "Add Address Fields",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"address": {
+									"displayName": "Address"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zipCode": {
+									"displayName": "Zip Code"
+								},
+								"country": {
+									"displayName": "Country"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"address": {
+									"displayName": "Address"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State"
+								},
+								"zipCode": {
+									"displayName": "Zip Code"
+								},
+								"country": {
+									"displayName": "Country"
+								}
+							}
+						},
+						"fullAddress": {
+							"displayName": "Full Address",
+							"placeholder": "Add Address Fields"
+						}
+					}
+				},
+				"industry": {
+					"displayName": "Industry",
+					"description": "The type of industry the registrant's organization belongs to"
+				},
+				"jobTitle": {
+					"displayName": "Job Title"
+				},
+				"multiChoiceResponses": {
+					"displayName": "MultiChoice Responses",
+					"description": "Set the answers to all questions",
+					"placeholder": "Add MultiChoice Response",
+					"multipleValueButtonText": "Add MultiChoice Response",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"questionKey": {
+									"displayName": "Question Key Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"AnswerKey": {
+									"displayName": "Answer Key",
+									"description": "Answer ID of the question"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"questionKey": {
+									"displayName": "Question Key Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"AnswerKey": {
+									"displayName": "Answer Key",
+									"description": "Answer ID of the question"
+								}
+							}
+						},
+						"multiChoiceResponses": {
+							"displayName": "MultiChoice Responses",
+							"placeholder": "Add MultiChoice Response"
+						}
+					}
+				},
+				"numberOfEmployees": {
+					"displayName": "Number of Employees",
+					"description": "The size in employees of the registrant's organization"
+				},
+				"organization": {
+					"displayName": "Organization"
+				},
+				"phone": {
+					"displayName": "Telephone"
+				},
+				"purchasingRole": {
+					"displayName": "Purchasing Role",
+					"description": "Registrant's role in purchasing the product"
+				},
+				"purchasingTimeFrame": {
+					"displayName": "Purchasing Time Frame",
+					"description": "Time frame within which the product will be purchased"
+				},
+				"questionsAndComments": {
+					"displayName": "Questions and Comments",
+					"description": "Questions or comments made by the registrant during registration"
+				},
+				"resendConfirmation": {
+					"displayName": "Resend Confirmation"
+				},
+				"simpleResponses": {
+					"displayName": "Simple Responses",
+					"description": "Set the answers to all questions",
+					"placeholder": "Add Simple Response",
+					"multipleValueButtonText": "Add Simple Response",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"questionKey": {
+									"displayName": "Question Key Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"responseText": {
+									"displayName": "Response Text",
+									"description": "Text of the response to the question"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"questionKey": {
+									"displayName": "Question Key Name or ID",
+									"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+								},
+								"responseText": {
+									"displayName": "Response Text",
+									"description": "Text of the response to the question"
+								}
+							}
+						},
+						"simpleResponses": {
+							"displayName": "Simple Responses",
+							"placeholder": "Add Simple Response"
+						}
+					}
+				},
+				"source": {
+					"displayName": "Source",
+					"description": "The source that led to the registration"
+				},
+				"times": {
+					"displayName": "Time Range",
+					"placeholder": "Add Time Range",
+					"options": {
+						"timesProperties": {
+							"displayName": "Times Properties",
+							"options": {
+								"fromTime": {
+									"displayName": "Start Time",
+									"description": "Start of the datetime range for the webinar"
+								},
+								"toTime": {
+									"displayName": "End Time",
+									"description": "End of the datetime range for the webinar"
+								}
+							}
+						}
+					},
+					"values": {
+						"timesProperties": {
+							"displayName": "Times Properties",
+							"options": {
+								"fromTime": {
+									"displayName": "Start Time",
+									"description": "Start of the datetime range for the webinar"
+								},
+								"toTime": {
+									"displayName": "End Time",
+									"description": "End of the datetime range for the webinar"
+								}
+							}
+						},
+						"times": {
+							"displayName": "Time Range",
+							"placeholder": "Add Time Range"
+						}
+					}
+				},
+				"webinarKey": {
+					"displayName": "Webinar Key Name or ID",
+					"description": "Webinar by which to filter the sessions to retrieve. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"experienceType": {
+					"displayName": "Experience Type",
+					"options": {
+						"CLASSIC": {
+							"displayName": "Classic"
+						},
+						"BROADCAST": {
+							"displayName": "Broadcast"
+						},
+						"SIMULIVE": {
+							"displayName": "Simulive"
+						}
+					}
+				},
+				"isOnDemand": {
+					"displayName": "Is On-Demand"
+				},
+				"isPasswordProtected": {
+					"displayName": "Is Password Protected"
+				},
+				"timezone": {
+					"displayName": "Timezone Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+					"placeholder": "2020-12-11T09:00:00Z"
+				},
+				"type": {
+					"displayName": "Webinar Type",
+					"options": {
+						"single_session": {
+							"displayName": "Single Session",
+							"description": "Webinar with one single meeting"
+						},
+						"series": {
+							"displayName": "Series",
+							"description": "Webinar with multiple meetings times where attendees choose only one to attend"
+						},
+						"sequence": {
+							"displayName": "Sequence",
+							"description": "Webinar with multiple meeting times where attendees are expected to be the same for all sessions"
+						}
+					}
+				},
+				"sendCancellationEmails": {
+					"displayName": "Send Cancellation E-Mails"
+				}
+			}
+		},
+		"subject": {
+			"displayName": "Subject"
+		},
+		"times": {
+			"displayName": "Time Range",
+			"placeholder": "Add Time Range",
+			"multipleValueButtonText": "Add Time Range",
+			"options": {
+				"timesProperties": {
+					"displayName": "Times Properties",
+					"options": {
+						"startTime": {
+							"displayName": "Start Time"
+						},
+						"endTime": {
+							"displayName": "End Time"
+						}
+					}
+				}
+			},
+			"values": {
+				"timesProperties": {
+					"displayName": "Times Properties",
+					"options": {
+						"startTime": {
+							"displayName": "Start Time"
+						},
+						"endTime": {
+							"displayName": "End Time"
+						}
+					}
+				},
+				"times": {
+					"displayName": "Time Range",
+					"placeholder": "Add Time Range"
+				}
+			}
+		},
+		"notifyParticipants": {
+			"displayName": "Notify Participants"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"description": {
+					"displayName": "Description"
+				},
+				"experienceType": {
+					"displayName": "Experience Type",
+					"options": {
+						"CLASSIC": {
+							"displayName": "Classic"
+						},
+						"BROADCAST": {
+							"displayName": "Broadcast"
+						},
+						"SIMULIVE": {
+							"displayName": "Simulive"
+						}
+					}
+				},
+				"isOnDemand": {
+					"displayName": "Is On-Demand",
+					"description": "Whether the webinar may be watched anytime"
+				},
+				"isPasswordProtected": {
+					"displayName": "Is Password Protected",
+					"description": "Whether the webinar requires a password for attendees to join"
+				},
+				"times": {
+					"displayName": "Times",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"timesProperties": {
+							"displayName": "Times Properties",
+							"options": {
+								"startTime": {
+									"displayName": "Start Time"
+								},
+								"endTime": {
+									"displayName": "End Time"
+								}
+							}
+						}
+					},
+					"values": {
+						"timesProperties": {
+							"displayName": "Times Properties",
+							"options": {
+								"startTime": {
+									"displayName": "Start Time"
+								},
+								"endTime": {
+									"displayName": "End Time"
+								}
+							}
+						},
+						"times": {
+							"displayName": "Times"
+						}
+					}
+				},
+				"subject": {
+					"displayName": "Subject",
+					"description": "Name or topic of the webinar"
+				},
+				"timezone": {
+					"displayName": "Timezone Name or ID",
+					"description": "Timezone where the webinar is to take place. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+					"placeholder": "2020-12-11T09:00:00Z"
+				},
+				"type": {
+					"displayName": "Webinar Type",
+					"options": {
+						"single_session": {
+							"displayName": "Single Session",
+							"description": "Webinar with one single meeting"
+						},
+						"series": {
+							"displayName": "Series",
+							"description": "Webinar with multiple meetings times where attendees choose only one to attend"
+						},
+						"sequence": {
+							"displayName": "Sequence",
+							"description": "Webinar with multiple meeting times where attendees are expected to be the same for all sessions"
+						}
+					}
+				}
+			}
+		}
+	}
+}

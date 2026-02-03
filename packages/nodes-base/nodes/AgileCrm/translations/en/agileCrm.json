@@ -1,0 +1,730 @@
+{
+	"header": {
+		"displayName": "Agile CRM",
+		"description": "Consume Agile CRM API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"company": {
+					"displayName": "Company"
+				},
+				"contact": {
+					"displayName": "Contact"
+				},
+				"deal": {
+					"displayName": "Deal"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new deal"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a deal"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a deal"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many deals"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update deal properties"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "Unique identifier for a particular contact"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filterType": {
+			"displayName": "Filter",
+			"options": {
+				"none": {
+					"displayName": "None"
+				},
+				"manual": {
+					"displayName": "Build Manually"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"matchType": {
+			"displayName": "Must Match",
+			"options": {
+				"anyFilter": {
+					"displayName": "Any Filter"
+				},
+				"allFilters": {
+					"displayName": "All Filters"
+				}
+			}
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Condition",
+			"multipleValueButtonText": "Add Condition",
+			"options": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"field": {
+							"displayName": "Field",
+							"description": "Any searchable field"
+						},
+						"condition_type": {
+							"displayName": "Condition Type",
+							"options": {
+								"AFTER": {
+									"displayName": "After"
+								},
+								"BEFORE": {
+									"displayName": "Before"
+								},
+								"BETWEEN": {
+									"displayName": "Between"
+								},
+								"EQUALS": {
+									"displayName": "Equals"
+								},
+								"LAST": {
+									"displayName": "Last"
+								},
+								"NOTEQUALS": {
+									"displayName": "Not Equal"
+								},
+								"ON": {
+									"displayName": "On"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						},
+						"value2": {
+							"displayName": "Value 2"
+						}
+					}
+				}
+			},
+			"values": {
+				"conditions": {
+					"displayName": "Conditions",
+					"options": {
+						"field": {
+							"displayName": "Field",
+							"description": "Any searchable field"
+						},
+						"condition_type": {
+							"displayName": "Condition Type",
+							"options": {
+								"AFTER": {
+									"displayName": "After"
+								},
+								"BEFORE": {
+									"displayName": "Before"
+								},
+								"BETWEEN": {
+									"displayName": "Between"
+								},
+								"EQUALS": {
+									"displayName": "Equals"
+								},
+								"LAST": {
+									"displayName": "Last"
+								},
+								"NOTEQUALS": {
+									"displayName": "Not Equal"
+								},
+								"ON": {
+									"displayName": "On"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value"
+						},
+						"value2": {
+							"displayName": "Value 2"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "Filters",
+					"placeholder": "Add Condition"
+				}
+			}
+		},
+		"jsonNotice": {
+			"displayName": "See <a href=\"https://github.com/agilecrm/rest-api#121-get-contacts-by-dynamic-filter\" target=\"_blank\">Agile CRM guide</a> to creating filters"
+		},
+		"filterJson": {
+			"displayName": "Filters (JSON)"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"sort": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort",
+					"options": {
+						"sort": {
+							"displayName": "Sort",
+							"options": {
+								"direction": {
+									"displayName": "Direction",
+									"description": "The sorting direction",
+									"options": {
+										"ASC": {
+											"displayName": "Ascending"
+										},
+										"DESC": {
+											"displayName": "Descending"
+										}
+									}
+								},
+								"field": {
+									"displayName": "Field",
+									"description": "The sorting field"
+								}
+							}
+						}
+					},
+					"values": {
+						"sort": {
+							"displayName": "Sort",
+							"placeholder": "Add Sort"
+						}
+					}
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"additionalFieldsJson": {
+			"displayName": "Additional Fields",
+			"description": "Object of values to set as described <a href=\"https://github.com/agilecrm/rest-api#1-deals---companies-api\">here</a>"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"addressOptions": {
+					"displayName": "Address",
+					"description": "Company address",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"addressProperties": {
+							"displayName": "Address Properties",
+							"options": {
+								"subtype": {
+									"displayName": "Type",
+									"description": "Type of address",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"postal": {
+											"displayName": "Postal"
+										},
+										"office": {
+											"displayName": "Office"
+										}
+									}
+								},
+								"address": {
+									"displayName": "Address",
+									"description": "Full address"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressProperties": {
+							"displayName": "Address Properties",
+							"options": {
+								"subtype": {
+									"displayName": "Type",
+									"description": "Type of address",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"postal": {
+											"displayName": "Postal"
+										},
+										"office": {
+											"displayName": "Office"
+										}
+									}
+								},
+								"address": {
+									"displayName": "Address",
+									"description": "Full address"
+								}
+							}
+						},
+						"addressOptions": {
+							"displayName": "Address"
+						}
+					}
+				},
+				"company": {
+					"displayName": "Company",
+					"description": "Company Name"
+				},
+				"emailOptions": {
+					"displayName": "Email",
+					"description": "Contact email",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"emailProperties": {
+							"displayName": "Email Properties",
+							"options": {
+								"subtype": {
+									"displayName": "Type",
+									"description": "Type of Email",
+									"options": {
+										"work": {
+											"displayName": "Work"
+										},
+										"personal": {
+											"displayName": "Personal"
+										}
+									}
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"emailProperties": {
+							"displayName": "Email Properties",
+							"options": {
+								"subtype": {
+									"displayName": "Type",
+									"description": "Type of Email",
+									"options": {
+										"work": {
+											"displayName": "Work"
+										},
+										"personal": {
+											"displayName": "Personal"
+										}
+									}
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "name@email.com"
+								}
+							}
+						},
+						"emailOptions": {
+							"displayName": "Email"
+						}
+					}
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "Contact first name"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "Contact last name"
+				},
+				"leadScore": {
+					"displayName": "Lead Score",
+					"description": "Lead score of contact"
+				},
+				"starValue": {
+					"displayName": "Star Value",
+					"description": "Rating of company (Max value 5). This is not applicable for companies.",
+					"options": {
+						"0": {
+							"displayName": "0"
+						},
+						"1": {
+							"displayName": "1"
+						},
+						"2": {
+							"displayName": "2"
+						},
+						"3": {
+							"displayName": "3"
+						},
+						"4": {
+							"displayName": "4"
+						},
+						"5": {
+							"displayName": "5"
+						}
+					}
+				},
+				"phoneOptions": {
+					"displayName": "Phone",
+					"description": "Contacts phone",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"phoneProperties": {
+							"displayName": "Phone Properties",
+							"options": {
+								"subtype": {
+									"displayName": "Type",
+									"description": "Type of phone number",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"homeFax": {
+											"displayName": "Home Fax"
+										},
+										"main": {
+											"displayName": "Main"
+										},
+										"mobile": {
+											"displayName": "Mobile"
+										},
+										"other": {
+											"displayName": "Other"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"workFax": {
+											"displayName": "Work Fax"
+										}
+									}
+								},
+								"number": {
+									"displayName": "Number",
+									"description": "Phone number"
+								}
+							}
+						}
+					},
+					"values": {
+						"phoneProperties": {
+							"displayName": "Phone Properties",
+							"options": {
+								"subtype": {
+									"displayName": "Type",
+									"description": "Type of phone number",
+									"options": {
+										"home": {
+											"displayName": "Home"
+										},
+										"homeFax": {
+											"displayName": "Home Fax"
+										},
+										"main": {
+											"displayName": "Main"
+										},
+										"mobile": {
+											"displayName": "Mobile"
+										},
+										"other": {
+											"displayName": "Other"
+										},
+										"work": {
+											"displayName": "Work"
+										},
+										"workFax": {
+											"displayName": "Work Fax"
+										}
+									}
+								},
+								"number": {
+									"displayName": "Number",
+									"description": "Phone number"
+								}
+							}
+						},
+						"phoneOptions": {
+							"displayName": "Phone"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tags",
+					"description": "Unique identifiers added to company, for easy management of companys. This is not applicable for companies."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Professional title"
+				},
+				"websiteOptions": {
+					"displayName": "Website",
+					"description": "Companys websites",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"websiteProperties": {
+							"displayName": "Website Properties.",
+							"options": {
+								"subtype": {
+									"displayName": "Type",
+									"description": "Type of website",
+									"options": {
+										"facebook": {
+											"displayName": "Facebook"
+										},
+										"feed": {
+											"displayName": "Feed"
+										},
+										"flickr": {
+											"displayName": "Flickr"
+										},
+										"github": {
+											"displayName": "Github"
+										},
+										"googlePlus": {
+											"displayName": "Google Plus"
+										},
+										"linkedin": {
+											"displayName": "LinkedIn"
+										},
+										"skype": {
+											"displayName": "Skype"
+										},
+										"twitter": {
+											"displayName": "Twitter"
+										},
+										"url": {
+											"displayName": "URL"
+										},
+										"xing": {
+											"displayName": "Xing"
+										},
+										"youtube": {
+											"displayName": "YouTube"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "Website URL"
+								}
+							}
+						}
+					},
+					"values": {
+						"websiteProperties": {
+							"displayName": "Website Properties.",
+							"options": {
+								"subtype": {
+									"displayName": "Type",
+									"description": "Type of website",
+									"options": {
+										"facebook": {
+											"displayName": "Facebook"
+										},
+										"feed": {
+											"displayName": "Feed"
+										},
+										"flickr": {
+											"displayName": "Flickr"
+										},
+										"github": {
+											"displayName": "Github"
+										},
+										"googlePlus": {
+											"displayName": "Google Plus"
+										},
+										"linkedin": {
+											"displayName": "LinkedIn"
+										},
+										"skype": {
+											"displayName": "Skype"
+										},
+										"twitter": {
+											"displayName": "Twitter"
+										},
+										"url": {
+											"displayName": "URL"
+										},
+										"xing": {
+											"displayName": "Xing"
+										},
+										"youtube": {
+											"displayName": "YouTube"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "Website URL"
+								}
+							}
+						},
+						"websiteOptions": {
+							"displayName": "Website"
+						}
+					}
+				},
+				"customProperties": {
+					"displayName": "Custom Properties",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"customProperty": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Property name"
+								},
+								"subtype": {
+									"displayName": "Sub Type",
+									"description": "Property sub type"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Property value"
+								}
+							}
+						}
+					},
+					"values": {
+						"customProperty": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Property name"
+								},
+								"subtype": {
+									"displayName": "Sub Type",
+									"description": "Property sub type"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Property value"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "Custom Properties"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Company email",
+					"placeholder": "name@email.com"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name of deal"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "Company phone"
+				},
+				"contactIds": {
+					"displayName": "Contact IDs",
+					"description": "Unique contact identifiers"
+				},
+				"customData": {
+					"displayName": "Custom Data",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"customProperty": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Property name"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Property value"
+								}
+							}
+						}
+					},
+					"values": {
+						"customProperty": {
+							"displayName": "Property",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Property name"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Property value"
+								}
+							}
+						},
+						"customData": {
+							"displayName": "Custom Data"
+						}
+					}
+				},
+				"expectedValue": {
+					"displayName": "Expected Value",
+					"description": "Expected Value of deal"
+				},
+				"probability": {
+					"displayName": "Probability",
+					"description": "Expected Value of deal"
+				}
+			}
+		},
+		"companyId": {
+			"displayName": "Company ID",
+			"description": "Unique identifier for a particular company"
+		},
+		"dealId": {
+			"displayName": "Deal ID",
+			"description": "ID of deal to update"
+		},
+		"closeDate": {
+			"displayName": "Close Date",
+			"description": "Closing date of deal"
+		},
+		"expectedValue": {
+			"displayName": "Expected Value",
+			"description": "Expected Value of deal"
+		},
+		"milestone": {
+			"displayName": "Milestone",
+			"description": "Milestone of deal"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of deal"
+		},
+		"probability": {
+			"displayName": "Probability",
+			"description": "Expected probability"
+		}
+	}
+}

@@ -1,0 +1,114 @@
+{
+	"header": {
+		"displayName": "设置",
+		"description": "在项目上设置值，并可选择移除其他值"
+	},
+	"nodeView": {
+		"keepOnlySet": {
+			"displayName": "仅保留已设置",
+			"description": "是否仅保留此节点上设置的值并移除所有其他值"
+		},
+		"values": {
+			"displayName": "要设置的值",
+			"description": "要设置的值",
+			"placeholder": "添加值",
+			"multipleValueButtonText": "添加值",
+			"options": {
+				"boolean": {
+					"displayName": "布尔值",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "要写入数据的属性名称。支持点符号表示法。示例：\"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要写入属性的布尔值"
+						}
+					}
+				},
+				"number": {
+					"displayName": "数字",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "要写入数据的属性名称。支持点符号表示法。示例：\"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要写入属性的数值"
+						}
+					}
+				},
+				"string": {
+					"displayName": "字符串",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "要写入数据的属性名称。支持点符号表示法。示例：\"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要写入属性的字符串值"
+						}
+					}
+				}
+			},
+			"values": {
+				"boolean": {
+					"displayName": "布尔值",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "要写入数据的属性名称。支持点符号表示法。示例：\"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要写入属性的布尔值"
+						}
+					}
+				},
+				"number": {
+					"displayName": "数字",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "要写入数据的属性名称。支持点符号表示法。示例：\"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要写入属性的数值"
+						}
+					}
+				},
+				"string": {
+					"displayName": "字符串",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "要写入数据的属性名称。支持点符号表示法。示例：\"data.person[0].name\""
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要写入属性的字符串值"
+						}
+					}
+				},
+				"values": {
+					"displayName": "要设置的值",
+					"placeholder": "添加值"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"dotNotation": {
+					"displayName": "点表示法",
+					"description": "<p>默认情况下，属性名称使用点表示法。这意味着 \"a.b\" 将在 \"a\" 下设置属性 \"b\"，即 { \"a\": { \"b\": value} }。<p></p>如果不需要此行为，可以停用此功能，此时将设置 { \"a.b\": value }。</p>"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,158 @@
+{
+	"header": {
+		"displayName": "Chat Trigger",
+		"description": "Runs the workflow when an n8n generated webchat is submitted"
+	},
+	"nodeView": {
+		"public": {
+			"displayName": "Make Chat Publicly Available",
+			"description": "Whether the chat should be publicly available or only accessible through the manual chat interface"
+		},
+		"mode": {
+			"displayName": "Mode",
+			"options": {
+				"hostedChat": {
+					"displayName": "Hosted Chat",
+					"description": "Chat on a page served by n8n"
+				},
+				"webhook": {
+					"displayName": "Embedded Chat",
+					"description": "Chat through a widget embedded in another page, or by calling a webhook"
+				}
+			}
+		},
+		"hostedChatNotice": {
+			"displayName": "Chat will be live at the URL above once this workflow is published. Live executions will show up in the ‘executions’ tab"
+		},
+		"embeddedChatNotice": {
+			"displayName": "Follow the instructions <a href=\"https://www.npmjs.com/package/@n8n/chat\" target=\"_blank\">here</a> to embed chat in a webpage (or just call the webhook URL at the top of this section). Chat will be live once you publish this workflow"
+		},
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "The way to authenticate",
+			"options": {
+				"basicAuth": {
+					"displayName": "Basic Auth",
+					"description": "Simple username and password (the same one for all users)"
+				},
+				"n8nUserAuth": {
+					"displayName": "n8n User Auth",
+					"description": "Require user to be logged in with their n8n account"
+				},
+				"none": {
+					"displayName": "None"
+				}
+			}
+		},
+		"initialMessages": {
+			"displayName": "Initial Message(s)",
+			"description": "Default messages shown at the start of the chat, one per line"
+		},
+		"availableInChat": {
+			"displayName": "Make Available in n8n Chat Hub",
+			"description": "Whether to make the agent available in n8n Chat Hub for n8n instance users to chat with"
+		},
+		"availableInChatNotice": {
+			"displayName": "Your n8n users will be able to use this agent in <a href=\"/home/chat/\" target=\"_blank\">Chat</a> once this workflow is published. Make sure to share this workflow with at least Project Chat User access to all users who should use it."
+		},
+		"agentIcon": {
+			"displayName": "Agent Icon",
+			"description": "The icon of the agent on n8n Chat"
+		},
+		"agentName": {
+			"displayName": "Agent Name",
+			"description": "The name of the agent on n8n Chat. Name of the workflow is used if left empty."
+		},
+		"agentDescription": {
+			"displayName": "Agent Description",
+			"description": "The description of the agent on n8n Chat"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"allowFileUploads": {
+					"displayName": "Allow File Uploads",
+					"description": "Whether to allow file uploads in the chat"
+				},
+				"allowedFilesMimeTypes": {
+					"displayName": "Allowed File Mime Types",
+					"description": "Allowed file types for upload. Comma-separated list of <a href=\"https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types\" target=\"_blank\">MIME types</a>.",
+					"placeholder": "e.g. image/*, text/*, application/pdf"
+				},
+				"allowedOrigins": {
+					"displayName": "Allowed Origins (CORS)",
+					"description": "Comma-separated list of URLs allowed for cross-origin non-preflight requests. Use * (default) to allow all origins."
+				},
+				"inputPlaceholder": {
+					"displayName": "Input Placeholder",
+					"description": "Shown as placeholder text in the chat input field",
+					"placeholder": "e.g. Type your message here"
+				},
+				"loadPreviousSession": {
+					"displayName": "Load Previous Session",
+					"description": "If loading messages of a previous session should be enabled",
+					"options": {
+						"notSupported": {
+							"displayName": "Off",
+							"description": "Loading messages of previous session is turned off"
+						},
+						"memory": {
+							"displayName": "From Memory",
+							"description": "Load session messages from memory"
+						},
+						"manually": {
+							"displayName": "Manually",
+							"description": "Manually return messages of session"
+						}
+					}
+				},
+				"showWelcomeScreen": {
+					"displayName": "Require Button Click to Start Chat",
+					"description": "Whether to show the welcome screen at the start of the chat"
+				},
+				"getStarted": {
+					"displayName": "Start Conversation Button Text",
+					"description": "Shown as part of the welcome screen, in the middle of the chat window",
+					"placeholder": "e.g. New Conversation"
+				},
+				"subtitle": {
+					"displayName": "Subtitle",
+					"description": "Shown at the top of the chat, under the title",
+					"placeholder": "e.g. We're here for you"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Shown at the top of the chat",
+					"placeholder": "e.g. Welcome"
+				},
+				"customCss": {
+					"displayName": "Custom Chat Styling",
+					"description": "Override default styling of the public chat interface with CSS"
+				},
+				"responseMode": {
+					"displayName": "Response Mode",
+					"description": "When and how to respond to the chat",
+					"options": {
+						"lastNode": {
+							"displayName": "When Last Node Finishes",
+							"description": "Returns data of the last-executed node"
+						},
+						"responseNode": {
+							"displayName": "Using 'Respond to Webhook' Node",
+							"description": "Response defined in that node"
+						},
+						"streaming": {
+							"displayName": "Streaming",
+							"description": "Streaming response from specified nodes (e.g. Agents)"
+						},
+						"responseNodes": {
+							"displayName": "Using Response Nodes",
+							"description": "Send responses to the chat by using one or more Chat nodes"
+						}
+					}
+				}
+			}
+		}
+	}
+}

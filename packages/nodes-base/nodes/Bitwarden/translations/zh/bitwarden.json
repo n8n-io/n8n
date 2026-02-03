@@ -1,0 +1,199 @@
+{
+	"header": {
+		"displayName": "Bitwarden",
+		"description": "使用Bitwarden API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"collection": {
+					"displayName": "集合"
+				},
+				"event": {
+					"displayName": "事件"
+				},
+				"group": {
+					"displayName": "分组"
+				},
+				"member": {
+					"displayName": "成员"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				},
+				"create": {
+					"displayName": "创建"
+				},
+				"getMembers": {
+					"displayName": "获取成员"
+				},
+				"updateMembers": {
+					"displayName": "更新成员"
+				},
+				"getGroups": {
+					"displayName": "获取群组"
+				},
+				"updateGroups": {
+					"displayName": "更新群组"
+				}
+			}
+		},
+		"collectionId": {
+			"displayName": "集合ID",
+			"description": "集合的标识符",
+			"placeholder": "5e59c8c7-e05a-4d17-8e85-acc301343926"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"groups": {
+					"displayName": "组名称或ID",
+					"description": "将此集合分配到的分组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"externalId": {
+					"displayName": "外部ID",
+					"description": "为此成员设置的外部标识符"
+				},
+				"accessAll": {
+					"displayName": "访问全部",
+					"description": "是否允许此群组访问组织内的所有集合，而非仅其关联的集合。如果设为 true，此选项将覆盖任何集合分配。"
+				},
+				"collections": {
+					"displayName": "集合名称或ID",
+					"description": "要分配给此成员的集合。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "要更新的群组名称"
+				},
+				"type": {
+					"displayName": "类型",
+					"options": {
+						"0": {
+							"displayName": "所有者"
+						},
+						"1": {
+							"displayName": "管理员"
+						},
+						"2": {
+							"displayName": "用户"
+						},
+						"3": {
+							"displayName": "管理员"
+						}
+					}
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"actingUserId": {
+					"displayName": "执行用户ID",
+					"description": "执行用户的唯一标识符",
+					"placeholder": "4a59c8c7-e05a-4d17-8e85-acc301343926"
+				},
+				"end": {
+					"displayName": "结束日期",
+					"description": "搜索的结束日期"
+				},
+				"itemID": {
+					"displayName": "项目ID",
+					"description": "事件描述项目的唯一标识符",
+					"placeholder": "5e59c8c7-e05a-4d17-8e85-acc301343926"
+				},
+				"start": {
+					"displayName": "开始日期",
+					"description": "搜索的开始日期"
+				}
+			}
+		},
+		"groupId": {
+			"displayName": "群组ID",
+			"description": "组的标识符",
+			"placeholder": "5e59c8c7-e05a-4d17-8e85-acc301343926"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的群组名称"
+		},
+		"accessAll": {
+			"displayName": "访问全部",
+			"description": "是否允许此群组访问组织内的所有集合，而不仅仅是其关联的集合。如果设为true，此选项将覆盖任何集合分配。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"collections": {
+					"displayName": "集合名称或ID",
+					"description": "要分配给此成员的集合。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"externalId": {
+					"displayName": "外部ID",
+					"description": "为此成员设置的外部标识符"
+				}
+			}
+		},
+		"memberIds": {
+			"displayName": "成员ID",
+			"description": "要设置到群组中的成员ID逗号分隔列表"
+		},
+		"memberId": {
+			"displayName": "成员ID",
+			"description": "成员的标识符",
+			"placeholder": "5e59c8c7-e05a-4d17-8e85-acc301343926"
+		},
+		"type": {
+			"displayName": "类型",
+			"options": {
+				"0": {
+					"displayName": "所有者"
+				},
+				"1": {
+					"displayName": "管理员"
+				},
+				"2": {
+					"displayName": "用户"
+				},
+				"3": {
+					"displayName": "管理员"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要更新的成员邮箱",
+			"placeholder": "name@email.com"
+		},
+		"groupIds": {
+			"displayName": "群组ID",
+			"description": "为成员设置的群组ID列表，以逗号分隔"
+		}
+	}
+}

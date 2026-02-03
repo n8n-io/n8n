@@ -1,0 +1,189 @@
+{
+	"header": {
+		"displayName": "Airtable",
+		"description": "Read, update, write and delete data from Airtable"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"airtableTokenApi": {
+					"displayName": "Access Token"
+				},
+				"airtableOAuth2Api": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"base": {
+					"displayName": "Base"
+				},
+				"record": {
+					"displayName": "Record"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new record in a table"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new record, or update the current one if it already exists (upsert)"
+				},
+				"deleteRecord": {
+					"displayName": "Delete",
+					"description": "Delete a record from a table"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a record from a table"
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Search for specific records or list all"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a record in a table"
+				},
+				"getMany": {
+					"displayName": "Get Many",
+					"description": "List all the bases"
+				},
+				"getSchema": {
+					"displayName": "Get Schema",
+					"description": "Get the schema of the tables in a base"
+				}
+			}
+		},
+		"base": {
+			"displayName": "Base",
+			"description": "The Airtable Base to retrieve the schema from"
+		},
+		"table": {
+			"displayName": "Table"
+		},
+		"columns": {
+			"displayName": "Columns"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"typecast": {
+					"displayName": "Typecast",
+					"description": "Whether the Airtable API should attempt mapping of string values for linked records & select options"
+				},
+				"ignoreFields": {
+					"displayName": "Ignore Fields From Input",
+					"description": "Comma-separated list of fields in input to ignore when updating"
+				},
+				"updateAllMatches": {
+					"displayName": "Update All Matches",
+					"description": "Whether to update all records matching the value in the \"Column to Match On\". If not set, only the first matching record will be updated."
+				},
+				"downloadFields": {
+					"displayName": "Download Attachments",
+					"description": "The fields of type 'attachment' that should be downloaded"
+				},
+				"fields": {
+					"displayName": "Output Fields",
+					"description": "The fields you want to include in the output"
+				},
+				"view": {
+					"displayName": "View"
+				},
+				"permissionLevel": {
+					"displayName": "Permission Level",
+					"description": "Filter the returned bases by one or more permission levels"
+				}
+			},
+			"description": "Additional options which decide which records should be returned"
+		},
+		"id": {
+			"displayName": "Record ID",
+			"description": "ID of the record to get. <a href=\"https://support.airtable.com/docs/record-id\" target=\"_blank\">More info</a>.",
+			"placeholder": "e.g. recf7EaZp707CEc8g"
+		},
+		"filterByFormula": {
+			"displayName": "Filter By Formula",
+			"description": "The formula will be evaluated for each record, and if the result is not 0, false, \"\", NaN, [], or #Error! the record will be included in the response. <a href=\"https://support.airtable.com/docs/formula-field-reference\" target=\"_blank\">More info</a>.",
+			"placeholder": "e.g. NOT({Name} = 'Admin')"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"sort": {
+			"displayName": "Sort",
+			"description": "Defines how the returned records should be ordered",
+			"placeholder": "Add Sort Rule",
+			"multipleValueButtonText": "Add Sort Rule",
+			"options": {
+				"property": {
+					"displayName": "Property",
+					"options": {
+						"field": {
+							"displayName": "Field",
+							"description": "Name of the field to sort on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"direction": {
+							"displayName": "Direction",
+							"description": "The sort direction",
+							"options": {
+								"asc": {
+									"displayName": "ASC",
+									"description": "Sort in ascending order (small -> large)"
+								},
+								"desc": {
+									"displayName": "DESC",
+									"description": "Sort in descending order (large -> small)"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"property": {
+					"displayName": "Property",
+					"options": {
+						"field": {
+							"displayName": "Field",
+							"description": "Name of the field to sort on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"direction": {
+							"displayName": "Direction",
+							"description": "The sort direction",
+							"options": {
+								"asc": {
+									"displayName": "ASC",
+									"description": "Sort in ascending order (small -> large)"
+								},
+								"desc": {
+									"displayName": "DESC",
+									"description": "Sort in descending order (large -> small)"
+								}
+							}
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort Rule"
+				}
+			}
+		}
+	}
+}

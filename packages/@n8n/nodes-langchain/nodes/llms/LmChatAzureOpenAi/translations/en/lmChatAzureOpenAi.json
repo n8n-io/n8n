@@ -1,0 +1,74 @@
+{
+	"header": {
+		"displayName": "Azure OpenAI Chat Model",
+		"description": "For advanced usage with an AI chain"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"azureOpenAiApi": {
+					"displayName": "API Key"
+				},
+				"azureEntraCognitiveServicesOAuth2Api": {
+					"displayName": "Azure Entra ID (OAuth2)"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "If using JSON response format, you must include word \"json\" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023."
+		},
+		"model": {
+			"displayName": "Model (Deployment) Name",
+			"description": "The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)"
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"frequencyPenalty": {
+					"displayName": "Frequency Penalty",
+					"description": "Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim"
+				},
+				"maxTokens": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768). Use -1 for default."
+				},
+				"responseFormat": {
+					"displayName": "Response Format",
+					"options": {
+						"text": {
+							"displayName": "Text",
+							"description": "Regular text response"
+						},
+						"json_object": {
+							"displayName": "JSON",
+							"description": "Enables JSON mode, which should guarantee the message the model generates is valid JSON"
+						}
+					}
+				},
+				"presencePenalty": {
+					"displayName": "Presence Penalty",
+					"description": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics"
+				},
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive."
+				},
+				"timeout": {
+					"displayName": "Timeout (Ms)",
+					"description": "Maximum amount of time a request is allowed to take in milliseconds"
+				},
+				"maxRetries": {
+					"displayName": "Max Retries",
+					"description": "Maximum number of retries to attempt on failure"
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both."
+				}
+			}
+		}
+	}
+}

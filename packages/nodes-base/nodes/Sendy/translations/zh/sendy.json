@@ -1,0 +1,154 @@
+{
+	"header": {
+		"displayName": "Sendy",
+		"description": "使用Sendy API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"campaign": {
+					"displayName": "营销活动"
+				},
+				"subscriber": {
+					"displayName": "订阅者"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建营销活动"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "向列表添加订阅者"
+				},
+				"count": {
+					"displayName": "计数",
+					"description": "统计订阅者"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从列表中删除订阅者"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从列表中取消订阅用户"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "获取订阅者状态"
+				}
+			}
+		},
+		"fromName": {
+			"displayName": "发件人名称",
+			"description": "您营销活动的'发件人名称'"
+		},
+		"fromEmail": {
+			"displayName": "发件邮箱",
+			"description": "您营销活动的'发件邮箱'"
+		},
+		"replyTo": {
+			"displayName": "回复地址",
+			"description": "您营销活动的'回复地址'"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "您的营销活动'标题'"
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "您的营销活动'主题'"
+		},
+		"htmlText": {
+			"displayName": "HTML文本",
+			"description": "您的营销活动的HTML版本"
+		},
+		"sendCampaign": {
+			"displayName": "发送营销活动",
+			"description": "是否同时发送营销活动而不仅仅是创建草稿。默认值为 false。"
+		},
+		"brandId": {
+			"displayName": "品牌ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"excludeListIds": {
+					"displayName": "排除列表ID",
+					"description": "要从您的营销活动中排除的列表。列表ID应为单个或以逗号分隔。"
+				},
+				"excludeSegmentIds": {
+					"displayName": "排除细分ID",
+					"description": "要从您的营销活动中排除的细分。细分ID应为单个或以逗号分隔。"
+				},
+				"listIds": {
+					"displayName": "列出ID",
+					"description": "列表ID应为单个或以逗号分隔"
+				},
+				"plainText": {
+					"displayName": "纯文本",
+					"description": "您营销活动的'纯文本版本'"
+				},
+				"queryString": {
+					"displayName": "查询字符串",
+					"description": "Google Analytics 标签"
+				},
+				"segmentIds": {
+					"displayName": "分段ID",
+					"description": "分段ID应为单个值或以逗号分隔"
+				},
+				"trackClicks": {
+					"displayName": "跟踪点击",
+					"description": "是否禁用点击跟踪。默认为 true。"
+				},
+				"trackOpens": {
+					"displayName": "跟踪打开",
+					"description": "是否禁用打开跟踪。默认值为 true。"
+				},
+				"country": {
+					"displayName": "国家",
+					"description": "用户的两字母国家代码"
+				},
+				"gdpr": {
+					"displayName": "GDPR",
+					"description": "无论您是以符合GDPR的方式注册欧盟用户"
+				},
+				"hp": {
+					"displayName": "蜜罐",
+					"description": "包含此'蜜罐'字段可防止垃圾邮件机器人通过此API调用注册。当垃圾邮件机器人填写此字段时，此API调用将退出，防止它们向您的表单注册虚假地址。此参数仅支持Sendy 3.0及以上版本。"
+				},
+				"ipaddress": {
+					"displayName": "IP地址",
+					"description": "用户IP地址"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "用户姓名"
+				},
+				"referrer": {
+					"displayName": "来源网址",
+					"description": "用户注册来源的URL"
+				},
+				"silent": {
+					"displayName": "静默",
+					"description": "如果您的列表是'双重确认订阅'，但您想绕过该流程，将用户以'单次确认订阅'方式注册到列表中，请设置为'true'（可选）"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "订阅者的电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"listId": {
+			"displayName": "列表ID",
+			"description": "您希望订阅用户的列表ID。此加密和哈希处理的ID可在“查看所有列表”部分找到，名为ID。"
+		}
+	}
+}

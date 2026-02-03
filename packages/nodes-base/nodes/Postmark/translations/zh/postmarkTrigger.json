@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "Postmark 触发器",
+		"description": "当 Postmark 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件",
+			"description": "将为该端点启用的Webhook事件"
+		},
+		"firstOpen": {
+			"displayName": "首次打开",
+			"description": "仅针对“打开”事件在首次打开时触发"
+		},
+		"includeContent": {
+			"displayName": "包含内容",
+			"description": "是否包含\"退信\"和\"垃圾邮件投诉\"事件的消息内容"
+		}
+	}
+}

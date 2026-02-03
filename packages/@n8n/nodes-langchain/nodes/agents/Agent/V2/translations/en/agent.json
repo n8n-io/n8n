@@ -1,0 +1,85 @@
+{
+	"header": {
+		"displayName": "AI Agent",
+		"description": "Generates an action plan and executes it. Can use external tools."
+	},
+	"nodeView": {
+		"aiAgentStarterCallout": {
+			"displayName": "Tip: Get a feel for agents with our quick <a href=\"https://docs.n8n.io/advanced-ai/intro-tutorial/\" target=\"_blank\">tutorial</a> or see an <a href=\"/workflows/templates/1954\" target=\"_blank\">example</a> of how this node works"
+		},
+		"promptType": {
+			"displayName": "Source for Prompt (User Message)",
+			"options": {
+				"auto": {
+					"displayName": "Connected Chat Trigger Node",
+					"description": "Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger"
+				},
+				"guardrails": {
+					"displayName": "Connected Guardrails Node",
+					"description": "Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node"
+				},
+				"define": {
+					"displayName": "Define below",
+					"description": "Use an expression to reference data in previous nodes or enter static text"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Prompt (User Message)",
+			"placeholder": "e.g. Hello, how can you help me?"
+		},
+		"hasOutputParser": {
+			"displayName": "Require Specific Output Format"
+		},
+		"notice": {
+			"displayName": "Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>output parser</a> on the canvas to specify the output format you require"
+		},
+		"needsFallback": {
+			"displayName": "Enable Fallback Model"
+		},
+		"fallbackNotice": {
+			"displayName": "Connect an additional language model on the canvas to use it as a fallback if the main model fails"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"systemMessage": {
+					"displayName": "System Message",
+					"description": "The message that will be sent to the agent before the conversation starts"
+				},
+				"maxIterations": {
+					"displayName": "Max Iterations",
+					"description": "The maximum number of iterations the agent will run before stopping"
+				},
+				"returnIntermediateSteps": {
+					"displayName": "Return Intermediate Steps",
+					"description": "Whether or not the output should include intermediate steps the agent took"
+				},
+				"passthroughBinaryImages": {
+					"displayName": "Automatically Passthrough Binary Images",
+					"description": "Whether or not binary images should be automatically passed through to the agent as image type messages"
+				},
+				"batching": {
+					"displayName": "Batch Processing",
+					"description": "Batch processing options for rate limiting",
+					"placeholder": "Add Batch Processing Option",
+					"options": {
+						"batchSize": {
+							"displayName": "Batch Size",
+							"description": "How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering."
+						},
+						"delayBetweenBatches": {
+							"displayName": "Delay Between Batches",
+							"description": "Delay in milliseconds between batches. This is useful for rate limiting."
+						}
+					}
+				},
+				"enableStreaming": {
+					"displayName": "Enable Streaming",
+					"description": "Whether this agent will stream the response in real-time as it generates text"
+				}
+			}
+		}
+	}
+}

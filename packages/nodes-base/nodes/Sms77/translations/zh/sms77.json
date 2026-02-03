@@ -1,0 +1,79 @@
+{
+	"header": {
+		"displayName": "七",
+		"description": "发送短信并执行文本转语音呼叫"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"sms": {
+					"displayName": "短信"
+				},
+				"voice": {
+					"displayName": "语音通话"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "将文本转换为语音并拨打指定号码"
+				}
+			}
+		},
+		"from": {
+			"displayName": "可自定义的发件人名称。长度应在3到11个字符之间，仅允许使用字母数字字符。",
+			"description": "在接收方显示屏上显示的来电号码。最多16位数字或11位字母数字字符。",
+			"placeholder": "+4901234567890"
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"description": "收件人数量，用逗号分隔。可以是常规号码或来自Seven的联系人/群组。",
+			"placeholder": "+49876543210, MyGroup"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息。最多1520个字符"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"delay": {
+					"displayName": "延迟",
+					"description": "选择延迟发送的日期"
+				},
+				"foreign_id": {
+					"displayName": "外部ID",
+					"description": "在DLR回调中返回的自定义外部ID",
+					"placeholder": "我的自定义外部ID"
+				},
+				"flash": {
+					"displayName": "闪信",
+					"description": "作为闪信发送，直接在接收者的屏幕上显示"
+				},
+				"label": {
+					"displayName": "标签",
+					"description": "用于分组分析的自定义标签",
+					"placeholder": "我的自定义标签"
+				},
+				"performance_tracking": {
+					"displayName": "性能追踪",
+					"description": "是否对消息文本中找到的URL启用性能追踪"
+				},
+				"ttl": {
+					"displayName": "TTL",
+					"description": "自定义生存时间，指定消息的有效期（以分钟为单位）"
+				},
+				"from": {
+					"displayName": "从",
+					"description": "主叫号码。请仅使用已验证的发件人ID、您的虚拟入站号码或我们的共享虚拟号码。",
+					"placeholder": "+4901234567890"
+				}
+			}
+		}
+	}
+}

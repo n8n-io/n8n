@@ -1,0 +1,865 @@
+{
+	"header": {
+		"displayName": "Stripe",
+		"description": "Consume the Stripe API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"balance": {
+					"displayName": "Balance"
+				},
+				"charge": {
+					"displayName": "Charge"
+				},
+				"coupon": {
+					"displayName": "Coupon"
+				},
+				"customer": {
+					"displayName": "Customer"
+				},
+				"customerCard": {
+					"displayName": "Customer Card"
+				},
+				"meterEvent": {
+					"displayName": "Meter Event"
+				},
+				"source": {
+					"displayName": "Source"
+				},
+				"token": {
+					"displayName": "Token"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a source"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add a customer card"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a customer card"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a token"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many customers"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a customer"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a source"
+				}
+			}
+		},
+		"customerId": {
+			"displayName": "Customer ID",
+			"description": "ID of the customer whose source to delete"
+		},
+		"token": {
+			"displayName": "Card Token",
+			"description": "Token representing sensitive card information",
+			"placeholder": "tok_1IMfKdJhRTnqS5TKQVG1LI9o"
+		},
+		"cardId": {
+			"displayName": "Card ID",
+			"description": "ID of the card to remove"
+		},
+		"sourceId": {
+			"displayName": "Source ID",
+			"description": "ID of the source to retrieve"
+		},
+		"amount": {
+			"displayName": "Amount",
+			"description": "Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00"
+		},
+		"currency": {
+			"displayName": "Currency Name or ID",
+			"description": "Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href=\"https://stripe.com/docs/currencies\">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"source": {
+			"displayName": "Source ID",
+			"description": "ID of the customer's payment source to be charged"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"description": {
+					"displayName": "Description",
+					"description": "Arbitrary text to describe the customer to create"
+				},
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "Set of key-value pairs to attach to the source to create",
+					"placeholder": "Add Metadata Item",
+					"multipleValueButtonText": "Add Metadata Item",
+					"options": {
+						"metadataProperties": {
+							"displayName": "Metadata Properties",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataProperties": {
+							"displayName": "Metadata Properties",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "Metadata",
+							"placeholder": "Add Metadata Item"
+						}
+					}
+				},
+				"receipt_email": {
+					"displayName": "Receipt Email",
+					"description": "Email address to which the receipt for this charge will be sent"
+				},
+				"shipping": {
+					"displayName": "Shipping",
+					"description": "Shipping information for the customer",
+					"placeholder": "Add Field",
+					"multipleValueButtonText": "Add Field",
+					"options": {
+						"shippingProperties": {
+							"displayName": "Shipping Properties",
+							"options": {
+								"name": {
+									"displayName": "Recipient Name",
+									"description": "Name of the person who will receive the shipment"
+								},
+								"address": {
+									"displayName": "Recipient Address",
+									"placeholder": "Add Address Details",
+									"options": {
+										"details": {
+											"displayName": "Details",
+											"options": {
+												"line1": {
+													"displayName": "Line 1",
+													"description": "Address line 1 (e.g. street, PO Box, or company name)"
+												},
+												"line2": {
+													"displayName": "Line 2",
+													"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+												},
+												"city": {
+													"displayName": "City",
+													"description": "City, district, suburb, town, or village"
+												},
+												"state": {
+													"displayName": "State",
+													"description": "State, county, province, or region"
+												},
+												"country": {
+													"displayName": "Country",
+													"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "Postal Code",
+													"description": "ZIP or postal code"
+												}
+											}
+										}
+									},
+									"values": {
+										"details": {
+											"displayName": "Details",
+											"options": {
+												"line1": {
+													"displayName": "Line 1",
+													"description": "Address line 1 (e.g. street, PO Box, or company name)"
+												},
+												"line2": {
+													"displayName": "Line 2",
+													"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+												},
+												"city": {
+													"displayName": "City",
+													"description": "City, district, suburb, town, or village"
+												},
+												"state": {
+													"displayName": "State",
+													"description": "State, county, province, or region"
+												},
+												"country": {
+													"displayName": "Country",
+													"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "Postal Code",
+													"description": "ZIP or postal code"
+												}
+											}
+										},
+										"address": {
+											"displayName": "Recipient Address",
+											"placeholder": "Add Address Details"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "Recipient Phone"
+								}
+							}
+						}
+					},
+					"values": {
+						"shippingProperties": {
+							"displayName": "Shipping Properties",
+							"options": {
+								"name": {
+									"displayName": "Recipient Name",
+									"description": "Name of the person who will receive the shipment"
+								},
+								"address": {
+									"displayName": "Recipient Address",
+									"placeholder": "Add Address Details",
+									"options": {
+										"details": {
+											"displayName": "Details",
+											"options": {
+												"line1": {
+													"displayName": "Line 1",
+													"description": "Address line 1 (e.g. street, PO Box, or company name)"
+												},
+												"line2": {
+													"displayName": "Line 2",
+													"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+												},
+												"city": {
+													"displayName": "City",
+													"description": "City, district, suburb, town, or village"
+												},
+												"state": {
+													"displayName": "State",
+													"description": "State, county, province, or region"
+												},
+												"country": {
+													"displayName": "Country",
+													"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "Postal Code",
+													"description": "ZIP or postal code"
+												}
+											}
+										}
+									},
+									"values": {
+										"details": {
+											"displayName": "Details",
+											"options": {
+												"line1": {
+													"displayName": "Line 1",
+													"description": "Address line 1 (e.g. street, PO Box, or company name)"
+												},
+												"line2": {
+													"displayName": "Line 2",
+													"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+												},
+												"city": {
+													"displayName": "City",
+													"description": "City, district, suburb, town, or village"
+												},
+												"state": {
+													"displayName": "State",
+													"description": "State, county, province, or region"
+												},
+												"country": {
+													"displayName": "Country",
+													"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "Postal Code",
+													"description": "ZIP or postal code"
+												}
+											}
+										},
+										"address": {
+											"displayName": "Recipient Address",
+											"placeholder": "Add Address Details"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "Recipient Phone"
+								}
+							}
+						},
+						"shipping": {
+							"displayName": "Shipping",
+							"placeholder": "Add Field"
+						}
+					}
+				},
+				"address": {
+					"displayName": "Address",
+					"description": "Address of the customer to create",
+					"placeholder": "Add Field",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"line1": {
+									"displayName": "Line 1",
+									"description": "Address line 1 (e.g. street, PO Box, or company name)"
+								},
+								"line2": {
+									"displayName": "Line 2",
+									"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+								},
+								"city": {
+									"displayName": "City",
+									"description": "City, district, suburb, town, or village"
+								},
+								"state": {
+									"displayName": "State",
+									"description": "State, county, province, or region"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "ZIP or postal code"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"line1": {
+									"displayName": "Line 1",
+									"description": "Address line 1 (e.g. street, PO Box, or company name)"
+								},
+								"line2": {
+									"displayName": "Line 2",
+									"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+								},
+								"city": {
+									"displayName": "City",
+									"description": "City, district, suburb, town, or village"
+								},
+								"state": {
+									"displayName": "State",
+									"description": "State, county, province, or region"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "ZIP or postal code"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Field"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email of the customer to create",
+					"placeholder": "name@email.com"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "Telephone number of the customer to create"
+				},
+				"identifier": {
+					"displayName": "Identifier",
+					"description": "A unique identifier for the event. If not provided, one will be generated. Uniqueness is enforced within a rolling 24 hour window."
+				},
+				"timestamp": {
+					"displayName": "Timestamp",
+					"description": "The time of the event. Measured in seconds since the Unix epoch. Must be within the past 35 calendar days or up to 5 minutes in the future. Defaults to current time if not specified."
+				},
+				"customPayload": {
+					"displayName": "Custom Payload Properties",
+					"description": "Additional custom properties to include in the event payload. Use this for custom meter configurations with non-default payload keys.",
+					"placeholder": "Add Custom Property",
+					"multipleValueButtonText": "Add Custom Property",
+					"options": {
+						"properties": {
+							"displayName": "Properties",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The property key"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The property value"
+								}
+							}
+						}
+					},
+					"values": {
+						"properties": {
+							"displayName": "Properties",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The property key"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The property value"
+								}
+							}
+						},
+						"customPayload": {
+							"displayName": "Custom Payload Properties",
+							"placeholder": "Add Custom Property"
+						}
+					}
+				},
+				"statement_descriptor": {
+					"displayName": "Statement Descriptor",
+					"description": "Arbitrary text to display on the customer's statement"
+				}
+			}
+		},
+		"chargeId": {
+			"displayName": "Charge ID",
+			"description": "ID of the charge to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"description": {
+					"displayName": "Description",
+					"description": "Arbitrary text to describe the customer to create"
+				},
+				"metadata": {
+					"displayName": "Metadata",
+					"description": "Set of key-value pairs to attach to the customer to create",
+					"placeholder": "Add Metadata Item",
+					"multipleValueButtonText": "Add Metadata Item",
+					"options": {
+						"metadataProperties": {
+							"displayName": "Metadata Properties",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"metadataProperties": {
+							"displayName": "Metadata Properties",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"metadata": {
+							"displayName": "Metadata",
+							"placeholder": "Add Metadata Item"
+						}
+					}
+				},
+				"receipt_email": {
+					"displayName": "Receipt Email",
+					"description": "The email address to which the receipt for this charge will be sent"
+				},
+				"shipping": {
+					"displayName": "Shipping",
+					"description": "Shipping information for the customer",
+					"placeholder": "Add Field",
+					"multipleValueButtonText": "Add Field",
+					"options": {
+						"shippingProperties": {
+							"displayName": "Shipping Properties",
+							"options": {
+								"name": {
+									"displayName": "Recipient Name",
+									"description": "Name of the person who will receive the shipment"
+								},
+								"address": {
+									"displayName": "Recipient Address",
+									"placeholder": "Add Address Details",
+									"options": {
+										"details": {
+											"displayName": "Details",
+											"options": {
+												"line1": {
+													"displayName": "Line 1",
+													"description": "Address line 1 (e.g. street, PO Box, or company name)"
+												},
+												"line2": {
+													"displayName": "Line 2",
+													"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+												},
+												"city": {
+													"displayName": "City",
+													"description": "City, district, suburb, town, or village"
+												},
+												"state": {
+													"displayName": "State",
+													"description": "State, county, province, or region"
+												},
+												"country": {
+													"displayName": "Country",
+													"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "Postal Code",
+													"description": "ZIP or postal code"
+												}
+											}
+										}
+									},
+									"values": {
+										"details": {
+											"displayName": "Details",
+											"options": {
+												"line1": {
+													"displayName": "Line 1",
+													"description": "Address line 1 (e.g. street, PO Box, or company name)"
+												},
+												"line2": {
+													"displayName": "Line 2",
+													"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+												},
+												"city": {
+													"displayName": "City",
+													"description": "City, district, suburb, town, or village"
+												},
+												"state": {
+													"displayName": "State",
+													"description": "State, county, province, or region"
+												},
+												"country": {
+													"displayName": "Country",
+													"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "Postal Code",
+													"description": "ZIP or postal code"
+												}
+											}
+										},
+										"address": {
+											"displayName": "Recipient Address",
+											"placeholder": "Add Address Details"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "Recipient Phone",
+									"description": "Phone number of the person who will receive the shipment"
+								}
+							}
+						}
+					},
+					"values": {
+						"shippingProperties": {
+							"displayName": "Shipping Properties",
+							"options": {
+								"name": {
+									"displayName": "Recipient Name",
+									"description": "Name of the person who will receive the shipment"
+								},
+								"address": {
+									"displayName": "Recipient Address",
+									"placeholder": "Add Address Details",
+									"options": {
+										"details": {
+											"displayName": "Details",
+											"options": {
+												"line1": {
+													"displayName": "Line 1",
+													"description": "Address line 1 (e.g. street, PO Box, or company name)"
+												},
+												"line2": {
+													"displayName": "Line 2",
+													"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+												},
+												"city": {
+													"displayName": "City",
+													"description": "City, district, suburb, town, or village"
+												},
+												"state": {
+													"displayName": "State",
+													"description": "State, county, province, or region"
+												},
+												"country": {
+													"displayName": "Country",
+													"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "Postal Code",
+													"description": "ZIP or postal code"
+												}
+											}
+										}
+									},
+									"values": {
+										"details": {
+											"displayName": "Details",
+											"options": {
+												"line1": {
+													"displayName": "Line 1",
+													"description": "Address line 1 (e.g. street, PO Box, or company name)"
+												},
+												"line2": {
+													"displayName": "Line 2",
+													"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+												},
+												"city": {
+													"displayName": "City",
+													"description": "City, district, suburb, town, or village"
+												},
+												"state": {
+													"displayName": "State",
+													"description": "State, county, province, or region"
+												},
+												"country": {
+													"displayName": "Country",
+													"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+												},
+												"postal_code": {
+													"displayName": "Postal Code",
+													"description": "ZIP or postal code"
+												}
+											}
+										},
+										"address": {
+											"displayName": "Recipient Address",
+											"placeholder": "Add Address Details"
+										}
+									}
+								},
+								"phone": {
+									"displayName": "Recipient Phone",
+									"description": "Phone number of the person who will receive the shipment"
+								}
+							}
+						},
+						"shipping": {
+							"displayName": "Shipping",
+							"placeholder": "Add Field"
+						}
+					}
+				},
+				"address": {
+					"displayName": "Address",
+					"description": "Address of the customer to update",
+					"placeholder": "Add Field",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"line1": {
+									"displayName": "Line 1",
+									"description": "Address line 1 (e.g. street, PO Box, or company name)"
+								},
+								"line2": {
+									"displayName": "Line 2",
+									"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+								},
+								"city": {
+									"displayName": "City",
+									"description": "City, district, suburb, town, or village"
+								},
+								"state": {
+									"displayName": "State",
+									"description": "State, county, province, or region"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "ZIP or postal code"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"line1": {
+									"displayName": "Line 1",
+									"description": "Address line 1 (e.g. street, PO Box, or company name)"
+								},
+								"line2": {
+									"displayName": "Line 2",
+									"description": "Address line 2 (e.g. apartment, suite, unit, or building)"
+								},
+								"city": {
+									"displayName": "City",
+									"description": "City, district, suburb, town, or village"
+								},
+								"state": {
+									"displayName": "State",
+									"description": "State, county, province, or region"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Two-letter country code (<a href=\"https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2\">ISO 3166-1 alpha-2</a>)"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "ZIP or postal code"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Add Field"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Email of the customer to create",
+					"placeholder": "name@email.com"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Full name or business name of the customer to create"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "Telephone number of this customer"
+				}
+			}
+		},
+		"duration": {
+			"displayName": "Apply",
+			"description": "How long the discount will be in effect",
+			"options": {
+				"forever": {
+					"displayName": "Forever"
+				},
+				"once": {
+					"displayName": "Once"
+				}
+			}
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "Type of token to create",
+			"options": {
+				"fixedAmount": {
+					"displayName": "Fixed Amount (in Cents)"
+				},
+				"percent": {
+					"displayName": "Percent"
+				},
+				"wechat": {
+					"displayName": "WeChat"
+				},
+				"cardToken": {
+					"displayName": "Card Token"
+				}
+			}
+		},
+		"amountOff": {
+			"displayName": "Amount Off",
+			"description": "Amount in cents to subtract from an invoice total, e.g. enter <code>100</code> for $1.00"
+		},
+		"percentOff": {
+			"displayName": "Percent Off",
+			"description": "Percentage to apply with the coupon"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Full name or business name of the customer to create"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"email": {
+					"displayName": "Email",
+					"description": "Customer's email to filter by",
+					"placeholder": "name@email.com"
+				}
+			}
+		},
+		"eventName": {
+			"displayName": "Event Name",
+			"description": "The name of the meter event. Corresponds with the event_name field on a meter."
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "The value of the meter event. Must be an integer. Can be positive or negative."
+		},
+		"number": {
+			"displayName": "Card Number",
+			"placeholder": "4242424242424242"
+		},
+		"cvc": {
+			"displayName": "CVC",
+			"description": "Security code printed on the back of the card",
+			"placeholder": "314"
+		},
+		"expirationMonth": {
+			"displayName": "Expiration Month",
+			"description": "Number of the month when the card will expire",
+			"placeholder": "10"
+		},
+		"expirationYear": {
+			"displayName": "Expiration Year",
+			"description": "Year when the card will expire",
+			"placeholder": "2022"
+		}
+	}
+}

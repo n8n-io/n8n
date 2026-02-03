@@ -1,0 +1,281 @@
+{
+	"header": {
+		"displayName": "Anthropic",
+		"description": "Interact with Anthropic AI models"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"document": {
+					"displayName": "Document"
+				},
+				"file": {
+					"displayName": "File"
+				},
+				"image": {
+					"displayName": "Image"
+				},
+				"prompt": {
+					"displayName": "Prompt"
+				},
+				"text": {
+					"displayName": "Text"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"analyze": {
+					"displayName": "Analyze Image",
+					"description": "Take in images and answer questions about them"
+				},
+				"upload": {
+					"displayName": "Upload File",
+					"description": "Upload a file to the Anthropic API for later use"
+				},
+				"get": {
+					"displayName": "Get File Metadata",
+					"description": "Get metadata for a file from the Anthropic API"
+				},
+				"list": {
+					"displayName": "List Files",
+					"description": "List files from the Anthropic API"
+				},
+				"deleteFile": {
+					"displayName": "Delete File",
+					"description": "Delete a file from the Anthropic API"
+				},
+				"generate": {
+					"displayName": "Generate Prompt",
+					"description": "Generate a prompt for a model"
+				},
+				"improve": {
+					"displayName": "Improve Prompt",
+					"description": "Improve a prompt for a model"
+				},
+				"templatize": {
+					"displayName": "Templatize Prompt",
+					"description": "Templatize a prompt for a model"
+				},
+				"message": {
+					"displayName": "Message a Model",
+					"description": "Create a completion with Anthropic model"
+				}
+			}
+		},
+		"modelId": {
+			"displayName": "Model"
+		},
+		"text": {
+			"displayName": "Text Input",
+			"placeholder": "e.g. What's in this image?"
+		},
+		"inputType": {
+			"displayName": "Input Type",
+			"options": {
+				"url": {
+					"displayName": "Image URL(s)"
+				},
+				"binary": {
+					"displayName": "Binary File(s)"
+				}
+			}
+		},
+		"documentUrls": {
+			"displayName": "URL(s)",
+			"description": "URL(s) of the document(s) to analyze, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/document.pdf"
+		},
+		"binaryPropertyName": {
+			"displayName": "Attachment Input Data Field Name(s)",
+			"description": "Name of the binary field(s) which contains the file(s) to attach, multiple field names can be added separated by comma",
+			"placeholder": "e.g. data"
+		},
+		"simplify": {
+			"displayName": "Simplify Output",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"maxTokens": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "The file name to use for the uploaded file"
+				},
+				"system": {
+					"displayName": "System Message",
+					"description": "The existing system prompt to templatize",
+					"placeholder": "e.g. You are a helpful assistant"
+				},
+				"feedback": {
+					"displayName": "Feedback",
+					"description": "Feedback for improving the prompt",
+					"placeholder": "e.g. Make it more detailed and include cooking times"
+				},
+				"includeMergedResponse": {
+					"displayName": "Include Merged Response",
+					"description": "Whether to include a single output string merging all text parts of the response"
+				},
+				"codeExecution": {
+					"displayName": "Code Execution",
+					"description": "Whether to enable code execution. Not supported by all models."
+				},
+				"webSearch": {
+					"displayName": "Web Search",
+					"description": "Whether to enable web search"
+				},
+				"maxUses": {
+					"displayName": "Web Search Max Uses",
+					"description": "The maximum number of web search uses per request"
+				},
+				"allowedDomains": {
+					"displayName": "Web Search Allowed Domains",
+					"description": "Comma-separated list of domains to search. Only domains in this list will be searched. Conflicts with \"Web Search Blocked Domains\".",
+					"placeholder": "e.g. google.com, wikipedia.org"
+				},
+				"blockedDomains": {
+					"displayName": "Web Search Blocked Domains",
+					"description": "Comma-separated list of domains to block from search. Conflicts with \"Web Search Allowed Domains\".",
+					"placeholder": "e.g. google.com, wikipedia.org"
+				},
+				"temperature": {
+					"displayName": "Output Randomness (Temperature)",
+					"description": "Controls the randomness of the output. Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive"
+				},
+				"topP": {
+					"displayName": "Output Randomness (Top P)",
+					"description": "The maximum cumulative probability of tokens to consider when sampling"
+				},
+				"topK": {
+					"displayName": "Output Randomness (Top K)",
+					"description": "The maximum number of tokens to consider when sampling"
+				},
+				"maxToolsIterations": {
+					"displayName": "Max Tool Calls Iterations",
+					"description": "The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "File ID",
+			"description": "ID of the file to get metadata for",
+			"placeholder": "e.g. file_123"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"fileUrl": {
+			"displayName": "URL",
+			"description": "URL of the file to upload",
+			"placeholder": "e.g. https://example.com/file.pdf"
+		},
+		"imageUrls": {
+			"displayName": "URL(s)",
+			"description": "URL(s) of the image(s) to analyze, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/image.png"
+		},
+		"experimentalNotice": {
+			"displayName": "The <a href=\"https://docs.anthropic.com/en/api/prompt-tools-generate\">prompt tools APIs</a> are in a closed research preview. Your organization must request access to use them."
+		},
+		"task": {
+			"displayName": "Task",
+			"description": "Description of the prompt's purpose",
+			"placeholder": "e.g. A chef for a meal prep planning service"
+		},
+		"messages": {
+			"displayName": "Messages",
+			"description": "Messages that constitute the prompt to be templatized",
+			"placeholder": "Add Message",
+			"multipleValueButtonText": "Add Message",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be sent",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"content": {
+							"displayName": "Prompt",
+							"description": "The content of the message to be sent",
+							"placeholder": "e.g. Hello, how can you help me?"
+						},
+						"role": {
+							"displayName": "Role",
+							"description": "Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+							"options": {
+								"user": {
+									"displayName": "User",
+									"description": "Send a message as a user and get a response from the model"
+								},
+								"assistant": {
+									"displayName": "Assistant",
+									"description": "Tell the model to adopt a specific tone or personality"
+								}
+							}
+						}
+					}
+				},
+				"messages": {
+					"displayName": "Messages",
+					"placeholder": "Add Message"
+				}
+			}
+		},
+		"addAttachments": {
+			"displayName": "Add Attachments",
+			"description": "Whether to add attachments to the message"
+		},
+		"attachmentsInputType": {
+			"displayName": "Attachments Input Type",
+			"description": "The type of input to use for the attachments",
+			"options": {
+				"url": {
+					"displayName": "URL(s)"
+				},
+				"binary": {
+					"displayName": "Binary File(s)"
+				}
+			}
+		},
+		"attachmentsUrls": {
+			"displayName": "Attachment URL(s)",
+			"description": "URL(s) of the file(s) to attach, multiple URLs can be added separated by comma",
+			"placeholder": "e.g. https://example.com/image.png"
+		}
+	}
+}

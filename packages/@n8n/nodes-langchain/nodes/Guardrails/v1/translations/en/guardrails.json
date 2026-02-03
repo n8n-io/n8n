@@ -1,0 +1,411 @@
+{
+	"header": {
+		"displayName": "Guardrails",
+		"description": "Safeguard AI models from malicious input or prevent them from generating undesirable responses"
+	},
+	"nodeView": {
+		"guardrailsUsage": {
+			"displayName": "Use guardrails to validate text against a set of policies (e.g. NSFW, prompt injection) or to sanitize it (e.g. personal data, secret keys)"
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"classify": {
+					"displayName": "Check Text for Violations",
+					"description": "Validate text against a set of policies (e.g. NSFW, prompt injection)"
+				},
+				"sanitize": {
+					"displayName": "Sanitize Text",
+					"description": "Redact text to mask personal data, secret keys, URLs, etc."
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text To Check"
+		},
+		"guardrails": {
+			"displayName": "Guardrails",
+			"placeholder": "Add Guardrail",
+			"options": {
+				"keywords": {
+					"displayName": "Keywords",
+					"description": "This guardrail checks if specified keywords appear in the input text and can be configured to trigger tripwires based on keyword matches. Multiple keywords can be added separated by comma."
+				},
+				"jailbreak": {
+					"displayName": "Jailbreak",
+					"description": "Detects attempts to jailbreak or bypass AI safety measures",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"threshold": {
+									"displayName": "Threshold",
+									"description": "Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)"
+								},
+								"customizePrompt": {
+									"displayName": "Customize Prompt"
+								},
+								"prompt": {
+									"displayName": "Prompt",
+									"description": "The system prompt used by the guardrail. Thresholds and JSON output are enforced by the node automatically."
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"threshold": {
+									"displayName": "Threshold",
+									"description": "Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)"
+								},
+								"customizePrompt": {
+									"displayName": "Customize Prompt"
+								},
+								"prompt": {
+									"displayName": "Prompt",
+									"description": "The system prompt used by the guardrail. Thresholds and JSON output are enforced by the node automatically."
+								}
+							}
+						},
+						"jailbreak": {
+							"displayName": "Jailbreak"
+						}
+					}
+				},
+				"nsfw": {
+					"displayName": "NSFW",
+					"description": "Detects attempts to generate NSFW content",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"threshold": {
+									"displayName": "Threshold",
+									"description": "Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)"
+								},
+								"customizePrompt": {
+									"displayName": "Customize Prompt"
+								},
+								"prompt": {
+									"displayName": "Prompt",
+									"description": "The system prompt used by the guardrail. Thresholds and JSON output are enforced by the node automatically."
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"threshold": {
+									"displayName": "Threshold",
+									"description": "Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)"
+								},
+								"customizePrompt": {
+									"displayName": "Customize Prompt"
+								},
+								"prompt": {
+									"displayName": "Prompt",
+									"description": "The system prompt used by the guardrail. Thresholds and JSON output are enforced by the node automatically."
+								}
+							}
+						},
+						"nsfw": {
+							"displayName": "NSFW"
+						}
+					}
+				},
+				"pii": {
+					"displayName": "Personal Data (PII)",
+					"description": "Detects attempts to use personal data content",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"all": {
+											"displayName": "All"
+										},
+										"selected": {
+											"displayName": "Selected"
+										}
+									}
+								},
+								"entities": {
+									"displayName": "Entities"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"type": {
+									"displayName": "Type",
+									"options": {
+										"all": {
+											"displayName": "All"
+										},
+										"selected": {
+											"displayName": "Selected"
+										}
+									}
+								},
+								"entities": {
+									"displayName": "Entities"
+								}
+							}
+						},
+						"pii": {
+							"displayName": "Personal Data (PII)"
+						}
+					}
+				},
+				"secretKeys": {
+					"displayName": "Secret Keys",
+					"description": "Detects attempts to use secret keys in the input text. Scans text for common patterns, applies entropy analysis to detect random-looking strings.",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"permissiveness": {
+									"displayName": "Permissiveness",
+									"options": {
+										"strict": {
+											"displayName": "Strict",
+											"description": "Most sensitive, may have more false positives (commonly flag high entropy filenames or code)"
+										},
+										"balanced": {
+											"displayName": "Balanced",
+											"description": "Balanced between sensitivity and specificity"
+										},
+										"permissive": {
+											"displayName": "Permissive",
+											"description": "Least sensitive, may miss some secret keys (but also reduces false positives)"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"permissiveness": {
+									"displayName": "Permissiveness",
+									"options": {
+										"strict": {
+											"displayName": "Strict",
+											"description": "Most sensitive, may have more false positives (commonly flag high entropy filenames or code)"
+										},
+										"balanced": {
+											"displayName": "Balanced",
+											"description": "Balanced between sensitivity and specificity"
+										},
+										"permissive": {
+											"displayName": "Permissive",
+											"description": "Least sensitive, may miss some secret keys (but also reduces false positives)"
+										}
+									}
+								}
+							}
+						},
+						"secretKeys": {
+							"displayName": "Secret Keys"
+						}
+					}
+				},
+				"topicalAlignment": {
+					"displayName": "Topical Alignment",
+					"description": "Detects attempts to stray from the business scope",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"threshold": {
+									"displayName": "Threshold",
+									"description": "Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)"
+								},
+								"prompt": {
+									"displayName": "Prompt",
+									"description": "The system prompt used by the guardrail. Thresholds and JSON output are enforced by the node automatically."
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"threshold": {
+									"displayName": "Threshold",
+									"description": "Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)"
+								},
+								"prompt": {
+									"displayName": "Prompt",
+									"description": "The system prompt used by the guardrail. Thresholds and JSON output are enforced by the node automatically."
+								}
+							}
+						},
+						"topicalAlignment": {
+							"displayName": "Topical Alignment"
+						}
+					}
+				},
+				"urls": {
+					"displayName": "URLs",
+					"description": "Blocks URLs that are not in the allowed list",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"allowedUrls": {
+									"displayName": "Block All URLs Except",
+									"description": "Multiple URLs can be added separated by comma. Leave empty to block all URLs."
+								},
+								"allowedSchemes": {
+									"displayName": "Allowed Schemes"
+								},
+								"blockUserinfo": {
+									"displayName": "Sanitize Userinfo",
+									"description": "Whether to sanitize URLs with userinfo (user:pass@domain) to prevent credential injection"
+								},
+								"allowSubdomains": {
+									"displayName": "Allow Subdomains",
+									"description": "Whether to allow subdomains (e.g. sub.domain.com if domain.com is allowed)"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Value",
+							"options": {
+								"allowedUrls": {
+									"displayName": "Block All URLs Except",
+									"description": "Multiple URLs can be added separated by comma. Leave empty to block all URLs."
+								},
+								"allowedSchemes": {
+									"displayName": "Allowed Schemes"
+								},
+								"blockUserinfo": {
+									"displayName": "Sanitize Userinfo",
+									"description": "Whether to sanitize URLs with userinfo (user:pass@domain) to prevent credential injection"
+								},
+								"allowSubdomains": {
+									"displayName": "Allow Subdomains",
+									"description": "Whether to allow subdomains (e.g. sub.domain.com if domain.com is allowed)"
+								}
+							}
+						},
+						"urls": {
+							"displayName": "URLs"
+						}
+					}
+				},
+				"custom": {
+					"displayName": "Custom",
+					"placeholder": "Add Custom Guardrail",
+					"multipleValueButtonText": "Add Custom Guardrail",
+					"options": {
+						"guardrail": {
+							"displayName": "Guardrail",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the custom guardrail"
+								},
+								"threshold": {
+									"displayName": "Threshold",
+									"description": "Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)"
+								},
+								"prompt": {
+									"displayName": "Prompt",
+									"description": "The system prompt used by the guardrail. Thresholds and JSON output are enforced by the node automatically."
+								}
+							}
+						}
+					},
+					"values": {
+						"guardrail": {
+							"displayName": "Guardrail",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the custom guardrail"
+								},
+								"threshold": {
+									"displayName": "Threshold",
+									"description": "Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)"
+								},
+								"prompt": {
+									"displayName": "Prompt",
+									"description": "The system prompt used by the guardrail. Thresholds and JSON output are enforced by the node automatically."
+								}
+							}
+						},
+						"custom": {
+							"displayName": "Custom",
+							"placeholder": "Add Custom Guardrail"
+						}
+					}
+				},
+				"customRegex": {
+					"displayName": "Custom Regex",
+					"placeholder": "Add Custom Regex",
+					"multipleValueButtonText": "Add Custom Regex",
+					"options": {
+						"regex": {
+							"displayName": "Regex",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the custom regex. Will be used for replacement when sanitizing."
+								},
+								"value": {
+									"displayName": "Regex",
+									"description": "Regex to match the input text",
+									"placeholder": "/text/gi"
+								}
+							}
+						}
+					},
+					"values": {
+						"regex": {
+							"displayName": "Regex",
+							"options": {
+								"name": {
+									"displayName": "Name",
+									"description": "Name of the custom regex. Will be used for replacement when sanitizing."
+								},
+								"value": {
+									"displayName": "Regex",
+									"description": "Regex to match the input text",
+									"placeholder": "/text/gi"
+								}
+							}
+						},
+						"customRegex": {
+							"displayName": "Custom Regex",
+							"placeholder": "Add Custom Regex"
+						}
+					}
+				}
+			}
+		},
+		"customizeSystemMessage": {
+			"displayName": "Customize System Message",
+			"description": "Whether to customize the system message used by the guardrail to specify the output format"
+		},
+		"systemMessage": {
+			"displayName": "System Message",
+			"description": "The system message used by the guardrail to enforce thresholds and JSON output according to schema"
+		}
+	}
+}

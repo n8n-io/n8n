@@ -1,0 +1,64 @@
+{
+	"header": {
+		"displayName": "AWS SNS",
+		"description": "Sends data to AWS SNS"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a topic"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a topic"
+				},
+				"publish": {
+					"displayName": "Publish",
+					"description": "Publish a message to a topic"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"displayName": {
+					"displayName": "Display Name",
+					"description": "The display name to use for a topic with SMS subscriptions"
+				},
+				"fifoTopic": {
+					"displayName": "Fifo Topic",
+					"description": "Whether the topic you want to create is a FIFO (first-in-first-out) topic"
+				}
+			}
+		},
+		"topic": {
+			"displayName": "Topic"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "Subject when the message is delivered to email endpoints"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The message you want to send"
+		}
+	}
+}

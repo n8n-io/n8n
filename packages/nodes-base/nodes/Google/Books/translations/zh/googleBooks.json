@@ -1,0 +1,93 @@
+{
+	"header": {
+		"displayName": "Google Books",
+		"description": "从 Google Books 读取数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"serviceAccount": {
+					"displayName": "服务账号"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"bookshelf": {
+					"displayName": "书架"
+				},
+				"bookshelfVolume": {
+					"displayName": "书架卷"
+				},
+				"volume": {
+					"displayName": "音量"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "根据ID获取卷资源"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "通过查询获取多个卷"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "向书架添加一个卷册"
+				},
+				"clear": {
+					"displayName": "清空",
+					"description": "清空书架中的所有卷册"
+				},
+				"move": {
+					"displayName": "移动",
+					"description": "在书架内移动卷册"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从书架移除卷册"
+				}
+			}
+		},
+		"myLibrary": {
+			"displayName": "我的库"
+		},
+		"searchQuery": {
+			"displayName": "搜索查询",
+			"description": "全文搜索查询字符串"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "用户ID"
+		},
+		"shelfId": {
+			"displayName": "书架ID",
+			"description": "书架ID"
+		},
+		"volumeId": {
+			"displayName": "卷ID",
+			"description": "卷的ID"
+		},
+		"volumePosition": {
+			"displayName": "卷位置",
+			"description": "在货架上移动项目的位置（0将项目放在当前第一个项目之前，1将其放在第一个和第二个之间，依此类推）"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

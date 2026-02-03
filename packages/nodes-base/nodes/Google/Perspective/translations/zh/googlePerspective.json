@@ -1,0 +1,120 @@
+{
+	"header": {
+		"displayName": "Google Perspective",
+		"description": "使用 Google Perspective API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"analyzeComment": {
+					"displayName": "分析评论"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本"
+		},
+		"requestedAttributesUi": {
+			"displayName": "要分析的属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"requestedAttributesValues": {
+					"displayName": "属性",
+					"options": {
+						"attributeName": {
+							"displayName": "属性名称",
+							"description": "要在文本中分析的属性。详情<a href=\"https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages\">见此</a>。",
+							"options": {
+								"flirtation": {
+									"displayName": "调情"
+								},
+								"identity_attack": {
+									"displayName": "身份攻击"
+								},
+								"insult": {
+									"displayName": "侮辱"
+								},
+								"profanity": {
+									"displayName": "粗俗语言"
+								},
+								"severe_toxicity": {
+									"displayName": "严重毒性"
+								},
+								"sexually_explicit": {
+									"displayName": "色情内容"
+								},
+								"threat": {
+									"displayName": "威胁"
+								},
+								"toxicity": {
+									"displayName": "毒性"
+								}
+							}
+						},
+						"scoreThreshold": {
+							"displayName": "分数阈值",
+							"description": "返回结果所需的最低分数。设为0时，将返回所有分数。"
+						}
+					}
+				}
+			},
+			"values": {
+				"requestedAttributesValues": {
+					"displayName": "属性",
+					"options": {
+						"attributeName": {
+							"displayName": "属性名称",
+							"description": "要在文本中分析的属性。详情<a href=\"https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages\">见此</a>。",
+							"options": {
+								"flirtation": {
+									"displayName": "调情"
+								},
+								"identity_attack": {
+									"displayName": "身份攻击"
+								},
+								"insult": {
+									"displayName": "侮辱"
+								},
+								"profanity": {
+									"displayName": "粗俗语言"
+								},
+								"severe_toxicity": {
+									"displayName": "严重毒性"
+								},
+								"sexually_explicit": {
+									"displayName": "色情内容"
+								},
+								"threat": {
+									"displayName": "威胁"
+								},
+								"toxicity": {
+									"displayName": "毒性"
+								}
+							}
+						},
+						"scoreThreshold": {
+							"displayName": "分数阈值",
+							"description": "返回结果所需的最低分数。设为0时，将返回所有分数。"
+						}
+					}
+				},
+				"requestedAttributesUi": {
+					"displayName": "要分析的属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"languages": {
+					"displayName": "语言名称或ID",
+					"description": "文本输入的语言。如果未指定，API将自动检测评论语言。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		}
+	}
+}

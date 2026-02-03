@@ -1,0 +1,239 @@
+{
+	"header": {
+		"displayName": "Customer.io",
+		"description": "Consume Customer.io API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"customer": {
+					"displayName": "Customer"
+				},
+				"event": {
+					"displayName": "Event"
+				},
+				"campaign": {
+					"displayName": "Campaign"
+				},
+				"segment": {
+					"displayName": "Segment"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"getMetrics": {
+					"displayName": "Get Metrics"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new customer, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a customer"
+				},
+				"track": {
+					"displayName": "Track",
+					"description": "Track a customer event"
+				},
+				"trackAnonymous": {
+					"displayName": "Track Anonymous",
+					"description": "Track an anonymous event"
+				},
+				"add": {
+					"displayName": "Add Customer"
+				},
+				"remove": {
+					"displayName": "Remove Customer"
+				}
+			}
+		},
+		"campaignId": {
+			"displayName": "Campaign ID",
+			"description": "The unique identifier for the campaign"
+		},
+		"period": {
+			"displayName": "Period",
+			"description": "Specify metric period",
+			"options": {
+				"hours": {
+					"displayName": "Hours"
+				},
+				"days": {
+					"displayName": "Days"
+				},
+				"weeks": {
+					"displayName": "Weeks"
+				},
+				"months": {
+					"displayName": "Months"
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"steps": {
+					"displayName": "Steps",
+					"description": "Integer specifying how many steps to return. Defaults to the maximum number of timeperiods available, or 12 when using the months period. Maximum timeperiods available are 24 hours, 45 days, 12 weeks and 120 months"
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Used to change event type. For Page View events set to \"page\".",
+					"options": {
+						"email": {
+							"displayName": "Email"
+						},
+						"empty": {
+							"displayName": "Empty"
+						},
+						"push": {
+							"displayName": "Push"
+						},
+						"slack": {
+							"displayName": "Slack"
+						},
+						"twilio": {
+							"displayName": "Twilio"
+						},
+						"urbanAirship": {
+							"displayName": "Urban Airship"
+						},
+						"webhook": {
+							"displayName": "Webhook"
+						}
+					}
+				},
+				"customProperties": {
+					"displayName": "Custom Properties",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"customProperty": {
+							"displayName": "Property",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Property name",
+									"placeholder": "Plan"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Property value",
+									"placeholder": "Basic"
+								}
+							}
+						}
+					},
+					"values": {
+						"customProperty": {
+							"displayName": "Property",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Property name",
+									"placeholder": "Plan"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Property value",
+									"placeholder": "Basic"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "Custom Properties"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The email address of the user",
+					"placeholder": "name@email.com"
+				},
+				"createdAt": {
+					"displayName": "Created At",
+					"description": "The UNIX timestamp from when the user was created"
+				},
+				"customAttributes": {
+					"displayName": "Custom Attributes",
+					"description": "Custom Properties",
+					"multipleValueButtonText": "Add",
+					"options": {
+						"customAttribute": {
+							"displayName": "Attribute",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Attribute name",
+									"placeholder": "Price"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Attribute value",
+									"placeholder": "25.50"
+								}
+							}
+						}
+					},
+					"values": {
+						"customAttribute": {
+							"displayName": "Attribute",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Attribute name",
+									"placeholder": "Price"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Attribute value",
+									"placeholder": "25.50"
+								}
+							}
+						},
+						"customAttributes": {
+							"displayName": "Custom Attributes"
+						}
+					}
+				}
+			}
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "The unique identifier for the customer"
+		},
+		"additionalFieldsJson": {
+			"displayName": "Additional Fields",
+			"description": "Object of values to set as described <a href=\"https://customer.io/docs/api-triggered-data-format#basic-data-formatting\">here</a>"
+		},
+		"customerId": {
+			"displayName": "Customer ID",
+			"description": "The unique identifier for the customer"
+		},
+		"eventName": {
+			"displayName": "Event Name",
+			"description": "The unique identifier for the customer"
+		},
+		"segmentId": {
+			"displayName": "Segment ID",
+			"description": "The unique identifier of the segment"
+		},
+		"customerIds": {
+			"displayName": "Customer IDs",
+			"description": "A list of customer IDs to add to the segment"
+		}
+	}
+}

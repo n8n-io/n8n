@@ -1,0 +1,114 @@
+{
+	"header": {
+		"displayName": "LinkedIn",
+		"description": "Consume LinkedIn API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"standard": {
+					"displayName": "Standard"
+				},
+				"communityManagement": {
+					"displayName": "Community Management"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"post": {
+					"displayName": "Post"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new post"
+				}
+			}
+		},
+		"postAs": {
+			"displayName": "Post As",
+			"description": "If to post on behalf of a user or an organization",
+			"options": {
+				"person": {
+					"displayName": "Person"
+				},
+				"organization": {
+					"displayName": "Organization"
+				}
+			}
+		},
+		"person": {
+			"displayName": "Person Name or ID",
+			"description": "Person as which the post should be posted as. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"organization": {
+			"displayName": "Organization URN",
+			"description": "URN of Organization as which the post should be posted as",
+			"placeholder": "1234567"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "The primary content of the post"
+		},
+		"shareMediaCategory": {
+			"displayName": "Media Category",
+			"options": {
+				"NONE": {
+					"displayName": "None",
+					"description": "The post does not contain any media, and will only consist of text"
+				},
+				"ARTICLE": {
+					"displayName": "Article",
+					"description": "The post contains an article URL"
+				},
+				"IMAGE": {
+					"displayName": "Image",
+					"description": "The post contains an image"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"description": {
+					"displayName": "Description",
+					"description": "Provide a short description for your image or article"
+				},
+				"originalUrl": {
+					"displayName": "Original URL",
+					"description": "Provide the URL of the article you would like to share here"
+				},
+				"thumbnailBinaryPropertyName": {
+					"displayName": "Input Binary Field"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Customize the title of your image or article"
+				},
+				"visibility": {
+					"displayName": "Visibility",
+					"description": "Dictate if post will be seen by the public or only connections",
+					"options": {
+						"CONNECTIONS": {
+							"displayName": "Connections"
+						},
+						"PUBLIC": {
+							"displayName": "Public"
+						}
+					}
+				}
+			}
+		}
+	}
+}

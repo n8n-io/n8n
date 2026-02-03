@@ -1,0 +1,152 @@
+{
+	"header": {
+		"displayName": "响应Webhook",
+		"description": "返回Webhook数据"
+	},
+	"nodeView": {
+		"enableResponseOutput": {
+			"displayName": "启用响应输出分支",
+			"description": "是否提供额外的输出分支，包含发送到webhook的响应"
+		},
+		"generalNotice": {
+			"displayName": "请确认\"Webhook\"节点的\"Respond\"参数已设置为\"使用Respond to Webhook节点\"。 <a href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/\" target=\"_blank\">更多详情"
+		},
+		"respondWith": {
+			"displayName": "返回",
+			"description": "应返回的数据",
+			"options": {
+				"allIncomingItems": {
+					"displayName": "所有传入项",
+					"description": "响应所有输入JSON项"
+				},
+				"binary": {
+					"displayName": "二进制文件",
+					"description": "响应传入的文件二进制数据"
+				},
+				"firstIncomingItem": {
+					"displayName": "首个传入项",
+					"description": "返回首个输入JSON项"
+				},
+				"json": {
+					"displayName": "JSON",
+					"description": "使用自定义JSON正文响应"
+				},
+				"jwt": {
+					"displayName": "JWT令牌",
+					"description": "返回一个JWT令牌"
+				},
+				"noData": {
+					"displayName": "无数据",
+					"description": "响应空内容体"
+				},
+				"redirect": {
+					"displayName": "重定向",
+					"description": "响应重定向到指定URL"
+				},
+				"text": {
+					"displayName": "文本",
+					"description": "以简单的文本消息正文回复"
+				}
+			}
+		},
+		"credentials": {
+			"displayName": "凭据"
+		},
+		"webhookNotice": {
+			"displayName": "使用表达式时请注意，此节点仅对输入数据中的第一项执行"
+		},
+		"redirectURL": {
+			"displayName": "重定向URL",
+			"description": "要重定向到的URL",
+			"placeholder": "例如 http://www.n8n.io"
+		},
+		"responseBody": {
+			"displayName": "响应体",
+			"description": "HTTP响应文本数据",
+			"placeholder": "例如：工作流已完成"
+		},
+		"payload": {
+			"displayName": "载荷",
+			"description": "要包含在JWT令牌中的载荷"
+		},
+		"responseDataSource": {
+			"displayName": "响应数据源",
+			"options": {
+				"automatically": {
+					"displayName": "从输入中自动选择",
+					"description": "当输入数据包含单个二进制数据时使用"
+				},
+				"set": {
+					"displayName": "自行指定",
+					"description": "输入二进制数据所在字段的名称"
+				}
+			}
+		},
+		"inputFieldName": {
+			"displayName": "输入字段名称",
+			"description": "包含二进制数据的节点输入字段名称"
+		},
+		"contentTypeNotice": {
+			"displayName": "为避免意外行为，请添加带有适当值的“Content-Type”响应头"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"responseCode": {
+					"displayName": "响应代码",
+					"description": "要返回的HTTP响应代码。默认为200。"
+				},
+				"responseHeaders": {
+					"displayName": "响应头",
+					"description": "向Webhook响应添加头信息",
+					"placeholder": "添加响应头",
+					"multipleValueButtonText": "添加响应头",
+					"options": {
+						"entries": {
+							"displayName": "条目",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "标头的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"entries": {
+							"displayName": "条目",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "标头名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "标头的值"
+								}
+							}
+						},
+						"responseHeaders": {
+							"displayName": "响应头",
+							"placeholder": "添加响应头"
+						}
+					}
+				},
+				"responseKey": {
+					"displayName": "将响应放入字段",
+					"description": "用于存放所有响应项的字段名称",
+					"placeholder": "例如：data"
+				},
+				"enableStreaming": {
+					"displayName": "启用流式传输",
+					"description": "是否启用响应流式传输"
+				}
+			}
+		}
+	}
+}

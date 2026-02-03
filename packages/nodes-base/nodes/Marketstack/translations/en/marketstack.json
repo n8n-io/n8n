@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "Marketstack",
+		"description": "Consume Marketstack API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"endOfDayData": {
+					"displayName": "End-of-Day Data",
+					"description": "Stock market closing data"
+				},
+				"exchange": {
+					"displayName": "Exchange",
+					"description": "Stock market exchange"
+				},
+				"ticker": {
+					"displayName": "Ticker",
+					"description": "Stock market symbol"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"get": {
+					"displayName": "Get"
+				}
+			}
+		},
+		"symbols": {
+			"displayName": "Ticker",
+			"description": "One or multiple comma-separated stock symbols (tickers) to retrieve, e.g. <code>AAPL</code> or <code>AAPL,MSFT</code>"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"exchange": {
+					"displayName": "Exchange",
+					"description": "Stock exchange to filter results by, specified by <a href=\"https://en.wikipedia.org/wiki/Market_Identifier_Code\">Market Identifier Code</a>, e.g. <code>XNAS</code>"
+				},
+				"latest": {
+					"displayName": "Latest",
+					"description": "Whether to fetch the most recent stock market data"
+				},
+				"sort": {
+					"displayName": "Sort Order",
+					"description": "Order to sort results in",
+					"options": {
+						"ASC": {
+							"displayName": "Ascending"
+						},
+						"DESC": {
+							"displayName": "Descending"
+						}
+					}
+				},
+				"specificDate": {
+					"displayName": "Specific Date",
+					"description": "Date in YYYY-MM-DD format, e.g. <code>2020-01-01</code>, or in ISO-8601 date format, e.g. <code>2020-05-21T00:00:00+0000</code>"
+				},
+				"dateFrom": {
+					"displayName": "Timeframe Start Date",
+					"description": "Timeframe start date in YYYY-MM-DD format, e.g. <code>2020-01-01</code>, or in ISO-8601 date format, e.g. <code>2020-05-21T00:00:00+0000</code>"
+				},
+				"dateTo": {
+					"displayName": "Timeframe End Date",
+					"description": "Timeframe end date in YYYY-MM-DD format, e.g. <code>2020-01-01</code>, or in ISO-8601 date format, e.g. <code>2020-05-21T00:00:00+0000</code>"
+				}
+			}
+		},
+		"exchange": {
+			"displayName": "Exchange",
+			"description": "Stock exchange to retrieve, specified by <a href=\"https://en.wikipedia.org/wiki/Market_Identifier_Code\">Market Identifier Code</a>, e.g. <code>XNAS</code>"
+		},
+		"symbol": {
+			"displayName": "Ticker",
+			"description": "Stock symbol (ticker) to retrieve, e.g. <code>AAPL</code>"
+		}
+	}
+}

@@ -1,0 +1,292 @@
+{
+	"header": {
+		"displayName": "Nextcloud",
+		"description": "访问Nextcloud上的数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"copy": {
+					"displayName": "复制",
+					"description": "复制文件夹"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除用户"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"move": {
+					"displayName": "移动",
+					"description": "移动文件夹"
+				},
+				"share": {
+					"displayName": "分享",
+					"description": "分享文件夹"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传文件"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "邀请用户加入NextCloud组织"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "返回指定文件夹的内容"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "检索单个用户信息"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取用户列表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "编辑用户相关属性"
+				}
+			}
+		},
+		"path": {
+			"displayName": "文件夹路径",
+			"description": "要列出内容的路径。路径应以\"/\"开头。",
+			"placeholder": "/invoices/2019/"
+		},
+		"toPath": {
+			"displayName": "目标路径",
+			"description": "文件或文件夹的新路径。路径应以“/”开头。",
+			"placeholder": "/invoices/new_name.txt"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"binaryDataUpload": {
+			"displayName": "二进制文件"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "要上传文件的文本内容"
+		},
+		"shareType": {
+			"displayName": "分享类型",
+			"description": "要设置的分享权限",
+			"options": {
+				"0": {
+					"displayName": "用户"
+				},
+				"1": {
+					"displayName": "分组"
+				},
+				"3": {
+					"displayName": "公开链接"
+				},
+				"4": {
+					"displayName": "电子邮件"
+				},
+				"7": {
+					"displayName": "圆形"
+				}
+			}
+		},
+		"circleId": {
+			"displayName": "圈子ID",
+			"description": "要共享的圈子ID"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要邀请用户的邮箱",
+			"placeholder": "john@email.com"
+		},
+		"groupId": {
+			"displayName": "群组ID",
+			"description": "要共享的群组ID"
+		},
+		"user": {
+			"displayName": "用户",
+			"description": "要共享的用户"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"password": {
+					"displayName": "密码",
+					"description": "可选搜索字符串"
+				},
+				"permissions": {
+					"displayName": "权限",
+					"description": "要设置的共享权限",
+					"options": {
+						"1": {
+							"displayName": "读取"
+						},
+						"2": {
+							"displayName": "更新"
+						},
+						"4": {
+							"displayName": "创建"
+						},
+						"8": {
+							"displayName": "删除"
+						},
+						"31": {
+							"displayName": "全部"
+						}
+					}
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "可选搜索字符串"
+				},
+				"offset": {
+					"displayName": "偏移量",
+					"description": "可选偏移值"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户名",
+			"description": "用户将拥有的用户名",
+			"placeholder": "john"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"displayName": {
+					"displayName": "显示名称",
+					"description": "要邀请用户的显示名称"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加选项",
+			"options": {
+				"field": {
+					"displayName": "字段",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "已更新属性的键",
+							"options": {
+								"address": {
+									"displayName": "地址",
+									"description": "用户的新地址"
+								},
+								"displayname": {
+									"displayName": "显示名称",
+									"description": "用户的新显示名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"description": "用户的新邮箱"
+								},
+								"password": {
+									"displayName": "密码",
+									"description": "用户的新密码"
+								},
+								"twitter": {
+									"displayName": "Twitter",
+									"description": "用户的新推特账号"
+								},
+								"website": {
+									"displayName": "网站",
+									"description": "用户的新网站"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "已更新属性的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"field": {
+					"displayName": "字段",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "已更新属性的键",
+							"options": {
+								"address": {
+									"displayName": "地址",
+									"description": "用户的新地址"
+								},
+								"displayname": {
+									"displayName": "显示名称",
+									"description": "用户的新显示名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"description": "用户的新邮箱"
+								},
+								"password": {
+									"displayName": "密码",
+									"description": "用户的新密码"
+								},
+								"twitter": {
+									"displayName": "Twitter",
+									"description": "用户的新推特账号"
+								},
+								"website": {
+									"displayName": "网站",
+									"description": "用户的新网站"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值",
+							"description": "已更新属性的值"
+						}
+					}
+				},
+				"updateFields": {
+					"displayName": "更新字段",
+					"placeholder": "添加选项"
+				}
+			}
+		}
+	}
+}

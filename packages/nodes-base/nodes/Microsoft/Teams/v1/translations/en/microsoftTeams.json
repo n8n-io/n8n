@@ -1,0 +1,245 @@
+{
+	"header": {
+		"displayName": "Microsoft Teams",
+		"description": "Consume Microsoft Teams API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>New node version available:</strong> get the latest version with added features from the nodes panel."
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"channel": {
+					"displayName": "Channel"
+				},
+				"channelMessage": {
+					"displayName": "Channel Message (Beta)"
+				},
+				"chatMessage": {
+					"displayName": "Chat Message"
+				},
+				"task": {
+					"displayName": "Task"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a task"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a task"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a task"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many tasks"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a task"
+				}
+			}
+		},
+		"teamId": {
+			"displayName": "Team Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Channel name as it will appear to the user in Microsoft Teams"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"description": {
+					"displayName": "Description",
+					"description": "Channel's description"
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "The type of the channel",
+					"options": {
+						"private": {
+							"displayName": "Private"
+						},
+						"standard": {
+							"displayName": "Standard"
+						}
+					}
+				},
+				"includeLinkToWorkflow": {
+					"displayName": "Include Link to Workflow",
+					"description": "Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages."
+				},
+				"makeReply": {
+					"displayName": "Make Reply",
+					"description": "An optional ID of the message you want to reply to"
+				}
+			},
+			"description": "Other options to set"
+		},
+		"channelId": {
+			"displayName": "Channel Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"name": {
+					"displayName": "Name",
+					"description": "Channel name as it will appear to the user in Microsoft Teams"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Channel's description"
+				},
+				"assignedTo": {
+					"displayName": "Assigned To Name or ID",
+					"description": "Who the task should be assigned to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"bucketId": {
+					"displayName": "Bucket Name or ID",
+					"description": "The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"dueDateTime": {
+					"displayName": "Due Date Time",
+					"description": "Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time."
+				},
+				"groupId": {
+					"displayName": "Group Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"labels": {
+					"displayName": "Label Names or IDs",
+					"description": "Labels to assign to the task. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"percentComplete": {
+					"displayName": "Percent Complete",
+					"description": "Percentage of task completion. When set to 100, the task is considered completed."
+				},
+				"planId": {
+					"displayName": "Plan Name or ID",
+					"description": "The plan for the task to belong to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the task"
+				}
+			}
+		},
+		"messageType": {
+			"displayName": "Message Type",
+			"description": "The type of the content",
+			"options": {
+				"text": {
+					"displayName": "Text"
+				},
+				"html": {
+					"displayName": "HTML"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The content of the item"
+		},
+		"chatId": {
+			"displayName": "Chat Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"messageId": {
+			"displayName": "Message ID"
+		},
+		"groupSource": {
+			"displayName": "Group Source",
+			"options": {
+				"all": {
+					"displayName": "All Groups",
+					"description": "From all groups"
+				},
+				"mine": {
+					"displayName": "My Groups",
+					"description": "Only load groups that account is member of"
+				}
+			}
+		},
+		"groupId": {
+			"displayName": "Group Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"planId": {
+			"displayName": "Plan Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"bucketId": {
+			"displayName": "Bucket Name or ID",
+			"description": "The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the task"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"assignedTo": {
+					"displayName": "Assigned To Name or ID",
+					"description": "Who the task should be assigned to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"dueDateTime": {
+					"displayName": "Due Date Time",
+					"description": "Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time."
+				},
+				"labels": {
+					"displayName": "Label Names or IDs",
+					"description": "Labels to assign to the task. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"percentComplete": {
+					"displayName": "Percent Complete",
+					"description": "Percentage of task completion. When set to 100, the task is considered completed."
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "Task ID",
+			"description": "The ID of the Task"
+		},
+		"tasksFor": {
+			"displayName": "Tasks For",
+			"options": {
+				"member": {
+					"displayName": "Group Member",
+					"description": "Tasks assigned to group member"
+				},
+				"plan": {
+					"displayName": "Plan",
+					"description": "Tasks in group plan"
+				}
+			}
+		},
+		"memberId": {
+			"displayName": "Member Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		}
+	}
+}

@@ -1,0 +1,282 @@
+{
+	"header": {
+		"displayName": "数据表",
+		"description": "在表中永久保存跨工作流执行的数据"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"row": {
+					"displayName": "行"
+				},
+				"table": {
+					"displayName": "表格"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"deleteRows": {
+					"displayName": "删除",
+					"description": "删除行"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取行"
+				},
+				"rowExists": {
+					"displayName": "如果行存在",
+					"description": "匹配数据表中存在的输入项"
+				},
+				"rowNotExists": {
+					"displayName": "如果行不存在",
+					"description": "匹配不在数据表中的输入项"
+				},
+				"insert": {
+					"displayName": "插入",
+					"description": "插入新行"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新数据表名称"
+				},
+				"upsert": {
+					"displayName": "更新或插入",
+					"description": "更新行(若无匹配则插入)"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新的数据表"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除数据表"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "列出所有数据表"
+				}
+			}
+		},
+		"dataTableId": {
+			"displayName": "数据表"
+		},
+		"matchType": {
+			"displayName": "必须匹配",
+			"options": {
+				"anyCondition": {
+					"displayName": "任意条件"
+				},
+				"allConditions": {
+					"displayName": "所有条件"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "条件",
+			"description": "筛选决定哪些行通过",
+			"placeholder": "添加条件",
+			"multipleValueButtonText": "添加条件",
+			"options": {
+				"conditions": {
+					"displayName": "条件",
+					"options": {
+						"keyName": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定"
+						},
+						"condition": {
+							"displayName": "条件"
+						},
+						"keyValue": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"conditions": {
+					"displayName": "条件",
+					"options": {
+						"keyName": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定"
+						},
+						"condition": {
+							"displayName": "条件"
+						},
+						"keyValue": {
+							"displayName": "值"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "条件",
+					"placeholder": "添加条件"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"dryRun": {
+					"displayName": "试运行",
+					"description": "该操作是否模拟并返回受影响行在'之前'和'之后'状态的数据"
+				},
+				"optimizeBulk": {
+					"displayName": "批量优化",
+					"description": "是否通过不返回插入数据来提升批量插入性能5倍"
+				},
+				"createIfNotExists": {
+					"displayName": "复用现有表",
+					"description": "是否在存在同名表时返回现有表而不抛出错误"
+				},
+				"filterName": {
+					"displayName": "按名称筛选",
+					"description": "按名称筛选数据表（不区分大小写）"
+				},
+				"sortField": {
+					"displayName": "排序字段",
+					"description": "排序字段",
+					"options": {
+						"createdAt": {
+							"displayName": "已创建"
+						},
+						"name": {
+							"displayName": "名称"
+						},
+						"sizeBytes": {
+							"displayName": "规模"
+						},
+						"updatedAt": {
+							"displayName": "已更新"
+						}
+					}
+				},
+				"sortDirection": {
+					"displayName": "排序方向",
+					"options": {
+						"asc": {
+							"displayName": "升序"
+						},
+						"desc": {
+							"displayName": "降序"
+						}
+					}
+				}
+			}
+		},
+		"columns": {
+			"displayName": "列",
+			"description": "要在数据表中创建的列",
+			"placeholder": "添加列",
+			"multipleValueButtonText": "添加列",
+			"options": {
+				"column": {
+					"displayName": "列",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "列的名称"
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "列的类型",
+							"options": {
+								"boolean": {
+									"displayName": "布尔值"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"string": {
+									"displayName": "字符串"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"column": {
+					"displayName": "列",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "列的名称"
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "列的类型",
+							"options": {
+								"boolean": {
+									"displayName": "布尔值"
+								},
+								"date": {
+									"displayName": "日期"
+								},
+								"number": {
+									"displayName": "数字"
+								},
+								"string": {
+									"displayName": "字符串"
+								}
+							}
+						}
+					}
+				},
+				"columns": {
+					"displayName": "列",
+					"placeholder": "添加列"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"orderBy": {
+			"displayName": "排序依据",
+			"description": "是否按列对结果进行排序"
+		},
+		"orderByColumn": {
+			"displayName": "排序列",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定"
+		},
+		"orderByDirection": {
+			"displayName": "排序方向",
+			"description": "列的排序方向",
+			"options": {
+				"ASC": {
+					"displayName": "升序"
+				},
+				"DESC": {
+					"displayName": "降序"
+				}
+			}
+		},
+		"tableName": {
+			"displayName": "名称",
+			"description": "要创建的数据表名称",
+			"placeholder": "例如：我的数据表"
+		},
+		"deleteWarning": {
+			"displayName": "这将永久删除数据表及其所有数据。此操作无法撤销。"
+		},
+		"newName": {
+			"displayName": "新名称",
+			"description": "数据表的新名称",
+			"placeholder": "例如：重命名后的数据表"
+		}
+	}
+}

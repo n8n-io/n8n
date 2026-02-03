@@ -1,0 +1,36 @@
+{
+	"header": {
+		"displayName": "GetResponse Trigger",
+		"description": "Starts the workflow when GetResponse events occur"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"apiKey": {
+					"displayName": "API Key"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"events": {
+			"displayName": "Events"
+		},
+		"listIds": {
+			"displayName": "List Names or IDs",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"delete": {
+					"displayName": "Delete Current Subscription",
+					"description": "Whether to delete the current subscription"
+				}
+			}
+		}
+	}
+}

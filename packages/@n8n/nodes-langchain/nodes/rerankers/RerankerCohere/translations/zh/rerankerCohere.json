@@ -1,0 +1,27 @@
+{
+	"header": {
+		"displayName": "Cohere 重排器",
+		"description": "使用 Cohere 重排器，根据与给定查询的相关性，对从向量存储检索到的文档进行重新排序。"
+	},
+	"nodeView": {
+		"modelName": {
+			"displayName": "模型",
+			"description": "用于对文档重新排序的模型。<a href=\"https://docs.cohere.com/docs/models\">了解更多</a>。",
+			"options": {
+				"rerank-v3.5": {
+					"displayName": "重新排序-v3.5"
+				},
+				"rerank-english-v3.0": {
+					"displayName": "重排序-英文-v3.0"
+				},
+				"rerank-multilingual-v3.0": {
+					"displayName": "rerank-multilingual-v3.0"
+				}
+			}
+		},
+		"topN": {
+			"displayName": "前N个",
+			"description": "重排序后返回的最大文档数"
+		}
+	}
+}

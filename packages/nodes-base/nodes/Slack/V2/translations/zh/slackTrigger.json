@@ -1,0 +1,44 @@
+{
+	"header": {
+		"displayName": "Slack触发器",
+		"description": "通过Webhook处理Slack事件"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证"
+		},
+		"notice": {
+			"displayName": "这将为您的机器人所在频道的每个事件使用一次执行，请谨慎使用"
+		},
+		"trigger": {
+			"displayName": "触发于"
+		},
+		"watchWorkspace": {
+			"displayName": "监视整个工作区",
+			"description": "是否在整个工作区中监视事件，而不是特定频道"
+		},
+		"channelId": {
+			"displayName": "监听频道",
+			"description": "要监听事件的Slack频道。适用于以下事件：机器人/应用提及、文件共享、频道新消息发布、添加反应。",
+			"placeholder": "选择频道..."
+		},
+		"downloadFiles": {
+			"displayName": "下载文件",
+			"description": "是否下载文件并添加到输出"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"resolveIds": {
+					"displayName": "解析ID",
+					"description": "是否将ID解析为对应的名称并返回"
+				},
+				"userIds": {
+					"displayName": "要忽略的用户名或ID",
+					"description": "以逗号分隔的编码用户ID字符串。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		}
+	}
+}

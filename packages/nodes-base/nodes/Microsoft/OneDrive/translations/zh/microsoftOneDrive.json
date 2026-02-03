@@ -1,0 +1,194 @@
+{
+	"header": {
+		"displayName": "Microsoft OneDrive",
+		"description": "使用 Microsoft OneDrive API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"copy": {
+					"displayName": "复制",
+					"description": "复制文件"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文件夹"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取文件"
+				},
+				"rename": {
+					"displayName": "重命名",
+					"description": "重命名文件夹"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索文件夹"
+				},
+				"share": {
+					"displayName": "分享",
+					"description": "分享文件夹"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传最大4MB的文件"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建文件夹"
+				},
+				"getChildren": {
+					"displayName": "获取子项",
+					"description": "获取文件夹内的项目"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "文件ID",
+			"description": "字段ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "副本的新名称。如果未提供，将使用与原始工作流相同的名称。"
+				}
+			}
+		},
+		"parentReference": {
+			"displayName": "父级引用",
+			"description": "指向将创建副本的父级项目的引用 <a href=\"https://docs.microsoft.com/en-us/onedrive/developer/rest-api/resources/itemreference?view=odsp-graph-online\"> 详情 </a>",
+			"placeholder": "添加父级引用",
+			"options": {
+				"driveId": {
+					"displayName": "驱动器ID",
+					"description": "包含该项目的驱动器实例标识符"
+				},
+				"driveType": {
+					"displayName": "驱动器类型",
+					"description": "标识驱动器的类型"
+				},
+				"id": {
+					"displayName": "ID",
+					"description": "驱动器中项目的标识符"
+				},
+				"listId": {
+					"displayName": "列表ID",
+					"description": "列表标识符"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "被引用项的名称"
+				},
+				"path": {
+					"displayName": "路径",
+					"description": "可用于导航到项目的路径"
+				},
+				"shareId": {
+					"displayName": "共享ID",
+					"description": "可通过共享API访问的共享资源的标识符"
+				},
+				"siteId": {
+					"displayName": "站点ID",
+					"description": "站点的标识符"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"itemId": {
+			"displayName": "项目ID",
+			"description": "文件夹ID"
+		},
+		"newName": {
+			"displayName": "新名称",
+			"description": "文件夹的新名称"
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "用于搜索项目的查询文本。值可以在多个字段中匹配，包括文件名、元数据和文件内容。"
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "要创建的分享链接类型",
+			"options": {
+				"view": {
+					"displayName": "查看"
+				},
+				"edit": {
+					"displayName": "编辑"
+				},
+				"embed": {
+					"displayName": "嵌入"
+				}
+			}
+		},
+		"scope": {
+			"displayName": "作用范围",
+			"description": "要创建的共享链接类型",
+			"options": {
+				"anonymous": {
+					"displayName": "匿名"
+				},
+				"organization": {
+					"displayName": "组织"
+				}
+			}
+		},
+		"fileName": {
+			"displayName": "文件名",
+			"description": "文件保存的名称"
+		},
+		"parentId": {
+			"displayName": "父文件夹ID",
+			"description": "父文件夹ID（将包含该文件）"
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "文件的文本内容"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "文件夹的名称或路径",
+			"placeholder": "/图片/2021"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"parentFolderId": {
+					"displayName": "父文件夹ID",
+					"description": "要在其中创建新文件夹的文件夹ID"
+				}
+			}
+		},
+		"folderId": {
+			"displayName": "文件夹ID",
+			"description": "文件ID"
+		}
+	}
+}

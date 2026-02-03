@@ -1,0 +1,93 @@
+{
+	"header": {
+		"displayName": "Google Books",
+		"description": "Read data from Google Books"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"serviceAccount": {
+					"displayName": "Service Account"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2 (recommended)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"bookshelf": {
+					"displayName": "Bookshelf"
+				},
+				"bookshelfVolume": {
+					"displayName": "Bookshelf Volume"
+				},
+				"volume": {
+					"displayName": "Volume"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get",
+					"description": "Get a volume resource based on ID"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many volumes filtered by query"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add a volume to a bookshelf"
+				},
+				"clear": {
+					"displayName": "Clear",
+					"description": "Clears all volumes from a bookshelf"
+				},
+				"move": {
+					"displayName": "Move",
+					"description": "Moves a volume within a bookshelf"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Removes a volume from a bookshelf"
+				}
+			}
+		},
+		"myLibrary": {
+			"displayName": "My Library"
+		},
+		"searchQuery": {
+			"displayName": "Search Query",
+			"description": "Full-text search query string"
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "ID of user"
+		},
+		"shelfId": {
+			"displayName": "Bookshelf ID",
+			"description": "ID of the bookshelf"
+		},
+		"volumeId": {
+			"displayName": "Volume ID",
+			"description": "ID of the volume"
+		},
+		"volumePosition": {
+			"displayName": "Volume Position",
+			"description": "Position on shelf to move the item (0 puts the item before the current first item, 1 puts it between the first and the second and so on)"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		}
+	}
+}

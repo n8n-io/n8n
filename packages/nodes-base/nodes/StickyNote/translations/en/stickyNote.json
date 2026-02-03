@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "Sticky Note",
+		"description": "Make your workflow easier to understand"
+	},
+	"nodeView": {
+		"content": {
+			"displayName": "Content"
+		},
+		"height": {
+			"displayName": "Height"
+		},
+		"width": {
+			"displayName": "Width"
+		},
+		"color": {
+			"displayName": "Color"
+		}
+	}
+}

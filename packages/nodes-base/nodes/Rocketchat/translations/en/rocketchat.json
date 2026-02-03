@@ -1,0 +1,174 @@
+{
+	"header": {
+		"displayName": "RocketChat",
+		"description": "Consume RocketChat API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"chat": {
+					"displayName": "Chat"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"postMessage": {
+					"displayName": "Post Message",
+					"description": "Post a message to a channel or a direct message"
+				}
+			}
+		},
+		"channel": {
+			"displayName": "Channel",
+			"description": "The channel name with the prefix in front of it"
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "The text of the message to send, is optional because of attachments"
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"alias": {
+					"displayName": "Alias",
+					"description": "This will cause the message’s name to appear as the given alias, but your username will still display"
+				},
+				"avatar": {
+					"displayName": "Avatar",
+					"description": "If provided, this will make the avatar use the provided image URL"
+				},
+				"emoji": {
+					"displayName": "Emoji",
+					"description": "This will cause the message’s name to appear as the given alias, but your username will still display"
+				}
+			}
+		},
+		"attachments": {
+			"displayName": "Attachments",
+			"placeholder": "Add Attachment Item",
+			"multipleValueButtonText": "Add Attachment",
+			"options": {
+				"color": {
+					"displayName": "Color",
+					"description": "The color you want the order on the left side to be, any value background-css supports"
+				},
+				"text": {
+					"displayName": "Text",
+					"description": "The text to display for this attachment, it is different than the message’s text"
+				},
+				"ts": {
+					"displayName": "Timestamp",
+					"description": "Displays the time next to the text portion"
+				},
+				"thumbUrl": {
+					"displayName": "Thumb URL",
+					"description": "An image that displays to the left of the text, looks better when this is relatively small"
+				},
+				"messageLink": {
+					"displayName": "Message Link",
+					"description": "Only applicable if the timestamp is provided, as it makes the time clickable to this link"
+				},
+				"collapsed": {
+					"displayName": "Collapsed",
+					"description": "Causes the image, audio, and video sections to be hiding when collapsed is true"
+				},
+				"authorName": {
+					"displayName": "Author Name",
+					"description": "Name of the author"
+				},
+				"authorLink": {
+					"displayName": "Author Link",
+					"description": "Providing this makes the author name clickable and points to this link"
+				},
+				"authorIcon": {
+					"displayName": "Author Icon",
+					"description": "Displays a tiny icon to the left of the Author’s name",
+					"placeholder": "https://site.com/img.png"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title to display for this attachment, displays under the author"
+				},
+				"titleLink": {
+					"displayName": "Title Link",
+					"description": "Providing this makes the title clickable, pointing to this link"
+				},
+				"titleLinkDownload": {
+					"displayName": "Title Link Download",
+					"description": "When this is true, a download icon appears and clicking this saves the link to file"
+				},
+				"imageUrl": {
+					"displayName": "Image URL",
+					"description": "The image to display, will be “big” and easy to see"
+				},
+				"audioUrl": {
+					"displayName": "Audio URL",
+					"description": "Audio file to play, only supports what html audio does",
+					"placeholder": "https://site.com/aud.mp3"
+				},
+				"videoUrl": {
+					"displayName": "Video URL",
+					"description": "Video file to play, only supports what html video does",
+					"placeholder": "https://site.com/vid.mp4"
+				},
+				"fields": {
+					"displayName": "Fields",
+					"placeholder": "Add Field Item",
+					"multipleValueButtonText": "Add Field Item",
+					"options": {
+						"fieldsValues": {
+							"displayName": "Fields",
+							"options": {
+								"short": {
+									"displayName": "Short",
+									"description": "Whether this field should be a short field"
+								},
+								"title": {
+									"displayName": "Title",
+									"description": "The title of this field"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value of this field, displayed underneath the title value"
+								}
+							}
+						}
+					},
+					"values": {
+						"fieldsValues": {
+							"displayName": "Fields",
+							"options": {
+								"short": {
+									"displayName": "Short",
+									"description": "Whether this field should be a short field"
+								},
+								"title": {
+									"displayName": "Title",
+									"description": "The title of this field"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The value of this field, displayed underneath the title value"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "Fields",
+							"placeholder": "Add Field Item"
+						}
+					}
+				}
+			}
+		},
+		"attachmentsJson": {
+			"displayName": "Attachments"
+		}
+	}
+}

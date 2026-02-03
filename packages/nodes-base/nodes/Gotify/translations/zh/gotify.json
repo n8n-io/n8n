@@ -1,0 +1,77 @@
+{
+	"header": {
+		"displayName": "Gotify",
+		"description": "使用Gotify API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"message": {
+					"displayName": "消息"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息，如果使用Markdown请添加内容类型选项"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"priority": {
+					"displayName": "优先级",
+					"description": "消息的优先级"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "消息标题"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"contentType": {
+					"displayName": "内容类型",
+					"description": "消息内容类型",
+					"options": {
+						"text/plain": {
+							"displayName": "纯文本"
+						},
+						"text/markdown": {
+							"displayName": "Markdown"
+						}
+					}
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "消息ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

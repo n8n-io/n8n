@@ -1,0 +1,16 @@
+{
+	"header": {
+		"displayName": "思考工具",
+		"description": "邀请AI代理进行思考"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		},
+		"description": {
+			"displayName": "思考工具描述",
+			"description": "思考工具的描述",
+			"placeholder": "[在此描述您的思考工具，解释它将如何帮助AI进行思考]"
+		}
+	}
+}

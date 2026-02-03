@@ -1,0 +1,120 @@
+{
+	"header": {
+		"displayName": "数据集比较",
+		"description": "比较两个输入的变更"
+	},
+	"nodeView": {
+		"infoBox": {
+			"displayName": "当下方字段匹配时，来自不同分支的项会被配对。如果配对成功，将比较其余字段以确定项是相同还是不同"
+		},
+		"mergeByFields": {
+			"displayName": "匹配字段",
+			"placeholder": "添加匹配字段",
+			"multipleValueButtonText": "添加匹配字段",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field1": {
+							"displayName": "输入A字段",
+							"placeholder": "例如 id"
+						},
+						"field2": {
+							"displayName": "输入B字段",
+							"placeholder": "例如 id"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"field1": {
+							"displayName": "输入A字段",
+							"placeholder": "例如 id"
+						},
+						"field2": {
+							"displayName": "输入B字段",
+							"placeholder": "例如 id"
+						}
+					}
+				},
+				"mergeByFields": {
+					"displayName": "匹配字段",
+					"placeholder": "添加匹配字段"
+				}
+			}
+		},
+		"resolve": {
+			"displayName": "当存在差异时",
+			"options": {
+				"preferInput1": {
+					"displayName": "使用输入A版本"
+				},
+				"preferInput2": {
+					"displayName": "使用输入B版本"
+				},
+				"mix": {
+					"displayName": "混合使用版本",
+					"description": "输出为不同字段使用不同输入"
+				},
+				"includeBoth": {
+					"displayName": "包含两个版本",
+					"description": "输出包含所有数据（但结构更复杂）"
+				}
+			}
+		},
+		"fuzzyCompare": {
+			"displayName": "模糊比较",
+			"description": "比较字段时是否容忍小的类型差异。例如，数字3和字符串'3'被视为相同。"
+		},
+		"preferWhenMix": {
+			"displayName": "首选",
+			"options": {
+				"input1": {
+					"displayName": "输入A版本"
+				},
+				"input2": {
+					"displayName": "输入B版本"
+				}
+			}
+		},
+		"exceptWhenMix": {
+			"displayName": "除以下字段外全部包含",
+			"placeholder": "例如：id, country"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"skipFields": {
+					"displayName": "跳过比较的字段",
+					"description": "检查两个项目是否相同时不应包含的字段",
+					"placeholder": "例如：updated_at, updated_by"
+				},
+				"fuzzyCompare": {
+					"displayName": "模糊比较",
+					"description": "比较字段时是否容忍小的类型差异。例如，数字3和字符串'3'被视为相同。"
+				},
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				},
+				"multipleMatches": {
+					"displayName": "多个匹配项",
+					"options": {
+						"first": {
+							"displayName": "仅包含首个匹配项",
+							"description": "每个匹配仅输出单个项目"
+						},
+						"all": {
+							"displayName": "包含所有匹配项",
+							"description": "若有多个匹配项则输出多项"
+						}
+					}
+				}
+			}
+		}
+	}
+}

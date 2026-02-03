@@ -1,0 +1,110 @@
+{
+	"header": {
+		"displayName": "Webflow",
+		"description": "Consume the Webflow API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"item": {
+					"displayName": "Item"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"siteId": {
+			"displayName": "Site Name or ID",
+			"description": "ID of the site containing the collection whose items to retrieve. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"collectionId": {
+			"displayName": "Collection Name or ID",
+			"description": "ID of the collection whose items to retrieve. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"live": {
+			"displayName": "Live",
+			"description": "Whether the item should be published on the live site"
+		},
+		"fieldsUi": {
+			"displayName": "Fields",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Field",
+			"options": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "Field to set for the item to update. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Value to set for the item to update"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "Field",
+					"options": {
+						"fieldId": {
+							"displayName": "Field Name or ID",
+							"description": "Field to set for the item to update. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Value to set for the item to update"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "Fields",
+					"placeholder": "Add Field"
+				}
+			}
+		},
+		"itemId": {
+			"displayName": "Item ID",
+			"description": "ID of the item to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		}
+	}
+}

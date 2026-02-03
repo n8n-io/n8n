@@ -1,0 +1,297 @@
+{
+	"header": {
+		"displayName": "Venafi TLS Protect Cloud",
+		"description": "Consume Venafi TLS Protect Cloud API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"certificate": {
+					"displayName": "Certificate"
+				},
+				"certificateRequest": {
+					"displayName": "Certificate Request"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a certificate"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a certificate"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a certificate request"
+				},
+				"getMany": {
+					"displayName": "Get Many",
+					"description": "Retrieve many certificate requests"
+				},
+				"renew": {
+					"displayName": "Renew",
+					"description": "Renew a certificate"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new certificate request"
+				}
+			}
+		},
+		"certificateId": {
+			"displayName": "Certificate ID"
+		},
+		"downloadItem": {
+			"displayName": "Download Item",
+			"options": {
+				"certificate": {
+					"displayName": "Certificate"
+				},
+				"keystore": {
+					"displayName": "Keystore"
+				}
+			}
+		},
+		"keystoreType": {
+			"displayName": "Keystore Type",
+			"options": {
+				"JKS": {
+					"displayName": "JKS"
+				},
+				"PKCS12": {
+					"displayName": "PKCS12"
+				},
+				"PEM": {
+					"displayName": "PEM"
+				}
+			}
+		},
+		"certificateLabel": {
+			"displayName": "Certificate Label"
+		},
+		"privateKeyPassphrase": {
+			"displayName": "Private Key Passphrase"
+		},
+		"keystorePassphrase": {
+			"displayName": "Keystore Passphrase"
+		},
+		"binaryProperty": {
+			"displayName": "Input Data Field Name",
+			"description": "The name of the input field containing the binary file data to be uploaded"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"chainOrder": {
+					"displayName": "Chain Order",
+					"options": {
+						"EE_FIRST": {
+							"displayName": "EE_FIRST",
+							"description": "Download the certificate with the end-entity portion of the chain first"
+						},
+						"EE_ONLY": {
+							"displayName": "EE_ONLY",
+							"description": "Download only the end-entity certificate"
+						},
+						"ROOT_FIRST": {
+							"displayName": "ROOT_FIRST",
+							"description": "Download the certificate with root portion of the chain first"
+						}
+					}
+				},
+				"format": {
+					"displayName": "Format",
+					"options": {
+						"PEM": {
+							"displayName": "PEM"
+						},
+						"DER": {
+							"displayName": "DER"
+						}
+					}
+				},
+				"validityPeriod": {
+					"displayName": "Validity Period",
+					"options": {
+						"P1Y": {
+							"displayName": "1 Year"
+						},
+						"P10D": {
+							"displayName": "10 Days"
+						},
+						"PT12H": {
+							"displayName": "12 Hours"
+						}
+					},
+					"description": "Specify how long the issued certificate should be valid for. Use ISO8601 format.",
+					"placeholder": "P1Y"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"subject": {
+					"displayName": "Subject"
+				}
+			}
+		},
+		"applicationId": {
+			"displayName": "Application Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"existingCertificateId": {
+			"displayName": "Existing Certificate ID"
+		},
+		"certificateIssuingTemplateId": {
+			"displayName": "Certificate Issuing Template Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"certificateSigningRequest": {
+			"displayName": "Certificate Signing Request"
+		},
+		"generateCsr": {
+			"displayName": "Generate CSR"
+		},
+		"commonName": {
+			"displayName": "Common Name",
+			"description": "The Common Name field for the certificate Subject (CN)"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"keyType": {
+					"displayName": "Key Type",
+					"description": "The encryption algorithm for the public key",
+					"options": {
+						"EC": {
+							"displayName": "EC",
+							"description": "Elliptic Curve (EC)"
+						},
+						"RSA": {
+							"displayName": "RSA",
+							"description": "Rivest, Shamir, Adleman key (RSA)"
+						}
+					}
+				},
+				"keyCurve": {
+					"displayName": "Key Curve",
+					"options": {
+						"ED25519": {
+							"displayName": "ED25519",
+							"description": "Use Edwards-curve Digital Signature Algorithm (EdDSA)"
+						},
+						"P256": {
+							"displayName": "P256",
+							"description": "Use Elliptic Prime Curve 256 bit encryption"
+						},
+						"P384": {
+							"displayName": "P384",
+							"description": "Use Elliptic Prime Curve 384 bit encryption"
+						},
+						"P521": {
+							"displayName": "P521",
+							"description": "Use Elliptic Prime Curve 521 bit encryption"
+						},
+						"UNKNOWN": {
+							"displayName": "UNKNOWN"
+						}
+					}
+				},
+				"keyLength": {
+					"displayName": "Key Length",
+					"description": "The number of bits to allow for key generation"
+				},
+				"organization": {
+					"displayName": "(O) Organization",
+					"description": "The name of a company or organization"
+				},
+				"organizationalUnits": {
+					"displayName": "(OU) Organizational Unit(s)",
+					"description": "The name of a department or section"
+				},
+				"locality": {
+					"displayName": "(L) City/Locality",
+					"description": "The name of a city or town"
+				},
+				"state": {
+					"displayName": "(ST) State",
+					"description": "The name of a state or province"
+				},
+				"country": {
+					"displayName": "(C) Country",
+					"description": "A 2 letter country code"
+				},
+				"SubjectAltNamesUi": {
+					"displayName": "Subject Alt Names",
+					"placeholder": "Add Subject",
+					"multipleValueButtonText": "Add Subject",
+					"options": {
+						"SubjectAltNamesValues": {
+							"displayName": "Subject Alt Name",
+							"options": {
+								"Typename": {
+									"displayName": "Typename",
+									"description": "What type of SAN is being used",
+									"options": {
+										"dnsNames": {
+											"displayName": "DNS"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "The SAN friendly name that corresponds to the Type or TypeName parameter. For example, if a TypeName is IPAddress, the Name value is a valid IP address."
+								}
+							}
+						}
+					},
+					"values": {
+						"SubjectAltNamesValues": {
+							"displayName": "Subject Alt Name",
+							"options": {
+								"Typename": {
+									"displayName": "Typename",
+									"description": "What type of SAN is being used",
+									"options": {
+										"dnsNames": {
+											"displayName": "DNS"
+										}
+									}
+								},
+								"name": {
+									"displayName": "Name",
+									"description": "The SAN friendly name that corresponds to the Type or TypeName parameter. For example, if a TypeName is IPAddress, the Name value is a valid IP address."
+								}
+							}
+						},
+						"SubjectAltNamesUi": {
+							"displayName": "Subject Alt Names",
+							"placeholder": "Add Subject"
+						}
+					}
+				}
+			}
+		},
+		"certificateRequestId": {
+			"displayName": "Certificate Request ID"
+		}
+	}
+}

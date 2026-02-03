@@ -1,0 +1,35 @@
+{
+	"header": {
+		"displayName": "Redis Chat Memory",
+		"description": "Stores the chat history in Redis."
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"sessionKey": {
+			"displayName": "Key",
+			"description": "The key to use to store session ID in the memory"
+		},
+		"sessionIdType": {
+			"displayName": "Session ID",
+			"options": {
+				"fromInput": {
+					"displayName": "Connected Chat Trigger Node",
+					"description": "Looks for an input field called 'sessionId' that is coming from a directly connected Chat Trigger"
+				},
+				"customKey": {
+					"displayName": "Define below",
+					"description": "Use an expression to reference data in previous nodes or enter static text"
+				}
+			}
+		},
+		"sessionTTL": {
+			"displayName": "Session Time To Live",
+			"description": "For how long the session should be stored in seconds. If set to 0 it will not expire."
+		},
+		"contextWindowLength": {
+			"displayName": "Context Window Length"
+		}
+	}
+}

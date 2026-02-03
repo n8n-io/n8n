@@ -1,0 +1,141 @@
+{
+	"header": {
+		"displayName": "GraphQL",
+		"description": "Makes a GraphQL request and returns the received data"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"description": "The way to authenticate",
+			"options": {
+				"basicAuth": {
+					"displayName": "Basic Auth"
+				},
+				"customAuth": {
+					"displayName": "Custom Auth"
+				},
+				"digestAuth": {
+					"displayName": "Digest Auth"
+				},
+				"headerAuth": {
+					"displayName": "Header Auth"
+				},
+				"none": {
+					"displayName": "None"
+				},
+				"oAuth1": {
+					"displayName": "OAuth1"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				},
+				"queryAuth": {
+					"displayName": "Query Auth"
+				}
+			}
+		},
+		"requestMethod": {
+			"displayName": "HTTP Request Method",
+			"description": "The underlying HTTP request method to use",
+			"options": {
+				"GET": {
+					"displayName": "GET"
+				},
+				"POST": {
+					"displayName": "POST"
+				}
+			}
+		},
+		"endpoint": {
+			"displayName": "Endpoint",
+			"description": "The GraphQL endpoint",
+			"placeholder": "http://example.com/graphql"
+		},
+		"allowUnauthorizedCerts": {
+			"displayName": "Ignore SSL Issues (Insecure)",
+			"description": "Whether to download the response even if SSL certificate validation is not possible"
+		},
+		"requestFormat": {
+			"displayName": "Request Format",
+			"description": "The request format for the query payload",
+			"options": {
+				"graphql": {
+					"displayName": "GraphQL (Raw)",
+					"description": "Raw GraphQL query string. Not all servers support this format. Use JSON for better compatibility."
+				},
+				"json": {
+					"displayName": "JSON (Recommended)",
+					"description": "JSON object with query, variables, and operationName properties. The standard and most widely supported format for GraphQL requests."
+				}
+			}
+		},
+		"query": {
+			"displayName": "Query",
+			"description": "GraphQL query"
+		},
+		"variables": {
+			"displayName": "Variables",
+			"description": "Query variables as JSON object"
+		},
+		"operationName": {
+			"displayName": "Operation Name",
+			"description": "Name of operation to execute"
+		},
+		"responseFormat": {
+			"displayName": "Response Format",
+			"description": "The format in which the data gets returned from the URL",
+			"options": {
+				"json": {
+					"displayName": "JSON"
+				},
+				"string": {
+					"displayName": "String"
+				}
+			}
+		},
+		"dataPropertyName": {
+			"displayName": "Response Data Property Name",
+			"description": "Name of the property to which to write the response data"
+		},
+		"headerParametersUi": {
+			"displayName": "Headers",
+			"description": "The headers to send",
+			"placeholder": "Add Header",
+			"multipleValueButtonText": "Add Header",
+			"options": {
+				"parameter": {
+					"displayName": "Header",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the header"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to set for the header"
+						}
+					}
+				}
+			},
+			"values": {
+				"parameter": {
+					"displayName": "Header",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the header"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to set for the header"
+						}
+					}
+				},
+				"headerParametersUi": {
+					"displayName": "Headers",
+					"placeholder": "Add Header"
+				}
+			}
+		}
+	}
+}

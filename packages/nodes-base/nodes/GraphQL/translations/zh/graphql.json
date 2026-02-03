@@ -1,0 +1,141 @@
+{
+	"header": {
+		"displayName": "GraphQL",
+		"description": "执行GraphQL请求并返回接收到的数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "身份验证方式",
+			"options": {
+				"basicAuth": {
+					"displayName": "基础认证"
+				},
+				"customAuth": {
+					"displayName": "自定义认证"
+				},
+				"digestAuth": {
+					"displayName": "摘要认证"
+				},
+				"headerAuth": {
+					"displayName": "Header 认证"
+				},
+				"none": {
+					"displayName": "无"
+				},
+				"oAuth1": {
+					"displayName": "OAuth1"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				},
+				"queryAuth": {
+					"displayName": "查询认证"
+				}
+			}
+		},
+		"requestMethod": {
+			"displayName": "HTTP请求方法",
+			"description": "要使用的基础HTTP请求方法",
+			"options": {
+				"GET": {
+					"displayName": "获取"
+				},
+				"POST": {
+					"displayName": "POST"
+				}
+			}
+		},
+		"endpoint": {
+			"displayName": "端点",
+			"description": "GraphQL端点",
+			"placeholder": "http://example.com/graphql"
+		},
+		"allowUnauthorizedCerts": {
+			"displayName": "忽略SSL问题（不安全）",
+			"description": "是否在无法验证SSL证书时仍下载响应"
+		},
+		"requestFormat": {
+			"displayName": "请求格式",
+			"description": "查询载荷的请求格式",
+			"options": {
+				"graphql": {
+					"displayName": "GraphQL（原始）",
+					"description": "原始GraphQL查询字符串。并非所有服务器都支持此格式。使用JSON可获得更好的兼容性。"
+				},
+				"json": {
+					"displayName": "JSON（推荐）",
+					"description": "包含query、variables和operationName属性的JSON对象。这是GraphQL请求的标准且最广泛支持的格式。"
+				}
+			}
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "GraphQL查询"
+		},
+		"variables": {
+			"displayName": "变量",
+			"description": "以JSON对象形式查询变量"
+		},
+		"operationName": {
+			"displayName": "操作名称",
+			"description": "要执行的操作名称"
+		},
+		"responseFormat": {
+			"displayName": "响应格式",
+			"description": "从URL返回数据的格式",
+			"options": {
+				"json": {
+					"displayName": "JSON"
+				},
+				"string": {
+					"displayName": "字符串"
+				}
+			}
+		},
+		"dataPropertyName": {
+			"displayName": "响应数据属性名称",
+			"description": "写入响应数据的属性名称"
+		},
+		"headerParametersUi": {
+			"displayName": "请求头",
+			"description": "要发送的请求头",
+			"placeholder": "添加请求头",
+			"multipleValueButtonText": "添加请求头",
+			"options": {
+				"parameter": {
+					"displayName": "页眉",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "标头名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为标头设置的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"parameter": {
+					"displayName": "页眉",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "标头名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "为标头设置的值"
+						}
+					}
+				},
+				"headerParametersUi": {
+					"displayName": "请求头",
+					"placeholder": "添加请求头"
+				}
+			}
+		}
+	}
+}

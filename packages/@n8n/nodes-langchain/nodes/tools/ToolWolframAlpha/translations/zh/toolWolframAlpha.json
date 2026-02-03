@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "Wolfram|Alpha",
+		"description": "连接到WolframAlpha的计算智能引擎。"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点必须连接到AI代理。<a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>插入一个</a>"
+		}
+	}
+}

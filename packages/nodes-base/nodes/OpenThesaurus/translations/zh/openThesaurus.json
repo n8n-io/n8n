@@ -1,0 +1,59 @@
+{
+	"header": {
+		"displayName": "OpenThesaurus",
+		"description": "使用OpenThesaurus API获取德语单词的同义词"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getSynonyms": {
+					"displayName": "获取同义词",
+					"description": "获取德语单词的德语同义词"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "要获取同义词的单词"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"baseform": {
+					"displayName": "基本形式",
+					"description": "如果搜索词不是基本形式，则指定其基本形式"
+				},
+				"similar": {
+					"displayName": "相似",
+					"description": "这还会为每个答案返回最多五个写法相似的词语。这在用户可能输入错误时提供建议很有用。"
+				},
+				"startswith": {
+					"displayName": "以...开头",
+					"description": "类似子字符串 = true，但仅查找以指定搜索词开头的单词"
+				},
+				"substring": {
+					"displayName": "子字符串",
+					"description": "是否每个答案最多返回十个仅包含搜索词作为部分词的单词"
+				},
+				"substringFromResults": {
+					"displayName": "从结果中截取子串",
+					"description": "指定从哪个条目开始返回部分匹配结果。仅当 substring = true 时生效。"
+				},
+				"substringMaxResults": {
+					"displayName": "子字符串最大结果数",
+					"description": "指定总共应返回多少个部分单词匹配结果。仅当 substring = true 时生效。"
+				},
+				"subsynsets": {
+					"displayName": "子同义词集",
+					"description": "每个同义词组是否提供其（可选的）子术语"
+				},
+				"supersynsets": {
+					"displayName": "上位同义词集",
+					"description": "是否每个同义词组都附带其（可选的）通用术语"
+				}
+			}
+		}
+	}
+}

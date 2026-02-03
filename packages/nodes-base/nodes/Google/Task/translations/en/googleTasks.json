@@ -1,0 +1,176 @@
+{
+	"header": {
+		"displayName": "Google Tasks",
+		"description": "Consume Google Tasks API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"task": {
+					"displayName": "Task"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Add a task to tasklist"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a task"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a task"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many tasks from a tasklist"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a task"
+				}
+			}
+		},
+		"task": {
+			"displayName": "TaskList Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the task"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"completed": {
+					"displayName": "Completion Date",
+					"description": "Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed."
+				},
+				"deleted": {
+					"displayName": "Deleted",
+					"description": "Whether the task has been deleted"
+				},
+				"dueDate": {
+					"displayName": "Due Date",
+					"description": "Due date of the task"
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "Additional Notes"
+				},
+				"parent": {
+					"displayName": "Parent",
+					"description": "Parent task identifier. If the task is created at the top level, this parameter is omitted."
+				},
+				"previous": {
+					"displayName": "Previous",
+					"description": "Previous sibling task identifier. If the task is created at the first position among its siblings, this parameter is omitted."
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Current status of the task",
+					"options": {
+						"needsAction": {
+							"displayName": "Needs Action"
+						},
+						"completed": {
+							"displayName": "Completed"
+						}
+					}
+				},
+				"completedMax": {
+					"displayName": "Completed Max",
+					"description": "Upper bound for a task completion date (as a RFC 3339 timestamp) to filter by"
+				},
+				"completedMin": {
+					"displayName": "Completed Min",
+					"description": "Lower bound for a task completion date (as a RFC 3339 timestamp) to filter by"
+				},
+				"dueMin": {
+					"displayName": "Due Min",
+					"description": "Lower bound for a task due date (as a RFC 3339 timestamp) to filter by"
+				},
+				"dueMax": {
+					"displayName": "Due Max",
+					"description": "Upper bound for a task due date (as a RFC 3339 timestamp) to filter by"
+				},
+				"showCompleted": {
+					"displayName": "Show Completed",
+					"description": "Whether completed tasks are returned in the result. <strong>Show Hidden</strong> must also be True to show tasks completed in first party clients such as the web UI or Google's mobile apps."
+				},
+				"showDeleted": {
+					"displayName": "Show Deleted",
+					"description": "Whether deleted tasks are returned in the result"
+				},
+				"showHidden": {
+					"displayName": "Show Hidden",
+					"description": "Whether hidden tasks are returned in the result"
+				},
+				"updatedMin": {
+					"displayName": "Updated Min",
+					"description": "Lower bound for a task last modification time (as a RFC 3339 timestamp) to filter by"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "Task ID"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Update Field",
+			"options": {
+				"completed": {
+					"displayName": "Completion Date",
+					"description": "Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed."
+				},
+				"deleted": {
+					"displayName": "Deleted",
+					"description": "Whether the task has been deleted"
+				},
+				"dueDate": {
+					"displayName": "Due Date",
+					"description": "Due date of the task"
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "Additional Notes"
+				},
+				"previous": {
+					"displayName": "Previous",
+					"description": "Previous sibling task identifier. If the task is created at the first position among its siblings, this parameter is omitted."
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Current status of the task",
+					"options": {
+						"needsAction": {
+							"displayName": "Needs Update"
+						},
+						"completed": {
+							"displayName": "Completed"
+						}
+					}
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the task"
+				}
+			}
+		}
+	}
+}

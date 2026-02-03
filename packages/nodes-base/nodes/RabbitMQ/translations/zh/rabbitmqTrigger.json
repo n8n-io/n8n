@@ -1,0 +1,192 @@
+{
+	"header": {
+		"displayName": "RabbitMQ触发器",
+		"description": "监听RabbitMQ消息"
+	},
+	"nodeView": {
+		"queue": {
+			"displayName": "队列 / 主题",
+			"description": "要读取的队列名称",
+			"placeholder": "队列名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"arguments": {
+					"displayName": "参数",
+					"description": "要添加的参数",
+					"placeholder": "添加参数",
+					"multipleValueButtonText": "添加参数",
+					"options": {
+						"argument": {
+							"displayName": "参数",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"argument": {
+							"displayName": "参数",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"arguments": {
+							"displayName": "参数",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"assertExchange": {
+					"displayName": "断言交换器",
+					"description": "发送前是否断言交换器存在"
+				},
+				"assertQueue": {
+					"displayName": "断言队列",
+					"description": "发送前是否断言队列存在"
+				},
+				"autoDelete": {
+					"displayName": "自动删除队列",
+					"description": "当消费者数量降至零时是否删除队列"
+				},
+				"binding": {
+					"displayName": "绑定",
+					"description": "添加绑定到队列",
+					"placeholder": "添加绑定",
+					"multipleValueButtonText": "添加绑定",
+					"options": {
+						"bindings": {
+							"displayName": "绑定",
+							"options": {
+								"exchange": {
+									"displayName": "交易所",
+									"placeholder": "交换"
+								},
+								"routingKey": {
+									"displayName": "路由键",
+									"placeholder": "路由键"
+								}
+							}
+						}
+					},
+					"values": {
+						"bindings": {
+							"displayName": "绑定",
+							"options": {
+								"exchange": {
+									"displayName": "交易所",
+									"placeholder": "交换"
+								},
+								"routingKey": {
+									"displayName": "路由键",
+									"placeholder": "路由键"
+								}
+							}
+						},
+						"binding": {
+							"displayName": "绑定",
+							"placeholder": "添加绑定"
+						}
+					}
+				},
+				"contentIsBinary": {
+					"displayName": "内容为二进制",
+					"description": "是否将内容保存为二进制"
+				},
+				"acknowledge": {
+					"displayName": "从队列删除时机",
+					"description": "何时确认消息",
+					"options": {
+						"executionFinishes": {
+							"displayName": "执行完成",
+							"description": "工作流执行完成后。无论执行成功与否。"
+						},
+						"executionFinishesSuccessfully": {
+							"displayName": "执行成功完成",
+							"description": "工作流执行成功完成后"
+						},
+						"immediately": {
+							"displayName": "立即",
+							"description": "消息一被接收"
+						},
+						"laterMessageNode": {
+							"displayName": "稍后在工作流中指定",
+							"description": "使用RabbitMQ节点从队列中移除项目"
+						}
+					}
+				},
+				"durable": {
+					"displayName": "持久化",
+					"description": "队列是否在代理重启后仍然保留"
+				},
+				"exclusive": {
+					"displayName": "独占",
+					"description": "是否将队列范围限定到连接"
+				},
+				"headers": {
+					"displayName": "请求头",
+					"description": "要添加的请求头",
+					"placeholder": "添加请求头",
+					"multipleValueButtonText": "添加请求头",
+					"options": {
+						"header": {
+							"displayName": "页眉",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"header": {
+							"displayName": "页眉",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"headers": {
+							"displayName": "请求头",
+							"placeholder": "添加请求头"
+						}
+					}
+				},
+				"jsonParseBody": {
+					"displayName": "JSON解析正文",
+					"description": "是否将正文解析为对象"
+				},
+				"onlyContent": {
+					"displayName": "仅内容",
+					"description": "是否仅返回内容属性"
+				},
+				"parallelMessages": {
+					"displayName": "并行消息处理限制",
+					"description": "同时执行的最大数量。使用 -1 表示无限制。"
+				}
+			}
+		},
+		"laterMessageNode": {
+			"displayName": "要从队列中删除项目，请在后续工作流中插入RabbitMQ节点并使用'从队列中删除'操作"
+		}
+	}
+}

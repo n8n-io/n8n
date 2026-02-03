@@ -1,0 +1,144 @@
+{
+	"header": {
+		"displayName": "MongoDB",
+		"description": "在MongoDB中查找、插入和更新文档"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"searchIndexes": {
+					"displayName": "搜索索引"
+				},
+				"document": {
+					"displayName": "文档"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"aggregate": {
+					"displayName": "聚合",
+					"description": "聚合文档"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文档"
+				},
+				"find": {
+					"displayName": "查找",
+					"description": "查找文档"
+				},
+				"findOneAndReplace": {
+					"displayName": "查找与替换",
+					"description": "查找并替换文档"
+				},
+				"findOneAndUpdate": {
+					"displayName": "查找并更新",
+					"description": "查找并更新文档"
+				},
+				"insert": {
+					"displayName": "插入",
+					"description": "插入文档"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新文档"
+				},
+				"createSearchIndex": {
+					"displayName": "创建"
+				},
+				"dropSearchIndex": {
+					"displayName": "删除"
+				},
+				"listSearchIndexes": {
+					"displayName": "列表"
+				},
+				"updateSearchIndex": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"collection": {
+			"displayName": "集合",
+			"description": "MongoDB 集合"
+		},
+		"query": {
+			"displayName": "查询（JSON格式）",
+			"description": "MongoDB查找查询",
+			"placeholder": "{ \"birth\": { \"$gt\": \"1950-01-01\" } }"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "添加查询选项",
+			"placeholder": "添加选项",
+			"options": {
+				"limit": {
+					"displayName": "限制",
+					"description": "使用limit指定最大文档数，0表示无限制"
+				},
+				"skip": {
+					"displayName": "跳过",
+					"description": "结果集中要跳过的文档数量"
+				},
+				"sort": {
+					"displayName": "排序（JSON格式）",
+					"description": "定义结果集排序顺序的JSON",
+					"placeholder": "{ \"field\": -1 }"
+				},
+				"projection": {
+					"displayName": "投影（JSON格式）",
+					"description": "一个JSON，用于定义要从结果集中检索或排除的字段选择",
+					"placeholder": "{ \"_id\": 0, \"field\": 1 }"
+				},
+				"dateFields": {
+					"displayName": "日期字段",
+					"description": "将被解析为Mongo日期类型的字段列表，以逗号分隔"
+				},
+				"useDotNotation": {
+					"displayName": "使用点标记法",
+					"description": "是否使用点标记法访问日期字段"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "字段",
+			"description": "要包含在新文档中的字段列表（逗号分隔）",
+			"placeholder": "名称,描述"
+		},
+		"updateKey": {
+			"displayName": "更新键",
+			"description": "决定数据库中哪些行应被更新的属性名称。通常为“id”。"
+		},
+		"upsert": {
+			"displayName": "更新插入",
+			"description": "若无文档匹配更新键，是否执行插入"
+		},
+		"indexName": {
+			"displayName": "索引名称",
+			"description": "如果提供，则仅列出指定名称的索引"
+		},
+		"indexNameRequired": {
+			"displayName": "索引名称",
+			"description": "搜索索引的名称"
+		},
+		"indexDefinition": {
+			"displayName": "索引定义",
+			"description": "搜索索引定义",
+			"placeholder": "{ \"type\": \"vectorSearch\", \"definition\": {} }"
+		},
+		"indexType": {
+			"displayName": "索引类型",
+			"description": "搜索索引类型",
+			"options": {
+				"vectorSearch": {
+					"displayName": "向量搜索"
+				},
+				"search": {
+					"displayName": "搜索"
+				}
+			}
+		}
+	}
+}

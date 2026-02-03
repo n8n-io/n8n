@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "MailerLite 触发器",
+		"description": "当 MailerLite 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件",
+			"description": "要监听的事件"
+		}
+	}
+}

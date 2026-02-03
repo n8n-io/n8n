@@ -1,0 +1,53 @@
+{
+	"header": {
+		"displayName": "Strava触发器",
+		"description": "当Strava事件发生时启动工作流"
+	},
+	"nodeView": {
+		"object": {
+			"displayName": "对象",
+			"options": {
+				"*": {
+					"displayName": "[0][全部]"
+				},
+				"activity": {
+					"displayName": "活动"
+				},
+				"athlete": {
+					"displayName": "运动员"
+				}
+			}
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"*": {
+					"displayName": "[0][全部]"
+				},
+				"create": {
+					"displayName": "已创建"
+				},
+				"delete": {
+					"displayName": "已删除"
+				},
+				"update": {
+					"displayName": "已更新"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，Webhook数据仅包含对象ID。如果激活此选项，它将自动解析数据。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"deleteIfExist": {
+					"displayName": "如果存在则删除",
+					"description": "Strava 仅允许同时存在一个订阅。如需删除当前订阅以便为具有相同参数的新订阅腾出空间，请将此参数设为 true。请注意这是破坏性操作。"
+				}
+			}
+		}
+	}
+}

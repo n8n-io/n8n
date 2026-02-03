@@ -1,0 +1,157 @@
+{
+	"header": {
+		"displayName": "工作流检索器",
+		"description": "使用 n8n 工作流作为检索器"
+	},
+	"nodeView": {
+		"executeNotice": {
+			"displayName": "工作流将接收“query”作为输入，最后一个节点的输出将被返回并转换为文档"
+		},
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "从何处获取要执行的工作流",
+			"options": {
+				"database": {
+					"displayName": "数据库",
+					"description": "按ID从数据库加载工作流"
+				},
+				"parameter": {
+					"displayName": "参数",
+					"description": "从参数加载工作流"
+				}
+			}
+		},
+		"workflowId": {
+			"displayName": "工作流",
+			"description": "要执行的工作流"
+		},
+		"workflowJson": {
+			"displayName": "工作流JSON",
+			"description": "要执行的工作流JSON代码"
+		},
+		"fields": {
+			"displayName": "工作流值",
+			"description": "设置应在工作流中可用的值",
+			"placeholder": "添加值",
+			"multipleValueButtonText": "添加值",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称",
+							"description": "要设置值的字段名称。支持点表示法。示例：data.person[0].name。",
+							"placeholder": "例如：fieldName"
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "字段值类型",
+							"options": {
+								"stringValue": {
+									"displayName": "字符串"
+								},
+								"numberValue": {
+									"displayName": "数字"
+								},
+								"booleanValue": {
+									"displayName": "布尔值"
+								},
+								"arrayValue": {
+									"displayName": "数组"
+								},
+								"objectValue": {
+									"displayName": "对象"
+								}
+							}
+						},
+						"stringValue": {
+							"displayName": "值"
+						},
+						"numberValue": {
+							"displayName": "值"
+						},
+						"booleanValue": {
+							"displayName": "值",
+							"options": {
+								"true": {
+									"displayName": "真"
+								},
+								"false": {
+									"displayName": "假"
+								}
+							}
+						},
+						"arrayValue": {
+							"displayName": "值",
+							"placeholder": "例如：[ 数组项1, 数组项2, 数组项3 ]"
+						},
+						"objectValue": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"name": {
+							"displayName": "名称",
+							"description": "要设置值的字段名称。支持点表示法。示例：data.person[0].name。",
+							"placeholder": "例如：fieldName"
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "字段值类型",
+							"options": {
+								"stringValue": {
+									"displayName": "字符串"
+								},
+								"numberValue": {
+									"displayName": "数字"
+								},
+								"booleanValue": {
+									"displayName": "布尔值"
+								},
+								"arrayValue": {
+									"displayName": "数组"
+								},
+								"objectValue": {
+									"displayName": "对象"
+								}
+							}
+						},
+						"stringValue": {
+							"displayName": "值"
+						},
+						"numberValue": {
+							"displayName": "值"
+						},
+						"booleanValue": {
+							"displayName": "值",
+							"options": {
+								"true": {
+									"displayName": "真"
+								},
+								"false": {
+									"displayName": "假"
+								}
+							}
+						},
+						"arrayValue": {
+							"displayName": "值",
+							"placeholder": "例如：[ 数组项1, 数组项2, 数组项3 ]"
+						},
+						"objectValue": {
+							"displayName": "值"
+						}
+					}
+				},
+				"fields": {
+					"displayName": "工作流值",
+					"placeholder": "添加值"
+				}
+			}
+		}
+	}
+}

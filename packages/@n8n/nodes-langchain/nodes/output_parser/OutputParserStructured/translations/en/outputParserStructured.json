@@ -1,0 +1,49 @@
+{
+	"header": {
+		"displayName": "Structured Output Parser",
+		"description": "Return data in a defined JSON format"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "All properties will be required. To make them optional, use the 'JSON Schema' schema type instead"
+		},
+		"schemaType": {
+			"displayName": "Schema Type",
+			"description": "How to specify the schema for the function",
+			"options": {
+				"fromJson": {
+					"displayName": "Generate From JSON Example",
+					"description": "Generate a schema from an example JSON object"
+				},
+				"manual": {
+					"displayName": "Define using JSON Schema",
+					"description": "Define the JSON schema manually"
+				}
+			}
+		},
+		"jsonSchemaExample": {
+			"displayName": "JSON Example",
+			"description": "Example JSON object to use to generate the schema"
+		},
+		"inputSchema": {
+			"displayName": "Input Schema",
+			"description": "Schema to use for the function"
+		},
+		"jsonSchema": {
+			"displayName": "JSON Schema",
+			"description": "JSON Schema to structure and validate the output against"
+		},
+		"autoFix": {
+			"displayName": "Auto-Fix Format",
+			"description": "Whether to automatically fix the output when it is not in the correct format. Will cause another LLM call."
+		},
+		"customizeRetryPrompt": {
+			"displayName": "Customize Retry Prompt",
+			"description": "Whether to customize the prompt used for retrying the output parsing. If disabled, a default prompt will be used."
+		},
+		"prompt": {
+			"displayName": "Custom Prompt",
+			"description": "Prompt template used for fixing the output. Uses placeholders: \"{instructions}\" for parsing rules, \"{completion}\" for the failed attempt, and \"{error}\" for the validation error message."
+		}
+	}
+}

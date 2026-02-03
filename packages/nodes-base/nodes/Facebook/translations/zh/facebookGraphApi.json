@@ -1,0 +1,222 @@
+{
+	"header": {
+		"displayName": "Facebook Graph API",
+		"description": "使用Graph API与Facebook交互"
+	},
+	"nodeView": {
+		"hostUrl": {
+			"displayName": "主机URL",
+			"description": "请求的主机URL。几乎所有请求都传递到graph.facebook.com主机URL。唯一的例外是视频上传，它使用graph-video.facebook.com。",
+			"options": {
+				"graph.facebook.com": {
+					"displayName": "默认"
+				},
+				"graph-video.facebook.com": {
+					"displayName": "视频上传"
+				}
+			}
+		},
+		"httpRequestMethod": {
+			"displayName": "HTTP请求方法",
+			"description": "用于请求的HTTP方法",
+			"options": {
+				"GET": {
+					"displayName": "获取"
+				},
+				"POST": {
+					"displayName": "POST"
+				},
+				"DELETE": {
+					"displayName": "删除"
+				}
+			}
+		},
+		"graphApiVersion": {
+			"displayName": "Graph API 版本",
+			"description": "请求中使用的 Graph API 版本",
+			"options": {
+				"": {
+					"displayName": "默认"
+				},
+				"v23.0": {
+					"displayName": "v23.0"
+				},
+				"v22.0": {
+					"displayName": "v22.0"
+				},
+				"v21.0": {
+					"displayName": "v21.0"
+				},
+				"v20.0": {
+					"displayName": "v20.0"
+				},
+				"v19.0": {
+					"displayName": "v19.0"
+				},
+				"v18.0": {
+					"displayName": "v18.0"
+				},
+				"v17.0": {
+					"displayName": "v17.0"
+				},
+				"v16.0": {
+					"displayName": "v16.0"
+				},
+				"v15.0": {
+					"displayName": "v15.0"
+				},
+				"v14.0": {
+					"displayName": "v14.0"
+				},
+				"v13.0": {
+					"displayName": "v13.0"
+				},
+				"v12.0": {
+					"displayName": "v12.0"
+				},
+				"v11.0": {
+					"displayName": "v11.0"
+				},
+				"v10.0": {
+					"displayName": "v10.0"
+				},
+				"v9.0": {
+					"displayName": "v9.0"
+				},
+				"v8.0": {
+					"displayName": "v8.0"
+				},
+				"v7.0": {
+					"displayName": "v7.0"
+				},
+				"v6.0": {
+					"displayName": "v6.0"
+				},
+				"v5.0": {
+					"displayName": "v5.0"
+				},
+				"v4.0": {
+					"displayName": "v4.0"
+				},
+				"v3.3": {
+					"displayName": "v3.3"
+				},
+				"v3.2": {
+					"displayName": "v3.2"
+				},
+				"v3.1": {
+					"displayName": "v3.1"
+				},
+				"v3.0": {
+					"displayName": "v3.0"
+				}
+			}
+		},
+		"node": {
+			"displayName": "节点",
+			"description": "要操作的节点。节点是具有唯一ID的独立对象。例如，有许多用户节点对象，每个都有代表Facebook上某个人的唯一ID。",
+			"placeholder": "我"
+		},
+		"edge": {
+			"displayName": "边",
+			"description": "要操作的节点边。边表示附加到节点的对象集合。",
+			"placeholder": "视频"
+		},
+		"allowUnauthorizedCerts": {
+			"displayName": "忽略SSL问题（不安全）",
+			"description": "即使无法验证SSL证书也连接"
+		},
+		"sendBinaryData": {
+			"displayName": "发送二进制文件",
+			"description": "是否应将二进制数据作为请求体发送"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段",
+			"description": "对于Form-Data Multipart格式，可按以下格式提供：<code>\"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>",
+			"placeholder": "file:data"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "GET请求中要请求的字段列表",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "字段名称"
+								}
+							}
+						}
+					},
+					"values": {
+						"field": {
+							"displayName": "字段",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "字段名称"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "字段",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"queryParameters": {
+					"displayName": "查询参数",
+					"description": "要发送的查询参数",
+					"placeholder": "添加参数",
+					"multipleValueButtonText": "添加参数",
+					"options": {
+						"parameter": {
+							"displayName": "参数",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "参数名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "参数值"
+								}
+							}
+						}
+					},
+					"values": {
+						"parameter": {
+							"displayName": "参数",
+							"options": {
+								"name": {
+									"displayName": "名称",
+									"description": "参数名称"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "参数值"
+								}
+							}
+						},
+						"queryParameters": {
+							"displayName": "查询参数",
+							"placeholder": "添加参数"
+						}
+					}
+				},
+				"queryParametersJson": {
+					"displayName": "查询参数 JSON",
+					"description": "要发送的查询参数，定义为 JSON 对象",
+					"placeholder": "{\"field_name\": \"field_value\"}"
+				}
+			}
+		}
+	}
+}

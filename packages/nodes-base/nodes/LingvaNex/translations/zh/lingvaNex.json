@@ -1,0 +1,42 @@
+{
+	"header": {
+		"displayName": "LingvaNex",
+		"description": "使用 LingvaNex API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"translate": {
+					"displayName": "翻译",
+					"description": "翻译数据"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "待翻译的输入文本"
+		},
+		"translateTo": {
+			"displayName": "翻译至",
+			"description": "用于输入文本翻译的语言，设置为<a href=\"https://cloud.google.com/translate/docs/languages\">语言支持</a>中列出的语言代码之一。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"options": {
+			"displayName": "附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"from": {
+					"displayName": "从",
+					"description": "语言代码格式为“语言代码_国家代码”。如果未提供此参数，则启用自动检测语言模式。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"platform": {
+					"displayName": "平台"
+				},
+				"translateMode": {
+					"displayName": "翻译模式",
+					"description": "描述输入文本格式。可能值为\"html\"，用于翻译并保留HTML结构。如果未指定该值或值不是\"html\"，则翻译纯文本。"
+				}
+			}
+		}
+	}
+}

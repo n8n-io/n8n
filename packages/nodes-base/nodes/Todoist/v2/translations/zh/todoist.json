@@ -1,0 +1,883 @@
+{
+	"header": {
+		"displayName": "Todoist",
+		"description": "使用Todoist API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiKey": {
+					"displayName": "API密钥"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"task": {
+					"displayName": "任务",
+					"description": "任务资源"
+				},
+				"project": {
+					"displayName": "项目",
+					"description": "项目资源"
+				},
+				"section": {
+					"displayName": "部分",
+					"description": "分区资源"
+				},
+				"comment": {
+					"displayName": "评论",
+					"description": "评论资源"
+				},
+				"label": {
+					"displayName": "标签",
+					"description": "标记资源"
+				},
+				"reminder": {
+					"displayName": "提醒",
+					"description": "提醒资源"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"close": {
+					"displayName": "关闭",
+					"description": "关闭任务"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新提醒"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除提醒"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取标签"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个提醒"
+				},
+				"move": {
+					"displayName": "移动",
+					"description": "移动任务"
+				},
+				"quickAdd": {
+					"displayName": "快速添加",
+					"description": "使用自然语言快速添加任务"
+				},
+				"reopen": {
+					"displayName": "重新打开",
+					"description": "重新打开任务"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新提醒"
+				},
+				"archive": {
+					"displayName": "归档",
+					"description": "归档项目"
+				},
+				"getCollaborators": {
+					"displayName": "获取协作者",
+					"description": "获取项目协作者"
+				},
+				"unarchive": {
+					"displayName": "取消归档",
+					"description": "取消归档项目"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "任务ID"
+		},
+		"project": {
+			"displayName": "项目名称或ID",
+			"description": "目标项目。从列表中选择或指定一个ID。"
+		},
+		"section": {
+			"displayName": "分区名称或ID",
+			"description": "要移动任务的目标分区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"options": {
+			"displayName": "附加字段",
+			"placeholder": "添加选项",
+			"options": {
+				"section": {
+					"displayName": "分区名称或ID",
+					"description": "您想要操作的部分。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定一个ID。"
+				},
+				"parent": {
+					"displayName": "父级名称或ID",
+					"description": "目标父任务。该任务将成为父任务的最后一个子任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "笔记内容"
+				},
+				"reminder": {
+					"displayName": "提醒",
+					"description": "提醒日期，以自由文本形式添加"
+				},
+				"auto_reminder": {
+					"displayName": "自动提醒",
+					"description": "启用此选项后，如果新项目设置了带时间的截止日期，将自动添加默认提醒。"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "任务描述"
+				},
+				"dueDateTime": {
+					"displayName": "到期日期时间",
+					"description": "RFC3339格式的UTC具体日期和时间"
+				},
+				"dueLang": {
+					"displayName": "到期字符串语言环境",
+					"description": "当due_string不是英文时，指定语言的2字母代码"
+				},
+				"dueString": {
+					"displayName": "截止日期字符串",
+					"description": "用户定义的任务截止日期（例如：“下周一”、“明天”）。使用本地（非UTC）时间设置值。"
+				},
+				"parentId": {
+					"displayName": "父级名称或ID",
+					"description": "要操作的父任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"description": "任务优先级从1（普通）到4（紧急）"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "用于对同一父任务下的任务进行排序的非零整数"
+				},
+				"dueDate": {
+					"displayName": "截止日期",
+					"description": "YYYY-MM-DD格式的具体日期",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"assigneeId": {
+					"displayName": "负责人ID",
+					"description": "负责人ID（用于共享任务）"
+				},
+				"duration": {
+					"displayName": "持续时间",
+					"description": "任务持续时间的正整数（必须与持续时间单位配合使用）"
+				},
+				"durationUnit": {
+					"displayName": "时长单位",
+					"description": "持续时间的单位（必须与时长配合使用）",
+					"options": {
+						"minute": {
+							"displayName": "分钟"
+						},
+						"day": {
+							"displayName": "天"
+						}
+					}
+				},
+				"deadlineDate": {
+					"displayName": "截止日期",
+					"description": "具体的截止日期，格式为YYYY-MM-DD",
+					"placeholder": "YYYY-MM-DD"
+				}
+			}
+		},
+		"labels": {
+			"displayName": "标签名称",
+			"description": "将分配给创建任务的可选标签。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "任务内容"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "Natural language text for quick adding task (e.g., \"Buy milk @Grocery #shopping tomorrow\"). It can include a due date in free form text, a project name starting with the \"#\" character (without spaces), a label starting with the \"@\" character, an assignee starting with the \"+\" character, a priority (e.g., p1), a deadline between \"{}\" (e.g. {in 3 days}), or a description starting from \"//\" until the end of the text."
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加选项",
+			"options": {
+				"filter": {
+					"displayName": "筛选器",
+					"description": "按任意<a href=\"https://get.todoist.help/hc/en-us/articles/205248842\">支持的过滤器</a>筛选。"
+				},
+				"ids": {
+					"displayName": "ID",
+					"description": "要检索的任务ID列表，这应该是一个逗号分隔的列表"
+				},
+				"labelId": {
+					"displayName": "标签名称或ID",
+					"description": "按标签筛选任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"lang": {
+					"displayName": "语言",
+					"description": "IETF语言标签，定义过滤器使用的语言（如果与默认英语不同）"
+				},
+				"parentId": {
+					"displayName": "父级名称或ID",
+					"description": "按父任务ID筛选任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"projectId": {
+					"displayName": "项目名称或ID",
+					"description": "按项目ID筛选任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"sectionId": {
+					"displayName": "分区名称或ID",
+					"description": "按分区ID筛选任务。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"content": {
+					"displayName": "内容",
+					"description": "Task content"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "任务描述"
+				},
+				"dueDateTime": {
+					"displayName": "到期日期时间",
+					"description": "RFC3339格式的UTC具体日期和时间"
+				},
+				"dueLang": {
+					"displayName": "到期字符串语言环境",
+					"description": "当due_string不是英文时，指定语言的2字母代码"
+				},
+				"dueString": {
+					"displayName": "截止日期字符串",
+					"description": "用户定义的任务截止日期（例如：“下周一”、“明天”）。使用本地（非UTC）时间设置值。"
+				},
+				"labels": {
+					"displayName": "标签名称",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"priority": {
+					"displayName": "优先级",
+					"description": "任务优先级从1（普通）到4（紧急）"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "用于对同一父任务下的任务进行排序的非零整数"
+				},
+				"dueDate": {
+					"displayName": "截止日期",
+					"description": "YYYY-MM-DD格式的具体日期",
+					"placeholder": "YYYY-MM-DD"
+				},
+				"assigneeId": {
+					"displayName": "负责人ID",
+					"description": "负责人ID（用于共享任务）"
+				},
+				"duration": {
+					"displayName": "持续时间",
+					"description": "任务持续时间的正整数（必须与持续时间单位配合使用）"
+				},
+				"durationUnit": {
+					"displayName": "时长单位",
+					"description": "持续时间的单位（必须与时长配合使用）",
+					"options": {
+						"minute": {
+							"displayName": "分钟"
+						},
+						"day": {
+							"displayName": "天"
+						}
+					}
+				},
+				"deadlineDate": {
+					"displayName": "截止日期",
+					"description": "具体的截止日期，格式为YYYY-MM-DD",
+					"placeholder": "YYYY-MM-DD"
+				}
+			}
+		},
+		"projectId": {
+			"displayName": "项目ID",
+			"description": "项目ID - 可以是字符串或数字"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "项目名称"
+		},
+		"projectOptions": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"color": {
+					"displayName": "颜色",
+					"description": "项目的颜色",
+					"options": {
+						"berry_red": {
+							"displayName": "莓红色"
+						},
+						"red": {
+							"displayName": "红色"
+						},
+						"orange": {
+							"displayName": "橙色"
+						},
+						"yellow": {
+							"displayName": "黄色"
+						},
+						"olive_green": {
+							"displayName": "橄榄绿"
+						},
+						"lime_green": {
+							"displayName": "青柠绿"
+						},
+						"green": {
+							"displayName": "绿色"
+						},
+						"mint_green": {
+							"displayName": "薄荷绿"
+						},
+						"teal": {
+							"displayName": "青色"
+						},
+						"sky_blue": {
+							"displayName": "天蓝色"
+						},
+						"light_blue": {
+							"displayName": "浅蓝色"
+						},
+						"blue": {
+							"displayName": "蓝色"
+						},
+						"grape": {
+							"displayName": "葡萄"
+						},
+						"violet": {
+							"displayName": "Violet"
+						},
+						"lavender": {
+							"displayName": "薰衣草"
+						},
+						"magenta": {
+							"displayName": "洋红色"
+						},
+						"salmon": {
+							"displayName": "Salmon"
+						},
+						"charcoal": {
+							"displayName": "木炭"
+						},
+						"grey": {
+							"displayName": "灰色"
+						},
+						"taupe": {
+							"displayName": "灰褐色"
+						}
+					}
+				},
+				"is_favorite": {
+					"displayName": "是否收藏",
+					"description": "项目是否为收藏项目"
+				},
+				"parent_id": {
+					"displayName": "父级ID",
+					"description": "父项目ID"
+				},
+				"view_style": {
+					"displayName": "查看样式",
+					"description": "项目的默认查看样式",
+					"options": {
+						"list": {
+							"displayName": "列表"
+						},
+						"board": {
+							"displayName": "看板"
+						}
+					}
+				}
+			}
+		},
+		"projectUpdateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "项目名称"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "项目的颜色",
+					"options": {
+						"berry_red": {
+							"displayName": "莓红色"
+						},
+						"red": {
+							"displayName": "红色"
+						},
+						"orange": {
+							"displayName": "橙色"
+						},
+						"yellow": {
+							"displayName": "黄色"
+						},
+						"olive_green": {
+							"displayName": "橄榄绿"
+						},
+						"lime_green": {
+							"displayName": "青柠绿"
+						},
+						"green": {
+							"displayName": "绿色"
+						},
+						"mint_green": {
+							"displayName": "薄荷绿"
+						},
+						"teal": {
+							"displayName": "青色"
+						},
+						"sky_blue": {
+							"displayName": "天蓝色"
+						},
+						"light_blue": {
+							"displayName": "浅蓝色"
+						},
+						"blue": {
+							"displayName": "蓝色"
+						},
+						"grape": {
+							"displayName": "葡萄"
+						},
+						"violet": {
+							"displayName": "Violet"
+						},
+						"lavender": {
+							"displayName": "薰衣草"
+						},
+						"magenta": {
+							"displayName": "洋红色"
+						},
+						"salmon": {
+							"displayName": "Salmon"
+						},
+						"charcoal": {
+							"displayName": "木炭"
+						},
+						"grey": {
+							"displayName": "灰色"
+						},
+						"taupe": {
+							"displayName": "灰褐色"
+						}
+					}
+				},
+				"is_favorite": {
+					"displayName": "是否收藏",
+					"description": "项目是否为收藏项目"
+				},
+				"view_style": {
+					"displayName": "查看样式",
+					"description": "项目的默认查看样式",
+					"options": {
+						"list": {
+							"displayName": "列表"
+						},
+						"board": {
+							"displayName": "看板"
+						}
+					}
+				}
+			}
+		},
+		"sectionId": {
+			"displayName": "区块ID"
+		},
+		"sectionProject": {
+			"displayName": "项目名称或ID",
+			"description": "要添加分区到的项目"
+		},
+		"sectionName": {
+			"displayName": "名称",
+			"description": "分区名称"
+		},
+		"sectionOptions": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"order": {
+					"displayName": "排序",
+					"description": "此部分的顺序"
+				}
+			}
+		},
+		"sectionUpdateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "分区名称"
+				}
+			}
+		},
+		"sectionFilters": {
+			"displayName": "过滤器",
+			"placeholder": "添加过滤器",
+			"options": {
+				"project_id": {
+					"displayName": "项目名称或ID",
+					"description": "按项目筛选分区。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"commentId": {
+			"displayName": "评论ID"
+		},
+		"commentTaskId": {
+			"displayName": "任务ID",
+			"description": "要评论的任务ID"
+		},
+		"commentContent": {
+			"displayName": "内容",
+			"description": "评论内容"
+		},
+		"commentUpdateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"content": {
+					"displayName": "内容",
+					"description": "评论内容"
+				}
+			}
+		},
+		"commentFilters": {
+			"displayName": "过滤器",
+			"placeholder": "添加过滤器",
+			"options": {
+				"task_id": {
+					"displayName": "任务ID",
+					"description": "按任务ID筛选评论"
+				},
+				"project_id": {
+					"displayName": "项目ID",
+					"description": "按项目ID筛选评论"
+				}
+			}
+		},
+		"labelId": {
+			"displayName": "标签ID"
+		},
+		"labelName": {
+			"displayName": "名称",
+			"description": "标签名称"
+		},
+		"labelOptions": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"color": {
+					"displayName": "颜色",
+					"description": "标签的颜色",
+					"options": {
+						"berry_red": {
+							"displayName": "莓红色"
+						},
+						"red": {
+							"displayName": "红色"
+						},
+						"orange": {
+							"displayName": "橙色"
+						},
+						"yellow": {
+							"displayName": "黄色"
+						},
+						"olive_green": {
+							"displayName": "橄榄绿"
+						},
+						"lime_green": {
+							"displayName": "青柠绿"
+						},
+						"green": {
+							"displayName": "绿色"
+						},
+						"mint_green": {
+							"displayName": "薄荷绿"
+						},
+						"teal": {
+							"displayName": "青色"
+						},
+						"sky_blue": {
+							"displayName": "天蓝色"
+						},
+						"light_blue": {
+							"displayName": "浅蓝色"
+						},
+						"blue": {
+							"displayName": "蓝色"
+						},
+						"grape": {
+							"displayName": "葡萄"
+						},
+						"violet": {
+							"displayName": "Violet"
+						},
+						"lavender": {
+							"displayName": "薰衣草"
+						},
+						"magenta": {
+							"displayName": "洋红色"
+						},
+						"salmon": {
+							"displayName": "Salmon"
+						},
+						"charcoal": {
+							"displayName": "木炭"
+						},
+						"grey": {
+							"displayName": "灰色"
+						},
+						"taupe": {
+							"displayName": "灰褐色"
+						}
+					}
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "标签排序"
+				},
+				"is_favorite": {
+					"displayName": "是否收藏",
+					"description": "该标签是否为收藏"
+				}
+			}
+		},
+		"labelUpdateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "标签名称"
+				},
+				"color": {
+					"displayName": "颜色",
+					"description": "标签的颜色",
+					"options": {
+						"berry_red": {
+							"displayName": "莓红色"
+						},
+						"red": {
+							"displayName": "红色"
+						},
+						"orange": {
+							"displayName": "橙色"
+						},
+						"yellow": {
+							"displayName": "黄色"
+						},
+						"olive_green": {
+							"displayName": "橄榄绿"
+						},
+						"lime_green": {
+							"displayName": "青柠绿"
+						},
+						"green": {
+							"displayName": "绿色"
+						},
+						"mint_green": {
+							"displayName": "薄荷绿"
+						},
+						"teal": {
+							"displayName": "青色"
+						},
+						"sky_blue": {
+							"displayName": "天蓝色"
+						},
+						"light_blue": {
+							"displayName": "浅蓝色"
+						},
+						"blue": {
+							"displayName": "蓝色"
+						},
+						"grape": {
+							"displayName": "葡萄"
+						},
+						"violet": {
+							"displayName": "Violet"
+						},
+						"lavender": {
+							"displayName": "薰衣草"
+						},
+						"magenta": {
+							"displayName": "洋红色"
+						},
+						"salmon": {
+							"displayName": "Salmon"
+						},
+						"charcoal": {
+							"displayName": "木炭"
+						},
+						"grey": {
+							"displayName": "灰色"
+						},
+						"taupe": {
+							"displayName": "灰褐色"
+						}
+					}
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "标签排序"
+				},
+				"is_favorite": {
+					"displayName": "是否收藏",
+					"description": "该标签是否为收藏"
+				}
+			}
+		},
+		"reminderId": {
+			"displayName": "提醒事项ID"
+		},
+		"itemId": {
+			"displayName": "任务ID",
+			"description": "要附加提醒的任务ID"
+		},
+		"dueDateType": {
+			"displayName": "到期日期类型",
+			"description": "如何指定提醒触发时间",
+			"options": {
+				"natural_language": {
+					"displayName": "自然语言",
+					"description": "人类可读的日期和时间（例如：“明天下午2点”）"
+				},
+				"full_day": {
+					"displayName": "全天日期",
+					"description": "无具体时间日期（浮动）"
+				},
+				"floating_time": {
+					"displayName": "浮动日期时间",
+					"description": "无时区日期时间"
+				},
+				"fixed_timezone": {
+					"displayName": "带时区的固定时间日期",
+					"description": "特定时区的日期和时间"
+				}
+			}
+		},
+		"natural_language_representation": {
+			"displayName": "自然语言表示",
+			"description": "人类可读的日期和时间",
+			"placeholder": "例如：“明天下午2点”、“周一上午10:45”"
+		},
+		"date": {
+			"displayName": "日期",
+			"description": "全天日期，格式为YYYY-MM-DD",
+			"placeholder": "YYYY-MM-DD"
+		},
+		"datetime": {
+			"displayName": "日期时间",
+			"description": "带时区的日期时间"
+		},
+		"timezone": {
+			"displayName": "时区",
+			"description": "固定时区日期所用的时区",
+			"placeholder": "例如：\"America/New_York\""
+		},
+		"reminderOptions": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"type": {
+					"displayName": "类型",
+					"description": "提醒类型",
+					"options": {
+						"absolute": {
+							"displayName": "绝对"
+						},
+						"relative": {
+							"displayName": "相对"
+						}
+					}
+				},
+				"minute_offset": {
+					"displayName": "分钟偏移量",
+					"description": "任务截止前分钟数"
+				},
+				"notify_uid": {
+					"displayName": "通知用户ID",
+					"description": "要通知的用户ID（用于共享任务）"
+				}
+			}
+		},
+		"reminderUpdateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"due": {
+					"displayName": "截止日期",
+					"description": "提醒触发时间",
+					"placeholder": "添加截止日期选项",
+					"options": {
+						"string": {
+							"displayName": "自然语言",
+							"description": "人类可读的日期和时间",
+							"placeholder": "例如：\"明天下午2点\"、\"周一上午10:45\""
+						},
+						"date": {
+							"displayName": "日期",
+							"description": "YYYY-MM-DD格式的具体日期",
+							"placeholder": "YYYY-MM-DD"
+						},
+						"datetime": {
+							"displayName": "日期时间",
+							"description": "特定日期和时间"
+						},
+						"timezone": {
+							"displayName": "时区",
+							"description": "提醒时区",
+							"placeholder": "例如：\"America/New_York\""
+						}
+					}
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "提醒类型",
+					"options": {
+						"absolute": {
+							"displayName": "绝对"
+						},
+						"relative": {
+							"displayName": "相对"
+						}
+					}
+				},
+				"minute_offset": {
+					"displayName": "分钟偏移量",
+					"description": "任务截止前分钟数"
+				},
+				"notify_uid": {
+					"displayName": "通知用户ID",
+					"description": "要通知的用户ID（用于共享任务）"
+				}
+			}
+		}
+	}
+}

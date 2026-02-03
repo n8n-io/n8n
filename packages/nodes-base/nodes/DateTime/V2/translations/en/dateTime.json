@@ -1,0 +1,234 @@
+{
+	"header": {
+		"displayName": "Date & Time",
+		"description": "Manipulate date and time values"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"addToDate": {
+					"displayName": "Add to a Date"
+				},
+				"extractDate": {
+					"displayName": "Extract Part of a Date"
+				},
+				"formatDate": {
+					"displayName": "Format a Date"
+				},
+				"getCurrentDate": {
+					"displayName": "Get Current Date"
+				},
+				"getTimeBetweenDates": {
+					"displayName": "Get Time Between Dates"
+				},
+				"roundDate": {
+					"displayName": "Round a Date"
+				},
+				"subtractFromDate": {
+					"displayName": "Subtract From a Date"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "You can also do this using an expression, e.g. <code>{{ your_date.extract(\"month\") }}}</code>. <a target=\"_blank\" href=\"https://docs.n8n.io/code/cookbook/luxon/\">More info</a>"
+		},
+		"includeTime": {
+			"displayName": "Include Current Time",
+			"description": "When deactivated, the time will be set to midnight"
+		},
+		"outputFieldName": {
+			"displayName": "Output Field Name",
+			"description": "Name of the field to put the output in"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"includeInputFields": {
+					"displayName": "Include Input Fields",
+					"description": "Whether to include all fields of the input item in the output item"
+				},
+				"timezone": {
+					"displayName": "Use Workflow Timezone",
+					"description": "Whether to use the timezone of the input or the workflow's timezone",
+					"placeholder": "America/New_York"
+				},
+				"fromFormat": {
+					"displayName": "From Date Format",
+					"description": "Format in which the input 'Date' is, it's helpful when the format is not recognized automatically. Use those <a href=\"https://moment.github.io/luxon/#/formatting?id=table-of-tokens&id=table-of-tokens\" target=\"_blank\">tokens</a> to define the format."
+				},
+				"isoString": {
+					"displayName": "Output as ISO String",
+					"description": "Whether to output the date as ISO string or not"
+				}
+			}
+		},
+		"magnitude": {
+			"displayName": "Date to Subtract From",
+			"description": "The date that you want to change"
+		},
+		"timeUnit": {
+			"displayName": "Time Unit to Subtract",
+			"description": "Time unit for Duration parameter below",
+			"options": {
+				"years": {
+					"displayName": "Years"
+				},
+				"quarters": {
+					"displayName": "Quarters"
+				},
+				"months": {
+					"displayName": "Months"
+				},
+				"weeks": {
+					"displayName": "Weeks"
+				},
+				"days": {
+					"displayName": "Days"
+				},
+				"hours": {
+					"displayName": "Hours"
+				},
+				"minutes": {
+					"displayName": "Minutes"
+				},
+				"seconds": {
+					"displayName": "Seconds"
+				},
+				"milliseconds": {
+					"displayName": "Milliseconds"
+				}
+			}
+		},
+		"duration": {
+			"displayName": "Duration",
+			"description": "The number of time units to subtract from the date"
+		},
+		"date": {
+			"displayName": "Date",
+			"description": "The date that you want to round"
+		},
+		"format": {
+			"displayName": "Format",
+			"description": "The format to convert the date to",
+			"options": {
+				"custom": {
+					"displayName": "Custom Format"
+				},
+				"MM/dd/yyyy": {
+					"displayName": "MM/DD/YYYY",
+					"description": "Example: 09/04/1986"
+				},
+				"yyyy/MM/dd": {
+					"displayName": "YYYY/MM/DD",
+					"description": "Example: 1986/04/09"
+				},
+				"MMMM dd yyyy": {
+					"displayName": "MMMM DD YYYY",
+					"description": "Example: April 09 1986"
+				},
+				"MM-dd-yyyy": {
+					"displayName": "MM-DD-YYYY",
+					"description": "Example: 09-04-1986"
+				},
+				"yyyy-MM-dd": {
+					"displayName": "YYYY-MM-DD",
+					"description": "Example: 1986-04-09"
+				},
+				"X": {
+					"displayName": "Unix Timestamp",
+					"description": "Example: 1672531200"
+				},
+				"x": {
+					"displayName": "Unix Ms Timestamp",
+					"description": "Example: 1674691200000"
+				}
+			}
+		},
+		"customFormat": {
+			"displayName": "Custom Format",
+			"placeholder": "yyyy-MM-dd"
+		},
+		"mode": {
+			"displayName": "Mode",
+			"options": {
+				"roundDown": {
+					"displayName": "Round Down"
+				},
+				"roundUp": {
+					"displayName": "Round Up"
+				}
+			}
+		},
+		"toNearest": {
+			"displayName": "To Nearest",
+			"options": {
+				"year": {
+					"displayName": "Year"
+				},
+				"month": {
+					"displayName": "Month"
+				},
+				"week": {
+					"displayName": "Week"
+				},
+				"day": {
+					"displayName": "Day"
+				},
+				"hour": {
+					"displayName": "Hour"
+				},
+				"minute": {
+					"displayName": "Minute"
+				},
+				"second": {
+					"displayName": "Second"
+				}
+			}
+		},
+		"to": {
+			"displayName": "To",
+			"options": {
+				"month": {
+					"displayName": "End of Month"
+				}
+			}
+		},
+		"startDate": {
+			"displayName": "Start Date"
+		},
+		"endDate": {
+			"displayName": "End Date"
+		},
+		"units": {
+			"displayName": "Units"
+		},
+		"part": {
+			"displayName": "Part",
+			"options": {
+				"year": {
+					"displayName": "Year"
+				},
+				"month": {
+					"displayName": "Month"
+				},
+				"week": {
+					"displayName": "Week"
+				},
+				"day": {
+					"displayName": "Day"
+				},
+				"hour": {
+					"displayName": "Hour"
+				},
+				"minute": {
+					"displayName": "Minute"
+				},
+				"second": {
+					"displayName": "Second"
+				}
+			}
+		}
+	}
+}

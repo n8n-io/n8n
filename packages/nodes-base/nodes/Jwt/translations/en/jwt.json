@@ -1,0 +1,137 @@
+{
+	"header": {
+		"displayName": "JWT",
+		"description": "JWT"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"decode": {
+					"displayName": "Decode"
+				},
+				"sign": {
+					"displayName": "Sign"
+				},
+				"verify": {
+					"displayName": "Verify"
+				}
+			}
+		},
+		"useJson": {
+			"displayName": "Use JSON to Build Payload",
+			"description": "Whether to use JSON to build the claims"
+		},
+		"claims": {
+			"displayName": "Payload Claims",
+			"placeholder": "Add Claim",
+			"options": {
+				"audience": {
+					"displayName": "Audience",
+					"description": "Identifies the recipients that the JWT is intended for",
+					"placeholder": "e.g. https://example.com"
+				},
+				"expiresIn": {
+					"displayName": "Expires In",
+					"description": "The lifetime of the token in seconds",
+					"placeholder": "e.g. 3600"
+				},
+				"issuer": {
+					"displayName": "Issuer",
+					"description": "Identifies the principal that issued the JWT",
+					"placeholder": "e.g. https://example.com"
+				},
+				"jwtid": {
+					"displayName": "JWT ID",
+					"description": "Unique identifier for the JWT",
+					"placeholder": "e.g. 123456"
+				},
+				"notBefore": {
+					"displayName": "Not Before",
+					"description": "The time before which the JWT must not be accepted for processing"
+				},
+				"subject": {
+					"displayName": "Subject",
+					"description": "Identifies the principal that is the subject of the JWT"
+				}
+			}
+		},
+		"claimsJson": {
+			"displayName": "Payload Claims (JSON)",
+			"description": "Claims to add to the token in JSON format"
+		},
+		"token": {
+			"displayName": "Token",
+			"description": "The token to verify or decode"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"complete": {
+					"displayName": "Return Additional Info",
+					"description": "Whether to return the complete decoded token with information about the header and signature or just the payload"
+				},
+				"ignoreExpiration": {
+					"displayName": "Ignore Expiration",
+					"description": "Whether to ignore the expiration of the token"
+				},
+				"ignoreNotBefore": {
+					"displayName": "Ignore Not Before Claim",
+					"description": "Whether to ignore the not before claim of the token"
+				},
+				"clockTolerance": {
+					"displayName": "Clock Tolerance",
+					"description": "Number of seconds to tolerate when checking the nbf and exp claims, to deal with small clock differences among different servers"
+				},
+				"kid": {
+					"displayName": "Key ID",
+					"description": "The kid (key ID) claim is an optional header claim, used to specify the key for validating the signature",
+					"placeholder": "e.g. 123456"
+				},
+				"algorithm": {
+					"displayName": "Override Algorithm",
+					"description": "The algorithm to use for signing or verifying the token, overrides algorithm in credentials",
+					"options": {
+						"ES256": {
+							"displayName": "ES256"
+						},
+						"ES384": {
+							"displayName": "ES384"
+						},
+						"ES512": {
+							"displayName": "ES512"
+						},
+						"HS256": {
+							"displayName": "HS256"
+						},
+						"HS384": {
+							"displayName": "HS384"
+						},
+						"HS512": {
+							"displayName": "HS512"
+						},
+						"PS256": {
+							"displayName": "PS256"
+						},
+						"PS384": {
+							"displayName": "PS384"
+						},
+						"PS512": {
+							"displayName": "PS512"
+						},
+						"RS256": {
+							"displayName": "RS256"
+						},
+						"RS384": {
+							"displayName": "RS384"
+						},
+						"RS512": {
+							"displayName": "RS512"
+						}
+					}
+				}
+			}
+		}
+	}
+}

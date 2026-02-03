@@ -1,0 +1,97 @@
+{
+	"header": {
+		"displayName": "Kafka Trigger",
+		"description": "Consume messages from a Kafka topic"
+	},
+	"nodeView": {
+		"topic": {
+			"displayName": "Topic",
+			"description": "Name of the queue of topic to consume from",
+			"placeholder": "topic-name"
+		},
+		"groupId": {
+			"displayName": "Group ID",
+			"description": "ID of the consumer group",
+			"placeholder": "n8n-kafka"
+		},
+		"useSchemaRegistry": {
+			"displayName": "Use Schema Registry",
+			"description": "Whether to use Confluent Schema Registry"
+		},
+		"schemaRegistryUrl": {
+			"displayName": "Schema Registry URL",
+			"description": "URL of the schema registry",
+			"placeholder": "https://schema-registry-domain:8081"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"allowAutoTopicCreation": {
+					"displayName": "Allow Topic Creation",
+					"description": "Whether to allow sending message to a previously non exisiting topic"
+				},
+				"autoCommitThreshold": {
+					"displayName": "Auto Commit Threshold",
+					"description": "The consumer will commit offsets after resolving a given number of messages"
+				},
+				"autoCommitInterval": {
+					"displayName": "Auto Commit Interval",
+					"description": "The consumer will commit offsets after a given period, for example, five seconds"
+				},
+				"batchSize": {
+					"displayName": "Batch Size",
+					"description": "Number of messages to process in each batch, when set to 1, message-by-message processing is enabled"
+				},
+				"fetchMaxBytes": {
+					"displayName": "Fetch Max Bytes",
+					"description": "Maximum amount of data the server should return for a fetch request. In bytes. Default is 1MB. Higher values allow fetching more messages at once."
+				},
+				"fetchMinBytes": {
+					"displayName": "Fetch Min Bytes",
+					"description": "Minimum amount of data the server should return for a fetch request. In bytes. Server will wait up to fetchMaxWaitTime for this amount to accumulate."
+				},
+				"heartbeatInterval": {
+					"displayName": "Heartbeat Interval",
+					"description": "Heartbeats are used to ensure that the consumer's session stays active"
+				},
+				"maxInFlightRequests": {
+					"displayName": "Max Number of Requests",
+					"description": "The maximum number of unacknowledged requests the client will send on a single connection"
+				},
+				"fromBeginning": {
+					"displayName": "Read Messages From Beginning",
+					"description": "Whether to read message from beginning"
+				},
+				"jsonParseMessage": {
+					"displayName": "JSON Parse Message",
+					"description": "Whether to try to parse the message to an object"
+				},
+				"parallelProcessing": {
+					"displayName": "Parallel Processing",
+					"description": "Whether to process messages in parallel or by keeping the message in order"
+				},
+				"partitionsConsumedConcurrently": {
+					"displayName": "Partitions Consumed Concurrently",
+					"description": "Number of Kafka partitions to process in parallel. Controls how many partitions are processed concurrently by the consumer."
+				},
+				"onlyMessage": {
+					"displayName": "Only Message",
+					"description": "Whether to return only the message property"
+				},
+				"returnHeaders": {
+					"displayName": "Return Headers",
+					"description": "Whether to return the headers received from Kafka"
+				},
+				"rebalanceTimeout": {
+					"displayName": "Rebalance Timeout",
+					"description": "The maximum time allowed for a consumer to join the group"
+				},
+				"sessionTimeout": {
+					"displayName": "Session Timeout",
+					"description": "The time to await a response in ms"
+				}
+			}
+		}
+	}
+}

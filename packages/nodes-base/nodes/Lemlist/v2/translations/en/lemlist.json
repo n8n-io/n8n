@@ -1,0 +1,346 @@
+{
+	"header": {
+		"displayName": "Lemlist",
+		"description": "Consume the Lemlist API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"activity": {
+					"displayName": "Activity"
+				},
+				"campaign": {
+					"displayName": "Campaign"
+				},
+				"enrich": {
+					"displayName": "Enrichment"
+				},
+				"lead": {
+					"displayName": "Lead"
+				},
+				"team": {
+					"displayName": "Team"
+				},
+				"unsubscribe": {
+					"displayName": "Unsubscribe"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"getStats": {
+					"displayName": "Get Stats"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"enrichLead": {
+					"displayName": "Enrich Lead"
+				},
+				"enrichPerson": {
+					"displayName": "Enrich Person"
+				},
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"unsubscribe": {
+					"displayName": "Unsubscribe"
+				},
+				"getCredits": {
+					"displayName": "Get Credits"
+				},
+				"add": {
+					"displayName": "Add"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"campaignId": {
+					"displayName": "Campaign Name or ID",
+					"description": "ID of the campaign to retrieve activity for. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"isFirst": {
+					"displayName": "Is First"
+				},
+				"leadId": {
+					"displayName": "Lead ID"
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Type of activity to retrieve",
+					"options": {
+						"aircallCreated": {
+							"displayName": "Aircall Created"
+						},
+						"aircallDone": {
+							"displayName": "Aircall Done"
+						},
+						"aircallEnded": {
+							"displayName": "Aircall Ended"
+						},
+						"aircallInterested": {
+							"displayName": "Aircall Interested"
+						},
+						"aircallNotInterested": {
+							"displayName": "Aircall Not Interested"
+						},
+						"apiDone": {
+							"displayName": "Api Done"
+						},
+						"apiFailed": {
+							"displayName": "Api Failed"
+						},
+						"apiInterested": {
+							"displayName": "Api Interested"
+						},
+						"apiNotInterested": {
+							"displayName": "Api Not Interested"
+						},
+						"attracted": {
+							"displayName": "Attracted"
+						},
+						"connectionIssue": {
+							"displayName": "Connection Issue"
+						},
+						"contacted": {
+							"displayName": "Contacted"
+						},
+						"customDomainErrors": {
+							"displayName": "Custom Domain Errors"
+						},
+						"emailsBounced": {
+							"displayName": "Emails Bounced"
+						},
+						"emailsClicked": {
+							"displayName": "Emails Clicked"
+						},
+						"emailsFailed": {
+							"displayName": "Emails Failed"
+						},
+						"emailsInterested": {
+							"displayName": "Emails Interested"
+						},
+						"emailsNotInterested": {
+							"displayName": "Emails Not Interested"
+						},
+						"emailsOpened": {
+							"displayName": "Emails Opened"
+						},
+						"emailsReplied": {
+							"displayName": "Emails Replied"
+						},
+						"emailsSendFailed": {
+							"displayName": "Emails Send Failed"
+						},
+						"emailsSent": {
+							"displayName": "Emails Sent"
+						},
+						"emailsUnsubscribed": {
+							"displayName": "Emails Unsubscribed"
+						},
+						"hooked": {
+							"displayName": "Hooked"
+						},
+						"interested": {
+							"displayName": "Interested"
+						},
+						"lemwarmPaused": {
+							"displayName": "Lemwarm Paused"
+						},
+						"linkedinInterested": {
+							"displayName": "LinkedIn Interested"
+						},
+						"linkedinInviteAccepted": {
+							"displayName": "LinkedIn Invite Accepted"
+						},
+						"linkedinInviteDone": {
+							"displayName": "LinkedIn Invite Done"
+						},
+						"linkedinInviteFailed": {
+							"displayName": "LinkedIn Invite Failed"
+						},
+						"linkedinNotInterested": {
+							"displayName": "LinkedIn Not Interested"
+						},
+						"linkedinReplied": {
+							"displayName": "LinkedIn Replied"
+						},
+						"linkedinSendFailed": {
+							"displayName": "LinkedIn Send Failed"
+						},
+						"linkedinSent": {
+							"displayName": "LinkedIn Sent"
+						},
+						"linkedinVisitDone": {
+							"displayName": "LinkedIn Visit Done"
+						},
+						"linkedinVisitFailed": {
+							"displayName": "LinkedIn Visit Failed"
+						},
+						"linkedinVoiceNoteDone": {
+							"displayName": "LinkedIn Voice Note Done"
+						},
+						"linkedinVoiceNoteFailed": {
+							"displayName": "LinkedIn Voice Note Failed"
+						},
+						"manualInterested": {
+							"displayName": "Manual Interested"
+						},
+						"manualNotInterested": {
+							"displayName": "Manual Not Interested"
+						},
+						"notInterested": {
+							"displayName": "Not Interested"
+						},
+						"opportunitiesDone": {
+							"displayName": "Opportunities Done"
+						},
+						"paused": {
+							"displayName": "Paused"
+						},
+						"resumed": {
+							"displayName": "Resumed"
+						},
+						"sendLimitReached": {
+							"displayName": "Send Limit Reached"
+						},
+						"skipped": {
+							"displayName": "Skipped"
+						},
+						"warmed": {
+							"displayName": "Warmed"
+						}
+					}
+				},
+				"version": {
+					"displayName": "Version"
+				}
+			}
+		},
+		"campaignId": {
+			"displayName": "Campaign Name or ID",
+			"description": "ID of the campaign to unsubscribe the lead from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"startDate": {
+			"displayName": "Start Date",
+			"placeholder": "e.g. 2024-09-03 00:00:00Z"
+		},
+		"endDate": {
+			"displayName": "End Date",
+			"placeholder": "e.g. 2024-09-03 00:00:00Z"
+		},
+		"timezone": {
+			"displayName": "Timezone",
+			"placeholder": "e.g. Europe/Paris"
+		},
+		"enrichId": {
+			"displayName": "Enrichment ID",
+			"description": "ID of the enrichment to retrieve"
+		},
+		"leadId": {
+			"displayName": "Lead ID"
+		},
+		"findEmail": {
+			"displayName": "Find Email"
+		},
+		"verifyEmail": {
+			"displayName": "Verify Email"
+		},
+		"linkedinEnrichment": {
+			"displayName": "LinkedIn Enrichment"
+		},
+		"findPhone": {
+			"displayName": "Find Phone"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"email": {
+					"displayName": "Email",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "First Name",
+					"description": "First name of the lead to create"
+				},
+				"lastName": {
+					"displayName": "Last Name",
+					"description": "Last name of the lead to create"
+				},
+				"linkedinUrl": {
+					"displayName": "LinkedIn URL",
+					"description": "LinkedIn URL of the lead to create"
+				},
+				"companyName": {
+					"displayName": "Company Name",
+					"description": "Company name of the lead to create"
+				},
+				"companyDomain": {
+					"displayName": "Company Domain",
+					"description": "Company domain of the lead to create"
+				},
+				"deduplicate": {
+					"displayName": "Deduplicate",
+					"description": "Whether to do not insert if this email is already present in another campaign"
+				},
+				"findEmail": {
+					"displayName": "Find Email",
+					"description": "Whether to find verified email"
+				},
+				"findPhone": {
+					"displayName": "Find Phone",
+					"description": "Whether to find phone number"
+				},
+				"icebreaker": {
+					"displayName": "Icebreaker",
+					"description": "Icebreaker of the lead to create"
+				},
+				"jobTitle": {
+					"displayName": "Job Title",
+					"description": "Job title of the lead to create"
+				},
+				"linkedinEnrichment": {
+					"displayName": "LinkedIn Enrichment",
+					"description": "Whether to run the LinkedIn enrichment"
+				},
+				"phone": {
+					"displayName": "Phone",
+					"description": "Phone number of the lead to create"
+				},
+				"picture": {
+					"displayName": "Picture URL",
+					"description": "Picture URL of the lead to create"
+				},
+				"verifyEmail": {
+					"displayName": "Verify Email",
+					"description": "Whether to verify existing email (debounce)"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email to delete from the unsubscribes",
+			"placeholder": "name@email.com"
+		}
+	}
+}

@@ -1,0 +1,1878 @@
+{
+	"header": {
+		"displayName": "Pipedrive",
+		"description": "在Pipedrive中创建和编辑数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiToken": {
+					"displayName": "API令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"activity": {
+					"displayName": "活动"
+				},
+				"deal": {
+					"displayName": "交易"
+				},
+				"dealActivity": {
+					"displayName": "交易活动"
+				},
+				"dealProduct": {
+					"displayName": "交易产品"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"lead": {
+					"displayName": "潜在客户"
+				},
+				"note": {
+					"displayName": "备注"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"person": {
+					"displayName": "人员"
+				},
+				"product": {
+					"displayName": "产品"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建人员"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除人员"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取人员数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个产品的数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新人员"
+				},
+				"duplicate": {
+					"displayName": "复制",
+					"description": "复制交易"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索所有人员"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "将产品添加到交易"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从交易中移除产品"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				}
+			}
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "要创建的活动主题"
+		},
+		"done": {
+			"displayName": "完成",
+			"description": "活动是否已完成",
+			"options": {
+				"0": {
+					"displayName": "未完成"
+				},
+				"1": {
+					"displayName": "完成"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "活动类型，如“通话”、“会议”等",
+			"placeholder": "通话"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"deal_id": {
+					"displayName": "交易ID",
+					"description": "与此备注关联的交易ID"
+				},
+				"due_date": {
+					"displayName": "截止日期",
+					"description": "活动截止日期 YYYY-MM-DD"
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "活动备注（HTML格式）"
+				},
+				"org_id": {
+					"displayName": "组织名称或ID",
+					"description": "此交易将关联的组织ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"person_id": {
+					"displayName": "人员ID",
+					"description": "此笔记将关联的人员ID"
+				},
+				"user_id": {
+					"displayName": "用户名或ID",
+					"description": "要获取其活动的用户ID。如果省略，将使用与API令牌关联的用户。如果为0，将根据权限集获取所有公司用户的活动。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"customProperties": {
+					"displayName": "自定义属性",
+					"description": "添加自定义属性以设置未预定义的值",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "属性名称或ID",
+									"description": "要设置的自定义字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "属性值",
+									"description": "要设置的属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "属性名称或ID",
+									"description": "要设置的自定义字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "属性值",
+									"description": "要设置的属性值"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "自定义属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				},
+				"currency": {
+					"displayName": "货币",
+					"description": "交易的货币。接受3个字符的货币代码。如EUR、USD等。"
+				},
+				"label": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"lost_reason": {
+					"displayName": "失败原因",
+					"description": "交易失败原因"
+				},
+				"probability": {
+					"displayName": "概率",
+					"description": "交易成功概率百分比"
+				},
+				"stage_id": {
+					"displayName": "阶段名称或ID",
+					"description": "此交易将在管道中放置的阶段ID。如果省略，交易将放置在默认管道的第一个阶段。(管道 > 阶段)。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "交易的状态。如果未提供，将自动设为“open”。",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"won": {
+							"displayName": "未完成"
+						},
+						"lost": {
+							"displayName": "丢失"
+						},
+						"deleted": {
+							"displayName": "已删除"
+						}
+					}
+				},
+				"value": {
+					"displayName": "值",
+					"description": "Potential monetary value associated with the lead",
+					"options": {
+						"valueProperties": {
+							"displayName": "值属性",
+							"options": {
+								"amount": {
+									"displayName": "金额"
+								},
+								"currency": {
+									"displayName": "货币",
+									"options": {
+										"AFN": {
+											"displayName": "阿富汗尼"
+										},
+										"DZD": {
+											"displayName": "阿尔及利亚第纳尔"
+										},
+										"ARS": {
+											"displayName": "阿根廷比索"
+										},
+										"AUD": {
+											"displayName": "澳大利亚元"
+										},
+										"AZN": {
+											"displayName": "阿塞拜疆马纳特"
+										},
+										"BSD": {
+											"displayName": "巴哈马元"
+										},
+										"THB": {
+											"displayName": "泰铢"
+										},
+										"BBD": {
+											"displayName": "巴巴多斯元"
+										},
+										"BZD": {
+											"displayName": "伯利兹元"
+										},
+										"BMD": {
+											"displayName": "百慕大元"
+										},
+										"BOB": {
+											"displayName": "玻利维亚诺"
+										},
+										"BRL": {
+											"displayName": "巴西雷亚尔"
+										},
+										"BND": {
+											"displayName": "文莱元"
+										},
+										"BGN": {
+											"displayName": "保加利亚列弗"
+										},
+										"CAD": {
+											"displayName": "加拿大元"
+										},
+										"CLP": {
+											"displayName": "智利比索"
+										},
+										"COP": {
+											"displayName": "哥伦比亚比索"
+										},
+										"NIO": {
+											"displayName": "科尔多瓦奥罗"
+										},
+										"CRC": {
+											"displayName": "哥斯达黎加科朗"
+										},
+										"CZK": {
+											"displayName": "捷克克朗"
+										},
+										"DKK": {
+											"displayName": "丹麦克朗"
+										},
+										"DOP": {
+											"displayName": "多米尼加比索"
+										},
+										"VND": {
+											"displayName": "东"
+										},
+										"XCD": {
+											"displayName": "东加勒比元"
+										},
+										"EGP": {
+											"displayName": "埃及镑"
+										},
+										"EUR": {
+											"displayName": "欧元"
+										},
+										"FJD": {
+											"displayName": "斐济元"
+										},
+										"HUF": {
+											"displayName": "福林"
+										},
+										"HKD": {
+											"displayName": "港币"
+										},
+										"UAH": {
+											"displayName": "格里夫纳"
+										},
+										"INR": {
+											"displayName": "印度卢比"
+										},
+										"JMD": {
+											"displayName": "牙买加元"
+										},
+										"KES": {
+											"displayName": "肯尼亚先令"
+										},
+										"PGK": {
+											"displayName": "Kina"
+										},
+										"HRK": {
+											"displayName": "Kuna"
+										},
+										"MMK": {
+											"displayName": "缅元"
+										},
+										"LAK": {
+											"displayName": "老挝基普"
+										},
+										"LBP": {
+											"displayName": "黎巴嫩镑"
+										},
+										"ALL": {
+											"displayName": "Lek"
+										},
+										"HNL": {
+											"displayName": "伦皮拉"
+										},
+										"LRD": {
+											"displayName": "利比里亚元"
+										},
+										"MYR": {
+											"displayName": "马来西亚林吉特"
+										},
+										"MUR": {
+											"displayName": "毛里求斯卢比"
+										},
+										"MXN": {
+											"displayName": "墨西哥比索"
+										},
+										"MAD": {
+											"displayName": "摩洛哥迪拉姆"
+										},
+										"NPR": {
+											"displayName": "尼泊尔卢比"
+										},
+										"ILS": {
+											"displayName": "新以色列谢克尔"
+										},
+										"TWD": {
+											"displayName": "新台币"
+										},
+										"NZD": {
+											"displayName": "新西兰元"
+										},
+										"NOK": {
+											"displayName": "挪威克朗"
+										},
+										"MRO": {
+											"displayName": "乌吉亚"
+										},
+										"TOP": {
+											"displayName": "潘加"
+										},
+										"PKR": {
+											"displayName": "巴基斯坦卢比"
+										},
+										"MOP": {
+											"displayName": "澳门元"
+										},
+										"PHP": {
+											"displayName": "菲律宾比索"
+										},
+										"GBP": {
+											"displayName": "英镑"
+										},
+										"BWP": {
+											"displayName": "普拉"
+										},
+										"QAR": {
+											"displayName": "卡塔尔里亚尔"
+										},
+										"GTQ": {
+											"displayName": "Quetzal"
+										},
+										"ZAR": {
+											"displayName": "随机"
+										},
+										"RON": {
+											"displayName": "罗马尼亚列伊"
+										},
+										"MVR": {
+											"displayName": "拉菲亚"
+										},
+										"IDR": {
+											"displayName": "印尼盾"
+										},
+										"RUB": {
+											"displayName": "俄罗斯卢布"
+										},
+										"SAR": {
+											"displayName": "沙特里亚尔"
+										},
+										"SCR": {
+											"displayName": "塞舌尔卢比"
+										},
+										"SGD": {
+											"displayName": "新加坡元"
+										},
+										"PEN": {
+											"displayName": "Sol"
+										},
+										"SBD": {
+											"displayName": "所罗门群岛元"
+										},
+										"LKR": {
+											"displayName": "斯里兰卡卢比"
+										},
+										"SEK": {
+											"displayName": "瑞典克朗"
+										},
+										"CHF": {
+											"displayName": "瑞士法郎"
+										},
+										"SYP": {
+											"displayName": "叙利亚镑"
+										},
+										"BDT": {
+											"displayName": "Taka"
+										},
+										"WST": {
+											"displayName": "Tala"
+										},
+										"KZT": {
+											"displayName": "腾格"
+										},
+										"TTD": {
+											"displayName": "特立尼达和多巴哥元"
+										},
+										"TRY": {
+											"displayName": "土耳其里拉"
+										},
+										"AED": {
+											"displayName": "阿联酋迪拉姆"
+										},
+										"USD": {
+											"displayName": "美元"
+										},
+										"VUV": {
+											"displayName": "瓦图"
+										},
+										"XOF": {
+											"displayName": "西非金融共同体法郎"
+										},
+										"KRW": {
+											"displayName": "未完成"
+										},
+										"YER": {
+											"displayName": "也门里亚尔"
+										},
+										"JPY": {
+											"displayName": "日元"
+										},
+										"CNY": {
+											"displayName": "人民币"
+										},
+										"PLN": {
+											"displayName": "兹罗提"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"valueProperties": {
+							"displayName": "值属性",
+							"options": {
+								"amount": {
+									"displayName": "金额"
+								},
+								"currency": {
+									"displayName": "货币",
+									"options": {
+										"AFN": {
+											"displayName": "阿富汗尼"
+										},
+										"DZD": {
+											"displayName": "阿尔及利亚第纳尔"
+										},
+										"ARS": {
+											"displayName": "阿根廷比索"
+										},
+										"AUD": {
+											"displayName": "澳大利亚元"
+										},
+										"AZN": {
+											"displayName": "阿塞拜疆马纳特"
+										},
+										"BSD": {
+											"displayName": "巴哈马元"
+										},
+										"THB": {
+											"displayName": "泰铢"
+										},
+										"BBD": {
+											"displayName": "巴巴多斯元"
+										},
+										"BZD": {
+											"displayName": "伯利兹元"
+										},
+										"BMD": {
+											"displayName": "百慕大元"
+										},
+										"BOB": {
+											"displayName": "玻利维亚诺"
+										},
+										"BRL": {
+											"displayName": "巴西雷亚尔"
+										},
+										"BND": {
+											"displayName": "文莱元"
+										},
+										"BGN": {
+											"displayName": "保加利亚列弗"
+										},
+										"CAD": {
+											"displayName": "加拿大元"
+										},
+										"CLP": {
+											"displayName": "智利比索"
+										},
+										"COP": {
+											"displayName": "哥伦比亚比索"
+										},
+										"NIO": {
+											"displayName": "科尔多瓦奥罗"
+										},
+										"CRC": {
+											"displayName": "哥斯达黎加科朗"
+										},
+										"CZK": {
+											"displayName": "捷克克朗"
+										},
+										"DKK": {
+											"displayName": "丹麦克朗"
+										},
+										"DOP": {
+											"displayName": "多米尼加比索"
+										},
+										"VND": {
+											"displayName": "东"
+										},
+										"XCD": {
+											"displayName": "东加勒比元"
+										},
+										"EGP": {
+											"displayName": "埃及镑"
+										},
+										"EUR": {
+											"displayName": "欧元"
+										},
+										"FJD": {
+											"displayName": "斐济元"
+										},
+										"HUF": {
+											"displayName": "福林"
+										},
+										"HKD": {
+											"displayName": "港币"
+										},
+										"UAH": {
+											"displayName": "格里夫纳"
+										},
+										"INR": {
+											"displayName": "印度卢比"
+										},
+										"JMD": {
+											"displayName": "牙买加元"
+										},
+										"KES": {
+											"displayName": "肯尼亚先令"
+										},
+										"PGK": {
+											"displayName": "Kina"
+										},
+										"HRK": {
+											"displayName": "Kuna"
+										},
+										"MMK": {
+											"displayName": "缅元"
+										},
+										"LAK": {
+											"displayName": "老挝基普"
+										},
+										"LBP": {
+											"displayName": "黎巴嫩镑"
+										},
+										"ALL": {
+											"displayName": "Lek"
+										},
+										"HNL": {
+											"displayName": "伦皮拉"
+										},
+										"LRD": {
+											"displayName": "利比里亚元"
+										},
+										"MYR": {
+											"displayName": "马来西亚林吉特"
+										},
+										"MUR": {
+											"displayName": "毛里求斯卢比"
+										},
+										"MXN": {
+											"displayName": "墨西哥比索"
+										},
+										"MAD": {
+											"displayName": "摩洛哥迪拉姆"
+										},
+										"NPR": {
+											"displayName": "尼泊尔卢比"
+										},
+										"ILS": {
+											"displayName": "新以色列谢克尔"
+										},
+										"TWD": {
+											"displayName": "新台币"
+										},
+										"NZD": {
+											"displayName": "新西兰元"
+										},
+										"NOK": {
+											"displayName": "挪威克朗"
+										},
+										"MRO": {
+											"displayName": "乌吉亚"
+										},
+										"TOP": {
+											"displayName": "潘加"
+										},
+										"PKR": {
+											"displayName": "巴基斯坦卢比"
+										},
+										"MOP": {
+											"displayName": "澳门元"
+										},
+										"PHP": {
+											"displayName": "菲律宾比索"
+										},
+										"GBP": {
+											"displayName": "英镑"
+										},
+										"BWP": {
+											"displayName": "普拉"
+										},
+										"QAR": {
+											"displayName": "卡塔尔里亚尔"
+										},
+										"GTQ": {
+											"displayName": "Quetzal"
+										},
+										"ZAR": {
+											"displayName": "随机"
+										},
+										"RON": {
+											"displayName": "罗马尼亚列伊"
+										},
+										"MVR": {
+											"displayName": "拉菲亚"
+										},
+										"IDR": {
+											"displayName": "印尼盾"
+										},
+										"RUB": {
+											"displayName": "俄罗斯卢布"
+										},
+										"SAR": {
+											"displayName": "沙特里亚尔"
+										},
+										"SCR": {
+											"displayName": "塞舌尔卢比"
+										},
+										"SGD": {
+											"displayName": "新加坡元"
+										},
+										"PEN": {
+											"displayName": "Sol"
+										},
+										"SBD": {
+											"displayName": "所罗门群岛元"
+										},
+										"LKR": {
+											"displayName": "斯里兰卡卢比"
+										},
+										"SEK": {
+											"displayName": "瑞典克朗"
+										},
+										"CHF": {
+											"displayName": "瑞士法郎"
+										},
+										"SYP": {
+											"displayName": "叙利亚镑"
+										},
+										"BDT": {
+											"displayName": "Taka"
+										},
+										"WST": {
+											"displayName": "Tala"
+										},
+										"KZT": {
+											"displayName": "腾格"
+										},
+										"TTD": {
+											"displayName": "特立尼达和多巴哥元"
+										},
+										"TRY": {
+											"displayName": "土耳其里拉"
+										},
+										"AED": {
+											"displayName": "阿联酋迪拉姆"
+										},
+										"USD": {
+											"displayName": "美元"
+										},
+										"VUV": {
+											"displayName": "瓦图"
+										},
+										"XOF": {
+											"displayName": "西非金融共同体法郎"
+										},
+										"KRW": {
+											"displayName": "未完成"
+										},
+										"YER": {
+											"displayName": "也门里亚尔"
+										},
+										"JPY": {
+											"displayName": "日元"
+										},
+										"CNY": {
+											"displayName": "人民币"
+										},
+										"PLN": {
+											"displayName": "兹罗提"
+										}
+									}
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"visible_to": {
+					"displayName": "可见范围",
+					"description": "人员的可见性。如果省略，可见性将设置为授权用户对此项目类型的默认可见性设置。",
+					"options": {
+						"1": {
+							"displayName": "所有者与关注者（私有）"
+						},
+						"3": {
+							"displayName": "全公司（共享）"
+						}
+					}
+				},
+				"comments": {
+					"displayName": "评论",
+					"description": "描述此产品交易附件的文本"
+				},
+				"discount_percentage": {
+					"displayName": "折扣百分比",
+					"description": "要应用的折扣百分比"
+				},
+				"product_variation_id": {
+					"displayName": "产品变体ID",
+					"description": "要使用的产品变体ID"
+				},
+				"includeFields": {
+					"displayName": "包含字段",
+					"description": "支持在结果中包含默认未提供的可选字段"
+				},
+				"organizationId": {
+					"displayName": "组织ID",
+					"description": "将根据提供的组织ID筛选交易"
+				},
+				"personId": {
+					"displayName": "人员ID",
+					"description": "将根据提供的联系人ID筛选交易"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "一个逗号分隔的字符串数组。要从中执行搜索的字段。默认为所有字段。"
+				},
+				"activity_id": {
+					"displayName": "活动ID",
+					"description": "此文件将关联的活动ID"
+				},
+				"product_id": {
+					"displayName": "产品ID",
+					"description": "与此文件关联的人员ID"
+				},
+				"expected_close_date": {
+					"displayName": "预计成交日期",
+					"description": "潜在客户交易预计成交的日期，采用ISO-8601格式"
+				},
+				"label_ids": {
+					"displayName": "标签名称或ID",
+					"description": "要附加到待创建潜在客户的标签ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"organization_id": {
+					"displayName": "组织ID",
+					"description": "要与此潜在客户关联的组织ID"
+				},
+				"owner_id": {
+					"displayName": "用户名或ID",
+					"description": "与此交易关联的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"exactMatch": {
+					"displayName": "精确匹配",
+					"description": "是否仅返回与给定术语完全精确匹配的结果。不区分大小写。"
+				},
+				"rawData": {
+					"displayName": "原始数据",
+					"description": "是否完全按照从API接收的方式返回数据"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "人员邮箱",
+					"placeholder": "name@email.com"
+				},
+				"marketing_status": {
+					"displayName": "营销状态",
+					"description": "请注意，营销状态从旧状态更改为新状态仅允许操作一次",
+					"options": {
+						"no_consent": {
+							"displayName": "不同意"
+						},
+						"unsubscribed": {
+							"displayName": "已取消订阅"
+						},
+						"subscribed": {
+							"displayName": "已订阅"
+						},
+						"archived": {
+							"displayName": "已归档"
+						}
+					}
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "该人员的电话号码"
+				},
+				"done": {
+					"displayName": "完成",
+					"description": "活动是否已完成。0 = 未完成，1 = 已完成。如果省略则返回已完成和未完成的活动。"
+				},
+				"exclude": {
+					"displayName": "排除活动ID",
+					"description": "逗号分隔的活动ID，将从结果中排除。例如：4, 9, 11, ..."
+				},
+				"filterId": {
+					"displayName": "预定义筛选器名称或ID",
+					"description": "要使用的筛选器ID（与user_id参数一起使用将缩小结果范围）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"firstChar": {
+					"displayName": "首字母",
+					"description": "如果提供此参数，则仅返回姓名以指定字母开头的人员"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "字段名称和排序模式用逗号分隔（field_name_1 ASC, field_name_2 DESC）。仅支持一级字段键（不支持嵌套键）。"
+				},
+				"lead_id": {
+					"displayName": "潜在客户ID",
+					"description": "与此备注关联的潜在客户ID"
+				},
+				"end_date": {
+					"displayName": "结束日期",
+					"description": "在此处输入截止日期以停止获取此日期之后的动态。请使用YYYY-MM-DD格式。"
+				},
+				"start_date": {
+					"displayName": "开始日期",
+					"description": "输入您希望开始获取活动的截止日期。请按YYYY-MM-DD格式输入截止日期。"
+				},
+				"type": {
+					"displayName": "输入名称或ID",
+					"description": "活动类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		},
+		"activityId": {
+			"displayName": "活动ID",
+			"description": "要更新的活动ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"busy_flag": {
+					"displayName": "忙碌标志",
+					"description": "活动期间用户是否被设置为忙碌状态"
+				},
+				"deal_id": {
+					"displayName": "交易ID",
+					"description": "与此备注关联的交易ID"
+				},
+				"due_date": {
+					"displayName": "截止日期",
+					"description": "活动截止日期 YYYY-MM-DD"
+				},
+				"done": {
+					"displayName": "完成",
+					"description": "活动是否已完成",
+					"options": {
+						"0": {
+							"displayName": "未完成"
+						},
+						"1": {
+							"displayName": "完成"
+						}
+					}
+				},
+				"note": {
+					"displayName": "备注",
+					"description": "活动备注（HTML格式）"
+				},
+				"org_id": {
+					"displayName": "组织名称或ID",
+					"description": "此交易将关联的组织ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"person_id": {
+					"displayName": "人员ID",
+					"description": "此笔记将关联的人员ID"
+				},
+				"public_description": {
+					"displayName": "公开描述",
+					"description": "同步到外部日历的活动详细信息"
+				},
+				"subject": {
+					"displayName": "主题",
+					"description": "活动主题"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "活动类型，如“通话”、“会议”等",
+					"placeholder": "通话"
+				},
+				"user_id": {
+					"displayName": "用户名或ID",
+					"description": "活动将分配给的活跃用户ID。如果省略，活动将分配给授权用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"customProperties": {
+					"displayName": "自定义属性",
+					"description": "添加自定义属性以设置未预定义的值",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "属性名称或ID",
+									"description": "要设置的自定义字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "属性值",
+									"description": "要设置的属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "属性名称或ID",
+									"description": "要设置的自定义字段名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "属性值",
+									"description": "要设置的属性值"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "自定义属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				},
+				"currency": {
+					"displayName": "货币",
+					"description": "交易的货币。接受3个字符的货币代码。如EUR、USD等。"
+				},
+				"label": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"lost_reason": {
+					"displayName": "失败原因",
+					"description": "交易失败原因"
+				},
+				"probability": {
+					"displayName": "概率",
+					"description": "交易成功概率百分比"
+				},
+				"stage_id": {
+					"displayName": "阶段名称或ID",
+					"description": "此交易将在管道中放置的阶段ID。如果省略，交易将放置在默认管道的第一个阶段。(管道 > 阶段)。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "交易的状态。如果未提供，将自动设为“open”。",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"won": {
+							"displayName": "未完成"
+						},
+						"lost": {
+							"displayName": "丢失"
+						},
+						"deleted": {
+							"displayName": "已删除"
+						}
+					}
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "要更新的潜在客户名称"
+				},
+				"value": {
+					"displayName": "值",
+					"description": "Potential monetary value associated with the lead",
+					"options": {
+						"valueProperties": {
+							"displayName": "值属性",
+							"options": {
+								"amount": {
+									"displayName": "金额"
+								},
+								"currency": {
+									"displayName": "货币",
+									"options": {
+										"AFN": {
+											"displayName": "阿富汗尼"
+										},
+										"DZD": {
+											"displayName": "阿尔及利亚第纳尔"
+										},
+										"ARS": {
+											"displayName": "阿根廷比索"
+										},
+										"AUD": {
+											"displayName": "澳大利亚元"
+										},
+										"AZN": {
+											"displayName": "阿塞拜疆马纳特"
+										},
+										"BSD": {
+											"displayName": "巴哈马元"
+										},
+										"THB": {
+											"displayName": "泰铢"
+										},
+										"BBD": {
+											"displayName": "巴巴多斯元"
+										},
+										"BZD": {
+											"displayName": "伯利兹元"
+										},
+										"BMD": {
+											"displayName": "百慕大元"
+										},
+										"BOB": {
+											"displayName": "玻利维亚诺"
+										},
+										"BRL": {
+											"displayName": "巴西雷亚尔"
+										},
+										"BND": {
+											"displayName": "文莱元"
+										},
+										"BGN": {
+											"displayName": "保加利亚列弗"
+										},
+										"CAD": {
+											"displayName": "加拿大元"
+										},
+										"CLP": {
+											"displayName": "智利比索"
+										},
+										"COP": {
+											"displayName": "哥伦比亚比索"
+										},
+										"NIO": {
+											"displayName": "科尔多瓦奥罗"
+										},
+										"CRC": {
+											"displayName": "哥斯达黎加科朗"
+										},
+										"CZK": {
+											"displayName": "捷克克朗"
+										},
+										"DKK": {
+											"displayName": "丹麦克朗"
+										},
+										"DOP": {
+											"displayName": "多米尼加比索"
+										},
+										"VND": {
+											"displayName": "东"
+										},
+										"XCD": {
+											"displayName": "东加勒比元"
+										},
+										"EGP": {
+											"displayName": "埃及镑"
+										},
+										"EUR": {
+											"displayName": "欧元"
+										},
+										"FJD": {
+											"displayName": "斐济元"
+										},
+										"HUF": {
+											"displayName": "福林"
+										},
+										"HKD": {
+											"displayName": "港币"
+										},
+										"UAH": {
+											"displayName": "格里夫纳"
+										},
+										"INR": {
+											"displayName": "印度卢比"
+										},
+										"JMD": {
+											"displayName": "牙买加元"
+										},
+										"KES": {
+											"displayName": "肯尼亚先令"
+										},
+										"PGK": {
+											"displayName": "Kina"
+										},
+										"HRK": {
+											"displayName": "Kuna"
+										},
+										"MMK": {
+											"displayName": "缅元"
+										},
+										"LAK": {
+											"displayName": "老挝基普"
+										},
+										"LBP": {
+											"displayName": "黎巴嫩镑"
+										},
+										"ALL": {
+											"displayName": "Lek"
+										},
+										"HNL": {
+											"displayName": "伦皮拉"
+										},
+										"LRD": {
+											"displayName": "利比里亚元"
+										},
+										"MYR": {
+											"displayName": "马来西亚林吉特"
+										},
+										"MUR": {
+											"displayName": "毛里求斯卢比"
+										},
+										"MXN": {
+											"displayName": "墨西哥比索"
+										},
+										"MAD": {
+											"displayName": "摩洛哥迪拉姆"
+										},
+										"NPR": {
+											"displayName": "尼泊尔卢比"
+										},
+										"ILS": {
+											"displayName": "新以色列谢克尔"
+										},
+										"TWD": {
+											"displayName": "新台币"
+										},
+										"NZD": {
+											"displayName": "新西兰元"
+										},
+										"NOK": {
+											"displayName": "挪威克朗"
+										},
+										"MRO": {
+											"displayName": "乌吉亚"
+										},
+										"TOP": {
+											"displayName": "潘加"
+										},
+										"PKR": {
+											"displayName": "巴基斯坦卢比"
+										},
+										"MOP": {
+											"displayName": "澳门元"
+										},
+										"PHP": {
+											"displayName": "菲律宾比索"
+										},
+										"GBP": {
+											"displayName": "英镑"
+										},
+										"BWP": {
+											"displayName": "普拉"
+										},
+										"QAR": {
+											"displayName": "卡塔尔里亚尔"
+										},
+										"GTQ": {
+											"displayName": "Quetzal"
+										},
+										"ZAR": {
+											"displayName": "随机"
+										},
+										"RON": {
+											"displayName": "罗马尼亚列伊"
+										},
+										"MVR": {
+											"displayName": "拉菲亚"
+										},
+										"IDR": {
+											"displayName": "印尼盾"
+										},
+										"RUB": {
+											"displayName": "俄罗斯卢布"
+										},
+										"SAR": {
+											"displayName": "沙特里亚尔"
+										},
+										"SCR": {
+											"displayName": "塞舌尔卢比"
+										},
+										"SGD": {
+											"displayName": "新加坡元"
+										},
+										"PEN": {
+											"displayName": "Sol"
+										},
+										"SBD": {
+											"displayName": "所罗门群岛元"
+										},
+										"LKR": {
+											"displayName": "斯里兰卡卢比"
+										},
+										"SEK": {
+											"displayName": "瑞典克朗"
+										},
+										"CHF": {
+											"displayName": "瑞士法郎"
+										},
+										"SYP": {
+											"displayName": "叙利亚镑"
+										},
+										"BDT": {
+											"displayName": "Taka"
+										},
+										"WST": {
+											"displayName": "Tala"
+										},
+										"KZT": {
+											"displayName": "腾格"
+										},
+										"TTD": {
+											"displayName": "特立尼达和多巴哥元"
+										},
+										"TRY": {
+											"displayName": "土耳其里拉"
+										},
+										"AED": {
+											"displayName": "阿联酋迪拉姆"
+										},
+										"USD": {
+											"displayName": "美元"
+										},
+										"VUV": {
+											"displayName": "瓦图"
+										},
+										"XOF": {
+											"displayName": "西非金融共同体法郎"
+										},
+										"KRW": {
+											"displayName": "未完成"
+										},
+										"YER": {
+											"displayName": "也门里亚尔"
+										},
+										"JPY": {
+											"displayName": "日元"
+										},
+										"CNY": {
+											"displayName": "人民币"
+										},
+										"PLN": {
+											"displayName": "兹罗提"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"valueProperties": {
+							"displayName": "值属性",
+							"options": {
+								"amount": {
+									"displayName": "金额"
+								},
+								"currency": {
+									"displayName": "货币",
+									"options": {
+										"AFN": {
+											"displayName": "阿富汗尼"
+										},
+										"DZD": {
+											"displayName": "阿尔及利亚第纳尔"
+										},
+										"ARS": {
+											"displayName": "阿根廷比索"
+										},
+										"AUD": {
+											"displayName": "澳大利亚元"
+										},
+										"AZN": {
+											"displayName": "阿塞拜疆马纳特"
+										},
+										"BSD": {
+											"displayName": "巴哈马元"
+										},
+										"THB": {
+											"displayName": "泰铢"
+										},
+										"BBD": {
+											"displayName": "巴巴多斯元"
+										},
+										"BZD": {
+											"displayName": "伯利兹元"
+										},
+										"BMD": {
+											"displayName": "百慕大元"
+										},
+										"BOB": {
+											"displayName": "玻利维亚诺"
+										},
+										"BRL": {
+											"displayName": "巴西雷亚尔"
+										},
+										"BND": {
+											"displayName": "文莱元"
+										},
+										"BGN": {
+											"displayName": "保加利亚列弗"
+										},
+										"CAD": {
+											"displayName": "加拿大元"
+										},
+										"CLP": {
+											"displayName": "智利比索"
+										},
+										"COP": {
+											"displayName": "哥伦比亚比索"
+										},
+										"NIO": {
+											"displayName": "科尔多瓦奥罗"
+										},
+										"CRC": {
+											"displayName": "哥斯达黎加科朗"
+										},
+										"CZK": {
+											"displayName": "捷克克朗"
+										},
+										"DKK": {
+											"displayName": "丹麦克朗"
+										},
+										"DOP": {
+											"displayName": "多米尼加比索"
+										},
+										"VND": {
+											"displayName": "东"
+										},
+										"XCD": {
+											"displayName": "东加勒比元"
+										},
+										"EGP": {
+											"displayName": "埃及镑"
+										},
+										"EUR": {
+											"displayName": "欧元"
+										},
+										"FJD": {
+											"displayName": "斐济元"
+										},
+										"HUF": {
+											"displayName": "福林"
+										},
+										"HKD": {
+											"displayName": "港币"
+										},
+										"UAH": {
+											"displayName": "格里夫纳"
+										},
+										"INR": {
+											"displayName": "印度卢比"
+										},
+										"JMD": {
+											"displayName": "牙买加元"
+										},
+										"KES": {
+											"displayName": "肯尼亚先令"
+										},
+										"PGK": {
+											"displayName": "Kina"
+										},
+										"HRK": {
+											"displayName": "Kuna"
+										},
+										"MMK": {
+											"displayName": "缅元"
+										},
+										"LAK": {
+											"displayName": "老挝基普"
+										},
+										"LBP": {
+											"displayName": "黎巴嫩镑"
+										},
+										"ALL": {
+											"displayName": "Lek"
+										},
+										"HNL": {
+											"displayName": "伦皮拉"
+										},
+										"LRD": {
+											"displayName": "利比里亚元"
+										},
+										"MYR": {
+											"displayName": "马来西亚林吉特"
+										},
+										"MUR": {
+											"displayName": "毛里求斯卢比"
+										},
+										"MXN": {
+											"displayName": "墨西哥比索"
+										},
+										"MAD": {
+											"displayName": "摩洛哥迪拉姆"
+										},
+										"NPR": {
+											"displayName": "尼泊尔卢比"
+										},
+										"ILS": {
+											"displayName": "新以色列谢克尔"
+										},
+										"TWD": {
+											"displayName": "新台币"
+										},
+										"NZD": {
+											"displayName": "新西兰元"
+										},
+										"NOK": {
+											"displayName": "挪威克朗"
+										},
+										"MRO": {
+											"displayName": "乌吉亚"
+										},
+										"TOP": {
+											"displayName": "潘加"
+										},
+										"PKR": {
+											"displayName": "巴基斯坦卢比"
+										},
+										"MOP": {
+											"displayName": "澳门元"
+										},
+										"PHP": {
+											"displayName": "菲律宾比索"
+										},
+										"GBP": {
+											"displayName": "英镑"
+										},
+										"BWP": {
+											"displayName": "普拉"
+										},
+										"QAR": {
+											"displayName": "卡塔尔里亚尔"
+										},
+										"GTQ": {
+											"displayName": "Quetzal"
+										},
+										"ZAR": {
+											"displayName": "随机"
+										},
+										"RON": {
+											"displayName": "罗马尼亚列伊"
+										},
+										"MVR": {
+											"displayName": "拉菲亚"
+										},
+										"IDR": {
+											"displayName": "印尼盾"
+										},
+										"RUB": {
+											"displayName": "俄罗斯卢布"
+										},
+										"SAR": {
+											"displayName": "沙特里亚尔"
+										},
+										"SCR": {
+											"displayName": "塞舌尔卢比"
+										},
+										"SGD": {
+											"displayName": "新加坡元"
+										},
+										"PEN": {
+											"displayName": "Sol"
+										},
+										"SBD": {
+											"displayName": "所罗门群岛元"
+										},
+										"LKR": {
+											"displayName": "斯里兰卡卢比"
+										},
+										"SEK": {
+											"displayName": "瑞典克朗"
+										},
+										"CHF": {
+											"displayName": "瑞士法郎"
+										},
+										"SYP": {
+											"displayName": "叙利亚镑"
+										},
+										"BDT": {
+											"displayName": "Taka"
+										},
+										"WST": {
+											"displayName": "Tala"
+										},
+										"KZT": {
+											"displayName": "腾格"
+										},
+										"TTD": {
+											"displayName": "特立尼达和多巴哥元"
+										},
+										"TRY": {
+											"displayName": "土耳其里拉"
+										},
+										"AED": {
+											"displayName": "阿联酋迪拉姆"
+										},
+										"USD": {
+											"displayName": "美元"
+										},
+										"VUV": {
+											"displayName": "瓦图"
+										},
+										"XOF": {
+											"displayName": "西非金融共同体法郎"
+										},
+										"KRW": {
+											"displayName": "未完成"
+										},
+										"YER": {
+											"displayName": "也门里亚尔"
+										},
+										"JPY": {
+											"displayName": "日元"
+										},
+										"CNY": {
+											"displayName": "人民币"
+										},
+										"PLN": {
+											"displayName": "兹罗提"
+										}
+									}
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"visible_to": {
+					"displayName": "可见范围",
+					"description": "交易的可见性。如果省略，可见性将设置为授权用户对此项目类型的默认可见性设置。",
+					"options": {
+						"1": {
+							"displayName": "所有者与关注者（私有）"
+						},
+						"3": {
+							"displayName": "全公司（共享）"
+						}
+					}
+				},
+				"comments": {
+					"displayName": "评论",
+					"description": "描述此产品交易附件的文本"
+				},
+				"discount_percentage": {
+					"displayName": "折扣百分比",
+					"description": "要应用的折扣百分比"
+				},
+				"item_price": {
+					"displayName": "商品价格",
+					"description": "在交易中添加或更新此产品的价格"
+				},
+				"quantity": {
+					"displayName": "数量",
+					"description": "在交易中添加/更新此产品的数量"
+				},
+				"product_variation_id": {
+					"displayName": "产品变体ID",
+					"description": "要使用的产品变体ID"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "人员姓名"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "文件更新后的描述"
+				},
+				"owner_id": {
+					"displayName": "用户名或ID",
+					"description": "此人员将关联的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"label_ids": {
+					"displayName": "标签名称或ID",
+					"description": "要附加到待更新线索的标签ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"expected_close_date": {
+					"displayName": "预计成交日期",
+					"description": "潜在客户交易预计成交的日期，采用ISO-8601格式"
+				},
+				"content": {
+					"displayName": "内容",
+					"description": "笔记内容"
+				},
+				"lead_id": {
+					"displayName": "潜在客户ID",
+					"description": "与此备注关联的潜在客户ID"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "人员邮箱",
+					"placeholder": "name@email.com"
+				},
+				"marketing_status": {
+					"displayName": "营销状态",
+					"description": "请注意，营销状态从旧状态更改为新状态仅允许操作一次",
+					"options": {
+						"no_consent": {
+							"displayName": "不同意"
+						},
+						"unsubscribed": {
+							"displayName": "已取消订阅"
+						},
+						"subscribed": {
+							"displayName": "已订阅"
+						},
+						"archived": {
+							"displayName": "已归档"
+						}
+					}
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "该人员的电话号码"
+				}
+			},
+			"description": "要更新的字段"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "要创建的潜在客户名称"
+		},
+		"associateWith": {
+			"displayName": "关联到",
+			"description": "要与此潜在客户关联的实体类型",
+			"options": {
+				"organization": {
+					"displayName": "组织"
+				},
+				"person": {
+					"displayName": "人员"
+				}
+			}
+		},
+		"org_id": {
+			"displayName": "组织ID",
+			"description": "与此交易关联的组织ID"
+		},
+		"person_id": {
+			"displayName": "人员ID",
+			"description": "要与此潜在客户关联的人员ID"
+		},
+		"dealId": {
+			"displayName": "交易名称或ID",
+			"description": "要获取其活动的交易ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"productId": {
+			"displayName": "产品名称或ID",
+			"description": "要添加到交易的产品ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"item_price": {
+			"displayName": "商品价格",
+			"description": "在交易中添加或更新此产品的价格"
+		},
+		"quantity": {
+			"displayName": "数量",
+			"description": "要在交易中添加/更新的此产品数量"
+		},
+		"productAttachmentId": {
+			"displayName": "产品附件名称或ID",
+			"description": "交易产品ID（附加到交易的产品ID）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"term": {
+			"displayName": "术语",
+			"description": "要查找的搜索词。至少2个字符（如果使用精确匹配则为1个）。"
+		},
+		"exactMatch": {
+			"displayName": "精确匹配",
+			"description": "是否仅返回与给定术语完全精确匹配的结果。不区分大小写。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		},
+		"fileId": {
+			"displayName": "文件ID",
+			"description": "要更新的文件ID"
+		},
+		"organization_id": {
+			"displayName": "组织ID",
+			"description": "要关联到此线索的组织ID"
+		},
+		"leadId": {
+			"displayName": "潜在客户ID",
+			"description": "要更新的潜在客户ID"
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "要创建的笔记内容"
+		},
+		"noteId": {
+			"displayName": "笔记ID",
+			"description": "要更新的笔记ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的人员姓名"
+		},
+		"organizationId": {
+			"displayName": "组织ID",
+			"description": "要创建的组织ID"
+		},
+		"personId": {
+			"displayName": "人员ID",
+			"description": "要更新的人员ID"
+		},
+		"resolveProperties": {
+			"displayName": "解析属性",
+			"description": "默认情况下，自定义属性仅返回ID而非实际名称。选项字段也仅包含ID而非实际值。若启用此选项，系统将自动解析这些值。"
+		},
+		"encodeProperties": {
+			"displayName": "编码属性",
+			"description": "默认情况下，自定义属性必须设置为ID而非实际名称。选项字段也必须设置为ID而非实际值。如果启用此选项，它们将自动编码。"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"archived_status": {
+					"displayName": "归档状态",
+					"options": {
+						"archived": {
+							"displayName": "已归档"
+						},
+						"all": {
+							"displayName": "全部"
+						},
+						"not_archived": {
+							"displayName": "未归档"
+						}
+					}
+				},
+				"firstChar": {
+					"displayName": "首字母",
+					"description": "如果提供此参数，仅返回名称以指定字母开头的组织"
+				},
+				"filterId": {
+					"displayName": "预定义筛选器名称或ID",
+					"description": "要使用的过滤器ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"filter_id": {
+					"displayName": "预定义筛选器名称或ID",
+					"description": "应用于检索交易记录的预定义筛选器。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"stage_id": {
+					"displayName": "阶段名称或ID",
+					"description": "用于筛选交易的阶段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "用于筛选交易的交易状态。默认为<code>all_not_deleted</code>",
+					"options": {
+						"all_not_deleted": {
+							"displayName": "全部未删除"
+						},
+						"deleted": {
+							"displayName": "已删除"
+						},
+						"lost": {
+							"displayName": "丢失"
+						},
+						"open": {
+							"displayName": "打开"
+						},
+						"won": {
+							"displayName": "未完成"
+						}
+					}
+				},
+				"user_id": {
+					"displayName": "用户名或ID",
+					"description": "用于筛选交易的用户ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				}
+			}
+		}
+	}
+}

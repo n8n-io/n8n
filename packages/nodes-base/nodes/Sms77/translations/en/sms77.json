@@ -1,0 +1,79 @@
+{
+	"header": {
+		"displayName": "seven",
+		"description": "Send SMS and make text-to-speech calls"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"sms": {
+					"displayName": "SMS"
+				},
+				"voice": {
+					"displayName": "Voice Call"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"send": {
+					"displayName": "Send",
+					"description": "Converts text to voice and calls a given number"
+				}
+			}
+		},
+		"from": {
+			"displayName": "From",
+			"description": "The caller ID displayed in the receivers display. Max 16 numeric or 11 alphanumeric characters.",
+			"placeholder": "+4901234567890"
+		},
+		"to": {
+			"displayName": "To",
+			"description": "The number of your recipient(s) separated by comma. Can be regular numbers or contact/groups from seven.",
+			"placeholder": "+49876543210, MyGroup"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "The message to send. Max. 1520 characters"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"delay": {
+					"displayName": "Delay",
+					"description": "Pick a date for time delayed dispatch"
+				},
+				"foreign_id": {
+					"displayName": "Foreign ID",
+					"description": "Custom foreign ID returned in DLR callbacks",
+					"placeholder": "MyCustomForeignID"
+				},
+				"flash": {
+					"displayName": "Flash",
+					"description": "Send as flash message being displayed directly the receiver's display"
+				},
+				"label": {
+					"displayName": "Label",
+					"description": "Custom label used to group analytics",
+					"placeholder": "MyCustomLabel"
+				},
+				"performance_tracking": {
+					"displayName": "Performance Tracking",
+					"description": "Whether to enable performance tracking for URLs found in the message text"
+				},
+				"ttl": {
+					"displayName": "TTL",
+					"description": "Custom time to live specifying the validity period of a message in minutes"
+				},
+				"from": {
+					"displayName": "From",
+					"description": "The caller ID. Please use only verified sender IDs, one of your virtual inbound numbers or one of our shared virtual numbers.",
+					"placeholder": "+4901234567890"
+				}
+			}
+		}
+	}
+}

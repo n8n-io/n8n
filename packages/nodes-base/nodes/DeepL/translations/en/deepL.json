@@ -1,0 +1,90 @@
+{
+	"header": {
+		"displayName": "DeepL",
+		"description": "Translate data using DeepL"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"language": {
+					"displayName": "Language"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"translate": {
+					"displayName": "Translate",
+					"description": "Translate data"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "Input text to translate"
+		},
+		"translateTo": {
+			"displayName": "Target Language Name or ID",
+			"description": "Language to translate to. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"sourceLang": {
+					"displayName": "Source Language Name or ID",
+					"description": "Language to translate from. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"splitSentences": {
+					"displayName": "Split Sentences",
+					"description": "How the translation engine should split sentences",
+					"options": {
+						"0": {
+							"displayName": "No Splitting",
+							"description": "Treat all text as a single sentence"
+						},
+						"1": {
+							"displayName": "On Punctuation and Newlines",
+							"description": "Split text on interpunction and newlines"
+						},
+						"nonewlines": {
+							"displayName": "Interpunction Only",
+							"description": "Split text on interpunction only, ignoring newlines"
+						}
+					}
+				},
+				"preserveFormatting": {
+					"displayName": "Preserve Formatting",
+					"description": "Whether the translation engine should respect the original formatting, even if it would usually correct some aspects",
+					"options": {
+						"0": {
+							"displayName": "Apply Corrections",
+							"description": "Fix punctuation at the beginning and end of sentences and fixes lower/upper caseing at the beginning"
+						},
+						"1": {
+							"displayName": "Do Not Correct",
+							"description": "Keep text as similar as possible to the original"
+						}
+					}
+				},
+				"formality": {
+					"displayName": "Formality",
+					"description": "How formal or informal the target text should be. May not be supported with all languages.",
+					"options": {
+						"more": {
+							"displayName": "Formal"
+						},
+						"less": {
+							"displayName": "Informal"
+						},
+						"default": {
+							"displayName": "Neutral"
+						}
+					}
+				}
+			}
+		}
+	}
+}

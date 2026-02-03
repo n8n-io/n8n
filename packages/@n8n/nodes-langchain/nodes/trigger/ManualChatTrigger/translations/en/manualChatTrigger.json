@@ -1,0 +1,14 @@
+{
+	"header": {
+		"displayName": "Manual Chat Trigger",
+		"description": "Runs the flow on new manual chat message"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node is where a manual chat workflow execution starts. To make one, go back to the canvas and click ‘Chat’"
+		},
+		"openChat": {
+			"displayName": "Chat and execute workflow"
+		}
+	}
+}

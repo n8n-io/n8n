@@ -1,0 +1,535 @@
+{
+	"header": {
+		"displayName": "Twist",
+		"description": "使用Twist API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"channel": {
+					"displayName": "频道"
+				},
+				"comment": {
+					"displayName": "评论"
+				},
+				"messageConversation": {
+					"displayName": "消息对话"
+				},
+				"thread": {
+					"displayName": "主题"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"archive": {
+					"displayName": "归档",
+					"description": "归档频道"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "在频道中创建新话题"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除线程"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取线程信息"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个线程"
+				},
+				"unarchive": {
+					"displayName": "取消归档",
+					"description": "取消归档频道"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新线程"
+				}
+			}
+		},
+		"workspaceId": {
+			"displayName": "工作区名称或ID",
+			"description": "工作空间ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "频道名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"color": {
+					"displayName": "颜色",
+					"description": "通道的颜色",
+					"options": {
+						"0": {
+							"displayName": "灰色"
+						},
+						"1": {
+							"displayName": "蓝色"
+						},
+						"2": {
+							"displayName": "绿松石色"
+						},
+						"3": {
+							"displayName": "青蓝色"
+						},
+						"4": {
+							"displayName": "绿色"
+						},
+						"5": {
+							"displayName": "红色"
+						},
+						"6": {
+							"displayName": "莓红色"
+						},
+						"7": {
+							"displayName": "洋红色"
+						},
+						"8": {
+							"displayName": "天蓝色"
+						},
+						"9": {
+							"displayName": "薄荷绿"
+						},
+						"10": {
+							"displayName": "黄色"
+						},
+						"11": {
+							"displayName": "Salmon"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "频道的描述"
+				},
+				"public": {
+					"displayName": "公开",
+					"description": "该频道是否将被标记为公开"
+				},
+				"temp_id": {
+					"displayName": "临时ID",
+					"description": "线程的临时ID"
+				},
+				"user_ids": {
+					"displayName": "用户名称或ID",
+					"description": "将参与此频道的用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"actionsUi": {
+					"displayName": "操作",
+					"placeholder": "添加操作",
+					"multipleValueButtonText": "添加操作",
+					"options": {
+						"actionValues": {
+							"displayName": "操作",
+							"options": {
+								"action": {
+									"displayName": "操作",
+									"description": "按钮的操作",
+									"options": {
+										"open_url": {
+											"displayName": "打开URL"
+										},
+										"prefill_message": {
+											"displayName": "预填消息"
+										},
+										"send_reply": {
+											"displayName": "发送回复"
+										}
+									}
+								},
+								"button_text": {
+									"displayName": "按钮文本",
+									"description": "操作按钮的文本"
+								},
+								"message": {
+									"displayName": "消息",
+									"description": "操作按钮的文本"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "按钮的类型。（目前仅支持<code>action</code>类型）。",
+									"options": {
+										"action": {
+											"displayName": "操作"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "重定向URL"
+								}
+							}
+						}
+					},
+					"values": {
+						"actionValues": {
+							"displayName": "操作",
+							"options": {
+								"action": {
+									"displayName": "操作",
+									"description": "按钮的操作",
+									"options": {
+										"open_url": {
+											"displayName": "打开URL"
+										},
+										"prefill_message": {
+											"displayName": "预填消息"
+										},
+										"send_reply": {
+											"displayName": "发送回复"
+										}
+									}
+								},
+								"button_text": {
+									"displayName": "按钮文本",
+									"description": "操作按钮的文本"
+								},
+								"message": {
+									"displayName": "消息",
+									"description": "操作按钮的文本"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "按钮的类型。（目前仅支持<code>action</code>类型）。",
+									"options": {
+										"action": {
+											"displayName": "操作"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "重定向URL"
+								}
+							}
+						},
+						"actionsUi": {
+							"displayName": "操作",
+							"placeholder": "添加操作"
+						}
+					}
+				},
+				"binaryProperties": {
+					"displayName": "附件",
+					"description": "保存二进制数据的属性名称。多个属性可用逗号分隔定义。"
+				},
+				"direct_mentions": {
+					"displayName": "直接提及的名称或ID",
+					"description": "被直接提及的用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"mark_thread_position": {
+					"displayName": "标记线程位置",
+					"description": "是否标记线程位置"
+				},
+				"recipients": {
+					"displayName": "收件人名称或ID",
+					"description": "将附加到该对话的用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"send_as_integration": {
+					"displayName": "以集成身份发送",
+					"description": "是否将集成显示为话题创建者"
+				},
+				"to_obj_index": {
+					"displayName": "结束对象索引",
+					"description": "限制消息在指定对象索引处结束"
+				},
+				"limit": {
+					"displayName": "限制",
+					"description": "返回的最大结果数量"
+				},
+				"order_by": {
+					"displayName": "排序方式",
+					"description": "返回对话的顺序 - DESC（降序）或 ASC（升序）之一",
+					"options": {
+						"ASC": {
+							"displayName": "升序"
+						},
+						"DESC": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"from_obj_index": {
+					"displayName": "起始对象索引",
+					"description": "从指定对象索引开始限制消息"
+				}
+			},
+			"description": "其他可设置选项"
+		},
+		"channelId": {
+			"displayName": "频道ID",
+			"description": "频道的ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加字段",
+			"options": {
+				"archived": {
+					"displayName": "已归档",
+					"description": "是否仅返回已归档的对话"
+				},
+				"as_ids": {
+					"displayName": "作为ID",
+					"description": "是否仅返回线程的ID"
+				},
+				"to_obj_index": {
+					"displayName": "结束对象索引",
+					"description": "限制注释结束于指定对象索引"
+				},
+				"newer_than_ts": {
+					"displayName": "新于",
+					"description": "限制线程为指定Unix时间之后更新的内容"
+				},
+				"older_than_ts": {
+					"displayName": "早于",
+					"description": "限制线程为早于指定Unix时间的线程"
+				},
+				"order_by": {
+					"displayName": "排序方式",
+					"description": "返回评论的顺序 - DESC（降序）或 ASC（升序）之一",
+					"options": {
+						"ASC": {
+							"displayName": "升序"
+						},
+						"DESC": {
+							"displayName": "描述"
+						}
+					}
+				},
+				"from_obj_index": {
+					"displayName": "起始对象索引",
+					"description": "从指定对象索引开始限制评论"
+				},
+				"filter_by": {
+					"displayName": "筛选依据",
+					"description": "筛选条件可以是 <code>attached_to_me</code>、<code>everyone</code> 或 <code>is_starred</code>",
+					"options": {
+						"attached_to_me": {
+							"displayName": "分配给我"
+						},
+						"everyone": {
+							"displayName": "所有人"
+						},
+						"is_starred": {
+							"displayName": "已收藏"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"color": {
+					"displayName": "颜色",
+					"description": "通道的颜色",
+					"options": {
+						"0": {
+							"displayName": "灰色"
+						},
+						"1": {
+							"displayName": "蓝色"
+						},
+						"2": {
+							"displayName": "绿松石色"
+						},
+						"3": {
+							"displayName": "青蓝色"
+						},
+						"4": {
+							"displayName": "绿色"
+						},
+						"5": {
+							"displayName": "红色"
+						},
+						"6": {
+							"displayName": "莓红色"
+						},
+						"7": {
+							"displayName": "洋红色"
+						},
+						"8": {
+							"displayName": "天蓝色"
+						},
+						"9": {
+							"displayName": "薄荷绿"
+						},
+						"10": {
+							"displayName": "黄色"
+						},
+						"11": {
+							"displayName": "Salmon"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "频道的描述"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "频道名称"
+				},
+				"public": {
+					"displayName": "公开",
+					"description": "该频道是否将被标记为公开"
+				},
+				"actionsUi": {
+					"displayName": "操作",
+					"placeholder": "添加操作",
+					"multipleValueButtonText": "添加操作",
+					"options": {
+						"actionValues": {
+							"displayName": "操作",
+							"options": {
+								"action": {
+									"displayName": "操作",
+									"description": "按钮的操作",
+									"options": {
+										"open_url": {
+											"displayName": "打开URL"
+										},
+										"prefill_message": {
+											"displayName": "预填消息"
+										},
+										"send_reply": {
+											"displayName": "发送回复"
+										}
+									}
+								},
+								"button_text": {
+									"displayName": "按钮文本",
+									"description": "操作按钮的文本"
+								},
+								"message": {
+									"displayName": "消息",
+									"description": "操作按钮的文本"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "按钮的类型。（目前仅支持<code>action</code>类型）。",
+									"options": {
+										"action": {
+											"displayName": "操作"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "重定向URL"
+								}
+							}
+						}
+					},
+					"values": {
+						"actionValues": {
+							"displayName": "操作",
+							"options": {
+								"action": {
+									"displayName": "操作",
+									"description": "按钮的操作",
+									"options": {
+										"open_url": {
+											"displayName": "打开URL"
+										},
+										"prefill_message": {
+											"displayName": "预填消息"
+										},
+										"send_reply": {
+											"displayName": "发送回复"
+										}
+									}
+								},
+								"button_text": {
+									"displayName": "按钮文本",
+									"description": "操作按钮的文本"
+								},
+								"message": {
+									"displayName": "消息",
+									"description": "操作按钮的文本"
+								},
+								"type": {
+									"displayName": "类型",
+									"description": "按钮的类型。（目前仅支持<code>action</code>类型）。",
+									"options": {
+										"action": {
+											"displayName": "操作"
+										}
+									}
+								},
+								"url": {
+									"displayName": "URL",
+									"description": "重定向URL"
+								}
+							}
+						},
+						"actionsUi": {
+							"displayName": "操作",
+							"placeholder": "添加操作"
+						}
+					}
+				},
+				"binaryProperties": {
+					"displayName": "附件",
+					"description": "保存二进制数据的属性名称。多个属性可用逗号分隔定义。"
+				},
+				"content": {
+					"displayName": "内容",
+					"description": "该线程的内容"
+				},
+				"direct_mentions": {
+					"displayName": "直接提及的名称或ID",
+					"description": "被直接提及的用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "线程标题 (1 < 长度 < 300)"
+				}
+			},
+			"description": "其他可设置选项"
+		},
+		"threadId": {
+			"displayName": "线程ID",
+			"description": "线程的ID"
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "线程内容"
+		},
+		"commentId": {
+			"displayName": "评论ID",
+			"description": "评论的ID"
+		},
+		"conversationId": {
+			"displayName": "对话名称或ID",
+			"description": "对话的ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"id": {
+			"displayName": "对话消息ID",
+			"description": "对话消息的ID"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "新帖子的标题 (1 < 长度 < 300)"
+		}
+	}
+}

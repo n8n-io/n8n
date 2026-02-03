@@ -1,0 +1,142 @@
+{
+	"header": {
+		"displayName": "Bitly",
+		"description": "Consume Bitly API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"link": {
+					"displayName": "Link"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a link"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a link"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a link"
+				}
+			}
+		},
+		"longUrl": {
+			"displayName": "Long URL",
+			"placeholder": "https://example.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"domain": {
+					"displayName": "Domain"
+				},
+				"group": {
+					"displayName": "Group Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"title": {
+					"displayName": "Title"
+				}
+			}
+		},
+		"deeplink": {
+			"displayName": "Deeplinks",
+			"placeholder": "Add Deep Link",
+			"multipleValueButtonText": "Add Deep Link",
+			"options": {
+				"deeplinkUi": {
+					"displayName": "Deep Link",
+					"options": {
+						"appId": {
+							"displayName": "App ID"
+						},
+						"appUriPath": {
+							"displayName": "App URI Path"
+						},
+						"installType": {
+							"displayName": "Install Type"
+						},
+						"installUrl": {
+							"displayName": "Install URL"
+						}
+					}
+				}
+			},
+			"values": {
+				"deeplinkUi": {
+					"displayName": "Deep Link",
+					"options": {
+						"appId": {
+							"displayName": "App ID"
+						},
+						"appUriPath": {
+							"displayName": "App URI Path"
+						},
+						"installType": {
+							"displayName": "Install Type"
+						},
+						"installUrl": {
+							"displayName": "Install URL"
+						}
+					}
+				},
+				"deeplink": {
+					"displayName": "Deeplinks",
+					"placeholder": "Add Deep Link"
+				}
+			}
+		},
+		"id": {
+			"displayName": "Bitlink",
+			"placeholder": "bit.ly/22u3ypK"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"archived": {
+					"displayName": "Archived"
+				},
+				"group": {
+					"displayName": "Group Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"longUrl": {
+					"displayName": "Long URL"
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"title": {
+					"displayName": "Title"
+				}
+			}
+		}
+	}
+}

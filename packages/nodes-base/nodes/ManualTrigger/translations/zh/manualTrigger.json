@@ -1,0 +1,11 @@
+{
+	"header": {
+		"displayName": "手动触发器",
+		"description": "点击n8n中的按钮时运行工作流"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点是工作流执行的起点（当您在画布上点击‘测试’按钮时）。<br><br> <a data-action=\"showNodeCreator\">探索其他触发工作流的方式</a>（例如按计划或通过Webhook）"
+		}
+	}
+}

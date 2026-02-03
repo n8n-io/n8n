@@ -1,0 +1,137 @@
+{
+	"header": {
+		"displayName": "Redis",
+		"description": "Get, send and update data in Redis"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a key from Redis"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get the value of a key from Redis"
+				},
+				"incr": {
+					"displayName": "Increment",
+					"description": "Atomically increments a key by 1. Creates the key if it does not exist."
+				},
+				"info": {
+					"displayName": "Info",
+					"description": "Returns generic information about the Redis instance"
+				},
+				"keys": {
+					"displayName": "Keys",
+					"description": "Returns all the keys matching a pattern"
+				},
+				"llen": {
+					"displayName": "List Length",
+					"description": "Returns the length of a list"
+				},
+				"pop": {
+					"displayName": "Pop",
+					"description": "Pop data from a redis list"
+				},
+				"publish": {
+					"displayName": "Publish",
+					"description": "Publish message to redis channel"
+				},
+				"push": {
+					"displayName": "Push",
+					"description": "Push data to a redis list"
+				},
+				"set": {
+					"displayName": "Set",
+					"description": "Set the value of a key in redis"
+				}
+			}
+		},
+		"key": {
+			"displayName": "Key",
+			"description": "Name of the key to set in Redis"
+		},
+		"propertyName": {
+			"displayName": "Name",
+			"description": "Optional name of the property to write received data to. Supports dot-notation. Example: \"data.person[0].name\"."
+		},
+		"keyType": {
+			"displayName": "Key Type",
+			"description": "The type of the key to set",
+			"options": {
+				"automatic": {
+					"displayName": "Automatic",
+					"description": "Tries to figure out the type automatically depending on the data"
+				},
+				"hash": {
+					"displayName": "Hash",
+					"description": "Data in key is of type 'hash'"
+				},
+				"list": {
+					"displayName": "List",
+					"description": "Data in key is of type 'lists'"
+				},
+				"sets": {
+					"displayName": "Sets",
+					"description": "Data in key is of type 'sets'"
+				},
+				"string": {
+					"displayName": "String",
+					"description": "Data in key is of type 'string'"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"dotNotation": {
+					"displayName": "Dot Notation",
+					"description": "<p>By default, dot-notation is used in property names. This means that \"a.b\" will set the property \"b\" underneath \"a\" so { \"a\": { \"b\": value} }.<p></p>If that is not intended this can be deactivated, it will then set { \"a.b\": value } instead.</p>."
+				}
+			}
+		},
+		"expire": {
+			"displayName": "Expire",
+			"description": "Whether to set a timeout on key"
+		},
+		"ttl": {
+			"displayName": "TTL",
+			"description": "Number of seconds before key expiration"
+		},
+		"keyPattern": {
+			"displayName": "Key Pattern",
+			"description": "The key pattern for the keys to return"
+		},
+		"getValues": {
+			"displayName": "Get Values",
+			"description": "Whether to get the value of matching keys"
+		},
+		"list": {
+			"displayName": "List",
+			"description": "Name of the list in Redis"
+		},
+		"value": {
+			"displayName": "Value",
+			"description": "The value to write in Redis"
+		},
+		"valueIsJSON": {
+			"displayName": "Value Is JSON",
+			"description": "Whether the value is JSON or key value pairs"
+		},
+		"channel": {
+			"displayName": "Channel",
+			"description": "Channel name"
+		},
+		"messageData": {
+			"displayName": "Data",
+			"description": "Data to push"
+		},
+		"tail": {
+			"displayName": "Tail",
+			"description": "Whether to push or pop data from the end of the list"
+		}
+	}
+}

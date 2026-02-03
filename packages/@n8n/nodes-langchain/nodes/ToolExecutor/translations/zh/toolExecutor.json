@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "工具执行器",
+		"description": "无需AI代理即可执行工具的节点"
+	},
+	"nodeView": {
+		"query": {
+			"displayName": "查询",
+			"description": "键值对，其中键是工具名称，值是要传递给工具的参数"
+		},
+		"toolName": {
+			"displayName": "工具名称",
+			"description": "如果连接的工具是工具包，则要执行的工具名称"
+		},
+		"node": {
+			"displayName": "节点",
+			"description": "正在执行的节点名称"
+		}
+	}
+}

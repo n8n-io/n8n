@@ -1,0 +1,318 @@
+{
+	"header": {
+		"displayName": "Bubble",
+		"description": "Consume the Bubble Data API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"object": {
+					"displayName": "Object"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"typeName": {
+			"displayName": "Type Name",
+			"description": "Name of data type of the object to create"
+		},
+		"properties": {
+			"displayName": "Properties",
+			"placeholder": "Add Property",
+			"multipleValueButtonText": "Add Property",
+			"options": {
+				"property": {
+					"displayName": "Property",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Field to set for the object to create"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to set for the object to create"
+						}
+					}
+				}
+			},
+			"values": {
+				"property": {
+					"displayName": "Property",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Field to set for the object to create"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to set for the object to create"
+						}
+					}
+				},
+				"properties": {
+					"displayName": "Properties",
+					"placeholder": "Add Property"
+				}
+			}
+		},
+		"objectId": {
+			"displayName": "Object ID",
+			"description": "ID of the object to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"filters": {
+					"displayName": "Filters",
+					"placeholder": "Add Filter",
+					"multipleValueButtonText": "Add Filter",
+					"options": {
+						"filter": {
+							"displayName": "Filter",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Field to set for the object to create"
+								},
+								"constraint_type": {
+									"displayName": "Constrain",
+									"options": {
+										"equals": {
+											"displayName": "Equals",
+											"description": "Use to test strict equality, for all field types"
+										},
+										"not equal": {
+											"displayName": "Not Equal",
+											"description": "Use to test strict equality, for all field types"
+										},
+										"is_empty": {
+											"displayName": "Is Empty",
+											"description": "Use to test whether a thing's given field is empty, for all field types"
+										},
+										"is_not_empty": {
+											"displayName": "Is Not Empty",
+											"description": "Use to test whether a thing's given field is not empty, for all field types"
+										},
+										"text contains": {
+											"displayName": "Text Contains",
+											"description": "Use to test if a text field contains a string, for text fields only"
+										},
+										"not text contains": {
+											"displayName": "Not Text Contains",
+											"description": "Use to test if a text field does not contain a string, for text fields only"
+										},
+										"greater than": {
+											"displayName": "Greater Than",
+											"description": "Use to compare a thing's field value relative to a string or number, for text, number, and date fields"
+										},
+										"less than": {
+											"displayName": "Less Than",
+											"description": "Use to compare a thing's field value relative to a string or number, for text, number, and date fields"
+										},
+										"in": {
+											"displayName": "In",
+											"description": "Use to test whether a thing's field is in a list, for all field types"
+										},
+										"not in": {
+											"displayName": "Not In",
+											"description": "Use to test whether a thing's field is not in a list, for all field types"
+										},
+										"contains": {
+											"displayName": "Contains",
+											"description": "Use to test whether a list field contains an entry, for list fields only"
+										},
+										"not contains": {
+											"displayName": "Not Contains",
+											"description": "Use to test whether a list field does not contains an entry, for list fields only"
+										},
+										"empty": {
+											"displayName": "Empty",
+											"description": "Use to test whether a list field is empty, for list fields only"
+										},
+										"not empty": {
+											"displayName": "Not Empty",
+											"description": "Use to test whether a list field is not empty, for list fields only"
+										},
+										"geographic_search": {
+											"displayName": "Geographic Search",
+											"description": "Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href=\"https://manual.bubble.io/core-resources/api/data-api\">link</a>."
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the object to create"
+								}
+							}
+						}
+					},
+					"values": {
+						"filter": {
+							"displayName": "Filter",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Field to set for the object to create"
+								},
+								"constraint_type": {
+									"displayName": "Constrain",
+									"options": {
+										"equals": {
+											"displayName": "Equals",
+											"description": "Use to test strict equality, for all field types"
+										},
+										"not equal": {
+											"displayName": "Not Equal",
+											"description": "Use to test strict equality, for all field types"
+										},
+										"is_empty": {
+											"displayName": "Is Empty",
+											"description": "Use to test whether a thing's given field is empty, for all field types"
+										},
+										"is_not_empty": {
+											"displayName": "Is Not Empty",
+											"description": "Use to test whether a thing's given field is not empty, for all field types"
+										},
+										"text contains": {
+											"displayName": "Text Contains",
+											"description": "Use to test if a text field contains a string, for text fields only"
+										},
+										"not text contains": {
+											"displayName": "Not Text Contains",
+											"description": "Use to test if a text field does not contain a string, for text fields only"
+										},
+										"greater than": {
+											"displayName": "Greater Than",
+											"description": "Use to compare a thing's field value relative to a string or number, for text, number, and date fields"
+										},
+										"less than": {
+											"displayName": "Less Than",
+											"description": "Use to compare a thing's field value relative to a string or number, for text, number, and date fields"
+										},
+										"in": {
+											"displayName": "In",
+											"description": "Use to test whether a thing's field is in a list, for all field types"
+										},
+										"not in": {
+											"displayName": "Not In",
+											"description": "Use to test whether a thing's field is not in a list, for all field types"
+										},
+										"contains": {
+											"displayName": "Contains",
+											"description": "Use to test whether a list field contains an entry, for list fields only"
+										},
+										"not contains": {
+											"displayName": "Not Contains",
+											"description": "Use to test whether a list field does not contains an entry, for list fields only"
+										},
+										"empty": {
+											"displayName": "Empty",
+											"description": "Use to test whether a list field is empty, for list fields only"
+										},
+										"not empty": {
+											"displayName": "Not Empty",
+											"description": "Use to test whether a list field is not empty, for list fields only"
+										},
+										"geographic_search": {
+											"displayName": "Geographic Search",
+											"description": "Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href=\"https://manual.bubble.io/core-resources/api/data-api\">link</a>."
+										}
+									}
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the object to create"
+								}
+							}
+						},
+						"filters": {
+							"displayName": "Filters",
+							"placeholder": "Add Filter"
+						}
+					}
+				},
+				"filtersJson": {
+					"displayName": "Filters (JSON)",
+					"description": "Refine the list that is returned by the Data API with search constraints, exactly as you define a search in Bubble. See <a href=\"https://manual.bubble.io/core-resources/api/data-api#search-constraints\">link</a>.",
+					"placeholder": "[ { \"key\": \"name\", \"constraint_type\": \"text contains\", \"value\": \"cafe\" } , { \"key\": \"address\", \"constraint_type\": \"geographic_search\", \"value\": { \"range\":10, \"origin_address\":\"New York\" } } ]"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort",
+					"options": {
+						"sortValue": {
+							"displayName": "Sort",
+							"options": {
+								"sort_field": {
+									"displayName": "Sort Field",
+									"description": "Specify the field to use for sorting. Either use a fielddefined for the current typeor use <code>_random_sorting</code> to get the entries in a random order."
+								},
+								"descending": {
+									"displayName": "Descending"
+								},
+								"geo_reference": {
+									"displayName": "Geo Reference",
+									"description": "When the field's type is geographic address, you need to add another parameter geo_reference and provide an address as a string"
+								}
+							}
+						}
+					},
+					"values": {
+						"sortValue": {
+							"displayName": "Sort",
+							"options": {
+								"sort_field": {
+									"displayName": "Sort Field",
+									"description": "Specify the field to use for sorting. Either use a fielddefined for the current typeor use <code>_random_sorting</code> to get the entries in a random order."
+								},
+								"descending": {
+									"displayName": "Descending"
+								},
+								"geo_reference": {
+									"displayName": "Geo Reference",
+									"description": "When the field's type is geographic address, you need to add another parameter geo_reference and provide an address as a string"
+								}
+							}
+						},
+						"sort": {
+							"displayName": "Sort",
+							"placeholder": "Add Sort"
+						}
+					}
+				}
+			}
+		}
+	}
+}

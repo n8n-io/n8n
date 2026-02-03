@@ -1,0 +1,39 @@
+{
+	"header": {
+		"displayName": "MongoDB Chat Memory",
+		"description": "Stores the chat history in MongoDB collection."
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"sessionIdType": {
+			"displayName": "Session ID",
+			"options": {
+				"fromInput": {
+					"displayName": "Connected Chat Trigger Node",
+					"description": "Looks for an input field called 'sessionId' that is coming from a directly connected Chat Trigger"
+				},
+				"customKey": {
+					"displayName": "Define below",
+					"description": "Use an expression to reference data in previous nodes or enter static text"
+				}
+			}
+		},
+		"sessionKey": {
+			"displayName": "Key",
+			"description": "The key to use to store session ID in the memory"
+		},
+		"collectionName": {
+			"displayName": "Collection Name",
+			"description": "The collection name to store the chat history in. If collection does not exist, it will be created."
+		},
+		"databaseName": {
+			"displayName": "Database Name",
+			"description": "The database name to store the chat history in. If not provided, the database from credentials will be used."
+		},
+		"contextWindowLength": {
+			"displayName": "Context Window Length"
+		}
+	}
+}

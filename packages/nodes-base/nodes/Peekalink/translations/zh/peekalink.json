@@ -1,0 +1,24 @@
+{
+	"header": {
+		"displayName": "Peekalink",
+		"description": "使用Peekalink API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"isAvailable": {
+					"displayName": "是否可用",
+					"description": "检查给定链接的预览是否可用"
+				},
+				"preview": {
+					"displayName": "预览",
+					"description": "返回链接的预览"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL"
+		}
+	}
+}

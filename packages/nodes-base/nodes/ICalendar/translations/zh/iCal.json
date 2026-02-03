@@ -1,0 +1,219 @@
+{
+	"header": {
+		"displayName": "iCalendar",
+		"description": "创建iCalendar文件"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"createEventFile": {
+					"displayName": "创建事件文件"
+				}
+			}
+		},
+		"title": {
+			"displayName": "事件标题",
+			"placeholder": "例如：新事件"
+		},
+		"start": {
+			"displayName": "开始",
+			"description": "事件开始的日期和时间。（对于全天事件，时间将被忽略。）"
+		},
+		"end": {
+			"displayName": "结束",
+			"description": "事件结束的日期和时间。（对于全天事件，时间将被忽略。）"
+		},
+		"allDay": {
+			"displayName": "全天",
+			"description": "事件是否持续全天"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段",
+			"description": "输出中iCalendar文件可用的字段"
+		},
+		"additionalFields": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"attendeesUi": {
+					"displayName": "参会者",
+					"placeholder": "添加参会者",
+					"multipleValueButtonText": "添加参会者",
+					"options": {
+						"attendeeValues": {
+							"displayName": "参会者",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "例如 name@email.com"
+								},
+								"rsvp": {
+									"displayName": "RSVP",
+									"description": "参与者是否需要确认出席"
+								}
+							}
+						}
+					},
+					"values": {
+						"attendeeValues": {
+							"displayName": "参会者",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "例如 name@email.com"
+								},
+								"rsvp": {
+									"displayName": "RSVP",
+									"description": "参与者是否需要确认出席"
+								}
+							}
+						},
+						"attendeesUi": {
+							"displayName": "参会者",
+							"placeholder": "添加参会者"
+						}
+					}
+				},
+				"busyStatus": {
+					"displayName": "忙碌状态",
+					"description": "用于指定Microsoft应用程序（如Outlook）的忙碌状态",
+					"options": {
+						"BUSY": {
+							"displayName": "忙碌中"
+						},
+						"TENTATIVE": {
+							"displayName": "暂定"
+						}
+					}
+				},
+				"calName": {
+					"displayName": "日历名称",
+					"description": "指定日历（非事件）名称。由 Apple iCal 和 Microsoft Outlook 使用。<a href=\"https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d\">更多信息</a>。"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "要生成的文件名。默认名称为event.ics。",
+					"placeholder": "例如：event.ics"
+				},
+				"geolocationUi": {
+					"displayName": "地理位置",
+					"placeholder": "添加地理位置",
+					"options": {
+						"geolocationValues": {
+							"displayName": "地理位置",
+							"options": {
+								"lat": {
+									"displayName": "纬度"
+								},
+								"lon": {
+									"displayName": "经度"
+								}
+							}
+						}
+					},
+					"values": {
+						"geolocationValues": {
+							"displayName": "地理位置",
+							"options": {
+								"lat": {
+									"displayName": "纬度"
+								},
+								"lon": {
+									"displayName": "经度"
+								}
+							}
+						},
+						"geolocationUi": {
+							"displayName": "地理位置",
+							"placeholder": "添加地理位置"
+						}
+					}
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "预定场地"
+				},
+				"recurrenceRule": {
+					"displayName": "重复规则",
+					"description": "定义事件重复模式的规则（RRULE）。（<a href=\"https://icalendar.org/rrule-tool.html\">规则生成器</a>）"
+				},
+				"organizerUi": {
+					"displayName": "组织者",
+					"placeholder": "添加组织者",
+					"options": {
+						"organizerValues": {
+							"displayName": "组织者",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "例如 name@email.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"organizerValues": {
+							"displayName": "组织者",
+							"options": {
+								"name": {
+									"displayName": "名称"
+								},
+								"email": {
+									"displayName": "电子邮件",
+									"placeholder": "例如 name@email.com"
+								}
+							}
+						},
+						"organizerUi": {
+							"displayName": "组织者",
+							"placeholder": "添加组织者"
+						}
+					}
+				},
+				"sequence": {
+					"displayName": "序列",
+					"description": "发送事件更新时（使用相同uid），定义修订序列号"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"CONFIRMED": {
+							"displayName": "已确认"
+						},
+						"CANCELLED": {
+							"displayName": "已取消"
+						},
+						"TENTATIVE": {
+							"displayName": "暂定"
+						}
+					}
+				},
+				"uid": {
+					"displayName": "UID",
+					"description": "事件的全局唯一标识符（若此处未指定将自动生成）。应确保全局唯一性。"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "事件关联的URL"
+				},
+				"useWorkflowTimezone": {
+					"displayName": "使用工作流时区",
+					"description": "是否使用节点设置中的工作流时区而非UTC"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,191 @@
+{
+	"header": {
+		"displayName": "Netscaler ADC",
+		"description": "Consume Netscaler ADC API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"certificate": {
+					"displayName": "Certificate"
+				},
+				"file": {
+					"displayName": "File"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"install": {
+					"displayName": "Install"
+				},
+				"delete": {
+					"displayName": "Delete"
+				},
+				"download": {
+					"displayName": "Download"
+				},
+				"upload": {
+					"displayName": "Upload"
+				}
+			}
+		},
+		"certificateFileName": {
+			"displayName": "Certificate File Name",
+			"description": "Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path."
+		},
+		"certificateFormat": {
+			"displayName": "Certificate Format",
+			"description": "Input format of the certificate and the private-key files. The three formats supported by the appliance are: PEM - Privacy Enhanced Mail DER - Distinguished Encoding Rule PFX - Personal Information Exchange.",
+			"options": {
+				"PEM": {
+					"displayName": "PEM"
+				},
+				"DER": {
+					"displayName": "DER"
+				}
+			}
+		},
+		"certificateType": {
+			"displayName": "Certificate Type",
+			"options": {
+				"ROOT_CERT": {
+					"displayName": "Root-CA",
+					"description": "You must specify the key file name. The generated Root-CA certificate can be used for signing end-user client or server certificates or to create Intermediate-CA certificates."
+				},
+				"INTM_CERT": {
+					"displayName": "Intermediate-CA",
+					"description": "Intermediate-CA certificate"
+				},
+				"SRVR_CERT": {
+					"displayName": "Server",
+					"description": "SSL server certificate used on SSL servers for end-to-end encryption"
+				},
+				"CLNT_CERT": {
+					"displayName": "Client",
+					"description": "End-user client certificate used for client authentication"
+				}
+			}
+		},
+		"certificateRequestFileName": {
+			"displayName": "Certificate Request File Name",
+			"description": "Name for and, optionally, path to the certificate-signing request (CSR). /nsconfig/ssl/ is the default path."
+		},
+		"caCertificateFileName": {
+			"displayName": "CA Certificate File Name",
+			"description": "Name of the CA certificate file that issues and signs the Intermediate-CA certificate or the end-user client and server certificates"
+		},
+		"caCertificateFileFormat": {
+			"displayName": "CA Certificate File Format",
+			"description": "Format of the CA certificate",
+			"options": {
+				"PEM": {
+					"displayName": "PEM"
+				},
+				"DER": {
+					"displayName": "DER"
+				}
+			}
+		},
+		"caPrivateKeyFileName": {
+			"displayName": "CA Private Key File Name",
+			"description": "Private key, associated with the CA certificate that is used to sign the Intermediate-CA certificate or the end-user client and server certificate. If the CA key file is password protected, the user is prompted to enter the pass phrase that was used to encrypt the key."
+		},
+		"caPrivateKeyFileFormat": {
+			"displayName": "CA Private Key File Format",
+			"description": "Format of the CA certificate",
+			"options": {
+				"PEM": {
+					"displayName": "PEM"
+				},
+				"DER": {
+					"displayName": "DER"
+				}
+			}
+		},
+		"privateKeyFileName": {
+			"displayName": "Private Key File Name",
+			"description": "Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path."
+		},
+		"caSerialFileNumber": {
+			"displayName": "CA Serial File Number",
+			"description": "Serial number file maintained for the CA certificate. This file contains the serial number of the next certificate to be issued or signed by the CA."
+		},
+		"privateKeyFormat": {
+			"displayName": "Private Key Format",
+			"description": "Format in which the key is stored on the appliance",
+			"options": {
+				"PEM": {
+					"displayName": "PEM"
+				},
+				"DER": {
+					"displayName": "DER"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"pempassphrase": {
+					"displayName": "PEM Passphrase (For Encrypted CA Key)",
+					"description": "Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Netscaler ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default."
+				},
+				"subjectaltname": {
+					"displayName": "Subject Alternative Name",
+					"description": "Subject Alternative Name (SAN) is an extension to X.509 that allows various values to be associated with a security certificate using a subjectAltName field"
+				},
+				"days": {
+					"displayName": "Validity Period (Number of Days)",
+					"description": "Number of days for which the certificate will be valid, beginning with the time and day (system time) of creation"
+				}
+			}
+		},
+		"certificateKeyPairName": {
+			"displayName": "Certificate-Key Pair Name",
+			"description": "Name for the certificate and private-key pair"
+		},
+		"password": {
+			"displayName": "Password",
+			"description": "Input format of the certificate and the private-key files. The three formats supported by the appliance are: PEM - Privacy Enhanced Mail DER - Distinguished Encoding Rule PFX - Personal Information Exchange."
+		},
+		"notifyExpiration": {
+			"displayName": "Notify When Expires",
+			"description": "Whether to alert when the certificate is about to expire"
+		},
+		"notificationPeriod": {
+			"displayName": "Notification Period (Days)",
+			"description": "Time, in number of days, before certificate expiration, at which to generate an alert that the certificate is about to expire"
+		},
+		"certificateBundle": {
+			"displayName": "Certificate Bundle",
+			"description": "Whether to parse the certificate chain as a single file after linking the server certificate to its issuer's certificate within the file"
+		},
+		"fileLocation": {
+			"displayName": "File Location"
+		},
+		"binaryProperty": {
+			"displayName": "Put Output in Field",
+			"description": "The name of the output field to put the binary file data in"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"fileName": {
+					"displayName": "File Name",
+					"description": "Name of the file. It should not include filepath."
+				}
+			}
+		},
+		"fileName": {
+			"displayName": "File Name",
+			"description": "Name of the file. It should not include filepath."
+		}
+	}
+}

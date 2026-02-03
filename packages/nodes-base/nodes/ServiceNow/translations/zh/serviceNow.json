@@ -1,0 +1,619 @@
+{
+	"header": {
+		"displayName": "ServiceNow",
+		"description": "使用ServiceNow API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"description": "使用的身份验证方法",
+			"options": {
+				"basicAuth": {
+					"displayName": "基础认证"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"attachment": {
+					"displayName": "附件"
+				},
+				"businessService": {
+					"displayName": "业务服务"
+				},
+				"configurationItems": {
+					"displayName": "配置项"
+				},
+				"department": {
+					"displayName": "部门"
+				},
+				"dictionary": {
+					"displayName": "字典"
+				},
+				"incident": {
+					"displayName": "事件"
+				},
+				"tableRecord": {
+					"displayName": "表记录"
+				},
+				"user": {
+					"displayName": "用户"
+				},
+				"userGroup": {
+					"displayName": "用户组"
+				},
+				"userRole": {
+					"displayName": "用户角色"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"upload": {
+					"displayName": "上传",
+					"description": "上传附件到指定表格记录"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除附件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取附件"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取表格中的多个附件"
+				},
+				"create": {
+					"displayName": "创建"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"tableName": {
+			"displayName": "表名或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"id": {
+			"displayName": "用户ID",
+			"description": "用户的唯一标识符"
+		},
+		"inputDataFieldName": {
+			"displayName": "输入数据字段名称",
+			"description": "包含要上传数据的二进制属性名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"file_name": {
+					"displayName": "附件文件名",
+					"description": "附件名称"
+				},
+				"queryFilter": {
+					"displayName": "筛选器",
+					"description": "用于筛选结果的编码查询字符串",
+					"placeholder": "<列名><运算符><值>"
+				},
+				"sysparm_exclude_reference_link": {
+					"displayName": "排除参考链接",
+					"description": "是否排除参考字段的Table API链接"
+				},
+				"sysparm_fields": {
+					"displayName": "字段名称或ID",
+					"description": "要返回的字段列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"sysparm_query": {
+					"displayName": "筛选器",
+					"description": "用于筛选结果的编码查询字符串。<a href=\"https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters\">更多信息</a>。"
+				},
+				"sysparm_display_value": {
+					"displayName": "返回值",
+					"description": "选择要返回的值",
+					"options": {
+						"false": {
+							"displayName": "实际值"
+						},
+						"all": {
+							"displayName": "两者"
+						},
+						"true": {
+							"displayName": "显示值"
+						}
+					}
+				}
+			}
+		},
+		"attachmentId": {
+			"displayName": "附件ID",
+			"description": "要删除的附件的Sys_id值"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"download": {
+			"displayName": "下载附件"
+		},
+		"outputField": {
+			"displayName": "输出字段",
+			"description": "用于放置下载数据的字段名称"
+		},
+		"short_description": {
+			"displayName": "简短描述",
+			"description": "用户的简短描述"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assigned_to": {
+					"displayName": "负责人姓名或ID",
+					"description": "事件分配给哪位用户。需要选择分配组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"assignment_group": {
+					"displayName": "分配组名称或ID",
+					"description": "事件的分配组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"business_service": {
+					"displayName": "业务服务名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"caller_id": {
+					"displayName": "主叫号码",
+					"description": "事件发起方的唯一标识符"
+				},
+				"category": {
+					"displayName": "分类名称或ID",
+					"description": "事件类别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"close_notes": {
+					"displayName": "关闭备注",
+					"description": "事件的关闭备注"
+				},
+				"cmdb_ci": {
+					"displayName": "配置项名称或ID",
+					"description": "配置项，元数据中的'cmdb_ci'。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"contact_type": {
+					"displayName": "联系人类型",
+					"options": {
+						"email": {
+							"displayName": "电子邮件"
+						},
+						"phone": {
+							"displayName": "电话"
+						},
+						"self-service": {
+							"displayName": "自助服务"
+						},
+						"walk-in": {
+							"displayName": "步入式"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "事件描述"
+				},
+				"impact": {
+					"displayName": "影响",
+					"description": "事件的影响",
+					"options": {
+						"1": {
+							"displayName": "高"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "低"
+						}
+					}
+				},
+				"close_code": {
+					"displayName": "解决代码名称或ID",
+					"description": "事件的解决代码，即元数据中的'close_code'。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "用户状态"
+				},
+				"subcategory": {
+					"displayName": "子类别名称或ID",
+					"description": "事件的子类别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"urgency": {
+					"displayName": "紧急程度",
+					"description": "事件紧急程度",
+					"options": {
+						"1": {
+							"displayName": "高"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "低"
+						}
+					}
+				},
+				"active": {
+					"displayName": "激活状态",
+					"description": "是否激活用户"
+				},
+				"building": {
+					"displayName": "构建中",
+					"description": "建筑地址"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "用户所在城市"
+				},
+				"company": {
+					"displayName": "公司",
+					"description": "用户所在公司的名称"
+				},
+				"country": {
+					"displayName": "国家",
+					"description": "用户所在国家"
+				},
+				"department": {
+					"displayName": "部门",
+					"description": "用户所属部门"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "与该用户关联的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "名字",
+					"description": "用户的名字"
+				},
+				"gender": {
+					"displayName": "性别",
+					"description": "用户的性别"
+				},
+				"home_phone": {
+					"displayName": "家庭电话",
+					"description": "用户的家庭电话"
+				},
+				"last_name": {
+					"displayName": "姓氏",
+					"description": "用户的姓氏"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "用户位置"
+				},
+				"manager": {
+					"displayName": "管理员",
+					"description": "用户管理员"
+				},
+				"middle_name": {
+					"displayName": "中间名",
+					"description": "用户的中间名"
+				},
+				"mobile_phone": {
+					"displayName": "手机",
+					"description": "用户的手机号码"
+				},
+				"user_password": {
+					"displayName": "密码",
+					"description": "用户密码"
+				},
+				"password_needs_reset": {
+					"displayName": "需要重置密码",
+					"description": "用户登录时是否需要重置密码"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "用户的主要电话号码"
+				},
+				"roles": {
+					"displayName": "角色名称或ID",
+					"description": "用户角色。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"source": {
+					"displayName": "源"
+				},
+				"street": {
+					"displayName": "街道",
+					"description": "用户的街道信息，用逗号分隔"
+				},
+				"user_name": {
+					"displayName": "用户名",
+					"description": "与用户关联的用户名（例如 user_name.123）"
+				},
+				"zip": {
+					"displayName": "邮政编码",
+					"description": "用户的邮政编码"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assigned_to": {
+					"displayName": "分配给名称或ID",
+					"description": "事件分配给哪位用户。需要选择分配组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"assignment_group": {
+					"displayName": "分配组名称或ID",
+					"description": "事件的分配组。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"business_service": {
+					"displayName": "业务服务名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"caller_id": {
+					"displayName": "主叫号码",
+					"description": "事件发起方的唯一标识符"
+				},
+				"category": {
+					"displayName": "分类名称或ID",
+					"description": "事件类别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"close_notes": {
+					"displayName": "关闭备注",
+					"description": "事件的关闭备注"
+				},
+				"cmdb_ci": {
+					"displayName": "配置项名称或ID",
+					"description": "配置项，元数据中的'cmdb_ci'。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"contact_type": {
+					"displayName": "联系人类型",
+					"options": {
+						"email": {
+							"displayName": "电子邮件"
+						},
+						"phone": {
+							"displayName": "电话"
+						},
+						"self-service": {
+							"displayName": "自助服务"
+						},
+						"walk-in": {
+							"displayName": "步入式"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "事件描述"
+				},
+				"impact": {
+					"displayName": "影响",
+					"description": "事件的影响",
+					"options": {
+						"1": {
+							"displayName": "高"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "低"
+						}
+					}
+				},
+				"close_code": {
+					"displayName": "解决代码名称或ID",
+					"description": "事件解决代码。元数据中的'close_code'。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"hold_reason": {
+					"displayName": "挂起原因名称或ID",
+					"description": "事件的挂起原因。仅当状态为<code>挂起</code>时适用。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"state": {
+					"displayName": "状态",
+					"description": "用户状态"
+				},
+				"subcategory": {
+					"displayName": "子类别名称或ID",
+					"description": "事件的子类别。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"urgency": {
+					"displayName": "紧急程度",
+					"description": "事件紧急程度",
+					"options": {
+						"1": {
+							"displayName": "高"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "低"
+						}
+					}
+				},
+				"work_notes": {
+					"displayName": "工作备注",
+					"description": "事件的工作备注"
+				},
+				"active": {
+					"displayName": "激活状态",
+					"description": "是否激活用户"
+				},
+				"building": {
+					"displayName": "构建中",
+					"description": "建筑地址"
+				},
+				"city": {
+					"displayName": "城市",
+					"description": "用户所在城市"
+				},
+				"company": {
+					"displayName": "公司",
+					"description": "用户所在公司的名称"
+				},
+				"country": {
+					"displayName": "国家",
+					"description": "用户所在国家"
+				},
+				"department": {
+					"displayName": "部门",
+					"description": "用户所属部门"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "与该用户关联的电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"first_name": {
+					"displayName": "名字",
+					"description": "用户的名字"
+				},
+				"gender": {
+					"displayName": "性别",
+					"description": "用户的性别"
+				},
+				"home_phone": {
+					"displayName": "家庭电话",
+					"description": "用户的家庭电话"
+				},
+				"last_name": {
+					"displayName": "姓氏",
+					"description": "用户的姓氏"
+				},
+				"location": {
+					"displayName": "位置",
+					"description": "用户位置"
+				},
+				"manager": {
+					"displayName": "管理员",
+					"description": "用户管理员"
+				},
+				"middle_name": {
+					"displayName": "中间名",
+					"description": "用户的中间名"
+				},
+				"mobile_phone": {
+					"displayName": "手机",
+					"description": "用户的手机号码"
+				},
+				"user_password": {
+					"displayName": "密码",
+					"description": "用户密码"
+				},
+				"password_needs_reset": {
+					"displayName": "需要重置密码",
+					"description": "用户登录时是否需要重置密码"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "用户的主要电话号码"
+				},
+				"roles": {
+					"displayName": "角色名称或ID",
+					"description": "用户角色。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"source": {
+					"displayName": "源"
+				},
+				"street": {
+					"displayName": "街道",
+					"description": "用户的街道信息，用逗号分隔"
+				},
+				"user_name": {
+					"displayName": "用户名",
+					"description": "与用户关联的用户名（例如 user_name.123）"
+				},
+				"zip": {
+					"displayName": "邮政编码",
+					"description": "用户的邮政编码"
+				}
+			}
+		},
+		"dataToSend": {
+			"displayName": "要发送的数据",
+			"options": {
+				"mapInput": {
+					"displayName": "自动映射输入数据到列",
+					"description": "当节点输入名称与目标字段名称匹配时使用"
+				},
+				"columns": {
+					"displayName": "为每列定义以下内容",
+					"description": "为每个目标列设置值"
+				},
+				"nothing": {
+					"displayName": "无返回结果",
+					"description": "不发送任何列数据"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "要忽略的输入",
+			"description": "要避免发送的输入属性列表，用逗号分隔。留空则发送所有输入。"
+		},
+		"fieldsToSend": {
+			"displayName": "要发送的字段",
+			"placeholder": "添加要发送的字段",
+			"multipleValueButtonText": "添加要发送的字段",
+			"options": {
+				"field": {
+					"displayName": "字段",
+					"options": {
+						"column": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"value": {
+							"displayName": "字段值"
+						}
+					}
+				}
+			},
+			"values": {
+				"field": {
+					"displayName": "字段",
+					"options": {
+						"column": {
+							"displayName": "字段名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						},
+						"value": {
+							"displayName": "字段值"
+						}
+					}
+				},
+				"fieldsToSend": {
+					"displayName": "要发送的字段",
+					"placeholder": "添加要发送的字段"
+				}
+			}
+		},
+		"getOption": {
+			"displayName": "检索标识符",
+			"description": "用户的唯一标识符",
+			"options": {
+				"id": {
+					"displayName": "ID"
+				},
+				"user_name": {
+					"displayName": "用户名"
+				}
+			}
+		},
+		"user_name": {
+			"displayName": "用户名",
+			"description": "用户的唯一标识符"
+		}
+	}
+}

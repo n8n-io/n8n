@@ -1,0 +1,44 @@
+{
+	"header": {
+		"displayName": "Google 翻译",
+		"description": "使用 Google 翻译翻译数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"serviceAccount": {
+					"displayName": "服务账号"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"language": {
+					"displayName": "语言"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"translate": {
+					"displayName": "翻译",
+					"description": "翻译数据"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "待翻译的输入文本"
+		},
+		"translateTo": {
+			"displayName": "翻译至",
+			"description": "用于输入文本翻译的语言，设置为<a href=\"https://cloud.google.com/translate/docs/languages\">语言支持</a>中列出的语言代码之一。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

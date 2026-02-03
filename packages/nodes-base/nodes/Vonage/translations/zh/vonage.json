@@ -1,0 +1,84 @@
+{
+	"header": {
+		"displayName": "Vonage",
+		"description": "使用 Vonage API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"sms": {
+					"displayName": "短信"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送"
+				}
+			}
+		},
+		"from": {
+			"displayName": "可自定义的发件人名称。长度应在3到11个字符之间，仅允许使用字母数字字符。",
+			"description": "消息发送方的名称或号码"
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"description": "消息应发送到的号码。号码需以E.164格式指定。"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "要发送的消息正文"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"account-ref": {
+					"displayName": "账户参考",
+					"description": "一个可选字符串，用于通过SMS端点识别独立账户以便计费。如需使用此功能，请发送邮件至support@nexmo.com。"
+				},
+				"callback": {
+					"displayName": "回调",
+					"description": "此短信送达回执发送到的Webhook端点。此参数将覆盖您在仪表板中设置的Webhook端点。"
+				},
+				"client-ref": {
+					"displayName": "客户参考",
+					"description": "您可以选择包含最多40个字符的自定义参考信息"
+				},
+				"message-class": {
+					"displayName": "消息类别",
+					"description": "消息的数据编码方案值",
+					"options": {
+						"0": {
+							"displayName": "0"
+						},
+						"1": {
+							"displayName": "1"
+						},
+						"2": {
+							"displayName": "2"
+						},
+						"3": {
+							"displayName": "3"
+						}
+					}
+				},
+				"protocol-id": {
+					"displayName": "协议ID",
+					"description": "要使用的协议标识符的值。请确保该值与udh保持一致。"
+				},
+				"status-report-req": {
+					"displayName": "状态报告请求",
+					"description": "是否接收送达回执"
+				},
+				"ttl": {
+					"displayName": "TTL（分钟）",
+					"description": "默认情况下，Nexmo会尝试投递72小时"
+				}
+			}
+		}
+	}
+}

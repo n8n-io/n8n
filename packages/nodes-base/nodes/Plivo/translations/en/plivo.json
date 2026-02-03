@@ -1,0 +1,69 @@
+{
+	"header": {
+		"displayName": "Plivo",
+		"description": "Send SMS/MMS messages or make phone calls"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"call": {
+					"displayName": "Call"
+				},
+				"mms": {
+					"displayName": "MMS"
+				},
+				"sms": {
+					"displayName": "SMS"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"send": {
+					"displayName": "Send",
+					"description": "Send an MMS message (US/Canada only)"
+				},
+				"make": {
+					"displayName": "Make",
+					"description": "Make a voice call"
+				}
+			}
+		},
+		"from": {
+			"displayName": "From",
+			"description": "Caller ID for the call to make",
+			"placeholder": "+14156667777"
+		},
+		"to": {
+			"displayName": "To",
+			"description": "Phone number to make the call to",
+			"placeholder": "+14156667778"
+		},
+		"message": {
+			"displayName": "Message",
+			"description": "Message to send"
+		},
+		"media_urls": {
+			"displayName": "Media URLs",
+			"description": "Comma-separated list of media URLs of the files from your file server"
+		},
+		"answer_method": {
+			"displayName": "Answer Method",
+			"description": "HTTP verb to be used when invoking the Answer URL",
+			"options": {
+				"GET": {
+					"displayName": "GET"
+				},
+				"POST": {
+					"displayName": "POST"
+				}
+			}
+		},
+		"answer_url": {
+			"displayName": "Answer URL",
+			"description": "URL to be invoked by Plivo once the call is answered. It should return the XML to handle the call once answered."
+		}
+	}
+}

@@ -1,0 +1,38 @@
+{
+	"header": {
+		"displayName": "Calendly触发器",
+		"description": "当Calendly事件发生时启动工作流"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				},
+				"apiKey": {
+					"displayName": "API密钥或个人访问令牌"
+				}
+			}
+		},
+		"deprecationNotice": {
+			"displayName": "操作要求：Calendly将于2025年5月31日停止API密钥认证。请立即将节点更新为使用OAuth2认证，以确保您的工作流持续运行。"
+		},
+		"scope": {
+			"displayName": "作用范围",
+			"options": {
+				"organization": {
+					"displayName": "组织",
+					"description": "为组织内所有订阅的事件触发Webhook"
+				},
+				"user": {
+					"displayName": "用户",
+					"description": "触发属于当前用户的订阅事件的Webhook"
+				}
+			}
+		},
+		"events": {
+			"displayName": "事件"
+		}
+	}
+}

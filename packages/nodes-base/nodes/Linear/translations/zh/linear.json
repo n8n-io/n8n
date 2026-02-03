@@ -1,0 +1,172 @@
+{
+	"header": {
+		"displayName": "Linear",
+		"description": "使用Linear API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiToken": {
+					"displayName": "API令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"comment": {
+					"displayName": "评论"
+				},
+				"issue": {
+					"displayName": "问题"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"addComment": {
+					"displayName": "添加评论",
+					"description": "向问题添加评论"
+				},
+				"addLink": {
+					"displayName": "添加链接",
+					"description": "为问题添加链接"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建工单"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除问题"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取问题"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个问题"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新问题"
+				}
+			}
+		},
+		"issueId": {
+			"displayName": "问题ID"
+		},
+		"comment": {
+			"displayName": "评论"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"parentId": {
+					"displayName": "父评论ID",
+					"description": "如果是回复，则为父评论的ID"
+				},
+				"assigneeId": {
+					"displayName": "负责人姓名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"priorityId": {
+					"displayName": "优先级",
+					"options": {
+						"0": {
+							"displayName": "无优先级"
+						},
+						"1": {
+							"displayName": "紧急"
+						},
+						"2": {
+							"displayName": "高"
+						},
+						"3": {
+							"displayName": "普通"
+						},
+						"4": {
+							"displayName": "低"
+						}
+					}
+				},
+				"stateId": {
+					"displayName": "状态名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				}
+			}
+		},
+		"teamId": {
+			"displayName": "团队名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assigneeId": {
+					"displayName": "负责人姓名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"description": {
+					"displayName": "描述"
+				},
+				"priorityId": {
+					"displayName": "优先级 名称/ID",
+					"options": {
+						"0": {
+							"displayName": "无优先级"
+						},
+						"1": {
+							"displayName": "紧急"
+						},
+						"2": {
+							"displayName": "高"
+						},
+						"3": {
+							"displayName": "中等"
+						},
+						"4": {
+							"displayName": "低"
+						}
+					}
+				},
+				"stateId": {
+					"displayName": "状态名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"teamId": {
+					"displayName": "团队名称或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"title": {
+					"displayName": "标题"
+				}
+			}
+		},
+		"link": {
+			"displayName": "链接"
+		}
+	}
+}

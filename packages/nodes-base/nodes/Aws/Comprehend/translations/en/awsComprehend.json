@@ -1,0 +1,105 @@
+{
+	"header": {
+		"displayName": "AWS Comprehend",
+		"description": "Sends data to Amazon Comprehend"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"description": "The resource to perform",
+			"options": {
+				"text": {
+					"displayName": "Text"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"detectDominantLanguage": {
+					"displayName": "Detect Dominant Language",
+					"description": "Identify the dominant language"
+				},
+				"detectEntities": {
+					"displayName": "Detect Entities",
+					"description": "Inspects text for named entities, and returns information about them"
+				},
+				"detectSentiment": {
+					"displayName": "Detect Sentiment",
+					"description": "Analyse the sentiment of the text"
+				}
+			}
+		},
+		"languageCode": {
+			"displayName": "Language Code",
+			"description": "The language code for text",
+			"options": {
+				"ar": {
+					"displayName": "Arabic"
+				},
+				"zh": {
+					"displayName": "Chinese"
+				},
+				"zh-TW": {
+					"displayName": "Chinese (T)"
+				},
+				"en": {
+					"displayName": "English"
+				},
+				"fr": {
+					"displayName": "French"
+				},
+				"de": {
+					"displayName": "German"
+				},
+				"hi": {
+					"displayName": "Hindi"
+				},
+				"it": {
+					"displayName": "Italian"
+				},
+				"ja": {
+					"displayName": "Japanese"
+				},
+				"ko": {
+					"displayName": "Korean"
+				},
+				"pt": {
+					"displayName": "Portuguese"
+				},
+				"es": {
+					"displayName": "Spanish"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text",
+			"description": "The text to send"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"endpointArn": {
+					"displayName": "Endpoint Arn",
+					"description": "The Amazon Resource Name of an endpoint that is associated with a custom entity recognition model"
+				}
+			}
+		}
+	}
+}

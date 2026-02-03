@@ -1,0 +1,234 @@
+{
+	"header": {
+		"displayName": "LDAP",
+		"description": "与LDAP服务器交互"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"compare": {
+					"displayName": "比较",
+					"description": "比较属性"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新条目"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除条目"
+				},
+				"rename": {
+					"displayName": "重命名",
+					"description": "重命名现有条目的DN"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索LDAP"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新属性"
+				}
+			}
+		},
+		"nodeDebug": {
+			"displayName": "调试"
+		},
+		"dn": {
+			"displayName": "DN",
+			"description": "要更新的条目的可分辨名称",
+			"placeholder": "例如：ou=users,dc=n8n,dc=io"
+		},
+		"id": {
+			"displayName": "属性ID",
+			"description": "要比较的属性ID"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "要比较的值"
+		},
+		"targetDn": {
+			"displayName": "新DN",
+			"description": "条目的新可分辨名称",
+			"placeholder": "例如 cn=nathan,ou=users,dc=n8n,dc=io"
+		},
+		"attributes": {
+			"displayName": "更新属性",
+			"description": "更新条目属性",
+			"placeholder": "更新属性",
+			"multipleValueButtonText": "更新属性",
+			"options": {
+				"attribute": {
+					"displayName": "属性",
+					"options": {
+						"id": {
+							"displayName": "属性ID",
+							"description": "要添加的属性ID"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的属性值"
+						}
+					}
+				},
+				"add": {
+					"displayName": "添加",
+					"options": {
+						"id": {
+							"displayName": "属性ID",
+							"description": "要添加的属性ID"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的属性值"
+						}
+					}
+				},
+				"replace": {
+					"displayName": "替换",
+					"options": {
+						"id": {
+							"displayName": "属性ID",
+							"description": "要替换属性的ID"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要替换的属性值"
+						}
+					}
+				},
+				"delete": {
+					"displayName": "移除",
+					"options": {
+						"id": {
+							"displayName": "属性ID",
+							"description": "要移除的属性的ID"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要移除的属性值"
+						}
+					}
+				}
+			},
+			"values": {
+				"attribute": {
+					"displayName": "属性",
+					"options": {
+						"id": {
+							"displayName": "属性ID",
+							"description": "要添加的属性ID"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的属性值"
+						}
+					}
+				},
+				"attributes": {
+					"displayName": "更新属性",
+					"placeholder": "更新属性"
+				},
+				"add": {
+					"displayName": "添加",
+					"options": {
+						"id": {
+							"displayName": "属性ID",
+							"description": "要添加的属性ID"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要设置的属性值"
+						}
+					}
+				},
+				"replace": {
+					"displayName": "替换",
+					"options": {
+						"id": {
+							"displayName": "属性ID",
+							"description": "要替换属性的ID"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要替换的属性值"
+						}
+					}
+				},
+				"delete": {
+					"displayName": "移除",
+					"options": {
+						"id": {
+							"displayName": "属性ID",
+							"description": "要移除的属性的ID"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要移除的属性值"
+						}
+					}
+				}
+			}
+		},
+		"baseDN": {
+			"displayName": "基础DN",
+			"description": "要搜索的子树的专有名称",
+			"placeholder": "例如：ou=users, dc=n8n, dc=io"
+		},
+		"searchFor": {
+			"displayName": "搜索",
+			"description": "要搜索的目录对象类"
+		},
+		"customFilter": {
+			"displayName": "自定义筛选器",
+			"description": "自定义LDAP筛选器。使用反斜杠\"\\\"转义这些字符：* ( ) \\。"
+		},
+		"attribute": {
+			"displayName": "属性",
+			"description": "要搜索的属性"
+		},
+		"searchText": {
+			"displayName": "搜索文本",
+			"description": "要搜索的文本，使用 * 作为通配符"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"attributes": {
+					"displayName": "属性名称或ID",
+					"description": "要返回的属性列表，以逗号分隔。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"pageSize": {
+					"displayName": "页面大小",
+					"description": "单次请求的最大结果数。设置为0可禁用分页。"
+				},
+				"scope": {
+					"displayName": "范围",
+					"description": "位于或低于BaseDN的条目集合，可能被视为潜在匹配项",
+					"options": {
+						"base": {
+							"displayName": "基础对象"
+						},
+						"one": {
+							"displayName": "单层"
+						},
+						"sub": {
+							"displayName": "整个子树"
+						}
+					}
+				}
+			}
+		}
+	}
+}

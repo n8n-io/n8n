@@ -1,0 +1,269 @@
+{
+	"header": {
+		"displayName": "Chargebee",
+		"description": "从Chargebee API检索数据"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"customer": {
+					"displayName": "客户"
+				},
+				"invoice": {
+					"displayName": "发票"
+				},
+				"subscription": {
+					"displayName": "订阅"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建客户"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "返回发票"
+				},
+				"pdfUrl": {
+					"displayName": "PDF发票URL",
+					"description": "获取发票PDF的URL"
+				},
+				"cancel": {
+					"displayName": "取消",
+					"description": "取消订阅"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除订阅"
+				}
+			}
+		},
+		"properties": {
+			"displayName": "属性",
+			"description": "为新用户设置的属性",
+			"placeholder": "添加属性",
+			"options": {
+				"id": {
+					"displayName": "用户ID",
+					"description": "新客户的ID。如未提供，将自动生成。"
+				},
+				"first_name": {
+					"displayName": "名字",
+					"description": "客户的名字"
+				},
+				"last_name": {
+					"displayName": "姓氏",
+					"description": "客户的姓氏"
+				},
+				"email": {
+					"displayName": "邮箱",
+					"description": "客户的邮箱地址",
+					"placeholder": "name@email.com"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "客户的电话号码"
+				},
+				"company": {
+					"displayName": "公司",
+					"description": "客户公司"
+				},
+				"customProperties": {
+					"displayName": "自定义属性",
+					"description": "添加自定义属性以设置未预定义的值",
+					"placeholder": "添加自定义属性",
+					"multipleValueButtonText": "添加自定义属性",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "属性名称",
+									"description": "要设置的属性名称"
+								},
+								"value": {
+									"displayName": "属性值",
+									"description": "要设置的属性值"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"name": {
+									"displayName": "属性名称",
+									"description": "要设置的属性名称"
+								},
+								"value": {
+									"displayName": "属性值",
+									"description": "要设置的属性值"
+								}
+							}
+						},
+						"customProperties": {
+							"displayName": "自定义属性",
+							"placeholder": "添加自定义属性"
+						}
+					}
+				}
+			}
+		},
+		"maxResults": {
+			"displayName": "最大结果数",
+			"description": "返回的最大结果数量(< 100)。"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"description": "筛选发票",
+			"placeholder": "添加筛选器",
+			"multipleValueButtonText": "添加过滤器",
+			"options": {
+				"date": {
+					"displayName": "发票日期",
+					"options": {
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"is": {
+									"displayName": "是"
+								},
+								"is_not": {
+									"displayName": "不是"
+								},
+								"after": {
+									"displayName": "之后"
+								},
+								"before": {
+									"displayName": "之前"
+								}
+							}
+						},
+						"value": {
+							"displayName": "日期",
+							"description": "查询日期"
+						}
+					}
+				},
+				"total": {
+					"displayName": "发票金额",
+					"options": {
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"gte": {
+									"displayName": "大于等于"
+								},
+								"gt": {
+									"displayName": "大于"
+								},
+								"is": {
+									"displayName": "是"
+								},
+								"is_not": {
+									"displayName": "不是"
+								},
+								"lte": {
+									"displayName": "小于等于"
+								},
+								"lt": {
+									"displayName": "小于"
+								}
+							}
+						},
+						"value": {
+							"displayName": "金额",
+							"description": "查询金额"
+						}
+					}
+				}
+			},
+			"values": {
+				"date": {
+					"displayName": "发票日期",
+					"options": {
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"is": {
+									"displayName": "是"
+								},
+								"is_not": {
+									"displayName": "不是"
+								},
+								"after": {
+									"displayName": "之后"
+								},
+								"before": {
+									"displayName": "之前"
+								}
+							}
+						},
+						"value": {
+							"displayName": "日期",
+							"description": "查询日期"
+						}
+					}
+				},
+				"total": {
+					"displayName": "发票金额",
+					"options": {
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"gte": {
+									"displayName": "大于等于"
+								},
+								"gt": {
+									"displayName": "大于"
+								},
+								"is": {
+									"displayName": "是"
+								},
+								"is_not": {
+									"displayName": "不是"
+								},
+								"lte": {
+									"displayName": "小于等于"
+								},
+								"lt": {
+									"displayName": "小于"
+								}
+							}
+						},
+						"value": {
+							"displayName": "金额",
+							"description": "查询金额"
+						}
+					}
+				},
+				"filters": {
+					"displayName": "筛选器",
+					"placeholder": "添加筛选器"
+				}
+			}
+		},
+		"invoiceId": {
+			"displayName": "发票ID",
+			"description": "要获取的发票ID"
+		},
+		"subscriptionId": {
+			"displayName": "订阅ID",
+			"description": "要删除的订阅ID"
+		},
+		"endOfTerm": {
+			"displayName": "计划在期限结束时",
+			"description": "它不会直接取消，而是计划在期限结束时取消"
+		}
+	}
+}

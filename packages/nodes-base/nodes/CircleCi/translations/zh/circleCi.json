@@ -1,0 +1,86 @@
+{
+	"header": {
+		"displayName": "CircleCI",
+		"description": "使用CircleCI API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"pipeline": {
+					"displayName": "工作流"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取工作流"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个流水线"
+				},
+				"trigger": {
+					"displayName": "触发器",
+					"description": "触发流水线"
+				}
+			}
+		},
+		"vcs": {
+			"displayName": "提供商",
+			"description": "版本控制系统",
+			"options": {
+				"bitbucket": {
+					"displayName": "Bitbucket"
+				},
+				"github": {
+					"displayName": "GitHub"
+				}
+			}
+		},
+		"projectSlug": {
+			"displayName": "项目标识",
+			"description": "项目标识，格式为组织名/仓库名",
+			"placeholder": "n8n-io/n8n"
+		},
+		"pipelineNumber": {
+			"displayName": "流水线编号",
+			"description": "流水线的编号"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"branch": {
+					"displayName": "分支",
+					"description": "版本控制系统分支的名称"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"branch": {
+					"displayName": "分支",
+					"description": "运行流水线的分支。该分支的HEAD提交用于流水线。注意分支和标签是互斥的。"
+				},
+				"tag": {
+					"displayName": "标签",
+					"description": "流水线使用的标签。该标签指向的提交被用于流水线。注意分支和标签是互斥的"
+				}
+			}
+		}
+	}
+}

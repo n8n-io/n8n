@@ -1,0 +1,24 @@
+{
+	"header": {
+		"displayName": "Peekalink",
+		"description": "Consume the Peekalink API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"isAvailable": {
+					"displayName": "Is Available",
+					"description": "Check whether preview for a given link is available"
+				},
+				"preview": {
+					"displayName": "Preview",
+					"description": "Return the preview for a link"
+				}
+			}
+		},
+		"url": {
+			"displayName": "URL"
+		}
+	}
+}

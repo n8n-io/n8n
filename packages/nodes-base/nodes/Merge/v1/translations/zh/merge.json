@@ -1,0 +1,105 @@
+{
+	"header": {
+		"displayName": "合并",
+		"description": "当多个流的数据都可用时，合并它们的数据"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"mode": {
+			"displayName": "模式",
+			"description": "分支数据应如何合并",
+			"options": {
+				"append": {
+					"displayName": "追加",
+					"description": "合并两个输入的数据。输出将包含输入1和输入2的所有条目。"
+				},
+				"keepKeyMatches": {
+					"displayName": "保留键匹配",
+					"description": "如果输入1的数据与输入2的数据匹配，则保留输入1的数据"
+				},
+				"mergeByIndex": {
+					"displayName": "按索引合并",
+					"description": "合并两个输入的数据。输出将包含输入1的项目与输入2的数据合并后的结果。合并根据项目的索引进行，即输入1的第一个项目与输入2的第一个项目合并，依此类推。"
+				},
+				"mergeByKey": {
+					"displayName": "按键合并",
+					"description": "合并两个输入的数据。输出将包含输入1的项目与输入2的数据合并后的结果。合并操作基于定义的键进行。"
+				},
+				"multiplex": {
+					"displayName": "多路复用",
+					"description": "将一个输入的每个值与另一个输入的每个值合并。输出将包含 (m * n) 个项目，其中 (m) 和 (n) 是输入的长度。"
+				},
+				"passThrough": {
+					"displayName": "直通",
+					"description": "将单一输入的数据直接传递。输出将仅包含指定输入的项目。"
+				},
+				"removeKeyMatches": {
+					"displayName": "移除键值匹配",
+					"description": "如果输入1的数据未在输入2中找到匹配，则保留输入1的数据"
+				},
+				"wait": {
+					"displayName": "等待",
+					"description": "等待两个输入的数据都可用后，将输出一个空项目。源节点必须同时连接到输入1和输入2。此节点仅支持2个源，如需更多源，请串联连接多个合并节点。此节点不会输出任何数据。"
+				}
+			}
+		},
+		"join": {
+			"displayName": "连接",
+			"description": "如果输入包含不同数量的项目，输出将包含多少项",
+			"options": {
+				"inner": {
+					"displayName": "内连接",
+					"description": "合并两个输入包含的相同数量的项目。（例如：输入1 = 5个项目，输入2 = 3个项目 | 输出将包含3个项目）。"
+				},
+				"left": {
+					"displayName": "左连接",
+					"description": "输出的项目数量与第一个输入相同。(例如: 输入1 = 3个项目, 输入2 = 5个项目 | 输出将包含3个项目)。"
+				},
+				"outer": {
+					"displayName": "外连接",
+					"description": "将输入包含的尽可能多的项目与最多项目合并。（例如：输入1 = 3个项目，输入2 = 5个项目 | 输出将包含5个项目）。"
+				}
+			}
+		},
+		"propertyName1": {
+			"displayName": "属性输入 1",
+			"description": "决定输入 1 中要合并哪些项目的属性名称"
+		},
+		"propertyName2": {
+			"displayName": "属性输入 2",
+			"description": "决定输入 2 中要合并哪些项目的属性名称"
+		},
+		"output": {
+			"displayName": "输出数据",
+			"description": "定义应使用哪个输入的数据作为节点的输出",
+			"options": {
+				"input1": {
+					"displayName": "输入 1"
+				},
+				"input2": {
+					"displayName": "输入2"
+				}
+			}
+		},
+		"overwrite": {
+			"displayName": "覆盖",
+			"description": "选择何时用Input2的值覆盖Input1的值",
+			"options": {
+				"always": {
+					"displayName": "始终",
+					"description": "始终覆盖所有内容"
+				},
+				"blank": {
+					"displayName": "如果为空",
+					"description": "仅覆盖\"null\"、\"undefined\"或空字符串的值"
+				},
+				"undefined": {
+					"displayName": "如果缺失",
+					"description": "仅添加尚不存在的值"
+				}
+			}
+		}
+	}
+}

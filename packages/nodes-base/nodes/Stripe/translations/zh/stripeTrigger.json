@@ -1,0 +1,17 @@
+{
+	"header": {
+		"displayName": "Stripe触发器",
+		"description": "通过Webhook处理Stripe事件"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件",
+			"description": "要监听的事件"
+		},
+		"apiVersion": {
+			"displayName": "API 版本",
+			"description": "用于请求的API版本。它控制Stripe发送到您的Webhook的传入事件负载的格式和结构。如果留空，Stripe将使用您账户当时设置的默认API版本，如果未来API版本发生变化，可能会导致事件处理问题。",
+			"placeholder": "2025-05-28.basil"
+		}
+	}
+}

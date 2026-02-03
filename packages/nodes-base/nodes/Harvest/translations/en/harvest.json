@@ -1,0 +1,716 @@
+{
+	"header": {
+		"displayName": "Harvest",
+		"description": "Access data on Harvest"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"client": {
+					"displayName": "Client"
+				},
+				"company": {
+					"displayName": "Company"
+				},
+				"contact": {
+					"displayName": "Contact"
+				},
+				"estimate": {
+					"displayName": "Estimate"
+				},
+				"expense": {
+					"displayName": "Expense"
+				},
+				"invoice": {
+					"displayName": "Invoice"
+				},
+				"project": {
+					"displayName": "Project"
+				},
+				"task": {
+					"displayName": "Task"
+				},
+				"timeEntry": {
+					"displayName": "Time Entry"
+				},
+				"user": {
+					"displayName": "User"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a user"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get data of a user"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get data of many users"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a user"
+				},
+				"createByDuration": {
+					"displayName": "Create via Duration",
+					"description": "Create a time entry via duration"
+				},
+				"createByStartEnd": {
+					"displayName": "Create via Start and End Time",
+					"description": "Create a time entry via start and end time"
+				},
+				"deleteExternal": {
+					"displayName": "Delete External Reference",
+					"description": "Delete a time entry’s external reference"
+				},
+				"restartTime": {
+					"displayName": "Restart",
+					"description": "Restart a time entry"
+				},
+				"stopTime": {
+					"displayName": "Stop",
+					"description": "Stop a time entry"
+				},
+				"me": {
+					"displayName": "Me",
+					"description": "Get data of authenticated user"
+				}
+			}
+		},
+		"accountId": {
+			"displayName": "Account Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"is_active": {
+					"displayName": "Is Active",
+					"description": "Whether to only return active users and false to return inactive users"
+				},
+				"updated_since": {
+					"displayName": "Updated Since",
+					"description": "Only return users belonging to the user with the given ID"
+				},
+				"client_id": {
+					"displayName": "Client ID",
+					"description": "Only return time entries belonging to the client with the given ID"
+				},
+				"from": {
+					"displayName": "From",
+					"description": "Only return time entries with a spent_date on or after the given date"
+				},
+				"state": {
+					"displayName": "State",
+					"description": "Only return invoices with a state matching the value provided. Options: draft, open, paid, or closed."
+				},
+				"to": {
+					"displayName": "To",
+					"description": "Only return time entries with a spent_date on or before the given date"
+				},
+				"page": {
+					"displayName": "Page",
+					"description": "The page number to use in pagination"
+				},
+				"is_billed": {
+					"displayName": "Is Billed",
+					"description": "Whether to only return time entries that have been invoiced and false to return time entries that have not been invoiced"
+				},
+				"project_id": {
+					"displayName": "Project ID",
+					"description": "Only return time entries belonging to the client with the given ID"
+				},
+				"user_id": {
+					"displayName": "User ID",
+					"description": "Only return time entries belonging to the user with the given ID"
+				},
+				"is_running": {
+					"displayName": "Is Running",
+					"description": "Whether to only return running time entries and false to return non-running time entries"
+				}
+			}
+		},
+		"id": {
+			"displayName": "Time Entry ID",
+			"description": "The ID of the time entry to update"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the task"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"description": "A textual representation of the client’s physical address. May include new line characters."
+				},
+				"currency": {
+					"displayName": "Currency",
+					"description": "The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies"
+				},
+				"is_active": {
+					"displayName": "Is Active",
+					"description": "Whether the user is active or archived"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The contact’s email address",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "Fax",
+					"description": "The contact’s fax number"
+				},
+				"last_name": {
+					"displayName": "Last Name",
+					"description": "The last name of the contact"
+				},
+				"phone_mobile": {
+					"displayName": "Phone Mobile",
+					"description": "The contact’s mobile phone number"
+				},
+				"phone_office": {
+					"displayName": "Phone Office",
+					"description": "The contact’s office phone number"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "The title of the contact"
+				},
+				"over_budget_notification_percentage": {
+					"displayName": "Over Budget Notification Percentage",
+					"description": "Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%."
+				},
+				"issue_date": {
+					"displayName": "Issue Date",
+					"description": "Date the invoice was issued. Defaults to today’s date."
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "These are notes about the time entry"
+				},
+				"number": {
+					"displayName": "Number",
+					"description": "If no value is set, the number will be automatically generated"
+				},
+				"purchase_order": {
+					"displayName": "Purchase Order",
+					"description": "The purchase order number"
+				},
+				"subject": {
+					"displayName": "Subject",
+					"description": "The invoice subject"
+				},
+				"tax": {
+					"displayName": "Tax",
+					"description": "This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%."
+				},
+				"tax2": {
+					"displayName": "Tax2",
+					"description": "This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%."
+				},
+				"billable": {
+					"displayName": "Billable",
+					"description": "Whether this expense is billable or not. Defaults to true."
+				},
+				"total_cost": {
+					"displayName": "Total Cost",
+					"description": "The total amount of the expense"
+				},
+				"units": {
+					"displayName": "Units",
+					"description": "The quantity of units to use in calculating the total_cost of the expense"
+				},
+				"user_id": {
+					"displayName": "User ID",
+					"description": "The ID of the user to associate with the time entry. Defaults to the currently authenticated user’s ID."
+				},
+				"ends_on": {
+					"displayName": "Ends On",
+					"description": "Date the project will end"
+				},
+				"estimate_id": {
+					"displayName": "Estimate ID",
+					"description": "The ID of the estimate associated with this invoice"
+				},
+				"payment_term": {
+					"displayName": "Payment Term",
+					"description": "The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60."
+				},
+				"retainer_id": {
+					"displayName": "Retainer ID",
+					"description": "The ID of the retainer associated with this invoice"
+				},
+				"budget": {
+					"displayName": "Budget",
+					"description": "The budget in hours for the project when budgeting by time"
+				},
+				"budget_is_monthly": {
+					"displayName": "Budget Is Monthly",
+					"description": "Whether the budget resets every month. Defaults to false."
+				},
+				"cost_budget": {
+					"displayName": "Cost Budget",
+					"description": "The monetary budget for the project when budgeting by money"
+				},
+				"cost_budget_include_expenses": {
+					"displayName": "Cost Budget Include Expenses",
+					"description": "Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false."
+				},
+				"fee": {
+					"displayName": "Fee",
+					"description": "The amount you plan to invoice for the project. Only used by fixed-fee projects."
+				},
+				"hourly_rate": {
+					"displayName": "Hourly Rate",
+					"description": "Rate for projects billed by Project Hourly Rate"
+				},
+				"is_fixed_fee": {
+					"displayName": "Is Fixed Fee",
+					"description": "Whether the project is a fixed-fee project or not"
+				},
+				"notify_when_over_budget": {
+					"displayName": "Notify When Over Budget",
+					"description": "Whether project managers should be notified when the project goes over budget. Defaults to false."
+				},
+				"show_budget_to_all": {
+					"displayName": "Show Budget To All",
+					"description": "Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false."
+				},
+				"starts_on": {
+					"displayName": "Starts On",
+					"description": "Date the project was started"
+				},
+				"billable_by_default": {
+					"displayName": "Billable By Default",
+					"description": "Whether default tasks should be marked billable when creating a new project. Defaults to true."
+				},
+				"default_hourly_rate": {
+					"displayName": "Default Hourly Rate",
+					"description": "The billable rate to use for this user when they are added to a project"
+				},
+				"is_default": {
+					"displayName": "Is Default",
+					"description": "Whether this task should be automatically added to future projects. Defaults to false."
+				},
+				"hours": {
+					"displayName": "Hours",
+					"description": "The current amount of time tracked"
+				},
+				"ended_time": {
+					"displayName": "Ended Time",
+					"description": "The time the entry ended",
+					"placeholder": "3:00pm"
+				},
+				"started_time": {
+					"displayName": "Started Time",
+					"description": "The time the entry started. Defaults to the current time. Example: “8:00am”.",
+					"placeholder": "8:00am"
+				},
+				"can_create_invoices": {
+					"displayName": "Can Create Invoices",
+					"description": "Whether the user can create invoices. Only applicable to Project Managers."
+				},
+				"can_create_projects": {
+					"displayName": "Can Create Projects",
+					"description": "Whether the user can create projects. Only applicable to Project Managers."
+				},
+				"can_see_rates": {
+					"displayName": "Can See Rates",
+					"description": "Whether the user can see billable rates on projects. Only applicable to Project Managers."
+				},
+				"cost_rate": {
+					"displayName": "Cost Rate",
+					"description": "The cost rate to use for this user when calculating a project’s costs vs billable amount"
+				},
+				"has_access_to_all_future_projects": {
+					"displayName": "Has Access To All Future Projects",
+					"description": "Whether the user should be automatically added to future projects"
+				},
+				"is_admin": {
+					"displayName": "Is Admin",
+					"description": "Whether the user has Admin permissions"
+				},
+				"is_contractor": {
+					"displayName": "Is Contractor",
+					"description": "Whether the user is a contractor or an employee"
+				},
+				"is_project_manager": {
+					"displayName": "Is Project Manager",
+					"description": "Whether the user has Project Manager permissions"
+				},
+				"roles": {
+					"displayName": "Roles",
+					"description": "The role names assigned to this person"
+				},
+				"timezone": {
+					"displayName": "Timezone",
+					"description": "The user’s timezone. Defaults to the company’s timezone. See a list of <a href=\"/api-v2/introduction/overview/supported-timezones/\">supported time zones</a>."
+				},
+				"weekly_capacity": {
+					"displayName": "Weekly Capacity",
+					"description": "The number of hours per week this person is available to work in seconds. Defaults to <code class=\"language-plaintext highlighter-rouge\">126000</code> seconds (35 hours)."
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"description": "A textual representation of the client’s physical address. May include new line characters."
+				},
+				"currency": {
+					"displayName": "Currency",
+					"description": "The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies"
+				},
+				"is_active": {
+					"displayName": "Is Active",
+					"description": "Whether the user is active or archived"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Name of the task"
+				},
+				"client_id": {
+					"displayName": "Client ID",
+					"description": "The ID of the client to associate this project with"
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "The user email",
+					"placeholder": "name@email.com"
+				},
+				"fax": {
+					"displayName": "Fax",
+					"description": "The contact’s fax number"
+				},
+				"first_name": {
+					"displayName": "First Name",
+					"description": "The user first name"
+				},
+				"last_name": {
+					"displayName": "Last Name",
+					"description": "The user last name"
+				},
+				"phone_mobile": {
+					"displayName": "Phone Mobile",
+					"description": "The contact’s mobile phone number"
+				},
+				"phone_office": {
+					"displayName": "Phone Office",
+					"description": "The contact’s office phone number"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "The title of the contact"
+				},
+				"over_budget_notification_percentage": {
+					"displayName": "Over Budget Notification Percentage",
+					"description": "Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%."
+				},
+				"issue_date": {
+					"displayName": "Issue Date",
+					"description": "Date the invoice was issued. Defaults to today’s date."
+				},
+				"number": {
+					"displayName": "Number",
+					"description": "If no value is set, the number will be automatically generated"
+				},
+				"notes": {
+					"displayName": "Notes",
+					"description": "These are notes about the time entry"
+				},
+				"purchase_order": {
+					"displayName": "Purchase Order",
+					"description": "The purchase order number"
+				},
+				"subject": {
+					"displayName": "Subject",
+					"description": "The invoice subject"
+				},
+				"tax": {
+					"displayName": "Tax",
+					"description": "This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%."
+				},
+				"tax2": {
+					"displayName": "Tax2",
+					"description": "This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%."
+				},
+				"billable": {
+					"displayName": "Billable",
+					"description": "Whether this expense is billable or not. Defaults to true."
+				},
+				"expense_category_id": {
+					"displayName": "Expense Category ID",
+					"description": "The ID of the expense category this expense is being tracked against"
+				},
+				"project_id": {
+					"displayName": "Project ID",
+					"description": "The ID of the project associated with this expense"
+				},
+				"spent_date": {
+					"displayName": "Spent Date",
+					"description": "Date the expense occurred"
+				},
+				"total_cost": {
+					"displayName": "Total Cost",
+					"description": "The total amount of the expense"
+				},
+				"units": {
+					"displayName": "Units",
+					"description": "The quantity of units to use in calculating the total_cost of the expense"
+				},
+				"user_id": {
+					"displayName": "User ID",
+					"description": "The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user."
+				},
+				"ends_on": {
+					"displayName": "Ends On",
+					"description": "Date the project will end"
+				},
+				"estimate_id": {
+					"displayName": "Estimate ID",
+					"description": "The ID of the estimate associated with this invoice"
+				},
+				"payment_term": {
+					"displayName": "Payment Term",
+					"description": "The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60."
+				},
+				"retainer_id": {
+					"displayName": "Retainer ID",
+					"description": "The ID of the retainer associated with this invoice"
+				},
+				"bill_by": {
+					"displayName": "Bill By",
+					"description": "The method by which the project is invoiced",
+					"options": {
+						"none": {
+							"displayName": "None"
+						},
+						"People": {
+							"displayName": "People"
+						},
+						"Project": {
+							"displayName": "Project"
+						},
+						"Tasks": {
+							"displayName": "Tasks"
+						}
+					}
+				},
+				"budget": {
+					"displayName": "Budget",
+					"description": "The budget in hours for the project when budgeting by time"
+				},
+				"budget_by": {
+					"displayName": "Budget By",
+					"description": "The email of the user or \"none\""
+				},
+				"budget_is_monthly": {
+					"displayName": "Budget Is Monthly",
+					"description": "Whether to have the budget reset every month. Defaults to false."
+				},
+				"cost_budget": {
+					"displayName": "Cost Budget",
+					"description": "The monetary budget for the project when budgeting by money"
+				},
+				"cost_budget_include_expenses": {
+					"displayName": "Cost Budget Include Expenses",
+					"description": "Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false."
+				},
+				"fee": {
+					"displayName": "Fee",
+					"description": "The amount you plan to invoice for the project. Only used by fixed-fee projects."
+				},
+				"hourly_rate": {
+					"displayName": "Hourly Rate",
+					"description": "Rate for projects billed by Project Hourly Rate"
+				},
+				"is_billable": {
+					"displayName": "Is Billable",
+					"description": "Whether the project is billable or not"
+				},
+				"is_fixed_fee": {
+					"displayName": "Is Fixed Fee",
+					"description": "Whether the project is a fixed-fee project or not"
+				},
+				"notify_when_over_budget": {
+					"displayName": "Notify When Over Budget",
+					"description": "Whether project managers should be notified when the project goes over budget. Defaults to false."
+				},
+				"show_budget_to_all": {
+					"displayName": "Show Budget To All",
+					"description": "Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false."
+				},
+				"starts_on": {
+					"displayName": "Starts On",
+					"description": "Date the project was started"
+				},
+				"billable_by_default": {
+					"displayName": "Billable By Default",
+					"description": "Whether default tasks should be marked billable when creating a new project. Defaults to true."
+				},
+				"default_hourly_rate": {
+					"displayName": "Default Hourly Rate",
+					"description": "The billable rate to use for this user when they are added to a project"
+				},
+				"is_default": {
+					"displayName": "Is Default",
+					"description": "Whether this task should be automatically added to future projects. Defaults to false."
+				},
+				"ended_time": {
+					"displayName": "Ended Time",
+					"description": "The time the entry ended",
+					"placeholder": "3:00pm"
+				},
+				"hours": {
+					"displayName": "Hours",
+					"description": "The current amount of time tracked"
+				},
+				"started_time": {
+					"displayName": "Started Time",
+					"description": "The time the entry started. Defaults to the current time. Example: “8:00am”.",
+					"placeholder": "3:00pm"
+				},
+				"can_create_invoices": {
+					"displayName": "Can Create Invoices",
+					"description": "Whether the user can create invoices. Only applicable to Project Managers."
+				},
+				"can_create_projects": {
+					"displayName": "Can Create Projects",
+					"description": "Whether the user can create projects. Only applicable to Project Managers."
+				},
+				"can_see_rates": {
+					"displayName": "Can See Rates",
+					"description": "Whether the user can see billable rates on projects. Only applicable to Project Managers."
+				},
+				"cost_rate": {
+					"displayName": "Cost Rate",
+					"description": "The cost rate to use for this user when calculating a project’s costs vs billable amount"
+				},
+				"has_access_to_all_future_projects": {
+					"displayName": "Has Access To All Future Projects",
+					"description": "Whether the user should be automatically added to future projects"
+				},
+				"is_admin": {
+					"displayName": "Is Admin",
+					"description": "Whether the user has Admin permissions"
+				},
+				"is_contractor": {
+					"displayName": "Is Contractor",
+					"description": "Whether the user is a contractor or an employee"
+				},
+				"is_project_manager": {
+					"displayName": "Is Project Manager",
+					"description": "Whether the user has Project Manager permissions"
+				},
+				"roles": {
+					"displayName": "Roles",
+					"description": "The role names assigned to this person"
+				},
+				"timezone": {
+					"displayName": "Timezone",
+					"description": "The user’s timezone. Defaults to the company’s timezone. See a list of <a href=\"/api-v2/introduction/overview/supported-timezones/\">supported time zones</a>."
+				},
+				"weekly_capacity": {
+					"displayName": "Weekly Capacity",
+					"description": "The number of hours per week this person is available to work in seconds. Defaults to <code class=\"language-plaintext highlighter-rouge\">126000</code> seconds (35 hours)."
+				}
+			}
+		},
+		"firstName": {
+			"displayName": "First Name",
+			"description": "The first name of the user"
+		},
+		"clientId": {
+			"displayName": "Client ID",
+			"description": "The ID of the client to associate this project with"
+		},
+		"projectId": {
+			"displayName": "Project ID",
+			"description": "The ID of the project to associate with the time entry"
+		},
+		"expenseCategoryId": {
+			"displayName": "Expense Category ID",
+			"description": "The ID of the expense category this expense is being tracked against"
+		},
+		"spentDate": {
+			"displayName": "Spent Date",
+			"description": "The ISO 8601 formatted date the time entry was spent"
+		},
+		"isBillable": {
+			"displayName": "Is Billable",
+			"description": "Whether the project is billable or not"
+		},
+		"billBy": {
+			"displayName": "Bill By",
+			"description": "The method by which the project is invoiced",
+			"options": {
+				"none": {
+					"displayName": "None"
+				},
+				"People": {
+					"displayName": "People"
+				},
+				"Project": {
+					"displayName": "Project"
+				},
+				"Tasks": {
+					"displayName": "Tasks"
+				}
+			}
+		},
+		"budgetBy": {
+			"displayName": "Budget By",
+			"description": "The email of the user or \"none\""
+		},
+		"taskId": {
+			"displayName": "Task ID",
+			"description": "The ID of the task to associate with the time entry"
+		},
+		"lastName": {
+			"displayName": "Last Name",
+			"description": "The last name of the user"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email of the user",
+			"placeholder": "name@email.com"
+		}
+	}
+}

@@ -1,0 +1,65 @@
+{
+	"header": {
+		"displayName": "AMQP Trigger",
+		"description": "Listens to AMQP 1.0 Messages"
+	},
+	"nodeView": {
+		"sink": {
+			"displayName": "Queue / Topic",
+			"description": "Name of the queue of topic to listen to",
+			"placeholder": "topic://sourcename.something"
+		},
+		"clientname": {
+			"displayName": "Clientname",
+			"description": "Leave empty for non-durable topic subscriptions or queues",
+			"placeholder": "e.g. n8n"
+		},
+		"subscription": {
+			"displayName": "Subscription",
+			"description": "Leave empty for non-durable topic subscriptions or queues",
+			"placeholder": "e.g. order-worker"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"containerId": {
+					"displayName": "Container ID",
+					"description": "Will be used to pass to the RHEA Backend as container_id"
+				},
+				"jsonConvertByteArrayToString": {
+					"displayName": "Convert Body To String",
+					"description": "Whether to convert JSON Body content ([\"body\"][\"content\"]) from Byte Array to string. Needed for Azure Service Bus."
+				},
+				"jsonParseBody": {
+					"displayName": "JSON Parse Body",
+					"description": "Whether to parse the body to an object"
+				},
+				"pullMessagesNumber": {
+					"displayName": "Messages per Cicle",
+					"description": "Number of messages to pull from the bus for every cicle"
+				},
+				"onlyBody": {
+					"displayName": "Only Body",
+					"description": "Whether to return only the body property"
+				},
+				"parallelProcessing": {
+					"displayName": "Parallel Processing",
+					"description": "Whether to process messages in parallel"
+				},
+				"reconnect": {
+					"displayName": "Reconnect",
+					"description": "Whether to automatically reconnect if disconnected"
+				},
+				"reconnectLimit": {
+					"displayName": "Reconnect Limit",
+					"description": "Maximum number of reconnect attempts"
+				},
+				"sleepTime": {
+					"displayName": "Sleep Time",
+					"description": "Milliseconds to sleep after every cicle"
+				}
+			}
+		}
+	}
+}

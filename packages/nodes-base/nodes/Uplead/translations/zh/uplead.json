@@ -1,0 +1,50 @@
+{
+	"header": {
+		"displayName": "Uplead",
+		"description": "使用Uplead API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"company": {
+					"displayName": "公司",
+					"description": "公司API允许您通过域名或公司名称查询公司数据"
+				},
+				"person": {
+					"displayName": "人员",
+					"description": "人员API允许您根据电子邮件地址查找人员，或根据域名+名字+姓氏查找人员"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"enrich": {
+					"displayName": "丰富"
+				}
+			}
+		},
+		"company": {
+			"displayName": "公司",
+			"description": "公司名称（例如：amazon）"
+		},
+		"domain": {
+			"displayName": "域名",
+			"description": "域名（例如 – salesforce.com）"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "邮箱地址（例如：mbenioff@salesforce.com）",
+			"placeholder": "name@email.com"
+		},
+		"firstname": {
+			"displayName": "名字",
+			"description": "人员名字（例如：Marc）"
+		},
+		"lastname": {
+			"displayName": "姓氏",
+			"description": "人员的姓氏（例如 – Benioff）"
+		}
+	}
+}

@@ -1,0 +1,47 @@
+{
+	"header": {
+		"displayName": "Twake",
+		"description": "使用Twake API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"message": {
+					"displayName": "消息",
+					"description": "将数据发送到消息应用"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "发送消息"
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "频道名称或ID",
+			"description": "频道ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"content": {
+			"displayName": "内容",
+			"description": "消息内容"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"senderIcon": {
+					"displayName": "发送者图标",
+					"description": "图片/图标URL"
+				},
+				"senderName": {
+					"displayName": "发件人名称"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,48 @@
+{
+	"header": {
+		"displayName": "Brandfetch",
+		"description": "使用Brandfetch API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"color": {
+					"displayName": "颜色",
+					"description": "返回公司的配色方案"
+				},
+				"company": {
+					"displayName": "公司",
+					"description": "返回公司数据"
+				},
+				"font": {
+					"displayName": "字体",
+					"description": "返回公司的字体"
+				},
+				"industry": {
+					"displayName": "行业",
+					"description": "返回公司的行业"
+				},
+				"logo": {
+					"displayName": "Logo",
+					"description": "返回公司Logo和图标"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "域名",
+			"description": "公司的域名"
+		},
+		"download": {
+			"displayName": "下载",
+			"description": "要将读取文件的数据写入的二进制属性名称"
+		},
+		"imageTypes": {
+			"displayName": "图像类型"
+		},
+		"imageFormats": {
+			"displayName": "图像格式",
+			"description": "Logo应返回的图像格式"
+		}
+	}
+}

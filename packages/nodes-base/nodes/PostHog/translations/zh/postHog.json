@@ -1,0 +1,143 @@
+{
+	"header": {
+		"displayName": "PostHog",
+		"description": "使用PostHog API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"alias": {
+					"displayName": "别名"
+				},
+				"event": {
+					"displayName": "事件"
+				},
+				"identity": {
+					"displayName": "身份"
+				},
+				"track": {
+					"displayName": "追踪"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建事件"
+				},
+				"page": {
+					"displayName": "页面",
+					"description": "跟踪页面"
+				},
+				"screen": {
+					"displayName": "屏幕",
+					"description": "追踪屏幕"
+				}
+			}
+		},
+		"alias": {
+			"displayName": "别名",
+			"description": "别名名称"
+		},
+		"distinctId": {
+			"displayName": "唯一标识符",
+			"description": "用户的唯一标识符"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"contextUi": {
+					"displayName": "上下文",
+					"placeholder": "添加属性",
+					"multipleValueButtonText": "添加属性",
+					"options": {
+						"contextValues": {
+							"displayName": "上下文",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"contextValues": {
+							"displayName": "上下文",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"contextUi": {
+							"displayName": "上下文",
+							"placeholder": "添加属性"
+						}
+					}
+				},
+				"timestamp": {
+					"displayName": "时间戳",
+					"description": "如果未设置，将自动设置为当前时间"
+				},
+				"propertiesUi": {
+					"displayName": "属性",
+					"placeholder": "添加属性",
+					"multipleValueButtonText": "添加属性",
+					"options": {
+						"propertyValues": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						}
+					},
+					"values": {
+						"propertyValues": {
+							"displayName": "属性",
+							"options": {
+								"key": {
+									"displayName": "键"
+								},
+								"value": {
+									"displayName": "值"
+								}
+							}
+						},
+						"propertiesUi": {
+							"displayName": "属性",
+							"placeholder": "添加属性"
+						}
+					}
+				},
+				"messageId": {
+					"displayName": "消息ID"
+				},
+				"category": {
+					"displayName": "分类"
+				}
+			}
+		},
+		"eventName": {
+			"displayName": "事件",
+			"description": "事件名称"
+		},
+		"name": {
+			"displayName": "名称"
+		}
+	}
+}

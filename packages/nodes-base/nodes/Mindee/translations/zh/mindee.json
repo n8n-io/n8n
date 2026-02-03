@@ -1,0 +1,49 @@
+{
+	"header": {
+		"displayName": "Mindee",
+		"description": "使用Mindee API"
+	},
+	"nodeView": {
+		"apiVersion": {
+			"displayName": "API 版本",
+			"description": "使用哪个Mindee API版本",
+			"options": {
+				"1": {
+					"displayName": "1"
+				},
+				"3": {
+					"displayName": "3"
+				},
+				"4": {
+					"displayName": "4"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"invoice": {
+					"displayName": "发票"
+				},
+				"receipt": {
+					"displayName": "收据"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"predict": {
+					"displayName": "预测"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"rawData": {
+			"displayName": "原始数据",
+			"description": "是否按照从API接收到的原始格式返回数据"
+		}
+	}
+}

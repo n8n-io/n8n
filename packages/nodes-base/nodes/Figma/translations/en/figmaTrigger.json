@@ -1,0 +1,37 @@
+{
+	"header": {
+		"displayName": "Figma Trigger (Beta)",
+		"description": "Starts the workflow when Figma events occur"
+	},
+	"nodeView": {
+		"teamId": {
+			"displayName": "Team ID",
+			"description": "Trigger will monitor this Figma Team for changes. Team ID can be found in the URL of a Figma Team page when viewed in a web browser: figma.com/files/team/{TEAM-ID}/."
+		},
+		"triggerOn": {
+			"displayName": "Trigger On",
+			"options": {
+				"fileComment": {
+					"displayName": "File Commented",
+					"description": "Triggers when someone comments on a file"
+				},
+				"fileDelete": {
+					"displayName": "File Deleted",
+					"description": "Triggers whenever a file has been deleted. Does not trigger on all files within a folder, if the folder is deleted."
+				},
+				"fileUpdate": {
+					"displayName": "File Updated",
+					"description": "Triggers whenever a file saves or is deleted. This occurs whenever a file is closed or within 30 seconds after changes have been made."
+				},
+				"fileVersionUpdate": {
+					"displayName": "File Version Updated",
+					"description": "Triggers whenever a named version is created in the version history of a file"
+				},
+				"libraryPublish": {
+					"displayName": "Library Publish",
+					"description": "Triggers whenever a library file is published"
+				}
+			}
+		}
+	}
+}

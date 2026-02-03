@@ -1,0 +1,245 @@
+{
+	"header": {
+		"displayName": "Microsoft Teams",
+		"description": "使用 Microsoft Teams API"
+	},
+	"nodeView": {
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"channel": {
+					"displayName": "频道"
+				},
+				"channelMessage": {
+					"displayName": "频道消息（测试版）"
+				},
+				"chatMessage": {
+					"displayName": "聊天消息"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建任务"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除任务"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取任务"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个任务"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新任务"
+				}
+			}
+		},
+		"teamId": {
+			"displayName": "团队名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "在Microsoft Teams中向用户显示的频道名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"description": {
+					"displayName": "描述",
+					"description": "频道的描述"
+				},
+				"type": {
+					"displayName": "类型",
+					"description": "通道类型",
+					"options": {
+						"private": {
+							"displayName": "私有"
+						},
+						"standard": {
+							"displayName": "标准"
+						}
+					}
+				},
+				"includeLinkToWorkflow": {
+					"displayName": "包含工作流链接",
+					"description": "是否在消息末尾附加此工作流的链接。如果您有多个工作流发送消息，这将很有帮助。"
+				},
+				"makeReply": {
+					"displayName": "回复消息",
+					"description": "要回复的消息的可选ID"
+				}
+			},
+			"description": "其他选项设置"
+		},
+		"channelId": {
+			"displayName": "频道名称或ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "在 Microsoft Teams 中向用户显示的频道名称"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "频道的描述"
+				},
+				"assignedTo": {
+					"displayName": "分配给名称或ID",
+					"description": "任务应分配给谁。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"bucketId": {
+					"displayName": "存储桶名称或ID",
+					"description": "任务所属的存储桶。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"dueDateTime": {
+					"displayName": "到期日期时间",
+					"description": "任务截止的日期和时间。Timestamp类型使用ISO 8601格式表示日期和时间信息，并始终采用UTC时间。"
+				},
+				"groupId": {
+					"displayName": "组名或ID",
+					"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+				},
+				"labels": {
+					"displayName": "标签名称或ID",
+					"description": "要分配给此任务的标签。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"percentComplete": {
+					"displayName": "完成百分比",
+					"description": "任务完成百分比。设置为100时，任务被视为已完成。"
+				},
+				"planId": {
+					"displayName": "计划名称或ID",
+					"description": "任务所属的计划。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "任务标题"
+				}
+			}
+		},
+		"messageType": {
+			"displayName": "消息类型",
+			"description": "内容的类型",
+			"options": {
+				"text": {
+					"displayName": "文本"
+				},
+				"html": {
+					"displayName": "HTML"
+				}
+			}
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "项目内容"
+		},
+		"chatId": {
+			"displayName": "聊天名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"messageId": {
+			"displayName": "消息ID"
+		},
+		"groupSource": {
+			"displayName": "分组来源",
+			"options": {
+				"all": {
+					"displayName": "所有群组",
+					"description": "来自所有群组"
+				},
+				"mine": {
+					"displayName": "我的群组",
+					"description": "仅加载账户所属的群组"
+				}
+			}
+		},
+		"groupId": {
+			"displayName": "群组名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"planId": {
+			"displayName": "计划名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"bucketId": {
+			"displayName": "存储桶名称或ID",
+			"description": "任务所属的存储桶。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "任务标题"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"assignedTo": {
+					"displayName": "分配给名称或ID",
+					"description": "任务应分配给谁。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"dueDateTime": {
+					"displayName": "到期日期时间",
+					"description": "任务截止的日期和时间。Timestamp类型使用ISO 8601格式表示日期和时间信息，并始终采用UTC时间。"
+				},
+				"labels": {
+					"displayName": "标签名称或ID",
+					"description": "要分配给此任务的标签。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"percentComplete": {
+					"displayName": "完成百分比",
+					"description": "任务完成百分比。设置为100时，任务被视为已完成。"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "任务ID",
+			"description": "任务的ID"
+		},
+		"tasksFor": {
+			"displayName": "任务列表",
+			"options": {
+				"member": {
+					"displayName": "群组成员",
+					"description": "分配给群组成员的任务"
+				},
+				"plan": {
+					"displayName": "方案",
+					"description": "团队计划中的任务"
+				}
+			}
+		},
+		"memberId": {
+			"displayName": "成员名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		}
+	}
+}

@@ -1,0 +1,318 @@
+{
+	"header": {
+		"displayName": "Bubble",
+		"description": "使用Bubble数据API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"object": {
+					"displayName": "对象"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"typeName": {
+			"displayName": "类型名称",
+			"description": "要创建对象的数据类型名称"
+		},
+		"properties": {
+			"displayName": "属性",
+			"placeholder": "添加属性",
+			"multipleValueButtonText": "添加属性",
+			"options": {
+				"property": {
+					"displayName": "属性",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要为创建的对象设置的字段"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要创建的对象的设置值"
+						}
+					}
+				}
+			},
+			"values": {
+				"property": {
+					"displayName": "属性",
+					"options": {
+						"key": {
+							"displayName": "键",
+							"description": "要为创建的对象设置的字段"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "要创建的对象的设置值"
+						}
+					}
+				},
+				"properties": {
+					"displayName": "属性",
+					"placeholder": "添加属性"
+				}
+			}
+		},
+		"objectId": {
+			"displayName": "对象ID",
+			"description": "要更新的对象ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"filters": {
+					"displayName": "筛选器",
+					"placeholder": "添加筛选器",
+					"multipleValueButtonText": "添加筛选器",
+					"options": {
+						"filter": {
+							"displayName": "筛选器",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要为创建的对象设置的字段"
+								},
+								"constraint_type": {
+									"displayName": "约束",
+									"options": {
+										"equals": {
+											"displayName": "等于",
+											"description": "用于测试严格相等性，适用于所有字段类型"
+										},
+										"not equal": {
+											"displayName": "不等于",
+											"description": "用于测试严格相等性，适用于所有字段类型"
+										},
+										"is_empty": {
+											"displayName": "为空",
+											"description": "用于测试某物的给定字段是否为空，适用于所有字段类型"
+										},
+										"is_not_empty": {
+											"displayName": "不为空",
+											"description": "用于测试某事物的指定字段是否非空，适用于所有字段类型"
+										},
+										"text contains": {
+											"displayName": "文本包含",
+											"description": "用于测试文本字段是否包含特定字符串，仅适用于文本字段"
+										},
+										"not text contains": {
+											"displayName": "不包含文本",
+											"description": "用于测试文本字段是否不包含某个字符串，仅适用于文本字段"
+										},
+										"greater than": {
+											"displayName": "大于",
+											"description": "用于比较事物的字段值与字符串或数字的大小关系，适用于文本、数字和日期字段"
+										},
+										"less than": {
+											"displayName": "小于",
+											"description": "用于比较事物的字段值与字符串或数字的大小关系，适用于文本、数字和日期字段"
+										},
+										"in": {
+											"displayName": "在",
+											"description": "用于测试某物的字段是否在列表中，适用于所有字段类型"
+										},
+										"not in": {
+											"displayName": "不在",
+											"description": "用于测试某物的字段是否不在列表中，适用于所有字段类型"
+										},
+										"contains": {
+											"displayName": "包含",
+											"description": "用于测试列表字段是否包含条目，仅适用于列表字段"
+										},
+										"not contains": {
+											"displayName": "不包含",
+											"description": "用于测试列表字段是否不包含某个条目，仅适用于列表字段"
+										},
+										"empty": {
+											"displayName": "空",
+											"description": "用于测试列表字段是否为空，仅适用于列表字段"
+										},
+										"not empty": {
+											"displayName": "非空",
+											"description": "用于测试列表字段是否非空，仅适用于列表字段"
+										},
+										"geographic_search": {
+											"displayName": "地理搜索",
+											"description": "用于测试当前事物是否在中心地址的半径范围内。使用时，约束条件发送的值必须包含地址和范围。参见<a href=\"https://manual.bubble.io/core-resources/api/data-api\">链接</a>。"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为要创建的对象设置的值"
+								}
+							}
+						}
+					},
+					"values": {
+						"filter": {
+							"displayName": "筛选器",
+							"options": {
+								"key": {
+									"displayName": "键",
+									"description": "要为创建的对象设置的字段"
+								},
+								"constraint_type": {
+									"displayName": "约束",
+									"options": {
+										"equals": {
+											"displayName": "等于",
+											"description": "用于测试严格相等性，适用于所有字段类型"
+										},
+										"not equal": {
+											"displayName": "不等于",
+											"description": "用于测试严格相等性，适用于所有字段类型"
+										},
+										"is_empty": {
+											"displayName": "为空",
+											"description": "用于测试某物的给定字段是否为空，适用于所有字段类型"
+										},
+										"is_not_empty": {
+											"displayName": "不为空",
+											"description": "用于测试某事物的指定字段是否非空，适用于所有字段类型"
+										},
+										"text contains": {
+											"displayName": "文本包含",
+											"description": "用于测试文本字段是否包含特定字符串，仅适用于文本字段"
+										},
+										"not text contains": {
+											"displayName": "不包含文本",
+											"description": "用于测试文本字段是否不包含某个字符串，仅适用于文本字段"
+										},
+										"greater than": {
+											"displayName": "大于",
+											"description": "用于比较事物的字段值与字符串或数字的大小关系，适用于文本、数字和日期字段"
+										},
+										"less than": {
+											"displayName": "小于",
+											"description": "用于比较事物的字段值与字符串或数字的大小关系，适用于文本、数字和日期字段"
+										},
+										"in": {
+											"displayName": "在",
+											"description": "用于测试某物的字段是否在列表中，适用于所有字段类型"
+										},
+										"not in": {
+											"displayName": "不在",
+											"description": "用于测试某物的字段是否不在列表中，适用于所有字段类型"
+										},
+										"contains": {
+											"displayName": "包含",
+											"description": "用于测试列表字段是否包含条目，仅适用于列表字段"
+										},
+										"not contains": {
+											"displayName": "不包含",
+											"description": "用于测试列表字段是否不包含某个条目，仅适用于列表字段"
+										},
+										"empty": {
+											"displayName": "空",
+											"description": "用于测试列表字段是否为空，仅适用于列表字段"
+										},
+										"not empty": {
+											"displayName": "非空",
+											"description": "用于测试列表字段是否非空，仅适用于列表字段"
+										},
+										"geographic_search": {
+											"displayName": "地理搜索",
+											"description": "用于测试当前事物是否在中心地址的半径范围内。使用时，约束条件发送的值必须包含地址和范围。参见<a href=\"https://manual.bubble.io/core-resources/api/data-api\">链接</a>。"
+										}
+									}
+								},
+								"value": {
+									"displayName": "值",
+									"description": "为要创建的对象设置的值"
+								}
+							}
+						},
+						"filters": {
+							"displayName": "筛选器",
+							"placeholder": "添加筛选器"
+						}
+					}
+				},
+				"filtersJson": {
+					"displayName": "过滤器 (JSON)",
+					"description": "使用搜索约束条件来细化Data API返回的列表，就像在Bubble中定义搜索一样。请参阅<a href=\"https://manual.bubble.io/core-resources/api/data-api#search-constraints\">链接</a>。",
+					"placeholder": "[ { \"key\": \"name\", \"constraint_type\": \"text contains\", \"value\": \"cafe\" } , { \"key\": \"address\", \"constraint_type\": \"geographic_search\", \"value\": { \"range\":10, \"origin_address\":\"New York\" } } ]"
+				},
+				"sort": {
+					"displayName": "排序",
+					"placeholder": "添加排序",
+					"options": {
+						"sortValue": {
+							"displayName": "排序",
+							"options": {
+								"sort_field": {
+									"displayName": "排序字段",
+									"description": "Specify the field to use for sorting. Either use a fielddefined for the current typeor use <code>_random_sorting</code> to get the entries in a random order."
+								},
+								"descending": {
+									"displayName": "降序"
+								},
+								"geo_reference": {
+									"displayName": "地理参考",
+									"description": "当字段类型为地理地址时，您需要添加另一个参数 geo_reference 并提供字符串形式的地址"
+								}
+							}
+						}
+					},
+					"values": {
+						"sortValue": {
+							"displayName": "排序",
+							"options": {
+								"sort_field": {
+									"displayName": "排序字段",
+									"description": "Specify the field to use for sorting. Either use a fielddefined for the current typeor use <code>_random_sorting</code> to get the entries in a random order."
+								},
+								"descending": {
+									"displayName": "降序"
+								},
+								"geo_reference": {
+									"displayName": "地理参考",
+									"description": "当字段类型为地理地址时，您需要添加另一个参数 geo_reference 并提供字符串形式的地址"
+								}
+							}
+						},
+						"sort": {
+							"displayName": "排序",
+							"placeholder": "添加排序"
+						}
+					}
+				}
+			}
+		}
+	}
+}

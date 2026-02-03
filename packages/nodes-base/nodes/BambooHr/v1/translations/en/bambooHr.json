@@ -1,0 +1,921 @@
+{
+	"header": {
+		"displayName": "BambooHR",
+		"description": "Consume BambooHR API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"companyReport": {
+					"displayName": "Company Report"
+				},
+				"employee": {
+					"displayName": "Employee"
+				},
+				"employeeDocument": {
+					"displayName": "Employee Document"
+				},
+				"file": {
+					"displayName": "File"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create an employee"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a company report"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many company files"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a company file"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a company file"
+				},
+				"download": {
+					"displayName": "Download",
+					"description": "Download a company file"
+				},
+				"upload": {
+					"displayName": "Upload",
+					"description": "Upload a company file"
+				}
+			}
+		},
+		"synced": {
+			"displayName": "Synced with Trax Payroll",
+			"description": "Whether the employee to create was added to a pay schedule synced with Trax Payroll"
+		},
+		"firstName": {
+			"displayName": "First Name"
+		},
+		"lastName": {
+			"displayName": "Last Name"
+		},
+		"address": {
+			"displayName": "Address",
+			"placeholder": "Address",
+			"options": {
+				"value": {
+					"displayName": "Address",
+					"options": {
+						"address1": {
+							"displayName": "Line 1"
+						},
+						"address2": {
+							"displayName": "Line 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State",
+							"description": "The full name of the state/province",
+							"placeholder": "Florida"
+						},
+						"country": {
+							"displayName": "Country",
+							"description": "The name of the country. Must exist in the BambooHr country list.",
+							"placeholder": "United States"
+						}
+					}
+				}
+			},
+			"values": {
+				"value": {
+					"displayName": "Address",
+					"options": {
+						"address1": {
+							"displayName": "Line 1"
+						},
+						"address2": {
+							"displayName": "Line 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State",
+							"description": "The full name of the state/province",
+							"placeholder": "Florida"
+						},
+						"country": {
+							"displayName": "Country",
+							"description": "The name of the country. Must exist in the BambooHr country list.",
+							"placeholder": "United States"
+						}
+					}
+				},
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Address"
+				}
+			}
+		},
+		"dateOfBirth": {
+			"displayName": "Date of Birth"
+		},
+		"department": {
+			"displayName": "Department Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"division": {
+			"displayName": "Division Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"employeeNumber": {
+			"displayName": "Employee Number"
+		},
+		"exempt": {
+			"displayName": "FLSA Overtime Status",
+			"options": {
+				"exempt": {
+					"displayName": "Exempt"
+				},
+				"non-exempt": {
+					"displayName": "Non-Exempt"
+				}
+			}
+		},
+		"gender": {
+			"displayName": "Gender",
+			"options": {
+				"female": {
+					"displayName": "Female"
+				},
+				"male": {
+					"displayName": "Male"
+				}
+			}
+		},
+		"hireDate": {
+			"displayName": "Hire Date"
+		},
+		"location": {
+			"displayName": "Location Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"maritalStatus": {
+			"displayName": "Marital Status",
+			"options": {
+				"single": {
+					"displayName": "Single"
+				},
+				"married": {
+					"displayName": "Married"
+				},
+				"domesticPartnership": {
+					"displayName": "Domestic Partnership"
+				}
+			}
+		},
+		"mobilePhone": {
+			"displayName": "Mobile Phone"
+		},
+		"paidPer": {
+			"displayName": "Pay Per",
+			"options": {
+				"hour": {
+					"displayName": "Hour"
+				},
+				"day": {
+					"displayName": "Day"
+				},
+				"week": {
+					"displayName": "Week"
+				},
+				"month": {
+					"displayName": "Month"
+				},
+				"quater": {
+					"displayName": "Quater"
+				},
+				"year": {
+					"displayName": "Year"
+				}
+			}
+		},
+		"payRate": {
+			"displayName": "Pay Rate",
+			"placeholder": "Add Pay Rate",
+			"options": {
+				"value": {
+					"displayName": "Pay Rate",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"placeholder": "20.00"
+						},
+						"currency": {
+							"displayName": "Currency",
+							"placeholder": "USD"
+						}
+					}
+				}
+			},
+			"values": {
+				"value": {
+					"displayName": "Pay Rate",
+					"options": {
+						"value": {
+							"displayName": "Value",
+							"placeholder": "20.00"
+						},
+						"currency": {
+							"displayName": "Currency",
+							"placeholder": "USD"
+						}
+					}
+				},
+				"payRate": {
+					"displayName": "Pay Rate",
+					"placeholder": "Add Pay Rate"
+				}
+			}
+		},
+		"payType": {
+			"displayName": "Pay Type",
+			"options": {
+				"commission": {
+					"displayName": "Commission"
+				},
+				"contract": {
+					"displayName": "Contract"
+				},
+				"daily": {
+					"displayName": "Daily"
+				},
+				"exceptionHourly": {
+					"displayName": "Exception Hourly"
+				},
+				"hourly": {
+					"displayName": "Hourly"
+				},
+				"monthly": {
+					"displayName": "Monthly"
+				},
+				"pieceRate": {
+					"displayName": "Piece Rate"
+				},
+				"proRata": {
+					"displayName": "Pro Rata"
+				},
+				"salary": {
+					"displayName": "Salary"
+				},
+				"weekly": {
+					"displayName": "Weekly"
+				}
+			}
+		},
+		"preferredName": {
+			"displayName": "Preferred Name"
+		},
+		"ssn": {
+			"displayName": "Social Security Number",
+			"description": "A standard United States Social Security number, with dashes",
+			"placeholder": "123-45-6789"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"address": {
+					"displayName": "Address",
+					"placeholder": "Address",
+					"options": {
+						"value": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Line 1"
+								},
+								"address2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State",
+									"description": "The full name of the state/province",
+									"placeholder": "Florida"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "The name of the country. Must exist in the BambooHr country list.",
+									"placeholder": "United States"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Line 1"
+								},
+								"address2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State",
+									"description": "The full name of the state/province",
+									"placeholder": "Florida"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "The name of the country. Must exist in the BambooHr country list.",
+									"placeholder": "United States"
+								}
+							}
+						},
+						"address": {
+							"displayName": "Address",
+							"placeholder": "Address"
+						}
+					}
+				},
+				"dateOfBirth": {
+					"displayName": "Date of Birth"
+				},
+				"department": {
+					"displayName": "Department Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"division": {
+					"displayName": "Division Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"employeeNumber": {
+					"displayName": "Employee Number"
+				},
+				"exempt": {
+					"displayName": "FLSA Overtime Status",
+					"options": {
+						"exempt": {
+							"displayName": "Exempt"
+						},
+						"non-exempt": {
+							"displayName": "Non-Exempt"
+						}
+					}
+				},
+				"gender": {
+					"displayName": "Gender",
+					"options": {
+						"female": {
+							"displayName": "Female"
+						},
+						"male": {
+							"displayName": "Male"
+						}
+					}
+				},
+				"hireDate": {
+					"displayName": "Hire Date"
+				},
+				"location": {
+					"displayName": "Location Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"maritalStatus": {
+					"displayName": "Marital Status",
+					"options": {
+						"single": {
+							"displayName": "Single"
+						},
+						"married": {
+							"displayName": "Married"
+						},
+						"domesticPartnership": {
+							"displayName": "Domestic Partnership"
+						}
+					}
+				},
+				"mobilePhone": {
+					"displayName": "Mobile Phone"
+				},
+				"paidPer": {
+					"displayName": "Pay Per",
+					"options": {
+						"hour": {
+							"displayName": "Hour"
+						},
+						"day": {
+							"displayName": "Day"
+						},
+						"week": {
+							"displayName": "Week"
+						},
+						"month": {
+							"displayName": "Month"
+						},
+						"quater": {
+							"displayName": "Quater"
+						},
+						"year": {
+							"displayName": "Year"
+						}
+					}
+				},
+				"payRate": {
+					"displayName": "Pay Rate",
+					"placeholder": "Add Pay Rate",
+					"options": {
+						"value": {
+							"displayName": "Pay Rate",
+							"options": {
+								"value": {
+									"displayName": "Value",
+									"placeholder": "20.00"
+								},
+								"currency": {
+									"displayName": "Currency",
+									"placeholder": "USD"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Pay Rate",
+							"options": {
+								"value": {
+									"displayName": "Value",
+									"placeholder": "20.00"
+								},
+								"currency": {
+									"displayName": "Currency",
+									"placeholder": "USD"
+								}
+							}
+						},
+						"payRate": {
+							"displayName": "Pay Rate",
+							"placeholder": "Add Pay Rate"
+						}
+					}
+				},
+				"payType": {
+					"displayName": "Pay Type",
+					"options": {
+						"commission": {
+							"displayName": "Commission"
+						},
+						"contract": {
+							"displayName": "Contract"
+						},
+						"daily": {
+							"displayName": "Daily"
+						},
+						"exceptionHourly": {
+							"displayName": "Exception Hourly"
+						},
+						"hourly": {
+							"displayName": "Hourly"
+						},
+						"monthly": {
+							"displayName": "Monthly"
+						},
+						"pieceRate": {
+							"displayName": "Piece Rate"
+						},
+						"proRata": {
+							"displayName": "Pro Rata"
+						},
+						"salary": {
+							"displayName": "Salary"
+						},
+						"weekly": {
+							"displayName": "Weekly"
+						}
+					}
+				},
+				"preferredName": {
+					"displayName": "Preferred Name"
+				},
+				"ssn": {
+					"displayName": "Social Security Number",
+					"description": "A standard United States Social Security number, with dashes",
+					"placeholder": "123-45-6789"
+				},
+				"workEmail": {
+					"displayName": "Work Email"
+				},
+				"workPhone": {
+					"displayName": "Work Phone"
+				}
+			}
+		},
+		"employeeId": {
+			"displayName": "Employee ID",
+			"description": "ID of the employee"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"fields": {
+					"displayName": "Field Names or IDs",
+					"description": "Set of fields to get from employee data. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"share": {
+					"displayName": "Share with Employee",
+					"description": "Whether this file is shared or not"
+				},
+				"fd": {
+					"displayName": "Duplicate Field Filtering",
+					"description": "Whether to apply the standard duplicate field filtering or not"
+				},
+				"onlyCurrent": {
+					"displayName": "Only Current",
+					"description": "Whether to hide future dated values from the history table fields or not"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"addasasress": {
+			"displayName": "Address",
+			"placeholder": "Address",
+			"options": {
+				"value": {
+					"displayName": "Address",
+					"options": {
+						"address1": {
+							"displayName": "Line 1"
+						},
+						"address2": {
+							"displayName": "Line 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State",
+							"description": "The full name of the state/province",
+							"placeholder": "Florida"
+						},
+						"country": {
+							"displayName": "Country",
+							"description": "The name of the country. Must exist in the BambooHr country list.",
+							"placeholder": "United States"
+						}
+					}
+				}
+			},
+			"values": {
+				"value": {
+					"displayName": "Address",
+					"options": {
+						"address1": {
+							"displayName": "Line 1"
+						},
+						"address2": {
+							"displayName": "Line 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State",
+							"description": "The full name of the state/province",
+							"placeholder": "Florida"
+						},
+						"country": {
+							"displayName": "Country",
+							"description": "The name of the country. Must exist in the BambooHr country list.",
+							"placeholder": "United States"
+						}
+					}
+				},
+				"addasasress": {
+					"displayName": "Address",
+					"placeholder": "Address"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"addasasress": {
+					"displayName": "Address",
+					"placeholder": "Address",
+					"options": {
+						"value": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Line 1"
+								},
+								"address2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State",
+									"description": "The full name of the state/province",
+									"placeholder": "Florida"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "The name of the country. Must exist in the BambooHr country list.",
+									"placeholder": "United States"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Line 1"
+								},
+								"address2": {
+									"displayName": "Line 2"
+								},
+								"city": {
+									"displayName": "City"
+								},
+								"state": {
+									"displayName": "State",
+									"description": "The full name of the state/province",
+									"placeholder": "Florida"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "The name of the country. Must exist in the BambooHr country list.",
+									"placeholder": "United States"
+								}
+							}
+						},
+						"addasasress": {
+							"displayName": "Address",
+							"placeholder": "Address"
+						}
+					}
+				},
+				"dateOfBirth": {
+					"displayName": "Date of Birth"
+				},
+				"department": {
+					"displayName": "Department Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"division": {
+					"displayName": "Division Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"employeeNumber": {
+					"displayName": "Employee Number"
+				},
+				"firstName": {
+					"displayName": "First Name"
+				},
+				"lastName": {
+					"displayName": "Last Name"
+				},
+				"exempt": {
+					"displayName": "FLSA Overtime Status",
+					"options": {
+						"exempt": {
+							"displayName": "Exempt"
+						},
+						"non-exempt": {
+							"displayName": "Non-Exempt"
+						}
+					}
+				},
+				"gender": {
+					"displayName": "Gender",
+					"options": {
+						"female": {
+							"displayName": "Female"
+						},
+						"male": {
+							"displayName": "Male"
+						}
+					}
+				},
+				"hireDate": {
+					"displayName": "Hire Date"
+				},
+				"location": {
+					"displayName": "Location Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"maritalStatus": {
+					"displayName": "Marital Status",
+					"options": {
+						"single": {
+							"displayName": "Single"
+						},
+						"married": {
+							"displayName": "Married"
+						},
+						"domesticPartnership": {
+							"displayName": "Domestic Partnership"
+						}
+					}
+				},
+				"mobilePhone": {
+					"displayName": "Mobile Phone"
+				},
+				"paidPer": {
+					"displayName": "Pay Per",
+					"options": {
+						"hour": {
+							"displayName": "Hour"
+						},
+						"day": {
+							"displayName": "Day"
+						},
+						"week": {
+							"displayName": "Week"
+						},
+						"month": {
+							"displayName": "Month"
+						},
+						"quater": {
+							"displayName": "Quater"
+						},
+						"year": {
+							"displayName": "Year"
+						}
+					}
+				},
+				"payRate": {
+					"displayName": "Pay Rate",
+					"placeholder": "Add Pay Rate",
+					"options": {
+						"value": {
+							"displayName": "Pay Rate",
+							"options": {
+								"value": {
+									"displayName": "Value",
+									"placeholder": "20.00"
+								},
+								"currency": {
+									"displayName": "Currency",
+									"placeholder": "USD"
+								}
+							}
+						}
+					},
+					"values": {
+						"value": {
+							"displayName": "Pay Rate",
+							"options": {
+								"value": {
+									"displayName": "Value",
+									"placeholder": "20.00"
+								},
+								"currency": {
+									"displayName": "Currency",
+									"placeholder": "USD"
+								}
+							}
+						},
+						"payRate": {
+							"displayName": "Pay Rate",
+							"placeholder": "Add Pay Rate"
+						}
+					}
+				},
+				"payType": {
+					"displayName": "Pay Type",
+					"options": {
+						"commission": {
+							"displayName": "Commission"
+						},
+						"contract": {
+							"displayName": "Contract"
+						},
+						"daily": {
+							"displayName": "Daily"
+						},
+						"exceptionHourly": {
+							"displayName": "Exception Hourly"
+						},
+						"hourly": {
+							"displayName": "Hourly"
+						},
+						"monthly": {
+							"displayName": "Monthly"
+						},
+						"pieceRate": {
+							"displayName": "Piece Rate"
+						},
+						"proRata": {
+							"displayName": "Pro Rata"
+						},
+						"salary": {
+							"displayName": "Salary"
+						},
+						"weekly": {
+							"displayName": "Weekly"
+						}
+					}
+				},
+				"preferredName": {
+					"displayName": "Preferred Name"
+				},
+				"ssn": {
+					"displayName": "Social Security Number",
+					"description": "A standard United States Social Security number, with dashes",
+					"placeholder": "123-45-6789"
+				},
+				"workEmail": {
+					"displayName": "Work Email"
+				},
+				"workPhone": {
+					"displayName": "Work Phone"
+				},
+				"categoryId": {
+					"displayName": "Category Name or ID",
+					"description": "Move the file to a different category. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "New name of the file"
+				},
+				"shareWithEmployee": {
+					"displayName": "Share with Employee",
+					"description": "Whether this file is shared or not"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "File ID",
+			"description": "ID of the file"
+		},
+		"output": {
+			"displayName": "Put Output In Field",
+			"description": "The name of the output field to put the binary file data in"
+		},
+		"simplifyOutput": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"categoryId": {
+			"displayName": "Category Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Data Field Name",
+			"description": "The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG."
+		},
+		"reportId": {
+			"displayName": "Report ID",
+			"description": "ID of the report. You can get the report number by hovering over the report name on the reports page and grabbing the ID."
+		},
+		"format": {
+			"displayName": "Format",
+			"description": "The output format for the report",
+			"options": {
+				"CSV": {
+					"displayName": "CSV"
+				},
+				"JSON": {
+					"displayName": "JSON"
+				},
+				"PDF": {
+					"displayName": "PDF"
+				},
+				"XLS": {
+					"displayName": "XLS"
+				},
+				"XML": {
+					"displayName": "XML"
+				}
+			}
+		}
+	}
+}

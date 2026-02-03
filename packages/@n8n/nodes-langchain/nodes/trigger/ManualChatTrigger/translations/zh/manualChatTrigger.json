@@ -1,0 +1,14 @@
+{
+	"header": {
+		"displayName": "手动聊天触发器",
+		"description": "在新手动聊天消息时运行工作流"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "此节点是手动聊天工作流执行的起点。要创建聊天工作流，请返回画布并点击‘聊天’"
+		},
+		"openChat": {
+			"displayName": "聊天并执行工作流"
+		}
+	}
+}

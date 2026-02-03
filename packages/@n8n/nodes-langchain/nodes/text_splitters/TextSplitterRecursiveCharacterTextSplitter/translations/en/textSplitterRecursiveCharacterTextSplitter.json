@@ -1,0 +1,74 @@
+{
+	"header": {
+		"displayName": "Recursive Character Text Splitter",
+		"description": "Split text into chunks by characters recursively, recommended for most use cases"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a document loader. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_document'>Insert one</a>"
+		},
+		"chunkSize": {
+			"displayName": "Chunk Size"
+		},
+		"chunkOverlap": {
+			"displayName": "Chunk Overlap"
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"splitCode": {
+					"displayName": "Split Code",
+					"options": {
+						"cpp": {
+							"displayName": "cpp"
+						},
+						"go": {
+							"displayName": "go"
+						},
+						"java": {
+							"displayName": "java"
+						},
+						"js": {
+							"displayName": "js"
+						},
+						"php": {
+							"displayName": "php"
+						},
+						"proto": {
+							"displayName": "proto"
+						},
+						"python": {
+							"displayName": "python"
+						},
+						"rst": {
+							"displayName": "rst"
+						},
+						"ruby": {
+							"displayName": "ruby"
+						},
+						"rust": {
+							"displayName": "rust"
+						},
+						"scala": {
+							"displayName": "scala"
+						},
+						"swift": {
+							"displayName": "swift"
+						},
+						"markdown": {
+							"displayName": "markdown"
+						},
+						"latex": {
+							"displayName": "latex"
+						},
+						"html": {
+							"displayName": "html"
+						}
+					}
+				}
+			}
+		}
+	}
+}

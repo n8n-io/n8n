@@ -1,0 +1,58 @@
+{
+	"header": {
+		"displayName": "Humantic AI",
+		"description": "使用 Humantic AI API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"profile": {
+					"displayName": "个人资料"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建配置文件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取个人资料"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新个人资料"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "此值与创建分析时提供的用户ID相同。目前仅支持使用LinkedIn URL创建的档案。"
+		},
+		"sendResume": {
+			"displayName": "发送简历",
+			"description": "是否发送用户简历的简历"
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"persona": {
+					"displayName": "角色",
+					"description": "获取特定角色类型的用户Humantic档案。多个角色值可使用逗号分隔。"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "用户输入的附加文本"
+		}
+	}
+}

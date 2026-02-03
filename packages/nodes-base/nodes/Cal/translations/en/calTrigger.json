@@ -1,0 +1,40 @@
+{
+	"header": {
+		"displayName": "Cal.com Trigger",
+		"description": "Handle Cal.com events via webhooks"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "Events"
+		},
+		"version": {
+			"displayName": "API Version",
+			"options": {
+				"1": {
+					"displayName": "Before v2.0"
+				},
+				"2": {
+					"displayName": "v2.0 Onwards"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Field",
+			"options": {
+				"appId": {
+					"displayName": "App ID",
+					"description": "The ID of the App to monitor"
+				},
+				"eventTypeId": {
+					"displayName": "EventType Name or ID",
+					"description": "The EventType to monitor. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"payloadTemplate": {
+					"displayName": "Payload Template",
+					"description": "Template to customize the webhook payload"
+				}
+			}
+		}
+	}
+}

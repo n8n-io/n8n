@@ -1,0 +1,14 @@
+{
+	"header": {
+		"displayName": "客户信使 (n8n 培训)",
+		"description": "用于n8n培训的虚拟节点"
+	},
+	"nodeView": {
+		"customerId": {
+			"displayName": "客户ID"
+		},
+		"message": {
+			"displayName": "消息"
+		}
+	}
+}

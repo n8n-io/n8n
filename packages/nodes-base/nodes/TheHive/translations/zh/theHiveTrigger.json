@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "TheHive 触发器",
+		"description": "当 TheHive 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "您必须在TheHive中设置webhook——说明<a href=\"https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.thehivetrigger/#configure-a-webhook-in-thehive\" target=\"_blank\">在此</a>"
+		},
+		"events": {
+			"displayName": "事件",
+			"description": "事件类型"
+		}
+	}
+}

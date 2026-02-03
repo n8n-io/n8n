@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "Microsoft Graph Security",
+		"description": "Consume the Microsoft Graph Security API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"secureScore": {
+					"displayName": "Secure Score"
+				},
+				"secureScoreControlProfile": {
+					"displayName": "Secure Score Control Profile"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"update": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"secureScoreId": {
+			"displayName": "Secure Score ID",
+			"description": "ID of the secure score to retrieve"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"filter": {
+					"displayName": "Filter Query Parameter",
+					"description": "<a href=\"https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter\">Query parameter</a> to filter results by",
+					"placeholder": "startsWith(id, 'AATP')"
+				},
+				"includeControlScores": {
+					"displayName": "Include Control Scores"
+				}
+			}
+		},
+		"secureScoreControlProfileId": {
+			"displayName": "Secure Score Control Profile ID",
+			"description": "ID of the secure score control profile to update"
+		},
+		"provider": {
+			"displayName": "Provider",
+			"description": "Name of the provider of the security product or service",
+			"placeholder": "SecureScore"
+		},
+		"vendor": {
+			"displayName": "Vendor",
+			"description": "Name of the vendor of the security product or service",
+			"placeholder": "Microsoft"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"state": {
+					"displayName": "State",
+					"description": "Analyst driven setting on the control",
+					"options": {
+						"Default": {
+							"displayName": "Default"
+						},
+						"Ignored": {
+							"displayName": "Ignored"
+						},
+						"ThirdParty": {
+							"displayName": "Third Party"
+						}
+					}
+				}
+			}
+		}
+	}
+}

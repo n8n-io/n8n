@@ -1,0 +1,174 @@
+{
+	"header": {
+		"displayName": "RocketChat",
+		"description": "使用RocketChat API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"chat": {
+					"displayName": "聊天"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"postMessage": {
+					"displayName": "发布消息",
+					"description": "向频道或直接消息发布消息"
+				}
+			}
+		},
+		"channel": {
+			"displayName": "频道",
+			"description": "带有前缀的频道名称"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "要发送的消息文本，由于附件存在而可选"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"alias": {
+					"displayName": "别名",
+					"description": "这将使消息名称显示为指定别名，但您的用户名仍会显示"
+				},
+				"avatar": {
+					"displayName": "头像",
+					"description": "如果提供，头像将使用提供的图片URL"
+				},
+				"emoji": {
+					"displayName": "表情符号",
+					"description": "这将使消息名称显示为指定别名，但您的用户名仍会显示"
+				}
+			}
+		},
+		"attachments": {
+			"displayName": "附件",
+			"placeholder": "添加附件项",
+			"multipleValueButtonText": "添加附件",
+			"options": {
+				"color": {
+					"displayName": "颜色",
+					"description": "您希望左侧订单显示的颜色，可以是任何CSS背景属性支持的值"
+				},
+				"text": {
+					"displayName": "文本",
+					"description": "此附件的显示文本，与消息文本不同"
+				},
+				"ts": {
+					"displayName": "时间戳",
+					"description": "在文本部分旁边显示时间"
+				},
+				"thumbUrl": {
+					"displayName": "缩略图URL",
+					"description": "显示在文本左侧的图像，尺寸较小时效果更佳"
+				},
+				"messageLink": {
+					"displayName": "消息链接",
+					"description": "仅在提供时间戳时适用，因为它使时间可点击并跳转到此链接"
+				},
+				"collapsed": {
+					"displayName": "已折叠",
+					"description": "当折叠状态为true时，隐藏图片、音频和视频部分"
+				},
+				"authorName": {
+					"displayName": "作者姓名",
+					"description": "作者名称"
+				},
+				"authorLink": {
+					"displayName": "作者链接",
+					"description": "提供此链接可使作者姓名可点击并指向该链接"
+				},
+				"authorIcon": {
+					"displayName": "作者图标",
+					"description": "在作者名称左侧显示一个小图标",
+					"placeholder": "https://site.com/img.png"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "此附件的显示标题，显示在作者下方"
+				},
+				"titleLink": {
+					"displayName": "标题链接",
+					"description": "提供此项可使标题可点击，指向此链接"
+				},
+				"titleLinkDownload": {
+					"displayName": "标题链接下载",
+					"description": "当此项为真时，会出现下载图标，点击可将链接保存到文件"
+				},
+				"imageUrl": {
+					"displayName": "图片URL",
+					"description": "要显示的图像，将“大”且易于查看"
+				},
+				"audioUrl": {
+					"displayName": "音频URL",
+					"description": "要播放的音频文件，仅支持HTML音频支持的格式",
+					"placeholder": "https://site.com/aud.mp3"
+				},
+				"videoUrl": {
+					"displayName": "视频URL",
+					"description": "要播放的视频文件，仅支持HTML视频支持的格式",
+					"placeholder": "https://site.com/vid.mp4"
+				},
+				"fields": {
+					"displayName": "字段",
+					"placeholder": "添加字段项",
+					"multipleValueButtonText": "添加字段项",
+					"options": {
+						"fieldsValues": {
+							"displayName": "字段",
+							"options": {
+								"short": {
+									"displayName": "简短",
+									"description": "此字段是否应为简短字段"
+								},
+								"title": {
+									"displayName": "标题",
+									"description": "此字段的标题"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "此字段的值，显示在标题值下方"
+								}
+							}
+						}
+					},
+					"values": {
+						"fieldsValues": {
+							"displayName": "字段",
+							"options": {
+								"short": {
+									"displayName": "简短",
+									"description": "此字段是否应为简短字段"
+								},
+								"title": {
+									"displayName": "标题",
+									"description": "此字段的标题"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "此字段的值，显示在标题值下方"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "字段",
+							"placeholder": "添加字段项"
+						}
+					}
+				}
+			}
+		},
+		"attachmentsJson": {
+			"displayName": "附件"
+		}
+	}
+}

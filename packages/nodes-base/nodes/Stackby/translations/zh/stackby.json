@@ -1,0 +1,63 @@
+{
+	"header": {
+		"displayName": "Stackby",
+		"description": "在Stackby中读取、写入和删除数据"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"placeholder": "要执行的操作",
+			"options": {
+				"append": {
+					"displayName": "追加"
+				},
+				"delete": {
+					"displayName": "删除"
+				},
+				"list": {
+					"displayName": "列表"
+				},
+				"read": {
+					"displayName": "读取"
+				}
+			}
+		},
+		"stackId": {
+			"displayName": "堆栈ID",
+			"description": "要访问的堆栈ID"
+		},
+		"table": {
+			"displayName": "表",
+			"description": "输入表名",
+			"placeholder": "故事"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "要返回记录的ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"view": {
+					"displayName": "查看",
+					"description": "Stories表中的视图名称或ID。如果设置，将仅返回该视图中的记录。记录将按照视图的顺序排序。",
+					"placeholder": "所有Stories"
+				}
+			}
+		},
+		"columns": {
+			"displayName": "列",
+			"description": "逗号分隔的属性列表，将用作新行的列",
+			"placeholder": "id,名称,描述"
+		}
+	}
+}

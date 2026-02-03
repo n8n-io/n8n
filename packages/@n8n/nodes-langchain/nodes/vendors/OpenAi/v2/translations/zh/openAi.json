@@ -1,0 +1,1234 @@
+{
+	"header": {
+		"displayName": "OpenAI",
+		"description": "向助手或GPT发送消息、分析图像、生成音频等。"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"text": {
+					"displayName": "文本"
+				},
+				"image": {
+					"displayName": "图片"
+				},
+				"audio": {
+					"displayName": "音频"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"conversation": {
+					"displayName": "对话"
+				},
+				"video": {
+					"displayName": "视频"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"generate": {
+					"displayName": "生成",
+					"description": "根据文本提示创建视频"
+				},
+				"transcribe": {
+					"displayName": "转录录音",
+					"description": "将音频转录为文本"
+				},
+				"translate": {
+					"displayName": "翻译录音",
+					"description": "将音频翻译为英文文本"
+				},
+				"deleteFile": {
+					"displayName": "删除文件",
+					"description": "从服务器删除文件"
+				},
+				"list": {
+					"displayName": "列出文件",
+					"description": "返回属于用户组织的文件列表"
+				},
+				"upload": {
+					"displayName": "上传文件",
+					"description": "上传一个可在多个端点使用的文件"
+				},
+				"analyze": {
+					"displayName": "分析图像",
+					"description": "接收图像并回答相关问题"
+				},
+				"edit": {
+					"displayName": "编辑图片",
+					"description": "编辑图像"
+				},
+				"response": {
+					"displayName": "向模型发送消息",
+					"description": "使用Responses API生成GPT 3、4、5等模型的响应"
+				},
+				"classify": {
+					"displayName": "文本违规分类",
+					"description": "检查内容是否符合使用政策"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建对话"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取对话"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "移除对话"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新对话"
+				}
+			}
+		},
+		"fileSizeLimitNotice": {
+			"displayName": "OpenAI API将音频文件大小限制为25 MB"
+		},
+		"model": {
+			"displayName": "模型",
+			"options": {
+				"tts-1": {
+					"displayName": "TTS-1"
+				},
+				"tts-1-hd": {
+					"displayName": "TTS-1-HD"
+				},
+				"dall-e-2": {
+					"displayName": "DALL·E 2"
+				},
+				"dall-e-3": {
+					"displayName": "DALL·E 3"
+				},
+				"gpt-image-1": {
+					"displayName": "GPT 图像 1"
+				}
+			},
+			"description": "用于图像生成的模型"
+		},
+		"input": {
+			"displayName": "文本输入",
+			"description": "要分类的输入文本，判断是否违反内容审核政策",
+			"placeholder": "例如：示例文本在此输入"
+		},
+		"voice": {
+			"displayName": "语音",
+			"description": "生成音频时使用的语音",
+			"options": {
+				"alloy": {
+					"displayName": "合金"
+				},
+				"echo": {
+					"displayName": "回显"
+				},
+				"fable": {
+					"displayName": "Fable"
+				},
+				"nova": {
+					"displayName": "Nova"
+				},
+				"onyx": {
+					"displayName": "Onyx"
+				},
+				"shimmer": {
+					"displayName": "微光"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"response_format": {
+					"displayName": "响应格式",
+					"options": {
+						"mp3": {
+							"displayName": "MP3"
+						},
+						"opus": {
+							"displayName": "OPUS"
+						},
+						"aac": {
+							"displayName": "AAC"
+						},
+						"flac": {
+							"displayName": "FLAC"
+						}
+					}
+				},
+				"speed": {
+					"displayName": "音频速度"
+				},
+				"binaryPropertyOutput": {
+					"displayName": "将输出放入字段"
+				},
+				"language": {
+					"displayName": "音频文件语言",
+					"description": "输入音频的语言。以<a href=\"https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes\" target=\"_blank\">ISO-639-1</a>格式提供输入语言将提高准确性和降低延迟。"
+				},
+				"temperature": {
+					"displayName": "输出随机性（温度）",
+					"description": "使用什么采样温度，范围在0到2之间。较高的值如0.8会使输出更随机，而较低的值如0.2会使输出更聚焦和确定。我们通常建议调整此参数或top_p，但不要同时调整两者"
+				},
+				"purpose": {
+					"displayName": "用途",
+					"description": "仅返回具有指定用途的文件",
+					"options": {
+						"assistants": {
+							"displayName": "助手"
+						},
+						"fine-tune": {
+							"displayName": "微调"
+						},
+						"vision": {
+							"displayName": "视觉"
+						},
+						"user_data": {
+							"displayName": "用户数据"
+						},
+						"any": {
+							"displayName": "任意 [默认]"
+						}
+					}
+				},
+				"n": {
+					"displayName": "生成图像数量",
+					"description": "要生成的图像数量"
+				},
+				"dalleQuality": {
+					"displayName": "质量",
+					"description": "生成图像的质量，高清模式将创建细节更精细、整体一致性更强的图像",
+					"options": {
+						"hd": {
+							"displayName": "高清"
+						},
+						"standard": {
+							"displayName": "标准"
+						}
+					}
+				},
+				"quality": {
+					"displayName": "质量",
+					"description": "将生成的图像质量，高选项可创建细节更精细、整体一致性更强的图像",
+					"options": {
+						"high": {
+							"displayName": "高"
+						},
+						"medium": {
+							"displayName": "中等"
+						},
+						"low": {
+							"displayName": "低"
+						}
+					}
+				},
+				"size": {
+					"displayName": "解决方案",
+					"options": {
+						"1024x1024": {
+							"displayName": "1024x1024"
+						},
+						"1024x1536": {
+							"displayName": "1024x1536"
+						},
+						"1536x1024": {
+							"displayName": "1536x1024"
+						}
+					}
+				},
+				"style": {
+					"displayName": "样式",
+					"options": {
+						"natural": {
+							"displayName": "自然",
+							"description": "生成更自然的图像"
+						},
+						"vivid": {
+							"displayName": "生动",
+							"description": "倾向于生成超现实且富有戏剧性的图像"
+						}
+					}
+				},
+				"returnImageUrls": {
+					"displayName": "是否返回图片URL",
+					"description": "是否返回图片URL而非二进制文件"
+				},
+				"detail": {
+					"displayName": "详情",
+					"options": {
+						"auto": {
+							"displayName": "自动",
+							"description": "模型将根据图像输入尺寸决定使用低或高设置"
+						},
+						"low": {
+							"displayName": "低",
+							"description": "返回更快的响应并消耗更少的令牌"
+						},
+						"high": {
+							"displayName": "高",
+							"description": "返回更详细的响应，消耗更多令牌"
+						}
+					}
+				},
+				"maxTokens": {
+					"displayName": "最大令牌数",
+					"description": "完成生成的最大令牌数。大多数模型的上下文长度为2048个令牌（最新模型除外，支持32,768个）。"
+				},
+				"user": {
+					"displayName": "用户",
+					"description": "代表您终端用户的唯一标识符，可帮助OpenAI监控和检测滥用行为",
+					"placeholder": "用户-12345"
+				},
+				"background": {
+					"displayName": "背景",
+					"description": "允许设置生成图像背景的透明度。仅支持gpt-image-1。",
+					"options": {
+						"auto": {
+							"displayName": "自动"
+						},
+						"transparent": {
+							"displayName": "透明"
+						},
+						"opaque": {
+							"displayName": "不透明"
+						}
+					}
+				},
+				"inputFidelity": {
+					"displayName": "输入保真度",
+					"description": "控制模型在匹配输入图像风格和特征上投入多少精力。仅支持 gpt-image-1。",
+					"options": {
+						"low": {
+							"displayName": "低"
+						},
+						"high": {
+							"displayName": "高"
+						}
+					}
+				},
+				"imageMask": {
+					"displayName": "图像遮罩",
+					"description": "包含图像的二进制属性名称。另一张图像，其完全透明区域（例如alpha为零处）指示应编辑图像的位置。如果提供多张图像，遮罩将应用于第一张图像。必须是有效的PNG文件，小于4MB，且与图像尺寸相同。"
+				},
+				"useStableModel": {
+					"displayName": "使用稳定模型",
+					"description": "是否使用模型的稳定版本而非最新版本，准确性可能略低"
+				},
+				"conversationId": {
+					"displayName": "[0]对话ID",
+					"description": "[1]此响应所属的对话。此响应完成后，其输入项和输出项将自动添加到此对话中。"
+				},
+				"include": {
+					"displayName": "包含额外数据",
+					"description": "指定要包含在模型响应中的额外输出数据"
+				},
+				"instructions": {
+					"displayName": "活动说明",
+					"description": "模型遵循的指令"
+				},
+				"maxToolsIterations": {
+					"displayName": "最大工具调用迭代次数",
+					"description": "LLM在停止前将运行的最大工具迭代循环次数。单次迭代可包含多个工具调用。设为0表示无限制。"
+				},
+				"maxToolCalls": {
+					"displayName": "最大内置工具调用次数",
+					"description": "响应中可处理的内置工具调用总次数的上限。此上限适用于所有内置工具调用，而非单个工具。模型尝试进行的任何额外工具调用都将被忽略。"
+				},
+				"metadata": {
+					"displayName": "元数据",
+					"description": "一组最多16个键值对，可附加到对象上。这有助于以结构化格式存储对象的附加信息，并通过API或仪表板查询对象。键是字符串，最大长度为64个字符。值也是字符串，最大长度为512个字符。"
+				},
+				"parallelToolCalls": {
+					"displayName": "并行工具调用",
+					"description": "是否允许并行工具调用。如果为true，模型可以同时调用多个工具。"
+				},
+				"previousResponseId": {
+					"displayName": "Previous Response ID",
+					"description": "The ID of the previous response to continue from. Cannot be used in conjunction with Conversation ID."
+				},
+				"promptConfig": {
+					"displayName": "提示词",
+					"description": "配置通过OpenAI仪表板设置的可复用提示词模板。<a href=\"https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts\">了解更多</a>。",
+					"options": {
+						"promptOptions": {
+							"displayName": "提示词",
+							"options": {
+								"promptId": {
+									"displayName": "提示ID",
+									"description": "要使用的提示模板的唯一标识符"
+								},
+								"version": {
+									"displayName": "版本",
+									"description": "提示模板的可选版本"
+								},
+								"variables": {
+									"displayName": "变量",
+									"description": "要替换到提示模板中的变量"
+								}
+							}
+						}
+					},
+					"values": {
+						"promptOptions": {
+							"displayName": "提示词",
+							"options": {
+								"promptId": {
+									"displayName": "提示ID",
+									"description": "要使用的提示模板的唯一标识符"
+								},
+								"version": {
+									"displayName": "版本",
+									"description": "提示模板的可选版本"
+								},
+								"variables": {
+									"displayName": "变量",
+									"description": "要替换到提示模板中的变量"
+								}
+							}
+						},
+						"promptConfig": {
+							"displayName": "提示词"
+						}
+					}
+				},
+				"promptCacheKey": {
+					"displayName": "提示词缓存键",
+					"description": "由OpenAI用于缓存相似请求的响应，以优化您的缓存命中率"
+				},
+				"reasoning": {
+					"displayName": "[0]推理",
+					"options": {
+						"reasoningOptions": {
+							"displayName": "推理",
+							"options": {
+								"effort": {
+									"displayName": "工作量",
+									"options": {
+										"low": {
+											"displayName": "低"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"high": {
+											"displayName": "高"
+										}
+									}
+								},
+								"summary": {
+									"displayName": "摘要",
+									"description": "模型执行推理过程的摘要。这对调试和理解模型的推理过程很有帮助。",
+									"options": {
+										"none": {
+											"displayName": "无"
+										},
+										"auto": {
+											"displayName": "自动"
+										},
+										"concise": {
+											"displayName": "简洁"
+										},
+										"detailed": {
+											"displayName": "详细"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"reasoningOptions": {
+							"displayName": "推理",
+							"options": {
+								"effort": {
+									"displayName": "工作量",
+									"options": {
+										"low": {
+											"displayName": "低"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"high": {
+											"displayName": "高"
+										}
+									}
+								},
+								"summary": {
+									"displayName": "摘要",
+									"description": "模型执行推理过程的摘要。这对调试和理解模型的推理过程很有帮助。",
+									"options": {
+										"none": {
+											"displayName": "无"
+										},
+										"auto": {
+											"displayName": "自动"
+										},
+										"concise": {
+											"displayName": "简洁"
+										},
+										"detailed": {
+											"displayName": "详细"
+										}
+									}
+								}
+							}
+						},
+						"reasoning": {
+							"displayName": "推理"
+						}
+					}
+				},
+				"safetyIdentifier": {
+					"displayName": "安全标识符",
+					"description": "一个稳定的标识符，用于帮助检测可能违反OpenAI使用政策的应用程序用户。ID应为唯一标识每个用户的字符串。"
+				},
+				"serviceTier": {
+					"displayName": "服务层级",
+					"description": "请求所使用的服务层级",
+					"options": {
+						"auto": {
+							"displayName": "自动"
+						},
+						"flex": {
+							"displayName": "弹性"
+						},
+						"default": {
+							"displayName": "默认"
+						},
+						"priority": {
+							"displayName": "优先级"
+						}
+					}
+				},
+				"store": {
+					"displayName": "存储",
+					"description": "是否存储生成的模型响应，以便后续通过API检索"
+				},
+				"textFormat": {
+					"displayName": "输出格式",
+					"options": {
+						"textOptions": {
+							"displayName": "文本",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"text": {
+											"displayName": "文本"
+										},
+										"json_schema": {
+											"displayName": "JSON 模式（推荐）"
+										},
+										"json_object": {
+											"displayName": "JSON对象"
+										}
+									}
+								},
+								"verbosity": {
+									"displayName": "详细程度",
+									"options": {
+										"low": {
+											"displayName": "低"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"high": {
+											"displayName": "高"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "响应格式的名称。必须为a-z、A-Z、0-9字符，或包含下划线和短横线，最大长度为64个字符。"
+								},
+								"requiredNotice": {
+									"displayName": "使用“严格”模式时，架构中的所有属性都必须设置为“必需”。"
+								},
+								"schema": {
+									"displayName": "架构",
+									"description": "响应格式的架构"
+								},
+								"description": {
+									"displayName": "描述",
+									"description": "响应格式的描述"
+								},
+								"strict": {
+									"displayName": "严格",
+									"description": "是否要求AI始终生成符合所提供JSON Schema的响应"
+								}
+							}
+						}
+					},
+					"values": {
+						"textOptions": {
+							"displayName": "文本",
+							"options": {
+								"type": {
+									"displayName": "类型",
+									"options": {
+										"text": {
+											"displayName": "文本"
+										},
+										"json_schema": {
+											"displayName": "JSON 模式（推荐）"
+										},
+										"json_object": {
+											"displayName": "JSON对象"
+										}
+									}
+								},
+								"verbosity": {
+									"displayName": "详细程度",
+									"options": {
+										"low": {
+											"displayName": "低"
+										},
+										"medium": {
+											"displayName": "中等"
+										},
+										"high": {
+											"displayName": "高"
+										}
+									}
+								},
+								"name": {
+									"displayName": "名称",
+									"description": "响应格式的名称。必须为a-z、A-Z、0-9字符，或包含下划线和短横线，最大长度为64个字符。"
+								},
+								"requiredNotice": {
+									"displayName": "使用“严格”模式时，架构中的所有属性都必须设置为“必需”。"
+								},
+								"schema": {
+									"displayName": "架构",
+									"description": "响应格式的架构"
+								},
+								"description": {
+									"displayName": "描述",
+									"description": "响应格式的描述"
+								},
+								"strict": {
+									"displayName": "严格",
+									"description": "是否要求AI始终生成符合所提供JSON Schema的响应"
+								}
+							}
+						},
+						"textFormat": {
+							"displayName": "输出格式"
+						}
+					}
+				},
+				"topLogprobs": {
+					"displayName": "顶部对数概率",
+					"description": "一个介于0到20之间的整数，指定在每个标记位置返回的最可能标记数量，每个标记都附带相关的对数概率"
+				},
+				"topP": {
+					"displayName": "输出随机性（Top P）",
+					"description": "作为温度采样的替代方案，通过核心采样控制多样性：0.5表示考虑所有似然加权选项的一半。我们通常建议调整此参数或温度参数，但不要同时调整两者。"
+				},
+				"truncation": {
+					"displayName": "截断",
+					"description": "是否将输入截断至模型上下文窗口大小。禁用时，将抛出400错误。"
+				},
+				"backgroundMode": {
+					"displayName": "后台模式",
+					"options": {
+						"values": {
+							"displayName": "背景",
+							"values": {
+								"enabled": {
+									"displayName": "后台模式",
+									"description": "是否在后台模式下运行模型。如果为真，模型将在后台模式下运行。"
+								},
+								"timeout": {
+									"displayName": "超时时间",
+									"description": "后台模式超时时间（秒）。设为0表示无限超时。"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "背景",
+							"values": {
+								"enabled": {
+									"displayName": "后台模式",
+									"description": "是否在后台模式下运行模型。如果为真，模型将在后台模式下运行。"
+								},
+								"timeout": {
+									"displayName": "超时时间",
+									"description": "后台模式超时时间（秒）。设为0表示无限超时。"
+								}
+							}
+						},
+						"backgroundMode": {
+							"displayName": "后台模式"
+						}
+					}
+				},
+				"binaryPropertyNameReference": {
+					"displayName": "参考",
+					"description": "可选的图像参考，用于引导生成",
+					"placeholder": "例如：data"
+				},
+				"waitTime": {
+					"displayName": "等待超时",
+					"description": "等待视频生成的秒数"
+				},
+				"fileName": {
+					"displayName": "输出字段名称"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "二进制字段名称",
+			"description": "包含图像的二进制属性名称。应为小于4MB的方形PNG文件。",
+			"placeholder": "例如：data"
+		},
+		"fileId": {
+			"displayName": "文件"
+		},
+		"prompt": {
+			"displayName": "提示",
+			"description": "用于生成视频的提示",
+			"placeholder": "山脉上美丽的日落"
+		},
+		"modelId": {
+			"displayName": "模型"
+		},
+		"text": {
+			"displayName": "文本输入",
+			"placeholder": "例如：这张图片里有什么？"
+		},
+		"inputType": {
+			"displayName": "输入类型",
+			"options": {
+				"url": {
+					"displayName": "图片URL"
+				},
+				"base64": {
+					"displayName": "二进制文件"
+				}
+			}
+		},
+		"imageUrls": {
+			"displayName": "URL地址",
+			"description": "要分析的图片URL地址，多个URL可用逗号分隔添加",
+			"placeholder": "例如 https://example.com/image.jpeg"
+		},
+		"simplify": {
+			"displayName": "简化输出",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"images": {
+			"displayName": "图片",
+			"description": "Add one or more binary fields to include images with your prompt. Each image should be a png, webp, or jpg file less than 50MB. You can provide up to 16 images.",
+			"placeholder": "添加图片",
+			"multipleValueButtonText": "添加图片",
+			"options": {
+				"values": {
+					"displayName": "图片",
+					"values": {
+						"binaryPropertyName": {
+							"displayName": "二进制字段名称",
+							"description": "包含图像数据的二进制字段名称",
+							"placeholder": "例如：data"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "图片",
+					"values": {
+						"binaryPropertyName": {
+							"displayName": "二进制字段名称",
+							"description": "包含图像数据的二进制字段名称",
+							"placeholder": "例如：data"
+						}
+					}
+				},
+				"images": {
+					"displayName": "图片",
+					"placeholder": "添加图片"
+				}
+			}
+		},
+		"n": {
+			"displayName": "图像数量",
+			"description": "要生成的图像数量。必须在1到10之间。"
+		},
+		"size": {
+			"displayName": "大小",
+			"description": "Output resolution formatted as width x height. 1024x1792 and 1792x1024 are only supported by Sora 2 Pro.",
+			"options": {
+				"256x256": {
+					"displayName": "256x256"
+				},
+				"512x512": {
+					"displayName": "512x512"
+				},
+				"1024x1024": {
+					"displayName": "1024x1024"
+				},
+				"1024x1536": {
+					"displayName": "1024x1536（纵向）"
+				},
+				"1536x1024": {
+					"displayName": "1536x1024（横向）"
+				},
+				"auto": {
+					"displayName": "自动"
+				},
+				"720x1280": {
+					"displayName": "720x1280"
+				},
+				"1280x720": {
+					"displayName": "1280x720"
+				},
+				"1024x1792": {
+					"displayName": "1024x1792"
+				},
+				"1792x1024": {
+					"displayName": "1792x1024"
+				}
+			}
+		},
+		"quality": {
+			"displayName": "质量",
+			"description": "将要生成的图像质量",
+			"options": {
+				"auto": {
+					"displayName": "自动"
+				},
+				"high": {
+					"displayName": "高"
+				},
+				"medium": {
+					"displayName": "中等"
+				},
+				"low": {
+					"displayName": "低"
+				},
+				"standard": {
+					"displayName": "标准"
+				}
+			}
+		},
+		"responseFormat": {
+			"displayName": "响应格式",
+			"description": "生成图像的返回格式。URL仅在生成后60分钟内有效。",
+			"options": {
+				"url": {
+					"displayName": "URL"
+				},
+				"b64_json": {
+					"displayName": "Base64 JSON"
+				}
+			}
+		},
+		"outputFormat": {
+			"displayName": "输出格式",
+			"description": "生成图像的返回格式。仅支持 gpt-image-1。",
+			"options": {
+				"png": {
+					"displayName": "PNG"
+				},
+				"jpeg": {
+					"displayName": "JPEG"
+				},
+				"webp": {
+					"displayName": "WebP"
+				}
+			}
+		},
+		"outputCompression": {
+			"displayName": "输出压缩",
+			"description": "生成图像的压缩级别（0-100%）。仅支持gpt-image-1模型的webp或jpeg输出格式。"
+		},
+		"responses": {
+			"displayName": "消息",
+			"placeholder": "添加消息",
+			"multipleValueButtonText": "添加消息",
+			"options": {
+				"values": {
+					"displayName": "消息",
+					"values": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"text": {
+									"displayName": "文本"
+								},
+								"image": {
+									"displayName": "图片"
+								},
+								"file": {
+									"displayName": "文件"
+								}
+							}
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"assistant": {
+									"displayName": "助手",
+									"description": "指示模型采用特定语气或个性"
+								},
+								"system": {
+									"displayName": "系统",
+									"description": "通常用于设置模型对下一条用户消息的行为或上下文"
+								}
+							}
+						},
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						},
+						"imageType": {
+							"displayName": "图像类型",
+							"options": {
+								"url": {
+									"displayName": "图片URL"
+								},
+								"fileId": {
+									"displayName": "文件ID"
+								},
+								"base64": {
+									"displayName": "文件数据"
+								}
+							}
+						},
+						"imageUrl": {
+							"displayName": "图片URL",
+							"description": "要发送的图片URL",
+							"placeholder": "例如：https://example.com/image.jpeg"
+						},
+						"binaryPropertyName": {
+							"displayName": "文件数据",
+							"description": "包含文件的二进制属性名称",
+							"placeholder": "例如：data"
+						},
+						"fileId": {
+							"displayName": "文件ID",
+							"description": "要发送文件的ID"
+						},
+						"imageDetail": {
+							"displayName": "详情",
+							"description": "要发送给模型的图像细节级别",
+							"options": {
+								"auto": {
+									"displayName": "自动"
+								},
+								"low": {
+									"displayName": "低"
+								},
+								"high": {
+									"displayName": "高"
+								}
+							}
+						},
+						"fileType": {
+							"displayName": "文件类型",
+							"options": {
+								"url": {
+									"displayName": "文件URL"
+								},
+								"fileId": {
+									"displayName": "文件ID"
+								},
+								"base64": {
+									"displayName": "文件数据"
+								}
+							}
+						},
+						"fileUrl": {
+							"displayName": "文件URL",
+							"description": "要发送文件的URL。也接受base64编码的文件。",
+							"placeholder": "例如：https://example.com/file.pdf"
+						},
+						"fileName": {
+							"displayName": "文件名"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "消息",
+					"values": {
+						"type": {
+							"displayName": "类型",
+							"options": {
+								"text": {
+									"displayName": "文本"
+								},
+								"image": {
+									"displayName": "图片"
+								},
+								"file": {
+									"displayName": "文件"
+								}
+							}
+						},
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"assistant": {
+									"displayName": "助手",
+									"description": "指示模型采用特定语气或个性"
+								},
+								"system": {
+									"displayName": "系统",
+									"description": "通常用于设置模型对下一条用户消息的行为或上下文"
+								}
+							}
+						},
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						},
+						"imageType": {
+							"displayName": "图像类型",
+							"options": {
+								"url": {
+									"displayName": "图片URL"
+								},
+								"fileId": {
+									"displayName": "文件ID"
+								},
+								"base64": {
+									"displayName": "文件数据"
+								}
+							}
+						},
+						"imageUrl": {
+							"displayName": "图片URL",
+							"description": "要发送的图片URL",
+							"placeholder": "例如：https://example.com/image.jpeg"
+						},
+						"binaryPropertyName": {
+							"displayName": "文件数据",
+							"description": "包含文件的二进制属性名称",
+							"placeholder": "例如：data"
+						},
+						"fileId": {
+							"displayName": "文件ID",
+							"description": "要发送文件的ID"
+						},
+						"imageDetail": {
+							"displayName": "详情",
+							"description": "要发送给模型的图像细节级别",
+							"options": {
+								"auto": {
+									"displayName": "自动"
+								},
+								"low": {
+									"displayName": "低"
+								},
+								"high": {
+									"displayName": "高"
+								}
+							}
+						},
+						"fileType": {
+							"displayName": "文件类型",
+							"options": {
+								"url": {
+									"displayName": "文件URL"
+								},
+								"fileId": {
+									"displayName": "文件ID"
+								},
+								"base64": {
+									"displayName": "文件数据"
+								}
+							}
+						},
+						"fileUrl": {
+							"displayName": "文件URL",
+							"description": "要发送文件的URL。也接受base64编码的文件。",
+							"placeholder": "例如：https://example.com/file.pdf"
+						},
+						"fileName": {
+							"displayName": "文件名"
+						}
+					}
+				},
+				"responses": {
+					"displayName": "消息",
+					"placeholder": "添加消息"
+				}
+			}
+		},
+		"hideTools": {
+			"displayName": "隐藏工具"
+		},
+		"noticeTools": {
+			"displayName": "在画布上将此节点连接到您自定义的n8n工具"
+		},
+		"builtInTools": {
+			"displayName": "内置工具",
+			"placeholder": "添加内置工具",
+			"options": {
+				"webSearch": {
+					"displayName": "网络搜索",
+					"options": {
+						"searchContextSize": {
+							"displayName": "搜索上下文大小",
+							"description": "搜索上下文窗口空间使用量的高级指导",
+							"options": {
+								"low": {
+									"displayName": "低"
+								},
+								"medium": {
+									"displayName": "中等"
+								},
+								"high": {
+									"displayName": "高"
+								}
+							}
+						},
+						"allowedDomains": {
+							"displayName": "允许搜索的域名",
+							"description": "逗号分隔的域名列表，仅会搜索此列表中的域名。",
+							"placeholder": "例如：google.com, wikipedia.org"
+						},
+						"country": {
+							"displayName": "国家",
+							"placeholder": "例如：美国、英国"
+						},
+						"city": {
+							"displayName": "城市",
+							"placeholder": "例如：纽约、伦敦"
+						},
+						"region": {
+							"displayName": "区域",
+							"placeholder": "例如：纽约、伦敦"
+						}
+					}
+				},
+				"fileSearch": {
+					"displayName": "文件搜索",
+					"options": {
+						"vectorStoreIds": {
+							"displayName": "向量存储ID",
+							"description": "用于文件搜索的向量存储ID。向量存储通过OpenAI仪表板管理。"
+						},
+						"filters": {
+							"displayName": "筛选器"
+						},
+						"maxResults": {
+							"displayName": "最大结果数"
+						}
+					}
+				},
+				"codeInterpreter": {
+					"displayName": "代码解释器",
+					"description": "是否允许模型在沙盒环境中执行代码"
+				}
+			}
+		},
+		"messages": {
+			"displayName": "消息",
+			"placeholder": "添加消息",
+			"multipleValueButtonText": "添加消息",
+			"options": {
+				"values": {
+					"displayName": "消息",
+					"values": {
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"assistant": {
+									"displayName": "助手",
+									"description": "指示模型采用特定语气或个性"
+								},
+								"system": {
+									"displayName": "系统",
+									"description": "通常用于设置模型对下一条用户消息的行为或上下文"
+								}
+							}
+						},
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "消息",
+					"values": {
+						"role": {
+							"displayName": "角色",
+							"description": "在塑造模型响应中的角色，它告诉模型应如何表现并与用户互动",
+							"options": {
+								"user": {
+									"displayName": "用户",
+									"description": "以用户身份发送消息并获取模型响应"
+								},
+								"assistant": {
+									"displayName": "助手",
+									"description": "指示模型采用特定语气或个性"
+								},
+								"system": {
+									"displayName": "系统",
+									"description": "通常用于设置模型对下一条用户消息的行为或上下文"
+								}
+							}
+						},
+						"content": {
+							"displayName": "提示词",
+							"description": "要发送的消息内容",
+							"placeholder": "例如：你好，我能如何帮助你？"
+						}
+					}
+				},
+				"messages": {
+					"displayName": "消息",
+					"placeholder": "添加消息"
+				}
+			}
+		},
+		"conversationId": {
+			"displayName": "会话ID",
+			"description": "要检索的对话ID",
+			"placeholder": "conv_1234567890"
+		},
+		"metadata": {
+			"displayName": "元数据",
+			"description": "一组最多16个键值对，可附加到对象上。这有助于以结构化格式存储对象的额外信息，并通过API或仪表板查询对象。键为字符串，最大长度64个字符。值为字符串，最大长度512个字符。"
+		},
+		"seconds": {
+			"displayName": "秒",
+			"description": "剪辑时长（秒）"
+		}
+	}
+}

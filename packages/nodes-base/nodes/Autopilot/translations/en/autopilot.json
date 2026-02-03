@@ -1,0 +1,216 @@
+{
+	"header": {
+		"displayName": "Autopilot",
+		"description": "Consume Autopilot API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				},
+				"contactJourney": {
+					"displayName": "Contact Journey"
+				},
+				"contactList": {
+					"displayName": "Contact List"
+				},
+				"list": {
+					"displayName": "List"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new contact, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a contact"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a contact"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many lists"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add contact to list"
+				},
+				"exist": {
+					"displayName": "Exist",
+					"description": "Check if contact is on list"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a contact from a list"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a list"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email address of the contact",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"Company": {
+					"displayName": "Company"
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Key Name or ID",
+									"description": "User-specified key of user-defined data. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "User-specified value of user-defined data"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldsValues": {
+							"displayName": "Custom Field",
+							"options": {
+								"key": {
+									"displayName": "Key Name or ID",
+									"description": "User-specified key of user-defined data. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "User-specified value of user-defined data"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"Fax": {
+					"displayName": "Fax"
+				},
+				"FirstName": {
+					"displayName": "First Name"
+				},
+				"Industry": {
+					"displayName": "Industry"
+				},
+				"LastName": {
+					"displayName": "Last Name"
+				},
+				"LeadSource": {
+					"displayName": "Lead Source"
+				},
+				"LinkedIn": {
+					"displayName": "LinkedIn URL"
+				},
+				"autopilotList": {
+					"displayName": "List Name or ID",
+					"description": "List to which this contact will be added on creation. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"MailingCountry": {
+					"displayName": "Mailing Country"
+				},
+				"MailingPostalCode": {
+					"displayName": "Mailing Postal Code"
+				},
+				"MailingState": {
+					"displayName": "Mailing State"
+				},
+				"MailingStreet": {
+					"displayName": "Mailing Street"
+				},
+				"MailingCity": {
+					"displayName": "Mailing City"
+				},
+				"MobilePhone": {
+					"displayName": "Mobile Phone"
+				},
+				"newEmail": {
+					"displayName": "New Email",
+					"description": "If provided, will change the email address of the contact identified by the Email field"
+				},
+				"notify": {
+					"displayName": "Notify",
+					"description": "By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications."
+				},
+				"NumberOfEmployees": {
+					"displayName": "Number of Employees"
+				},
+				"owner_name": {
+					"displayName": "Owner Name"
+				},
+				"Phone": {
+					"displayName": "Phone"
+				},
+				"Salutation": {
+					"displayName": "Salutation"
+				},
+				"autopilotSessionId": {
+					"displayName": "Session ID",
+					"description": "Used to associate a contact with a session"
+				},
+				"Status": {
+					"displayName": "Status"
+				},
+				"Title": {
+					"displayName": "Title"
+				},
+				"unsubscribed": {
+					"displayName": "Subscribe",
+					"description": "Whether to subscribe or un-subscribe a contact"
+				},
+				"Website": {
+					"displayName": "Website URL"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "Can be ID or email"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"triggerId": {
+			"displayName": "Trigger Name or ID",
+			"description": "List ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"listId": {
+			"displayName": "List Name or ID",
+			"description": "ID of the list to operate on. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the list to create"
+		}
+	}
+}

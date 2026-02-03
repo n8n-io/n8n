@@ -1,0 +1,937 @@
+{
+	"header": {
+		"displayName": "Discord",
+		"description": "Sends data to Discord"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Connection Type",
+			"options": {
+				"botToken": {
+					"displayName": "Bot Token",
+					"description": "Manage messages, channels, and members on a server"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2",
+					"description": "Same features as 'Bot Token' with easier Bot installation"
+				},
+				"webhook": {
+					"displayName": "Webhook",
+					"description": "Send messages to a specific channel"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"channel": {
+					"displayName": "Channel"
+				},
+				"message": {
+					"displayName": "Message"
+				},
+				"member": {
+					"displayName": "Member"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"deleteMessage": {
+					"displayName": "Delete",
+					"description": "Delete a message in a channel"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a channel"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve the members of a server"
+				},
+				"react": {
+					"displayName": "React with Emoji",
+					"description": "React to a message with an emoji"
+				},
+				"send": {
+					"displayName": "Send",
+					"description": "Send a message to a channel, thread, or member"
+				},
+				"sendAndWait": {
+					"displayName": "Send and Wait for Response",
+					"description": "Send a message and wait for response"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new channel"
+				},
+				"deleteChannel": {
+					"displayName": "Delete",
+					"description": "Delete a channel"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a channel"
+				},
+				"roleAdd": {
+					"displayName": "Role Add",
+					"description": "Add a role to a member"
+				},
+				"roleRemove": {
+					"displayName": "Role Remove",
+					"description": "Remove a role from a member"
+				},
+				"sendLegacy": {
+					"displayName": "Send a Message",
+					"description": "Send a message to a channel using the webhook"
+				}
+			}
+		},
+		"guildId": {
+			"displayName": "Server",
+			"description": "Select the server (guild) that your bot is connected to"
+		},
+		"channelId": {
+			"displayName": "Channel",
+			"description": "Select the channel by name, URL, or ID"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"simplify": {
+					"displayName": "Simplify",
+					"description": "Whether to return a simplified version of the response instead of the raw data"
+				},
+				"flags": {
+					"displayName": "Flags",
+					"description": "Message flags. <a href=\"https://discord.com/developers/docs/resources/channel#message-object-message-flags\" target=\"_blank\">More info</a>.”."
+				},
+				"message_reference": {
+					"displayName": "Message to Reply to",
+					"description": "Fill this to make your message a reply. Add the message ID.",
+					"placeholder": "e.g. 1059467601836773386"
+				},
+				"tts": {
+					"displayName": "Text-to-Speech (TTS)",
+					"description": "Whether to have a bot reading the message directly in the channel"
+				},
+				"limitWaitTime": {
+					"displayName": "Limit Wait Time",
+					"description": "Whether to limit the time this node should wait for a user response before execution resumes",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"limitType": {
+									"displayName": "Limit Type",
+									"description": "Sets the condition for the execution to resume. Can be a specified date or after some time.",
+									"options": {
+										"afterTimeInterval": {
+											"displayName": "After Time Interval",
+											"description": "Waits for a certain amount of time"
+										},
+										"atSpecifiedTime": {
+											"displayName": "At Specified Time",
+											"description": "Waits until the set date and time to continue"
+										}
+									}
+								},
+								"resumeAmount": {
+									"displayName": "Amount",
+									"description": "The time to wait"
+								},
+								"resumeUnit": {
+									"displayName": "Unit",
+									"description": "Unit of the interval value",
+									"options": {
+										"minutes": {
+											"displayName": "Minutes"
+										},
+										"hours": {
+											"displayName": "Hours"
+										},
+										"days": {
+											"displayName": "Days"
+										}
+									}
+								},
+								"maxDateAndTime": {
+									"displayName": "Max Date and Time",
+									"description": "Continue execution after the specified date and time"
+								}
+							}
+						},
+						"limitWaitTime": {
+							"displayName": "Limit Wait Time"
+						}
+					}
+				},
+				"appendAttribution": {
+					"displayName": "Append n8n Attribution",
+					"description": "Whether to include the phrase \"This message was sent automatically with n8n\" to the end of the message"
+				},
+				"messageButtonLabel": {
+					"displayName": "Message Button Label"
+				},
+				"responseFormTitle": {
+					"displayName": "Response Form Title",
+					"description": "Title of the form that the user can access to provide their response"
+				},
+				"responseFormDescription": {
+					"displayName": "Response Form Description",
+					"description": "Description of the form that the user can access to provide their response"
+				},
+				"responseFormButtonLabel": {
+					"displayName": "Response Form Button Label"
+				},
+				"responseFormCustomCss": {
+					"displayName": "Response Form Custom Styling",
+					"description": "Override default styling of the response form with CSS"
+				},
+				"nsfw": {
+					"displayName": "Age-Restricted (NSFW)",
+					"description": "Whether the content of the channel might be nsfw (not safe for work)"
+				},
+				"bitrate": {
+					"displayName": "Bitrate",
+					"description": "The bitrate (in bits) of the voice channel",
+					"placeholder": "e.g. 8000"
+				},
+				"categoryId": {
+					"displayName": "Parent Category",
+					"description": "The parent category where you want the channel to appear"
+				},
+				"position": {
+					"displayName": "Position"
+				},
+				"rate_limit_per_user": {
+					"displayName": "Rate Limit Per User",
+					"description": "Amount of seconds a user has to wait before sending another message"
+				},
+				"topic": {
+					"displayName": "Topic",
+					"description": "The channel topic description (0-1024 characters)",
+					"placeholder": "e.g. This channel is about…"
+				},
+				"user_limit": {
+					"displayName": "User Limit",
+					"description": "The limit for the number of members that can be in the channel (0 refers to no limit)",
+					"placeholder": "e.g. 20"
+				},
+				"filter": {
+					"displayName": "Filter by Type"
+				},
+				"avatar_url": {
+					"displayName": "Avatar URL",
+					"description": "Override the default avatar of the webhook",
+					"placeholder": "e.g. https://example.com/image.png"
+				},
+				"username": {
+					"displayName": "Username",
+					"description": "Override the default username of the webhook",
+					"placeholder": "e.g. My Username"
+				},
+				"wait": {
+					"displayName": "Wait",
+					"description": "Whether wait for the message to be created before returning its response"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "Message ID",
+			"description": "The ID of the message",
+			"placeholder": "e.g. 1057576506244726804"
+		},
+		"emoji": {
+			"displayName": "Emoji",
+			"description": "The emoji you want to react with"
+		},
+		"sendTo": {
+			"displayName": "Send To",
+			"description": "Send message to a channel or DM to a user",
+			"options": {
+				"user": {
+					"displayName": "User"
+				},
+				"channel": {
+					"displayName": "Channel"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "User",
+			"description": "Select the user you want to assign a role to"
+		},
+		"content": {
+			"displayName": "Message",
+			"description": "The content of the message (up to 2000 characters)",
+			"placeholder": "e.g. My message"
+		},
+		"embeds": {
+			"displayName": "Embeds",
+			"placeholder": "Add Embeds",
+			"multipleValueButtonText": "Add Embeds",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"inputMethod": {
+							"displayName": "Input Method",
+							"options": {
+								"fields": {
+									"displayName": "Enter Fields"
+								},
+								"json": {
+									"displayName": "Raw JSON"
+								}
+							}
+						},
+						"json": {
+							"displayName": "Value"
+						},
+						"description": {
+							"displayName": "Description",
+							"description": "The description of embed",
+							"placeholder": "e.g. My description"
+						},
+						"author": {
+							"displayName": "Author",
+							"description": "The name of the author",
+							"placeholder": "e.g. John Doe"
+						},
+						"color": {
+							"displayName": "Color",
+							"description": "Color code of the embed",
+							"placeholder": "e.g. 12123432"
+						},
+						"timestamp": {
+							"displayName": "Timestamp",
+							"description": "The time displayed at the bottom of the embed. Provide in ISO8601 format.",
+							"placeholder": "e.g. 2023-02-08 09:30:26"
+						},
+						"title": {
+							"displayName": "Title",
+							"description": "The title of embed",
+							"placeholder": "e.g. Embed's title"
+						},
+						"url": {
+							"displayName": "URL",
+							"description": "The URL where you want to link the embed to",
+							"placeholder": "e.g. https://discord.com/"
+						},
+						"image": {
+							"displayName": "URL Image",
+							"description": "Source URL of image (only supports http(s) and attachments)",
+							"placeholder": "e.g. https://example.com/image.png"
+						},
+						"thumbnail": {
+							"displayName": "URL Thumbnail",
+							"description": "Source URL of thumbnail (only supports http(s) and attachments)",
+							"placeholder": "e.g. https://example.com/image.png"
+						},
+						"video": {
+							"displayName": "URL Video",
+							"description": "Source URL of video",
+							"placeholder": "e.g. https://example.com/video.mp4"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"inputMethod": {
+							"displayName": "Input Method",
+							"options": {
+								"fields": {
+									"displayName": "Enter Fields"
+								},
+								"json": {
+									"displayName": "Raw JSON"
+								}
+							}
+						},
+						"json": {
+							"displayName": "Value"
+						},
+						"description": {
+							"displayName": "Description",
+							"description": "The description of embed",
+							"placeholder": "e.g. My description"
+						},
+						"author": {
+							"displayName": "Author",
+							"description": "The name of the author",
+							"placeholder": "e.g. John Doe"
+						},
+						"color": {
+							"displayName": "Color",
+							"description": "Color code of the embed",
+							"placeholder": "e.g. 12123432"
+						},
+						"timestamp": {
+							"displayName": "Timestamp",
+							"description": "The time displayed at the bottom of the embed. Provide in ISO8601 format.",
+							"placeholder": "e.g. 2023-02-08 09:30:26"
+						},
+						"title": {
+							"displayName": "Title",
+							"description": "The title of embed",
+							"placeholder": "e.g. Embed's title"
+						},
+						"url": {
+							"displayName": "URL",
+							"description": "The URL where you want to link the embed to",
+							"placeholder": "e.g. https://discord.com/"
+						},
+						"image": {
+							"displayName": "URL Image",
+							"description": "Source URL of image (only supports http(s) and attachments)",
+							"placeholder": "e.g. https://example.com/image.png"
+						},
+						"thumbnail": {
+							"displayName": "URL Thumbnail",
+							"description": "Source URL of thumbnail (only supports http(s) and attachments)",
+							"placeholder": "e.g. https://example.com/image.png"
+						},
+						"video": {
+							"displayName": "URL Video",
+							"description": "Source URL of video",
+							"placeholder": "e.g. https://example.com/video.mp4"
+						}
+					}
+				},
+				"embeds": {
+					"displayName": "Embeds",
+					"placeholder": "Add Embeds"
+				}
+			}
+		},
+		"files": {
+			"displayName": "Files",
+			"placeholder": "Add Files",
+			"multipleValueButtonText": "Add Files",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"inputFieldName": {
+							"displayName": "Input Data Field Name",
+							"description": "The contents of the file being sent with the message",
+							"placeholder": "e.g. data"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"inputFieldName": {
+							"displayName": "Input Data Field Name",
+							"description": "The contents of the file being sent with the message",
+							"placeholder": "e.g. data"
+						}
+					}
+				},
+				"files": {
+					"displayName": "Files",
+					"placeholder": "Add Files"
+				}
+			}
+		},
+		"message": {
+			"displayName": "Message"
+		},
+		"responseType": {
+			"displayName": "Response Type",
+			"options": {
+				"approval": {
+					"displayName": "Approval",
+					"description": "User can approve/disapprove from within the message"
+				},
+				"freeText": {
+					"displayName": "Free Text",
+					"description": "User can submit a response via a form"
+				},
+				"customForm": {
+					"displayName": "Custom Form",
+					"description": "User can submit a response via a custom form"
+				}
+			}
+		},
+		"defineForm": {
+			"displayName": "Define Form",
+			"options": {
+				"fields": {
+					"displayName": "Using Fields Below"
+				},
+				"json": {
+					"displayName": "Using JSON"
+				}
+			}
+		},
+		"jsonOutput": {
+			"displayName": "Form Fields"
+		},
+		"formFields": {
+			"displayName": "Form Elements",
+			"placeholder": "Add Form Element",
+			"multipleValueButtonText": "Add Form Element",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"fieldName": {
+							"displayName": "Custom Field Name",
+							"description": "The name of the field, used in input attributes and referenced by the workflow"
+						},
+						"fieldLabel": {
+							"displayName": "Field Name",
+							"description": "Label that appears above the input field",
+							"placeholder": "e.g. What is your name?"
+						},
+						"fieldType": {
+							"displayName": "Element Type",
+							"description": "The type of field to add to the form",
+							"options": {
+								"checkbox": {
+									"displayName": "Checkboxes"
+								},
+								"html": {
+									"displayName": "Custom HTML"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"dropdown": {
+									"displayName": "Dropdown"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"hiddenField": {
+									"displayName": "Hidden Field"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"password": {
+									"displayName": "Password"
+								},
+								"radio": {
+									"displayName": "Radio Buttons"
+								},
+								"text": {
+									"displayName": "Text Input"
+								},
+								"textarea": {
+									"displayName": "Textarea"
+								}
+							}
+						},
+						"elementName": {
+							"displayName": "Element Name",
+							"description": "Optional field. It can be used to include the html in the output.",
+							"placeholder": "e.g. content-section"
+						},
+						"placeholder": {
+							"displayName": "Placeholder",
+							"description": "Sample text to display inside the field"
+						},
+						"defaultValue": {
+							"displayName": "Default Value",
+							"description": "Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma."
+						},
+						"fieldValue": {
+							"displayName": "Field Value",
+							"description": "Input value can be set here or will be passed as a query parameter via Field Name if no value is set"
+						},
+						"fieldOptions": {
+							"displayName": "Radio Buttons",
+							"placeholder": "Add Radio Button",
+							"multipleValueButtonText": "Add Radio Button",
+							"options": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								}
+							},
+							"values": {
+								"values": {
+									"displayName": "Values",
+									"values": {
+										"option": {
+											"displayName": "Radio Button Label"
+										}
+									}
+								},
+								"fieldOptions": {
+									"displayName": "Radio Buttons",
+									"placeholder": "Add Radio Button"
+								}
+							}
+						},
+						"multiselectLegacyNotice": {
+							"displayName": "Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead"
+						},
+						"multiselect": {
+							"displayName": "Multiple Choice",
+							"description": "Whether to allow the user to select multiple options from the dropdown list"
+						},
+						"limitSelection": {
+							"displayName": "Limit Selection",
+							"options": {
+								"exact": {
+									"displayName": "Exact Number"
+								},
+								"range": {
+									"displayName": "Range"
+								},
+								"unlimited": {
+									"displayName": "Unlimited"
+								}
+							}
+						},
+						"numberOfSelections": {
+							"displayName": "Number of Selections"
+						},
+						"minSelections": {
+							"displayName": "Minimum Selections"
+						},
+						"maxSelections": {
+							"displayName": "Maximum Selections"
+						},
+						"html": {
+							"displayName": "HTML",
+							"description": "HTML elements to display on the form page"
+						},
+						"multipleFiles": {
+							"displayName": "Multiple Files",
+							"description": "Whether to allow the user to select multiple files from the file input or just one"
+						},
+						"acceptFileTypes": {
+							"displayName": "Accepted File Types",
+							"description": "Comma-separated list of allowed file extensions",
+							"placeholder": "e.g. .jpg, .png"
+						},
+						"formatDate": {
+							"displayName": "The displayed date is formatted based on the locale of the user's browser"
+						},
+						"requiredField": {
+							"displayName": "Required Field",
+							"description": "Whether to require the user to enter a value for this field before submitting the form"
+						}
+					}
+				},
+				"formFields": {
+					"displayName": "Form Elements",
+					"placeholder": "Add Form Element"
+				}
+			}
+		},
+		"approvalOptions": {
+			"displayName": "Approval Options",
+			"placeholder": "Add option",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"approvalType": {
+							"displayName": "Type of Approval",
+							"placeholder": "Add option",
+							"options": {
+								"single": {
+									"displayName": "Approve Only"
+								},
+								"double": {
+									"displayName": "Approve and Disapprove"
+								}
+							}
+						},
+						"approveLabel": {
+							"displayName": "Approve Button Label"
+						},
+						"disapproveLabel": {
+							"displayName": "Disapprove Button Label"
+						}
+					}
+				},
+				"approvalOptions": {
+					"displayName": "Approval Options",
+					"placeholder": "Add option"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The new name of the channel. Fill this field only if you want to change the channel's name.",
+			"placeholder": "e.g. new-channel-name"
+		},
+		"type": {
+			"displayName": "Type",
+			"description": "The type of channel to create",
+			"options": {
+				"0": {
+					"displayName": "Guild Text"
+				},
+				"2": {
+					"displayName": "Guild Voice"
+				},
+				"4": {
+					"displayName": "Guild Category"
+				}
+			}
+		},
+		"after": {
+			"displayName": "After",
+			"description": "The ID of the user after which to return the members",
+			"placeholder": "e.g. 786953432728469534"
+		},
+		"role": {
+			"displayName": "Role",
+			"description": "Select the roles you want to add to the user"
+		}
+	}
+}

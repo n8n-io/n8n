@@ -1,0 +1,104 @@
+{
+	"header": {
+		"displayName": "Strapi",
+		"description": "使用Strapi API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"password": {
+					"displayName": "用户名和密码"
+				},
+				"token": {
+					"displayName": "API令牌"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"entry": {
+					"displayName": "入口"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建条目"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除条目"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取条目"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个条目"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新条目"
+				}
+			}
+		},
+		"contentType": {
+			"displayName": "内容类型",
+			"description": "内容类型名称"
+		},
+		"columns": {
+			"displayName": "列",
+			"description": "逗号分隔的属性列表，将用作新行的列",
+			"placeholder": "id,名称,描述"
+		},
+		"entryId": {
+			"displayName": "条目ID",
+			"description": "要获取的条目的ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"publicationState": {
+					"displayName": "发布状态",
+					"description": "仅选择匹配指定发布状态的条目",
+					"options": {
+						"live": {
+							"displayName": "实时"
+						},
+						"preview": {
+							"displayName": "预览"
+						}
+					}
+				},
+				"sort": {
+					"displayName": "排序字段",
+					"description": "用于对数据进行排序的字段名称。默认按升序排序。要修改此行为，必须在排序字段名称后添加冒号和排序方向。例如：<code>name:asc</code>。",
+					"placeholder": "name:asc"
+				},
+				"where": {
+					"displayName": "筛选条件 (JSON)",
+					"description": "用于筛选数据的JSON查询。<a href=\"https://strapi.io/documentation/developer-docs/latest/developer-resources/content-api/content-api.html#filters\">更多信息</a>。"
+				}
+			}
+		},
+		"updateKey": {
+			"displayName": "更新键",
+			"description": "决定数据库中哪些行应被更新的属性名称。通常为“id”。"
+		}
+	}
+}

@@ -1,0 +1,78 @@
+{
+	"header": {
+		"displayName": "Hunter",
+		"description": "Consume Hunter API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"description": "Operation to consume",
+			"options": {
+				"domainSearch": {
+					"displayName": "Domain Search",
+					"description": "Get every email address found on the internet using a given domain name, with sources"
+				},
+				"emailFinder": {
+					"displayName": "Email Finder",
+					"description": "Generate or retrieve the most likely email address from a domain name, a first name and a last name"
+				},
+				"emailVerifier": {
+					"displayName": "Email Verifier",
+					"description": "Verify the deliverability of an email address"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "Domain",
+			"description": "Domain name from which you want to find the email addresses. For example, \"stripe.com\"."
+		},
+		"onlyEmails": {
+			"displayName": "Only Emails",
+			"description": "Whether to return only the found emails"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"type": {
+					"displayName": "Type",
+					"options": {
+						"personal": {
+							"displayName": "Personal"
+						},
+						"generic": {
+							"displayName": "Generic"
+						}
+					}
+				},
+				"seniority": {
+					"displayName": "Seniority"
+				},
+				"department": {
+					"displayName": "Department"
+				}
+			}
+		},
+		"firstname": {
+			"displayName": "First Name",
+			"description": "The person's first name. It doesn't need to be in lowercase."
+		},
+		"lastname": {
+			"displayName": "Last Name",
+			"description": "The person's last name. It doesn't need to be in lowercase."
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email address you want to verify",
+			"placeholder": "name@email.com"
+		}
+	}
+}

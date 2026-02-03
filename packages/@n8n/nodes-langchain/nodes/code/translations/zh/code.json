@@ -1,0 +1,263 @@
+{
+	"header": {
+		"displayName": "LangChain 代码",
+		"description": "LangChain 代码节点"
+	},
+	"nodeView": {
+		"code": {
+			"displayName": "代码",
+			"placeholder": "添加代码",
+			"options": {
+				"execute": {
+					"displayName": "执行",
+					"options": {
+						"code": {
+							"displayName": "JavaScript - 执行"
+						}
+					}
+				},
+				"supplyData": {
+					"displayName": "提供数据",
+					"options": {
+						"code": {
+							"displayName": "JavaScript - 提供数据"
+						}
+					}
+				}
+			},
+			"values": {
+				"execute": {
+					"displayName": "执行",
+					"options": {
+						"code": {
+							"displayName": "JavaScript - 执行"
+						}
+					}
+				},
+				"supplyData": {
+					"displayName": "提供数据",
+					"options": {
+						"code": {
+							"displayName": "JavaScript - 提供数据"
+						}
+					}
+				},
+				"code": {
+					"displayName": "代码",
+					"placeholder": "添加代码"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "您可以导入LangChain并使用所有可用功能。通过使用<code>console.log()</code>语句并在浏览器控制台中查看输出来进行调试。"
+		},
+		"inputs": {
+			"displayName": "输入参数",
+			"description": "要添加的输入",
+			"placeholder": "添加输入",
+			"multipleValueButtonText": "添加输入",
+			"options": {
+				"input": {
+					"displayName": "输入",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "输入的类型",
+							"options": {
+								"ai_chain": {
+									"displayName": "链"
+								},
+								"ai_document": {
+									"displayName": "文档"
+								},
+								"ai_embedding": {
+									"displayName": "嵌入"
+								},
+								"ai_languageModel": {
+									"displayName": "语言模型"
+								},
+								"ai_memory": {
+									"displayName": "记忆模块"
+								},
+								"ai_outputParser": {
+									"displayName": "输出解析器"
+								},
+								"ai_textSplitter": {
+									"displayName": "文本分割器"
+								},
+								"ai_tool": {
+									"displayName": "工具"
+								},
+								"ai_vectorStore": {
+									"displayName": "向量存储"
+								},
+								"main": {
+									"displayName": "主界面"
+								}
+							}
+						},
+						"maxConnections": {
+							"displayName": "最大连接数",
+							"description": "允许连接此类型节点的数量。设置为-1表示无限制。"
+						},
+						"required": {
+							"displayName": "必填",
+							"description": "输入是否需要连接"
+						}
+					}
+				}
+			},
+			"values": {
+				"input": {
+					"displayName": "输入",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "输入的类型",
+							"options": {
+								"ai_chain": {
+									"displayName": "链"
+								},
+								"ai_document": {
+									"displayName": "文档"
+								},
+								"ai_embedding": {
+									"displayName": "嵌入"
+								},
+								"ai_languageModel": {
+									"displayName": "语言模型"
+								},
+								"ai_memory": {
+									"displayName": "记忆模块"
+								},
+								"ai_outputParser": {
+									"displayName": "输出解析器"
+								},
+								"ai_textSplitter": {
+									"displayName": "文本分割器"
+								},
+								"ai_tool": {
+									"displayName": "工具"
+								},
+								"ai_vectorStore": {
+									"displayName": "向量存储"
+								},
+								"main": {
+									"displayName": "主界面"
+								}
+							}
+						},
+						"maxConnections": {
+							"displayName": "最大连接数",
+							"description": "允许连接此类型节点的数量。设置为-1表示无限制。"
+						},
+						"required": {
+							"displayName": "必填",
+							"description": "输入是否需要连接"
+						}
+					}
+				},
+				"inputs": {
+					"displayName": "输入项",
+					"placeholder": "添加输入项"
+				}
+			}
+		},
+		"outputs": {
+			"displayName": "输出",
+			"description": "要添加的输出",
+			"placeholder": "添加输出",
+			"multipleValueButtonText": "添加输出",
+			"options": {
+				"output": {
+					"displayName": "输出",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "输入的类型",
+							"options": {
+								"ai_chain": {
+									"displayName": "链"
+								},
+								"ai_document": {
+									"displayName": "文档"
+								},
+								"ai_embedding": {
+									"displayName": "嵌入"
+								},
+								"ai_languageModel": {
+									"displayName": "语言模型"
+								},
+								"ai_memory": {
+									"displayName": "记忆模块"
+								},
+								"ai_outputParser": {
+									"displayName": "输出解析器"
+								},
+								"ai_textSplitter": {
+									"displayName": "文本分割器"
+								},
+								"ai_tool": {
+									"displayName": "工具"
+								},
+								"ai_vectorStore": {
+									"displayName": "向量存储"
+								},
+								"main": {
+									"displayName": "主界面"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"output": {
+					"displayName": "输出",
+					"options": {
+						"type": {
+							"displayName": "类型",
+							"description": "输入的类型",
+							"options": {
+								"ai_chain": {
+									"displayName": "链"
+								},
+								"ai_document": {
+									"displayName": "文档"
+								},
+								"ai_embedding": {
+									"displayName": "嵌入"
+								},
+								"ai_languageModel": {
+									"displayName": "语言模型"
+								},
+								"ai_memory": {
+									"displayName": "记忆模块"
+								},
+								"ai_outputParser": {
+									"displayName": "输出解析器"
+								},
+								"ai_textSplitter": {
+									"displayName": "文本分割器"
+								},
+								"ai_tool": {
+									"displayName": "工具"
+								},
+								"ai_vectorStore": {
+									"displayName": "向量存储"
+								},
+								"main": {
+									"displayName": "主界面"
+								}
+							}
+						}
+					}
+				},
+				"outputs": {
+					"displayName": "输出",
+					"placeholder": "添加输出"
+				}
+			}
+		}
+	}
+}

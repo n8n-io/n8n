@@ -1,0 +1,47 @@
+{
+	"header": {
+		"displayName": "Google Cloud 实时数据库",
+		"description": "与 Google Firebase - 实时数据库 API 交互"
+	},
+	"nodeView": {
+		"projectId": {
+			"displayName": "项目名称或ID",
+			"description": "如Firebase控制台URL中所示。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "将数据写入数据库"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从数据库删除数据"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "从数据库获取记录"
+				},
+				"push": {
+					"displayName": "推送",
+					"description": "追加到数据列表"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新数据库中的项目"
+				}
+			}
+		},
+		"path": {
+			"displayName": "对象路径",
+			"description": "数据库上的对象路径。不要追加 .json。",
+			"placeholder": "例如：/app/users"
+		},
+		"attributes": {
+			"displayName": "列/属性",
+			"description": "要保存的属性",
+			"placeholder": "age, name, city"
+		}
+	}
+}

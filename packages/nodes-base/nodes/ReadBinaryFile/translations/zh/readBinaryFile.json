@@ -1,0 +1,17 @@
+{
+	"header": {
+		"displayName": "读取二进制文件",
+		"description": "从磁盘读取二进制文件"
+	},
+	"nodeView": {
+		"filePath": {
+			"displayName": "文件路径",
+			"description": "要读取的文件路径",
+			"placeholder": "/data/example.jpg"
+		},
+		"dataPropertyName": {
+			"displayName": "属性名称",
+			"description": "要写入读取文件数据的二进制属性名称"
+		}
+	}
+}

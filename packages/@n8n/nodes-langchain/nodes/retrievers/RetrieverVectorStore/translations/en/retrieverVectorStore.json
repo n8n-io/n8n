@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "Vector Store Retriever",
+		"description": "Use a Vector Store as Retriever"
+	},
+	"nodeView": {
+		"topK": {
+			"displayName": "Limit",
+			"description": "The maximum number of results to return"
+		}
+	}
+}

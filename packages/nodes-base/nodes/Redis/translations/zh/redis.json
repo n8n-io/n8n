@@ -1,0 +1,137 @@
+{
+	"header": {
+		"displayName": "Redis",
+		"description": "在Redis中获取、发送和更新数据"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"delete": {
+					"displayName": "删除",
+					"description": "从Redis中删除一个键"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "从Redis获取键值"
+				},
+				"incr": {
+					"displayName": "递增",
+					"description": "原子性地将键值增加1。如果键不存在则创建。"
+				},
+				"info": {
+					"displayName": "信息",
+					"description": "返回关于Redis实例的通用信息"
+				},
+				"keys": {
+					"displayName": "键",
+					"description": "返回所有匹配指定模式的键"
+				},
+				"llen": {
+					"displayName": "列表长度",
+					"description": "返回列表的长度"
+				},
+				"pop": {
+					"displayName": "弹出",
+					"description": "从Redis列表中弹出数据"
+				},
+				"publish": {
+					"displayName": "发布",
+					"description": "发布消息到Redis频道"
+				},
+				"push": {
+					"displayName": "推送",
+					"description": "将数据推送到Redis列表"
+				},
+				"set": {
+					"displayName": "设置",
+					"description": "设置Redis中某个键的值"
+				}
+			}
+		},
+		"key": {
+			"displayName": "键",
+			"description": "要在Redis中设置的键名"
+		},
+		"propertyName": {
+			"displayName": "名称",
+			"description": "可选属性名称，用于写入接收到的数据。支持点表示法。示例：\"data.person[0].name\""
+		},
+		"keyType": {
+			"displayName": "键类型",
+			"description": "要设置的键的类型",
+			"options": {
+				"automatic": {
+					"displayName": "自动",
+					"description": "尝试根据数据自动推断类型"
+				},
+				"hash": {
+					"displayName": "哈希",
+					"description": "键中的数据为'哈希'类型"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "键中的数据为'列表'类型"
+				},
+				"sets": {
+					"displayName": "集合",
+					"description": "键中的数据为'sets'类型"
+				},
+				"string": {
+					"displayName": "字符串",
+					"description": "键中的数据为'字符串'类型"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"dotNotation": {
+					"displayName": "点表示法",
+					"description": "<p>默认情况下，属性名称使用点表示法。这意味着 \"a.b\" 将在 \"a\" 下设置属性 \"b\"，即 { \"a\": { \"b\": value} }。<p></p>如果不需要此行为，可以停用此功能，此时将设置 { \"a.b\": value }。</p>"
+				}
+			}
+		},
+		"expire": {
+			"displayName": "过期",
+			"description": "是否对键设置超时"
+		},
+		"ttl": {
+			"displayName": "TTL",
+			"description": "密钥过期前的秒数"
+		},
+		"keyPattern": {
+			"displayName": "键模式",
+			"description": "要返回的键的键模式"
+		},
+		"getValues": {
+			"displayName": "获取值",
+			"description": "是否获取匹配键的值"
+		},
+		"list": {
+			"displayName": "列表",
+			"description": "Redis中的列表名称"
+		},
+		"value": {
+			"displayName": "数值",
+			"description": "要写入Redis的值"
+		},
+		"valueIsJSON": {
+			"displayName": "值为JSON",
+			"description": "该值是JSON还是键值对"
+		},
+		"channel": {
+			"displayName": "频道",
+			"description": "频道名称"
+		},
+		"messageData": {
+			"displayName": "数据",
+			"description": "要推送的数据"
+		},
+		"tail": {
+			"displayName": "尾部",
+			"description": "从列表末尾推入或弹出数据"
+		}
+	}
+}

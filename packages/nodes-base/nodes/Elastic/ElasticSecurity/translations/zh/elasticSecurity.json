@@ -1,0 +1,361 @@
+{
+	"header": {
+		"displayName": "Elastic Security",
+		"description": "使用 Elastic Security API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"case": {
+					"displayName": "用例"
+				},
+				"caseComment": {
+					"displayName": "案例评论"
+				},
+				"caseTag": {
+					"displayName": "用例标签"
+				},
+				"connector": {
+					"displayName": "连接器"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建连接器"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除一个案件"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取案例评论"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索多个案例评论"
+				},
+				"getStatus": {
+					"displayName": "获取状态",
+					"description": "检索所有案件活动的摘要"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新案例中的评论"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "为案件添加标签"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从案例中移除标签"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"connectorId": {
+			"displayName": "连接器名称或ID",
+			"description": "连接器允许你将Elastic Security案例发送到其他系统（仅限ServiceNow、Jira或IBM Resilient）。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"connectorType": {
+			"displayName": "连接器类型",
+			"options": {
+				".resilient": {
+					"displayName": "IBM Resilient"
+				},
+				".jira": {
+					"displayName": "Jira"
+				},
+				".servicenow": {
+					"displayName": "ServiceNow ITSM"
+				}
+			}
+		},
+		"issueType": {
+			"displayName": "问题类型",
+			"description": "为此案例创建的Jira问题类型",
+			"placeholder": "任务"
+		},
+		"priority": {
+			"displayName": "优先级",
+			"description": "为此案例创建的Jira问题的优先级",
+			"placeholder": "高"
+		},
+		"urgency": {
+			"displayName": "紧急程度",
+			"description": "为此案例创建的ServiceNow ITSM问题的紧急程度",
+			"options": {
+				"1": {
+					"displayName": "低"
+				},
+				"2": {
+					"displayName": "中等"
+				},
+				"3": {
+					"displayName": "高"
+				}
+			}
+		},
+		"severity": {
+			"displayName": "严重性",
+			"description": "为此案例创建的ServiceNow ITSM问题的严重性",
+			"options": {
+				"1": {
+					"displayName": "低"
+				},
+				"2": {
+					"displayName": "中等"
+				},
+				"3": {
+					"displayName": "高"
+				}
+			}
+		},
+		"impact": {
+			"displayName": "影响",
+			"description": "为此案例创建的ServiceNow ITSM问题的影响",
+			"options": {
+				"1": {
+					"displayName": "低"
+				},
+				"2": {
+					"displayName": "中等"
+				},
+				"3": {
+					"displayName": "高"
+				}
+			}
+		},
+		"category": {
+			"displayName": "分类",
+			"description": "为此案例创建的ServiceNow ITSM问题类别",
+			"placeholder": "服务台"
+		},
+		"issueTypes": {
+			"displayName": "问题类型",
+			"description": "为此案例创建的IBM Resilient问题的数字类型列表（逗号分隔）",
+			"placeholder": "123,456"
+		},
+		"severityCode": {
+			"displayName": "严重性代码",
+			"description": "要为此案例创建的IBM Resilient问题的严重性代码"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述"
+				},
+				"owner": {
+					"displayName": "所有者",
+					"description": "已在基于角色的访问控制系统中注册的有效应用所有者"
+				},
+				"syncAlerts": {
+					"displayName": "同步告警",
+					"description": "是否与告警同步"
+				}
+			}
+		},
+		"caseId": {
+			"displayName": "案例ID",
+			"description": "包含待获取评论的案例ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"open": {
+							"displayName": "打开"
+						},
+						"in-progress": {
+							"displayName": "执行中"
+						},
+						"closed": {
+							"displayName": "已关闭"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				}
+			}
+		},
+		"sortOptions": {
+			"displayName": "排序",
+			"placeholder": "添加排序选项",
+			"options": {
+				"sortOptionsProperties": {
+					"displayName": "排序选项",
+					"options": {
+						"sortField": {
+							"displayName": "排序键",
+							"options": {
+								"createdAt": {
+									"displayName": "创建时间"
+								},
+								"updatedAt": {
+									"displayName": "更新时间"
+								}
+							}
+						},
+						"sortOrder": {
+							"displayName": "排序顺序",
+							"options": {
+								"asc": {
+									"displayName": "升序"
+								},
+								"desc": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"sortOptionsProperties": {
+					"displayName": "排序选项",
+					"options": {
+						"sortField": {
+							"displayName": "排序键",
+							"options": {
+								"createdAt": {
+									"displayName": "创建时间"
+								},
+								"updatedAt": {
+									"displayName": "更新时间"
+								}
+							}
+						},
+						"sortOrder": {
+							"displayName": "排序顺序",
+							"options": {
+								"asc": {
+									"displayName": "升序"
+								},
+								"desc": {
+									"displayName": "降序"
+								}
+							}
+						}
+					}
+				},
+				"sortOptions": {
+					"displayName": "排序",
+					"placeholder": "添加排序选项"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"closed": {
+							"displayName": "已关闭"
+						},
+						"open": {
+							"displayName": "打开"
+						},
+						"in-progress": {
+							"displayName": "执行中"
+						}
+					}
+				},
+				"syncAlerts": {
+					"displayName": "同步告警",
+					"description": "是否与告警同步"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"version": {
+					"displayName": "版本"
+				}
+			}
+		},
+		"comment": {
+			"displayName": "评论",
+			"description": "替换当前评论消息的文本"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"commentId": {
+			"displayName": "评论ID",
+			"description": "要获取的案例评论ID"
+		},
+		"tag": {
+			"displayName": "标签名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"name": {
+			"displayName": "连接器名称",
+			"description": "连接器允许您将Elastic Security案例发送到其他系统（仅限ServiceNow、Jira或IBM Resilient）"
+		},
+		"apiUrl": {
+			"displayName": "API URL",
+			"description": "第三方实例URL"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "Jira注册邮箱",
+			"placeholder": "name@email.com"
+		},
+		"apiToken": {
+			"displayName": "API令牌",
+			"description": "Jira API令牌"
+		},
+		"projectKey": {
+			"displayName": "项目键",
+			"description": "Jira 项目键"
+		},
+		"username": {
+			"displayName": "用户名",
+			"description": "ServiceNow ITSM 用户名"
+		},
+		"password": {
+			"displayName": "密码",
+			"description": "ServiceNow ITSM 密码"
+		},
+		"apiKeyId": {
+			"displayName": "API 密钥 ID",
+			"description": "IBM Resilient API 密钥 ID"
+		},
+		"apiKeySecret": {
+			"displayName": "API密钥密钥",
+			"description": "IBM Resilient API密钥密钥"
+		},
+		"orgId": {
+			"displayName": "组织ID",
+			"description": "IBM Resilient组织ID"
+		}
+	}
+}

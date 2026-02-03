@@ -1,0 +1,755 @@
+{
+	"header": {
+		"displayName": "Cortex",
+		"description": "Apply the Cortex analyzer/responder on the given entity"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"description": "Choose a resource",
+			"options": {
+				"analyzer": {
+					"displayName": "Analyzer"
+				},
+				"job": {
+					"displayName": "Job"
+				},
+				"responder": {
+					"displayName": "Responder"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"description": "Choose an operation",
+			"options": {
+				"execute": {
+					"displayName": "Execute",
+					"description": "Execute Responder"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get job details"
+				},
+				"report": {
+					"displayName": "Report",
+					"description": "Get job report"
+				}
+			}
+		},
+		"analyzer": {
+			"displayName": "Analyzer Type Name or ID",
+			"description": "Choose the analyzer. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"observableType": {
+			"displayName": "Observable Type Name or ID",
+			"description": "Choose the observable type. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"observableValue": {
+			"displayName": "Observable Value",
+			"description": "Enter the observable value"
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field"
+		},
+		"tlp": {
+			"displayName": "TLP",
+			"description": "The TLP of the analyzed observable",
+			"options": {
+				"0": {
+					"displayName": "White"
+				},
+				"1": {
+					"displayName": "Green"
+				},
+				"2": {
+					"displayName": "Amber"
+				},
+				"3": {
+					"displayName": "Red"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"force": {
+					"displayName": "Force",
+					"description": "Whether to force bypassing the cache"
+				},
+				"timeout": {
+					"displayName": "Timeout (Seconds)",
+					"description": "Timeout to wait for the report in case it is not available at the time the query was made"
+				}
+			}
+		},
+		"responder": {
+			"displayName": "Responder Type Name or ID",
+			"description": "Choose the responder. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"entityType": {
+			"displayName": "Entity Type Name or ID",
+			"description": "Choose the Data type. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"jsonObject": {
+			"displayName": "JSON Parameters",
+			"description": "Choose between providing JSON object or seperated attributes"
+		},
+		"objectData": {
+			"displayName": "Entity Object (JSON)"
+		},
+		"parameters": {
+			"displayName": "Parameters",
+			"placeholder": "Add Parameter",
+			"options": {
+				"values": {
+					"displayName": "Log Attributes",
+					"values": {
+						"description": {
+							"displayName": "Description",
+							"description": "Description of the alert"
+						},
+						"flag": {
+							"displayName": "Flag",
+							"description": "Flag of the case default=false"
+						},
+						"owner": {
+							"displayName": "Owner",
+							"description": "User who owns the case. This is automatically set to current user when status is set to InProgress."
+						},
+						"severity": {
+							"displayName": "Severity",
+							"description": "Severity of the case. Default=Medium.",
+							"options": {
+								"1": {
+									"displayName": "Low"
+								},
+								"2": {
+									"displayName": "Medium"
+								},
+								"3": {
+									"displayName": "High"
+								}
+							}
+						},
+						"startDate": {
+							"displayName": "Start Date",
+							"description": "Date and time of the begin of the case default=now"
+						},
+						"tags": {
+							"displayName": "Tags",
+							"placeholder": "tag1,tag2,..."
+						},
+						"title": {
+							"displayName": "Title",
+							"description": "Title of the task"
+						},
+						"tlp": {
+							"displayName": "TLP",
+							"description": "Traffic Light Protocol (TLP). Default=Amber.",
+							"options": {
+								"0": {
+									"displayName": "White"
+								},
+								"1": {
+									"displayName": "Green"
+								},
+								"2": {
+									"displayName": "Amber"
+								},
+								"3": {
+									"displayName": "Red"
+								}
+							}
+						},
+						"artifacts": {
+							"displayName": "Artifacts",
+							"placeholder": "Add an artifact",
+							"multipleValueButtonText": "Add an Artifact",
+							"options": {
+								"artifactValues": {
+									"displayName": "Artifact",
+									"options": {
+										"binaryProperty": {
+											"displayName": "Binary Field"
+										},
+										"data": {
+											"displayName": "Data"
+										},
+										"dataType": {
+											"displayName": "Data Type",
+											"options": {
+												"domain": {
+													"displayName": "Domain"
+												},
+												"file": {
+													"displayName": "File"
+												},
+												"filename": {
+													"displayName": "Filename"
+												},
+												"fqdn": {
+													"displayName": "Fqdn"
+												},
+												"hash": {
+													"displayName": "Hash"
+												},
+												"ip": {
+													"displayName": "IP"
+												},
+												"mail": {
+													"displayName": "Mail"
+												},
+												"mail_subject": {
+													"displayName": "Mail Subject"
+												},
+												"other": {
+													"displayName": "Other"
+												},
+												"regexp": {
+													"displayName": "Regexp"
+												},
+												"registry": {
+													"displayName": "Registry"
+												},
+												"uri_path": {
+													"displayName": "Uri Path"
+												},
+												"url": {
+													"displayName": "URL"
+												},
+												"user-agent": {
+													"displayName": "User Agent"
+												}
+											}
+										},
+										"message": {
+											"displayName": "Message"
+										},
+										"tags": {
+											"displayName": "Tags"
+										}
+									}
+								}
+							},
+							"values": {
+								"artifactValues": {
+									"displayName": "Artifact",
+									"options": {
+										"binaryProperty": {
+											"displayName": "Binary Field"
+										},
+										"data": {
+											"displayName": "Data"
+										},
+										"dataType": {
+											"displayName": "Data Type",
+											"options": {
+												"domain": {
+													"displayName": "Domain"
+												},
+												"file": {
+													"displayName": "File"
+												},
+												"filename": {
+													"displayName": "Filename"
+												},
+												"fqdn": {
+													"displayName": "Fqdn"
+												},
+												"hash": {
+													"displayName": "Hash"
+												},
+												"ip": {
+													"displayName": "IP"
+												},
+												"mail": {
+													"displayName": "Mail"
+												},
+												"mail_subject": {
+													"displayName": "Mail Subject"
+												},
+												"other": {
+													"displayName": "Other"
+												},
+												"regexp": {
+													"displayName": "Regexp"
+												},
+												"registry": {
+													"displayName": "Registry"
+												},
+												"uri_path": {
+													"displayName": "Uri Path"
+												},
+												"url": {
+													"displayName": "URL"
+												},
+												"user-agent": {
+													"displayName": "User Agent"
+												}
+											}
+										},
+										"message": {
+											"displayName": "Message"
+										},
+										"tags": {
+											"displayName": "Tags"
+										}
+									}
+								},
+								"artifacts": {
+									"displayName": "Artifacts",
+									"placeholder": "Add an artifact"
+								}
+							}
+						},
+						"date": {
+							"displayName": "Date",
+							"description": "Date and time when the alert was raised default=now"
+						},
+						"follow": {
+							"displayName": "Follow"
+						},
+						"source": {
+							"displayName": "Source",
+							"description": "Source of the alert"
+						},
+						"sourceRef": {
+							"displayName": "SourceRef",
+							"description": "Source reference of the alert"
+						},
+						"status": {
+							"displayName": "Status",
+							"description": "Status of the observable (Ok or Deleted) default=Ok",
+							"options": {
+								"New": {
+									"displayName": "New"
+								},
+								"Updated": {
+									"displayName": "Updated"
+								},
+								"Ignored": {
+									"displayName": "Ignored"
+								},
+								"Imported": {
+									"displayName": "Imported"
+								},
+								"Ok": {
+									"displayName": "Ok"
+								},
+								"Deleted": {
+									"displayName": "Deleted"
+								},
+								"Waiting": {
+									"displayName": "Waiting"
+								},
+								"InProgress": {
+									"displayName": "InProgress"
+								},
+								"Completed": {
+									"displayName": "Completed"
+								},
+								"Cancel": {
+									"displayName": "Cancel"
+								}
+							}
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "Type of the alert"
+						},
+						"binaryPropertyName": {
+							"displayName": "Input Binary Field"
+						},
+						"data": {
+							"displayName": "Data"
+						},
+						"dataType": {
+							"displayName": "DataType",
+							"options": {
+								"domain": {
+									"displayName": "Domain"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"filename": {
+									"displayName": "Filename"
+								},
+								"fqdn": {
+									"displayName": "Fqdn"
+								},
+								"hash": {
+									"displayName": "Hash"
+								},
+								"ip": {
+									"displayName": "IP"
+								},
+								"mail": {
+									"displayName": "Mail"
+								},
+								"mail_subject": {
+									"displayName": "Mail Subject"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"regexp": {
+									"displayName": "Regexp"
+								},
+								"registry": {
+									"displayName": "Registry"
+								},
+								"uri_path": {
+									"displayName": "Uri Path"
+								},
+								"url": {
+									"displayName": "URL"
+								},
+								"user-agent": {
+									"displayName": "User Agent"
+								}
+							}
+						},
+						"ioc": {
+							"displayName": "IOC",
+							"description": "Whether the observable is an IOC (Indicator of compromise)"
+						},
+						"message": {
+							"displayName": "Message"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Log Attributes",
+					"values": {
+						"description": {
+							"displayName": "Description",
+							"description": "Description of the alert"
+						},
+						"flag": {
+							"displayName": "Flag",
+							"description": "Flag of the case default=false"
+						},
+						"owner": {
+							"displayName": "Owner",
+							"description": "User who owns the case. This is automatically set to current user when status is set to InProgress."
+						},
+						"severity": {
+							"displayName": "Severity",
+							"description": "Severity of the case. Default=Medium.",
+							"options": {
+								"1": {
+									"displayName": "Low"
+								},
+								"2": {
+									"displayName": "Medium"
+								},
+								"3": {
+									"displayName": "High"
+								}
+							}
+						},
+						"startDate": {
+							"displayName": "Start Date",
+							"description": "Date and time of the begin of the case default=now"
+						},
+						"tags": {
+							"displayName": "Tags",
+							"placeholder": "tag1,tag2,..."
+						},
+						"title": {
+							"displayName": "Title",
+							"description": "Title of the task"
+						},
+						"tlp": {
+							"displayName": "TLP",
+							"description": "Traffic Light Protocol (TLP). Default=Amber.",
+							"options": {
+								"0": {
+									"displayName": "White"
+								},
+								"1": {
+									"displayName": "Green"
+								},
+								"2": {
+									"displayName": "Amber"
+								},
+								"3": {
+									"displayName": "Red"
+								}
+							}
+						},
+						"artifacts": {
+							"displayName": "Artifacts",
+							"placeholder": "Add an artifact",
+							"multipleValueButtonText": "Add an Artifact",
+							"options": {
+								"artifactValues": {
+									"displayName": "Artifact",
+									"options": {
+										"binaryProperty": {
+											"displayName": "Binary Field"
+										},
+										"data": {
+											"displayName": "Data"
+										},
+										"dataType": {
+											"displayName": "Data Type",
+											"options": {
+												"domain": {
+													"displayName": "Domain"
+												},
+												"file": {
+													"displayName": "File"
+												},
+												"filename": {
+													"displayName": "Filename"
+												},
+												"fqdn": {
+													"displayName": "Fqdn"
+												},
+												"hash": {
+													"displayName": "Hash"
+												},
+												"ip": {
+													"displayName": "IP"
+												},
+												"mail": {
+													"displayName": "Mail"
+												},
+												"mail_subject": {
+													"displayName": "Mail Subject"
+												},
+												"other": {
+													"displayName": "Other"
+												},
+												"regexp": {
+													"displayName": "Regexp"
+												},
+												"registry": {
+													"displayName": "Registry"
+												},
+												"uri_path": {
+													"displayName": "Uri Path"
+												},
+												"url": {
+													"displayName": "URL"
+												},
+												"user-agent": {
+													"displayName": "User Agent"
+												}
+											}
+										},
+										"message": {
+											"displayName": "Message"
+										},
+										"tags": {
+											"displayName": "Tags"
+										}
+									}
+								}
+							},
+							"values": {
+								"artifactValues": {
+									"displayName": "Artifact",
+									"options": {
+										"binaryProperty": {
+											"displayName": "Binary Field"
+										},
+										"data": {
+											"displayName": "Data"
+										},
+										"dataType": {
+											"displayName": "Data Type",
+											"options": {
+												"domain": {
+													"displayName": "Domain"
+												},
+												"file": {
+													"displayName": "File"
+												},
+												"filename": {
+													"displayName": "Filename"
+												},
+												"fqdn": {
+													"displayName": "Fqdn"
+												},
+												"hash": {
+													"displayName": "Hash"
+												},
+												"ip": {
+													"displayName": "IP"
+												},
+												"mail": {
+													"displayName": "Mail"
+												},
+												"mail_subject": {
+													"displayName": "Mail Subject"
+												},
+												"other": {
+													"displayName": "Other"
+												},
+												"regexp": {
+													"displayName": "Regexp"
+												},
+												"registry": {
+													"displayName": "Registry"
+												},
+												"uri_path": {
+													"displayName": "Uri Path"
+												},
+												"url": {
+													"displayName": "URL"
+												},
+												"user-agent": {
+													"displayName": "User Agent"
+												}
+											}
+										},
+										"message": {
+											"displayName": "Message"
+										},
+										"tags": {
+											"displayName": "Tags"
+										}
+									}
+								},
+								"artifacts": {
+									"displayName": "Artifacts",
+									"placeholder": "Add an artifact"
+								}
+							}
+						},
+						"date": {
+							"displayName": "Date",
+							"description": "Date and time when the alert was raised default=now"
+						},
+						"follow": {
+							"displayName": "Follow"
+						},
+						"source": {
+							"displayName": "Source",
+							"description": "Source of the alert"
+						},
+						"sourceRef": {
+							"displayName": "SourceRef",
+							"description": "Source reference of the alert"
+						},
+						"status": {
+							"displayName": "Status",
+							"description": "Status of the observable (Ok or Deleted) default=Ok",
+							"options": {
+								"New": {
+									"displayName": "New"
+								},
+								"Updated": {
+									"displayName": "Updated"
+								},
+								"Ignored": {
+									"displayName": "Ignored"
+								},
+								"Imported": {
+									"displayName": "Imported"
+								},
+								"Ok": {
+									"displayName": "Ok"
+								},
+								"Deleted": {
+									"displayName": "Deleted"
+								},
+								"Waiting": {
+									"displayName": "Waiting"
+								},
+								"InProgress": {
+									"displayName": "InProgress"
+								},
+								"Completed": {
+									"displayName": "Completed"
+								},
+								"Cancel": {
+									"displayName": "Cancel"
+								}
+							}
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "Type of the alert"
+						},
+						"binaryPropertyName": {
+							"displayName": "Input Binary Field"
+						},
+						"data": {
+							"displayName": "Data"
+						},
+						"dataType": {
+							"displayName": "DataType",
+							"options": {
+								"domain": {
+									"displayName": "Domain"
+								},
+								"file": {
+									"displayName": "File"
+								},
+								"filename": {
+									"displayName": "Filename"
+								},
+								"fqdn": {
+									"displayName": "Fqdn"
+								},
+								"hash": {
+									"displayName": "Hash"
+								},
+								"ip": {
+									"displayName": "IP"
+								},
+								"mail": {
+									"displayName": "Mail"
+								},
+								"mail_subject": {
+									"displayName": "Mail Subject"
+								},
+								"other": {
+									"displayName": "Other"
+								},
+								"regexp": {
+									"displayName": "Regexp"
+								},
+								"registry": {
+									"displayName": "Registry"
+								},
+								"uri_path": {
+									"displayName": "Uri Path"
+								},
+								"url": {
+									"displayName": "URL"
+								},
+								"user-agent": {
+									"displayName": "User Agent"
+								}
+							}
+						},
+						"ioc": {
+							"displayName": "IOC",
+							"description": "Whether the observable is an IOC (Indicator of compromise)"
+						},
+						"message": {
+							"displayName": "Message"
+						}
+					}
+				},
+				"parameters": {
+					"displayName": "Parameters",
+					"placeholder": "Add Parameter"
+				}
+			}
+		},
+		"jobId": {
+			"displayName": "Job ID",
+			"description": "ID of the job"
+		}
+	}
+}

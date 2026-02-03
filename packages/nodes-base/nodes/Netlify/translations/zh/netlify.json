@@ -1,0 +1,71 @@
+{
+	"header": {
+		"displayName": "Netlify",
+		"description": "使用 Netlify API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"deploy": {
+					"displayName": "部署"
+				},
+				"site": {
+					"displayName": "站点"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"cancel": {
+					"displayName": "取消",
+					"description": "取消部署"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新部署"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取站点"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "返回多个站点"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除站点"
+				}
+			}
+		},
+		"siteId": {
+			"displayName": "站点ID",
+			"description": "输入站点ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"deployId": {
+			"displayName": "部署ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"branch": {
+					"displayName": "分支"
+				},
+				"title": {
+					"displayName": "标题"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,219 @@
+{
+	"header": {
+		"displayName": "iCalendar",
+		"description": "Create iCalendar file"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"createEventFile": {
+					"displayName": "Create Event File"
+				}
+			}
+		},
+		"title": {
+			"displayName": "Event Title",
+			"placeholder": "e.g. New Event"
+		},
+		"start": {
+			"displayName": "Start",
+			"description": "Date and time at which the event begins. (For all-day events, the time will be ignored.)."
+		},
+		"end": {
+			"displayName": "End",
+			"description": "Date and time at which the event ends. (For all-day events, the time will be ignored.)."
+		},
+		"allDay": {
+			"displayName": "All Day",
+			"description": "Whether the event lasts all day or not"
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field",
+			"description": "The field that your iCalendar file will be available under in the output"
+		},
+		"additionalFields": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"attendeesUi": {
+					"displayName": "Attendees",
+					"placeholder": "Add Attendee",
+					"multipleValueButtonText": "Add Attendee",
+					"options": {
+						"attendeeValues": {
+							"displayName": "Attendees",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "e.g. name@email.com"
+								},
+								"rsvp": {
+									"displayName": "RSVP",
+									"description": "Whether the attendee has to confirm attendance or not"
+								}
+							}
+						}
+					},
+					"values": {
+						"attendeeValues": {
+							"displayName": "Attendees",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "e.g. name@email.com"
+								},
+								"rsvp": {
+									"displayName": "RSVP",
+									"description": "Whether the attendee has to confirm attendance or not"
+								}
+							}
+						},
+						"attendeesUi": {
+							"displayName": "Attendees",
+							"placeholder": "Add Attendee"
+						}
+					}
+				},
+				"busyStatus": {
+					"displayName": "Busy Status",
+					"description": "Used to specify busy status for Microsoft applications, like Outlook",
+					"options": {
+						"BUSY": {
+							"displayName": "Busy"
+						},
+						"TENTATIVE": {
+							"displayName": "Tentative"
+						}
+					}
+				},
+				"calName": {
+					"displayName": "Calendar Name",
+					"description": "Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook. <a href=\"https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d\">More info</a>."
+				},
+				"description": {
+					"displayName": "Description"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "The name of the file to be generated. Default name is event.ics.",
+					"placeholder": "e.g. event.ics"
+				},
+				"geolocationUi": {
+					"displayName": "Geolocation",
+					"placeholder": "Add Geolocation",
+					"options": {
+						"geolocationValues": {
+							"displayName": "Geolocation",
+							"options": {
+								"lat": {
+									"displayName": "Latitude"
+								},
+								"lon": {
+									"displayName": "Longitude"
+								}
+							}
+						}
+					},
+					"values": {
+						"geolocationValues": {
+							"displayName": "Geolocation",
+							"options": {
+								"lat": {
+									"displayName": "Latitude"
+								},
+								"lon": {
+									"displayName": "Longitude"
+								}
+							}
+						},
+						"geolocationUi": {
+							"displayName": "Geolocation",
+							"placeholder": "Add Geolocation"
+						}
+					}
+				},
+				"location": {
+					"displayName": "Location",
+					"description": "The intended venue"
+				},
+				"recurrenceRule": {
+					"displayName": "Recurrence Rule",
+					"description": "A rule to define the repeat pattern of the event (RRULE). (<a href=\"https://icalendar.org/rrule-tool.html\">Rule generator</a>)."
+				},
+				"organizerUi": {
+					"displayName": "Organizer",
+					"placeholder": "Add Organizer",
+					"options": {
+						"organizerValues": {
+							"displayName": "Organizer",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "e.g. name@email.com"
+								}
+							}
+						}
+					},
+					"values": {
+						"organizerValues": {
+							"displayName": "Organizer",
+							"options": {
+								"name": {
+									"displayName": "Name"
+								},
+								"email": {
+									"displayName": "Email",
+									"placeholder": "e.g. name@email.com"
+								}
+							}
+						},
+						"organizerUi": {
+							"displayName": "Organizer",
+							"placeholder": "Add Organizer"
+						}
+					}
+				},
+				"sequence": {
+					"displayName": "Sequence",
+					"description": "When sending an update for an event (with the same uid), defines the revision sequence number"
+				},
+				"status": {
+					"displayName": "Status",
+					"options": {
+						"CONFIRMED": {
+							"displayName": "Confirmed"
+						},
+						"CANCELLED": {
+							"displayName": "Cancelled"
+						},
+						"TENTATIVE": {
+							"displayName": "Tentative"
+						}
+					}
+				},
+				"uid": {
+					"displayName": "UID",
+					"description": "Universally unique ID for the event (will be auto-generated if not specified here). Should be globally unique."
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "URL associated with event"
+				},
+				"useWorkflowTimezone": {
+					"displayName": "Use Workflow Timezone",
+					"description": "Whether to use the workflow timezone set in node's settings rather than UTC"
+				}
+			}
+		}
+	}
+}

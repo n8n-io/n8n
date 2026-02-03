@@ -1,0 +1,360 @@
+{
+	"header": {
+		"displayName": "S3",
+		"description": "发送数据到任何S3兼容服务"
+	},
+	"nodeView": {
+		"s3StandardNotice": {
+			"displayName": "此节点适用于使用S3标准的服务，例如Minio或Digital Ocean Spaces。对于AWS S3请使用'AWS S3'节点。"
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"bucket": {
+					"displayName": "存储桶"
+				},
+				"file": {
+					"displayName": "文件"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建文件夹"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文件"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个文件"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "在存储桶内搜索"
+				},
+				"copy": {
+					"displayName": "复制",
+					"description": "复制文件"
+				},
+				"download": {
+					"displayName": "下载",
+					"description": "下载文件"
+				},
+				"upload": {
+					"displayName": "上传",
+					"description": "上传文件"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要删除的AWS S3存储桶名称"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"acl": {
+					"displayName": "ACL",
+					"description": "应用于对象的预设ACL",
+					"options": {
+						"authenticatedRead": {
+							"displayName": "已认证读取"
+						},
+						"Private": {
+							"displayName": "私有"
+						},
+						"publicRead": {
+							"displayName": "公开读取"
+						},
+						"publicReadWrite": {
+							"displayName": "公开读写"
+						},
+						"awsExecRead": {
+							"displayName": "AWS执行读取"
+						},
+						"bucketOwnerFullControl": {
+							"displayName": "存储桶所有者完全控制"
+						},
+						"bucketOwnerRead": {
+							"displayName": "存储桶所有者读取"
+						},
+						"private": {
+							"displayName": "私有"
+						}
+					}
+				},
+				"bucketObjectLockEnabled": {
+					"displayName": "存储桶对象锁定已启用",
+					"description": "是否要为新存储桶启用S3对象锁定"
+				},
+				"grantFullControl": {
+					"displayName": "授予完全控制权",
+					"description": "是否授予接收者对该对象的READ、READ_ACP和WRITE_ACP权限"
+				},
+				"grantRead": {
+					"displayName": "授予读取权限",
+					"description": "是否允许被授权者读取对象数据及其元数据"
+				},
+				"grantReadAcp": {
+					"displayName": "授予读取ACL权限",
+					"description": "是否允许被授权者读取对象ACL"
+				},
+				"grantWrite": {
+					"displayName": "授予写入权限",
+					"description": "是否允许被授权者在存储桶中创建、覆盖和删除任何对象"
+				},
+				"grantWriteAcp": {
+					"displayName": "授予写入ACL权限",
+					"description": "是否允许被授权者写入适用对象的访问控制列表"
+				},
+				"region": {
+					"displayName": "区域",
+					"description": "要创建存储桶的区域，默认情况下存储桶将在凭据中定义的区域创建"
+				},
+				"delimiter": {
+					"displayName": "分隔符",
+					"description": "分隔符是用于对键进行分组的字符"
+				},
+				"encodingType": {
+					"displayName": "编码类型",
+					"description": "Amazon S3 用于编码响应中对象键的编码类型",
+					"options": {
+						"url": {
+							"displayName": "URL"
+						}
+					}
+				},
+				"fetchOwner": {
+					"displayName": "获取所有者",
+					"description": "默认情况下listV2不包含所有者字段，如需在结果中为每个键返回所有者字段，请将获取所有者字段设为true"
+				},
+				"prefix": {
+					"displayName": "前缀",
+					"description": "将响应限制为以指定前缀开头的键"
+				},
+				"requesterPays": {
+					"displayName": "请求者付费",
+					"description": "请求者是否支付请求和数据传输费用。启用请求者付费后，将禁用对此存储桶的匿名访问。"
+				},
+				"startAfter": {
+					"displayName": "起始位置",
+					"description": "起始位置是您希望Amazon S3开始列出对象的起点。Amazon S3将在此指定键之后开始列出。"
+				},
+				"parentFolderKey": {
+					"displayName": "父文件夹密钥",
+					"description": "要在其中创建文件的父文件夹"
+				},
+				"storageClass": {
+					"displayName": "存储类别",
+					"description": "Amazon S3 存储类别",
+					"options": {
+						"deepArchive": {
+							"displayName": "深度归档"
+						},
+						"glacier": {
+							"displayName": "冰川"
+						},
+						"intelligentTiering": {
+							"displayName": "智能分层"
+						},
+						"onezoneIA": {
+							"displayName": "单区域IA"
+						},
+						"RecudedRedundancy": {
+							"displayName": "减少冗余"
+						},
+						"standard": {
+							"displayName": "标准"
+						},
+						"standardIA": {
+							"displayName": "标准AI"
+						}
+					}
+				},
+				"lockLegalHold": {
+					"displayName": "锁定法律保留",
+					"description": "是否对此对象应用法律保留"
+				},
+				"lockMode": {
+					"displayName": "锁定模式",
+					"description": "要应用于此对象的对象锁定模式",
+					"options": {
+						"governance": {
+							"displayName": "治理"
+						},
+						"compliance": {
+							"displayName": "合规"
+						}
+					}
+				},
+				"lockRetainUntilDate": {
+					"displayName": "锁定保留截止日期",
+					"description": "您希望此对象的对象锁定到期的时间"
+				},
+				"metadataDirective": {
+					"displayName": "元数据指令",
+					"description": "指定元数据是从源对象复制，还是替换为请求中提供的元数据。",
+					"options": {
+						"copy": {
+							"displayName": "复制"
+						},
+						"replace": {
+							"displayName": "替换"
+						}
+					}
+				},
+				"serverSideEncryption": {
+					"displayName": "服务器端加密",
+					"description": "在Amazon S3中存储此对象时使用的服务器端加密算法",
+					"options": {
+						"AES256": {
+							"displayName": "AES256"
+						},
+						"aws:kms": {
+							"displayName": "AWS:KMS"
+						}
+					}
+				},
+				"serverSideEncryptionContext": {
+					"displayName": "服务器端加密上下文",
+					"description": "指定用于对象加密的AWS KMS加密上下文"
+				},
+				"encryptionAwsKmsKeyId": {
+					"displayName": "服务器端加密 AWS KMS 密钥 ID",
+					"description": "如果 x-amz-server-side-encryption 存在且值为 aws:kms"
+				},
+				"serversideEncryptionCustomerAlgorithm": {
+					"displayName": "服务器端加密客户算法",
+					"description": "指定加密对象时使用的算法（例如 AES256）"
+				},
+				"serversideEncryptionCustomerKey": {
+					"displayName": "服务器端加密客户密钥",
+					"description": "指定Amazon S3用于加密数据的客户提供的加密密钥"
+				},
+				"serversideEncryptionCustomerKeyMD5": {
+					"displayName": "服务器端加密客户密钥MD5",
+					"description": "根据RFC 1321指定加密密钥的128位MD5摘要"
+				},
+				"taggingDirective": {
+					"displayName": "标签指令",
+					"description": "指定元数据是从源对象复制，还是替换为请求中提供的元数据。",
+					"options": {
+						"copy": {
+							"displayName": "复制"
+						},
+						"replace": {
+							"displayName": "替换"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"bucketName": {
+			"displayName": "存储桶名称"
+		},
+		"folderName": {
+			"displayName": "文件夹名称"
+		},
+		"folderKey": {
+			"displayName": "文件夹密钥"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"fetchOwner": {
+					"displayName": "获取所有者",
+					"description": "默认情况下listV2不包含所有者字段，如需在结果中为每个键返回所有者字段，请将获取所有者字段设为true"
+				},
+				"folderKey": {
+					"displayName": "文件夹密钥"
+				},
+				"versionId": {
+					"displayName": "版本ID"
+				}
+			}
+		},
+		"sourcePath": {
+			"displayName": "源路径",
+			"description": "源存储桶名称应以 (/) 开头，后跟源对象的键名，两者之间用斜杠 (/) 分隔",
+			"placeholder": "/bucket/my-image.jpg"
+		},
+		"destinationPath": {
+			"displayName": "目标路径",
+			"description": "目标存储桶的名称和目标对象的键名，用斜杠 (/) 分隔",
+			"placeholder": "/bucket/my-second-image.jpg"
+		},
+		"fileName": {
+			"displayName": "文件名",
+			"placeholder": "hello.txt",
+			"description": "如果未设置，将使用二进制数据文件名"
+		},
+		"binaryData": {
+			"displayName": "二进制文件",
+			"description": "上传数据是否应从二进制字段获取"
+		},
+		"fileContent": {
+			"displayName": "文件内容",
+			"description": "要上传文件的文本内容"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		},
+		"tagsUi": {
+			"displayName": "标签",
+			"description": "可选的额外消息头（允许大多数头信息）",
+			"placeholder": "添加标签",
+			"multipleValueButtonText": "添加标签",
+			"options": {
+				"tagsValues": {
+					"displayName": "标签",
+					"options": {
+						"key": {
+							"displayName": "键"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"tagsValues": {
+					"displayName": "标签",
+					"options": {
+						"key": {
+							"displayName": "键"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"tagsUi": {
+					"displayName": "标签",
+					"placeholder": "添加标签"
+				}
+			}
+		},
+		"fileKey": {
+			"displayName": "文件密钥"
+		}
+	}
+}

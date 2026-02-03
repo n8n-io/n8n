@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "Embeddings Google Vertex",
+		"description": "Use Google Vertex Embeddings"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings. You can find available models <a href=\"https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api\">here</a>."
+		},
+		"projectId": {
+			"displayName": "Project ID",
+			"description": "Select or enter your Google Cloud project ID"
+		},
+		"modelName": {
+			"displayName": "Model Name",
+			"description": "The model which will generate the embeddings. <a href=\"https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api\">Learn more</a>."
+		}
+	}
+}

@@ -1,0 +1,24 @@
+{
+	"header": {
+		"displayName": "限制",
+		"description": "限制项目数量"
+	},
+	"nodeView": {
+		"maxItems": {
+			"displayName": "最大项目数",
+			"description": "如果项目数超过此限制，部分项目将被移除"
+		},
+		"keep": {
+			"displayName": "保留",
+			"description": "移除项目时，是保留开头的项目还是末尾的项目",
+			"options": {
+				"firstItems": {
+					"displayName": "首个项目"
+				},
+				"lastItems": {
+					"displayName": "最后项目"
+				}
+			}
+		}
+	}
+}

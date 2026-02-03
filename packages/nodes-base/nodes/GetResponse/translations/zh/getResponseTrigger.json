@@ -1,0 +1,36 @@
+{
+	"header": {
+		"displayName": "GetResponse 触发器",
+		"description": "当 GetResponse 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"apiKey": {
+					"displayName": "API密钥"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"events": {
+			"displayName": "事件"
+		},
+		"listIds": {
+			"displayName": "列出名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"delete": {
+					"displayName": "删除当前订阅",
+					"description": "是否删除当前订阅"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,28 @@
+{
+	"header": {
+		"displayName": "Box触发器",
+		"description": "当Box事件发生时启动工作流"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件",
+			"description": "要监听的事件"
+		},
+		"targetType": {
+			"displayName": "目标类型",
+			"description": "触发Webhook的项目类型",
+			"options": {
+				"file": {
+					"displayName": "文件"
+				},
+				"folder": {
+					"displayName": "文件夹"
+				}
+			}
+		},
+		"targetId": {
+			"displayName": "目标ID",
+			"description": "触发Webhook的条目ID"
+		}
+	}
+}

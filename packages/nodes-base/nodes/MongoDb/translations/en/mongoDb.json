@@ -1,0 +1,144 @@
+{
+	"header": {
+		"displayName": "MongoDB",
+		"description": "Find, insert and update documents in MongoDB"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"searchIndexes": {
+					"displayName": "Search Index"
+				},
+				"document": {
+					"displayName": "Document"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"aggregate": {
+					"displayName": "Aggregate",
+					"description": "Aggregate documents"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete documents"
+				},
+				"find": {
+					"displayName": "Find",
+					"description": "Find documents"
+				},
+				"findOneAndReplace": {
+					"displayName": "Find And Replace",
+					"description": "Find and replace documents"
+				},
+				"findOneAndUpdate": {
+					"displayName": "Find And Update",
+					"description": "Find and update documents"
+				},
+				"insert": {
+					"displayName": "Insert",
+					"description": "Insert documents"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update documents"
+				},
+				"createSearchIndex": {
+					"displayName": "Create"
+				},
+				"dropSearchIndex": {
+					"displayName": "Drop"
+				},
+				"listSearchIndexes": {
+					"displayName": "List"
+				},
+				"updateSearchIndex": {
+					"displayName": "Update"
+				}
+			}
+		},
+		"collection": {
+			"displayName": "Collection",
+			"description": "MongoDB Collection"
+		},
+		"query": {
+			"displayName": "Query (JSON Format)",
+			"description": "MongoDB Find query",
+			"placeholder": "{ \"birth\": { \"$gt\": \"1950-01-01\" } }"
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Add query options",
+			"placeholder": "Add option",
+			"options": {
+				"limit": {
+					"displayName": "Limit",
+					"description": "Use limit to specify the maximum number of documents or 0 for unlimited documents"
+				},
+				"skip": {
+					"displayName": "Skip",
+					"description": "The number of documents to skip in the results set"
+				},
+				"sort": {
+					"displayName": "Sort (JSON Format)",
+					"description": "A JSON that defines the sort order of the result set",
+					"placeholder": "{ \"field\": -1 }"
+				},
+				"projection": {
+					"displayName": "Projection (JSON Format)",
+					"description": "A JSON that defines a selection of fields to retrieve or exclude from the result set",
+					"placeholder": "{ \"_id\": 0, \"field\": 1 }"
+				},
+				"dateFields": {
+					"displayName": "Date Fields",
+					"description": "Comma-separated list of fields that will be parsed as Mongo Date type"
+				},
+				"useDotNotation": {
+					"displayName": "Use Dot Notation",
+					"description": "Whether to use dot notation to access date fields"
+				}
+			}
+		},
+		"fields": {
+			"displayName": "Fields",
+			"description": "Comma-separated list of the fields to be included into the new document",
+			"placeholder": "name,description"
+		},
+		"updateKey": {
+			"displayName": "Update Key",
+			"description": "Name of the property which decides which rows in the database should be updated. Normally that would be \"id\"."
+		},
+		"upsert": {
+			"displayName": "Upsert",
+			"description": "Whether to perform an insert if no documents match the update key"
+		},
+		"indexName": {
+			"displayName": "Index Name",
+			"description": "If provided, only lists indexes with the specified name"
+		},
+		"indexNameRequired": {
+			"displayName": "Index Name",
+			"description": "The name of the search index"
+		},
+		"indexDefinition": {
+			"displayName": "Index Definition",
+			"description": "The search index definition",
+			"placeholder": "{ \"type\": \"vectorSearch\", \"definition\": {} }"
+		},
+		"indexType": {
+			"displayName": "Index Type",
+			"description": "The search index index type",
+			"options": {
+				"vectorSearch": {
+					"displayName": "Vector Search"
+				},
+				"search": {
+					"displayName": "Search"
+				}
+			}
+		}
+	}
+}

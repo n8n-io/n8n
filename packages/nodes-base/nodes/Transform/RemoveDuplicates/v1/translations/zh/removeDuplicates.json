@@ -1,0 +1,47 @@
+{
+	"header": {
+		"displayName": "移除重复项",
+		"description": "删除具有匹配字段值的项目"
+	},
+	"nodeView": {
+		"compare": {
+			"displayName": "比较",
+			"description": "要比较的输入项字段，以检查它们是否相同",
+			"options": {
+				"allFields": {
+					"displayName": "所有字段"
+				},
+				"allFieldsExcept": {
+					"displayName": "除以下字段外的所有字段"
+				},
+				"selectedFields": {
+					"displayName": "选定字段"
+				}
+			}
+		},
+		"fieldsToExclude": {
+			"displayName": "要排除的字段",
+			"description": "要从比较中排除的输入字段",
+			"placeholder": "例如：email, name"
+		},
+		"fieldsToCompare": {
+			"displayName": "要比较的字段",
+			"description": "要添加到比较的输入字段",
+			"placeholder": "例如：email, name"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"disableDotNotation": {
+					"displayName": "禁用点记法",
+					"description": "是否禁止在字段名中使用`parent.child`格式引用子字段"
+				},
+				"removeOtherFields": {
+					"displayName": "移除其他字段",
+					"description": "是否移除未被比较的任何字段。如果禁用，将保留重复项中第一个条目的值。"
+				}
+			}
+		}
+	}
+}

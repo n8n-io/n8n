@@ -1,0 +1,350 @@
+{
+	"header": {
+		"displayName": "Okta",
+		"description": "使用Okta API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新用户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除现有用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户详情"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个用户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新现有用户"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "用户",
+			"description": "您要操作的用户。从列表中选择，或指定一个ID。"
+		},
+		"firstName": {
+			"displayName": "名字",
+			"placeholder": "例如：Nathan"
+		},
+		"lastName": {
+			"displayName": "姓氏",
+			"placeholder": "例如：Smith"
+		},
+		"login": {
+			"displayName": "用户名",
+			"placeholder": "例如：nathan@example.com"
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"placeholder": "例如：nathan@example.com"
+		},
+		"activate": {
+			"displayName": "激活",
+			"description": "是否激活用户并允许访问所有已分配的应用"
+		},
+		"getCreateFields": {
+			"displayName": "字段",
+			"placeholder": "添加字段",
+			"options": {
+				"city": {
+					"displayName": "城市"
+				},
+				"costCenter": {
+					"displayName": "成本中心"
+				},
+				"countryCode": {
+					"displayName": "国家/地区代码"
+				},
+				"department": {
+					"displayName": "部门"
+				},
+				"displayName": {
+					"displayName": "显示名称"
+				},
+				"division": {
+					"displayName": "除法"
+				},
+				"employeeNumber": {
+					"displayName": "员工编号"
+				},
+				"honorificPrefix": {
+					"displayName": "尊称前缀"
+				},
+				"honorificSuffix": {
+					"displayName": "尊称后缀"
+				},
+				"locale": {
+					"displayName": "语言区域"
+				},
+				"manager": {
+					"displayName": "管理员"
+				},
+				"managerId": {
+					"displayName": "管理员ID"
+				},
+				"middleName": {
+					"displayName": "中间名"
+				},
+				"mobilePhone": {
+					"displayName": "手机"
+				},
+				"nickName": {
+					"displayName": "昵称"
+				},
+				"password": {
+					"displayName": "密码"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"postalAddress": {
+					"displayName": "邮政地址"
+				},
+				"preferredLanguage": {
+					"displayName": "首选语言"
+				},
+				"primaryPhone": {
+					"displayName": "主要电话"
+				},
+				"profileUrl": {
+					"displayName": "个人资料链接"
+				},
+				"recoveryQuestionAnswer": {
+					"displayName": "恢复问题答案"
+				},
+				"recoveryQuestionQuestion": {
+					"displayName": "恢复问题问题"
+				},
+				"secondEmail": {
+					"displayName": "第二封邮件"
+				},
+				"state": {
+					"displayName": "状态"
+				},
+				"streetAddress": {
+					"displayName": "街道地址"
+				},
+				"timezone": {
+					"displayName": "时区"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"userType": {
+					"displayName": "用户类型"
+				},
+				"zipCode": {
+					"displayName": "邮政编码"
+				}
+			}
+		},
+		"getUpdateFields": {
+			"displayName": "字段",
+			"placeholder": "添加字段",
+			"options": {
+				"city": {
+					"displayName": "城市"
+				},
+				"costCenter": {
+					"displayName": "成本中心"
+				},
+				"countryCode": {
+					"displayName": "国家/地区代码"
+				},
+				"department": {
+					"displayName": "部门"
+				},
+				"displayName": {
+					"displayName": "显示名称"
+				},
+				"division": {
+					"displayName": "除法"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"placeholder": "例如：nathan@example.com"
+				},
+				"employeeNumber": {
+					"displayName": "员工编号"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"placeholder": "例如：Nathan"
+				},
+				"honorificPrefix": {
+					"displayName": "尊称前缀"
+				},
+				"honorificSuffix": {
+					"displayName": "尊称后缀"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"placeholder": "例如：Smith"
+				},
+				"locale": {
+					"displayName": "语言区域"
+				},
+				"manager": {
+					"displayName": "管理员"
+				},
+				"managerId": {
+					"displayName": "管理员ID"
+				},
+				"middleName": {
+					"displayName": "中间名"
+				},
+				"mobilePhone": {
+					"displayName": "手机"
+				},
+				"nickName": {
+					"displayName": "昵称"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"password": {
+					"displayName": "密码"
+				},
+				"postalAddress": {
+					"displayName": "邮政地址"
+				},
+				"preferredLanguage": {
+					"displayName": "首选语言"
+				},
+				"primaryPhone": {
+					"displayName": "主要电话"
+				},
+				"profileUrl": {
+					"displayName": "个人资料链接"
+				},
+				"recoveryQuestionAnswer": {
+					"displayName": "恢复问题答案"
+				},
+				"recoveryQuestionQuestion": {
+					"displayName": "恢复问题问题"
+				},
+				"secondEmail": {
+					"displayName": "第二封邮件"
+				},
+				"state": {
+					"displayName": "状态"
+				},
+				"streetAddress": {
+					"displayName": "街道地址"
+				},
+				"timezone": {
+					"displayName": "时区"
+				},
+				"title": {
+					"displayName": "标题"
+				},
+				"userType": {
+					"displayName": "用户类型"
+				},
+				"login": {
+					"displayName": "用户名",
+					"placeholder": "例如：nathan@example.com"
+				},
+				"zipCode": {
+					"displayName": "邮政编码"
+				}
+			}
+		},
+		"searchQuery": {
+			"displayName": "搜索查询",
+			"placeholder": "例如：profile.lastName sw \"Smi\""
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"simplify": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"sendEmail": {
+			"displayName": "发送邮件",
+			"description": "是否向管理员发送停用邮件"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

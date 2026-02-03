@@ -1,0 +1,29 @@
+{
+	"header": {
+		"displayName": "邮件检查",
+		"description": "使用邮件检查API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"email": {
+					"displayName": "电子邮件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"check": {
+					"displayName": "检查"
+				}
+			}
+		},
+		"email": {
+			"displayName": "电子邮件",
+			"description": "要检查的电子邮件地址",
+			"placeholder": "name@email.com"
+		}
+	}
+}

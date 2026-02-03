@@ -1,0 +1,74 @@
+{
+	"header": {
+		"displayName": "Azure OpenAI 聊天模型",
+		"description": "用于AI链的高级用法"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"azureOpenAiApi": {
+					"displayName": "API密钥"
+				},
+				"azureEntraCognitiveServicesOAuth2Api": {
+					"displayName": "Azure Entra ID (OAuth2)"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "如果使用JSON响应格式，必须在提示链或代理中包含“json”一词。同时，确保选择2023年11月后发布的最新模型。"
+		},
+		"model": {
+			"displayName": "模型（部署）名称",
+			"description": "要使用的模型（部署）名称（例如：gpt-4、gpt-35-turbo）"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"frequencyPenalty": {
+					"displayName": "频率惩罚",
+					"description": "正值会根据新词元在文本中已有的出现频率进行惩罚，降低模型逐字重复相同内容的可能性。"
+				},
+				"maxTokens": {
+					"displayName": "最大令牌数",
+					"description": "在完成生成中允许生成的最大令牌数。大多数模型的上下文长度为2048个令牌（最新模型除外，支持32,768）。使用-1表示默认值。"
+				},
+				"responseFormat": {
+					"displayName": "响应格式",
+					"options": {
+						"text": {
+							"displayName": "文本",
+							"description": "常规文本响应"
+						},
+						"json_object": {
+							"displayName": "JSON",
+							"description": "启用JSON模式，确保模型生成的消息是有效的JSON格式"
+						}
+					}
+				},
+				"presencePenalty": {
+					"displayName": "存在惩罚",
+					"description": "正值会根据新标记是否已在现有文本中出现来惩罚它们，从而增加模型谈论新话题的可能性"
+				},
+				"temperature": {
+					"displayName": "采样温度",
+					"description": "控制随机性：降低温度会使生成结果更少随机性。当温度趋近于零时，模型会变得确定且重复。"
+				},
+				"timeout": {
+					"displayName": "超时时间（毫秒）",
+					"description": "请求允许执行的最长时间（毫秒）"
+				},
+				"maxRetries": {
+					"displayName": "最大重试次数",
+					"description": "失败时的最大重试次数"
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "通过核心采样控制多样性：0.5表示考虑所有似然加权选项的一半。我们通常建议调整此参数或温度，但不要同时调整两者。"
+				}
+			}
+		}
+	}
+}

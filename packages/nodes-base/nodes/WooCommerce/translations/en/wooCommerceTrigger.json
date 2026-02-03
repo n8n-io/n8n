@@ -1,0 +1,50 @@
+{
+	"header": {
+		"displayName": "WooCommerce Trigger",
+		"description": "Handle WooCommerce events via webhooks"
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "Event",
+			"description": "Determines which resource events the webhook is triggered for",
+			"options": {
+				"coupon.created": {
+					"displayName": "coupon.created"
+				},
+				"coupon.deleted": {
+					"displayName": "coupon.deleted"
+				},
+				"coupon.updated": {
+					"displayName": "coupon.updated"
+				},
+				"customer.created": {
+					"displayName": "customer.created"
+				},
+				"customer.deleted": {
+					"displayName": "customer.deleted"
+				},
+				"customer.updated": {
+					"displayName": "customer.updated"
+				},
+				"order.created": {
+					"displayName": "order.created"
+				},
+				"order.deleted": {
+					"displayName": "order.deleted"
+				},
+				"order.updated": {
+					"displayName": "order.updated"
+				},
+				"product.created": {
+					"displayName": "product.created"
+				},
+				"product.deleted": {
+					"displayName": "product.deleted"
+				},
+				"product.updated": {
+					"displayName": "product.updated"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,33 @@
+{
+	"header": {
+		"displayName": "Wise触发器",
+		"description": "通过Webhook处理Wise事件"
+	},
+	"nodeView": {
+		"profileId": {
+			"displayName": "配置文件名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"balanceCredit": {
+					"displayName": "余额入账",
+					"description": "每次余额账户入账时触发"
+				},
+				"balanceUpdate": {
+					"displayName": "余额更新",
+					"description": "每当余额账户发生入账或出账时触发"
+				},
+				"transferActiveCases": {
+					"displayName": "转移活跃案件",
+					"description": "每次转移的活跃案件列表更新时触发"
+				},
+				"tranferStateChange": {
+					"displayName": "传输状态已更改",
+					"description": "每次传输状态更新时触发"
+				}
+			}
+		}
+	}
+}

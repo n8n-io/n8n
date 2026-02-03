@@ -1,0 +1,196 @@
+{
+	"header": {
+		"displayName": "Phantombuster",
+		"description": "Consume Phantombuster API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"agent": {
+					"displayName": "Agent"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete an agent by ID"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get an agent by ID"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many agents of the current user's organization"
+				},
+				"getOutput": {
+					"displayName": "Get Output",
+					"description": "Get the output of the most recent container of an agent"
+				},
+				"launch": {
+					"displayName": "Launch",
+					"description": "Add an agent to the launch queue"
+				}
+			}
+		},
+		"agentId": {
+			"displayName": "Agent Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"prevContainerId": {
+					"displayName": "Prev Container ID",
+					"description": "If set, the output will be retrieved from the container after the specified previous container ID"
+				},
+				"prevStatus": {
+					"displayName": "Prev Status",
+					"description": "If set, allows to define which status was previously retrieved on user-side",
+					"options": {
+						"finished": {
+							"displayName": "Finished"
+						},
+						"lauch error": {
+							"displayName": "Launch Error"
+						},
+						"never launched": {
+							"displayName": "Never Launched"
+						},
+						"running": {
+							"displayName": "Running"
+						},
+						"starting": {
+							"displayName": "Starting"
+						},
+						"unknown": {
+							"displayName": "Unknown"
+						}
+					}
+				},
+				"prevRuntimeEventIndex": {
+					"displayName": "Pre Runtime Event Index",
+					"description": "If set, the container's runtime events will be returned in the response starting from the provided previous runtime event index"
+				},
+				"argumentsJson": {
+					"displayName": "Arguments (JSON)",
+					"description": "Agent argument. Can either be a JSON string or a plain object. The argument can be retrieved with buster.argument in the agent’s script."
+				},
+				"argumentsUi": {
+					"displayName": "Arguments",
+					"placeholder": "Add Argument",
+					"multipleValueButtonText": "Add Argument",
+					"options": {
+						"argumentValues": {
+							"displayName": "Argument",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Name of the argument key to add"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the argument key"
+								}
+							}
+						}
+					},
+					"values": {
+						"argumentValues": {
+							"displayName": "Argument",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Name of the argument key to add"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the argument key"
+								}
+							}
+						},
+						"argumentsUi": {
+							"displayName": "Arguments",
+							"placeholder": "Add Argument"
+						}
+					}
+				},
+				"bonusArgumentUi": {
+					"displayName": "Bonus Argument",
+					"placeholder": "Add Bonus Argument",
+					"multipleValueButtonText": "Add Bonus Argument",
+					"options": {
+						"bonusArgumentValue": {
+							"displayName": "Bonus Argument",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Name of the argument key to add"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the argument key"
+								}
+							}
+						}
+					},
+					"values": {
+						"bonusArgumentValue": {
+							"displayName": "Bonus Argument",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Name of the argument key to add"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set for the argument key"
+								}
+							}
+						},
+						"bonusArgumentUi": {
+							"displayName": "Bonus Argument",
+							"placeholder": "Add Bonus Argument"
+						}
+					}
+				},
+				"bonusArgumentJson": {
+					"displayName": "Bonus Argument (JSON)",
+					"description": "Agent bonus argument. Can either be a JSON string or a plain object. This bonus argument is single-use, it will only be used for the current launch. If present, it will be merged with the original argument, resulting in an effective argument that can be retrieved with buster.argument in the agent’s script."
+				},
+				"manualLaunch": {
+					"displayName": "Manual Launch",
+					"description": "Whether the agent will be considered as \"launched manually\""
+				},
+				"maxInstanceCount": {
+					"displayName": "Max Instance Count",
+					"description": "If set, the agent will only be launched if the number of already running instances is below the specified number"
+				},
+				"saveArgument": {
+					"displayName": "Save Argument",
+					"description": "If true, argument will be saved as the default launch options for the agent"
+				}
+			}
+		},
+		"jsonParameters": {
+			"displayName": "JSON Parameters"
+		}
+	}
+}

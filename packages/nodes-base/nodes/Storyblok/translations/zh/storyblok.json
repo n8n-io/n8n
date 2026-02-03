@@ -1,0 +1,97 @@
+{
+	"header": {
+		"displayName": "Storyblok",
+		"description": "使用 Storyblok API"
+	},
+	"nodeView": {
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "选择数据来源：内容API或管理API",
+			"options": {
+				"contentApi": {
+					"displayName": "内容API"
+				},
+				"managementApi": {
+					"displayName": "管理API"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"story": {
+					"displayName": "故事"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取故事"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个故事"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除故事"
+				},
+				"publish": {
+					"displayName": "发布",
+					"description": "发布故事"
+				},
+				"unpublish": {
+					"displayName": "取消发布",
+					"description": "取消发布故事"
+				}
+			}
+		},
+		"identifier": {
+			"displayName": "标识符",
+			"description": "要获取的故事ID或别名"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"starts_with": {
+					"displayName": "以...开头",
+					"description": "按slug筛选"
+				}
+			}
+		},
+		"space": {
+			"displayName": "空间名称或ID",
+			"description": "空间名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"storyId": {
+			"displayName": "故事ID",
+			"description": "故事的数字ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"releaseId": {
+					"displayName": "发布ID",
+					"description": "发布的数字ID"
+				},
+				"language": {
+					"displayName": "语言",
+					"description": "单独发布故事的语言代码（必须在空间设置中启用）"
+				}
+			}
+		}
+	}
+}

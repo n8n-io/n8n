@@ -1,0 +1,538 @@
+{
+	"header": {
+		"displayName": "Oracle Database",
+		"description": "Get, add and update data in Oracle database"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource"
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"deleteTable": {
+					"displayName": "Delete",
+					"description": "Delete an entire table or rows in a table"
+				},
+				"execute": {
+					"displayName": "Execute SQL",
+					"description": "Execute an SQL"
+				},
+				"insert": {
+					"displayName": "Insert",
+					"description": "Insert rows in a table"
+				},
+				"upsert": {
+					"displayName": "Insert or Update",
+					"description": "Insert or update rows in a table"
+				},
+				"select": {
+					"displayName": "Select",
+					"description": "Select rows from a table"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update rows in a table"
+				}
+			}
+		},
+		"schema": {
+			"displayName": "Schema",
+			"description": "The schema that contains the table you want to work on",
+			"placeholder": "e.g. scott"
+		},
+		"table": {
+			"displayName": "Table",
+			"description": "The table you want to work on"
+		},
+		"deleteCommand": {
+			"displayName": "Command",
+			"options": {
+				"truncate": {
+					"displayName": "Truncate",
+					"description": "Only removes the table's data and preserves the table's structure"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete the rows that match the 'Select Rows' conditions below. If no selection is made, all rows in the table are deleted."
+				},
+				"drop": {
+					"displayName": "Drop",
+					"description": "Deletes the table's data and also the table's structure permanently"
+				}
+			}
+		},
+		"where": {
+			"displayName": "Select Rows",
+			"description": "If not set, all rows will be selected",
+			"placeholder": "Add Condition",
+			"multipleValueButtonText": "Add Condition",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>",
+							"placeholder": "e.g. ID"
+						},
+						"condition": {
+							"displayName": "Operator",
+							"description": "The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
+							"options": {
+								"equal": {
+									"displayName": "Equal"
+								},
+								"!=": {
+									"displayName": "Not Equal"
+								},
+								"LIKE": {
+									"displayName": "Like"
+								},
+								">": {
+									"displayName": "Greater Than"
+								},
+								"<": {
+									"displayName": "Less Than"
+								},
+								">=": {
+									"displayName": "Greater Than Or Equal"
+								},
+								"<=": {
+									"displayName": "Less Than Or Equal"
+								},
+								"IS NULL": {
+									"displayName": "Is Null"
+								},
+								"IS NOT NULL": {
+									"displayName": "Is Not Null"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Parameters to pass to the tool as JSON or string",
+							"placeholder": "{ \"key\": \"value\" }"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>",
+							"placeholder": "e.g. ID"
+						},
+						"condition": {
+							"displayName": "Operator",
+							"description": "The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
+							"options": {
+								"equal": {
+									"displayName": "Equal"
+								},
+								"!=": {
+									"displayName": "Not Equal"
+								},
+								"LIKE": {
+									"displayName": "Like"
+								},
+								">": {
+									"displayName": "Greater Than"
+								},
+								"<": {
+									"displayName": "Less Than"
+								},
+								">=": {
+									"displayName": "Greater Than Or Equal"
+								},
+								"<=": {
+									"displayName": "Less Than Or Equal"
+								},
+								"IS NULL": {
+									"displayName": "Is Null"
+								},
+								"IS NOT NULL": {
+									"displayName": "Is Not Null"
+								}
+							}
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Parameters to pass to the tool as JSON or string",
+							"placeholder": "{ \"key\": \"value\" }"
+						}
+					}
+				},
+				"where": {
+					"displayName": "Select Rows",
+					"placeholder": "Add Condition"
+				}
+			}
+		},
+		"combineConditions": {
+			"displayName": "Combine Conditions",
+			"description": "How to combine the conditions defined in \"Select Rows\": AND requires all conditions to be true, OR requires at least one condition to be true",
+			"options": {
+				"AND": {
+					"displayName": "AND",
+					"description": "Only rows that meet all the conditions are selected"
+				},
+				"OR": {
+					"displayName": "OR",
+					"description": "Rows that meet at least one condition are selected"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"autoCommit": {
+					"displayName": "Auto Commit",
+					"description": "Whether this property is true, then the transaction in the current connection is automatically committed at the end of statement execution"
+				},
+				"params": {
+					"displayName": "Bind Variable Placeholder Values",
+					"description": "Enter the values for the bind parameters used in the statement",
+					"placeholder": "Add Parameter",
+					"multipleValueButtonText": "Add another Parameter",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"name": {
+									"displayName": "Bind Name or Number",
+									"description": "A bind variable placeholder identifier or numeral",
+									"placeholder": "e.g. ``dept_id`` and ``dept_name`` are the two bind variables placeholders in this SQL statement"
+								},
+								"bindDirection": {
+									"displayName": "Bind Direction",
+									"description": "Specify whether data values bound to SQL or PL/SQL bind parameters are passed into, or out from, the database",
+									"options": {
+										"in": {
+											"displayName": "IN"
+										},
+										"out": {
+											"displayName": "OUT"
+										},
+										"inout": {
+											"displayName": "IN-OUT"
+										}
+									}
+								},
+								"datatype": {
+									"displayName": "Data Type",
+									"options": {
+										"blob": {
+											"displayName": "BLOB"
+										},
+										"boolean": {
+											"displayName": "Boolean"
+										},
+										"date": {
+											"displayName": "Date"
+										},
+										"json": {
+											"displayName": "JSON"
+										},
+										"number": {
+											"displayName": "Number"
+										},
+										"sparse": {
+											"displayName": "SparseVector"
+										},
+										"string": {
+											"displayName": "String"
+										},
+										"vector": {
+											"displayName": "Vector"
+										}
+									}
+								},
+								"valueString": {
+									"displayName": "Value (String)"
+								},
+								"valueNumber": {
+									"displayName": "Value (Number)"
+								},
+								"valueDate": {
+									"displayName": "Value (Date)"
+								},
+								"valueBoolean": {
+									"displayName": "Value (Boolean)"
+								},
+								"valueJson": {
+									"displayName": "Value (JSON)"
+								},
+								"valueVector": {
+									"displayName": "Value (VECTOR)",
+									"description": "A JSON array of dimension values",
+									"placeholder": "[1.2, 3.4, 5.6]"
+								},
+								"valueBlob": {
+									"displayName": "Value (BLOB)",
+									"description": "A Binary data",
+									"placeholder": "{ \"type\": \"Buffer\", \"data\": [98,10] }"
+								},
+								"valueSparse": {
+									"displayName": "Value (Sparse Vector)",
+									"options": {
+										"dimensions": {
+											"displayName": "Dimensions",
+											"description": "Total number of dimensions"
+										},
+										"indices": {
+											"displayName": "Indices",
+											"description": "A JSON array of indices, e.g., [0, 2, 5]",
+											"placeholder": "[0, 2, 5]"
+										},
+										"values": {
+											"displayName": "Values",
+											"description": "A JSON array of values matching indices",
+											"placeholder": "[1.2, 3.4, 5.6]"
+										}
+									}
+								},
+								"parseInStatement": {
+									"displayName": "Parse for IN Statement",
+									"options": {
+										"false": {
+											"displayName": "No"
+										},
+										"true": {
+											"displayName": "Yes"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"name": {
+									"displayName": "Bind Name or Number",
+									"description": "A bind variable placeholder identifier or numeral",
+									"placeholder": "e.g. ``dept_id`` and ``dept_name`` are the two bind variables placeholders in this SQL statement"
+								},
+								"bindDirection": {
+									"displayName": "Bind Direction",
+									"description": "Specify whether data values bound to SQL or PL/SQL bind parameters are passed into, or out from, the database",
+									"options": {
+										"in": {
+											"displayName": "IN"
+										},
+										"out": {
+											"displayName": "OUT"
+										},
+										"inout": {
+											"displayName": "IN-OUT"
+										}
+									}
+								},
+								"datatype": {
+									"displayName": "Data Type",
+									"options": {
+										"blob": {
+											"displayName": "BLOB"
+										},
+										"boolean": {
+											"displayName": "Boolean"
+										},
+										"date": {
+											"displayName": "Date"
+										},
+										"json": {
+											"displayName": "JSON"
+										},
+										"number": {
+											"displayName": "Number"
+										},
+										"sparse": {
+											"displayName": "SparseVector"
+										},
+										"string": {
+											"displayName": "String"
+										},
+										"vector": {
+											"displayName": "Vector"
+										}
+									}
+								},
+								"valueString": {
+									"displayName": "Value (String)"
+								},
+								"valueNumber": {
+									"displayName": "Value (Number)"
+								},
+								"valueDate": {
+									"displayName": "Value (Date)"
+								},
+								"valueBoolean": {
+									"displayName": "Value (Boolean)"
+								},
+								"valueJson": {
+									"displayName": "Value (JSON)"
+								},
+								"valueVector": {
+									"displayName": "Value (VECTOR)",
+									"description": "A JSON array of dimension values",
+									"placeholder": "[1.2, 3.4, 5.6]"
+								},
+								"valueBlob": {
+									"displayName": "Value (BLOB)",
+									"description": "A Binary data",
+									"placeholder": "{ \"type\": \"Buffer\", \"data\": [98,10] }"
+								},
+								"valueSparse": {
+									"displayName": "Value (Sparse Vector)",
+									"options": {
+										"dimensions": {
+											"displayName": "Dimensions",
+											"description": "Total number of dimensions"
+										},
+										"indices": {
+											"displayName": "Indices",
+											"description": "A JSON array of indices, e.g., [0, 2, 5]",
+											"placeholder": "[0, 2, 5]"
+										},
+										"values": {
+											"displayName": "Values",
+											"description": "A JSON array of values matching indices",
+											"placeholder": "[1.2, 3.4, 5.6]"
+										}
+									}
+								},
+								"parseInStatement": {
+									"displayName": "Parse for IN Statement",
+									"options": {
+										"false": {
+											"displayName": "No"
+										},
+										"true": {
+											"displayName": "Yes"
+										}
+									}
+								}
+							}
+						},
+						"params": {
+							"displayName": "Bind Variable Placeholder Values",
+							"placeholder": "Add Parameter"
+						}
+					}
+				},
+				"fetchArraySize": {
+					"displayName": "Fetch Array Size",
+					"description": "This property is a number that sets the size of an internal buffer used for fetching query rows from Oracle Database. Changing it may affect query performance but does not affect how many rows are returned to the application."
+				},
+				"prefetchRows": {
+					"displayName": "Number of Rows to Prefetch",
+					"description": "This property is a query tuning option to set the number of additional rows the underlying Oracle driver fetches during the internal initial statement execution phase of a query"
+				},
+				"outputColumns": {
+					"displayName": "Output Columns",
+					"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>"
+				},
+				"largeNumbersOutputAsString": {
+					"displayName": "Output Numbers As String",
+					"description": "Whether the numbers should be retrieved as string"
+				},
+				"stmtBatching": {
+					"displayName": "Statement Batching",
+					"description": "The way queries should be sent to the database",
+					"options": {
+						"single": {
+							"displayName": "Single Statement",
+							"description": "A single Statement for all incoming items"
+						},
+						"independently": {
+							"displayName": "Independently",
+							"description": "Execute one Statement per incoming item of the run"
+						},
+						"transaction": {
+							"displayName": "Transaction",
+							"description": "Execute all Statements in a transaction, if a failure occurs, all changes are rolled back"
+						}
+					}
+				}
+			}
+		},
+		"stmtBatchingNotice": {
+			"displayName": "Important: Single Statement mode works only for the first item"
+		},
+		"query": {
+			"displayName": "Statement",
+			"description": "The SQL statement to execute. You can use n8n expressions and positional parameters like :1, :2, :3, or named parameters like :name, :ID, etc to refer to the 'Bind Variable Placeholder Values' set in options below.",
+			"placeholder": "e.g. SELECT id, name FROM product WHERE quantity > :1 AND price <= :2"
+		},
+		"columns": {
+			"displayName": "Columns"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"sort": {
+			"displayName": "Sort",
+			"placeholder": "Add Sort Rule",
+			"multipleValueButtonText": "Add Sort Rule",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>"
+						},
+						"direction": {
+							"displayName": "Direction",
+							"options": {
+								"ASC": {
+									"displayName": "ASC"
+								},
+								"DESC": {
+									"displayName": "DESC"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"column": {
+							"displayName": "Column",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">expression</a>"
+						},
+						"direction": {
+							"displayName": "Direction",
+							"options": {
+								"ASC": {
+									"displayName": "ASC"
+								},
+								"DESC": {
+									"displayName": "DESC"
+								}
+							}
+						}
+					}
+				},
+				"sort": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort Rule"
+				}
+			}
+		}
+	}
+}

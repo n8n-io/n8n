@@ -1,0 +1,103 @@
+{
+	"header": {
+		"displayName": "SurveyMonkey Trigger",
+		"description": "Starts the workflow when Survey Monkey events occur"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"accessToken": {
+					"displayName": "Access Token"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"objectType": {
+			"displayName": "Type",
+			"options": {
+				"collector": {
+					"displayName": "Collector"
+				},
+				"survey": {
+					"displayName": "Survey"
+				}
+			}
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"collector_created": {
+					"displayName": "Collector Created",
+					"description": "A collector is created"
+				},
+				"collector_deleted": {
+					"displayName": "Collector Deleted",
+					"description": "A collector is deleted"
+				},
+				"collector_updated": {
+					"displayName": "Collector Updated",
+					"description": "A collector is updated"
+				},
+				"response_completed": {
+					"displayName": "Response Completed",
+					"description": "A survey response is completed"
+				},
+				"response_created": {
+					"displayName": "Response Created",
+					"description": "A respondent begins a survey"
+				},
+				"response_deleted": {
+					"displayName": "Response Deleted",
+					"description": "A response is deleted"
+				},
+				"response_disqualified": {
+					"displayName": "Response Disqualified",
+					"description": "A survey response is disqualified"
+				},
+				"response_overquota": {
+					"displayName": "Response Overquota",
+					"description": "A response is over a survey’s quota"
+				},
+				"response_updated": {
+					"displayName": "Response Updated",
+					"description": "A survey response is updated"
+				},
+				"survey_created": {
+					"displayName": "Survey Created",
+					"description": "A survey is created"
+				},
+				"survey_deleted": {
+					"displayName": "Survey Deleted",
+					"description": "A survey is deleted"
+				},
+				"survey_updated": {
+					"displayName": "Survey Updated",
+					"description": "A survey is updated"
+				}
+			}
+		},
+		"surveyIds": {
+			"displayName": "Survey Names or IDs",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"surveyId": {
+			"displayName": "Survey Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"collectorIds": {
+			"displayName": "Collector Names or IDs",
+			"description": "Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically."
+		},
+		"onlyAnswers": {
+			"displayName": "Only Answers",
+			"description": "Whether to return only the answers of the form and not any of the other data"
+		}
+	}
+}

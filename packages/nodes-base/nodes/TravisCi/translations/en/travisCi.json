@@ -1,0 +1,130 @@
+{
+	"header": {
+		"displayName": "TravisCI",
+		"description": "Consume TravisCI API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"build": {
+					"displayName": "Build"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"cancel": {
+					"displayName": "Cancel",
+					"description": "Cancel a build"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a build"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many builds"
+				},
+				"restart": {
+					"displayName": "Restart",
+					"description": "Restart a build"
+				},
+				"trigger": {
+					"displayName": "Trigger",
+					"description": "Trigger a build"
+				}
+			}
+		},
+		"buildId": {
+			"displayName": "Build ID",
+			"description": "Value uniquely identifying the build"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"include": {
+					"displayName": "Include",
+					"description": "List of attributes to eager load",
+					"placeholder": "build.commit"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "You may specify order to sort your response",
+					"options": {
+						"asc": {
+							"displayName": "ASC"
+						},
+						"desc": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"sortBy": {
+					"displayName": "Sort By",
+					"options": {
+						"created_at": {
+							"displayName": "Created At"
+						},
+						"finished_at": {
+							"displayName": "Finished At"
+						},
+						"id": {
+							"displayName": "ID"
+						},
+						"number": {
+							"displayName": "Number"
+						},
+						"started_at": {
+							"displayName": "Started At"
+						}
+					}
+				},
+				"message": {
+					"displayName": "Message",
+					"description": "Travis-ci status message attached to the request"
+				},
+				"mergeMode": {
+					"displayName": "Merge Mode",
+					"options": {
+						"deep_merge": {
+							"displayName": "Deep Merge"
+						},
+						"deep_merge_append": {
+							"displayName": "Deep Merge Append"
+						},
+						"deep_merge_prepend": {
+							"displayName": "Deep Merge Prepend"
+						},
+						"merge": {
+							"displayName": "Merge"
+						},
+						"replace": {
+							"displayName": "Replace"
+						}
+					}
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"slug": {
+			"displayName": "Slug",
+			"description": "Same as {ownerName}/{repositoryName}",
+			"placeholder": "n8n-io/n8n"
+		},
+		"branch": {
+			"displayName": "Branch",
+			"description": "Branch requested to be built",
+			"placeholder": "master"
+		}
+	}
+}

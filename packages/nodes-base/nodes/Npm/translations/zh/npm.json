@@ -1,0 +1,122 @@
+{
+	"header": {
+		"displayName": "Npm",
+		"description": "使用NPM注册表API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"package": {
+					"displayName": "包"
+				},
+				"distTag": {
+					"displayName": "分发标签"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getMetadata": {
+					"displayName": "获取元数据",
+					"description": "返回特定版本软件包的所有元数据"
+				},
+				"getVersions": {
+					"displayName": "获取版本",
+					"description": "返回软件包的所有版本"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "搜索软件包"
+				},
+				"getMany": {
+					"displayName": "获取所有",
+					"description": "返回包的所有dist-tags"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新包的dist-tags"
+				}
+			}
+		},
+		"packageName": {
+			"displayName": "包名称"
+		},
+		"packageVersion": {
+			"displayName": "软件包版本"
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "用于搜索软件包的查询文本"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"offset": {
+			"displayName": "偏移量",
+			"description": "返回结果的起始偏移量"
+		},
+		"distTagName": {
+			"displayName": "分发标签名称"
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

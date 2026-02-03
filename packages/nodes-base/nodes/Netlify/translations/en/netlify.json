@@ -1,0 +1,71 @@
+{
+	"header": {
+		"displayName": "Netlify",
+		"description": "Consume Netlify API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"deploy": {
+					"displayName": "Deploy"
+				},
+				"site": {
+					"displayName": "Site"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"cancel": {
+					"displayName": "Cancel",
+					"description": "Cancel a deployment"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a new deployment"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a site"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Returns many sites"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a site"
+				}
+			}
+		},
+		"siteId": {
+			"displayName": "Site ID",
+			"description": "Enter the Site ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"deployId": {
+			"displayName": "Deploy ID"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Fields",
+			"options": {
+				"branch": {
+					"displayName": "Branch"
+				},
+				"title": {
+					"displayName": "Title"
+				}
+			}
+		}
+	}
+}

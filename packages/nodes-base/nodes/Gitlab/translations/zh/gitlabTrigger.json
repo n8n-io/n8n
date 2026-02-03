@@ -1,0 +1,33 @@
+{
+	"header": {
+		"displayName": "GitLab 触发器",
+		"description": "当 GitLab 事件发生时启动工作流"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"owner": {
+			"displayName": "仓库所有者",
+			"description": "仓库所有者",
+			"placeholder": "n8n-io"
+		},
+		"repository": {
+			"displayName": "仓库名称",
+			"description": "仓库名称",
+			"placeholder": "n8n"
+		},
+		"events": {
+			"displayName": "事件",
+			"description": "要监听的事件"
+		}
+	}
+}

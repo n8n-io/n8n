@@ -1,0 +1,113 @@
+{
+	"header": {
+		"displayName": "调试助手",
+		"description": "故意引发问题并生成用于调试的有用数据"
+	},
+	"nodeView": {
+		"category": {
+			"displayName": "分类",
+			"options": {
+				"doNothing": {
+					"displayName": "不执行任何操作",
+					"description": "不执行任何操作"
+				},
+				"throwError": {
+					"displayName": "抛出错误",
+					"description": "使用指定的类型和消息抛出错误"
+				},
+				"oom": {
+					"displayName": "内存不足",
+					"description": "生成大量内存以引发内存不足错误"
+				},
+				"randomData": {
+					"displayName": "生成随机数据",
+					"description": "生成随机数据集"
+				}
+			}
+		},
+		"throwErrorType": {
+			"displayName": "错误类型",
+			"options": {
+				"NodeApiError": {
+					"displayName": "节点API错误"
+				},
+				"NodeOperationError": {
+					"displayName": "节点操作错误"
+				},
+				"Error": {
+					"displayName": "错误"
+				}
+			}
+		},
+		"throwErrorMessage": {
+			"displayName": "错误消息",
+			"description": "作为错误一部分发送的消息"
+		},
+		"memorySizeValue": {
+			"displayName": "生成内存大小",
+			"description": "生成所需的大致内存量。请预留充足空间..."
+		},
+		"randomDataType": {
+			"displayName": "数据类型",
+			"options": {
+				"address": {
+					"displayName": "地址"
+				},
+				"latLong": {
+					"displayName": "坐标"
+				},
+				"creditCard": {
+					"displayName": "信用卡"
+				},
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"ipv4": {
+					"displayName": "IPv4"
+				},
+				"ipv6": {
+					"displayName": "IPv6"
+				},
+				"macAddress": {
+					"displayName": "MAC"
+				},
+				"nanoid": {
+					"displayName": "NanoId"
+				},
+				"url": {
+					"displayName": "URL"
+				},
+				"user": {
+					"displayName": "用户数据"
+				},
+				"uuid": {
+					"displayName": "UUID"
+				},
+				"semver": {
+					"displayName": "版本"
+				}
+			}
+		},
+		"nanoidAlphabet": {
+			"displayName": "NanoId字母表",
+			"description": "用于生成nanoId的字母表"
+		},
+		"nanoidLength": {
+			"displayName": "NanoId长度",
+			"description": "每个nanoId的长度"
+		},
+		"randomDataSeed": {
+			"displayName": "种子",
+			"description": "如果设置，将使用此种子生成数据（相同种子会生成相同数据）",
+			"placeholder": "留空则使用随机种子"
+		},
+		"randomDataCount": {
+			"displayName": "要生成的项目数量",
+			"description": "要生成到数组中的随机数据项数量"
+		},
+		"randomDataSingleArray": {
+			"displayName": "输出为单一数组",
+			"description": "是否输出单一数组而非多个项目"
+		}
+	}
+}

@@ -1,0 +1,148 @@
+{
+	"header": {
+		"displayName": "Google 幻灯片",
+		"description": "使用 Google 幻灯片 API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				},
+				"serviceAccount": {
+					"displayName": "服务账号"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"page": {
+					"displayName": "页面"
+				},
+				"presentation": {
+					"displayName": "演示文稿"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建演示文稿"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取页面"
+				},
+				"getSlides": {
+					"displayName": "获取幻灯片",
+					"description": "获取演示文稿幻灯片"
+				},
+				"replaceText": {
+					"displayName": "替换文本",
+					"description": "替换演示文稿中的文本"
+				},
+				"getThumbnail": {
+					"displayName": "获取缩略图",
+					"description": "获取缩略图"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "要创建的演示文稿标题"
+		},
+		"presentationId": {
+			"displayName": "演示文稿ID",
+			"description": "要检索的演示文稿ID。可在演示文稿URL中找到：<code>https://docs.google.com/presentation/d/PRESENTATION_ID/edit</code>",
+			"placeholder": "1wZtNFZ8MO-WKrxhYrOLMvyiqSgFwdSz5vn8_l_7eNqw"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"pageObjectId": {
+			"displayName": "页面对象ID",
+			"description": "要检索的页面对象ID"
+		},
+		"textUi": {
+			"displayName": "待替换文本",
+			"placeholder": "添加文本",
+			"multipleValueButtonText": "添加文本",
+			"options": {
+				"textValues": {
+					"displayName": "文本",
+					"options": {
+						"matchCase": {
+							"displayName": "匹配大小写",
+							"description": "搜索是否区分大小写。True：搜索区分大小写。False：搜索不区分大小写。"
+						},
+						"pageObjectIds": {
+							"displayName": "幻灯片名称或ID",
+							"description": "若非空，则将匹配项限制在仅指定幻灯片上的幻灯片元素。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"text": {
+							"displayName": "搜索",
+							"description": "在幻灯片中搜索的文本"
+						},
+						"replaceText": {
+							"displayName": "替换为",
+							"description": "用于替换匹配文本的文本"
+						}
+					}
+				}
+			},
+			"values": {
+				"textValues": {
+					"displayName": "文本",
+					"options": {
+						"matchCase": {
+							"displayName": "匹配大小写",
+							"description": "搜索是否区分大小写。True：搜索区分大小写。False：搜索不区分大小写。"
+						},
+						"pageObjectIds": {
+							"displayName": "幻灯片名称或ID",
+							"description": "若非空，则将匹配项限制在仅指定幻灯片上的幻灯片元素。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"text": {
+							"displayName": "搜索",
+							"description": "在幻灯片中搜索的文本"
+						},
+						"replaceText": {
+							"displayName": "替换为",
+							"description": "用于替换匹配文本的文本"
+						}
+					}
+				},
+				"textUi": {
+					"displayName": "待替换文本",
+					"placeholder": "添加文本"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"revisionId": {
+					"displayName": "修订ID",
+					"description": "写入请求所需的演示文稿修订ID。如果指定了此参数，但requiredRevisionId与演示文稿的当前revisionId不完全匹配，请求将不会被处理，并返回400错误请求错误。"
+				}
+			}
+		},
+		"download": {
+			"displayName": "下载",
+			"description": "要写入读取页面数据的二进制属性名称"
+		},
+		"binaryProperty": {
+			"displayName": "将输出文件放入字段"
+		}
+	}
+}

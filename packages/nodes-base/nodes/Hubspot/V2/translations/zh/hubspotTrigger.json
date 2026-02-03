@@ -1,0 +1,202 @@
+{
+	"header": {
+		"displayName": "HubSpot触发器",
+		"description": "当HubSpot事件发生时启动工作流"
+	},
+	"nodeView": {
+		"eventsUi": {
+			"displayName": "事件",
+			"placeholder": "添加事件",
+			"multipleValueButtonText": "添加事件",
+			"options": {
+				"eventValues": {
+					"displayName": "事件",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"options": {
+								"company.creation": {
+									"displayName": "公司已创建",
+									"description": "当客户账户中有任何公司被创建时接收通知"
+								},
+								"company.deletion": {
+									"displayName": "公司已删除",
+									"description": "当客户账户中有任何公司被删除时接收通知"
+								},
+								"company.propertyChange": {
+									"displayName": "公司属性已更改",
+									"description": "当客户账户中任何公司的指定属性变更时接收通知"
+								},
+								"contact.creation": {
+									"displayName": "联系人已创建",
+									"description": "当客户账户中有任何联系人被创建时接收通知"
+								},
+								"contact.deletion": {
+									"displayName": "联系人已删除",
+									"description": "当客户账户中有任何联系人被删除时接收通知"
+								},
+								"contact.privacyDeletion": {
+									"displayName": "联系人隐私已删除",
+									"description": "当联系人因隐私合规原因被删除时接收通知"
+								},
+								"contact.propertyChange": {
+									"displayName": "联系人属性已更改",
+									"description": "当客户账户中任何联系人的指定属性发生更改时接收通知"
+								},
+								"conversation.creation": {
+									"displayName": "对话创建",
+									"description": "当账户中创建新主题时接收通知"
+								},
+								"conversation.deletion": {
+									"displayName": "对话删除",
+									"description": "当账户中的主题被归档或软删除时接收通知"
+								},
+								"conversation.newMessage": {
+									"displayName": "对话新消息",
+									"description": "当线程收到新消息时获取通知"
+								},
+								"conversation.privacyDeletion": {
+									"displayName": "对话隐私删除",
+									"description": "当账户中的线程被永久删除时接收通知"
+								},
+								"conversation.propertyChange": {
+									"displayName": "对话属性变更",
+									"description": "当线程属性发生变化时接收通知"
+								},
+								"deal.creation": {
+									"displayName": "交易已创建",
+									"description": "当客户账户中有任何交易创建时接收通知"
+								},
+								"deal.deletion": {
+									"displayName": "交易已删除",
+									"description": "当客户账户中有交易被删除时接收通知"
+								},
+								"deal.propertyChange": {
+									"displayName": "交易属性已更改",
+									"description": "当客户账户中任意交易的指定属性变更时接收通知"
+								},
+								"ticket.creation": {
+									"displayName": "工单已创建",
+									"description": "要在客户的账户中创建工单时获得通知"
+								},
+								"ticket.deletion": {
+									"displayName": "工单已删除",
+									"description": "当客户账户中有工单被删除时接收通知"
+								},
+								"ticket.propertyChange": {
+									"displayName": "工单属性已更改",
+									"description": "当客户账户中任意工单的指定属性发生变更时接收通知"
+								}
+							}
+						},
+						"property": {
+							"displayName": "属性名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				}
+			},
+			"values": {
+				"eventValues": {
+					"displayName": "事件",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"options": {
+								"company.creation": {
+									"displayName": "公司已创建",
+									"description": "当客户账户中有任何公司被创建时接收通知"
+								},
+								"company.deletion": {
+									"displayName": "公司已删除",
+									"description": "当客户账户中有任何公司被删除时接收通知"
+								},
+								"company.propertyChange": {
+									"displayName": "公司属性已更改",
+									"description": "当客户账户中任何公司的指定属性变更时接收通知"
+								},
+								"contact.creation": {
+									"displayName": "联系人已创建",
+									"description": "当客户账户中有任何联系人被创建时接收通知"
+								},
+								"contact.deletion": {
+									"displayName": "联系人已删除",
+									"description": "当客户账户中有任何联系人被删除时接收通知"
+								},
+								"contact.privacyDeletion": {
+									"displayName": "联系人隐私已删除",
+									"description": "当联系人因隐私合规原因被删除时接收通知"
+								},
+								"contact.propertyChange": {
+									"displayName": "联系人属性已更改",
+									"description": "当客户账户中任何联系人的指定属性发生更改时接收通知"
+								},
+								"conversation.creation": {
+									"displayName": "对话创建",
+									"description": "当账户中创建新主题时接收通知"
+								},
+								"conversation.deletion": {
+									"displayName": "对话删除",
+									"description": "当账户中的主题被归档或软删除时接收通知"
+								},
+								"conversation.newMessage": {
+									"displayName": "对话新消息",
+									"description": "当线程收到新消息时获取通知"
+								},
+								"conversation.privacyDeletion": {
+									"displayName": "对话隐私删除",
+									"description": "当账户中的线程被永久删除时接收通知"
+								},
+								"conversation.propertyChange": {
+									"displayName": "对话属性变更",
+									"description": "当线程属性发生变化时接收通知"
+								},
+								"deal.creation": {
+									"displayName": "交易已创建",
+									"description": "当客户账户中有任何交易创建时接收通知"
+								},
+								"deal.deletion": {
+									"displayName": "交易已删除",
+									"description": "当客户账户中有交易被删除时接收通知"
+								},
+								"deal.propertyChange": {
+									"displayName": "交易属性已更改",
+									"description": "当客户账户中任意交易的指定属性变更时接收通知"
+								},
+								"ticket.creation": {
+									"displayName": "工单已创建",
+									"description": "要在客户的账户中创建工单时获得通知"
+								},
+								"ticket.deletion": {
+									"displayName": "工单已删除",
+									"description": "当客户账户中有工单被删除时接收通知"
+								},
+								"ticket.propertyChange": {
+									"displayName": "工单属性已更改",
+									"description": "当客户账户中任意工单的指定属性发生变更时接收通知"
+								}
+							}
+						},
+						"property": {
+							"displayName": "属性名称或ID",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+						}
+					}
+				},
+				"eventsUi": {
+					"displayName": "事件",
+					"placeholder": "添加事件"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"maxConcurrentRequests": {
+					"displayName": "最大并发请求数"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,1953 @@
+{
+	"header": {
+		"displayName": "Zoho CRM",
+		"description": "Consume Zoho CRM API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"account": {
+					"displayName": "Account"
+				},
+				"contact": {
+					"displayName": "Contact"
+				},
+				"deal": {
+					"displayName": "Deal"
+				},
+				"invoice": {
+					"displayName": "Invoice"
+				},
+				"lead": {
+					"displayName": "Lead"
+				},
+				"product": {
+					"displayName": "Product"
+				},
+				"purchaseOrder": {
+					"displayName": "Purchase Order"
+				},
+				"quote": {
+					"displayName": "Quote"
+				},
+				"salesOrder": {
+					"displayName": "Sales Order"
+				},
+				"vendor": {
+					"displayName": "Vendor"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a vendor"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new record, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a vendor"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a vendor"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many vendors"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a vendor"
+				},
+				"getFields": {
+					"displayName": "Get Fields",
+					"description": "Get lead fields"
+				}
+			}
+		},
+		"accountName": {
+			"displayName": "Account Name",
+			"description": "Name of the account. If a record with this account name exists it will be updated, otherwise a new one will be created."
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"Account_Number": {
+					"displayName": "Account Number"
+				},
+				"Account_Site": {
+					"displayName": "Account Site",
+					"description": "Name of the account’s location, e.g. Headquarters or London"
+				},
+				"Account_Type": {
+					"displayName": "Account Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"Annual_Revenue": {
+					"displayName": "Annual Revenue",
+					"description": "Annual revenue of the lead’s company"
+				},
+				"Billing_Address": {
+					"displayName": "Billing Address",
+					"placeholder": "Add Billing Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Billing Address Fields",
+							"options": {
+								"Billing_Street": {
+									"displayName": "Street"
+								},
+								"Billing_City": {
+									"displayName": "City"
+								},
+								"Billing_State": {
+									"displayName": "State"
+								},
+								"Billing_Country": {
+									"displayName": "Country"
+								},
+								"Billing_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"billing_address_fields": {
+							"displayName": "Billing Address Fields",
+							"options": {
+								"Billing_City": {
+									"displayName": "Billing City"
+								},
+								"Billing_Code": {
+									"displayName": "Billing Code"
+								},
+								"Billing_Country": {
+									"displayName": "Billing Country"
+								},
+								"Billing_State": {
+									"displayName": "Billing State"
+								},
+								"Billing_Street": {
+									"displayName": "Billing Street"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Billing Address Fields",
+							"options": {
+								"Billing_Street": {
+									"displayName": "Street"
+								},
+								"Billing_City": {
+									"displayName": "City"
+								},
+								"Billing_State": {
+									"displayName": "State"
+								},
+								"Billing_Country": {
+									"displayName": "Country"
+								},
+								"Billing_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Billing_Address": {
+							"displayName": "Billing Address",
+							"placeholder": "Add Billing Address Field"
+						},
+						"billing_address_fields": {
+							"displayName": "Billing Address Fields",
+							"options": {
+								"Billing_City": {
+									"displayName": "Billing City"
+								},
+								"Billing_Code": {
+									"displayName": "Billing Code"
+								},
+								"Billing_Country": {
+									"displayName": "Billing Country"
+								},
+								"Billing_State": {
+									"displayName": "Billing State"
+								},
+								"Billing_Street": {
+									"displayName": "Billing Street"
+								}
+							}
+						}
+					}
+				},
+				"Contact_Details": {
+					"displayName": "Contact Details"
+				},
+				"Currency": {
+					"displayName": "Currency",
+					"description": "Symbol of the currency in which revenue is generated",
+					"options": {
+						"USD": {
+							"displayName": "US Dollar"
+						},
+						"EUR": {
+							"displayName": "Euro"
+						},
+						"AED": {
+							"displayName": "UAE Dirham"
+						},
+						"AFN": {
+							"displayName": "Afghani"
+						},
+						"ALL": {
+							"displayName": "Lek"
+						},
+						"ARS": {
+							"displayName": "Argentine Peso"
+						},
+						"AUD": {
+							"displayName": "Australian Dollar"
+						},
+						"AZN": {
+							"displayName": "Azerbaijan Manat"
+						},
+						"BBD": {
+							"displayName": "Barbados Dollar"
+						},
+						"BDT": {
+							"displayName": "Taka"
+						},
+						"BGN": {
+							"displayName": "Bulgarian Lev"
+						},
+						"BMD": {
+							"displayName": "Bermudian Dollar"
+						},
+						"BND": {
+							"displayName": "Brunei Dollar"
+						},
+						"BOB": {
+							"displayName": "Boliviano"
+						},
+						"BRL": {
+							"displayName": "Brazilian Real"
+						},
+						"BSD": {
+							"displayName": "Bahamian Dollar"
+						},
+						"BWP": {
+							"displayName": "Pula"
+						},
+						"BZD": {
+							"displayName": "Belize Dollar"
+						},
+						"CAD": {
+							"displayName": "Canadian Dollar"
+						},
+						"CHF": {
+							"displayName": "Swiss Franc"
+						},
+						"CLP": {
+							"displayName": "Chilean Peso"
+						},
+						"CNY": {
+							"displayName": "Yuan Renminbi"
+						},
+						"COP": {
+							"displayName": "Colombian Peso"
+						},
+						"CRC": {
+							"displayName": "Costa Rican Colon"
+						},
+						"CZK": {
+							"displayName": "Czech Koruna"
+						},
+						"DKK": {
+							"displayName": "Danish Krone"
+						},
+						"DOP": {
+							"displayName": "Dominican Peso"
+						},
+						"DZD": {
+							"displayName": "Algerian Dinar"
+						},
+						"EGP": {
+							"displayName": "Egyptian Pound"
+						},
+						"FJD": {
+							"displayName": "Fiji Dollar"
+						},
+						"GBP": {
+							"displayName": "Pound Sterling"
+						},
+						"GTQ": {
+							"displayName": "Quetzal"
+						},
+						"HKD": {
+							"displayName": "Hong Kong Dollar"
+						},
+						"HNL": {
+							"displayName": "Lempira"
+						},
+						"HRK": {
+							"displayName": "Kuna"
+						},
+						"HUF": {
+							"displayName": "Forint"
+						},
+						"IDR": {
+							"displayName": "Rupiah"
+						},
+						"ILS": {
+							"displayName": "New Israeli Sheqel"
+						},
+						"INR": {
+							"displayName": "Indian Rupee"
+						},
+						"JMD": {
+							"displayName": "Jamaican Dollar"
+						},
+						"JPY": {
+							"displayName": "Yen"
+						},
+						"KES": {
+							"displayName": "Kenyan Shilling"
+						},
+						"KRW": {
+							"displayName": "Won"
+						},
+						"KZT": {
+							"displayName": "Tenge"
+						},
+						"LAK": {
+							"displayName": "Lao Kip"
+						},
+						"LBP": {
+							"displayName": "Lebanese Pound"
+						},
+						"LKR": {
+							"displayName": "Sri Lanka Rupee"
+						},
+						"LRD": {
+							"displayName": "Liberian Dollar"
+						},
+						"MAD": {
+							"displayName": "Moroccan Dirham"
+						},
+						"MMK": {
+							"displayName": "Kyat"
+						},
+						"MOP": {
+							"displayName": "Pataca"
+						},
+						"MRO": {
+							"displayName": "Ouguiya"
+						},
+						"MUR": {
+							"displayName": "Mauritius Rupee"
+						},
+						"MVR": {
+							"displayName": "Rufiyaa"
+						},
+						"MXN": {
+							"displayName": "Mexican Peso"
+						},
+						"MYR": {
+							"displayName": "Malaysian Ringgit"
+						},
+						"NIO": {
+							"displayName": "Cordoba Oro"
+						},
+						"NOK": {
+							"displayName": "Norwegian Krone"
+						},
+						"NPR": {
+							"displayName": "Nepalese Rupee"
+						},
+						"NZD": {
+							"displayName": "New Zealand Dollar"
+						},
+						"PEN": {
+							"displayName": "Sol"
+						},
+						"PGK": {
+							"displayName": "Kina"
+						},
+						"PHP": {
+							"displayName": "Philippine Peso"
+						},
+						"PKR": {
+							"displayName": "Pakistan Rupee"
+						},
+						"PLN": {
+							"displayName": "Zloty"
+						},
+						"QAR": {
+							"displayName": "Qatari Rial"
+						},
+						"RON": {
+							"displayName": "Romanian Leu"
+						},
+						"RUB": {
+							"displayName": "Russian Ruble"
+						},
+						"SAR": {
+							"displayName": "Saudi Riyal"
+						},
+						"SBD": {
+							"displayName": "Solomon Islands Dollar"
+						},
+						"SCR": {
+							"displayName": "Seychelles Rupee"
+						},
+						"SEK": {
+							"displayName": "Swedish Krona"
+						},
+						"SGD": {
+							"displayName": "Singapore Dollar"
+						},
+						"SYP": {
+							"displayName": "Syrian Pound"
+						},
+						"THB": {
+							"displayName": "Baht"
+						},
+						"TOP": {
+							"displayName": "Pa’anga"
+						},
+						"TRY": {
+							"displayName": "Turkish Lira"
+						},
+						"TTD": {
+							"displayName": "Trinidad and Tobago Dollar"
+						},
+						"TWD": {
+							"displayName": "New Taiwan Dollar"
+						},
+						"UAH": {
+							"displayName": "Hryvnia"
+						},
+						"VND": {
+							"displayName": "Dong"
+						},
+						"VUV": {
+							"displayName": "Vatu"
+						},
+						"WST": {
+							"displayName": "Tala"
+						},
+						"XCD": {
+							"displayName": "East Caribbean Dollar"
+						},
+						"XOF": {
+							"displayName": "West African CFA Franc"
+						},
+						"YER": {
+							"displayName": "Yemeni Rial"
+						},
+						"ZAR": {
+							"displayName": "Rand"
+						}
+					}
+				},
+				"customFields": {
+					"displayName": "Custom Fields",
+					"description": "Filter by custom fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field ID",
+									"description": "Custom field to set a value to"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"Description": {
+					"displayName": "Description"
+				},
+				"Employees": {
+					"displayName": "Employees",
+					"description": "Number of employees in the account’s company"
+				},
+				"Exchange_Rate": {
+					"displayName": "Exchange Rate",
+					"description": "Exchange rate of the default currency to the home currency"
+				},
+				"Fax": {
+					"displayName": "Fax"
+				},
+				"Industry": {
+					"displayName": "Industry",
+					"description": "Industry to which the lead belongs"
+				},
+				"Phone": {
+					"displayName": "Phone"
+				},
+				"Shipping_Address": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Shipping Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Shipping Address Fields",
+							"options": {
+								"Shipping_Street": {
+									"displayName": "Street"
+								},
+								"Shipping_City": {
+									"displayName": "City"
+								},
+								"Shipping_State": {
+									"displayName": "State"
+								},
+								"Shipping_Country": {
+									"displayName": "Country"
+								},
+								"Shipping_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Shipping Address Fields",
+							"options": {
+								"Shipping_Street": {
+									"displayName": "Street"
+								},
+								"Shipping_City": {
+									"displayName": "City"
+								},
+								"Shipping_State": {
+									"displayName": "State"
+								},
+								"Shipping_Country": {
+									"displayName": "Country"
+								},
+								"Shipping_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Shipping_Address": {
+							"displayName": "Shipping Address",
+							"placeholder": "Add Shipping Address Field"
+						}
+					}
+				},
+				"Ticker_Symbol": {
+					"displayName": "Ticker Symbol"
+				},
+				"Website": {
+					"displayName": "Website"
+				},
+				"Assistant": {
+					"displayName": "Assistant",
+					"description": "Name of the contact’s assistant"
+				},
+				"Date_of_Birth": {
+					"displayName": "Date of Birth"
+				},
+				"Department": {
+					"displayName": "Department",
+					"description": "Company department to which the contact belongs"
+				},
+				"Email": {
+					"displayName": "Email",
+					"description": "Email of the lead. If a record with this email exists it will be updated, otherwise a new one will be created."
+				},
+				"Secondary_Email": {
+					"displayName": "Secondary Email"
+				},
+				"First_Name": {
+					"displayName": "First Name"
+				},
+				"Full_Name": {
+					"displayName": "Full Name"
+				},
+				"Mailing_Address": {
+					"displayName": "Mailing Address",
+					"placeholder": "Add Mailing Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Mailing Address Fields",
+							"options": {
+								"Mailing_Street": {
+									"displayName": "Street"
+								},
+								"Mailing_City": {
+									"displayName": "City"
+								},
+								"Mailing_State": {
+									"displayName": "State"
+								},
+								"Mailing_Country": {
+									"displayName": "Country"
+								},
+								"Mailing_Zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Mailing Address Fields",
+							"options": {
+								"Mailing_Street": {
+									"displayName": "Street"
+								},
+								"Mailing_City": {
+									"displayName": "City"
+								},
+								"Mailing_State": {
+									"displayName": "State"
+								},
+								"Mailing_Country": {
+									"displayName": "Country"
+								},
+								"Mailing_Zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Mailing_Address": {
+							"displayName": "Mailing Address",
+							"placeholder": "Add Mailing Address Field"
+						}
+					}
+				},
+				"Mobile": {
+					"displayName": "Mobile"
+				},
+				"Other_Address": {
+					"displayName": "Other Address",
+					"placeholder": "Add Other Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Other Address Fields",
+							"options": {
+								"Other_Street": {
+									"displayName": "Street"
+								},
+								"Other_City": {
+									"displayName": "City"
+								},
+								"Other_State": {
+									"displayName": "State"
+								},
+								"Other_Zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Other Address Fields",
+							"options": {
+								"Other_Street": {
+									"displayName": "Street"
+								},
+								"Other_City": {
+									"displayName": "City"
+								},
+								"Other_State": {
+									"displayName": "State"
+								},
+								"Other_Zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Other_Address": {
+							"displayName": "Other Address",
+							"placeholder": "Add Other Address Field"
+						}
+					}
+				},
+				"Asst_Phone": {
+					"displayName": "Phone (Assistant)",
+					"description": "Phone number of the contact’s assistant"
+				},
+				"Home_Phone": {
+					"displayName": "Phone (Home)"
+				},
+				"Other_Phone": {
+					"displayName": "Phone (Other)"
+				},
+				"Salutation": {
+					"displayName": "Salutation"
+				},
+				"Skype_ID": {
+					"displayName": "Skype ID"
+				},
+				"Title": {
+					"displayName": "Title",
+					"description": "Position of the contact at their company"
+				},
+				"Twitter": {
+					"displayName": "Twitter"
+				},
+				"Amount": {
+					"displayName": "Amount",
+					"description": "Monetary amount of the deal"
+				},
+				"Closing_Date": {
+					"displayName": "Closing Date"
+				},
+				"Lead_Conversion_Time": {
+					"displayName": "Lead Conversion Time",
+					"description": "Average number of days to convert the lead into a deal"
+				},
+				"Next_Step": {
+					"displayName": "Next Step",
+					"description": "Description of the next step in the sales process"
+				},
+				"Overall_Sales_Duration": {
+					"displayName": "Overall Sales Duration",
+					"description": "Average number of days to convert the lead into a deal and to win the deal"
+				},
+				"Probability": {
+					"displayName": "Probability",
+					"description": "Probability of deal closure as a percentage. For example, enter 12 for 12%."
+				},
+				"Sales_Cycle_Duration": {
+					"displayName": "Sales Cycle Duration",
+					"description": "Average number of days for the deal to be won"
+				},
+				"accountId": {
+					"displayName": "Account Name or ID",
+					"description": "ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"Adjustment": {
+					"displayName": "Adjustment",
+					"description": "Adjustment in the grand total, if any"
+				},
+				"Due_Date": {
+					"displayName": "Due Date"
+				},
+				"Grand_Total": {
+					"displayName": "Grand Total",
+					"description": "Total amount for the product after deducting tax and discounts"
+				},
+				"Invoice_Date": {
+					"displayName": "Invoice Date"
+				},
+				"Invoice_Number": {
+					"displayName": "Invoice Number"
+				},
+				"Sales_Commission": {
+					"displayName": "Sales Commission",
+					"description": "Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%."
+				},
+				"Status": {
+					"displayName": "Status Name or ID",
+					"description": "Status of the sales order. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"Sub_Total": {
+					"displayName": "Sub Total",
+					"description": "Total amount for the product excluding tax"
+				},
+				"Tax": {
+					"displayName": "Tax",
+					"description": "Tax amount as the sum of sales tax and value-added tax"
+				},
+				"Terms_and_Conditions": {
+					"displayName": "Terms and Conditions",
+					"description": "Terms and conditions associated with the purchase order"
+				},
+				"Address": {
+					"displayName": "Address",
+					"placeholder": "Add Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Address Fields",
+							"options": {
+								"Street": {
+									"displayName": "Street"
+								},
+								"City": {
+									"displayName": "City"
+								},
+								"State": {
+									"displayName": "State"
+								},
+								"Country": {
+									"displayName": "Country"
+								},
+								"Zip_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Address Fields",
+							"options": {
+								"Street": {
+									"displayName": "Street"
+								},
+								"City": {
+									"displayName": "City"
+								},
+								"State": {
+									"displayName": "State"
+								},
+								"Country": {
+									"displayName": "Country"
+								},
+								"Zip_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Address": {
+							"displayName": "Address",
+							"placeholder": "Add Address Field"
+						}
+					}
+				},
+				"Designation": {
+					"displayName": "Designation",
+					"description": "Position of the lead at their company"
+				},
+				"Email_Opt_Out": {
+					"displayName": "Email Opt Out"
+				},
+				"Industry_Type": {
+					"displayName": "Industry Type",
+					"description": "Type of industry to which the lead belongs"
+				},
+				"Lead_Source": {
+					"displayName": "Lead Source",
+					"description": "Source from which the lead was created"
+				},
+				"Lead_Status": {
+					"displayName": "Lead Status"
+				},
+				"No_of_Employees": {
+					"displayName": "Number of Employees",
+					"description": "Number of employees in the lead’s company"
+				},
+				"Commission_Rate": {
+					"displayName": "Commission Rate",
+					"description": "Commission rate for the product. For example, enter 12 for 12%."
+				},
+				"Manufacturer": {
+					"displayName": "Manufacturer"
+				},
+				"Product_Active": {
+					"displayName": "Product Active"
+				},
+				"Product_Category": {
+					"displayName": "Product Category"
+				},
+				"Qty_in_Demand": {
+					"displayName": "Quantity in Demand"
+				},
+				"Qty_in_Stock": {
+					"displayName": "Quantity in Stock"
+				},
+				"Taxable": {
+					"displayName": "Taxable"
+				},
+				"Unit_Price": {
+					"displayName": "Unit Price"
+				},
+				"Carrier": {
+					"displayName": "Carrier",
+					"description": "Name of the carrier"
+				},
+				"Discount": {
+					"displayName": "Discount",
+					"description": "Discount applied to the sales order. For example, enter 12 for 12%."
+				},
+				"PO_Date": {
+					"displayName": "PO Date",
+					"description": "Date on which the purchase order was issued"
+				},
+				"PO_Number": {
+					"displayName": "PO Number",
+					"description": "ID of the purchase order after creating a case"
+				},
+				"Tracking_Number": {
+					"displayName": "Tracking Number"
+				},
+				"Quote_Stage": {
+					"displayName": "Quote Stage Name or ID",
+					"description": "Stage of the quote. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"Team": {
+					"displayName": "Team",
+					"description": "Team for whom the quote is created"
+				},
+				"Valid_Till": {
+					"displayName": "Valid Till",
+					"description": "Date until when the quote is valid"
+				},
+				"contactId": {
+					"displayName": "Contact Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"dealId": {
+					"displayName": "Deal Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"SO_Number": {
+					"displayName": "Sales Order Number",
+					"description": "ID of the sales order after creating a case"
+				},
+				"Category": {
+					"displayName": "Category"
+				}
+			}
+		},
+		"accountId": {
+			"displayName": "Account Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"approved": {
+					"displayName": "Approved",
+					"description": "Whether to retrieve only approved records. Defaults to true."
+				},
+				"converted": {
+					"displayName": "Converted",
+					"description": "Whether to retrieve only converted records. Defaults to false."
+				},
+				"fields": {
+					"displayName": "Fields",
+					"description": "Return only these fields"
+				},
+				"include_child": {
+					"displayName": "Include Child",
+					"description": "Whether to retrieve only records from child territories"
+				},
+				"sort_by": {
+					"displayName": "Sort By",
+					"description": "Field to sort records by"
+				},
+				"sort_order": {
+					"displayName": "Sort Order",
+					"description": "Ascending or descending order sort order",
+					"options": {
+						"asc": {
+							"displayName": "Ascending"
+						},
+						"desc": {
+							"displayName": "Descending"
+						}
+					}
+				},
+				"territory_id": {
+					"displayName": "Territory ID",
+					"description": "Retrieve only records from this territory"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"Account_Name": {
+					"displayName": "Account Name"
+				},
+				"Account_Number": {
+					"displayName": "Account Number"
+				},
+				"Account_Site": {
+					"displayName": "Account Site",
+					"description": "Name of the account’s location, e.g. Headquarters or London"
+				},
+				"Account_Type": {
+					"displayName": "Account Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"Annual_Revenue": {
+					"displayName": "Annual Revenue",
+					"description": "Annual revenue of the lead’s company"
+				},
+				"Billing_Address": {
+					"displayName": "Billing Address",
+					"placeholder": "Add Billing Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Billing Address Fields",
+							"options": {
+								"Billing_Street": {
+									"displayName": "Street"
+								},
+								"Billing_City": {
+									"displayName": "City"
+								},
+								"Billing_State": {
+									"displayName": "State"
+								},
+								"Billing_Country": {
+									"displayName": "Country"
+								},
+								"Billing_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Billing Address Fields",
+							"options": {
+								"Billing_Street": {
+									"displayName": "Street"
+								},
+								"Billing_City": {
+									"displayName": "City"
+								},
+								"Billing_State": {
+									"displayName": "State"
+								},
+								"Billing_Country": {
+									"displayName": "Country"
+								},
+								"Billing_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Billing_Address": {
+							"displayName": "Billing Address",
+							"placeholder": "Add Billing Address Field"
+						}
+					}
+				},
+				"Contact_Details": {
+					"displayName": "Contact Details"
+				},
+				"Currency": {
+					"displayName": "Currency",
+					"description": "Symbol of the currency in which revenue is generated",
+					"options": {
+						"USD": {
+							"displayName": "US Dollar"
+						},
+						"EUR": {
+							"displayName": "Euro"
+						},
+						"AED": {
+							"displayName": "UAE Dirham"
+						},
+						"AFN": {
+							"displayName": "Afghani"
+						},
+						"ALL": {
+							"displayName": "Lek"
+						},
+						"ARS": {
+							"displayName": "Argentine Peso"
+						},
+						"AUD": {
+							"displayName": "Australian Dollar"
+						},
+						"AZN": {
+							"displayName": "Azerbaijan Manat"
+						},
+						"BBD": {
+							"displayName": "Barbados Dollar"
+						},
+						"BDT": {
+							"displayName": "Taka"
+						},
+						"BGN": {
+							"displayName": "Bulgarian Lev"
+						},
+						"BMD": {
+							"displayName": "Bermudian Dollar"
+						},
+						"BND": {
+							"displayName": "Brunei Dollar"
+						},
+						"BOB": {
+							"displayName": "Boliviano"
+						},
+						"BRL": {
+							"displayName": "Brazilian Real"
+						},
+						"BSD": {
+							"displayName": "Bahamian Dollar"
+						},
+						"BWP": {
+							"displayName": "Pula"
+						},
+						"BZD": {
+							"displayName": "Belize Dollar"
+						},
+						"CAD": {
+							"displayName": "Canadian Dollar"
+						},
+						"CHF": {
+							"displayName": "Swiss Franc"
+						},
+						"CLP": {
+							"displayName": "Chilean Peso"
+						},
+						"CNY": {
+							"displayName": "Yuan Renminbi"
+						},
+						"COP": {
+							"displayName": "Colombian Peso"
+						},
+						"CRC": {
+							"displayName": "Costa Rican Colon"
+						},
+						"CZK": {
+							"displayName": "Czech Koruna"
+						},
+						"DKK": {
+							"displayName": "Danish Krone"
+						},
+						"DOP": {
+							"displayName": "Dominican Peso"
+						},
+						"DZD": {
+							"displayName": "Algerian Dinar"
+						},
+						"EGP": {
+							"displayName": "Egyptian Pound"
+						},
+						"FJD": {
+							"displayName": "Fiji Dollar"
+						},
+						"GBP": {
+							"displayName": "Pound Sterling"
+						},
+						"GTQ": {
+							"displayName": "Quetzal"
+						},
+						"HKD": {
+							"displayName": "Hong Kong Dollar"
+						},
+						"HNL": {
+							"displayName": "Lempira"
+						},
+						"HRK": {
+							"displayName": "Kuna"
+						},
+						"HUF": {
+							"displayName": "Forint"
+						},
+						"IDR": {
+							"displayName": "Rupiah"
+						},
+						"ILS": {
+							"displayName": "New Israeli Sheqel"
+						},
+						"INR": {
+							"displayName": "Indian Rupee"
+						},
+						"JMD": {
+							"displayName": "Jamaican Dollar"
+						},
+						"JPY": {
+							"displayName": "Yen"
+						},
+						"KES": {
+							"displayName": "Kenyan Shilling"
+						},
+						"KRW": {
+							"displayName": "Won"
+						},
+						"KZT": {
+							"displayName": "Tenge"
+						},
+						"LAK": {
+							"displayName": "Lao Kip"
+						},
+						"LBP": {
+							"displayName": "Lebanese Pound"
+						},
+						"LKR": {
+							"displayName": "Sri Lanka Rupee"
+						},
+						"LRD": {
+							"displayName": "Liberian Dollar"
+						},
+						"MAD": {
+							"displayName": "Moroccan Dirham"
+						},
+						"MMK": {
+							"displayName": "Kyat"
+						},
+						"MOP": {
+							"displayName": "Pataca"
+						},
+						"MRO": {
+							"displayName": "Ouguiya"
+						},
+						"MUR": {
+							"displayName": "Mauritius Rupee"
+						},
+						"MVR": {
+							"displayName": "Rufiyaa"
+						},
+						"MXN": {
+							"displayName": "Mexican Peso"
+						},
+						"MYR": {
+							"displayName": "Malaysian Ringgit"
+						},
+						"NIO": {
+							"displayName": "Cordoba Oro"
+						},
+						"NOK": {
+							"displayName": "Norwegian Krone"
+						},
+						"NPR": {
+							"displayName": "Nepalese Rupee"
+						},
+						"NZD": {
+							"displayName": "New Zealand Dollar"
+						},
+						"PEN": {
+							"displayName": "Sol"
+						},
+						"PGK": {
+							"displayName": "Kina"
+						},
+						"PHP": {
+							"displayName": "Philippine Peso"
+						},
+						"PKR": {
+							"displayName": "Pakistan Rupee"
+						},
+						"PLN": {
+							"displayName": "Zloty"
+						},
+						"QAR": {
+							"displayName": "Qatari Rial"
+						},
+						"RON": {
+							"displayName": "Romanian Leu"
+						},
+						"RUB": {
+							"displayName": "Russian Ruble"
+						},
+						"SAR": {
+							"displayName": "Saudi Riyal"
+						},
+						"SBD": {
+							"displayName": "Solomon Islands Dollar"
+						},
+						"SCR": {
+							"displayName": "Seychelles Rupee"
+						},
+						"SEK": {
+							"displayName": "Swedish Krona"
+						},
+						"SGD": {
+							"displayName": "Singapore Dollar"
+						},
+						"SYP": {
+							"displayName": "Syrian Pound"
+						},
+						"THB": {
+							"displayName": "Baht"
+						},
+						"TOP": {
+							"displayName": "Pa’anga"
+						},
+						"TRY": {
+							"displayName": "Turkish Lira"
+						},
+						"TTD": {
+							"displayName": "Trinidad and Tobago Dollar"
+						},
+						"TWD": {
+							"displayName": "New Taiwan Dollar"
+						},
+						"UAH": {
+							"displayName": "Hryvnia"
+						},
+						"VND": {
+							"displayName": "Dong"
+						},
+						"VUV": {
+							"displayName": "Vatu"
+						},
+						"WST": {
+							"displayName": "Tala"
+						},
+						"XCD": {
+							"displayName": "East Caribbean Dollar"
+						},
+						"XOF": {
+							"displayName": "West African CFA Franc"
+						},
+						"YER": {
+							"displayName": "Yemeni Rial"
+						},
+						"ZAR": {
+							"displayName": "Rand"
+						}
+					}
+				},
+				"customFields": {
+					"displayName": "Custom Fields",
+					"description": "Filter by custom fields",
+					"placeholder": "Add Custom Field",
+					"multipleValueButtonText": "Add Custom Field",
+					"options": {
+						"customFields": {
+							"displayName": "Custom Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field ID",
+									"description": "Custom field to set a value to"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set on custom field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Field"
+						}
+					}
+				},
+				"Description": {
+					"displayName": "Description"
+				},
+				"Employees": {
+					"displayName": "Employees",
+					"description": "Number of employees in the account’s company"
+				},
+				"Exchange_Rate": {
+					"displayName": "Exchange Rate",
+					"description": "Exchange rate of the default currency to the home currency"
+				},
+				"Fax": {
+					"displayName": "Fax"
+				},
+				"Industry": {
+					"displayName": "Industry",
+					"description": "Industry to which the lead belongs"
+				},
+				"Phone": {
+					"displayName": "Phone"
+				},
+				"Shipping_Address": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Shipping Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Shipping Address Fields",
+							"options": {
+								"Shipping_Street": {
+									"displayName": "Street"
+								},
+								"Shipping_City": {
+									"displayName": "City"
+								},
+								"Shipping_State": {
+									"displayName": "State"
+								},
+								"Shipping_Country": {
+									"displayName": "Country"
+								},
+								"Shipping_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Shipping Address Fields",
+							"options": {
+								"Shipping_Street": {
+									"displayName": "Street"
+								},
+								"Shipping_City": {
+									"displayName": "City"
+								},
+								"Shipping_State": {
+									"displayName": "State"
+								},
+								"Shipping_Country": {
+									"displayName": "Country"
+								},
+								"Shipping_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Shipping_Address": {
+							"displayName": "Shipping Address",
+							"placeholder": "Add Shipping Address Field"
+						}
+					}
+				},
+				"Ticker_Symbol": {
+					"displayName": "Ticker Symbol"
+				},
+				"Website": {
+					"displayName": "Website"
+				},
+				"Assistant": {
+					"displayName": "Assistant"
+				},
+				"Asst_Phone": {
+					"displayName": "Assistant’s Phone",
+					"description": "Phone number of the contact’s assistant"
+				},
+				"Date_of_Birth": {
+					"displayName": "Date of Birth"
+				},
+				"Department": {
+					"displayName": "Department"
+				},
+				"Email": {
+					"displayName": "Email"
+				},
+				"Secondary_Email": {
+					"displayName": "Secondary Email"
+				},
+				"First_Name": {
+					"displayName": "First Name"
+				},
+				"Full_Name": {
+					"displayName": "Full Name"
+				},
+				"Home_Phone": {
+					"displayName": "Home Phone"
+				},
+				"Last_Name": {
+					"displayName": "Last Name"
+				},
+				"Mailing_Address": {
+					"displayName": "Mailing Address",
+					"placeholder": "Add Mailing Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Mailing Address Fields",
+							"options": {
+								"Mailing_Street": {
+									"displayName": "Street"
+								},
+								"Mailing_City": {
+									"displayName": "City"
+								},
+								"Mailing_State": {
+									"displayName": "State"
+								},
+								"Mailing_Country": {
+									"displayName": "Country"
+								},
+								"Mailing_Zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Mailing Address Fields",
+							"options": {
+								"Mailing_Street": {
+									"displayName": "Street"
+								},
+								"Mailing_City": {
+									"displayName": "City"
+								},
+								"Mailing_State": {
+									"displayName": "State"
+								},
+								"Mailing_Country": {
+									"displayName": "Country"
+								},
+								"Mailing_Zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Mailing_Address": {
+							"displayName": "Mailing Address",
+							"placeholder": "Add Mailing Address Field"
+						}
+					}
+				},
+				"Mobile": {
+					"displayName": "Mobile"
+				},
+				"Other_Address": {
+					"displayName": "Other Address",
+					"placeholder": "Add Other Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Other Address Fields",
+							"options": {
+								"Other_Street": {
+									"displayName": "Street"
+								},
+								"Other_City": {
+									"displayName": "City"
+								},
+								"Other_State": {
+									"displayName": "State"
+								},
+								"Other_Zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Other Address Fields",
+							"options": {
+								"Other_Street": {
+									"displayName": "Street"
+								},
+								"Other_City": {
+									"displayName": "City"
+								},
+								"Other_State": {
+									"displayName": "State"
+								},
+								"Other_Zip": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Other_Address": {
+							"displayName": "Other Address",
+							"placeholder": "Add Other Address Field"
+						}
+					}
+				},
+				"Other_Phone": {
+					"displayName": "Other Phone"
+				},
+				"Salutation": {
+					"displayName": "Salutation"
+				},
+				"Skype_ID": {
+					"displayName": "Skype ID"
+				},
+				"Title": {
+					"displayName": "Title",
+					"description": "Position of the contact at their company"
+				},
+				"Twitter": {
+					"displayName": "Twitter"
+				},
+				"Amount": {
+					"displayName": "Amount",
+					"description": "Monetary amount of the deal"
+				},
+				"Closing_Date": {
+					"displayName": "Closing Date"
+				},
+				"Deal_Name": {
+					"displayName": "Deal Name"
+				},
+				"Lead_Conversion_Time": {
+					"displayName": "Lead Conversion Time",
+					"description": "Average number of days to convert the lead into a deal"
+				},
+				"Next_Step": {
+					"displayName": "Next Step",
+					"description": "Description of the next step in the sales process"
+				},
+				"Overall_Sales_Duration": {
+					"displayName": "Overall Sales Duration",
+					"description": "Average number of days to convert the lead into a deal and to win the deal"
+				},
+				"Probability": {
+					"displayName": "Probability",
+					"description": "Probability of deal closure as a percentage. For example, enter 12 for 12%."
+				},
+				"Sales_Cycle_Duration": {
+					"displayName": "Sales Cycle Duration",
+					"description": "Average number of days to win the deal"
+				},
+				"Stage": {
+					"displayName": "Stage Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"accountId": {
+					"displayName": "Account Name or ID",
+					"description": "ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"Adjustment": {
+					"displayName": "Adjustment",
+					"description": "Adjustment in the grand total, if any"
+				},
+				"Due_Date": {
+					"displayName": "Due Date"
+				},
+				"Grand_Total": {
+					"displayName": "Grand Total",
+					"description": "Total amount for the product after deducting tax and discounts"
+				},
+				"Invoice_Date": {
+					"displayName": "Invoice Date"
+				},
+				"Invoice_Number": {
+					"displayName": "Invoice Number"
+				},
+				"Product_Details": {
+					"displayName": "Products",
+					"placeholder": "Add Field",
+					"multipleValueButtonText": "Add Product",
+					"options": {
+						"list_price": {
+							"displayName": "List Price"
+						},
+						"id": {
+							"displayName": "Product Name or ID",
+							"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+						},
+						"product_description": {
+							"displayName": "Product Description"
+						},
+						"quantity": {
+							"displayName": "Quantity"
+						},
+						"quantity_in_stock": {
+							"displayName": "Quantity in Stock"
+						},
+						"Tax": {
+							"displayName": "Tax"
+						},
+						"total": {
+							"displayName": "Total"
+						},
+						"total_after_discount": {
+							"displayName": "Total After Discount"
+						},
+						"net_total": {
+							"displayName": "Total (Net)"
+						},
+						"unit_price": {
+							"displayName": "Unit Price"
+						}
+					}
+				},
+				"Sales_Commission": {
+					"displayName": "Sales Commission",
+					"description": "Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%."
+				},
+				"Status": {
+					"displayName": "Status Name or ID",
+					"description": "Status of the sales order. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"Sub_Total": {
+					"displayName": "Sub Total",
+					"description": "Total amount for the product excluding tax"
+				},
+				"Subject": {
+					"displayName": "Subject",
+					"description": "Subject or title of the sales order"
+				},
+				"Tax": {
+					"displayName": "Tax",
+					"description": "Tax amount as the sum of sales tax and value-added tax"
+				},
+				"Terms_and_Conditions": {
+					"displayName": "Terms and Conditions",
+					"description": "Terms and conditions associated with the purchase order"
+				},
+				"Address": {
+					"displayName": "Address",
+					"placeholder": "Add Address Field",
+					"options": {
+						"address_fields": {
+							"displayName": "Address Fields",
+							"options": {
+								"Street": {
+									"displayName": "Street"
+								},
+								"City": {
+									"displayName": "City"
+								},
+								"State": {
+									"displayName": "State"
+								},
+								"Country": {
+									"displayName": "Country"
+								},
+								"Zip_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						}
+					},
+					"values": {
+						"address_fields": {
+							"displayName": "Address Fields",
+							"options": {
+								"Street": {
+									"displayName": "Street"
+								},
+								"City": {
+									"displayName": "City"
+								},
+								"State": {
+									"displayName": "State"
+								},
+								"Country": {
+									"displayName": "Country"
+								},
+								"Zip_Code": {
+									"displayName": "Zip Code"
+								}
+							}
+						},
+						"Address": {
+							"displayName": "Address",
+							"placeholder": "Add Address Field"
+						}
+					}
+				},
+				"Company": {
+					"displayName": "Company",
+					"description": "Company at which the lead works"
+				},
+				"Designation": {
+					"displayName": "Designation",
+					"description": "Position of the lead at their company"
+				},
+				"Email_Opt_Out": {
+					"displayName": "Email Opt Out"
+				},
+				"Industry_Type": {
+					"displayName": "Industry Type",
+					"description": "Type of industry to which the lead belongs"
+				},
+				"Lead_Source": {
+					"displayName": "Lead Source",
+					"description": "Source from which the lead was created"
+				},
+				"Lead_Status": {
+					"displayName": "Lead Status"
+				},
+				"No_of_Employees": {
+					"displayName": "Number of Employees",
+					"description": "Number of employees in the lead’s company"
+				},
+				"Commission_Rate": {
+					"displayName": "Commission Rate",
+					"description": "Commission rate for the product. For example, enter 12 for 12%."
+				},
+				"Manufacturer": {
+					"displayName": "Manufacturer"
+				},
+				"Product_Active": {
+					"displayName": "Product Active"
+				},
+				"Product_Category": {
+					"displayName": "Product Category"
+				},
+				"Qty_in_Demand": {
+					"displayName": "Quantity in Demand"
+				},
+				"Qty_in_Stock": {
+					"displayName": "Quantity in Stock"
+				},
+				"Taxable": {
+					"displayName": "Taxable"
+				},
+				"Unit_Price": {
+					"displayName": "Unit Price"
+				},
+				"Carrier": {
+					"displayName": "Carrier",
+					"description": "Name of the carrier"
+				},
+				"Discount": {
+					"displayName": "Discount"
+				},
+				"PO_Date": {
+					"displayName": "PO Date",
+					"description": "Date on which the purchase order was issued"
+				},
+				"PO_Number": {
+					"displayName": "PO Number",
+					"description": "ID of the purchase order after creating a case"
+				},
+				"Tracking_Number": {
+					"displayName": "Tracking Number"
+				},
+				"Quote_Stage": {
+					"displayName": "Quote Stage Name or ID",
+					"description": "Stage of the quote. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"Team": {
+					"displayName": "Team",
+					"description": "Team for whom the quote is created"
+				},
+				"Valid_Till": {
+					"displayName": "Valid Till",
+					"description": "Date until when the quote is valid"
+				},
+				"contactId": {
+					"displayName": "Contact Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"dealId": {
+					"displayName": "Deal Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"SO_Number": {
+					"displayName": "Sales Order Number",
+					"description": "ID of the sales order after creating a case"
+				},
+				"Category": {
+					"displayName": "Category"
+				},
+				"Vendor_Name": {
+					"displayName": "Vendor Name"
+				}
+			}
+		},
+		"lastName": {
+			"displayName": "Last Name"
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "ID of the contact to update"
+		},
+		"dealName": {
+			"displayName": "Deal Name",
+			"description": "Name of the deal. If a record with this deal name exists it will be updated, otherwise a new one will be created."
+		},
+		"stage": {
+			"displayName": "Stage Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"dealId": {
+			"displayName": "Deal ID",
+			"description": "ID of the deal to update"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "Subject or title of the sales order. If a record with this subject exists it will be updated, otherwise a new one will be created."
+		},
+		"Product_Details": {
+			"displayName": "Products",
+			"placeholder": "Add Field",
+			"multipleValueButtonText": "Add Product",
+			"options": {
+				"list_price": {
+					"displayName": "List Price"
+				},
+				"id": {
+					"displayName": "Product Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"product_description": {
+					"displayName": "Product Description"
+				},
+				"quantity": {
+					"displayName": "Quantity"
+				},
+				"quantity_in_stock": {
+					"displayName": "Quantity in Stock"
+				},
+				"Tax": {
+					"displayName": "Tax"
+				},
+				"total": {
+					"displayName": "Total"
+				},
+				"total_after_discount": {
+					"displayName": "Total After Discount"
+				},
+				"net_total": {
+					"displayName": "Total (Net)"
+				},
+				"unit_price": {
+					"displayName": "Unit Price"
+				}
+			}
+		},
+		"invoiceId": {
+			"displayName": "Invoice ID",
+			"description": "ID of the invoice to update"
+		},
+		"Company": {
+			"displayName": "Company",
+			"description": "Company at which the lead works"
+		},
+		"leadId": {
+			"displayName": "Lead ID",
+			"description": "ID of the lead to update"
+		},
+		"productName": {
+			"displayName": "Product Name",
+			"description": "Name of the product. If a record with this product name exists it will be updated, otherwise a new one will be created."
+		},
+		"productId": {
+			"displayName": "Product ID",
+			"description": "ID of the product to update"
+		},
+		"vendorId": {
+			"displayName": "Vendor ID",
+			"description": "ID of the vendor to update"
+		},
+		"purchaseOrderId": {
+			"displayName": "Purchase Order ID",
+			"description": "ID of the purchase order to update"
+		},
+		"quoteId": {
+			"displayName": "Quote ID",
+			"description": "ID of the quote to update"
+		},
+		"salesOrderId": {
+			"displayName": "Sales Order ID",
+			"description": "ID of the sales order to update"
+		},
+		"vendorName": {
+			"displayName": "Vendor Name",
+			"description": "Name of the vendor. If a record with this vendor name exists it will be updated, otherwise a new one will be created."
+		}
+	}
+}

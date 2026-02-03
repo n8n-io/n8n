@@ -1,0 +1,37 @@
+{
+	"header": {
+		"displayName": "Netlify触发器",
+		"description": "通过Webhook处理Netlify事件"
+	},
+	"nodeView": {
+		"siteId": {
+			"displayName": "站点名称或ID",
+			"description": "选择站点ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"deployBuilding": {
+					"displayName": "部署构建"
+				},
+				"deployFailed": {
+					"displayName": "部署失败"
+				},
+				"deployCreated": {
+					"displayName": "部署已创建"
+				},
+				"submissionCreated": {
+					"displayName": "表单已提交"
+				}
+			}
+		},
+		"formId": {
+			"displayName": "表单名称或ID",
+			"description": "选择表单。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		}
+	}
+}

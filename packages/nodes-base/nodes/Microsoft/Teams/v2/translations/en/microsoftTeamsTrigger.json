@@ -1,0 +1,58 @@
+{
+	"header": {
+		"displayName": "Microsoft Teams Trigger",
+		"description": "Triggers workflows in n8n based on events from Microsoft Teams, such as new messages or team updates, using specified configurations."
+	},
+	"nodeView": {
+		"event": {
+			"displayName": "Trigger On",
+			"description": "Select the event to trigger the workflow",
+			"options": {
+				"newChannel": {
+					"displayName": "New Channel",
+					"description": "A new channel is created"
+				},
+				"newChannelMessage": {
+					"displayName": "New Channel Message",
+					"description": "A message is posted to a channel"
+				},
+				"newChat": {
+					"displayName": "New Chat",
+					"description": "A new chat is created"
+				},
+				"newChatMessage": {
+					"displayName": "New Chat Message",
+					"description": "A message is posted to a chat"
+				},
+				"newTeamMember": {
+					"displayName": "New Team Member",
+					"description": "A new member is added to a team"
+				}
+			}
+		},
+		"watchAllTeams": {
+			"displayName": "Watch All Teams",
+			"description": "Whether to watch for the event in all the available teams"
+		},
+		"teamId": {
+			"displayName": "Team",
+			"description": "Select a team from the list, enter an ID or a URL"
+		},
+		"watchAllChannels": {
+			"displayName": "Watch All Channels",
+			"description": "Whether to watch for the event in all the available channels"
+		},
+		"channelId": {
+			"displayName": "Channel",
+			"description": "Select a channel from the list, enter an ID or a URL"
+		},
+		"watchAllChats": {
+			"displayName": "Watch All Chats",
+			"description": "Whether to watch for the event in all the available chats"
+		},
+		"chatId": {
+			"displayName": "Chat",
+			"description": "Select a chat from the list, enter an ID or a URL"
+		}
+	}
+}

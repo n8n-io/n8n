@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "Jotform触发器",
+		"description": "通过Webhook处理Jotform事件"
+	},
+	"nodeView": {
+		"form": {
+			"displayName": "表单名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，Webhook数据使用内部键而非名称。如果激活此选项，它将自动将键解析为实际名称。"
+		},
+		"onlyAnswers": {
+			"displayName": "仅返回答案",
+			"description": "是否仅返回表单的答案而不返回任何其他数据"
+		}
+	}
+}

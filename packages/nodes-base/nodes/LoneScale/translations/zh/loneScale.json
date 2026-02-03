@@ -1,0 +1,128 @@
+{
+	"header": {
+		"displayName": "LoneScale",
+		"description": "创建列表，添加/删除项目"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"description": "创建新列表",
+			"options": {
+				"list": {
+					"displayName": "列表",
+					"description": "操作列表"
+				},
+				"item": {
+					"displayName": "项目",
+					"description": "操作项目"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建列表"
+				},
+				"add": {
+					"displayName": "创建",
+					"description": "创建项目"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "您的列表类型",
+			"options": {
+				"COMPANY": {
+					"displayName": "公司",
+					"description": "创建公司列表"
+				},
+				"PEOPLE": {
+					"displayName": "联系人",
+					"description": "创建联系人列表"
+				}
+			}
+		},
+		"list": {
+			"displayName": "列表名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"first_name": {
+			"displayName": "名字",
+			"description": "联系人名字"
+		},
+		"last_name": {
+			"displayName": "姓氏",
+			"description": "联系人姓氏"
+		},
+		"company_name": {
+			"displayName": "公司名称",
+			"description": "联系公司名称"
+		},
+		"peopleAdditionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"full_name": {
+					"displayName": "全名",
+					"description": "联系人全名"
+				},
+				"email": {
+					"displayName": "联系邮箱",
+					"placeholder": "name@email.com"
+				},
+				"company_name": {
+					"displayName": "公司名称",
+					"description": "联系人公司名称"
+				},
+				"current_position": {
+					"displayName": "当前位置",
+					"description": "联系当前位置"
+				},
+				"domain": {
+					"displayName": "公司域名",
+					"description": "联系公司域名"
+				},
+				"linkedin_url": {
+					"displayName": "LinkedIn链接",
+					"description": "联系人LinkedIn链接"
+				},
+				"location": {
+					"displayName": "联系人位置"
+				},
+				"contact_id": {
+					"displayName": "联系人ID",
+					"description": "源系统中的联系人ID"
+				}
+			}
+		},
+		"companyAdditionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"linkedin_url": {
+					"displayName": "LinkedIn链接",
+					"description": "公司Linkedin URL"
+				},
+				"domain": {
+					"displayName": "公司域名",
+					"description": "公司域名"
+				},
+				"location": {
+					"displayName": "联系人位置"
+				},
+				"contact_id": {
+					"displayName": "联系人ID",
+					"description": "源系统中的联系人ID"
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "您的列表名称",
+			"placeholder": "列表名称"
+		}
+	}
+}

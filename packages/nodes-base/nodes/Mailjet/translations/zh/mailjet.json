@@ -1,0 +1,185 @@
+{
+	"header": {
+		"displayName": "Mailjet",
+		"description": "使用Mailjet API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"email": {
+					"displayName": "电子邮件"
+				},
+				"sms": {
+					"displayName": "短信"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"send": {
+					"displayName": "发送",
+					"description": "发送短信"
+				},
+				"sendTemplate": {
+					"displayName": "发送模板",
+					"description": "发送邮件模板"
+				}
+			}
+		},
+		"fromEmail": {
+			"displayName": "发件邮箱",
+			"description": "邮件标题",
+			"placeholder": "admin@example.com"
+		},
+		"toEmail": {
+			"displayName": "收件人邮箱",
+			"description": "收件人的电子邮件地址。多个地址可用逗号分隔。",
+			"placeholder": "info@example.com"
+		},
+		"subject": {
+			"displayName": "主题",
+			"description": "邮件主题行",
+			"placeholder": "我的主题行"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "电子邮件的纯文本消息"
+		},
+		"html": {
+			"displayName": "HTML",
+			"description": "电子邮件的HTML文本消息"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"bccEmail": {
+					"displayName": "密送邮箱",
+					"description": "密送收件人，用逗号分隔"
+				},
+				"ccAddresses": {
+					"displayName": "抄送地址",
+					"description": "收件人的抄送邮箱地址。多个地址可用逗号分隔。"
+				},
+				"fromName": {
+					"displayName": "发件人名称"
+				},
+				"priority": {
+					"displayName": "优先级"
+				},
+				"replyTo": {
+					"displayName": "回复至",
+					"description": "回复邮件地址。多个地址可用逗号分隔。"
+				},
+				"templateLanguage": {
+					"displayName": "模板语言"
+				},
+				"trackClicks": {
+					"displayName": "跟踪点击",
+					"description": "启用或禁用此消息的打开跟踪",
+					"options": {
+						"account_default": {
+							"displayName": "账户默认值",
+							"description": "使用Mailjet账户中指定的值"
+						},
+						"disabled": {
+							"displayName": "已禁用",
+							"description": "禁用此消息的跟踪"
+						},
+						"enabled": {
+							"displayName": "已启用",
+							"description": "为此消息启用追踪"
+						}
+					}
+				},
+				"trackOpens": {
+					"displayName": "跟踪打开",
+					"description": "启用或禁用此消息的打开跟踪",
+					"options": {
+						"account_default": {
+							"displayName": "账户默认值",
+							"description": "使用Mailjet账户中指定的值"
+						},
+						"disabled": {
+							"displayName": "已禁用",
+							"description": "禁用此消息的跟踪"
+						},
+						"enabled": {
+							"displayName": "已启用",
+							"description": "为此消息启用追踪"
+						}
+					}
+				},
+				"customCampaign": {
+					"displayName": "自定义营销活动"
+				},
+				"deduplicateCampaign": {
+					"displayName": "去重营销活动"
+				},
+				"ccEmail": {
+					"displayName": "抄送邮箱",
+					"description": "抄送收件人，用逗号分隔"
+				},
+				"subject": {
+					"displayName": "主题"
+				}
+			}
+		},
+		"variablesJson": {
+			"displayName": "变量（JSON）",
+			"description": "邮件的HTML文本消息"
+		},
+		"variablesUi": {
+			"displayName": "变量",
+			"placeholder": "添加变量",
+			"multipleValueButtonText": "添加变量",
+			"options": {
+				"variablesValues": {
+					"displayName": "变量",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"variablesValues": {
+					"displayName": "变量",
+					"options": {
+						"name": {
+							"displayName": "名称"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"variablesUi": {
+					"displayName": "变量",
+					"placeholder": "添加变量"
+				}
+			}
+		},
+		"templateId": {
+			"displayName": "模板名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"from": {
+			"displayName": "可自定义的发件人名称。长度应在3到11个字符之间，仅允许使用字母数字字符。",
+			"description": "可自定义的发件人名称。长度应在3到11个字符之间，仅允许使用字母数字字符。"
+		},
+		"to": {
+			"displayName": "收件人。长度应在3到15个字符之间。号码始终以加号开头，后接国家代码，然后是电话号码。电话号码应符合E.164格式。",
+			"description": "消息接收者。长度应为3至15个字符。号码始终以加号开头，后接国家代码和号码。电话号码应符合E.164格式。"
+		}
+	}
+}

@@ -1,0 +1,193 @@
+{
+	"header": {
+		"displayName": "Airtable",
+		"description": "从Airtable读取、更新、写入和删除数据"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"airtableTokenApi": {
+					"displayName": "访问令牌"
+				},
+				"airtableOAuth2Api": {
+					"displayName": "OAuth2"
+				},
+				"airtableApi": {
+					"displayName": "API密钥（已弃用）"
+				}
+			}
+		},
+		"oldVersionNotice": {
+			"displayName": "<strong>新节点版本可用：</strong>从节点面板获取包含新增功能的最新版本。"
+		},
+		"deprecated": {
+			"displayName": "此连接类型（API密钥）已弃用且无法继续使用。请创建新的'访问令牌'类型凭据替代。"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"append": {
+					"displayName": "追加",
+					"description": "将数据追加到表格"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从表中删除数据"
+				},
+				"list": {
+					"displayName": "列表",
+					"description": "从表中列出数据"
+				},
+				"read": {
+					"displayName": "读取",
+					"description": "从表中读取数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新表格数据"
+				}
+			}
+		},
+		"application": {
+			"displayName": "基础",
+			"description": "要操作的Airtable基础"
+		},
+		"table": {
+			"displayName": "表"
+		},
+		"addAllFields": {
+			"displayName": "添加所有字段",
+			"description": "是否将所有字段发送到Airtable，还是仅发送特定字段"
+		},
+		"fields": {
+			"displayName": "字段",
+			"description": "应发送到Airtable的数据字段名称",
+			"placeholder": "名称"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "要更新的记录ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"downloadAttachments": {
+			"displayName": "下载附件",
+			"description": "是否下载'下载字段'中定义的附件字段"
+		},
+		"downloadFieldNames": {
+			"displayName": "下载字段",
+			"description": "应下载的'attachment'类型字段名称。多个字段可用逗号分隔定义。区分大小写且逗号后不能包含空格。"
+		},
+		"additionalOptions": {
+			"displayName": "附加选项",
+			"description": "决定返回哪些记录的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "仅包含字段名称在此列表中的记录数据",
+					"placeholder": "名称"
+				},
+				"filterByFormula": {
+					"displayName": "按公式筛选",
+					"description": "用于筛选记录的公式。该公式将对每条记录进行评估，如果结果不是0、false、\"\"、NaN、[]或#Error!，则该记录将包含在响应中。",
+					"placeholder": "NOT({Name} = '')"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "定义返回记录应如何排序",
+					"placeholder": "添加排序规则",
+					"multipleValueButtonText": "添加排序规则",
+					"options": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"field": {
+									"displayName": "字段",
+									"description": "排序字段名称"
+								},
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向",
+									"options": {
+										"asc": {
+											"displayName": "升序",
+											"description": "按升序排序（小 → 大）"
+										},
+										"desc": {
+											"displayName": "描述",
+											"description": "降序排列（大→小）"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "属性",
+							"options": {
+								"field": {
+									"displayName": "字段",
+									"description": "排序字段名称"
+								},
+								"direction": {
+									"displayName": "方向",
+									"description": "排序方向",
+									"options": {
+										"asc": {
+											"displayName": "升序",
+											"description": "按升序排序（小 → 大）"
+										},
+										"desc": {
+											"displayName": "描述",
+											"description": "降序排列（大→小）"
+										}
+									}
+								}
+							}
+						},
+						"sort": {
+							"displayName": "排序",
+							"placeholder": "添加排序规则"
+						}
+					}
+				},
+				"view": {
+					"displayName": "查看",
+					"description": "Stories表中的视图名称或ID。如果设置，将仅返回该视图中的记录。记录将按照视图的顺序排序。",
+					"placeholder": "所有Stories"
+				}
+			}
+		},
+		"updateAllFields": {
+			"displayName": "更新所有字段",
+			"description": "是否将所有字段发送到Airtable，还是仅发送特定字段"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"bulkSize": {
+					"displayName": "批量大小",
+					"description": "单次处理的记录数量"
+				},
+				"ignoreFields": {
+					"displayName": "忽略字段",
+					"description": "要忽略的字段列表（逗号分隔）"
+				},
+				"typecast": {
+					"displayName": "类型转换",
+					"description": "Airtable API是否应尝试映射关联记录和选择选项的字符串值"
+				}
+			}
+		}
+	}
+}

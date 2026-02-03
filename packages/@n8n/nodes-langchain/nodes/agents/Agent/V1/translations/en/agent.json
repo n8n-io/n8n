@@ -1,0 +1,167 @@
+{
+	"header": {
+		"displayName": "AI Agent",
+		"description": "Generates an action plan and executes it. Can use external tools."
+	},
+	"nodeView": {
+		"aiAgentStarterCallout": {
+			"displayName": "Tip: Get a feel for agents with our quick <a href=\"https://docs.n8n.io/advanced-ai/intro-tutorial/\" target=\"_blank\">tutorial</a> or see an <a href=\"/templates/1954\" target=\"_blank\">example</a> of how this node works"
+		},
+		"deprecated": {
+			"displayName": "This node is using Agent that has been deprecated. Please switch to using 'Tools Agent' instead."
+		},
+		"agent": {
+			"displayName": "Agent",
+			"options": {
+				"conversationalAgent": {
+					"displayName": "Conversational Agent",
+					"description": "Describes tools in the system prompt and parses JSON responses for tool calls. More flexible but potentially less reliable than the Tools Agent. Suitable for simpler interactions or with models not supporting structured schemas."
+				},
+				"openAiFunctionsAgent": {
+					"displayName": "OpenAI Functions Agent",
+					"description": "Leverages OpenAI's function calling capabilities to precisely select and execute tools. Excellent for tasks requiring structured outputs when working with OpenAI models."
+				},
+				"planAndExecuteAgent": {
+					"displayName": "Plan and Execute Agent",
+					"description": "Creates a high-level plan for complex tasks and then executes each step. Suitable for multi-stage problems or when a strategic approach is needed."
+				},
+				"reActAgent": {
+					"displayName": "ReAct Agent",
+					"description": "Combines reasoning and action in an iterative process. Effective for tasks that require careful analysis and step-by-step problem-solving."
+				},
+				"sqlAgent": {
+					"displayName": "SQL Agent",
+					"description": "Specializes in interacting with SQL databases. Ideal for data analysis tasks, generating queries, or extracting insights from structured data."
+				},
+				"toolsAgent": {
+					"displayName": "Tools Agent",
+					"description": "Utilizes structured tool schemas for precise and reliable tool selection and execution. Recommended for complex tasks requiring accurate and consistent tool usage, but only usable with models that support tool calling."
+				}
+			}
+		},
+		"promptType": {
+			"displayName": "Source for Prompt (User Message)",
+			"options": {
+				"auto": {
+					"displayName": "Connected Chat Trigger Node",
+					"description": "Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger"
+				},
+				"guardrails": {
+					"displayName": "Connected Guardrails Node",
+					"description": "Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node"
+				},
+				"define": {
+					"displayName": "Define below",
+					"description": "Use an expression to reference data in previous nodes or enter static text"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text",
+			"placeholder": "e.g. Hello, how can you help me?"
+		},
+		"notice": {
+			"displayName": "Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>output parser</a> on the canvas to specify the output format you require"
+		},
+		"hasOutputParser": {
+			"displayName": "Require Specific Output Format"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"systemMessage": {
+					"displayName": "System Message",
+					"description": "The message that will be sent to the agent before the conversation starts"
+				},
+				"maxIterations": {
+					"displayName": "Max Iterations",
+					"description": "The maximum number of iterations the agent will run before stopping"
+				},
+				"returnIntermediateSteps": {
+					"displayName": "Return Intermediate Steps",
+					"description": "Whether or not the output should include intermediate steps the agent took"
+				},
+				"passthroughBinaryImages": {
+					"displayName": "Automatically Passthrough Binary Images",
+					"description": "Whether or not binary images should be automatically passed through to the agent as image type messages"
+				},
+				"humanMessage": {
+					"displayName": "Human Message",
+					"description": "The message that will provide the agent with a list of tools to use"
+				},
+				"humanMessageTemplate": {
+					"displayName": "Human Message Template",
+					"description": "The message that will be sent to the agent during each step execution"
+				},
+				"prefix": {
+					"displayName": "Prefix Message",
+					"description": "String to put before the list of tools"
+				},
+				"suffixChat": {
+					"displayName": "Suffix Message for Chat Model",
+					"description": "String to put after the list of tools that will be used if chat model is used"
+				},
+				"suffix": {
+					"displayName": "Suffix Message for Regular Model",
+					"description": "String to put after the list of tools that will be used if regular model is used"
+				},
+				"ignoredTables": {
+					"displayName": "Ignored Tables",
+					"description": "Comma-separated list of tables to ignore from the database. If empty, no tables are ignored."
+				},
+				"includedSampleRows": {
+					"displayName": "Include Sample Rows",
+					"description": "Number of sample rows to include in the prompt to the agent. It helps the agent to understand the schema of the database but it also increases the amount of tokens used."
+				},
+				"includedTables": {
+					"displayName": "Included Tables",
+					"description": "Comma-separated list of tables to include in the database. If empty, all tables are included."
+				},
+				"prefixPrompt": {
+					"displayName": "Prefix Prompt",
+					"description": "Prefix prompt to use for the agent"
+				},
+				"suffixPrompt": {
+					"displayName": "Suffix Prompt",
+					"description": "Suffix prompt to use for the agent"
+				},
+				"topK": {
+					"displayName": "Limit",
+					"description": "The maximum number of results to return"
+				}
+			}
+		},
+		"dataSource": {
+			"displayName": "Data Source",
+			"description": "SQL database to connect to",
+			"options": {
+				"mysql": {
+					"displayName": "MySQL",
+					"description": "Connect to a MySQL database"
+				},
+				"postgres": {
+					"displayName": "Postgres",
+					"description": "Connect to a Postgres database"
+				},
+				"sqlite": {
+					"displayName": "SQLite",
+					"description": "Use SQLite by connecting a database file as binary input"
+				}
+			}
+		},
+		"credentials": {
+			"displayName": "Credentials"
+		},
+		"sqLiteFileNotice": {
+			"displayName": "Pass the SQLite database into this node as binary data, e.g. by inserting a 'Read/Write Files from Disk' node beforehand"
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Binary Field",
+			"placeholder": "e.g data"
+		},
+		"input": {
+			"displayName": "Prompt"
+		}
+	}
+}

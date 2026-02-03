@@ -1,0 +1,996 @@
+{
+	"header": {
+		"displayName": "Action Network",
+		"description": "Consume the Action Network API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"attendance": {
+					"displayName": "Attendance"
+				},
+				"event": {
+					"displayName": "Event"
+				},
+				"person": {
+					"displayName": "Person"
+				},
+				"personTag": {
+					"displayName": "Person Tag"
+				},
+				"petition": {
+					"displayName": "Petition"
+				},
+				"signature": {
+					"displayName": "Signature"
+				},
+				"tag": {
+					"displayName": "Tag"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create"
+				},
+				"get": {
+					"displayName": "Get"
+				},
+				"getAll": {
+					"displayName": "Get Many"
+				},
+				"update": {
+					"displayName": "Update"
+				},
+				"add": {
+					"displayName": "Add"
+				},
+				"remove": {
+					"displayName": "Remove"
+				}
+			}
+		},
+		"personId": {
+			"displayName": "Person ID",
+			"description": "ID of the person to add the tag to"
+		},
+		"eventId": {
+			"displayName": "Event ID",
+			"description": "ID of the event to retrieve"
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		},
+		"attendanceId": {
+			"displayName": "Attendance ID",
+			"description": "ID of the attendance to retrieve"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"originSystem": {
+			"displayName": "Origin System",
+			"description": "Source where the petition originated"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the petition to create"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"browser_url": {
+					"displayName": "Browser URL",
+					"description": "URL to this petition’s page on the Action Network or a third party"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description of the event. HTML supported."
+				},
+				"end_date": {
+					"displayName": "End Date",
+					"description": "End date and time of the event"
+				},
+				"featured_image_url": {
+					"displayName": "Featured Image URL",
+					"description": "URL to this action’s featured image on the Action Network"
+				},
+				"instructions": {
+					"displayName": "Instructions",
+					"description": "Event's instructions for activists, visible after they RSVP. HTML supported."
+				},
+				"location": {
+					"displayName": "Location",
+					"placeholder": "Add Location Field",
+					"options": {
+						"postal_addresses_fields": {
+							"displayName": "Postal Addresses Fields",
+							"options": {
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary address"
+								},
+								"address_lines": {
+									"displayName": "Address Line",
+									"description": "Line for a person's address"
+								},
+								"locality": {
+									"displayName": "Locality",
+									"description": "City or other local administrative area. If blank, this will be filled in based on Action Network's geocoding."
+								},
+								"region": {
+									"displayName": "Region",
+									"description": "State or subdivision code per ISO 3166-2"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "Region specific postal code, such as ZIP code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Country code according to ISO 3166-1 Alpha-2. Defaults to US."
+								},
+								"language": {
+									"displayName": "Language",
+									"description": "Language in which the address is recorded, per ISO 639"
+								},
+								"location": {
+									"displayName": "Location",
+									"options": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										},
+										"location": {
+											"displayName": "Location"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"postal_addresses_fields": {
+							"displayName": "Postal Addresses Fields",
+							"options": {
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary address"
+								},
+								"address_lines": {
+									"displayName": "Address Line",
+									"description": "Line for a person's address"
+								},
+								"locality": {
+									"displayName": "Locality",
+									"description": "City or other local administrative area. If blank, this will be filled in based on Action Network's geocoding."
+								},
+								"region": {
+									"displayName": "Region",
+									"description": "State or subdivision code per ISO 3166-2"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "Region specific postal code, such as ZIP code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Country code according to ISO 3166-1 Alpha-2. Defaults to US."
+								},
+								"language": {
+									"displayName": "Language",
+									"description": "Language in which the address is recorded, per ISO 639"
+								},
+								"location": {
+									"displayName": "Location",
+									"options": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										},
+										"location": {
+											"displayName": "Location"
+										}
+									}
+								}
+							}
+						},
+						"location": {
+							"displayName": "Location",
+							"placeholder": "Add Location Field"
+						}
+					}
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Internal (not public) title of the petition"
+				},
+				"start_date": {
+					"displayName": "Start Date",
+					"description": "Start date and time of the event"
+				},
+				"family_name": {
+					"displayName": "Family Name",
+					"description": "Person’s last name"
+				},
+				"given_name": {
+					"displayName": "Given Name",
+					"description": "Person’s first name"
+				},
+				"languages_spoken": {
+					"displayName": "Language Spoken",
+					"description": "Language spoken by the person",
+					"options": {
+						"da": {
+							"displayName": "Danish"
+						},
+						"nl": {
+							"displayName": "Dutch"
+						},
+						"en": {
+							"displayName": "English"
+						},
+						"fi": {
+							"displayName": "Finnish"
+						},
+						"fr": {
+							"displayName": "French"
+						},
+						"de": {
+							"displayName": "German"
+						},
+						"hu": {
+							"displayName": "Hungarian"
+						},
+						"id": {
+							"displayName": "Indonesian"
+						},
+						"ja": {
+							"displayName": "Japanese"
+						},
+						"pt": {
+							"displayName": "Portuguese - Portugal"
+						},
+						"br": {
+							"displayName": "Portuguese - Brazil"
+						},
+						"ru": {
+							"displayName": "Rumanian"
+						},
+						"es": {
+							"displayName": "Spanish"
+						},
+						"sv": {
+							"displayName": "Swedish"
+						},
+						"tr": {
+							"displayName": "Turkish"
+						},
+						"cy": {
+							"displayName": "Welsh"
+						}
+					}
+				},
+				"phone_numbers": {
+					"displayName": "Phone Number",
+					"placeholder": "Add Phone Numbers Field",
+					"options": {
+						"phone_numbers_fields": {
+							"displayName": "Phone Numbers Fields",
+							"options": {
+								"number": {
+									"displayName": "Number",
+									"description": "Person's mobile number, in international format without the plus sign"
+								},
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary phone number"
+								},
+								"status": {
+									"displayName": "Status",
+									"description": "Subscription status of this number",
+									"options": {
+										"bouncing": {
+											"displayName": "Bouncing"
+										},
+										"previous bounce": {
+											"displayName": "Previous Bounce"
+										},
+										"subscribed": {
+											"displayName": "Subscribed"
+										},
+										"unsubscribed": {
+											"displayName": "Unsubscribed"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"phone_numbers_fields": {
+							"displayName": "Phone Numbers Fields",
+							"options": {
+								"number": {
+									"displayName": "Number",
+									"description": "Person's mobile number, in international format without the plus sign"
+								},
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary phone number"
+								},
+								"status": {
+									"displayName": "Status",
+									"description": "Subscription status of this number",
+									"options": {
+										"bouncing": {
+											"displayName": "Bouncing"
+										},
+										"previous bounce": {
+											"displayName": "Previous Bounce"
+										},
+										"subscribed": {
+											"displayName": "Subscribed"
+										},
+										"unsubscribed": {
+											"displayName": "Unsubscribed"
+										}
+									}
+								}
+							}
+						},
+						"phone_numbers": {
+							"displayName": "Phone Number",
+							"placeholder": "Add Phone Numbers Field"
+						}
+					}
+				},
+				"postal_addresses": {
+					"displayName": "Postal Addresses",
+					"placeholder": "Add Postal Addresses Field",
+					"multipleValueButtonText": "Add Postal Addresses Field",
+					"options": {
+						"postal_addresses_fields": {
+							"displayName": "Postal Addresses Fields",
+							"options": {
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary address"
+								},
+								"address_lines": {
+									"displayName": "Address Line",
+									"description": "Line for a person's address"
+								},
+								"locality": {
+									"displayName": "Locality",
+									"description": "City or other local administrative area. If blank, this will be filled in based on Action Network's geocoding."
+								},
+								"region": {
+									"displayName": "Region",
+									"description": "State or subdivision code per ISO 3166-2"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "Region specific postal code, such as ZIP code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Country code according to ISO 3166-1 Alpha-2. Defaults to US."
+								},
+								"language": {
+									"displayName": "Language",
+									"description": "Language in which the address is recorded, per ISO 639"
+								},
+								"location": {
+									"displayName": "Location",
+									"options": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										},
+										"location": {
+											"displayName": "Location"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"postal_addresses_fields": {
+							"displayName": "Postal Addresses Fields",
+							"options": {
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary address"
+								},
+								"address_lines": {
+									"displayName": "Address Line",
+									"description": "Line for a person's address"
+								},
+								"locality": {
+									"displayName": "Locality",
+									"description": "City or other local administrative area. If blank, this will be filled in based on Action Network's geocoding."
+								},
+								"region": {
+									"displayName": "Region",
+									"description": "State or subdivision code per ISO 3166-2"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "Region specific postal code, such as ZIP code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Country code according to ISO 3166-1 Alpha-2. Defaults to US."
+								},
+								"language": {
+									"displayName": "Language",
+									"description": "Language in which the address is recorded, per ISO 639"
+								},
+								"location": {
+									"displayName": "Location",
+									"options": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										},
+										"location": {
+											"displayName": "Location"
+										}
+									}
+								}
+							}
+						},
+						"postal_addresses": {
+							"displayName": "Postal Addresses",
+							"placeholder": "Add Postal Addresses Field"
+						}
+					}
+				},
+				"petition_text": {
+					"displayName": "Petition Text",
+					"description": "Text of the letter to the petition’s target"
+				},
+				"target": {
+					"displayName": "Targets",
+					"description": "Comma-separated names of targets for this petition"
+				},
+				"comments": {
+					"displayName": "Comments",
+					"description": "Comments to leave when signing this petition"
+				}
+			}
+		},
+		"email_addresses": {
+			"displayName": "Email Address",
+			"description": "Person’s email addresses",
+			"placeholder": "Add Email Address Field",
+			"options": {
+				"email_addresses_fields": {
+					"displayName": "Email Addresses Fields",
+					"options": {
+						"address": {
+							"displayName": "Address",
+							"description": "Person's email address"
+						},
+						"primary": {
+							"displayName": "Primary",
+							"description": "Whether this is the person's primary email address"
+						},
+						"status": {
+							"displayName": "Status",
+							"description": "Subscription status of this email address",
+							"options": {
+								"bouncing": {
+									"displayName": "Bouncing"
+								},
+								"previous bounce": {
+									"displayName": "Previous Bounce"
+								},
+								"previous spam complaint": {
+									"displayName": "Previous Spam Complaint"
+								},
+								"spam complaint": {
+									"displayName": "Spam Complaint"
+								},
+								"subscribed": {
+									"displayName": "Subscribed"
+								},
+								"unsubscribed": {
+									"displayName": "Unsubscribed"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"email_addresses_fields": {
+					"displayName": "Email Addresses Fields",
+					"options": {
+						"address": {
+							"displayName": "Address",
+							"description": "Person's email address"
+						},
+						"primary": {
+							"displayName": "Primary",
+							"description": "Whether this is the person's primary email address"
+						},
+						"status": {
+							"displayName": "Status",
+							"description": "Subscription status of this email address",
+							"options": {
+								"bouncing": {
+									"displayName": "Bouncing"
+								},
+								"previous bounce": {
+									"displayName": "Previous Bounce"
+								},
+								"previous spam complaint": {
+									"displayName": "Previous Spam Complaint"
+								},
+								"spam complaint": {
+									"displayName": "Spam Complaint"
+								},
+								"subscribed": {
+									"displayName": "Subscribed"
+								},
+								"unsubscribed": {
+									"displayName": "Unsubscribed"
+								}
+							}
+						}
+					}
+				},
+				"email_addresses": {
+					"displayName": "Email Address",
+					"placeholder": "Add Email Address Field"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"family_name": {
+					"displayName": "Family Name",
+					"description": "Person’s last name"
+				},
+				"given_name": {
+					"displayName": "Given Name",
+					"description": "Person’s first name"
+				},
+				"languages_spoken": {
+					"displayName": "Language Spoken",
+					"description": "Language spoken by the person",
+					"options": {
+						"da": {
+							"displayName": "Danish"
+						},
+						"nl": {
+							"displayName": "Dutch"
+						},
+						"en": {
+							"displayName": "English"
+						},
+						"fi": {
+							"displayName": "Finnish"
+						},
+						"fr": {
+							"displayName": "French"
+						},
+						"de": {
+							"displayName": "German"
+						},
+						"hu": {
+							"displayName": "Hungarian"
+						},
+						"id": {
+							"displayName": "Indonesian"
+						},
+						"ja": {
+							"displayName": "Japanese"
+						},
+						"pt": {
+							"displayName": "Portuguese - Portugal"
+						},
+						"br": {
+							"displayName": "Portuguese - Brazil"
+						},
+						"ru": {
+							"displayName": "Rumanian"
+						},
+						"es": {
+							"displayName": "Spanish"
+						},
+						"sv": {
+							"displayName": "Swedish"
+						},
+						"tr": {
+							"displayName": "Turkish"
+						},
+						"cy": {
+							"displayName": "Welsh"
+						}
+					}
+				},
+				"phone_numbers": {
+					"displayName": "Phone Number",
+					"placeholder": "Add Phone Numbers Field",
+					"options": {
+						"phone_numbers_fields": {
+							"displayName": "Phone Numbers Fields",
+							"options": {
+								"number": {
+									"displayName": "Number",
+									"description": "Person's mobile number, in international format without the plus sign"
+								},
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary phone number"
+								},
+								"status": {
+									"displayName": "Status",
+									"description": "Subscription status of this number",
+									"options": {
+										"bouncing": {
+											"displayName": "Bouncing"
+										},
+										"previous bounce": {
+											"displayName": "Previous Bounce"
+										},
+										"subscribed": {
+											"displayName": "Subscribed"
+										},
+										"unsubscribed": {
+											"displayName": "Unsubscribed"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"phone_numbers_fields": {
+							"displayName": "Phone Numbers Fields",
+							"options": {
+								"number": {
+									"displayName": "Number",
+									"description": "Person's mobile number, in international format without the plus sign"
+								},
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary phone number"
+								},
+								"status": {
+									"displayName": "Status",
+									"description": "Subscription status of this number",
+									"options": {
+										"bouncing": {
+											"displayName": "Bouncing"
+										},
+										"previous bounce": {
+											"displayName": "Previous Bounce"
+										},
+										"subscribed": {
+											"displayName": "Subscribed"
+										},
+										"unsubscribed": {
+											"displayName": "Unsubscribed"
+										}
+									}
+								}
+							}
+						},
+						"phone_numbers": {
+							"displayName": "Phone Number",
+							"placeholder": "Add Phone Numbers Field"
+						}
+					}
+				},
+				"postal_addresses": {
+					"displayName": "Postal Addresses",
+					"placeholder": "Add Postal Addresses Field",
+					"multipleValueButtonText": "Add Postal Addresses Field",
+					"options": {
+						"postal_addresses_fields": {
+							"displayName": "Postal Addresses Fields",
+							"options": {
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary address"
+								},
+								"address_lines": {
+									"displayName": "Address Line",
+									"description": "Line for a person's address"
+								},
+								"locality": {
+									"displayName": "Locality",
+									"description": "City or other local administrative area. If blank, this will be filled in based on Action Network's geocoding."
+								},
+								"region": {
+									"displayName": "Region",
+									"description": "State or subdivision code per ISO 3166-2"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "Region specific postal code, such as ZIP code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Country code according to ISO 3166-1 Alpha-2. Defaults to US."
+								},
+								"language": {
+									"displayName": "Language",
+									"description": "Language in which the address is recorded, per ISO 639"
+								},
+								"location": {
+									"displayName": "Location",
+									"options": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										},
+										"location": {
+											"displayName": "Location"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"postal_addresses_fields": {
+							"displayName": "Postal Addresses Fields",
+							"options": {
+								"primary": {
+									"displayName": "Primary",
+									"description": "Whether this is the person's primary address"
+								},
+								"address_lines": {
+									"displayName": "Address Line",
+									"description": "Line for a person's address"
+								},
+								"locality": {
+									"displayName": "Locality",
+									"description": "City or other local administrative area. If blank, this will be filled in based on Action Network's geocoding."
+								},
+								"region": {
+									"displayName": "Region",
+									"description": "State or subdivision code per ISO 3166-2"
+								},
+								"postal_code": {
+									"displayName": "Postal Code",
+									"description": "Region specific postal code, such as ZIP code"
+								},
+								"country": {
+									"displayName": "Country",
+									"description": "Country code according to ISO 3166-1 Alpha-2. Defaults to US."
+								},
+								"language": {
+									"displayName": "Language",
+									"description": "Language in which the address is recorded, per ISO 639"
+								},
+								"location": {
+									"displayName": "Location",
+									"options": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "Location Fields",
+											"options": {
+												"latitude": {
+													"displayName": "Latitude",
+													"description": "Latitude of the location of the address"
+												},
+												"longitude": {
+													"displayName": "Longitude",
+													"description": "Longitude of the location of the address"
+												}
+											}
+										},
+										"location": {
+											"displayName": "Location"
+										}
+									}
+								}
+							}
+						},
+						"postal_addresses": {
+							"displayName": "Postal Addresses",
+							"placeholder": "Add Postal Addresses Field"
+						}
+					}
+				},
+				"browser_url": {
+					"displayName": "Browser URL",
+					"description": "URL to this petition’s page on the Action Network or a third party"
+				},
+				"featured_image_url": {
+					"displayName": "Featured Image URL",
+					"description": "URL to this action’s featured image on the Action Network"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Internal (not public) title of the petition"
+				},
+				"petition_text": {
+					"displayName": "Petition Text",
+					"description": "Text of the letter to the petition’s target"
+				},
+				"target": {
+					"displayName": "Targets",
+					"description": "Comma-separated names of targets for this petition"
+				},
+				"comments": {
+					"displayName": "Comments",
+					"description": "Comments to leave when signing this petition"
+				}
+			}
+		},
+		"petitionId": {
+			"displayName": "Petition ID",
+			"description": "ID of the petition whose signature to update"
+		},
+		"signatureId": {
+			"displayName": "Signature ID",
+			"description": "ID of the signature to update"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the tag to create"
+		},
+		"tagId": {
+			"displayName": "Tag Name or ID",
+			"description": "ID of the tag whose tagging to delete. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"taggingId": {
+			"displayName": "Tagging Name or ID",
+			"description": "ID of the tagging to remove. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

@@ -1,0 +1,159 @@
+{
+	"header": {
+		"displayName": "Grafana",
+		"description": "使用Grafana API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"dashboard": {
+					"displayName": "仪表板"
+				},
+				"team": {
+					"displayName": "团队"
+				},
+				"teamMember": {
+					"displayName": "团队成员"
+				},
+				"user": {
+					"displayName": "用户"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建团队"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "从当前组织中删除用户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取团队"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "检索当前组织中的多个用户"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "在当前组织中更新用户"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "将成员添加到团队"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从团队中移除成员"
+				}
+			}
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "要创建的仪表板标题"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"folderId": {
+					"displayName": "文件夹名称或ID",
+					"description": "要在其中创建仪表板的文件夹 - 如果未指定文件夹，仪表板将保存到通用文件夹。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "要创建的团队邮箱",
+					"placeholder": "engineering@n8n.io"
+				}
+			}
+		},
+		"dashboardUidOrUrl": {
+			"displayName": "仪表板UID或URL",
+			"description": "要更新的仪表板的唯一字母标识符或URL",
+			"placeholder": "cIBgcSjkk"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"query": {
+					"displayName": "搜索查询"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "要筛选的团队名称"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"folderId": {
+					"displayName": "文件夹名称或ID",
+					"description": "将仪表板移动到的文件夹 - 如果未指定文件夹，仪表板将保存到通用文件夹。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "仪表板的新标题"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "要更新的团队邮箱",
+					"placeholder": "engineering@n8n.io"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "要更新的团队名称",
+					"placeholder": "工程团队"
+				},
+				"role": {
+					"displayName": "角色",
+					"description": "用户的新角色",
+					"options": {
+						"Admin": {
+							"displayName": "管理员"
+						},
+						"Editor": {
+							"displayName": "编辑者"
+						},
+						"Viewer": {
+							"displayName": "查看者"
+						}
+					}
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的团队名称",
+			"placeholder": "工程团队"
+		},
+		"teamId": {
+			"displayName": "团队名称或ID",
+			"description": "要从中检索所有成员的团队。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"userId": {
+			"displayName": "用户ID",
+			"description": "要删除的用户ID"
+		},
+		"memberId": {
+			"displayName": "用户名或ID",
+			"description": "要从团队中移除的用户。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

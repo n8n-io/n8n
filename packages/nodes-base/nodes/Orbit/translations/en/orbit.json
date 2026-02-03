@@ -1,0 +1,407 @@
+{
+	"header": {
+		"displayName": "Orbit",
+		"description": "Consume Orbit API"
+	},
+	"nodeView": {
+		"deprecated": {
+			"displayName": "Orbit has been shutdown and will no longer function from July 11th, You can read more <a target=\"_blank\" href=\"https://orbit.love/blog/orbit-is-joining-postman\">here</a>."
+		},
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"activity": {
+					"displayName": "Activity"
+				},
+				"member": {
+					"displayName": "Member"
+				},
+				"note": {
+					"displayName": "Note"
+				},
+				"post": {
+					"displayName": "Post"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a post"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many posts"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new member, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a post"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a member"
+				},
+				"lookup": {
+					"displayName": "Lookup",
+					"description": "Lookup a member by identity"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a note"
+				}
+			}
+		},
+		"workspaceId": {
+			"displayName": "Workspace Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"memberId": {
+			"displayName": "Member ID"
+		},
+		"title": {
+			"displayName": "Title"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"activityType": {
+					"displayName": "Activity Type Name or ID",
+					"description": "A user-defined way to group activities of the same nature. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "A description of the activity; displayed in the timeline"
+				},
+				"key": {
+					"displayName": "Key",
+					"description": "Supply a key that must be unique or leave blank to have one generated"
+				},
+				"link": {
+					"displayName": "Link",
+					"description": "A URL for the activity; displayed in the timeline"
+				},
+				"linkText": {
+					"displayName": "Link Text",
+					"description": "The text for the timeline link"
+				},
+				"occurredAt": {
+					"displayName": "Occurred At",
+					"description": "The date and time the activity occurred; defaults to now"
+				},
+				"bio": {
+					"displayName": "Bio"
+				},
+				"birthday": {
+					"displayName": "Birthday"
+				},
+				"company": {
+					"displayName": "Company"
+				},
+				"location": {
+					"displayName": "Location"
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"pronouns": {
+					"displayName": "Pronouns"
+				},
+				"shippingAddress": {
+					"displayName": "Shipping Address"
+				},
+				"slug": {
+					"displayName": "Slug"
+				},
+				"tagsToAdd": {
+					"displayName": "Tags to Add",
+					"description": "Adds tags to member; comma-separated string or array"
+				},
+				"tagList": {
+					"displayName": "Tag List",
+					"description": "Replaces all tags for the member; comma-separated string or array"
+				},
+				"tShirt": {
+					"displayName": "T-Shirt"
+				},
+				"teammate": {
+					"displayName": "Teammate"
+				},
+				"url": {
+					"displayName": "URL"
+				},
+				"publishedAt": {
+					"displayName": "Occurred At"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"memberId": {
+					"displayName": "Member ID",
+					"description": "When set the post will be filtered by the member ID"
+				}
+			}
+		},
+		"resolveIdentities": {
+			"displayName": "Resolve Identities",
+			"description": "By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"sort": {
+					"displayName": "Sort By",
+					"description": "Name of the field the response will be sorted by"
+				},
+				"direction": {
+					"displayName": "Sort Direction",
+					"options": {
+						"ASC": {
+							"displayName": "ASC"
+						},
+						"DESC": {
+							"displayName": "DESC"
+						}
+					}
+				}
+			}
+		},
+		"source": {
+			"displayName": "Source",
+			"description": "Set to github, twitter, email, discourse or the source of any identities you've manually created",
+			"options": {
+				"discourse": {
+					"displayName": "Discourse"
+				},
+				"email": {
+					"displayName": "Email"
+				},
+				"github": {
+					"displayName": "GitHub"
+				},
+				"twitter": {
+					"displayName": "Twitter"
+				}
+			}
+		},
+		"searchBy": {
+			"displayName": "Search By",
+			"options": {
+				"username": {
+					"displayName": "Username"
+				},
+				"id": {
+					"displayName": "ID"
+				}
+			}
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "The username at the source"
+		},
+		"username": {
+			"displayName": "Username",
+			"description": "The username at the source"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "The email address",
+			"placeholder": "name@email.com"
+		},
+		"host": {
+			"displayName": "Host"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"bio": {
+					"displayName": "Bio"
+				},
+				"birthday": {
+					"displayName": "Birthday"
+				},
+				"company": {
+					"displayName": "Company"
+				},
+				"location": {
+					"displayName": "Location"
+				},
+				"name": {
+					"displayName": "Name"
+				},
+				"pronouns": {
+					"displayName": "Pronouns"
+				},
+				"shippingAddress": {
+					"displayName": "Shipping Address"
+				},
+				"slug": {
+					"displayName": "Slug"
+				},
+				"tagsToAdd": {
+					"displayName": "Tags to Add",
+					"description": "Adds tags to member; comma-separated string or array"
+				},
+				"tagList": {
+					"displayName": "Tag List",
+					"description": "Replaces all tags for the member; comma-separated string or array"
+				},
+				"tShirt": {
+					"displayName": "T-Shirt"
+				},
+				"teammate": {
+					"displayName": "Teammate"
+				},
+				"url": {
+					"displayName": "URL"
+				}
+			}
+		},
+		"identityUi": {
+			"displayName": "Identity",
+			"description": "The identity is used to find the member. If no member exists, a new member will be created and linked to the provided identity.",
+			"placeholder": "Add Identity",
+			"options": {
+				"identityValue": {
+					"displayName": "Identity",
+					"options": {
+						"source": {
+							"displayName": "Source",
+							"description": "Set to github, twitter, email, discourse or the source of any identities you've manually created",
+							"options": {
+								"discourse": {
+									"displayName": "Discourse"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"github": {
+									"displayName": "GitHub"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						},
+						"searchBy": {
+							"displayName": "Search By",
+							"options": {
+								"username": {
+									"displayName": "Username"
+								},
+								"id": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"id": {
+							"displayName": "ID",
+							"description": "The username at the source"
+						},
+						"username": {
+							"displayName": "Username",
+							"description": "The username at the source"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"host": {
+							"displayName": "Host"
+						}
+					}
+				}
+			},
+			"values": {
+				"identityValue": {
+					"displayName": "Identity",
+					"options": {
+						"source": {
+							"displayName": "Source",
+							"description": "Set to github, twitter, email, discourse or the source of any identities you've manually created",
+							"options": {
+								"discourse": {
+									"displayName": "Discourse"
+								},
+								"email": {
+									"displayName": "Email"
+								},
+								"github": {
+									"displayName": "GitHub"
+								},
+								"twitter": {
+									"displayName": "Twitter"
+								}
+							}
+						},
+						"searchBy": {
+							"displayName": "Search By",
+							"options": {
+								"username": {
+									"displayName": "Username"
+								},
+								"id": {
+									"displayName": "ID"
+								}
+							}
+						},
+						"id": {
+							"displayName": "ID",
+							"description": "The username at the source"
+						},
+						"username": {
+							"displayName": "Username",
+							"description": "The username at the source"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"host": {
+							"displayName": "Host"
+						}
+					}
+				},
+				"identityUi": {
+					"displayName": "Identity",
+					"placeholder": "Add Identity"
+				}
+			}
+		},
+		"note": {
+			"displayName": "Note"
+		},
+		"resolveMember": {
+			"displayName": "Resolve Member"
+		},
+		"noteId": {
+			"displayName": "Note ID"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "Supply any URL and Orbit will do its best job to parse out a title, description, and image"
+		},
+		"postId": {
+			"displayName": "Post ID"
+		}
+	}
+}

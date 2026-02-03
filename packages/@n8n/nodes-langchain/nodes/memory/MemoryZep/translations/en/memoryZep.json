@@ -1,0 +1,38 @@
+{
+	"header": {
+		"displayName": "Zep",
+		"description": "Use Zep Memory"
+	},
+	"nodeView": {
+		"deprecationNotice": {
+			"displayName": "This Zep integration is deprecated and will be removed in a future version."
+		},
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"supportedVersions": {
+			"displayName": "Only works with Zep Cloud and Community edition <= v0.27.2"
+		},
+		"sessionId": {
+			"displayName": "Session ID",
+			"description": "The key to use to store the memory"
+		},
+		"sessionIdType": {
+			"displayName": "Session ID",
+			"options": {
+				"fromInput": {
+					"displayName": "Connected Chat Trigger Node",
+					"description": "Looks for an input field called 'sessionId' that is coming from a directly connected Chat Trigger"
+				},
+				"customKey": {
+					"displayName": "Define below",
+					"description": "Use an expression to reference data in previous nodes or enter static text"
+				}
+			}
+		},
+		"sessionKey": {
+			"displayName": "Key",
+			"description": "The key to use to store session ID in the memory"
+		}
+	}
+}

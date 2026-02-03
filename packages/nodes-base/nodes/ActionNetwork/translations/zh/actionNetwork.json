@@ -1,0 +1,996 @@
+{
+	"header": {
+		"displayName": "Action Network",
+		"description": "使用Action Network API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"attendance": {
+					"displayName": "考勤"
+				},
+				"event": {
+					"displayName": "事件"
+				},
+				"person": {
+					"displayName": "人员"
+				},
+				"personTag": {
+					"displayName": "人员标签"
+				},
+				"petition": {
+					"displayName": "请愿"
+				},
+				"signature": {
+					"displayName": "签名"
+				},
+				"tag": {
+					"displayName": "标签"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				},
+				"add": {
+					"displayName": "添加"
+				},
+				"remove": {
+					"displayName": "移除"
+				}
+			}
+		},
+		"personId": {
+			"displayName": "人员ID",
+			"description": "要添加标签的人员ID"
+		},
+		"eventId": {
+			"displayName": "事件ID",
+			"description": "要检索的事件ID"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"attendanceId": {
+			"displayName": "考勤记录ID",
+			"description": "要检索的考勤记录ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"originSystem": {
+			"displayName": "原始系统",
+			"description": "请愿来源"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "创建请愿书的标题"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"browser_url": {
+					"displayName": "浏览器URL",
+					"description": "此请愿在Action Network或第三方平台页面的URL"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "事件描述。支持HTML。"
+				},
+				"end_date": {
+					"displayName": "结束日期",
+					"description": "事件的结束日期和时间"
+				},
+				"featured_image_url": {
+					"displayName": "特色图片 URL",
+					"description": "此操作在 Action Network 上的特色图片 URL"
+				},
+				"instructions": {
+					"displayName": "活动说明",
+					"description": "活动家的事件说明，在他们确认参加后可见。支持HTML。"
+				},
+				"location": {
+					"displayName": "位置",
+					"placeholder": "添加位置字段",
+					"options": {
+						"postal_addresses_fields": {
+							"displayName": "邮政地址字段",
+							"options": {
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要地址"
+								},
+								"address_lines": {
+									"displayName": "地址行",
+									"description": "个人地址行"
+								},
+								"locality": {
+									"displayName": "位置",
+									"description": "城市或其他地方行政区划。如果留空，将根据Action Network的地理编码自动填充。"
+								},
+								"region": {
+									"displayName": "区域",
+									"description": "ISO 3166-2 州或行政区划代码"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "区域特定邮政编码，例如ZIP码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "根据ISO 3166-1 Alpha-2的国家代码。默认为US。"
+								},
+								"language": {
+									"displayName": "语言",
+									"description": "地址记录所用的语言，依据ISO 639标准"
+								},
+								"location": {
+									"displayName": "位置",
+									"options": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										},
+										"location": {
+											"displayName": "位置"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"postal_addresses_fields": {
+							"displayName": "邮政地址字段",
+							"options": {
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要地址"
+								},
+								"address_lines": {
+									"displayName": "地址行",
+									"description": "个人地址行"
+								},
+								"locality": {
+									"displayName": "位置",
+									"description": "城市或其他地方行政区划。如果留空，将根据Action Network的地理编码自动填充。"
+								},
+								"region": {
+									"displayName": "区域",
+									"description": "ISO 3166-2 州或行政区划代码"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "区域特定邮政编码，例如ZIP码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "根据ISO 3166-1 Alpha-2的国家代码。默认为US。"
+								},
+								"language": {
+									"displayName": "语言",
+									"description": "地址记录所用的语言，依据ISO 639标准"
+								},
+								"location": {
+									"displayName": "位置",
+									"options": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										},
+										"location": {
+											"displayName": "位置"
+										}
+									}
+								}
+							}
+						},
+						"location": {
+							"displayName": "位置",
+							"placeholder": "添加位置字段"
+						}
+					}
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "请愿的内部（非公开）标题"
+				},
+				"start_date": {
+					"displayName": "开始日期",
+					"description": "事件的开始日期和时间"
+				},
+				"family_name": {
+					"displayName": "姓氏",
+					"description": "姓氏"
+				},
+				"given_name": {
+					"displayName": "名字",
+					"description": "人员名字"
+				},
+				"languages_spoken": {
+					"displayName": "使用语言",
+					"description": "该人员使用的语言",
+					"options": {
+						"da": {
+							"displayName": "丹麦语"
+						},
+						"nl": {
+							"displayName": "荷兰语"
+						},
+						"en": {
+							"displayName": "英文"
+						},
+						"fi": {
+							"displayName": "芬兰语"
+						},
+						"fr": {
+							"displayName": "法语"
+						},
+						"de": {
+							"displayName": "德语"
+						},
+						"hu": {
+							"displayName": "匈牙利语"
+						},
+						"id": {
+							"displayName": "印尼语"
+						},
+						"ja": {
+							"displayName": "日语"
+						},
+						"pt": {
+							"displayName": "葡萄牙语 - 葡萄牙"
+						},
+						"br": {
+							"displayName": "葡萄牙语 - 巴西"
+						},
+						"ru": {
+							"displayName": "罗马尼亚语"
+						},
+						"es": {
+							"displayName": "西班牙语"
+						},
+						"sv": {
+							"displayName": "瑞典语"
+						},
+						"tr": {
+							"displayName": "土耳其语"
+						},
+						"cy": {
+							"displayName": "威尔士语"
+						}
+					}
+				},
+				"phone_numbers": {
+					"displayName": "电话号码",
+					"placeholder": "添加电话号码字段",
+					"options": {
+						"phone_numbers_fields": {
+							"displayName": "电话号码字段",
+							"options": {
+								"number": {
+									"displayName": "数字",
+									"description": "个人手机号码，国际格式，不带加号"
+								},
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要电话号码"
+								},
+								"status": {
+									"displayName": "状态",
+									"description": "此号码的订阅状态",
+									"options": {
+										"bouncing": {
+											"displayName": "弹跳中"
+										},
+										"previous bounce": {
+											"displayName": "上一个退回"
+										},
+										"subscribed": {
+											"displayName": "已订阅"
+										},
+										"unsubscribed": {
+											"displayName": "已取消订阅"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"phone_numbers_fields": {
+							"displayName": "电话号码字段",
+							"options": {
+								"number": {
+									"displayName": "数字",
+									"description": "个人手机号码，国际格式，不带加号"
+								},
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要电话号码"
+								},
+								"status": {
+									"displayName": "状态",
+									"description": "此号码的订阅状态",
+									"options": {
+										"bouncing": {
+											"displayName": "弹跳中"
+										},
+										"previous bounce": {
+											"displayName": "上一个退回"
+										},
+										"subscribed": {
+											"displayName": "已订阅"
+										},
+										"unsubscribed": {
+											"displayName": "已取消订阅"
+										}
+									}
+								}
+							}
+						},
+						"phone_numbers": {
+							"displayName": "电话号码",
+							"placeholder": "添加电话号码字段"
+						}
+					}
+				},
+				"postal_addresses": {
+					"displayName": "邮政地址",
+					"placeholder": "添加邮政地址字段",
+					"multipleValueButtonText": "添加邮政地址字段",
+					"options": {
+						"postal_addresses_fields": {
+							"displayName": "邮政地址字段",
+							"options": {
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要地址"
+								},
+								"address_lines": {
+									"displayName": "地址行",
+									"description": "个人地址行"
+								},
+								"locality": {
+									"displayName": "位置",
+									"description": "城市或其他地方行政区划。如果留空，将根据Action Network的地理编码自动填充。"
+								},
+								"region": {
+									"displayName": "区域",
+									"description": "ISO 3166-2 州或行政区划代码"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "区域特定邮政编码，例如ZIP码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "根据ISO 3166-1 Alpha-2的国家代码。默认为US。"
+								},
+								"language": {
+									"displayName": "语言",
+									"description": "地址记录所用的语言，依据ISO 639标准"
+								},
+								"location": {
+									"displayName": "位置",
+									"options": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										},
+										"location": {
+											"displayName": "位置"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"postal_addresses_fields": {
+							"displayName": "邮政地址字段",
+							"options": {
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要地址"
+								},
+								"address_lines": {
+									"displayName": "地址行",
+									"description": "个人地址行"
+								},
+								"locality": {
+									"displayName": "位置",
+									"description": "城市或其他地方行政区划。如果留空，将根据Action Network的地理编码自动填充。"
+								},
+								"region": {
+									"displayName": "区域",
+									"description": "ISO 3166-2 州或行政区划代码"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "区域特定邮政编码，例如ZIP码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "根据ISO 3166-1 Alpha-2的国家代码。默认为US。"
+								},
+								"language": {
+									"displayName": "语言",
+									"description": "地址记录所用的语言，依据ISO 639标准"
+								},
+								"location": {
+									"displayName": "位置",
+									"options": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										},
+										"location": {
+											"displayName": "位置"
+										}
+									}
+								}
+							}
+						},
+						"postal_addresses": {
+							"displayName": "邮政地址",
+							"placeholder": "添加邮政地址字段"
+						}
+					}
+				},
+				"petition_text": {
+					"displayName": "请愿书正文",
+					"description": "致请愿目标的信件正文"
+				},
+				"target": {
+					"displayName": "目标",
+					"description": "此请愿的目标名称（用逗号分隔）"
+				},
+				"comments": {
+					"displayName": "评论",
+					"description": "签署此请愿书时留下的评论"
+				}
+			}
+		},
+		"email_addresses": {
+			"displayName": "电子邮件地址",
+			"description": "人员的电子邮件地址",
+			"placeholder": "添加电子邮件地址字段",
+			"options": {
+				"email_addresses_fields": {
+					"displayName": "电子邮件地址字段",
+					"options": {
+						"address": {
+							"displayName": "地址",
+							"description": "个人邮箱地址"
+						},
+						"primary": {
+							"displayName": "主要",
+							"description": "这是否为此人的主要电子邮件地址"
+						},
+						"status": {
+							"displayName": "状态",
+							"description": "此邮箱地址的订阅状态",
+							"options": {
+								"bouncing": {
+									"displayName": "弹跳中"
+								},
+								"previous bounce": {
+									"displayName": "上一个退回"
+								},
+								"previous spam complaint": {
+									"displayName": "历史垃圾邮件投诉"
+								},
+								"spam complaint": {
+									"displayName": "垃圾邮件投诉"
+								},
+								"subscribed": {
+									"displayName": "已订阅"
+								},
+								"unsubscribed": {
+									"displayName": "已取消订阅"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"email_addresses_fields": {
+					"displayName": "电子邮件地址字段",
+					"options": {
+						"address": {
+							"displayName": "地址",
+							"description": "个人邮箱地址"
+						},
+						"primary": {
+							"displayName": "主要",
+							"description": "这是否为此人的主要电子邮件地址"
+						},
+						"status": {
+							"displayName": "状态",
+							"description": "此邮箱地址的订阅状态",
+							"options": {
+								"bouncing": {
+									"displayName": "弹跳中"
+								},
+								"previous bounce": {
+									"displayName": "上一个退回"
+								},
+								"previous spam complaint": {
+									"displayName": "历史垃圾邮件投诉"
+								},
+								"spam complaint": {
+									"displayName": "垃圾邮件投诉"
+								},
+								"subscribed": {
+									"displayName": "已订阅"
+								},
+								"unsubscribed": {
+									"displayName": "已取消订阅"
+								}
+							}
+						}
+					}
+				},
+				"email_addresses": {
+					"displayName": "邮箱地址",
+					"placeholder": "添加电子邮件地址字段"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"family_name": {
+					"displayName": "姓氏",
+					"description": "姓氏"
+				},
+				"given_name": {
+					"displayName": "名字",
+					"description": "人员名字"
+				},
+				"languages_spoken": {
+					"displayName": "使用语言",
+					"description": "该人员使用的语言",
+					"options": {
+						"da": {
+							"displayName": "丹麦语"
+						},
+						"nl": {
+							"displayName": "荷兰语"
+						},
+						"en": {
+							"displayName": "英文"
+						},
+						"fi": {
+							"displayName": "芬兰语"
+						},
+						"fr": {
+							"displayName": "法语"
+						},
+						"de": {
+							"displayName": "德语"
+						},
+						"hu": {
+							"displayName": "匈牙利语"
+						},
+						"id": {
+							"displayName": "印尼语"
+						},
+						"ja": {
+							"displayName": "日语"
+						},
+						"pt": {
+							"displayName": "葡萄牙语 - 葡萄牙"
+						},
+						"br": {
+							"displayName": "葡萄牙语 - 巴西"
+						},
+						"ru": {
+							"displayName": "罗马尼亚语"
+						},
+						"es": {
+							"displayName": "西班牙语"
+						},
+						"sv": {
+							"displayName": "瑞典语"
+						},
+						"tr": {
+							"displayName": "土耳其语"
+						},
+						"cy": {
+							"displayName": "威尔士语"
+						}
+					}
+				},
+				"phone_numbers": {
+					"displayName": "电话号码",
+					"placeholder": "添加电话号码字段",
+					"options": {
+						"phone_numbers_fields": {
+							"displayName": "电话号码字段",
+							"options": {
+								"number": {
+									"displayName": "数字",
+									"description": "个人手机号码，国际格式，不带加号"
+								},
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要电话号码"
+								},
+								"status": {
+									"displayName": "状态",
+									"description": "此号码的订阅状态",
+									"options": {
+										"bouncing": {
+											"displayName": "弹跳中"
+										},
+										"previous bounce": {
+											"displayName": "上一个退回"
+										},
+										"subscribed": {
+											"displayName": "已订阅"
+										},
+										"unsubscribed": {
+											"displayName": "已取消订阅"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"phone_numbers_fields": {
+							"displayName": "电话号码字段",
+							"options": {
+								"number": {
+									"displayName": "数字",
+									"description": "个人手机号码，国际格式，不带加号"
+								},
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要电话号码"
+								},
+								"status": {
+									"displayName": "状态",
+									"description": "此号码的订阅状态",
+									"options": {
+										"bouncing": {
+											"displayName": "弹跳中"
+										},
+										"previous bounce": {
+											"displayName": "上一个退回"
+										},
+										"subscribed": {
+											"displayName": "已订阅"
+										},
+										"unsubscribed": {
+											"displayName": "已取消订阅"
+										}
+									}
+								}
+							}
+						},
+						"phone_numbers": {
+							"displayName": "电话号码",
+							"placeholder": "添加电话号码字段"
+						}
+					}
+				},
+				"postal_addresses": {
+					"displayName": "邮政地址",
+					"placeholder": "添加邮政地址字段",
+					"multipleValueButtonText": "添加邮政地址字段",
+					"options": {
+						"postal_addresses_fields": {
+							"displayName": "邮政地址字段",
+							"options": {
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要地址"
+								},
+								"address_lines": {
+									"displayName": "地址行",
+									"description": "个人地址行"
+								},
+								"locality": {
+									"displayName": "位置",
+									"description": "城市或其他地方行政区划。如果留空，将根据Action Network的地理编码自动填充。"
+								},
+								"region": {
+									"displayName": "区域",
+									"description": "ISO 3166-2 州或行政区划代码"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "区域特定邮政编码，例如ZIP码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "根据ISO 3166-1 Alpha-2的国家代码。默认为US。"
+								},
+								"language": {
+									"displayName": "语言",
+									"description": "地址记录所用的语言，依据ISO 639标准"
+								},
+								"location": {
+									"displayName": "位置",
+									"options": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										},
+										"location": {
+											"displayName": "位置"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"postal_addresses_fields": {
+							"displayName": "邮政地址字段",
+							"options": {
+								"primary": {
+									"displayName": "主要",
+									"description": "这是否为该人员的主要地址"
+								},
+								"address_lines": {
+									"displayName": "地址行",
+									"description": "个人地址行"
+								},
+								"locality": {
+									"displayName": "位置",
+									"description": "城市或其他地方行政区划。如果留空，将根据Action Network的地理编码自动填充。"
+								},
+								"region": {
+									"displayName": "区域",
+									"description": "ISO 3166-2 州或行政区划代码"
+								},
+								"postal_code": {
+									"displayName": "邮政编码",
+									"description": "区域特定邮政编码，例如ZIP码"
+								},
+								"country": {
+									"displayName": "国家",
+									"description": "根据ISO 3166-1 Alpha-2的国家代码。默认为US。"
+								},
+								"language": {
+									"displayName": "语言",
+									"description": "地址记录所用的语言，依据ISO 639标准"
+								},
+								"location": {
+									"displayName": "位置",
+									"options": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										}
+									},
+									"values": {
+										"location_fields": {
+											"displayName": "位置字段",
+											"options": {
+												"latitude": {
+													"displayName": "纬度",
+													"description": "地址所在位置的纬度"
+												},
+												"longitude": {
+													"displayName": "经度",
+													"description": "地址所在位置的经度"
+												}
+											}
+										},
+										"location": {
+											"displayName": "位置"
+										}
+									}
+								}
+							}
+						},
+						"postal_addresses": {
+							"displayName": "邮政地址",
+							"placeholder": "添加邮政地址字段"
+						}
+					}
+				},
+				"browser_url": {
+					"displayName": "浏览器URL",
+					"description": "此请愿在Action Network或第三方平台页面的URL"
+				},
+				"featured_image_url": {
+					"displayName": "特色图片 URL",
+					"description": "此操作在 Action Network 上的特色图片 URL"
+				},
+				"name": {
+					"displayName": "名称",
+					"description": "请愿的内部（非公开）标题"
+				},
+				"petition_text": {
+					"displayName": "请愿书正文",
+					"description": "致请愿目标的信件正文"
+				},
+				"target": {
+					"displayName": "目标",
+					"description": "此请愿的目标名称（用逗号分隔）"
+				},
+				"comments": {
+					"displayName": "评论",
+					"description": "签署此请愿书时留下的评论"
+				}
+			}
+		},
+		"petitionId": {
+			"displayName": "请愿书ID",
+			"description": "要更新签名的请愿书ID"
+		},
+		"signatureId": {
+			"displayName": "签名ID",
+			"description": "要更新的签名ID"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "要创建的标签名称"
+		},
+		"tagId": {
+			"displayName": "标签名称或ID",
+			"description": "要删除其标记的标签ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"taggingId": {
+			"displayName": "标签名称或ID",
+			"description": "要移除的标签ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

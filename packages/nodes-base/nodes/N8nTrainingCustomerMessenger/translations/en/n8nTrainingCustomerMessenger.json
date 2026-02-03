@@ -1,0 +1,14 @@
+{
+	"header": {
+		"displayName": "Customer Messenger (n8n training)",
+		"description": "Dummy node used for n8n training"
+	},
+	"nodeView": {
+		"customerId": {
+			"displayName": "Customer ID"
+		},
+		"message": {
+			"displayName": "Message"
+		}
+	}
+}

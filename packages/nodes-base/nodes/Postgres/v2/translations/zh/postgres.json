@@ -1,0 +1,390 @@
+{
+	"header": {
+		"displayName": "Postgres",
+		"description": "在Postgres中获取、添加和更新数据"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源"
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"deleteTable": {
+					"displayName": "删除",
+					"description": "删除整个表或表中的行"
+				},
+				"executeQuery": {
+					"displayName": "执行查询",
+					"description": "执行SQL查询"
+				},
+				"insert": {
+					"displayName": "插入",
+					"description": "在表中插入行"
+				},
+				"upsert": {
+					"displayName": "插入或更新",
+					"description": "在表中插入或更新行"
+				},
+				"select": {
+					"displayName": "选择",
+					"description": "从表中选取行"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新表中的行"
+				}
+			}
+		},
+		"schema": {
+			"displayName": "架构",
+			"description": "包含您要操作的数据表的模式",
+			"placeholder": "例如 公开"
+		},
+		"table": {
+			"displayName": "表",
+			"description": "您要操作的表"
+		},
+		"deleteCommand": {
+			"displayName": "命令",
+			"options": {
+				"truncate": {
+					"displayName": "清空数据",
+					"description": "仅删除表数据，保留表结构"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "Delete the rows that match the 'Select Rows' conditions below. If no selection is made, all rows in the table are deleted."
+				},
+				"drop": {
+					"displayName": "删除",
+					"description": "永久删除表的数据及其结构"
+				}
+			}
+		},
+		"restartSequences": {
+			"displayName": "重启序列",
+			"description": "是否将标识（自增）列重置为其初始值"
+		},
+		"where": {
+			"displayName": "选择行",
+			"description": "如果未设置，将选择所有行",
+			"placeholder": "添加条件",
+			"multipleValueButtonText": "添加条件",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"column": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">表达式</a>指定ID",
+							"placeholder": "例如 ID"
+						},
+						"condition": {
+							"displayName": "操作员",
+							"description": "用于检查列的操作符。使用'LIKE'操作符时，百分号(%)匹配零个或多个字符，下划线(_)匹配任意单个字符。",
+							"options": {
+								"equal": {
+									"displayName": "等于"
+								},
+								"!=": {
+									"displayName": "不等于"
+								},
+								"LIKE": {
+									"displayName": "点赞"
+								},
+								">": {
+									"displayName": "大于"
+								},
+								"<": {
+									"displayName": "小于"
+								},
+								">=": {
+									"displayName": "大于或等于"
+								},
+								"<=": {
+									"displayName": "小于或等于"
+								},
+								"IS NULL": {
+									"displayName": "为空"
+								},
+								"IS NOT NULL": {
+									"displayName": "不为空"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"column": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">表达式</a>指定ID",
+							"placeholder": "例如 ID"
+						},
+						"condition": {
+							"displayName": "操作员",
+							"description": "用于检查列的操作符。使用'LIKE'操作符时，百分号(%)匹配零个或多个字符，下划线(_)匹配任意单个字符。",
+							"options": {
+								"equal": {
+									"displayName": "等于"
+								},
+								"!=": {
+									"displayName": "不等于"
+								},
+								"LIKE": {
+									"displayName": "点赞"
+								},
+								">": {
+									"displayName": "大于"
+								},
+								"<": {
+									"displayName": "小于"
+								},
+								">=": {
+									"displayName": "大于或等于"
+								},
+								"<=": {
+									"displayName": "小于或等于"
+								},
+								"IS NULL": {
+									"displayName": "为空"
+								},
+								"IS NOT NULL": {
+									"displayName": "不为空"
+								}
+							}
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"where": {
+					"displayName": "选择行",
+					"placeholder": "添加条件"
+				}
+			}
+		},
+		"combineConditions": {
+			"displayName": "组合条件",
+			"description": "如何组合“选择行”中定义的条件：AND要求所有条件都为真，OR要求至少一个条件为真",
+			"options": {
+				"AND": {
+					"displayName": "与",
+					"description": "仅选择满足所有条件的行"
+				},
+				"OR": {
+					"displayName": "或",
+					"description": "满足至少一个条件的行被选中"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"cascade": {
+					"displayName": "级联",
+					"description": "是否删除所有依赖于该表的对象，例如视图和序列"
+				},
+				"connectionTimeout": {
+					"displayName": "连接超时",
+					"description": "为连接到数据库预留的秒数"
+				},
+				"delayClosingIdleConnection": {
+					"displayName": "延迟关闭空闲连接",
+					"description": "空闲连接在符合关闭条件前的等待秒数"
+				},
+				"queryBatching": {
+					"displayName": "查询批处理",
+					"description": "查询发送到数据库的方式",
+					"options": {
+						"single": {
+							"displayName": "单一查询",
+							"description": "对所有传入项执行单一查询"
+						},
+						"independently": {
+							"displayName": "独立",
+							"description": "为运行中的每个传入项执行一次查询"
+						},
+						"transaction": {
+							"displayName": "交易",
+							"description": "在事务中执行所有查询，若发生故障，则回滚所有更改"
+						}
+					}
+				},
+				"queryReplacement": {
+					"displayName": "查询参数",
+					"description": "要用作查询参数的值列表，以逗号分隔。<a href=\"https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters\" target=\"_blank\">更多信息</a>。",
+					"placeholder": "例如：value1,value2,value3"
+				},
+				"treatQueryParametersInSingleQuotesAsText": {
+					"displayName": "将单引号内的查询参数视为文本",
+					"description": "是否将单引号内的查询参数视为文本，例如 '$1'"
+				},
+				"outputColumns": {
+					"displayName": "输出列",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"largeNumbersOutput": {
+					"displayName": "输出大格式数字为",
+					"options": {
+						"numbers": {
+							"displayName": "数字"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "如果预期数字超过16位时使用此选项（否则数字可能不正确）"
+						}
+					}
+				},
+				"skipOnConflict": {
+					"displayName": "冲突时跳过",
+					"description": "是否在违反唯一约束或排除约束时跳过该行且不抛出错误"
+				},
+				"replaceEmptyStrings": {
+					"displayName": "将空字符串替换为NULL",
+					"description": "是否在输入中将空字符串替换为NULL，当数据来自电子表格时可能很有用"
+				}
+			}
+		},
+		"query": {
+			"displayName": "查询",
+			"description": "要执行的SQL查询。您可以使用n8n表达式和$1、$2、$3等来引用下方选项中设置的'查询参数'。",
+			"placeholder": "例如：SELECT id, name FROM product WHERE quantity > $1 AND price <= $2"
+		},
+		"dataMode": {
+			"displayName": "数据模式",
+			"description": "是否自动或手动映射节点输入属性与表格数据",
+			"options": {
+				"autoMapInputData": {
+					"displayName": "自动映射输入数据到列",
+					"description": "当节点输入属性名称与表列名完全匹配时使用"
+				},
+				"defineBelow": {
+					"displayName": "手动映射每列",
+					"description": "手动设置每个目标列的值"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "在此模式下，请确保传入数据字段的名称与表中的列名相同。如有需要，可在此节点前使用'编辑字段'节点来更改字段名称。"
+		},
+		"valuesToSend": {
+			"displayName": "要发送的值",
+			"placeholder": "添加值",
+			"multipleValueButtonText": "添加值",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"column": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">表达式</a>指定ID"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"column": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">表达式</a>指定ID"
+						},
+						"value": {
+							"displayName": "值"
+						}
+					}
+				},
+				"valuesToSend": {
+					"displayName": "要发送的值",
+					"placeholder": "添加值"
+				}
+			}
+		},
+		"columns": {
+			"displayName": "列"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"sort": {
+			"displayName": "排序",
+			"placeholder": "添加排序规则",
+			"multipleValueButtonText": "添加排序规则",
+			"options": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"column": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">表达式</a>指定ID"
+						},
+						"direction": {
+							"displayName": "方向",
+							"options": {
+								"ASC": {
+									"displayName": "升序"
+								},
+								"DESC": {
+									"displayName": "描述"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "值",
+					"values": {
+						"column": {
+							"displayName": "列",
+							"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">表达式</a>指定ID"
+						},
+						"direction": {
+							"displayName": "方向",
+							"options": {
+								"ASC": {
+									"displayName": "升序"
+								},
+								"DESC": {
+									"displayName": "描述"
+								}
+							}
+						}
+					}
+				},
+				"sort": {
+					"displayName": "排序",
+					"placeholder": "添加排序规则"
+				}
+			}
+		},
+		"columnToMatchOn": {
+			"displayName": "唯一列",
+			"description": "查找要更新的行时用于比较的列。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\" target=\"_blank\">表达式</a>指定ID。"
+		},
+		"valueToMatchOn": {
+			"displayName": "唯一列的值",
+			"description": "指定“匹配列”中的值与此字段值对应的行将被更新。不匹配的项目将创建新行。"
+		}
+	}
+}

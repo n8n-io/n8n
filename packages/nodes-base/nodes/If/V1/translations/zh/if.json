@@ -1,0 +1,334 @@
+{
+	"header": {
+		"displayName": "如果",
+		"description": "将项目路由到不同分支（真/假）"
+	},
+	"nodeView": {
+		"conditions": {
+			"displayName": "条件",
+			"description": "要比较的值的类型",
+			"placeholder": "添加条件",
+			"multipleValueButtonText": "添加条件",
+			"options": {
+				"boolean": {
+					"displayName": "布尔值",
+					"options": {
+						"value1": {
+							"displayName": "值 1",
+							"description": "要与第二个值进行比较的值"
+						},
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"equal": {
+									"displayName": "等于"
+								},
+								"notEqual": {
+									"displayName": "不等于"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "值 2",
+							"description": "与第一个值进行比较的值"
+						}
+					}
+				},
+				"dateTime": {
+					"displayName": "日期与时间",
+					"options": {
+						"value1": {
+							"displayName": "值 1",
+							"description": "要与第二个值进行比较的值"
+						},
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"after": {
+									"displayName": "发生时间晚于"
+								},
+								"before": {
+									"displayName": "发生时间早于"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "值 2",
+							"description": "与第一个值进行比较的值"
+						}
+					}
+				},
+				"number": {
+					"displayName": "数字",
+					"options": {
+						"value1": {
+							"displayName": "值 1",
+							"description": "要与第二个值进行比较的值"
+						},
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"smaller": {
+									"displayName": "较小"
+								},
+								"smallerEqual": {
+									"displayName": "小于或等于"
+								},
+								"equal": {
+									"displayName": "等于"
+								},
+								"notEqual": {
+									"displayName": "不等于"
+								},
+								"larger": {
+									"displayName": "较大"
+								},
+								"largerEqual": {
+									"displayName": "大于或等于"
+								},
+								"isEmpty": {
+									"displayName": "为空"
+								},
+								"isNotEmpty": {
+									"displayName": "不为空"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "值 2",
+							"description": "与第一个值进行比较的值"
+						}
+					}
+				},
+				"string": {
+					"displayName": "字符串",
+					"options": {
+						"value1": {
+							"displayName": "值 1",
+							"description": "要与第二个值进行比较的值"
+						},
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"contains": {
+									"displayName": "包含"
+								},
+								"notContains": {
+									"displayName": "不包含"
+								},
+								"endsWith": {
+									"displayName": "以...结尾"
+								},
+								"notEndsWith": {
+									"displayName": "不以...结尾"
+								},
+								"equal": {
+									"displayName": "等于"
+								},
+								"notEqual": {
+									"displayName": "不等于"
+								},
+								"regex": {
+									"displayName": "正则表达式匹配"
+								},
+								"notRegex": {
+									"displayName": "正则表达式不匹配"
+								},
+								"startsWith": {
+									"displayName": "以...开头"
+								},
+								"notStartsWith": {
+									"displayName": "不以...开始"
+								},
+								"isEmpty": {
+									"displayName": "为空"
+								},
+								"isNotEmpty": {
+									"displayName": "不为空"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "正则表达式",
+							"description": "必须匹配的正则表达式",
+							"placeholder": "/text/i"
+						}
+					}
+				}
+			},
+			"values": {
+				"boolean": {
+					"displayName": "布尔值",
+					"options": {
+						"value1": {
+							"displayName": "值 1",
+							"description": "要与第二个值进行比较的值"
+						},
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"equal": {
+									"displayName": "等于"
+								},
+								"notEqual": {
+									"displayName": "不等于"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "值 2",
+							"description": "与第一个值进行比较的值"
+						}
+					}
+				},
+				"dateTime": {
+					"displayName": "日期与时间",
+					"options": {
+						"value1": {
+							"displayName": "值 1",
+							"description": "要与第二个值进行比较的值"
+						},
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"after": {
+									"displayName": "发生时间晚于"
+								},
+								"before": {
+									"displayName": "发生时间早于"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "值 2",
+							"description": "与第一个值进行比较的值"
+						}
+					}
+				},
+				"number": {
+					"displayName": "数字",
+					"options": {
+						"value1": {
+							"displayName": "值 1",
+							"description": "要与第二个值进行比较的值"
+						},
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"smaller": {
+									"displayName": "较小"
+								},
+								"smallerEqual": {
+									"displayName": "小于或等于"
+								},
+								"equal": {
+									"displayName": "等于"
+								},
+								"notEqual": {
+									"displayName": "不等于"
+								},
+								"larger": {
+									"displayName": "较大"
+								},
+								"largerEqual": {
+									"displayName": "大于或等于"
+								},
+								"isEmpty": {
+									"displayName": "为空"
+								},
+								"isNotEmpty": {
+									"displayName": "不为空"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "值 2",
+							"description": "与第一个值进行比较的值"
+						}
+					}
+				},
+				"string": {
+					"displayName": "字符串",
+					"options": {
+						"value1": {
+							"displayName": "值 1",
+							"description": "要与第二个值进行比较的值"
+						},
+						"operation": {
+							"displayName": "操作",
+							"description": "决定数据应映射到何处的操作",
+							"options": {
+								"contains": {
+									"displayName": "包含"
+								},
+								"notContains": {
+									"displayName": "不包含"
+								},
+								"endsWith": {
+									"displayName": "以...结尾"
+								},
+								"notEndsWith": {
+									"displayName": "不以...结尾"
+								},
+								"equal": {
+									"displayName": "等于"
+								},
+								"notEqual": {
+									"displayName": "不等于"
+								},
+								"regex": {
+									"displayName": "正则表达式匹配"
+								},
+								"notRegex": {
+									"displayName": "正则表达式不匹配"
+								},
+								"startsWith": {
+									"displayName": "以...开头"
+								},
+								"notStartsWith": {
+									"displayName": "不以...开始"
+								},
+								"isEmpty": {
+									"displayName": "为空"
+								},
+								"isNotEmpty": {
+									"displayName": "不为空"
+								}
+							}
+						},
+						"value2": {
+							"displayName": "正则表达式",
+							"description": "必须匹配的正则表达式",
+							"placeholder": "/text/i"
+						}
+					}
+				},
+				"conditions": {
+					"displayName": "条件",
+					"placeholder": "添加条件"
+				}
+			}
+		},
+		"combineOperation": {
+			"displayName": "合并",
+			"description": "如果设置了多个规则，此设置决定是只要满足任意条件即为真，还是必须满足所有条件。",
+			"options": {
+				"all": {
+					"displayName": "全部",
+					"description": "仅当满足所有条件时进入“真”分支"
+				},
+				"any": {
+					"displayName": "任意",
+					"description": "如果满足任意条件，则进入“真”分支"
+				}
+			}
+		}
+	}
+}

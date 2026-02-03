@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "LoneScale Trigger",
+		"description": "Trigger LoneScale Workflow"
+	},
+	"nodeView": {
+		"workflow": {
+			"displayName": "Workflow Name",
+			"description": "Select one workflow. Choose from the list"
+		}
+	}
+}

@@ -1,0 +1,277 @@
+{
+	"header": {
+		"displayName": "Microsoft OneDrive 触发器",
+		"description": "Microsoft OneDrive API 的触发器。"
+	},
+	"nodeView": {
+		"pollTimes": {
+			"displayName": "轮询时间",
+			"description": "轮询应发生的时间",
+			"placeholder": "添加轮询时间",
+			"multipleValueButtonText": "添加轮询时间",
+			"options": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"item": {
+					"displayName": "项目",
+					"options": {
+						"mode": {
+							"displayName": "模式",
+							"description": "触发频率。",
+							"options": {
+								"everyMinute": {
+									"displayName": "每分钟"
+								},
+								"everyHour": {
+									"displayName": "每小时"
+								},
+								"everyDay": {
+									"displayName": "每天"
+								},
+								"everyWeek": {
+									"displayName": "每周"
+								},
+								"everyMonth": {
+									"displayName": "每月"
+								},
+								"everyX": {
+									"displayName": "每隔 X"
+								},
+								"custom": {
+									"displayName": "自定义"
+								}
+							}
+						},
+						"hour": {
+							"displayName": "小时",
+							"description": "触发时间（24小时制）"
+						},
+						"minute": {
+							"displayName": "分钟",
+							"description": "触发时间（一天中的分钟）"
+						},
+						"dayOfMonth": {
+							"displayName": "月份中的日期",
+							"description": "触发日期（月份中的某一天）"
+						},
+						"weekday": {
+							"displayName": "工作日",
+							"description": "触发的工作日",
+							"options": {
+								"0": {
+									"displayName": "星期日"
+								},
+								"1": {
+									"displayName": "Monday"
+								},
+								"2": {
+									"displayName": "周二"
+								},
+								"3": {
+									"displayName": "星期三"
+								},
+								"4": {
+									"displayName": "星期四"
+								},
+								"5": {
+									"displayName": "周五"
+								},
+								"6": {
+									"displayName": "星期六"
+								}
+							}
+						},
+						"cronExpression": {
+							"displayName": "Cron表达式",
+							"description": "使用自定义Cron表达式。取值和范围如下：<ul><li>秒：0-59</li><li>分钟：0-59</li><li>小时：0-23</li><li>日期：1-31</li><li>月份：0-11（1月-12月）</li><li>星期：0-6（周日-周六）</li></ul>"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "设置触发间隔的分钟/小时数"
+						},
+						"unit": {
+							"displayName": "单位",
+							"description": "是否应每X分钟或小时触发",
+							"options": {
+								"minutes": {
+									"displayName": "分钟"
+								},
+								"hours": {
+									"displayName": "小时"
+								}
+							}
+						}
+					}
+				},
+				"pollTimes": {
+					"displayName": "轮询时间",
+					"placeholder": "添加轮询时间"
+				}
+			}
+		},
+		"event": {
+			"displayName": "触发器开启",
+			"options": {
+				"fileCreated": {
+					"displayName": "文件已创建",
+					"description": "当新文件被创建时"
+				},
+				"fileUpdated": {
+					"displayName": "文件已更新",
+					"description": "当现有文件被修改时"
+				},
+				"folderCreated": {
+					"displayName": "文件夹已创建",
+					"description": "当新文件夹被创建时"
+				},
+				"folderUpdated": {
+					"displayName": "文件夹已更新",
+					"description": "当现有文件夹被修改时"
+				}
+			}
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"watchFolder": {
+			"displayName": "监视文件夹",
+			"description": "是否监视给定文件夹中创建的文件夹，而非整个OneDrive"
+		},
+		"watch": {
+			"displayName": "监控",
+			"description": "如何选择要监控的文件夹",
+			"options": {
+				"anyFile": {
+					"displayName": "任意文件",
+					"description": "监控整个OneDrive中的文件更新"
+				},
+				"selectedFolder": {
+					"displayName": "文件夹内",
+					"description": "监视所选文件夹内更新的文件夹"
+				},
+				"selectedFile": {
+					"displayName": "选定的文件",
+					"description": "监视特定文件的更新"
+				},
+				"anyFolder": {
+					"displayName": "任意文件夹",
+					"description": "监视整个OneDrive中更新的文件夹"
+				},
+				"oneSelectedFolder": {
+					"displayName": "已选文件夹",
+					"description": "监控特定文件夹的更新"
+				}
+			}
+		},
+		"fileId": {
+			"displayName": "文件",
+			"description": "要操作的文件。'通过URL'选项仅接受以'https://onedrive.live.com'开头的URL。"
+		},
+		"folderId": {
+			"displayName": "文件夹",
+			"description": "要操作的文件夹。'通过URL'选项仅接受以'https://onedrive.live.com'开头的URL。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"folderChild": {
+					"displayName": "监控嵌套文件夹",
+					"description": "是否在所有嵌套文件夹中查找修改的文件/文件夹，而不仅仅是直接子项"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,14 @@
+{
+	"header": {
+		"displayName": "Twilio触发器",
+		"description": "在Twilio更新时启动工作流"
+	},
+	"nodeView": {
+		"updates": {
+			"displayName": "触发条件"
+		},
+		"callTriggerNotice": {
+			"displayName": "'新呼叫'事件可能需要长达三十分钟才能触发"
+		}
+	}
+}

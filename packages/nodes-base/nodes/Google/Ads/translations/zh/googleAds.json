@@ -1,0 +1,172 @@
+{
+	"header": {
+		"displayName": "Google Ads",
+		"description": "使用 Google Ads API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"campaign": {
+					"displayName": "营销活动"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取与指定账户关联的多个营销活动"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取特定营销活动"
+				}
+			}
+		},
+		"campaigsNotice": {
+			"displayName": "将以<i>微</i>为单位表示的字段名除以1,000,000以获得实际值"
+		},
+		"managerCustomerId": {
+			"displayName": "管理客户ID",
+			"placeholder": "9998887777"
+		},
+		"clientCustomerId": {
+			"displayName": "客户ID",
+			"placeholder": "6665554444"
+		},
+		"campaignId": {
+			"displayName": "活动ID",
+			"description": "营销活动ID"
+		},
+		"additionalOptions": {
+			"displayName": "附加选项",
+			"description": "获取营销活动的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"dateRange": {
+					"displayName": "日期范围",
+					"description": "按时间段筛选统计信息",
+					"options": {
+						"allTime": {
+							"displayName": "全部时间",
+							"description": "获取所有时间段统计"
+						},
+						"TODAY": {
+							"displayName": "今天",
+							"description": "今日限定"
+						},
+						"YESTERDAY": {
+							"displayName": "昨天",
+							"description": "仅限昨日"
+						},
+						"LAST_7_DAYS": {
+							"displayName": "最近7天",
+							"description": "最近7天（不含今日）"
+						},
+						"LAST_BUSINESS_WEEK": {
+							"displayName": "上周工作日",
+							"description": "上周一至周五的五个工作日"
+						},
+						"THIS_MONTH": {
+							"displayName": "本月",
+							"description": "当前月份的所有天数"
+						},
+						"LAST_MONTH": {
+							"displayName": "上个月",
+							"description": "上个月的所有天数"
+						},
+						"LAST_14_DAYS": {
+							"displayName": "最近14天",
+							"description": "最近14天（不包含今天）"
+						},
+						"LAST_30_DAYS": {
+							"displayName": "最近30天",
+							"description": "最近30天（不含今日）"
+						}
+					}
+				},
+				"campaignStatus": {
+					"displayName": "按状态显示营销活动",
+					"description": "按状态筛选营销活动",
+					"options": {
+						"all": {
+							"displayName": "全部",
+							"description": "获取所有活动，无论其状态如何"
+						},
+						"ENABLED": {
+							"displayName": "已启用",
+							"description": "仅筛选活跃的营销活动"
+						},
+						"PAUSED": {
+							"displayName": "已暂停",
+							"description": "仅筛选已暂停的营销活动"
+						},
+						"REMOVED": {
+							"displayName": "已移除",
+							"description": "仅筛选已移除的营销活动"
+						}
+					}
+				}
+			}
+		},
+		"requestOptions": {
+			"displayName": "请求选项",
+			"placeholder": "添加选项",
+			"options": {
+				"batching": {
+					"displayName": "批处理",
+					"placeholder": "添加批处理",
+					"options": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "批处理",
+							"options": {
+								"batchSize": {
+									"displayName": "每批处理项数",
+									"description": "输入将被分批处理以限制请求速率。-1表示禁用。0将被视为1。"
+								},
+								"batchInterval": {
+									"displayName": "批次间隔（毫秒）",
+									"description": "每批请求之间的时间间隔（毫秒）。0表示禁用。"
+								}
+							}
+						},
+						"batching": {
+							"displayName": "批处理",
+							"placeholder": "添加批处理"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "忽略SSL问题（不安全）",
+					"description": "是否在无法验证SSL证书时仍接受响应"
+				},
+				"proxy": {
+					"displayName": "代理",
+					"description": "要使用的HTTP代理。如需身份验证，可按以下格式定义：http://用户名:密码@代理地址:端口",
+					"placeholder": "例如：http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待服务器发送响应头（并开始响应体）的超时时间（毫秒），超时则中止请求"
+				}
+			}
+		}
+	}
+}

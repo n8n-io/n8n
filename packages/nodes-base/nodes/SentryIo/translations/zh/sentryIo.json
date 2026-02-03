@@ -1,0 +1,724 @@
+{
+	"header": {
+		"displayName": "Sentry.io",
+		"description": "使用 Sentry.io API"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"accessToken": {
+					"displayName": "访问令牌（云端）"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2（云端）"
+				},
+				"accessTokenServer": {
+					"displayName": "访问令牌（自托管）"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"event": {
+					"displayName": "事件"
+				},
+				"issue": {
+					"displayName": "问题"
+				},
+				"organization": {
+					"displayName": "组织"
+				},
+				"project": {
+					"displayName": "项目"
+				},
+				"release": {
+					"displayName": "发布"
+				},
+				"team": {
+					"displayName": "团队"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "通过slug获取团队"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个团队"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除团队"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新团队"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新团队"
+				}
+			}
+		},
+		"organizationSlug": {
+			"displayName": "组织标识名称或ID",
+			"description": "团队所属组织的标识。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"projectSlug": {
+			"displayName": "项目Slug名称或ID",
+			"description": "要删除的项目的Slug。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"full": {
+			"displayName": "完整",
+			"description": "事件负载是否包含完整的事件体，包括堆栈跟踪"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"eventId": {
+			"displayName": "事件ID",
+			"description": "要检索的事件ID（可以是数字主键或Raven客户端报告的十六进制ID）"
+		},
+		"issueId": {
+			"displayName": "问题ID",
+			"description": "要获取的问题ID",
+			"placeholder": "1234"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"query": {
+					"displayName": "查询",
+					"description": "此参数可用于创建版本的“以...开头”过滤器"
+				},
+				"statsPeriod": {
+					"displayName": "统计周期",
+					"description": "统计时间段",
+					"options": {
+						"14d": {
+							"displayName": "14天"
+						},
+						"24h": {
+							"displayName": "24小时"
+						}
+					}
+				},
+				"shortIdLookUp": {
+					"displayName": "短ID查找",
+					"description": "此函数是否也查找短ID。这可能导致函数返回值来自不同项目的事件问题，因此此为可选功能。"
+				},
+				"assignedTo": {
+					"displayName": "分配给",
+					"description": "应分配给此问题的用户或团队的执行者ID（或用户名）"
+				},
+				"hasSeen": {
+					"displayName": "已查看",
+					"description": "当此API调用在用户上下文中被调用时，允许更改表示用户是否已查看事件的标志"
+				},
+				"isBookmarked": {
+					"displayName": "是否已收藏",
+					"description": "此API调用是否在用户上下文中调用，这允许更改收藏标记"
+				},
+				"isPublic": {
+					"displayName": "是否公开",
+					"description": "是否将问题设置为公开或私有"
+				},
+				"isSubscribed": {
+					"displayName": "已订阅"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "问题的新状态",
+					"options": {
+						"ignored": {
+							"displayName": "已忽略"
+						},
+						"resolved": {
+							"displayName": "已解析"
+						},
+						"resolvedInNextRelease": {
+							"displayName": "已解决 - 下一版本"
+						},
+						"unresolved": {
+							"displayName": "未解析"
+						}
+					}
+				},
+				"member": {
+					"displayName": "成员",
+					"description": "是否将结果限制为您所属的组织"
+				},
+				"owner": {
+					"displayName": "所有者",
+					"description": "是否将结果限制为您是拥有者的组织"
+				},
+				"slug": {
+					"displayName": "标识符",
+					"description": "此团队的可选标识符。如未提供，将根据名称自动生成。"
+				},
+				"dateReleased": {
+					"displayName": "发布日期",
+					"description": "表示版本上线时间的可选日期。如果未提供，则默认为当前时间。"
+				},
+				"commits": {
+					"displayName": "提交记录",
+					"description": "与发布关联的可选提交数据列表",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"commitProperties": {
+							"displayName": "提交属性",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "提交的SHA"
+								},
+								"authorEmail": {
+									"displayName": "作者邮箱",
+									"description": "作者邮箱"
+								},
+								"authorName": {
+									"displayName": "作者姓名",
+									"description": "作者姓名"
+								},
+								"message": {
+									"displayName": "消息",
+									"description": "提交信息"
+								},
+								"patchSet": {
+									"displayName": "补丁集",
+									"description": "提交中已更改的文件列表。指定补丁集对于启用可疑提交和建议分配者是必需的。",
+									"multipleValueButtonText": "添加",
+									"options": {
+										"patchSetProperties": {
+											"displayName": "补丁集属性",
+											"options": {
+												"path": {
+													"displayName": "路径",
+													"description": "文件路径。支持正斜杠和反斜杠。"
+												},
+												"type": {
+													"displayName": "类型",
+													"description": "该提交中发生的变更类型",
+													"options": {
+														"add": {
+															"displayName": "添加"
+														},
+														"modify": {
+															"displayName": "修改"
+														},
+														"delete": {
+															"displayName": "删除"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"patchSetProperties": {
+											"displayName": "补丁集属性",
+											"options": {
+												"path": {
+													"displayName": "路径",
+													"description": "文件路径。支持正斜杠和反斜杠。"
+												},
+												"type": {
+													"displayName": "类型",
+													"description": "该提交中发生的变更类型",
+													"options": {
+														"add": {
+															"displayName": "添加"
+														},
+														"modify": {
+															"displayName": "修改"
+														},
+														"delete": {
+															"displayName": "删除"
+														}
+													}
+												}
+											}
+										},
+										"patchSet": {
+											"displayName": "补丁集"
+										}
+									}
+								},
+								"repository": {
+									"displayName": "仓库",
+									"description": "仓库名称"
+								},
+								"timestamp": {
+									"displayName": "时间戳",
+									"description": "提交时间戳"
+								}
+							}
+						}
+					},
+					"values": {
+						"commitProperties": {
+							"displayName": "提交属性",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "提交的SHA"
+								},
+								"authorEmail": {
+									"displayName": "作者邮箱",
+									"description": "作者邮箱"
+								},
+								"authorName": {
+									"displayName": "作者姓名",
+									"description": "作者姓名"
+								},
+								"message": {
+									"displayName": "消息",
+									"description": "提交信息"
+								},
+								"patchSet": {
+									"displayName": "补丁集",
+									"description": "提交中已更改的文件列表。指定补丁集对于启用可疑提交和建议分配者是必需的。",
+									"multipleValueButtonText": "添加",
+									"options": {
+										"patchSetProperties": {
+											"displayName": "补丁集属性",
+											"options": {
+												"path": {
+													"displayName": "路径",
+													"description": "文件路径。支持正斜杠和反斜杠。"
+												},
+												"type": {
+													"displayName": "类型",
+													"description": "该提交中发生的变更类型",
+													"options": {
+														"add": {
+															"displayName": "添加"
+														},
+														"modify": {
+															"displayName": "修改"
+														},
+														"delete": {
+															"displayName": "删除"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"patchSetProperties": {
+											"displayName": "补丁集属性",
+											"options": {
+												"path": {
+													"displayName": "路径",
+													"description": "文件路径。支持正斜杠和反斜杠。"
+												},
+												"type": {
+													"displayName": "类型",
+													"description": "该提交中发生的变更类型",
+													"options": {
+														"add": {
+															"displayName": "添加"
+														},
+														"modify": {
+															"displayName": "修改"
+														},
+														"delete": {
+															"displayName": "删除"
+														}
+													}
+												}
+											}
+										},
+										"patchSet": {
+											"displayName": "补丁集"
+										}
+									}
+								},
+								"repository": {
+									"displayName": "仓库",
+									"description": "仓库名称"
+								},
+								"timestamp": {
+									"displayName": "时间戳",
+									"description": "提交时间戳"
+								}
+							}
+						},
+						"commits": {
+							"displayName": "提交记录"
+						}
+					}
+				},
+				"refs": {
+					"displayName": "引用",
+					"description": "一种可选方式，用于指示发布中包含的每个仓库的起始和结束提交",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"refProperties": {
+							"displayName": "引用属性",
+							"options": {
+								"commit": {
+									"displayName": "提交",
+									"description": "提交的头部SHA"
+								},
+								"repository": {
+									"displayName": "仓库",
+									"description": "仓库名称"
+								},
+								"previousCommit": {
+									"displayName": "先前提交",
+									"description": "上一个发布版本的HEAD的SHA"
+								}
+							}
+						}
+					},
+					"values": {
+						"refProperties": {
+							"displayName": "引用属性",
+							"options": {
+								"commit": {
+									"displayName": "提交",
+									"description": "提交的头部SHA"
+								},
+								"repository": {
+									"displayName": "仓库",
+									"description": "仓库名称"
+								},
+								"previousCommit": {
+									"displayName": "先前提交",
+									"description": "上一个发布版本的HEAD的SHA"
+								}
+							}
+						},
+						"refs": {
+							"displayName": "引用"
+						}
+					}
+				}
+			}
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "团队名称"
+		},
+		"agreeTerms": {
+			"displayName": "同意条款",
+			"description": "是否同意Sentry.io的适用服务条款和隐私政策"
+		},
+		"organization_slug": {
+			"displayName": "Slug名称或ID",
+			"description": "要更新的组织Slug。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "团队的新名称"
+				},
+				"slug": {
+					"displayName": "标识符",
+					"description": "团队的新短名称。必须唯一且可用。"
+				},
+				"isBookmarked": {
+					"displayName": "已收藏",
+					"description": "更新项目的新平台"
+				},
+				"digestsMaxDelay": {
+					"displayName": "摘要最大延迟",
+					"description": "摘要警报的最大间隔时间"
+				},
+				"digestsMinDelay": {
+					"displayName": "摘要最小延迟",
+					"description": "摘要警报的最小间隔"
+				},
+				"team": {
+					"displayName": "团队",
+					"description": "新团队名称"
+				},
+				"platform": {
+					"displayName": "平台",
+					"description": "更新项目的新平台"
+				},
+				"commits": {
+					"displayName": "提交记录",
+					"description": "与发布关联的可选提交数据列表",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"commitProperties": {
+							"displayName": "提交属性",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "提交的SHA"
+								},
+								"authorEmail": {
+									"displayName": "作者邮箱",
+									"description": "作者邮箱"
+								},
+								"authorName": {
+									"displayName": "作者姓名",
+									"description": "作者姓名"
+								},
+								"message": {
+									"displayName": "消息",
+									"description": "提交信息"
+								},
+								"patchSet": {
+									"displayName": "补丁集",
+									"description": "提交中已更改的文件列表。指定补丁集对于启用可疑提交和建议分配者是必需的。",
+									"multipleValueButtonText": "添加",
+									"options": {
+										"patchSetProperties": {
+											"displayName": "补丁集属性",
+											"options": {
+												"path": {
+													"displayName": "路径",
+													"description": "文件路径。支持正斜杠和反斜杠。"
+												},
+												"type": {
+													"displayName": "类型",
+													"description": "该提交中发生的变更类型",
+													"options": {
+														"add": {
+															"displayName": "添加"
+														},
+														"modify": {
+															"displayName": "修改"
+														},
+														"delete": {
+															"displayName": "删除"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"patchSetProperties": {
+											"displayName": "补丁集属性",
+											"options": {
+												"path": {
+													"displayName": "路径",
+													"description": "文件路径。支持正斜杠和反斜杠。"
+												},
+												"type": {
+													"displayName": "类型",
+													"description": "该提交中发生的变更类型",
+													"options": {
+														"add": {
+															"displayName": "添加"
+														},
+														"modify": {
+															"displayName": "修改"
+														},
+														"delete": {
+															"displayName": "删除"
+														}
+													}
+												}
+											}
+										},
+										"patchSet": {
+											"displayName": "补丁集"
+										}
+									}
+								},
+								"repository": {
+									"displayName": "仓库",
+									"description": "仓库名称"
+								},
+								"timestamp": {
+									"displayName": "时间戳",
+									"description": "提交时间戳"
+								}
+							}
+						}
+					},
+					"values": {
+						"commitProperties": {
+							"displayName": "提交属性",
+							"options": {
+								"id": {
+									"displayName": "ID",
+									"description": "提交的SHA"
+								},
+								"authorEmail": {
+									"displayName": "作者邮箱",
+									"description": "作者邮箱"
+								},
+								"authorName": {
+									"displayName": "作者姓名",
+									"description": "作者姓名"
+								},
+								"message": {
+									"displayName": "消息",
+									"description": "提交信息"
+								},
+								"patchSet": {
+									"displayName": "补丁集",
+									"description": "提交中已更改的文件列表。指定补丁集对于启用可疑提交和建议分配者是必需的。",
+									"multipleValueButtonText": "添加",
+									"options": {
+										"patchSetProperties": {
+											"displayName": "补丁集属性",
+											"options": {
+												"path": {
+													"displayName": "路径",
+													"description": "文件路径。支持正斜杠和反斜杠。"
+												},
+												"type": {
+													"displayName": "类型",
+													"description": "该提交中发生的变更类型",
+													"options": {
+														"add": {
+															"displayName": "添加"
+														},
+														"modify": {
+															"displayName": "修改"
+														},
+														"delete": {
+															"displayName": "删除"
+														}
+													}
+												}
+											}
+										}
+									},
+									"values": {
+										"patchSetProperties": {
+											"displayName": "补丁集属性",
+											"options": {
+												"path": {
+													"displayName": "路径",
+													"description": "文件路径。支持正斜杠和反斜杠。"
+												},
+												"type": {
+													"displayName": "类型",
+													"description": "该提交中发生的变更类型",
+													"options": {
+														"add": {
+															"displayName": "添加"
+														},
+														"modify": {
+															"displayName": "修改"
+														},
+														"delete": {
+															"displayName": "删除"
+														}
+													}
+												}
+											}
+										},
+										"patchSet": {
+											"displayName": "补丁集"
+										}
+									}
+								},
+								"repository": {
+									"displayName": "仓库",
+									"description": "仓库名称"
+								},
+								"timestamp": {
+									"displayName": "时间戳",
+									"description": "提交时间戳"
+								}
+							}
+						},
+						"commits": {
+							"displayName": "提交记录"
+						}
+					}
+				},
+				"dateReleased": {
+					"displayName": "发布日期",
+					"description": "表示版本上线时间的可选日期。如果未提供，则默认为当前时间。"
+				},
+				"ref": {
+					"displayName": "参考",
+					"description": "指向该版本的URL。例如，这可以是源代码在线界面的路径。"
+				},
+				"refs": {
+					"displayName": "引用",
+					"description": "一种可选方式，用于指示发布中包含的每个仓库的起始和结束提交",
+					"multipleValueButtonText": "添加",
+					"options": {
+						"refProperties": {
+							"displayName": "引用属性",
+							"options": {
+								"commit": {
+									"displayName": "提交",
+									"description": "提交的头部SHA"
+								},
+								"repository": {
+									"displayName": "仓库",
+									"description": "仓库名称"
+								},
+								"previousCommit": {
+									"displayName": "先前提交",
+									"description": "上一个发布版本的HEAD的SHA"
+								}
+							}
+						}
+					},
+					"values": {
+						"refProperties": {
+							"displayName": "引用属性",
+							"options": {
+								"commit": {
+									"displayName": "提交",
+									"description": "提交的头部SHA"
+								},
+								"repository": {
+									"displayName": "仓库",
+									"description": "仓库名称"
+								},
+								"previousCommit": {
+									"displayName": "先前提交",
+									"description": "上一个发布版本的HEAD的SHA"
+								}
+							}
+						},
+						"refs": {
+							"displayName": "引用"
+						}
+					}
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "指向该版本的URL。例如，这可以是源代码在线界面的路径。"
+				}
+			}
+		},
+		"teamSlug": {
+			"displayName": "团队Slug名称或ID",
+			"description": "要删除的团队Slug。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"version": {
+			"displayName": "版本",
+			"description": "此发布的版本标识符。可以是版本号、提交哈希等。"
+		},
+		"url": {
+			"displayName": "URL",
+			"description": "指向发布的URL。例如，这可以是源代码在线界面的路径。"
+		},
+		"projects": {
+			"displayName": "项目名称或ID",
+			"description": "此版本涉及的项目标识列表。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

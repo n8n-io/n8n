@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "AI Transform",
+		"description": "Modify data based on instructions written in plain english"
+	},
+	"nodeView": {
+		"instructions": {
+			"displayName": "Instructions",
+			"description": "Provide instructions on how you want to transform the data, then click 'Generate code'. Use dot notation to refer to nested fields (e.g. address.street).",
+			"placeholder": "Example: Merge 'firstname' and 'lastname' into a field 'details.name' and sort by 'email'"
+		},
+		"codeGeneratedForPrompt": {
+			"displayName": "Code Generated For Prompt"
+		},
+		"jsCode": {
+			"displayName": "Generated JavaScript"
+		}
+	}
+}

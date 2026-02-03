@@ -1,0 +1,90 @@
+{
+	"header": {
+		"displayName": "DeepL",
+		"description": "使用DeepL翻译数据"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"language": {
+					"displayName": "语言"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"translate": {
+					"displayName": "翻译",
+					"description": "翻译数据"
+				}
+			}
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "输入要翻译的文本"
+		},
+		"translateTo": {
+			"displayName": "目标语言名称或ID",
+			"description": "要翻译成的语言。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"sourceLang": {
+					"displayName": "源语言名称或ID",
+					"description": "要翻译的源语言。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"splitSentences": {
+					"displayName": "拆分句子",
+					"description": "翻译引擎应如何拆分句子",
+					"options": {
+						"0": {
+							"displayName": "不拆分",
+							"description": "将所有文本视为单个句子"
+						},
+						"1": {
+							"displayName": "关于标点符号和换行符",
+							"description": "按标点符号和换行符分割文本"
+						},
+						"nonewlines": {
+							"displayName": "仅标点",
+							"description": "仅按标点分割文本，忽略换行符"
+						}
+					}
+				},
+				"preserveFormatting": {
+					"displayName": "保留格式",
+					"description": "翻译引擎是否应保留原始格式，即使通常会修正某些方面",
+					"options": {
+						"0": {
+							"displayName": "应用修正",
+							"description": "修正句首和句尾的标点符号，并修正句首的大小写"
+						},
+						"1": {
+							"displayName": "请勿修正",
+							"description": "保持文本尽可能接近原文"
+						}
+					}
+				},
+				"formality": {
+					"displayName": "正式程度",
+					"description": "目标文本应具有的正式或非正式程度。可能并非所有语言都支持。",
+					"options": {
+						"more": {
+							"displayName": "正式"
+						},
+						"less": {
+							"displayName": "Informal"
+						},
+						"default": {
+							"displayName": "中性"
+						}
+					}
+				}
+			}
+		}
+	}
+}

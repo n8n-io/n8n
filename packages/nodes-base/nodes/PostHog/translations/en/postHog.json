@@ -1,0 +1,143 @@
+{
+	"header": {
+		"displayName": "PostHog",
+		"description": "Consume PostHog API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"alias": {
+					"displayName": "Alias"
+				},
+				"event": {
+					"displayName": "Event"
+				},
+				"identity": {
+					"displayName": "Identity"
+				},
+				"track": {
+					"displayName": "Track"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create an event"
+				},
+				"page": {
+					"displayName": "Page",
+					"description": "Track a page"
+				},
+				"screen": {
+					"displayName": "Screen",
+					"description": "Track a screen"
+				}
+			}
+		},
+		"alias": {
+			"displayName": "Alias",
+			"description": "The name of the alias"
+		},
+		"distinctId": {
+			"displayName": "Distinct ID",
+			"description": "The user's distinct ID"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"contextUi": {
+					"displayName": "Context",
+					"placeholder": "Add Property",
+					"multipleValueButtonText": "Add Property",
+					"options": {
+						"contextValues": {
+							"displayName": "Context",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"contextValues": {
+							"displayName": "Context",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"contextUi": {
+							"displayName": "Context",
+							"placeholder": "Add Property"
+						}
+					}
+				},
+				"timestamp": {
+					"displayName": "Timestamp",
+					"description": "If not set, it'll automatically be set to the current time"
+				},
+				"propertiesUi": {
+					"displayName": "Properties",
+					"placeholder": "Add Property",
+					"multipleValueButtonText": "Add Property",
+					"options": {
+						"propertyValues": {
+							"displayName": "Property",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"propertyValues": {
+							"displayName": "Property",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"propertiesUi": {
+							"displayName": "Properties",
+							"placeholder": "Add Property"
+						}
+					}
+				},
+				"messageId": {
+					"displayName": "Message ID"
+				},
+				"category": {
+					"displayName": "Category"
+				}
+			}
+		},
+		"eventName": {
+			"displayName": "Event",
+			"description": "The name of the event"
+		},
+		"name": {
+			"displayName": "Name"
+		}
+	}
+}

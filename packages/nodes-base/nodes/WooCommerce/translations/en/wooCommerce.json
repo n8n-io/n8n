@@ -1,0 +1,1930 @@
+{
+	"header": {
+		"displayName": "WooCommerce",
+		"description": "Consume WooCommerce API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"customer": {
+					"displayName": "Customer"
+				},
+				"order": {
+					"displayName": "Order"
+				},
+				"product": {
+					"displayName": "Product"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a order"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a order"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a order"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many orders"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a order"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"billing": {
+					"displayName": "Billing Address",
+					"placeholder": "Add Field",
+					"options": {
+						"first_name": {
+							"displayName": "First Name"
+						},
+						"last_name": {
+							"displayName": "Last Name"
+						},
+						"company": {
+							"displayName": "Company"
+						},
+						"address_1": {
+							"displayName": "Address 1"
+						},
+						"address_2": {
+							"displayName": "Address 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"postcode": {
+							"displayName": "Postcode"
+						},
+						"country": {
+							"displayName": "Country"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "Phone"
+						}
+					}
+				},
+				"first_name": {
+					"displayName": "First Name"
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"meta_data": {
+					"displayName": "Metadata",
+					"placeholder": "Add Metadata Field",
+					"multipleValueButtonText": "Add Metadata Field",
+					"options": {
+						"meta_data_fields": {
+							"displayName": "Metadata Fields",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"meta_data_fields": {
+							"displayName": "Metadata Fields",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"meta_data": {
+							"displayName": "Metadata",
+							"placeholder": "Add Metadata Field"
+						}
+					}
+				},
+				"password": {
+					"displayName": "Password"
+				},
+				"shipping": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Field",
+					"options": {
+						"first_name": {
+							"displayName": "First Name"
+						},
+						"last_name": {
+							"displayName": "Last Name"
+						},
+						"company": {
+							"displayName": "Company"
+						},
+						"address_1": {
+							"displayName": "Address 1"
+						},
+						"address_2": {
+							"displayName": "Address 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"postcode": {
+							"displayName": "Postcode"
+						},
+						"country": {
+							"displayName": "Country"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "Phone"
+						}
+					}
+				},
+				"username": {
+					"displayName": "Username"
+				},
+				"backorders": {
+					"displayName": "Backorders",
+					"description": "If managing stock, this controls if backorders are allowed",
+					"options": {
+						"no": {
+							"displayName": "No"
+						},
+						"notify": {
+							"displayName": "Notify"
+						},
+						"yes": {
+							"displayName": "Yes"
+						}
+					}
+				},
+				"buttonText": {
+					"displayName": "Button Text",
+					"description": "Product external button text. Only for external products."
+				},
+				"catalogVisibility": {
+					"displayName": "Catalog Visibility",
+					"options": {
+						"catalog": {
+							"displayName": "Catalog"
+						},
+						"hidden": {
+							"displayName": "Hidden"
+						},
+						"search": {
+							"displayName": "Search"
+						},
+						"visible": {
+							"displayName": "Visible"
+						}
+					}
+				},
+				"categories": {
+					"displayName": "Category Names or IDs",
+					"description": "List of categories. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"crossSellIds": {
+					"displayName": "Cross Sell IDs",
+					"description": "List of cross-sell products IDs. Multiple can be added separated by ,."
+				},
+				"dateOnSaleFrom": {
+					"displayName": "Date On Sale From",
+					"description": "Start date of sale price, in the site's timezone"
+				},
+				"dateOnSaleTo": {
+					"displayName": "Date On Sale To",
+					"description": "Ennd date of sale price, in the site's timezone"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Product description"
+				},
+				"downloadable": {
+					"displayName": "Downloadable",
+					"description": "Whether the product is downloadable"
+				},
+				"externalUrl": {
+					"displayName": "External URL",
+					"description": "Product external URL. Only for external products."
+				},
+				"featured": {
+					"displayName": "Featured",
+					"description": "Whether the product is featured"
+				},
+				"manageStock": {
+					"displayName": "Manage Stock",
+					"description": "Stock management at product level"
+				},
+				"menuOrder": {
+					"displayName": "Menu Order",
+					"description": "Menu order, used to custom sort products"
+				},
+				"parentId": {
+					"displayName": "Parent ID",
+					"description": "Parent order ID"
+				},
+				"purchaseNote": {
+					"displayName": "Purchase Note",
+					"description": "Optional note to send the customer after purchase"
+				},
+				"regularPrice": {
+					"displayName": "Regular Price",
+					"description": "Product regular price"
+				},
+				"reviewsAllowed": {
+					"displayName": "Reviews Allowed",
+					"description": "Whether to allow reviews"
+				},
+				"salePrice": {
+					"displayName": "Sale Price",
+					"description": "Product sale price"
+				},
+				"shippingClass": {
+					"displayName": "Shipping Class",
+					"description": "Shipping class slug"
+				},
+				"shortDescription": {
+					"displayName": "Short Description",
+					"description": "Product short description"
+				},
+				"sku": {
+					"displayName": "SKU",
+					"description": "Unique identifier"
+				},
+				"slug": {
+					"displayName": "Slug",
+					"description": "Product slug"
+				},
+				"soldIndividually": {
+					"displayName": "Sold Individually",
+					"description": "Whether to allow one item to be bought in a single order"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "A named status for the order",
+					"options": {
+						"draft": {
+							"displayName": "Draft"
+						},
+						"pending": {
+							"displayName": "Pending"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"publish": {
+							"displayName": "Publish"
+						},
+						"cancelled": {
+							"displayName": "Cancelled"
+						},
+						"completed": {
+							"displayName": "Completed"
+						},
+						"failed": {
+							"displayName": "Failed"
+						},
+						"on-hold": {
+							"displayName": "on-hold"
+						},
+						"processing": {
+							"displayName": "Processing"
+						},
+						"refunded": {
+							"displayName": "Refunded"
+						},
+						"trash": {
+							"displayName": "Trash"
+						}
+					}
+				},
+				"stockQuantity": {
+					"displayName": "Stock Quantity"
+				},
+				"stockStatus": {
+					"displayName": "Stock Status",
+					"description": "Controls the stock status of the product",
+					"options": {
+						"instock": {
+							"displayName": "In Stock"
+						},
+						"outofstock": {
+							"displayName": "Out Of Stock"
+						},
+						"onbackorder": {
+							"displayName": "On Back Order"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "List of tags. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"taxClass": {
+					"displayName": "Tax Class"
+				},
+				"taxStatus": {
+					"displayName": "Tax Status",
+					"options": {
+						"taxable": {
+							"displayName": "Taxable"
+						},
+						"shipping": {
+							"displayName": "Shipping"
+						},
+						"none": {
+							"displayName": "None"
+						}
+					}
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Product type",
+					"options": {
+						"simple": {
+							"displayName": "Simple"
+						},
+						"grouped": {
+							"displayName": "Grouped"
+						},
+						"external": {
+							"displayName": "External"
+						},
+						"variable": {
+							"displayName": "Variable"
+						}
+					}
+				},
+				"upsellIds": {
+					"displayName": "Upsell IDs",
+					"description": "List of up-sell products IDs. Multiple can be added separated by ,."
+				},
+				"virtual": {
+					"displayName": "Virtual",
+					"description": "Whether the product is virtual"
+				},
+				"weight": {
+					"displayName": "Weight",
+					"description": "Product weight"
+				},
+				"currency": {
+					"displayName": "Currency",
+					"description": "Currency the order was created with"
+				},
+				"customerId": {
+					"displayName": "Customer ID",
+					"description": "User ID who owns the order. 0 for guests."
+				},
+				"customerNote": {
+					"displayName": "Customer Note",
+					"description": "Note left by customer during checkout"
+				},
+				"paymentMethodId": {
+					"displayName": "Payment Method ID"
+				},
+				"paymentMethodTitle": {
+					"displayName": "Payment Method Title"
+				},
+				"setPaid": {
+					"displayName": "Set Paid",
+					"description": "Whether the order is paid. It will set the status to processing and reduce stock items."
+				},
+				"transactionID": {
+					"displayName": "Transaction ID",
+					"description": "Unique transaction ID"
+				}
+			}
+		},
+		"customerId": {
+			"displayName": "Customer ID",
+			"description": "ID of the customer to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"email": {
+					"displayName": "Email",
+					"description": "Email address to filter customers by",
+					"placeholder": "name@email.com"
+				},
+				"order": {
+					"displayName": "Sort Order",
+					"description": "Order to sort customers in",
+					"options": {
+						"asc": {
+							"displayName": "Ascending"
+						},
+						"desc": {
+							"displayName": "Descending"
+						}
+					}
+				},
+				"orderby": {
+					"displayName": "Order By",
+					"description": "Field to sort customers by",
+					"options": {
+						"id": {
+							"displayName": "ID"
+						},
+						"include": {
+							"displayName": "Include"
+						},
+						"name": {
+							"displayName": "Name"
+						},
+						"registered_date": {
+							"displayName": "Registered Date"
+						}
+					}
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"billing": {
+					"displayName": "Billing Address",
+					"placeholder": "Add Field",
+					"options": {
+						"first_name": {
+							"displayName": "First Name"
+						},
+						"last_name": {
+							"displayName": "Last Name"
+						},
+						"company": {
+							"displayName": "Company"
+						},
+						"address_1": {
+							"displayName": "Address 1"
+						},
+						"address_2": {
+							"displayName": "Address 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"postcode": {
+							"displayName": "Postcode"
+						},
+						"country": {
+							"displayName": "Country"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "Phone"
+						}
+					}
+				},
+				"first_name": {
+					"displayName": "First Name"
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"meta_data": {
+					"displayName": "Metadata",
+					"placeholder": "Add Metadata Field",
+					"multipleValueButtonText": "Add Metadata Field",
+					"options": {
+						"meta_data_fields": {
+							"displayName": "Metadata Fields",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						}
+					},
+					"values": {
+						"meta_data_fields": {
+							"displayName": "Metadata Fields",
+							"options": {
+								"key": {
+									"displayName": "Key"
+								},
+								"value": {
+									"displayName": "Value"
+								}
+							}
+						},
+						"meta_data": {
+							"displayName": "Metadata",
+							"placeholder": "Add Metadata Field"
+						}
+					}
+				},
+				"password": {
+					"displayName": "Password"
+				},
+				"shipping": {
+					"displayName": "Shipping Address",
+					"placeholder": "Add Field",
+					"options": {
+						"first_name": {
+							"displayName": "First Name"
+						},
+						"last_name": {
+							"displayName": "Last Name"
+						},
+						"company": {
+							"displayName": "Company"
+						},
+						"address_1": {
+							"displayName": "Address 1"
+						},
+						"address_2": {
+							"displayName": "Address 2"
+						},
+						"city": {
+							"displayName": "City"
+						},
+						"state": {
+							"displayName": "State"
+						},
+						"postcode": {
+							"displayName": "Postcode"
+						},
+						"country": {
+							"displayName": "Country"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "Phone"
+						}
+					}
+				},
+				"backorders": {
+					"displayName": "Backorders",
+					"description": "If managing stock, this controls if backorders are allowed",
+					"options": {
+						"no": {
+							"displayName": "No"
+						},
+						"notify": {
+							"displayName": "Notify"
+						},
+						"yes": {
+							"displayName": "Yes"
+						}
+					}
+				},
+				"buttonText": {
+					"displayName": "Button Text",
+					"description": "Product external button text. Only for external products."
+				},
+				"catalogVisibility": {
+					"displayName": "Catalog Visibility",
+					"options": {
+						"visible": {
+							"displayName": "Visible"
+						},
+						"catalog": {
+							"displayName": "Catalog"
+						},
+						"search": {
+							"displayName": "Search"
+						},
+						"hidden": {
+							"displayName": "Hidden"
+						}
+					}
+				},
+				"categories": {
+					"displayName": "Category Names or IDs",
+					"description": "List of categories. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"crossSellIds": {
+					"displayName": "Cross Sell IDs",
+					"description": "List of cross-sell products IDs. Multiple can be added separated by ,."
+				},
+				"dateOnSaleFrom": {
+					"displayName": "Date On Sale From",
+					"description": "Start date of sale price, in the site's timezone"
+				},
+				"dateOnSaleTo": {
+					"displayName": "Date On Sale To",
+					"description": "Ennd date of sale price, in the site's timezone"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Product description"
+				},
+				"downloadable": {
+					"displayName": "Downloadable",
+					"description": "Whether the product is downloadable"
+				},
+				"externalUrl": {
+					"displayName": "External URL",
+					"description": "Product external URL. Only for external products."
+				},
+				"featured": {
+					"displayName": "Featured",
+					"description": "Whether the product is featured"
+				},
+				"manageStock": {
+					"displayName": "Manage Stock",
+					"description": "Stock management at product level"
+				},
+				"menuOrder": {
+					"displayName": "Menu Order",
+					"description": "Menu order, used to custom sort products"
+				},
+				"name": {
+					"displayName": "Name",
+					"description": "Product name"
+				},
+				"parentId": {
+					"displayName": "Parent ID",
+					"description": "Parent order ID"
+				},
+				"purchaseNote": {
+					"displayName": "Purchase Note",
+					"description": "Optional note to send the customer after purchase"
+				},
+				"regularPrice": {
+					"displayName": "Regular Price",
+					"description": "Product regular price"
+				},
+				"reviewsAllowed": {
+					"displayName": "Reviews Allowed",
+					"description": "Whether to allow reviews"
+				},
+				"salePrice": {
+					"displayName": "Sale Price",
+					"description": "Product sale price"
+				},
+				"shippingClass": {
+					"displayName": "Shipping Class",
+					"description": "Shipping class slug"
+				},
+				"shortDescription": {
+					"displayName": "Short Description",
+					"description": "Product short description"
+				},
+				"sku": {
+					"displayName": "SKU",
+					"description": "Unique identifier"
+				},
+				"slug": {
+					"displayName": "Slug",
+					"description": "Product slug"
+				},
+				"soldIndividually": {
+					"displayName": "Sold Individually",
+					"description": "Whether to allow one item to be bought in a single order"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "A named status for the order",
+					"options": {
+						"draft": {
+							"displayName": "Draft"
+						},
+						"pending": {
+							"displayName": "Pending"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"publish": {
+							"displayName": "Publish"
+						},
+						"cancelled": {
+							"displayName": "Cancelled"
+						},
+						"completed": {
+							"displayName": "Completed"
+						},
+						"failed": {
+							"displayName": "Failed"
+						},
+						"on-hold": {
+							"displayName": "on-hold"
+						},
+						"processing": {
+							"displayName": "Processing"
+						},
+						"refunded": {
+							"displayName": "Refunded"
+						},
+						"trash": {
+							"displayName": "Trash"
+						}
+					}
+				},
+				"stockQuantity": {
+					"displayName": "Stock Quantity"
+				},
+				"stockStatus": {
+					"displayName": "Stock Status",
+					"description": "Controls the stock status of the product",
+					"options": {
+						"instock": {
+							"displayName": "In Stock"
+						},
+						"outofstock": {
+							"displayName": "Out Of Stock"
+						},
+						"onbackorder": {
+							"displayName": "On Back Order"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "Tag Names or IDs",
+					"description": "List of tags. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"taxClass": {
+					"displayName": "Tax Class"
+				},
+				"taxStatus": {
+					"displayName": "Tax Status",
+					"options": {
+						"taxable": {
+							"displayName": "Taxable"
+						},
+						"shipping": {
+							"displayName": "Shipping"
+						},
+						"none": {
+							"displayName": "None"
+						}
+					}
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Product type",
+					"options": {
+						"simple": {
+							"displayName": "Simple"
+						},
+						"grouped": {
+							"displayName": "Grouped"
+						},
+						"external": {
+							"displayName": "External"
+						},
+						"variable": {
+							"displayName": "Variable"
+						}
+					}
+				},
+				"upsellIds": {
+					"displayName": "Upsell IDs",
+					"description": "List of up-sell products IDs. Multiple can be added separated by ,."
+				},
+				"virtual": {
+					"displayName": "Virtual",
+					"description": "Whether the product is virtual"
+				},
+				"weight": {
+					"displayName": "Weight",
+					"description": "Product weight"
+				},
+				"currency": {
+					"displayName": "Currency",
+					"description": "Currency the order was created with"
+				},
+				"customerId": {
+					"displayName": "Customer ID",
+					"description": "User ID who owns the order. 0 for guests."
+				},
+				"customerNote": {
+					"displayName": "Customer Note",
+					"description": "Note left by customer during checkout"
+				},
+				"paymentMethodId": {
+					"displayName": "Payment Method ID"
+				},
+				"paymentMethodTitle": {
+					"displayName": "Payment Method Title"
+				},
+				"transactionID": {
+					"displayName": "Transaction ID",
+					"description": "Unique transaction ID"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Product name"
+		},
+		"dimensionsUi": {
+			"displayName": "Dimensions",
+			"description": "Product dimensions",
+			"placeholder": "Add Dimension",
+			"options": {
+				"dimensionsValues": {
+					"displayName": "Dimension",
+					"options": {
+						"height": {
+							"displayName": "Height",
+							"description": "Product height"
+						},
+						"length": {
+							"displayName": "Length",
+							"description": "Product length"
+						},
+						"width": {
+							"displayName": "Width",
+							"description": "Product width"
+						}
+					}
+				}
+			},
+			"values": {
+				"dimensionsValues": {
+					"displayName": "Dimension",
+					"options": {
+						"height": {
+							"displayName": "Height",
+							"description": "Product height"
+						},
+						"length": {
+							"displayName": "Length",
+							"description": "Product length"
+						},
+						"width": {
+							"displayName": "Width",
+							"description": "Product width"
+						}
+					}
+				},
+				"dimensionsUi": {
+					"displayName": "Dimensions",
+					"placeholder": "Add Dimension"
+				}
+			}
+		},
+		"imagesUi": {
+			"displayName": "Images",
+			"description": "Product Image",
+			"placeholder": "Add Image",
+			"multipleValueButtonText": "Add Image",
+			"options": {
+				"imagesValues": {
+					"displayName": "Image",
+					"options": {
+						"alt": {
+							"displayName": "Alt",
+							"description": "Image alternative text"
+						},
+						"src": {
+							"displayName": "Src",
+							"description": "Image URL"
+						},
+						"name": {
+							"displayName": "Name",
+							"description": "Image name"
+						}
+					}
+				}
+			},
+			"values": {
+				"imagesValues": {
+					"displayName": "Image",
+					"options": {
+						"alt": {
+							"displayName": "Alt",
+							"description": "Image alternative text"
+						},
+						"src": {
+							"displayName": "Src",
+							"description": "Image URL"
+						},
+						"name": {
+							"displayName": "Name",
+							"description": "Image name"
+						}
+					}
+				},
+				"imagesUi": {
+					"displayName": "Images",
+					"placeholder": "Add Image"
+				}
+			}
+		},
+		"metadataUi": {
+			"displayName": "Metadata",
+			"description": "Meta data",
+			"placeholder": "Add Metadata",
+			"multipleValueButtonText": "Add Metadata",
+			"options": {
+				"metadataValues": {
+					"displayName": "Metadata",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Name of the metadata key to add"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to set for the metadata key"
+						}
+					}
+				}
+			},
+			"values": {
+				"metadataValues": {
+					"displayName": "Metadata",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Name of the metadata key to add"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value to set for the metadata key"
+						}
+					}
+				},
+				"metadataUi": {
+					"displayName": "Metadata",
+					"placeholder": "Add Metadata"
+				}
+			}
+		},
+		"productId": {
+			"displayName": "Product ID"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"after": {
+					"displayName": "After",
+					"description": "Limit response to resources published after a given ISO8601 compliant date"
+				},
+				"before": {
+					"displayName": "Before",
+					"description": "Limit response to resources published before a given ISO8601 compliant date"
+				},
+				"category": {
+					"displayName": "Category Name or ID",
+					"description": "Limit result set to products assigned a specific category ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"context": {
+					"displayName": "Context",
+					"description": "Scope under which the request is made; determines fields present in response",
+					"options": {
+						"view": {
+							"displayName": "View"
+						},
+						"embed": {
+							"displayName": "Embed"
+						},
+						"edit": {
+							"displayName": "Edit"
+						}
+					}
+				},
+				"featured": {
+					"displayName": "Featured",
+					"description": "Whether to limit the result set to featured products"
+				},
+				"maxPrice": {
+					"displayName": "Max Price",
+					"description": "Limit result set to products based on a maximun price"
+				},
+				"minPrice": {
+					"displayName": "Min Price",
+					"description": "Limit result set to products based on a minimum price"
+				},
+				"order": {
+					"displayName": "Order",
+					"description": "Order sort attribute ascending or descending",
+					"options": {
+						"asc": {
+							"displayName": "ASC"
+						},
+						"desc": {
+							"displayName": "DESC"
+						}
+					}
+				},
+				"orderBy": {
+					"displayName": "Order By",
+					"description": "Sort collection by object attribute",
+					"options": {
+						"date": {
+							"displayName": "Date"
+						},
+						"id": {
+							"displayName": "ID"
+						},
+						"include": {
+							"displayName": "Include"
+						},
+						"slug": {
+							"displayName": "Slug"
+						},
+						"title": {
+							"displayName": "Title"
+						}
+					}
+				},
+				"search": {
+					"displayName": "Search",
+					"description": "Limit results to those matching a string"
+				},
+				"sku": {
+					"displayName": "SKU",
+					"description": "Limit result set to products with a specific SKU"
+				},
+				"slug": {
+					"displayName": "Slug",
+					"description": "Limit result set to products with a specific slug"
+				},
+				"status": {
+					"displayName": "Status",
+					"description": "Limit result set to orders assigned a specific status",
+					"options": {
+						"any": {
+							"displayName": "Any"
+						},
+						"draft": {
+							"displayName": "Draft"
+						},
+						"pending": {
+							"displayName": "Pending"
+						},
+						"private": {
+							"displayName": "Private"
+						},
+						"publish": {
+							"displayName": "Publish"
+						},
+						"cancelled": {
+							"displayName": "Cancelled"
+						},
+						"completed": {
+							"displayName": "Completed"
+						},
+						"failed": {
+							"displayName": "Failed"
+						},
+						"on-hold": {
+							"displayName": "On-Hold"
+						},
+						"processing": {
+							"displayName": "Processing"
+						},
+						"refunded": {
+							"displayName": "Refunded"
+						},
+						"trash": {
+							"displayName": "Trash"
+						}
+					}
+				},
+				"stockStatus": {
+					"displayName": "Stock Status",
+					"description": "Controls the stock status of the product",
+					"options": {
+						"instock": {
+							"displayName": "In Stock"
+						},
+						"outofstock": {
+							"displayName": "Out Of Stock"
+						},
+						"onbackorder": {
+							"displayName": "On Back Order"
+						}
+					}
+				},
+				"tag": {
+					"displayName": "Tag Name or ID",
+					"description": "Limit result set to products assigned a specific tag ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				},
+				"taxClass": {
+					"displayName": "Tax Class",
+					"description": "Limit result set to products with a specific tax class",
+					"options": {
+						"standard": {
+							"displayName": "Standar"
+						},
+						"reduced-rate": {
+							"displayName": "Reduced Rate"
+						},
+						"zero-rate.": {
+							"displayName": "Zero Rate"
+						}
+					}
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Product type",
+					"options": {
+						"simple": {
+							"displayName": "Simple"
+						},
+						"grouped": {
+							"displayName": "Grouped"
+						},
+						"external": {
+							"displayName": "External"
+						},
+						"variable": {
+							"displayName": "Variable"
+						}
+					}
+				},
+				"customer": {
+					"displayName": "Customer",
+					"description": "Limit result set to orders assigned a specific customer"
+				},
+				"decimalPoints": {
+					"displayName": "Decimal Points",
+					"description": "Number of decimal points to use in each resource"
+				},
+				"product": {
+					"displayName": "Product",
+					"description": "Limit result set to orders assigned a specific product"
+				}
+			}
+		},
+		"billingUi": {
+			"displayName": "Billing",
+			"description": "Billing address",
+			"placeholder": "Add Billing",
+			"options": {
+				"billingValues": {
+					"displayName": "Address",
+					"options": {
+						"firstName": {
+							"displayName": "First Name"
+						},
+						"lastName": {
+							"displayName": "Last Name"
+						},
+						"company": {
+							"displayName": "Company"
+						},
+						"address_1": {
+							"displayName": "Address Line 1"
+						},
+						"address_2": {
+							"displayName": "Address Line 2"
+						},
+						"city": {
+							"displayName": "City",
+							"description": "ISO code or name of the state, province or district"
+						},
+						"postcode": {
+							"displayName": "Postal Code"
+						},
+						"country": {
+							"displayName": "Country"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "Phone"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						}
+					}
+				}
+			},
+			"values": {
+				"billingValues": {
+					"displayName": "Address",
+					"options": {
+						"firstName": {
+							"displayName": "First Name"
+						},
+						"lastName": {
+							"displayName": "Last Name"
+						},
+						"company": {
+							"displayName": "Company"
+						},
+						"address_1": {
+							"displayName": "Address Line 1"
+						},
+						"address_2": {
+							"displayName": "Address Line 2"
+						},
+						"city": {
+							"displayName": "City",
+							"description": "ISO code or name of the state, province or district"
+						},
+						"postcode": {
+							"displayName": "Postal Code"
+						},
+						"country": {
+							"displayName": "Country"
+						},
+						"email": {
+							"displayName": "Email",
+							"placeholder": "name@email.com"
+						},
+						"phone": {
+							"displayName": "Phone"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						}
+					}
+				},
+				"billingUi": {
+					"displayName": "Billing",
+					"placeholder": "Add Billing"
+				}
+			}
+		},
+		"couponLinesUi": {
+			"displayName": "Coupon Lines",
+			"description": "Coupons line data",
+			"placeholder": "Add Coupon Line",
+			"multipleValueButtonText": "Add Coupon Line",
+			"options": {
+				"couponLinesValues": {
+					"displayName": "Coupon Line",
+					"options": {
+						"code": {
+							"displayName": "Code",
+							"description": "Coupon code"
+						},
+						"metadataUi": {
+							"displayName": "Metadata",
+							"description": "Meta data",
+							"placeholder": "Add Metadata",
+							"multipleValueButtonText": "Add Metadata",
+							"options": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "Metadata",
+									"placeholder": "Add Metadata"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"couponLinesValues": {
+					"displayName": "Coupon Line",
+					"options": {
+						"code": {
+							"displayName": "Code",
+							"description": "Coupon code"
+						},
+						"metadataUi": {
+							"displayName": "Metadata",
+							"description": "Meta data",
+							"placeholder": "Add Metadata",
+							"multipleValueButtonText": "Add Metadata",
+							"options": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "Metadata",
+									"placeholder": "Add Metadata"
+								}
+							}
+						}
+					}
+				},
+				"couponLinesUi": {
+					"displayName": "Coupon Lines",
+					"placeholder": "Add Coupon Line"
+				}
+			}
+		},
+		"feeLinesUi": {
+			"displayName": "Fee Lines",
+			"description": "Fee line data",
+			"placeholder": "Add Fee Line",
+			"multipleValueButtonText": "Add Fee Line",
+			"options": {
+				"feeLinesValues": {
+					"displayName": "Fee Line",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Fee name"
+						},
+						"taxClass": {
+							"displayName": "Tax Class",
+							"description": "Tax class of fee"
+						},
+						"taxStatus": {
+							"displayName": "Tax Status",
+							"description": "Tax class of fee",
+							"options": {
+								"taxable": {
+									"displayName": "Taxable"
+								},
+								"none": {
+									"displayName": "None"
+								}
+							}
+						},
+						"total": {
+							"displayName": "Total",
+							"description": "Line total (after discounts)"
+						},
+						"metadataUi": {
+							"displayName": "Metadata",
+							"description": "Meta data",
+							"placeholder": "Add Metadata",
+							"multipleValueButtonText": "Add Metadata",
+							"options": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "Metadata",
+									"placeholder": "Add Metadata"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"feeLinesValues": {
+					"displayName": "Fee Line",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Fee name"
+						},
+						"taxClass": {
+							"displayName": "Tax Class",
+							"description": "Tax class of fee"
+						},
+						"taxStatus": {
+							"displayName": "Tax Status",
+							"description": "Tax class of fee",
+							"options": {
+								"taxable": {
+									"displayName": "Taxable"
+								},
+								"none": {
+									"displayName": "None"
+								}
+							}
+						},
+						"total": {
+							"displayName": "Total",
+							"description": "Line total (after discounts)"
+						},
+						"metadataUi": {
+							"displayName": "Metadata",
+							"description": "Meta data",
+							"placeholder": "Add Metadata",
+							"multipleValueButtonText": "Add Metadata",
+							"options": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "Metadata",
+									"placeholder": "Add Metadata"
+								}
+							}
+						}
+					}
+				},
+				"feeLinesUi": {
+					"displayName": "Fee Lines",
+					"placeholder": "Add Fee Line"
+				}
+			}
+		},
+		"lineItemsUi": {
+			"displayName": "Line Items",
+			"description": "Line item data",
+			"placeholder": "Add Line Item",
+			"multipleValueButtonText": "Add Line Item",
+			"options": {
+				"lineItemsValues": {
+					"displayName": "Line Item",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Product name"
+						},
+						"productId": {
+							"displayName": "Product ID"
+						},
+						"variationId": {
+							"displayName": "Variation ID",
+							"description": "Variation ID, if applicable"
+						},
+						"quantity": {
+							"displayName": "Quantity",
+							"description": "Quantity ordered"
+						},
+						"taxClass": {
+							"displayName": "Tax Class",
+							"description": "Slug of the tax class of product"
+						},
+						"subtotal": {
+							"displayName": "Subtotal",
+							"description": "Line subtotal (before discounts)"
+						},
+						"total": {
+							"displayName": "Total",
+							"description": "Line total (after discounts)"
+						},
+						"metadataUi": {
+							"displayName": "Metadata",
+							"description": "Meta data",
+							"placeholder": "Add Metadata",
+							"multipleValueButtonText": "Add Metadata",
+							"options": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "Metadata",
+									"placeholder": "Add Metadata"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"lineItemsValues": {
+					"displayName": "Line Item",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Product name"
+						},
+						"productId": {
+							"displayName": "Product ID"
+						},
+						"variationId": {
+							"displayName": "Variation ID",
+							"description": "Variation ID, if applicable"
+						},
+						"quantity": {
+							"displayName": "Quantity",
+							"description": "Quantity ordered"
+						},
+						"taxClass": {
+							"displayName": "Tax Class",
+							"description": "Slug of the tax class of product"
+						},
+						"subtotal": {
+							"displayName": "Subtotal",
+							"description": "Line subtotal (before discounts)"
+						},
+						"total": {
+							"displayName": "Total",
+							"description": "Line total (after discounts)"
+						},
+						"metadataUi": {
+							"displayName": "Metadata",
+							"description": "Meta data",
+							"placeholder": "Add Metadata",
+							"multipleValueButtonText": "Add Metadata",
+							"options": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "Metadata",
+									"placeholder": "Add Metadata"
+								}
+							}
+						}
+					}
+				},
+				"lineItemsUi": {
+					"displayName": "Line Items",
+					"placeholder": "Add Line Item"
+				}
+			}
+		},
+		"shippingUi": {
+			"displayName": "Shipping",
+			"description": "Shipping address",
+			"placeholder": "Add Shipping",
+			"options": {
+				"shippingValues": {
+					"displayName": "Address",
+					"options": {
+						"firstName": {
+							"displayName": "First Name"
+						},
+						"lastName": {
+							"displayName": "Last Name"
+						},
+						"company": {
+							"displayName": "Company"
+						},
+						"address_1": {
+							"displayName": "Address Line 1"
+						},
+						"address_2": {
+							"displayName": "Address Line 2"
+						},
+						"city": {
+							"displayName": "City",
+							"description": "ISO code or name of the state, province or district"
+						},
+						"postcode": {
+							"displayName": "Postal Code"
+						},
+						"country": {
+							"displayName": "Country"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						}
+					}
+				}
+			},
+			"values": {
+				"shippingValues": {
+					"displayName": "Address",
+					"options": {
+						"firstName": {
+							"displayName": "First Name"
+						},
+						"lastName": {
+							"displayName": "Last Name"
+						},
+						"company": {
+							"displayName": "Company"
+						},
+						"address_1": {
+							"displayName": "Address Line 1"
+						},
+						"address_2": {
+							"displayName": "Address Line 2"
+						},
+						"city": {
+							"displayName": "City",
+							"description": "ISO code or name of the state, province or district"
+						},
+						"postcode": {
+							"displayName": "Postal Code"
+						},
+						"country": {
+							"displayName": "Country"
+						},
+						"postalCode": {
+							"displayName": "Postal Code"
+						}
+					}
+				},
+				"shippingUi": {
+					"displayName": "Shipping",
+					"placeholder": "Add Shipping"
+				}
+			}
+		},
+		"shippingLinesUi": {
+			"displayName": "Shipping Lines",
+			"description": "Shipping line data",
+			"placeholder": "Add Shipping Line",
+			"multipleValueButtonText": "Add Shipping Line",
+			"options": {
+				"shippingLinesValues": {
+					"displayName": "Fee Line",
+					"options": {
+						"methodTitle": {
+							"displayName": "Method Title",
+							"description": "Shipping method name"
+						},
+						"method ID": {
+							"displayName": "Method ID",
+							"description": "Shipping method ID"
+						},
+						"total": {
+							"displayName": "Total",
+							"description": "Line total (after discounts)"
+						},
+						"metadataUi": {
+							"displayName": "Metadata",
+							"description": "Meta data",
+							"placeholder": "Add Metadata",
+							"multipleValueButtonText": "Add Metadata",
+							"options": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "Metadata",
+									"placeholder": "Add Metadata"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"shippingLinesValues": {
+					"displayName": "Fee Line",
+					"options": {
+						"methodTitle": {
+							"displayName": "Method Title",
+							"description": "Shipping method name"
+						},
+						"method ID": {
+							"displayName": "Method ID",
+							"description": "Shipping method ID"
+						},
+						"total": {
+							"displayName": "Total",
+							"description": "Line total (after discounts)"
+						},
+						"metadataUi": {
+							"displayName": "Metadata",
+							"description": "Meta data",
+							"placeholder": "Add Metadata",
+							"multipleValueButtonText": "Add Metadata",
+							"options": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								}
+							},
+							"values": {
+								"metadataValues": {
+									"displayName": "Metadata",
+									"options": {
+										"key": {
+											"displayName": "Key",
+											"description": "Name of the metadata key to add"
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to set for the metadata key"
+										}
+									}
+								},
+								"metadataUi": {
+									"displayName": "Metadata",
+									"placeholder": "Add Metadata"
+								}
+							}
+						}
+					}
+				},
+				"shippingLinesUi": {
+					"displayName": "Shipping Lines",
+					"placeholder": "Add Shipping Line"
+				}
+			}
+		},
+		"orderId": {
+			"displayName": "Order ID"
+		}
+	}
+}

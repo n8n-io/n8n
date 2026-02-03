@@ -1,0 +1,34 @@
+{
+	"header": {
+		"displayName": "Gumroad触发器",
+		"description": "通过Webhook处理Gumroad事件"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"description": "该资源将触发事件",
+			"options": {
+				"cancellation": {
+					"displayName": "取消",
+					"description": "订阅此资源后，您将收到用户订阅者取消的通知"
+				},
+				"dispute": {
+					"displayName": "争议",
+					"description": "订阅此资源后，您将收到针对用户销售提出的争议通知"
+				},
+				"dispute_won": {
+					"displayName": "争议获胜",
+					"description": "订阅此资源后，您将在销售争议获胜时收到通知"
+				},
+				"refund": {
+					"displayName": "退款",
+					"description": "订阅此资源后，您将收到用户销售退款的提醒"
+				},
+				"sale": {
+					"displayName": "销售",
+					"description": "订阅此资源后，您将收到用户销售的通知"
+				}
+			}
+		}
+	}
+}

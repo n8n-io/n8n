@@ -1,0 +1,404 @@
+{
+	"header": {
+		"displayName": "SendGrid",
+		"description": "Consume SendGrid API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"contact": {
+					"displayName": "Contact"
+				},
+				"list": {
+					"displayName": "List"
+				},
+				"mail": {
+					"displayName": "Mail"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a list"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a contact"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a contact by ID"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many contacts"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a list"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new contact, or update the current one if it already exists (upsert)"
+				},
+				"send": {
+					"displayName": "Send",
+					"description": "Send an email"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the list"
+		},
+		"listId": {
+			"displayName": "List ID",
+			"description": "ID of the list"
+		},
+		"deleteContacts": {
+			"displayName": "Delete Contacts",
+			"description": "Whether to delete all contacts on the list"
+		},
+		"contactSample": {
+			"displayName": "Contact Sample",
+			"description": "Whether to return the contact sample"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"query": {
+					"displayName": "Query",
+					"description": "The query field accepts valid <a href=\"https://sendgrid.com/docs/for-developers/sending-email/segmentation-query-language/\">SGQL</a> for searching for a contact"
+				}
+			}
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email of the contact",
+			"placeholder": "name@email.com"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"addressUi": {
+					"displayName": "Address",
+					"placeholder": "Address",
+					"options": {
+						"addressValues": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								}
+							}
+						}
+					},
+					"values": {
+						"addressValues": {
+							"displayName": "Address",
+							"options": {
+								"address1": {
+									"displayName": "Address Line 1"
+								},
+								"address2": {
+									"displayName": "Address Line 2"
+								}
+							}
+						},
+						"addressUi": {
+							"displayName": "Address",
+							"placeholder": "Address"
+						}
+					}
+				},
+				"alternateEmails": {
+					"displayName": "Alternate Emails"
+				},
+				"city": {
+					"displayName": "City"
+				},
+				"country": {
+					"displayName": "Country"
+				},
+				"firstName": {
+					"displayName": "First Name"
+				},
+				"lastName": {
+					"displayName": "Last Name"
+				},
+				"postalCode": {
+					"displayName": "Postal Code"
+				},
+				"stateProvinceRegion": {
+					"displayName": "State/Province/Region"
+				},
+				"listIdsUi": {
+					"displayName": "List IDs",
+					"description": "Adds a custom field to set also values which have not been predefined",
+					"placeholder": "List IDs",
+					"options": {
+						"listIdValues": {
+							"displayName": "List IDs",
+							"options": {
+								"listIds": {
+									"displayName": "List Names or IDs",
+									"description": "ID of the field to set. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								}
+							}
+						}
+					},
+					"values": {
+						"listIdValues": {
+							"displayName": "List IDs",
+							"options": {
+								"listIds": {
+									"displayName": "List Names or IDs",
+									"description": "ID of the field to set. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								}
+							}
+						},
+						"listIdsUi": {
+							"displayName": "List IDs",
+							"placeholder": "List IDs"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "Custom Fields",
+					"description": "Adds custom fields",
+					"placeholder": "Add Custom Fields",
+					"multipleValueButtonText": "Add Custom Fields",
+					"options": {
+						"customFieldValues": {
+							"displayName": "Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value for the field"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFieldValues": {
+							"displayName": "Field",
+							"options": {
+								"fieldId": {
+									"displayName": "Field Name or ID",
+									"description": "ID of the field. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+								},
+								"fieldValue": {
+									"displayName": "Field Value",
+									"description": "Value for the field"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "Custom Fields",
+							"placeholder": "Add Custom Fields"
+						}
+					}
+				},
+				"attachments": {
+					"displayName": "Attachments",
+					"description": "Comma-separated list of binary properties"
+				},
+				"bccEmail": {
+					"displayName": "BCC Email",
+					"description": "Comma-separated list of emails of the recipients of a blind carbon copy of the email"
+				},
+				"categories": {
+					"displayName": "Categories",
+					"description": "Comma-separated list of categories. Each category name may not exceed 255 characters."
+				},
+				"ccEmail": {
+					"displayName": "CC Email",
+					"description": "Comma-separated list of emails of the recipients of a carbon copy of the email"
+				},
+				"enableSandbox": {
+					"displayName": "Enable Sandbox",
+					"description": "Whether to use to the sandbox for testing out email-sending functionality"
+				},
+				"ipPoolName": {
+					"displayName": "IP Pool Name",
+					"description": "The IP Pool that you would like to send this email from"
+				},
+				"replyToEmail": {
+					"displayName": "Reply-To Email",
+					"description": "Comma-separated list of email addresses that will appear in the reply-to field of the email",
+					"placeholder": "reply@domain.com"
+				},
+				"headers": {
+					"displayName": "Headers",
+					"placeholder": "Add Header",
+					"multipleValueButtonText": "Add Header",
+					"options": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Key to set in the header object"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set in the header object"
+								}
+							}
+						}
+					},
+					"values": {
+						"details": {
+							"displayName": "Details",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "Key to set in the header object"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Value to set in the header object"
+								}
+							}
+						},
+						"headers": {
+							"displayName": "Headers",
+							"placeholder": "Add Header"
+						}
+					}
+				},
+				"sendAt": {
+					"displayName": "Send At",
+					"description": "When to deliver the email. Scheduling more than 72 hours in advance is forbidden."
+				}
+			}
+		},
+		"ids": {
+			"displayName": "Contact IDs",
+			"description": "ID of the contact. Multiple can be added separated by comma."
+		},
+		"deleteAll": {
+			"displayName": "Delete All",
+			"description": "Whether all contacts will be deleted"
+		},
+		"by": {
+			"displayName": "By",
+			"description": "Search the user by ID or email",
+			"options": {
+				"id": {
+					"displayName": "ID"
+				},
+				"email": {
+					"displayName": "Email"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "ID of the contact"
+		},
+		"fromEmail": {
+			"displayName": "Sender Email",
+			"description": "Email address of the sender of the email",
+			"placeholder": "sender@domain.com"
+		},
+		"fromName": {
+			"displayName": "Sender Name",
+			"description": "Name of the sender of the email",
+			"placeholder": "John Smith"
+		},
+		"toEmail": {
+			"displayName": "Recipient Email",
+			"description": "Comma-separated list of recipient email addresses",
+			"placeholder": "recipient@domain.com"
+		},
+		"subject": {
+			"displayName": "Subject",
+			"description": "Subject of the email to send"
+		},
+		"dynamicTemplate": {
+			"displayName": "Dynamic Template",
+			"description": "Whether this email will contain a dynamic template"
+		},
+		"contentType": {
+			"displayName": "MIME Type",
+			"description": "MIME type of the email to send",
+			"options": {
+				"text/plain": {
+					"displayName": "Plain Text"
+				},
+				"text/html": {
+					"displayName": "HTML"
+				}
+			}
+		},
+		"contentValue": {
+			"displayName": "Message Body",
+			"description": "Message body of the email to send"
+		},
+		"templateId": {
+			"displayName": "Template Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"dynamicTemplateFields": {
+			"displayName": "Dynamic Template Fields",
+			"placeholder": "Add Dynamic Template Fields",
+			"multipleValueButtonText": "Add Dynamic Template Fields",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Key of the dynamic template field"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value for the field"
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "Fields",
+					"options": {
+						"key": {
+							"displayName": "Key",
+							"description": "Key of the dynamic template field"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value for the field"
+						}
+					}
+				},
+				"dynamicTemplateFields": {
+					"displayName": "Dynamic Template Fields",
+					"placeholder": "Add Dynamic Template Fields"
+				}
+			}
+		}
+	}
+}

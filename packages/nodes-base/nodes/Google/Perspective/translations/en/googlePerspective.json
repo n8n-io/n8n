@@ -1,0 +1,120 @@
+{
+	"header": {
+		"displayName": "Google Perspective",
+		"description": "Consume Google Perspective API"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"analyzeComment": {
+					"displayName": "Analyze Comment"
+				}
+			}
+		},
+		"text": {
+			"displayName": "Text"
+		},
+		"requestedAttributesUi": {
+			"displayName": "Attributes to Analyze",
+			"placeholder": "Add Atrribute",
+			"multipleValueButtonText": "Add Atrribute",
+			"options": {
+				"requestedAttributesValues": {
+					"displayName": "Properties",
+					"options": {
+						"attributeName": {
+							"displayName": "Attribute Name",
+							"description": "Attribute to analyze in the text. Details <a href=\"https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages\">here</a>.",
+							"options": {
+								"flirtation": {
+									"displayName": "Flirtation"
+								},
+								"identity_attack": {
+									"displayName": "Identity Attack"
+								},
+								"insult": {
+									"displayName": "Insult"
+								},
+								"profanity": {
+									"displayName": "Profanity"
+								},
+								"severe_toxicity": {
+									"displayName": "Severe Toxicity"
+								},
+								"sexually_explicit": {
+									"displayName": "Sexually Explicit"
+								},
+								"threat": {
+									"displayName": "Threat"
+								},
+								"toxicity": {
+									"displayName": "Toxicity"
+								}
+							}
+						},
+						"scoreThreshold": {
+							"displayName": "Score Threshold",
+							"description": "Score above which to return results. At zero, all scores are returned."
+						}
+					}
+				}
+			},
+			"values": {
+				"requestedAttributesValues": {
+					"displayName": "Properties",
+					"options": {
+						"attributeName": {
+							"displayName": "Attribute Name",
+							"description": "Attribute to analyze in the text. Details <a href=\"https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages\">here</a>.",
+							"options": {
+								"flirtation": {
+									"displayName": "Flirtation"
+								},
+								"identity_attack": {
+									"displayName": "Identity Attack"
+								},
+								"insult": {
+									"displayName": "Insult"
+								},
+								"profanity": {
+									"displayName": "Profanity"
+								},
+								"severe_toxicity": {
+									"displayName": "Severe Toxicity"
+								},
+								"sexually_explicit": {
+									"displayName": "Sexually Explicit"
+								},
+								"threat": {
+									"displayName": "Threat"
+								},
+								"toxicity": {
+									"displayName": "Toxicity"
+								}
+							}
+						},
+						"scoreThreshold": {
+							"displayName": "Score Threshold",
+							"description": "Score above which to return results. At zero, all scores are returned."
+						}
+					}
+				},
+				"requestedAttributesUi": {
+					"displayName": "Attributes to Analyze",
+					"placeholder": "Add Atrribute"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"languages": {
+					"displayName": "Language Name or ID",
+					"description": "Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"header": {
+		"displayName": "Webflow 触发器",
+		"description": "通过 Webhook 处理 Webflow 事件"
+	},
+	"nodeView": {
+		"site": {
+			"displayName": "站点名称或ID",
+			"description": "将触发事件的站点。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"event": {
+			"displayName": "事件",
+			"options": {
+				"collection_item_created": {
+					"displayName": "集合项已创建"
+				},
+				"collection_item_deleted": {
+					"displayName": "集合项已删除"
+				},
+				"collection_item_changed": {
+					"displayName": "集合项目已更新"
+				},
+				"ecomm_inventory_changed": {
+					"displayName": "电商库存已变更"
+				},
+				"ecomm_new_order": {
+					"displayName": "电商新订单"
+				},
+				"ecomm_order_changed": {
+					"displayName": "电商订单已变更"
+				},
+				"form_submission": {
+					"displayName": "表单提交"
+				},
+				"site_publish": {
+					"displayName": "站点发布"
+				}
+			}
+		}
+	}
+}

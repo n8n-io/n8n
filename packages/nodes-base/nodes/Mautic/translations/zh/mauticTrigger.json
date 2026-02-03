@@ -1,0 +1,35 @@
+{
+	"header": {
+		"displayName": "Mautic触发器",
+		"description": "通过Webhook处理Mautic事件"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"credentials": {
+					"displayName": "凭据"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"events": {
+			"displayName": "事件名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"eventsOrder": {
+			"displayName": "事件顺序",
+			"description": "单个Webhook中排队事件的处理顺序方向。可选“DESC”（降序）或“ASC”（升序）。",
+			"options": {
+				"ASC": {
+					"displayName": "升序"
+				},
+				"DESC": {
+					"displayName": "描述"
+				}
+			}
+		}
+	}
+}

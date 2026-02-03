@@ -1,0 +1,259 @@
+{
+	"header": {
+		"displayName": "Home Assistant",
+		"description": "Consume Home Assistant API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"cameraProxy": {
+					"displayName": "Camera Proxy"
+				},
+				"config": {
+					"displayName": "Config"
+				},
+				"event": {
+					"displayName": "Event"
+				},
+				"log": {
+					"displayName": "Log"
+				},
+				"service": {
+					"displayName": "Service"
+				},
+				"state": {
+					"displayName": "State"
+				},
+				"template": {
+					"displayName": "Template"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getScreenshot": {
+					"displayName": "Get Screenshot",
+					"description": "Get the camera screenshot"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a state for a specific entity"
+				},
+				"check": {
+					"displayName": "Check Configuration",
+					"description": "Check the configuration"
+				},
+				"create": {
+					"displayName": "Create",
+					"description": "Create a template"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many states"
+				},
+				"getErroLogs": {
+					"displayName": "Get Error Logs",
+					"description": "Get a log for a specific entity"
+				},
+				"getLogbookEntries": {
+					"displayName": "Get Logbook Entries",
+					"description": "Get all logs"
+				},
+				"call": {
+					"displayName": "Call",
+					"description": "Call a service within a specific domain"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new record, or update the current one if it already exists (upsert)"
+				}
+			}
+		},
+		"cameraEntityId": {
+			"displayName": "Camera Entity Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"binaryPropertyName": {
+			"displayName": "Put Output File in Field"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"eventType": {
+			"displayName": "Event Type",
+			"description": "The Entity ID for which an event will be created"
+		},
+		"eventAttributes": {
+			"displayName": "Event Attributes",
+			"placeholder": "Add Attribute",
+			"multipleValueButtonText": "Add Attribute",
+			"options": {
+				"attributes": {
+					"displayName": "Attributes",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the attribute"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributes": {
+					"displayName": "Attributes",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the attribute"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute"
+						}
+					}
+				},
+				"eventAttributes": {
+					"displayName": "Event Attributes",
+					"placeholder": "Add Attribute"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"endTime": {
+					"displayName": "End Time",
+					"description": "The end of the period"
+				},
+				"entityIds": {
+					"displayName": "Entity IDs",
+					"description": "The entities IDs separated by comma"
+				},
+				"minimalResponse": {
+					"displayName": "Minimal Response",
+					"description": "Whether to only return <code>last_changed</code> and state for states"
+				},
+				"significantChangesOnly": {
+					"displayName": "Significant Changes Only",
+					"description": "Whether to only return significant state changes"
+				},
+				"startTime": {
+					"displayName": "Start Time",
+					"description": "The beginning of the period"
+				},
+				"entityId": {
+					"displayName": "Entity ID"
+				}
+			}
+		},
+		"domain": {
+			"displayName": "Domain Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"service": {
+			"displayName": "Service Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"serviceAttributes": {
+			"displayName": "Service Attributes",
+			"placeholder": "Add Attribute",
+			"multipleValueButtonText": "Add Attribute",
+			"options": {
+				"attributes": {
+					"displayName": "Attributes",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the field"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the field"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributes": {
+					"displayName": "Attributes",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the field"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the field"
+						}
+					}
+				},
+				"serviceAttributes": {
+					"displayName": "Service Attributes",
+					"placeholder": "Add Attribute"
+				}
+			}
+		},
+		"entityId": {
+			"displayName": "Entity Name or ID",
+			"description": "The entity ID for which a state will be created. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"state": {
+			"displayName": "State"
+		},
+		"stateAttributes": {
+			"displayName": "State Attributes",
+			"placeholder": "Add Attribute",
+			"multipleValueButtonText": "Add Attribute",
+			"options": {
+				"attributes": {
+					"displayName": "Attributes",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the attribute"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributes": {
+					"displayName": "Attributes",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the attribute"
+						},
+						"value": {
+							"displayName": "Value",
+							"description": "Value of the attribute"
+						}
+					}
+				},
+				"stateAttributes": {
+					"displayName": "State Attributes",
+					"placeholder": "Add Attribute"
+				}
+			}
+		},
+		"template": {
+			"displayName": "Template",
+			"description": "Render a Home Assistant template. <a href=\"https://www.home-assistant.io/docs/configuration/templating/\">See template docs for more information.</a>."
+		}
+	}
+}

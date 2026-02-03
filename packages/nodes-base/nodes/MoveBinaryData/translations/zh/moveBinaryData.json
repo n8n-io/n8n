@@ -1,0 +1,395 @@
+{
+	"header": {
+		"displayName": "二进制数据转换",
+		"description": "在二进制与JSON属性间移动数据"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "模式",
+			"description": "数据应从何处移动至何处",
+			"options": {
+				"binaryToJson": {
+					"displayName": "二进制转JSON",
+					"description": "将数据从二进制移至JSON"
+				},
+				"jsonToBinary": {
+					"displayName": "JSON转二进制",
+					"description": "将数据从JSON移至二进制"
+				}
+			}
+		},
+		"setAllData": {
+			"displayName": "设置所有数据",
+			"description": "是否将所有JSON数据替换为从二进制键检索的数据。否则数据将写入单个键。"
+		},
+		"sourceKey": {
+			"displayName": "源键",
+			"description": "要从中获取数据的JSON键名。也可以使用点符号定义深层键，例如：\"level1.level2.currentKey\"。",
+			"placeholder": "数据"
+		},
+		"destinationKey": {
+			"displayName": "目标键",
+			"description": "要将数据复制到的二进制键名称。也可以使用点符号定义深层键，例如：\"level1.level2.newKey\"。",
+			"placeholder": "数据"
+		},
+		"convertAllData": {
+			"displayName": "转换所有数据",
+			"description": "是否将所有JSON数据转换为二进制。否则仅转换一个键的数据。"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"addBOM": {
+					"displayName": "添加字节顺序标记(BOM)",
+					"description": "是否在文本文件开头添加特殊标记。此标记有助于某些程序正确读取文件。"
+				},
+				"dataIsBase64": {
+					"displayName": "数据为Base64格式",
+					"description": "是否将二进制数据保留为base64字符串"
+				},
+				"encoding": {
+					"displayName": "编码",
+					"description": "选择用于编码数据的字符集",
+					"options": {
+						"armscii8": {
+							"displayName": "armscii8"
+						},
+						"ascii": {
+							"displayName": "ascii"
+						},
+						"base64": {
+							"displayName": "base64"
+						},
+						"big5hkscs": {
+							"displayName": "big5hkscs"
+						},
+						"binary": {
+							"displayName": "二进制"
+						},
+						"cesu8": {
+							"displayName": "cesu8"
+						},
+						"cp1046": {
+							"displayName": "cp1046"
+						},
+						"cp1124": {
+							"displayName": "代码页1124"
+						},
+						"cp1125": {
+							"displayName": "cp1125"
+						},
+						"cp1129": {
+							"displayName": "复制1129"
+						},
+						"cp1133": {
+							"displayName": "cp1133"
+						},
+						"cp1161": {
+							"displayName": "cp1161"
+						},
+						"cp1162": {
+							"displayName": "cp1162"
+						},
+						"cp1163": {
+							"displayName": "cp1163"
+						},
+						"cp437": {
+							"displayName": "cp437"
+						},
+						"cp720": {
+							"displayName": "cp720"
+						},
+						"cp737": {
+							"displayName": "cp737"
+						},
+						"cp775": {
+							"displayName": "cp775"
+						},
+						"cp808": {
+							"displayName": "cp808"
+						},
+						"cp850": {
+							"displayName": "cp850"
+						},
+						"cp852": {
+							"displayName": "代码页852"
+						},
+						"cp855": {
+							"displayName": "cp855"
+						},
+						"cp856": {
+							"displayName": "cp856"
+						},
+						"cp857": {
+							"displayName": "cp857"
+						},
+						"cp858": {
+							"displayName": "代码页858"
+						},
+						"cp860": {
+							"displayName": "cp860"
+						},
+						"cp861": {
+							"displayName": "cp861"
+						},
+						"cp862": {
+							"displayName": "cp862"
+						},
+						"cp863": {
+							"displayName": "cp863"
+						},
+						"cp864": {
+							"displayName": "cp864"
+						},
+						"cp865": {
+							"displayName": "cp865"
+						},
+						"cp866": {
+							"displayName": "cp866"
+						},
+						"cp869": {
+							"displayName": "cp869"
+						},
+						"cp922": {
+							"displayName": "cp922"
+						},
+						"cp936": {
+							"displayName": "cp936"
+						},
+						"cp949": {
+							"displayName": "CP949"
+						},
+						"cp950": {
+							"displayName": "cp950"
+						},
+						"eucjp": {
+							"displayName": "eucjp"
+						},
+						"gb18030": {
+							"displayName": "gb18030"
+						},
+						"gbk": {
+							"displayName": "GBK"
+						},
+						"georgianacademy": {
+							"displayName": "格鲁吉亚学院"
+						},
+						"georgianps": {
+							"displayName": "格鲁吉亚语"
+						},
+						"hex": {
+							"displayName": "十六进制"
+						},
+						"hproman8": {
+							"displayName": "hproman8"
+						},
+						"iso646cn": {
+							"displayName": "iso646cn"
+						},
+						"iso646jp": {
+							"displayName": "iso646jp"
+						},
+						"iso88591": {
+							"displayName": "iso88591"
+						},
+						"iso885910": {
+							"displayName": "iso885910"
+						},
+						"iso885911": {
+							"displayName": "iso885911"
+						},
+						"iso885913": {
+							"displayName": "iso885913"
+						},
+						"iso885914": {
+							"displayName": "iso885914"
+						},
+						"iso885915": {
+							"displayName": "iso885915"
+						},
+						"iso885916": {
+							"displayName": "iso885916"
+						},
+						"iso88592": {
+							"displayName": "iso88592"
+						},
+						"iso88593": {
+							"displayName": "iso88593"
+						},
+						"iso88594": {
+							"displayName": "iso88594"
+						},
+						"iso88595": {
+							"displayName": "iso88595"
+						},
+						"iso88596": {
+							"displayName": "iso88596"
+						},
+						"iso88597": {
+							"displayName": "iso88597"
+						},
+						"iso88598": {
+							"displayName": "iso88598"
+						},
+						"iso88599": {
+							"displayName": "iso88599"
+						},
+						"koi8r": {
+							"displayName": "koi8r"
+						},
+						"koi8ru": {
+							"displayName": "koi8ru"
+						},
+						"koi8t": {
+							"displayName": "koi8t"
+						},
+						"koi8u": {
+							"displayName": "koi8u"
+						},
+						"maccenteuro": {
+							"displayName": "maccenteuro"
+						},
+						"maccroatian": {
+							"displayName": "克罗地亚语"
+						},
+						"maccyrillic": {
+							"displayName": "Mac西里尔编码"
+						},
+						"macgreek": {
+							"displayName": "macgreek"
+						},
+						"maciceland": {
+							"displayName": "maciceland"
+						},
+						"macintosh": {
+							"displayName": "Macintosh"
+						},
+						"macroman": {
+							"displayName": "宏管理"
+						},
+						"macromania": {
+							"displayName": "macromania"
+						},
+						"macthai": {
+							"displayName": "macthai"
+						},
+						"macturkish": {
+							"displayName": "macturkish"
+						},
+						"macukraine": {
+							"displayName": "macukraine"
+						},
+						"mik": {
+							"displayName": "mik"
+						},
+						"pt154": {
+							"displayName": "pt154"
+						},
+						"rk1048": {
+							"displayName": "rk1048"
+						},
+						"shiftjis": {
+							"displayName": "Shift_JIS"
+						},
+						"tcvn": {
+							"displayName": "TCVN"
+						},
+						"tis620": {
+							"displayName": "tis620"
+						},
+						"ucs2": {
+							"displayName": "UCS2"
+						},
+						"utf16": {
+							"displayName": "utf16"
+						},
+						"utf16be": {
+							"displayName": "utf16be"
+						},
+						"utf32": {
+							"displayName": "utf32"
+						},
+						"utf32be": {
+							"displayName": "UTF-32BE"
+						},
+						"utf32le": {
+							"displayName": "utf32le"
+						},
+						"utf7": {
+							"displayName": "utf7"
+						},
+						"utf7imap": {
+							"displayName": "utf7imap"
+						},
+						"utf8": {
+							"displayName": "utf8"
+						},
+						"viscii": {
+							"displayName": "VISCII"
+						},
+						"windows1250": {
+							"displayName": "Windows 1250"
+						},
+						"windows1251": {
+							"displayName": "Windows-1251"
+						},
+						"windows1252": {
+							"displayName": "Windows 1252"
+						},
+						"windows1253": {
+							"displayName": "windows1253"
+						},
+						"windows1254": {
+							"displayName": "Windows 1254"
+						},
+						"windows1255": {
+							"displayName": "Windows 1255"
+						},
+						"windows1256": {
+							"displayName": "Windows 1256"
+						},
+						"windows1257": {
+							"displayName": "Windows 1257"
+						},
+						"windows1258": {
+							"displayName": "Windows 1258"
+						},
+						"windows874": {
+							"displayName": "Windows874"
+						}
+					}
+				},
+				"stripBOM": {
+					"displayName": "移除BOM"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "要设置的文件名",
+					"placeholder": "example.json"
+				},
+				"jsonParse": {
+					"displayName": "JSON解析",
+					"description": "是否对数据运行JSON解析以获取正确的对象数据"
+				},
+				"keepSource": {
+					"displayName": "保留源键",
+					"description": "是否应保留源键。默认情况下将被删除。"
+				},
+				"keepAsBase64": {
+					"displayName": "保持为Base64",
+					"description": "是否将二进制数据保留为base64字符串"
+				},
+				"mimeType": {
+					"displayName": "MIME类型",
+					"description": "要设置的MIME类型。默认将设置为JSON的MIME类型。",
+					"placeholder": "application/json"
+				},
+				"useRawData": {
+					"displayName": "使用原始数据",
+					"description": "是否按原样使用数据而不进行JSON.stringify处理"
+				}
+			}
+		}
+	}
+}

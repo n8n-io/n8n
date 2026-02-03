@@ -1,0 +1,129 @@
+{
+	"header": {
+		"displayName": "Bannerbear",
+		"description": "使用Bannerbear API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"image": {
+					"displayName": "图片"
+				},
+				"template": {
+					"displayName": "模板"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建图像"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取模板"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个模板"
+				}
+			}
+		},
+		"templateId": {
+			"displayName": "模板ID",
+			"description": "模板的唯一标识符"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"metadata": {
+					"displayName": "元数据",
+					"description": "您需要存储的元数据，例如数据库中记录的ID"
+				},
+				"waitForImage": {
+					"displayName": "等待图像处理",
+					"description": "是否等待图像处理完成后再返回结果。若尝试三次后图像仍未就绪，将抛出错误。可通过设置\"最大等待尝试次数\"增加重试次数。"
+				},
+				"waitForImageMaxTries": {
+					"displayName": "最大重试次数",
+					"description": "在失败前应多久检查一次图像是否可用"
+				},
+				"webhookUrl": {
+					"displayName": "Webhook URL",
+					"description": "渲染完成后将Image对象POST到的URL"
+				}
+			}
+		},
+		"modificationsUi": {
+			"displayName": "修改",
+			"placeholder": "添加修改",
+			"multipleValueButtonText": "添加修改",
+			"options": {
+				"modificationsValues": {
+					"displayName": "修改",
+					"options": {
+						"name": {
+							"displayName": "名称或ID",
+							"description": "要更改的项的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "您想要使用的替换文本"
+						},
+						"color": {
+							"displayName": "颜色",
+							"description": "对象颜色十六进制值"
+						},
+						"background": {
+							"displayName": "背景",
+							"description": "文本背景色十六进制值"
+						},
+						"imageUrl": {
+							"displayName": "图片URL",
+							"description": "要使用的替换图片URL（必须可公开访问）"
+						}
+					}
+				}
+			},
+			"values": {
+				"modificationsValues": {
+					"displayName": "修改",
+					"options": {
+						"name": {
+							"displayName": "名称或ID",
+							"description": "要更改的项的名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "您想要使用的替换文本"
+						},
+						"color": {
+							"displayName": "颜色",
+							"description": "对象颜色十六进制值"
+						},
+						"background": {
+							"displayName": "背景",
+							"description": "文本背景色十六进制值"
+						},
+						"imageUrl": {
+							"displayName": "图片URL",
+							"description": "要使用的替换图片URL（必须可公开访问）"
+						}
+					}
+				},
+				"modificationsUi": {
+					"displayName": "修改",
+					"placeholder": "添加修改"
+				}
+			}
+		},
+		"imageId": {
+			"displayName": "图片ID",
+			"description": "图片的唯一标识符"
+		}
+	}
+}

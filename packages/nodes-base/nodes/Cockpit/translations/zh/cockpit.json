@@ -1,0 +1,153 @@
+{
+	"header": {
+		"displayName": "驾驶舱",
+		"description": "使用Cockpit API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"collection": {
+					"displayName": "集合"
+				},
+				"form": {
+					"displayName": "表单"
+				},
+				"singleton": {
+					"displayName": "单例"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建条目",
+					"description": "创建集合条目"
+				},
+				"getAll": {
+					"displayName": "获取多个条目",
+					"description": "获取多个集合条目"
+				},
+				"update": {
+					"displayName": "更新条目",
+					"description": "更新集合条目"
+				},
+				"submit": {
+					"displayName": "提交表单",
+					"description": "存储表单提交的数据"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取单例"
+				}
+			}
+		},
+		"collection": {
+			"displayName": "集合名称或ID",
+			"description": "要操作的集合名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"fields": {
+					"displayName": "字段",
+					"description": "要获取的字段列表（逗号分隔）",
+					"placeholder": "_id,名称"
+				},
+				"filter": {
+					"displayName": "过滤查询",
+					"description": "使用<a href=\"https://jeroen.github.io/mongolite/query-data.html\">Mongolite格式</a>的过滤查询",
+					"placeholder": "{\"name\": \"Jim\"}"
+				},
+				"language": {
+					"displayName": "语言",
+					"description": "返回规范化的语言字段"
+				},
+				"populate": {
+					"displayName": "填充",
+					"description": "是否解析关联集合项"
+				},
+				"rawData": {
+					"displayName": "原始数据",
+					"description": "是否完全按照从API接收的方式返回数据"
+				},
+				"skip": {
+					"displayName": "跳过",
+					"description": "跳过条目数"
+				},
+				"sort": {
+					"displayName": "排序查询",
+					"description": "<a href=\"https://jeroen.github.io/mongolite/query-data.html\">Mongolite格式</a>的排序查询",
+					"placeholder": "{\"price\": -1}"
+				}
+			}
+		},
+		"id": {
+			"displayName": "条目ID"
+		},
+		"jsonDataFields": {
+			"displayName": "JSON数据字段",
+			"description": "表单字段应通过键值对UI还是JSON设置"
+		},
+		"dataFieldsJson": {
+			"displayName": "表单数据",
+			"description": "要发送的表单数据（JSON格式）"
+		},
+		"dataFieldsUi": {
+			"displayName": "表单数据",
+			"description": "要发送的表单数据",
+			"multipleValueButtonText": "添加",
+			"options": {
+				"field": {
+					"displayName": "字段",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "字段名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "字段的值"
+						}
+					}
+				}
+			},
+			"values": {
+				"field": {
+					"displayName": "字段",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "字段名称"
+						},
+						"value": {
+							"displayName": "值",
+							"description": "字段的值"
+						}
+					}
+				},
+				"dataFieldsUi": {
+					"displayName": "表单数据"
+				}
+			}
+		},
+		"form": {
+			"displayName": "表单",
+			"description": "要操作的表单名称"
+		},
+		"singleton": {
+			"displayName": "单例名称或ID",
+			"description": "要操作的单例名称。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		}
+	}
+}

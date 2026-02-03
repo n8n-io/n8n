@@ -1,0 +1,126 @@
+{
+	"header": {
+		"displayName": "Webex by Cisco Trigger",
+		"description": "Starts the workflow when Cisco Webex events occur."
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"all": {
+					"displayName": "[All]"
+				},
+				"attachmentAction": {
+					"displayName": "Attachment Action"
+				},
+				"meeting": {
+					"displayName": "Meeting"
+				},
+				"membership": {
+					"displayName": "Membership"
+				},
+				"message": {
+					"displayName": "Message"
+				},
+				"recording": {
+					"displayName": "Recording"
+				},
+				"room": {
+					"displayName": "Room"
+				}
+			}
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"created": {
+					"displayName": "Created"
+				},
+				"deleted": {
+					"displayName": "Deleted"
+				},
+				"updated": {
+					"displayName": "Updated"
+				},
+				"all": {
+					"displayName": "*"
+				},
+				"started": {
+					"displayName": "Started"
+				},
+				"ended": {
+					"displayName": "Ended"
+				}
+			}
+		},
+		"resolveData": {
+			"displayName": "Resolve Data",
+			"description": "By default the response only contain a reference to the data the user inputed. If this option gets activated, it will resolve the data automatically."
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Filter",
+			"options": {
+				"hasFiles": {
+					"displayName": "Has Files",
+					"description": "Whether to limit to messages which contain file content attachments"
+				},
+				"isLocked": {
+					"displayName": "Is Locked",
+					"description": "Whether to limit to rooms that are locked"
+				},
+				"isModerator": {
+					"displayName": "Is Moderator",
+					"description": "Whether to limit to moderators of a room"
+				},
+				"mentionedPeople": {
+					"displayName": "Mentioned People",
+					"description": "Limit to messages which contain these mentioned people, by person ID; accepts me as a shorthand for your own person ID; separate multiple values with commas"
+				},
+				"messageId": {
+					"displayName": "Message ID",
+					"description": "Limit to a particular message, by ID"
+				},
+				"ownedBy": {
+					"displayName": "Owned By"
+				},
+				"personEmail": {
+					"displayName": "Person Email",
+					"description": "Limit to a particular person, by email"
+				},
+				"personId": {
+					"displayName": "Person ID",
+					"description": "Limit to a particular person, by ID"
+				},
+				"roomId": {
+					"displayName": "Room ID",
+					"description": "Limit to a particular room, by ID"
+				},
+				"roomType": {
+					"displayName": "Room Type",
+					"description": "Limit to a particular room type",
+					"options": {
+						"direct": {
+							"displayName": "Direct"
+						},
+						"group": {
+							"displayName": "Group"
+						}
+					}
+				},
+				"type": {
+					"displayName": "Type",
+					"description": "Limit to a particular room type",
+					"options": {
+						"direct": {
+							"displayName": "Direct"
+						},
+						"group": {
+							"displayName": "Group"
+						}
+					}
+				}
+			}
+		}
+	}
+}

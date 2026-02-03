@@ -1,0 +1,87 @@
+{
+	"header": {
+		"displayName": "XML",
+		"description": "XML数据转换"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "模式",
+			"description": "数据应从何种格式转换为何种格式",
+			"options": {
+				"jsonToxml": {
+					"displayName": "JSON转XML",
+					"description": "将数据从JSON转换为XML"
+				},
+				"xmlToJson": {
+					"displayName": "XML转JSON",
+					"description": "将数据从XML转换为JSON"
+				}
+			}
+		},
+		"xmlNotice": {
+			"displayName": "如果您的XML位于二进制文件中，请先使用'从文件提取'节点将其转换为文本"
+		},
+		"dataPropertyName": {
+			"displayName": "属性名称",
+			"description": "包含要转换的XML数据的属性名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"allowSurrogateChars": {
+					"displayName": "允许代理字符",
+					"description": "是否允许使用Unicode代理块中的字符"
+				},
+				"attrkey": {
+					"displayName": "属性键",
+					"description": "用于访问属性的前缀"
+				},
+				"cdata": {
+					"displayName": "Cdata",
+					"description": "是否在必要时将文本节点包裹在&lt;![CDATA[ ... ]]&gt;中而非转义。如果不需要则不添加&lt;![CDATA[ ... ]]&gt;。"
+				},
+				"charkey": {
+					"displayName": "角色键",
+					"description": "用于访问角色内容的前缀"
+				},
+				"headless": {
+					"displayName": "无头模式",
+					"description": "是否省略XML头部"
+				},
+				"rootName": {
+					"displayName": "根名称",
+					"description": "要使用的根元素名称"
+				},
+				"explicitArray": {
+					"displayName": "显式数组",
+					"description": "如果为true，则始终将子节点置于数组中；否则仅在有多个子节点时才创建数组"
+				},
+				"explicitRoot": {
+					"displayName": "显式根节点",
+					"description": "是否设置此项以在结果对象中获取根节点"
+				},
+				"ignoreAttrs": {
+					"displayName": "忽略属性",
+					"description": "是否忽略所有XML属性，仅创建文本节点"
+				},
+				"mergeAttrs": {
+					"displayName": "合并属性",
+					"description": "是否将属性和子元素作为父元素的属性合并，而不是将属性从子属性对象中分离。如果ignoreAttrs为true，则忽略此选项。"
+				},
+				"normalize": {
+					"displayName": "标准化",
+					"description": "是否修剪文本节点内的空白字符"
+				},
+				"normalizeTags": {
+					"displayName": "标准化标签",
+					"description": "是否将所有标签名称标准化为小写"
+				},
+				"trim": {
+					"displayName": "修剪",
+					"description": "是否修剪文本节点开头和结尾的空白字符"
+				}
+			}
+		}
+	}
+}

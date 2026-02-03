@@ -1,0 +1,85 @@
+{
+	"header": {
+		"displayName": "Hugging Face推理嵌入",
+		"description": "使用HuggingFace推理嵌入"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "每个模型使用不同维度的嵌入向量密度。请确保您的向量存储使用相同的维度。默认模型使用768维嵌入向量。"
+		},
+		"modelName": {
+			"displayName": "模型名称",
+			"description": "从HuggingFace库中使用的模型名称"
+		},
+		"options": {
+			"displayName": "选项",
+			"description": "要添加的附加选项",
+			"placeholder": "添加选项",
+			"options": {
+				"endpointUrl": {
+					"displayName": "自定义推理端点",
+					"description": "自定义端点URL"
+				},
+				"provider": {
+					"displayName": "提供商",
+					"options": {
+						"black-forest-labs": {
+							"displayName": "黑森林实验室"
+						},
+						"cerebras": {
+							"displayName": "Cerebras"
+						},
+						"cohere": {
+							"displayName": "cohere"
+						},
+						"fal-ai": {
+							"displayName": "fal-ai"
+						},
+						"featherless-ai": {
+							"displayName": "无羽AI"
+						},
+						"fireworks-ai": {
+							"displayName": "fireworks-ai"
+						},
+						"groq": {
+							"displayName": "groq"
+						},
+						"hf-inference": {
+							"displayName": "hf推理"
+						},
+						"hyperbolic": {
+							"displayName": "双曲线"
+						},
+						"nebius": {
+							"displayName": "Nebius"
+						},
+						"novita": {
+							"displayName": "novita"
+						},
+						"nscale": {
+							"displayName": "nscale"
+						},
+						"openai": {
+							"displayName": "openai"
+						},
+						"ovhcloud": {
+							"displayName": "OVHcloud"
+						},
+						"replicate": {
+							"displayName": "复制"
+						},
+						"sambanova": {
+							"displayName": "SambaNova"
+						},
+						"together": {
+							"displayName": "一起"
+						},
+						"auto": {
+							"displayName": "自动"
+						}
+					}
+				}
+			}
+		}
+	}
+}

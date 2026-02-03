@@ -1,0 +1,94 @@
+{
+	"header": {
+		"displayName": "Microsoft Graph Security",
+		"description": "使用 Microsoft Graph Security API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"secureScore": {
+					"displayName": "安全评分"
+				},
+				"secureScoreControlProfile": {
+					"displayName": "安全评分控制配置文件"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"secureScoreId": {
+			"displayName": "安全评分ID",
+			"description": "要检索的安全评分ID"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"filter": {
+					"displayName": "筛选查询参数",
+					"description": "用于筛选结果的<a href=\"https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter\">查询参数</a>",
+					"placeholder": "startsWith(id, 'AATP')"
+				},
+				"includeControlScores": {
+					"displayName": "包含控制分数"
+				}
+			}
+		},
+		"secureScoreControlProfileId": {
+			"displayName": "安全分数控制配置文件ID",
+			"description": "要更新的安全分数控制配置文件ID"
+		},
+		"provider": {
+			"displayName": "提供商",
+			"description": "安全产品或服务的提供商名称",
+			"placeholder": "安全评分"
+		},
+		"vendor": {
+			"displayName": "供应商",
+			"description": "安全产品或服务的供应商名称",
+			"placeholder": "微软"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"state": {
+					"displayName": "状态",
+					"description": "控制面板上的分析师驱动设置",
+					"options": {
+						"Default": {
+							"displayName": "默认"
+						},
+						"Ignored": {
+							"displayName": "已忽略"
+						},
+						"ThirdParty": {
+							"displayName": "第三方"
+						}
+					}
+				}
+			}
+		}
+	}
+}

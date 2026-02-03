@@ -1,0 +1,618 @@
+{
+	"header": {
+		"displayName": "编辑图片",
+		"description": "编辑图片，如模糊、调整大小、添加边框和文字"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"blur": {
+					"displayName": "模糊",
+					"description": "为图像添加模糊效果，使其不那么锐利"
+				},
+				"border": {
+					"displayName": "边框",
+					"description": "为图像添加边框"
+				},
+				"composite": {
+					"displayName": "复合",
+					"description": "将图像叠加到另一张图像上"
+				},
+				"create": {
+					"displayName": "创建",
+					"description": "创建新图像"
+				},
+				"crop": {
+					"displayName": "裁剪",
+					"description": "裁剪图像"
+				},
+				"draw": {
+					"displayName": "绘制",
+					"description": "在图像上绘制"
+				},
+				"information": {
+					"displayName": "获取信息",
+					"description": "返回图像信息，例如分辨率"
+				},
+				"multiStep": {
+					"displayName": "多步骤",
+					"description": "执行多个操作"
+				},
+				"resize": {
+					"displayName": "调整大小",
+					"description": "更改图像尺寸"
+				},
+				"rotate": {
+					"displayName": "旋转",
+					"description": "旋转图像"
+				},
+				"shear": {
+					"displayName": "剪切",
+					"description": "沿X轴或Y轴剪切图像"
+				},
+				"text": {
+					"displayName": "文本",
+					"description": "向图像添加文本"
+				},
+				"transparent": {
+					"displayName": "透明",
+					"description": "使图像中的颜色透明"
+				}
+			}
+		},
+		"dataPropertyName": {
+			"displayName": "属性名称",
+			"description": "可找到图像数据的二进制属性名称"
+		},
+		"operations": {
+			"displayName": "操作",
+			"description": "要执行的操作",
+			"placeholder": "添加操作",
+			"multipleValueButtonText": "添加操作",
+			"options": {
+				"operations": {
+					"displayName": "操作",
+					"options": {
+						"operation": {
+							"displayName": "操作",
+							"options": {
+								"blur": {
+									"displayName": "模糊",
+									"description": "为图像添加模糊效果，使其不那么锐利"
+								},
+								"border": {
+									"displayName": "边框",
+									"description": "为图像添加边框"
+								},
+								"composite": {
+									"displayName": "复合",
+									"description": "将图像叠加到另一张图像上"
+								},
+								"create": {
+									"displayName": "创建",
+									"description": "创建新图像"
+								},
+								"crop": {
+									"displayName": "裁剪",
+									"description": "裁剪图像"
+								},
+								"draw": {
+									"displayName": "绘制",
+									"description": "在图像上绘制"
+								},
+								"rotate": {
+									"displayName": "旋转",
+									"description": "旋转图像"
+								},
+								"resize": {
+									"displayName": "调整大小",
+									"description": "更改图像尺寸"
+								},
+								"shear": {
+									"displayName": "剪切",
+									"description": "沿X轴或Y轴剪切图像"
+								},
+								"text": {
+									"displayName": "文本",
+									"description": "向图像添加文本"
+								},
+								"transparent": {
+									"displayName": "透明",
+									"description": "使图像中的颜色透明"
+								}
+							}
+						},
+						"backgroundColor": {
+							"displayName": "背景颜色",
+							"description": "当图像旋转角度不是90度的倍数时，用于背景的颜色"
+						},
+						"width": {
+							"displayName": "宽度",
+							"description": "图像的新宽度"
+						},
+						"height": {
+							"displayName": "高度",
+							"description": "图像的新高度"
+						},
+						"primitive": {
+							"displayName": "原始类型",
+							"description": "要绘制的原始类型",
+							"options": {
+								"circle": {
+									"displayName": "圆形"
+								},
+								"line": {
+									"displayName": "线条"
+								},
+								"rectangle": {
+									"displayName": "矩形"
+								}
+							}
+						},
+						"color": {
+							"displayName": "颜色",
+							"description": "要设为透明的颜色"
+						},
+						"startPositionX": {
+							"displayName": "起始位置 X",
+							"description": "图元的 X（水平）起始位置"
+						},
+						"startPositionY": {
+							"displayName": "起始Y坐标",
+							"description": "图元的Y（水平）起始位置"
+						},
+						"endPositionX": {
+							"displayName": "结束位置 X",
+							"description": "图元的水平结束位置 X"
+						},
+						"endPositionY": {
+							"displayName": "结束位置 Y",
+							"description": "图元的 Y（水平）结束位置"
+						},
+						"cornerRadius": {
+							"displayName": "圆角半径",
+							"description": "创建圆角的转角半径"
+						},
+						"text": {
+							"displayName": "文本",
+							"description": "要在图片上写入的文本",
+							"placeholder": "要渲染的文本"
+						},
+						"fontSize": {
+							"displayName": "字体大小",
+							"description": "文本大小"
+						},
+						"fontColor": {
+							"displayName": "字体颜色",
+							"description": "文本颜色"
+						},
+						"positionX": {
+							"displayName": "X坐标",
+							"description": "裁剪起始X坐标（水平方向）"
+						},
+						"positionY": {
+							"displayName": "Y轴位置",
+							"description": "裁剪起始的Y（垂直）位置"
+						},
+						"lineLength": {
+							"displayName": "最大行长度",
+							"description": "在添加换行符之前，单行允许的最大字符数"
+						},
+						"blur": {
+							"displayName": "模糊",
+							"description": "模糊强度"
+						},
+						"sigma": {
+							"displayName": "Sigma",
+							"description": "模糊的Sigma值"
+						},
+						"borderWidth": {
+							"displayName": "边框宽度",
+							"description": "边框的宽度"
+						},
+						"borderHeight": {
+							"displayName": "边框高度",
+							"description": "边框的高度"
+						},
+						"borderColor": {
+							"displayName": "边框颜色",
+							"description": "边框颜色"
+						},
+						"dataPropertyNameComposite": {
+							"displayName": "复合图像属性",
+							"description": "包含要复合到图像上的图像数据的二进制属性名称，该图像位于属性名称中",
+							"placeholder": "data2"
+						},
+						"operator": {
+							"displayName": "操作员",
+							"description": "用于组合图像的操作符",
+							"options": {
+								"Add": {
+									"displayName": "添加"
+								},
+								"Atop": {
+									"displayName": "顶部"
+								},
+								"Bumpmap": {
+									"displayName": "凹凸贴图"
+								},
+								"Copy": {
+									"displayName": "复制"
+								},
+								"CopyBlack": {
+									"displayName": "复制黑色"
+								},
+								"CopyBlue": {
+									"displayName": "复制蓝图"
+								},
+								"CopyCyan": {
+									"displayName": "复制青色"
+								},
+								"CopyGreen": {
+									"displayName": "复制绿色"
+								},
+								"CopyMagenta": {
+									"displayName": "复制洋红色"
+								},
+								"CopyOpacity": {
+									"displayName": "复制不透明度"
+								},
+								"CopyRed": {
+									"displayName": "复制红色"
+								},
+								"CopyYellow": {
+									"displayName": "复制黄色"
+								},
+								"Difference": {
+									"displayName": "差异"
+								},
+								"Divide": {
+									"displayName": "除法"
+								},
+								"In": {
+									"displayName": "在"
+								},
+								"Minus": {
+									"displayName": "减"
+								},
+								"Multiply": {
+									"displayName": "相乘"
+								},
+								"Out": {
+									"displayName": "输出"
+								},
+								"Over": {
+									"displayName": "概览"
+								},
+								"Plus": {
+									"displayName": "Plus"
+								},
+								"Subtract": {
+									"displayName": "减法"
+								},
+								"Xor": {
+									"displayName": "异或"
+								}
+							}
+						},
+						"resizeOption": {
+							"displayName": "选项",
+							"description": "如何调整图像大小",
+							"options": {
+								"ignoreAspectRatio": {
+									"displayName": "忽略宽高比",
+									"description": "忽略宽高比并精确调整至指定尺寸"
+								},
+								"maximumArea": {
+									"displayName": "最大面积",
+									"description": "指定值为最大面积"
+								},
+								"minimumArea": {
+									"displayName": "最小面积",
+									"description": "指定值为最小面积"
+								},
+								"onlyIfLarger": {
+									"displayName": "仅当更大时",
+									"description": "仅当图像宽度或高度更大时调整大小"
+								},
+								"onlyIfSmaller": {
+									"displayName": "仅当更小时",
+									"description": "仅当图像小于指定宽度或高度时调整大小"
+								},
+								"percent": {
+									"displayName": "百分比",
+									"description": "宽度和高度以百分比指定"
+								}
+							}
+						},
+						"rotate": {
+							"displayName": "旋转",
+							"description": "图像应旋转的角度"
+						},
+						"degreesX": {
+							"displayName": "X轴旋转角度",
+							"description": "X轴（水平）剪切角度"
+						},
+						"degreesY": {
+							"displayName": "Y轴角度",
+							"description": "Y轴（垂直）剪切角度"
+						},
+						"font": {
+							"displayName": "字体名称或ID",
+							"description": "要使用的字体。默认为Arial。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						}
+					}
+				}
+			},
+			"values": {
+				"operations": {
+					"displayName": "操作",
+					"placeholder": "添加操作"
+				}
+			}
+		},
+		"backgroundColor": {
+			"displayName": "背景颜色",
+			"description": "当图像旋转角度不是90度的倍数时，背景使用的颜色"
+		},
+		"width": {
+			"displayName": "宽度",
+			"description": "图像的新宽度"
+		},
+		"height": {
+			"displayName": "高度",
+			"description": "图像的新高度"
+		},
+		"primitive": {
+			"displayName": "基本图形",
+			"description": "要绘制的基本图形",
+			"options": {
+				"circle": {
+					"displayName": "圆形"
+				},
+				"line": {
+					"displayName": "线条"
+				},
+				"rectangle": {
+					"displayName": "矩形"
+				}
+			}
+		},
+		"color": {
+			"displayName": "颜色",
+			"description": "要设为透明的颜色"
+		},
+		"startPositionX": {
+			"displayName": "起始位置 X",
+			"description": "图元的水平起始位置"
+		},
+		"startPositionY": {
+			"displayName": "起始Y位置",
+			"description": "图元的Y（水平）起始位置"
+		},
+		"endPositionX": {
+			"displayName": "结束位置 X",
+			"description": "图元的水平结束位置 X"
+		},
+		"endPositionY": {
+			"displayName": "结束位置 Y",
+			"description": "图元的Y（水平）结束位置"
+		},
+		"cornerRadius": {
+			"displayName": "圆角半径",
+			"description": "创建圆角的半径大小"
+		},
+		"text": {
+			"displayName": "要发送的文本",
+			"description": "要在图像上写入的文本",
+			"placeholder": "要渲染的文本"
+		},
+		"fontSize": {
+			"displayName": "字体大小",
+			"description": "文本大小"
+		},
+		"fontColor": {
+			"displayName": "字体颜色",
+			"description": "文本颜色"
+		},
+		"positionX": {
+			"displayName": "X轴位置",
+			"description": "裁剪起始X轴位置"
+		},
+		"positionY": {
+			"displayName": "Y轴位置",
+			"description": "裁剪起始的Y（垂直）位置"
+		},
+		"lineLength": {
+			"displayName": "最大行长度",
+			"description": "添加换行符前的最大字符数"
+		},
+		"blur": {
+			"displayName": "模糊",
+			"description": "模糊强度"
+		},
+		"sigma": {
+			"displayName": "Sigma",
+			"description": "模糊的Sigma值"
+		},
+		"borderWidth": {
+			"displayName": "边框宽度",
+			"description": "边框的宽度"
+		},
+		"borderHeight": {
+			"displayName": "边框高度",
+			"description": "边框的高度"
+		},
+		"borderColor": {
+			"displayName": "边框颜色",
+			"description": "边框的颜色"
+		},
+		"dataPropertyNameComposite": {
+			"displayName": "复合图像属性",
+			"description": "包含要复合到Property Name中图像上方的图像数据的二进制属性名称",
+			"placeholder": "data2"
+		},
+		"operator": {
+			"displayName": "运算符",
+			"description": "用于组合图像的运算符",
+			"options": {
+				"Add": {
+					"displayName": "添加"
+				},
+				"Atop": {
+					"displayName": "顶部"
+				},
+				"Bumpmap": {
+					"displayName": "凹凸贴图"
+				},
+				"Copy": {
+					"displayName": "复制"
+				},
+				"CopyBlack": {
+					"displayName": "复制黑色"
+				},
+				"CopyBlue": {
+					"displayName": "复制蓝图"
+				},
+				"CopyCyan": {
+					"displayName": "复制青色"
+				},
+				"CopyGreen": {
+					"displayName": "复制绿色"
+				},
+				"CopyMagenta": {
+					"displayName": "复制洋红色"
+				},
+				"CopyOpacity": {
+					"displayName": "复制不透明度"
+				},
+				"CopyRed": {
+					"displayName": "复制红色"
+				},
+				"CopyYellow": {
+					"displayName": "复制黄色"
+				},
+				"Difference": {
+					"displayName": "差异"
+				},
+				"Divide": {
+					"displayName": "除法"
+				},
+				"In": {
+					"displayName": "在"
+				},
+				"Minus": {
+					"displayName": "减"
+				},
+				"Multiply": {
+					"displayName": "相乘"
+				},
+				"Out": {
+					"displayName": "输出"
+				},
+				"Over": {
+					"displayName": "概览"
+				},
+				"Plus": {
+					"displayName": "Plus"
+				},
+				"Subtract": {
+					"displayName": "减法"
+				},
+				"Xor": {
+					"displayName": "异或"
+				}
+			}
+		},
+		"resizeOption": {
+			"displayName": "选项",
+			"description": "如何调整图像大小",
+			"options": {
+				"ignoreAspectRatio": {
+					"displayName": "忽略宽高比",
+					"description": "忽略宽高比并精确调整至指定尺寸"
+				},
+				"maximumArea": {
+					"displayName": "最大面积",
+					"description": "指定值为最大面积"
+				},
+				"minimumArea": {
+					"displayName": "最小面积",
+					"description": "指定值为最小面积"
+				},
+				"onlyIfLarger": {
+					"displayName": "仅当更大时",
+					"description": "仅当图像宽度或高度更大时调整大小"
+				},
+				"onlyIfSmaller": {
+					"displayName": "仅当更小时",
+					"description": "仅当图像小于指定宽度或高度时调整大小"
+				},
+				"percent": {
+					"displayName": "百分比",
+					"description": "宽度和高度以百分比指定"
+				}
+			}
+		},
+		"rotate": {
+			"displayName": "旋转",
+			"description": "图像应旋转的角度"
+		},
+		"degreesX": {
+			"displayName": "X 轴角度",
+			"description": "X 轴（水平）剪切角度"
+		},
+		"degreesY": {
+			"displayName": "Y轴角度",
+			"description": "Y轴（垂直）剪切角度"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"destinationKey": {
+					"displayName": "目标输出字段",
+					"description": "将包含文件数据的输出字段名称",
+					"placeholder": "例如：image"
+				},
+				"fileName": {
+					"displayName": "文件名",
+					"description": "二进制数据中设置的文件名"
+				},
+				"font": {
+					"displayName": "字体名称或ID",
+					"description": "要使用的字体。默认为Arial。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"format": {
+					"displayName": "格式",
+					"description": "设置输出图像格式",
+					"options": {
+						"bmp": {
+							"displayName": "位图"
+						},
+						"gif": {
+							"displayName": "gif"
+						},
+						"jpeg": {
+							"displayName": "JPEG"
+						},
+						"png": {
+							"displayName": "PNG"
+						},
+						"tiff": {
+							"displayName": "TIFF"
+						},
+						"webp": {
+							"displayName": "WebP"
+						}
+					}
+				},
+				"quality": {
+					"displayName": "质量",
+					"description": "设置JPEG|PNG|TIFF压缩级别，范围从0到100（100为最佳）"
+				}
+			}
+		}
+	}
+}

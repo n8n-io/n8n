@@ -1,0 +1,755 @@
+{
+	"header": {
+		"displayName": "Cortex",
+		"description": "对给定实体应用Cortex分析器/响应器"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"description": "选择资源",
+			"options": {
+				"analyzer": {
+					"displayName": "分析器"
+				},
+				"job": {
+					"displayName": "作业"
+				},
+				"responder": {
+					"displayName": "响应器"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"description": "选择操作",
+			"options": {
+				"execute": {
+					"displayName": "执行",
+					"description": "执行响应器"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取作业详情"
+				},
+				"report": {
+					"displayName": "报告",
+					"description": "获取作业报告"
+				}
+			}
+		},
+		"analyzer": {
+			"displayName": "分析器类型名称或ID",
+			"description": "选择分析器。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"observableType": {
+			"displayName": "可观测类型名称或ID",
+			"description": "选择可观测类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"observableValue": {
+			"displayName": "可观察值",
+			"description": "输入可观察值"
+		},
+		"binaryPropertyName": {
+			"displayName": "将输出文件放入字段"
+		},
+		"tlp": {
+			"displayName": "TLP",
+			"description": "已分析可观测对象的TLP",
+			"options": {
+				"0": {
+					"displayName": "白色"
+				},
+				"1": {
+					"displayName": "绿色"
+				},
+				"2": {
+					"displayName": "琥珀"
+				},
+				"3": {
+					"displayName": "红色"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"force": {
+					"displayName": "强制",
+					"description": "是否强制绕过缓存"
+				},
+				"timeout": {
+					"displayName": "超时（秒）",
+					"description": "查询时报告若不可用，等待报告的超时时间"
+				}
+			}
+		},
+		"responder": {
+			"displayName": "响应者类型名称或ID",
+			"description": "选择响应者。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"entityType": {
+			"displayName": "实体类型名称或ID",
+			"description": "选择数据类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"jsonObject": {
+			"displayName": "JSON参数",
+			"description": "选择提供JSON对象或分离属性"
+		},
+		"objectData": {
+			"displayName": "实体对象 (JSON)"
+		},
+		"parameters": {
+			"displayName": "参数",
+			"placeholder": "添加参数",
+			"options": {
+				"values": {
+					"displayName": "日志属性",
+					"values": {
+						"description": {
+							"displayName": "描述",
+							"description": "警报描述"
+						},
+						"flag": {
+							"displayName": "标记",
+							"description": "案例标记 默认=false"
+						},
+						"owner": {
+							"displayName": "所有者",
+							"description": "拥有此工单的用户。当状态设为进行中时，将自动设置为当前用户。"
+						},
+						"severity": {
+							"displayName": "严重程度",
+							"description": "工单的严重程度。默认=中。",
+							"options": {
+								"1": {
+									"displayName": "低"
+								},
+								"2": {
+									"displayName": "中等"
+								},
+								"3": {
+									"displayName": "高"
+								}
+							}
+						},
+						"startDate": {
+							"displayName": "开始日期",
+							"description": "案例开始的日期和时间 默认=现在"
+						},
+						"tags": {
+							"displayName": "标签",
+							"placeholder": "标签1,标签2,..."
+						},
+						"title": {
+							"displayName": "标题",
+							"description": "任务标题"
+						},
+						"tlp": {
+							"displayName": "TLP",
+							"description": "交通灯协议(TLP)。默认=琥珀色。",
+							"options": {
+								"0": {
+									"displayName": "白色"
+								},
+								"1": {
+									"displayName": "绿色"
+								},
+								"2": {
+									"displayName": "琥珀"
+								},
+								"3": {
+									"displayName": "红色"
+								}
+							}
+						},
+						"artifacts": {
+							"displayName": "工件",
+							"placeholder": "添加工件",
+							"multipleValueButtonText": "添加一个工件",
+							"options": {
+								"artifactValues": {
+									"displayName": "工件",
+									"options": {
+										"binaryProperty": {
+											"displayName": "二进制字段"
+										},
+										"data": {
+											"displayName": "数据"
+										},
+										"dataType": {
+											"displayName": "数据类型",
+											"options": {
+												"domain": {
+													"displayName": "域名"
+												},
+												"file": {
+													"displayName": "文件"
+												},
+												"filename": {
+													"displayName": "文件名"
+												},
+												"fqdn": {
+													"displayName": "FQDN"
+												},
+												"hash": {
+													"displayName": "哈希"
+												},
+												"ip": {
+													"displayName": "IP"
+												},
+												"mail": {
+													"displayName": "邮件"
+												},
+												"mail_subject": {
+													"displayName": "邮件主题"
+												},
+												"other": {
+													"displayName": "其他"
+												},
+												"regexp": {
+													"displayName": "正则表达式"
+												},
+												"registry": {
+													"displayName": "注册表"
+												},
+												"uri_path": {
+													"displayName": "URI路径"
+												},
+												"url": {
+													"displayName": "URL"
+												},
+												"user-agent": {
+													"displayName": "用户代理"
+												}
+											}
+										},
+										"message": {
+											"displayName": "消息"
+										},
+										"tags": {
+											"displayName": "标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"artifactValues": {
+									"displayName": "工件",
+									"options": {
+										"binaryProperty": {
+											"displayName": "二进制字段"
+										},
+										"data": {
+											"displayName": "数据"
+										},
+										"dataType": {
+											"displayName": "数据类型",
+											"options": {
+												"domain": {
+													"displayName": "域名"
+												},
+												"file": {
+													"displayName": "文件"
+												},
+												"filename": {
+													"displayName": "文件名"
+												},
+												"fqdn": {
+													"displayName": "FQDN"
+												},
+												"hash": {
+													"displayName": "哈希"
+												},
+												"ip": {
+													"displayName": "IP"
+												},
+												"mail": {
+													"displayName": "邮件"
+												},
+												"mail_subject": {
+													"displayName": "邮件主题"
+												},
+												"other": {
+													"displayName": "其他"
+												},
+												"regexp": {
+													"displayName": "正则表达式"
+												},
+												"registry": {
+													"displayName": "注册表"
+												},
+												"uri_path": {
+													"displayName": "URI路径"
+												},
+												"url": {
+													"displayName": "URL"
+												},
+												"user-agent": {
+													"displayName": "用户代理"
+												}
+											}
+										},
+										"message": {
+											"displayName": "消息"
+										},
+										"tags": {
+											"displayName": "标签"
+										}
+									}
+								},
+								"artifacts": {
+									"displayName": "工件",
+									"placeholder": "添加工件"
+								}
+							}
+						},
+						"date": {
+							"displayName": "日期",
+							"description": "警报触发日期和时间 默认=当前时间"
+						},
+						"follow": {
+							"displayName": "关注"
+						},
+						"source": {
+							"displayName": "源",
+							"description": "警报源"
+						},
+						"sourceRef": {
+							"displayName": "源引用",
+							"description": "警报的源引用"
+						},
+						"status": {
+							"displayName": "状态",
+							"description": "可观察对象状态（正常或已删除）默认=正常",
+							"options": {
+								"New": {
+									"displayName": "新建"
+								},
+								"Updated": {
+									"displayName": "已更新"
+								},
+								"Ignored": {
+									"displayName": "已忽略"
+								},
+								"Imported": {
+									"displayName": "已导入"
+								},
+								"Ok": {
+									"displayName": "好的"
+								},
+								"Deleted": {
+									"displayName": "已删除"
+								},
+								"Waiting": {
+									"displayName": "等待中"
+								},
+								"InProgress": {
+									"displayName": "执行中"
+								},
+								"Completed": {
+									"displayName": "已完成"
+								},
+								"Cancel": {
+									"displayName": "取消"
+								}
+							}
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "警报类型"
+						},
+						"binaryPropertyName": {
+							"displayName": "输入二进制字段"
+						},
+						"data": {
+							"displayName": "数据"
+						},
+						"dataType": {
+							"displayName": "数据类型",
+							"options": {
+								"domain": {
+									"displayName": "域名"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"filename": {
+									"displayName": "文件名"
+								},
+								"fqdn": {
+									"displayName": "FQDN"
+								},
+								"hash": {
+									"displayName": "哈希"
+								},
+								"ip": {
+									"displayName": "IP"
+								},
+								"mail": {
+									"displayName": "邮件"
+								},
+								"mail_subject": {
+									"displayName": "邮件主题"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"regexp": {
+									"displayName": "正则表达式"
+								},
+								"registry": {
+									"displayName": "注册表"
+								},
+								"uri_path": {
+									"displayName": "URI路径"
+								},
+								"url": {
+									"displayName": "URL"
+								},
+								"user-agent": {
+									"displayName": "用户代理"
+								}
+							}
+						},
+						"ioc": {
+							"displayName": "IOC",
+							"description": "该可观测对象是否为IOC（入侵指标）"
+						},
+						"message": {
+							"displayName": "消息"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "日志属性",
+					"values": {
+						"description": {
+							"displayName": "描述",
+							"description": "警报描述"
+						},
+						"flag": {
+							"displayName": "标记",
+							"description": "案例标记 默认=false"
+						},
+						"owner": {
+							"displayName": "所有者",
+							"description": "拥有此工单的用户。当状态设为进行中时，将自动设置为当前用户。"
+						},
+						"severity": {
+							"displayName": "严重程度",
+							"description": "工单的严重程度。默认=中。",
+							"options": {
+								"1": {
+									"displayName": "低"
+								},
+								"2": {
+									"displayName": "中等"
+								},
+								"3": {
+									"displayName": "高"
+								}
+							}
+						},
+						"startDate": {
+							"displayName": "开始日期",
+							"description": "案例开始的日期和时间 默认=现在"
+						},
+						"tags": {
+							"displayName": "标签",
+							"placeholder": "标签1,标签2,..."
+						},
+						"title": {
+							"displayName": "标题",
+							"description": "任务标题"
+						},
+						"tlp": {
+							"displayName": "TLP",
+							"description": "交通灯协议(TLP)。默认=琥珀色。",
+							"options": {
+								"0": {
+									"displayName": "白色"
+								},
+								"1": {
+									"displayName": "绿色"
+								},
+								"2": {
+									"displayName": "琥珀"
+								},
+								"3": {
+									"displayName": "红色"
+								}
+							}
+						},
+						"artifacts": {
+							"displayName": "工件",
+							"placeholder": "添加工件",
+							"multipleValueButtonText": "添加一个工件",
+							"options": {
+								"artifactValues": {
+									"displayName": "工件",
+									"options": {
+										"binaryProperty": {
+											"displayName": "二进制字段"
+										},
+										"data": {
+											"displayName": "数据"
+										},
+										"dataType": {
+											"displayName": "数据类型",
+											"options": {
+												"domain": {
+													"displayName": "域名"
+												},
+												"file": {
+													"displayName": "文件"
+												},
+												"filename": {
+													"displayName": "文件名"
+												},
+												"fqdn": {
+													"displayName": "FQDN"
+												},
+												"hash": {
+													"displayName": "哈希"
+												},
+												"ip": {
+													"displayName": "IP"
+												},
+												"mail": {
+													"displayName": "邮件"
+												},
+												"mail_subject": {
+													"displayName": "邮件主题"
+												},
+												"other": {
+													"displayName": "其他"
+												},
+												"regexp": {
+													"displayName": "正则表达式"
+												},
+												"registry": {
+													"displayName": "注册表"
+												},
+												"uri_path": {
+													"displayName": "URI路径"
+												},
+												"url": {
+													"displayName": "URL"
+												},
+												"user-agent": {
+													"displayName": "用户代理"
+												}
+											}
+										},
+										"message": {
+											"displayName": "消息"
+										},
+										"tags": {
+											"displayName": "标签"
+										}
+									}
+								}
+							},
+							"values": {
+								"artifactValues": {
+									"displayName": "工件",
+									"options": {
+										"binaryProperty": {
+											"displayName": "二进制字段"
+										},
+										"data": {
+											"displayName": "数据"
+										},
+										"dataType": {
+											"displayName": "数据类型",
+											"options": {
+												"domain": {
+													"displayName": "域名"
+												},
+												"file": {
+													"displayName": "文件"
+												},
+												"filename": {
+													"displayName": "文件名"
+												},
+												"fqdn": {
+													"displayName": "FQDN"
+												},
+												"hash": {
+													"displayName": "哈希"
+												},
+												"ip": {
+													"displayName": "IP"
+												},
+												"mail": {
+													"displayName": "邮件"
+												},
+												"mail_subject": {
+													"displayName": "邮件主题"
+												},
+												"other": {
+													"displayName": "其他"
+												},
+												"regexp": {
+													"displayName": "正则表达式"
+												},
+												"registry": {
+													"displayName": "注册表"
+												},
+												"uri_path": {
+													"displayName": "URI路径"
+												},
+												"url": {
+													"displayName": "URL"
+												},
+												"user-agent": {
+													"displayName": "用户代理"
+												}
+											}
+										},
+										"message": {
+											"displayName": "消息"
+										},
+										"tags": {
+											"displayName": "标签"
+										}
+									}
+								},
+								"artifacts": {
+									"displayName": "工件",
+									"placeholder": "添加工件"
+								}
+							}
+						},
+						"date": {
+							"displayName": "日期",
+							"description": "警报触发日期和时间 默认=当前时间"
+						},
+						"follow": {
+							"displayName": "关注"
+						},
+						"source": {
+							"displayName": "源",
+							"description": "警报源"
+						},
+						"sourceRef": {
+							"displayName": "源引用",
+							"description": "警报的源引用"
+						},
+						"status": {
+							"displayName": "状态",
+							"description": "可观察对象状态（正常或已删除）默认=正常",
+							"options": {
+								"New": {
+									"displayName": "新建"
+								},
+								"Updated": {
+									"displayName": "已更新"
+								},
+								"Ignored": {
+									"displayName": "已忽略"
+								},
+								"Imported": {
+									"displayName": "已导入"
+								},
+								"Ok": {
+									"displayName": "好的"
+								},
+								"Deleted": {
+									"displayName": "已删除"
+								},
+								"Waiting": {
+									"displayName": "等待中"
+								},
+								"InProgress": {
+									"displayName": "执行中"
+								},
+								"Completed": {
+									"displayName": "已完成"
+								},
+								"Cancel": {
+									"displayName": "取消"
+								}
+							}
+						},
+						"type": {
+							"displayName": "类型",
+							"description": "警报类型"
+						},
+						"binaryPropertyName": {
+							"displayName": "输入二进制字段"
+						},
+						"data": {
+							"displayName": "数据"
+						},
+						"dataType": {
+							"displayName": "数据类型",
+							"options": {
+								"domain": {
+									"displayName": "域名"
+								},
+								"file": {
+									"displayName": "文件"
+								},
+								"filename": {
+									"displayName": "文件名"
+								},
+								"fqdn": {
+									"displayName": "FQDN"
+								},
+								"hash": {
+									"displayName": "哈希"
+								},
+								"ip": {
+									"displayName": "IP"
+								},
+								"mail": {
+									"displayName": "邮件"
+								},
+								"mail_subject": {
+									"displayName": "邮件主题"
+								},
+								"other": {
+									"displayName": "其他"
+								},
+								"regexp": {
+									"displayName": "正则表达式"
+								},
+								"registry": {
+									"displayName": "注册表"
+								},
+								"uri_path": {
+									"displayName": "URI路径"
+								},
+								"url": {
+									"displayName": "URL"
+								},
+								"user-agent": {
+									"displayName": "用户代理"
+								}
+							}
+						},
+						"ioc": {
+							"displayName": "IOC",
+							"description": "该可观测对象是否为IOC（入侵指标）"
+						},
+						"message": {
+							"displayName": "消息"
+						}
+					}
+				},
+				"parameters": {
+					"displayName": "参数",
+					"placeholder": "添加参数"
+				}
+			}
+		},
+		"jobId": {
+			"displayName": "作业ID",
+			"description": "作业的ID"
+		}
+	}
+}

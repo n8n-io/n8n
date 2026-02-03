@@ -1,0 +1,48 @@
+{
+	"header": {
+		"displayName": "SerpApi (Google Search)",
+		"description": "Search in Google using SerpAPI"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"gl": {
+					"displayName": "Country",
+					"description": "Defines the country to use for search. Head to <a href=\"https://serpapi.com/google-countries\">Google countries page</a> for a full list of supported countries."
+				},
+				"device": {
+					"displayName": "Device",
+					"description": "Device to use to get the results",
+					"options": {
+						"desktop": {
+							"displayName": "Desktop"
+						},
+						"mobile": {
+							"displayName": "Mobile"
+						},
+						"tablet": {
+							"displayName": "Tablet"
+						}
+					}
+				},
+				"no_cache": {
+					"displayName": "Explicit Array",
+					"description": "Whether to force SerpApi to fetch the Google results even if a cached version is already present. Cache expires after 1h. Cached searches are free, and are not counted towards your searches per month."
+				},
+				"google_domain": {
+					"displayName": "Google Domain",
+					"description": "Defines the domain to use for search. Head to <a href=\"https://serpapi.com/google-domains\">Google domains page</a> for a full list of supported domains."
+				},
+				"hl": {
+					"displayName": "Language",
+					"description": "Defines the language to use. It's a two-letter language code. (e.g., `en` for English, `es` for Spanish, or `fr` for French). Head to <a href=\"https://serpapi.com/google-languages\">Google languages page</a> for a full list of supported languages."
+				}
+			}
+		}
+	}
+}

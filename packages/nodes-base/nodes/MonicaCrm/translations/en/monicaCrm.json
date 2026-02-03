@@ -1,0 +1,448 @@
+{
+	"header": {
+		"displayName": "Monica CRM",
+		"description": "Consume the Monica CRM API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"activity": {
+					"displayName": "Activity"
+				},
+				"call": {
+					"displayName": "Call"
+				},
+				"contact": {
+					"displayName": "Contact"
+				},
+				"contactField": {
+					"displayName": "Contact Field"
+				},
+				"contactTag": {
+					"displayName": "Contact Tag"
+				},
+				"conversation": {
+					"displayName": "Conversation"
+				},
+				"conversationMessage": {
+					"displayName": "Conversation Message"
+				},
+				"journalEntry": {
+					"displayName": "Journal Entry"
+				},
+				"note": {
+					"displayName": "Note"
+				},
+				"reminder": {
+					"displayName": "Reminder"
+				},
+				"tag": {
+					"displayName": "Tag"
+				},
+				"task": {
+					"displayName": "Task"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"create": {
+					"displayName": "Create",
+					"description": "Create a task"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a task"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Retrieve a task"
+				},
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Retrieve many tasks"
+				},
+				"update": {
+					"displayName": "Update",
+					"description": "Update a task"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add a message to a conversation"
+				},
+				"remove": {
+					"displayName": "Remove"
+				}
+			}
+		},
+		"activityTypeId": {
+			"displayName": "Activity Type Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"contacts": {
+			"displayName": "Contacts",
+			"description": "Comma-separated list of IDs of the contacts to associate the activity with"
+		},
+		"happenedAt": {
+			"displayName": "Happened At",
+			"description": "Date when the conversation happened"
+		},
+		"summary": {
+			"displayName": "Summary",
+			"description": "Brief description of the activity - max 255 characters"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"description": {
+					"displayName": "Description",
+					"description": "Description of the task - max 100,000 characters"
+				},
+				"birthdate": {
+					"displayName": "Birthdate"
+				},
+				"deceasedDate": {
+					"displayName": "Deceased Date"
+				},
+				"isDeceased": {
+					"displayName": "Is Deceased",
+					"description": "Whether the contact has passed away"
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"nickname": {
+					"displayName": "Nickname"
+				},
+				"is_partial": {
+					"displayName": "Type",
+					"options": {
+						"false": {
+							"displayName": "Real",
+							"description": "Contact with their own contact sheet"
+						},
+						"true": {
+							"displayName": "Partial",
+							"description": "Contact without their own contact sheet"
+						}
+					}
+				},
+				"isFavorited": {
+					"displayName": "Is Favorited",
+					"description": "Whether the note has been favorited"
+				}
+			}
+		},
+		"activityId": {
+			"displayName": "Activity ID",
+			"description": "ID of the activity to update"
+		},
+		"returnAll": {
+			"displayName": "Return All",
+			"description": "Whether to return all results or only up to a given limit"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return"
+		},
+		"updateFields": {
+			"displayName": "Update Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"activity_type_id": {
+					"displayName": "Activity Type Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"contacts": {
+					"displayName": "Contacts",
+					"description": "IDs of the contacts to associate the activity with"
+				},
+				"description": {
+					"displayName": "Description",
+					"description": "Description of the task - max 100,000 characters"
+				},
+				"happened_at": {
+					"displayName": "Happened At",
+					"description": "Date when the activity happened"
+				},
+				"summary": {
+					"displayName": "Summary",
+					"description": "Brief description of the activity - max 255 characters"
+				},
+				"calledAt": {
+					"displayName": "Called At",
+					"description": "Date when the call happened"
+				},
+				"contactId": {
+					"displayName": "Contact ID",
+					"description": "ID of the contact to associate the task with"
+				},
+				"content": {
+					"displayName": "Content",
+					"description": "Content of the message"
+				},
+				"birthdate": {
+					"displayName": "Birthdate"
+				},
+				"deceased_date": {
+					"displayName": "Deceased Date"
+				},
+				"first_name": {
+					"displayName": "First Name"
+				},
+				"gender_id": {
+					"displayName": "Gender Name or ID",
+					"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+				},
+				"is_deceased": {
+					"displayName": "Is Deceased",
+					"description": "Whether the contact has passed away"
+				},
+				"last_name": {
+					"displayName": "Last Name"
+				},
+				"nickname": {
+					"displayName": "Nickname"
+				},
+				"is_partial": {
+					"displayName": "Type",
+					"options": {
+						"false": {
+							"displayName": "Real",
+							"description": "Contact with their own contact sheet"
+						},
+						"true": {
+							"displayName": "Partial",
+							"description": "Contact without their own contact sheet"
+						}
+					}
+				},
+				"contact_id": {
+					"displayName": "Contact ID",
+					"description": "ID of the contact to associate the reminder with"
+				},
+				"written_at": {
+					"displayName": "Written At",
+					"description": "Date when the message was written"
+				},
+				"written_by_me": {
+					"displayName": "Written By",
+					"description": "Author of the message",
+					"options": {
+						"true": {
+							"displayName": "User"
+						},
+						"false": {
+							"displayName": "Contact"
+						}
+					}
+				},
+				"post": {
+					"displayName": "Content",
+					"description": "Content of the journal entry - max 100,000 characters"
+				},
+				"title": {
+					"displayName": "Title",
+					"description": "Title of the task entry - max 250 characters"
+				},
+				"body": {
+					"displayName": "Body",
+					"description": "Body of the note - max 100,000 characters"
+				},
+				"is_favorited": {
+					"displayName": "Is Favorited",
+					"description": "Whether the note has been favorited"
+				},
+				"frequency_type": {
+					"displayName": "Frequency Type",
+					"description": "Frequency of the reminder",
+					"options": {
+						"one_time": {
+							"displayName": "One Time"
+						},
+						"week": {
+							"displayName": "Week"
+						},
+						"month": {
+							"displayName": "Month"
+						},
+						"year": {
+							"displayName": "Year"
+						}
+					}
+				},
+				"initial_data": {
+					"displayName": "Initial Date",
+					"description": "Date of the reminder"
+				},
+				"frequency_number": {
+					"displayName": "Recurring Interval",
+					"description": "Interval for the reminder"
+				},
+				"completed": {
+					"displayName": "Completed",
+					"description": "Whether the task has been completed"
+				}
+			}
+		},
+		"contactId": {
+			"displayName": "Contact ID",
+			"description": "ID of the contact to associate the task with"
+		},
+		"calledAt": {
+			"displayName": "Called At",
+			"description": "Date when the call happened"
+		},
+		"content": {
+			"displayName": "Content",
+			"description": "Content of the message"
+		},
+		"callId": {
+			"displayName": "Call ID",
+			"description": "ID of the call to update"
+		},
+		"firstName": {
+			"displayName": "First Name"
+		},
+		"genderId": {
+			"displayName": "Gender Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"filters": {
+			"displayName": "Filters",
+			"placeholder": "Add Field",
+			"options": {
+				"query": {
+					"displayName": "Search Term",
+					"description": "Search term to filter results by"
+				},
+				"sort": {
+					"displayName": "Sort",
+					"options": {
+						"created_at": {
+							"displayName": "Ascended Created At"
+						},
+						"-created_at": {
+							"displayName": "Descended Created At"
+						},
+						"updated_at": {
+							"displayName": "Ascended Updated At"
+						},
+						"-updated_at": {
+							"displayName": "Descended Updated At"
+						}
+					}
+				}
+			}
+		},
+		"contactFieldTypeId": {
+			"displayName": "Contact Field Type Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>"
+		},
+		"data": {
+			"displayName": "Content",
+			"description": "Content of the contact field - max 255 characters"
+		},
+		"contactFieldId": {
+			"displayName": "Contact Field ID",
+			"description": "ID of the contact field to update"
+		},
+		"tagsToAdd": {
+			"displayName": "Tag Names or IDs",
+			"description": "Tags to add to the contact. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"tagsToRemove": {
+			"displayName": "Tag Names or IDs",
+			"description": "Tags to remove from the contact. Choose from the list, or specify IDs using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"conversationId": {
+			"displayName": "Conversation ID",
+			"description": "ID of the conversation whose message to update"
+		},
+		"writtenAt": {
+			"displayName": "Written At",
+			"description": "Date when the message was written"
+		},
+		"writtenByMe": {
+			"displayName": "Written By",
+			"description": "Author of the message",
+			"options": {
+				"true": {
+					"displayName": "User"
+				},
+				"false": {
+					"displayName": "Contact"
+				}
+			}
+		},
+		"messageId": {
+			"displayName": "Message ID",
+			"description": "ID of the message to update"
+		},
+		"title": {
+			"displayName": "Title",
+			"description": "Title of the task entry - max 250 characters"
+		},
+		"post": {
+			"displayName": "Content",
+			"description": "Content of the journal entry - max 100,000 characters"
+		},
+		"journalId": {
+			"displayName": "Journal Entry ID",
+			"description": "ID of the journal entry to update"
+		},
+		"body": {
+			"displayName": "Body",
+			"description": "Body of the note - max 100,000 characters"
+		},
+		"noteId": {
+			"displayName": "Note ID",
+			"description": "ID of the note to update"
+		},
+		"frequencyType": {
+			"displayName": "Frequency Type",
+			"description": "Type of frequency of the reminder",
+			"options": {
+				"one_time": {
+					"displayName": "Once"
+				},
+				"week": {
+					"displayName": "Weekly"
+				},
+				"month": {
+					"displayName": "Monthly"
+				},
+				"year": {
+					"displayName": "Yearly"
+				}
+			}
+		},
+		"frequencyNumber": {
+			"displayName": "Recurring Interval",
+			"description": "Interval for the reminder"
+		},
+		"initialDate": {
+			"displayName": "Initial Date",
+			"description": "Date of the reminder"
+		},
+		"reminderId": {
+			"displayName": "Reminder ID",
+			"description": "ID of the reminder to update"
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "Name of the tag - max 250 characters"
+		},
+		"tagId": {
+			"displayName": "Tag ID",
+			"description": "ID of the tag to update"
+		},
+		"taskId": {
+			"displayName": "Task ID",
+			"description": "ID of the task to update"
+		}
+	}
+}

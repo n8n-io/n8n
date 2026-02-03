@@ -1,0 +1,37 @@
+{
+	"header": {
+		"displayName": "Netlify Trigger",
+		"description": "Handle netlify events via webhooks"
+	},
+	"nodeView": {
+		"siteId": {
+			"displayName": "Site Name or ID",
+			"description": "Select the Site ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"event": {
+			"displayName": "Event",
+			"options": {
+				"deployBuilding": {
+					"displayName": "Deploy Building"
+				},
+				"deployFailed": {
+					"displayName": "Deploy Failed"
+				},
+				"deployCreated": {
+					"displayName": "Deploy Created"
+				},
+				"submissionCreated": {
+					"displayName": "Form Submitted"
+				}
+			}
+		},
+		"formId": {
+			"displayName": "Form Name or ID",
+			"description": "Select a form. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		}
+	}
+}

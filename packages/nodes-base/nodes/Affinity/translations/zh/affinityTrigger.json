@@ -1,0 +1,12 @@
+{
+	"header": {
+		"displayName": "Affinity触发器",
+		"description": "通过Webhook处理Affinity事件"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件",
+			"description": "将为该端点启用的Webhook事件"
+		}
+	}
+}

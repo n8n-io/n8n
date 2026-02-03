@@ -1,0 +1,348 @@
+{
+	"header": {
+		"displayName": "FileMaker",
+		"description": "Retrieve data from the FileMaker data API"
+	},
+	"nodeView": {
+		"action": {
+			"displayName": "Action",
+			"options": {
+				"create": {
+					"displayName": "Create Record"
+				},
+				"delete": {
+					"displayName": "Delete Record"
+				},
+				"duplicate": {
+					"displayName": "Duplicate Record"
+				},
+				"edit": {
+					"displayName": "Edit Record"
+				},
+				"find": {
+					"displayName": "Find Records"
+				},
+				"records": {
+					"displayName": "Get Records"
+				},
+				"record": {
+					"displayName": "Get Records By ID"
+				},
+				"performscript": {
+					"displayName": "Perform Script"
+				}
+			}
+		},
+		"layout": {
+			"displayName": "Layout Name or ID",
+			"description": "FileMaker Layout Name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "Layout Name",
+			"options": {}
+		},
+		"recid": {
+			"displayName": "Record ID",
+			"description": "Internal Record ID returned by get (recordid)",
+			"placeholder": "Record ID"
+		},
+		"offset": {
+			"displayName": "Offset",
+			"description": "The record number of the first record in the range of records",
+			"placeholder": "0"
+		},
+		"limit": {
+			"displayName": "Limit",
+			"description": "Max number of results to return",
+			"placeholder": "100"
+		},
+		"getPortals": {
+			"displayName": "Get Portals",
+			"description": "Whether to get portal data as well"
+		},
+		"portals": {
+			"displayName": "Portals Name or ID",
+			"description": "The portal result set to return. Use the portal object name or portal table name. If this parameter is omitted, the API will return all portal objects and records in the layout. For best performance, pass the portal object name or portal table name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "Portals",
+			"options": {}
+		},
+		"responseLayout": {
+			"displayName": "Response Layout Name or ID",
+			"description": "Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>",
+			"options": {}
+		},
+		"queries": {
+			"displayName": "Queries",
+			"placeholder": "Add query",
+			"multipleValueButtonText": "Add query",
+			"options": {
+				"query": {
+					"displayName": "Query",
+					"options": {
+						"fields": {
+							"displayName": "Fields",
+							"description": "Field Name",
+							"placeholder": "Add field",
+							"multipleValueButtonText": "Add field",
+							"options": {
+								"field": {
+									"displayName": "Field",
+									"options": {
+										"name": {
+											"displayName": "Field Name or ID",
+											"description": "Search Field. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+											"options": {}
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to search"
+										}
+									}
+								}
+							},
+							"values": {
+								"field": {
+									"displayName": "Field",
+									"options": {
+										"name": {
+											"displayName": "Field Name or ID",
+											"description": "Search Field. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+											"options": {}
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to search"
+										}
+									}
+								},
+								"fields": {
+									"displayName": "Fields",
+									"placeholder": "Add field"
+								}
+							}
+						},
+						"omit": {
+							"displayName": "Omit"
+						}
+					}
+				}
+			},
+			"values": {
+				"query": {
+					"displayName": "Query",
+					"options": {
+						"fields": {
+							"displayName": "Fields",
+							"description": "Field Name",
+							"placeholder": "Add field",
+							"multipleValueButtonText": "Add field",
+							"options": {
+								"field": {
+									"displayName": "Field",
+									"options": {
+										"name": {
+											"displayName": "Field Name or ID",
+											"description": "Search Field. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+											"options": {}
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to search"
+										}
+									}
+								}
+							},
+							"values": {
+								"field": {
+									"displayName": "Field",
+									"options": {
+										"name": {
+											"displayName": "Field Name or ID",
+											"description": "Search Field. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+											"options": {}
+										},
+										"value": {
+											"displayName": "Value",
+											"description": "Value to search"
+										}
+									}
+								},
+								"fields": {
+									"displayName": "Fields",
+									"placeholder": "Add field"
+								}
+							}
+						},
+						"omit": {
+							"displayName": "Omit"
+						}
+					}
+				},
+				"queries": {
+					"displayName": "Queries",
+					"placeholder": "Add query"
+				}
+			}
+		},
+		"setSort": {
+			"displayName": "Sort Data?",
+			"description": "Whether to sort data"
+		},
+		"sortParametersUi": {
+			"displayName": "Sort",
+			"description": "Sort rules",
+			"placeholder": "Add Sort Rules",
+			"multipleValueButtonText": "Add Sort Rules",
+			"options": {
+				"rules": {
+					"displayName": "Rules",
+					"options": {
+						"name": {
+							"displayName": "Field Name or ID",
+							"description": "Field Name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+							"options": {}
+						},
+						"value": {
+							"displayName": "Order",
+							"description": "Sort order",
+							"options": {
+								"ascend": {
+									"displayName": "Ascend"
+								},
+								"descend": {
+									"displayName": "Descend"
+								}
+							}
+						}
+					}
+				}
+			},
+			"values": {
+				"rules": {
+					"displayName": "Rules",
+					"options": {
+						"name": {
+							"displayName": "Field Name or ID",
+							"description": "Field Name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+							"options": {}
+						},
+						"value": {
+							"displayName": "Order",
+							"description": "Sort order",
+							"options": {
+								"ascend": {
+									"displayName": "Ascend"
+								},
+								"descend": {
+									"displayName": "Descend"
+								}
+							}
+						}
+					}
+				},
+				"sortParametersUi": {
+					"displayName": "Sort",
+					"placeholder": "Add Sort Rules"
+				}
+			}
+		},
+		"setScriptBefore": {
+			"displayName": "Before Find Script",
+			"description": "Whether to define a script to be run before the action specified by the API call and after the subsequent sort"
+		},
+		"scriptBefore": {
+			"displayName": "Script Name or ID",
+			"description": "The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "Script Name",
+			"options": {}
+		},
+		"scriptBeforeParam": {
+			"displayName": "Script Parameter",
+			"description": "A parameter for the FileMaker script",
+			"placeholder": "Script Parameters"
+		},
+		"setScriptSort": {
+			"displayName": "Before Sort Script",
+			"description": "Whether to define a script to be run after the action specified by the API call but before the subsequent sort"
+		},
+		"scriptSort": {
+			"displayName": "Script Name or ID",
+			"description": "The name of the FileMaker script to be run after the action specified by the API call but before the subsequent sort. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "Script Name",
+			"options": {}
+		},
+		"scriptSortParam": {
+			"displayName": "Script Parameter",
+			"description": "A parameter for the FileMaker script",
+			"placeholder": "Script Parameters"
+		},
+		"setScriptAfter": {
+			"displayName": "After Sort Script",
+			"description": "Whether to define a script to be run after the action specified by the API call but before the subsequent sort"
+		},
+		"scriptAfter": {
+			"displayName": "Script Name or ID",
+			"description": "The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "Script Name",
+			"options": {}
+		},
+		"scriptAfterParam": {
+			"displayName": "Script Parameter",
+			"description": "A parameter for the FileMaker script",
+			"placeholder": "Script Parameters"
+		},
+		"modId": {
+			"displayName": "Mod ID",
+			"description": "The last modification ID. When you use modId, a record is edited only when the modId matches."
+		},
+		"fieldsParametersUi": {
+			"displayName": "Fields",
+			"description": "Fields to define",
+			"placeholder": "Add field",
+			"multipleValueButtonText": "Add field",
+			"options": {
+				"fields": {
+					"displayName": "Fields",
+					"options": {
+						"name": {
+							"displayName": "Field Name or ID",
+							"description": "Field Name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+							"options": {}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"fields": {
+					"displayName": "Fields",
+					"options": {
+						"name": {
+							"displayName": "Field Name or ID",
+							"description": "Field Name. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+							"options": {}
+						},
+						"value": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"fieldsParametersUi": {
+					"displayName": "Fields",
+					"placeholder": "Add field"
+				}
+			}
+		},
+		"script": {
+			"displayName": "Script Name or ID",
+			"description": "The name of the FileMaker script to be run. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"placeholder": "Script Name",
+			"options": {}
+		},
+		"scriptParam": {
+			"displayName": "Script Parameter",
+			"description": "A parameter for the FileMaker script",
+			"placeholder": "Script Parameters"
+		}
+	}
+}

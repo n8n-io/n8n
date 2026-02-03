@@ -1,0 +1,172 @@
+{
+	"header": {
+		"displayName": "Google Ads",
+		"description": "Use the Google Ads API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"campaign": {
+					"displayName": "Campaign"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"getAll": {
+					"displayName": "Get Many",
+					"description": "Get many campaigns linked to the specified account"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a specific campaign"
+				}
+			}
+		},
+		"campaigsNotice": {
+			"displayName": "Divide field names expressed with <i>micros</i> by 1,000,000 to get the actual value"
+		},
+		"managerCustomerId": {
+			"displayName": "Manager Customer ID",
+			"placeholder": "9998887777"
+		},
+		"clientCustomerId": {
+			"displayName": "Client Customer ID",
+			"placeholder": "6665554444"
+		},
+		"campaignId": {
+			"displayName": "Campaign ID",
+			"description": "ID of the campaign"
+		},
+		"additionalOptions": {
+			"displayName": "Additional Options",
+			"description": "Additional options for fetching campaigns",
+			"placeholder": "Add option",
+			"options": {
+				"dateRange": {
+					"displayName": "Date Range",
+					"description": "Filters statistics by period",
+					"options": {
+						"allTime": {
+							"displayName": "All Time",
+							"description": "Fetch statistics for all period"
+						},
+						"TODAY": {
+							"displayName": "Today",
+							"description": "Today only"
+						},
+						"YESTERDAY": {
+							"displayName": "Yesterday",
+							"description": "Yesterday only"
+						},
+						"LAST_7_DAYS": {
+							"displayName": "Last 7 Days",
+							"description": "Last 7 days, not including today"
+						},
+						"LAST_BUSINESS_WEEK": {
+							"displayName": "Last Business Week",
+							"description": "The 5 day business week, Monday through Friday, of the previous business week"
+						},
+						"THIS_MONTH": {
+							"displayName": "This Month",
+							"description": "All days in the current month"
+						},
+						"LAST_MONTH": {
+							"displayName": "Last Month",
+							"description": "All days in the previous month"
+						},
+						"LAST_14_DAYS": {
+							"displayName": "Last 14 Days",
+							"description": "The last 14 days not including today"
+						},
+						"LAST_30_DAYS": {
+							"displayName": "Last 30 Days",
+							"description": "The last 30 days not including today"
+						}
+					}
+				},
+				"campaignStatus": {
+					"displayName": "Show Campaigns by Status",
+					"description": "Filters campaigns by status",
+					"options": {
+						"all": {
+							"displayName": "All",
+							"description": "Fetch all campaigns regardless of status"
+						},
+						"ENABLED": {
+							"displayName": "Enabled",
+							"description": "Filter only active campaigns"
+						},
+						"PAUSED": {
+							"displayName": "Paused",
+							"description": "Filter only paused campaigns"
+						},
+						"REMOVED": {
+							"displayName": "Removed",
+							"description": "Filter only removed campaigns"
+						}
+					}
+				}
+			}
+		},
+		"requestOptions": {
+			"displayName": "Request Options",
+			"placeholder": "Add Option",
+			"options": {
+				"batching": {
+					"displayName": "Batching",
+					"placeholder": "Add Batching",
+					"options": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						}
+					},
+					"values": {
+						"batch": {
+							"displayName": "Batching",
+							"options": {
+								"batchSize": {
+									"displayName": "Items per Batch",
+									"description": "Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1."
+								},
+								"batchInterval": {
+									"displayName": "Batch Interval (ms)",
+									"description": "Time (in milliseconds) between each batch of requests. 0 for disabled."
+								}
+							}
+						},
+						"batching": {
+							"displayName": "Batching",
+							"placeholder": "Add Batching"
+						}
+					}
+				},
+				"allowUnauthorizedCerts": {
+					"displayName": "Ignore SSL Issues (Insecure)",
+					"description": "Whether to accept the response even if SSL certificate validation is not possible"
+				},
+				"proxy": {
+					"displayName": "Proxy",
+					"description": "HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128",
+					"placeholder": "e.g. http://myproxy:3128"
+				},
+				"timeout": {
+					"displayName": "Timeout",
+					"description": "Time in ms to wait for the server to send response headers (and start the response body) before aborting the request"
+				}
+			}
+		}
+	}
+}

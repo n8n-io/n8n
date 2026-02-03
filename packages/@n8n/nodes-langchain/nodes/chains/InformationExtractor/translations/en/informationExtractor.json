@@ -1,0 +1,116 @@
+{
+	"header": {
+		"displayName": "Information Extractor",
+		"description": "Extract information from text in a structured format"
+	},
+	"nodeView": {
+		"text": {
+			"displayName": "Text",
+			"description": "The text to extract information from"
+		},
+		"schemaType": {
+			"displayName": "Schema Type",
+			"description": "How to specify the schema for the desired output",
+			"options": {
+				"fromAttributes": {
+					"displayName": "From Attribute Descriptions",
+					"description": "Extract specific attributes from the text based on types and descriptions"
+				},
+				"fromJson": {
+					"displayName": "Generate From JSON Example",
+					"description": "Generate a schema from an example JSON object"
+				},
+				"manual": {
+					"displayName": "Define using JSON Schema",
+					"description": "Define the JSON schema manually"
+				}
+			}
+		},
+		"jsonSchemaExample": {
+			"displayName": "JSON Example",
+			"description": "Example JSON object to use to generate the schema"
+		},
+		"notice": {
+			"displayName": "All properties will be required. To make them optional, use the 'JSON Schema' schema type instead"
+		},
+		"inputSchema": {
+			"displayName": "Input Schema",
+			"description": "Schema to use for the function"
+		},
+		"attributes": {
+			"displayName": "Attributes",
+			"placeholder": "Add Attribute",
+			"multipleValueButtonText": "Add Attribute",
+			"options": {
+				"attributes": {
+					"displayName": "Attribute List",
+					"options": {
+						"name": {
+							"displayName": "Name",
+							"description": "Attribute to extract",
+							"placeholder": "e.g. company_name"
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "Data type of the attribute",
+							"options": {
+								"boolean": {
+									"displayName": "Boolean"
+								},
+								"date": {
+									"displayName": "Date"
+								},
+								"number": {
+									"displayName": "Number"
+								},
+								"string": {
+									"displayName": "String"
+								}
+							}
+						},
+						"description": {
+							"displayName": "Description",
+							"description": "Describe your attribute",
+							"placeholder": "Add description for the attribute"
+						},
+						"required": {
+							"displayName": "Required",
+							"description": "Whether attribute is required"
+						}
+					}
+				}
+			},
+			"values": {
+				"attributes": {
+					"displayName": "Attributes",
+					"placeholder": "Add Attribute"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"systemPromptTemplate": {
+					"displayName": "System Prompt Template",
+					"description": "String to use directly as the system prompt template"
+				},
+				"batching": {
+					"displayName": "Batch Processing",
+					"description": "Batch processing options for rate limiting",
+					"placeholder": "Add Batch Processing Option",
+					"options": {
+						"batchSize": {
+							"displayName": "Batch Size",
+							"description": "How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering."
+						},
+						"delayBetweenBatches": {
+							"displayName": "Delay Between Batches",
+							"description": "Delay in milliseconds between batches. This is useful for rate limiting."
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,86 @@
+{
+	"header": {
+		"displayName": "OpenWeatherMap",
+		"description": "获取当前和未来的天气信息"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"currentWeather": {
+					"displayName": "当前天气",
+					"description": "返回当前天气数据"
+				},
+				"5DayForecast": {
+					"displayName": "5日天气预报",
+					"description": "返回未来5天的天气数据"
+				}
+			}
+		},
+		"format": {
+			"displayName": "格式",
+			"description": "数据应返回的格式",
+			"options": {
+				"imperial": {
+					"displayName": "英制",
+					"description": "华氏度 | 英里/小时"
+				},
+				"metric": {
+					"displayName": "指标",
+					"description": "摄氏度 | 米/秒"
+				},
+				"standard": {
+					"displayName": "科学",
+					"description": "开尔文 | 米/秒"
+				}
+			}
+		},
+		"locationSelection": {
+			"displayName": "位置选择",
+			"description": "如何定义要返回天气信息的位置",
+			"options": {
+				"cityName": {
+					"displayName": "城市名称"
+				},
+				"cityId": {
+					"displayName": "城市ID"
+				},
+				"coordinates": {
+					"displayName": "坐标"
+				},
+				"zipCode": {
+					"displayName": "邮政编码"
+				}
+			}
+		},
+		"cityName": {
+			"displayName": "城市",
+			"description": "要查询天气的城市名称",
+			"placeholder": "柏林,德国"
+		},
+		"cityId": {
+			"displayName": "城市ID",
+			"description": "要获取天气的城市ID。列表可在此处下载：http://bulk.openweathermap.org/sample/。"
+		},
+		"latitude": {
+			"displayName": "纬度",
+			"description": "要返回天气信息的位置的纬度",
+			"placeholder": "13.39"
+		},
+		"longitude": {
+			"displayName": "经度",
+			"description": "要返回天气信息的位置的经度",
+			"placeholder": "52.52"
+		},
+		"zipCode": {
+			"displayName": "邮政编码",
+			"description": "要返回天气的城市ID。列表可在此处下载：http://bulk.openweathermap.org/sample/。",
+			"placeholder": "10115,de"
+		},
+		"language": {
+			"displayName": "语言",
+			"description": "用于指定输出语言的两个字母语言代码（例如：en、de、...）。",
+			"placeholder": "en"
+		}
+	}
+}

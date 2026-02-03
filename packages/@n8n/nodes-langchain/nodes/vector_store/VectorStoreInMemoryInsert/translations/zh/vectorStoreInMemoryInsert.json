@@ -1,0 +1,19 @@
+{
+	"header": {
+		"displayName": "内存向量存储插入",
+		"description": "将数据插入内存向量存储"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "嵌入式数据存储在服务器内存中，因此服务器重启时会丢失。此外，如果数据量过大，可能导致服务器因内存不足而崩溃。"
+		},
+		"clearStore": {
+			"displayName": "清空存储",
+			"description": "是否在插入新数据前清空存储"
+		},
+		"memoryKey": {
+			"displayName": "内存键",
+			"description": "用于在工作流数据中存储向量内存的键。该键将添加工作流ID作为前缀以避免冲突。"
+		}
+	}
+}

@@ -1,0 +1,395 @@
+{
+	"header": {
+		"displayName": "Convert to/from binary data",
+		"description": "Move data between binary and JSON properties"
+	},
+	"nodeView": {
+		"mode": {
+			"displayName": "Mode",
+			"description": "From and to where data should be moved",
+			"options": {
+				"binaryToJson": {
+					"displayName": "Binary to JSON",
+					"description": "Move data from Binary to JSON"
+				},
+				"jsonToBinary": {
+					"displayName": "JSON to Binary",
+					"description": "Move data from JSON to Binary"
+				}
+			}
+		},
+		"setAllData": {
+			"displayName": "Set All Data",
+			"description": "Whether all JSON data should be replaced with the data retrieved from binary key. Else the data will be written to a single key."
+		},
+		"sourceKey": {
+			"displayName": "Source Key",
+			"description": "The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example: \"level1.level2.currentKey\".",
+			"placeholder": "data"
+		},
+		"destinationKey": {
+			"displayName": "Destination Key",
+			"description": "The name the binary key to copy data to. It is also possible to define deep keys by using dot-notation like for example: \"level1.level2.newKey\".",
+			"placeholder": "data"
+		},
+		"convertAllData": {
+			"displayName": "Convert All Data",
+			"description": "Whether all JSON data should be converted to binary. Else only the data of one key will be converted."
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"addBOM": {
+					"displayName": "Add Byte Order Mark (BOM)",
+					"description": "Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly."
+				},
+				"dataIsBase64": {
+					"displayName": "Data Is Base64",
+					"description": "Whether to keep the binary data as base64 string"
+				},
+				"encoding": {
+					"displayName": "Encoding",
+					"description": "Choose the character set to use to encode the data",
+					"options": {
+						"armscii8": {
+							"displayName": "armscii8"
+						},
+						"ascii": {
+							"displayName": "ascii"
+						},
+						"base64": {
+							"displayName": "base64"
+						},
+						"big5hkscs": {
+							"displayName": "big5hkscs"
+						},
+						"binary": {
+							"displayName": "binary"
+						},
+						"cesu8": {
+							"displayName": "cesu8"
+						},
+						"cp1046": {
+							"displayName": "cp1046"
+						},
+						"cp1124": {
+							"displayName": "cp1124"
+						},
+						"cp1125": {
+							"displayName": "cp1125"
+						},
+						"cp1129": {
+							"displayName": "cp1129"
+						},
+						"cp1133": {
+							"displayName": "cp1133"
+						},
+						"cp1161": {
+							"displayName": "cp1161"
+						},
+						"cp1162": {
+							"displayName": "cp1162"
+						},
+						"cp1163": {
+							"displayName": "cp1163"
+						},
+						"cp437": {
+							"displayName": "cp437"
+						},
+						"cp720": {
+							"displayName": "cp720"
+						},
+						"cp737": {
+							"displayName": "cp737"
+						},
+						"cp775": {
+							"displayName": "cp775"
+						},
+						"cp808": {
+							"displayName": "cp808"
+						},
+						"cp850": {
+							"displayName": "cp850"
+						},
+						"cp852": {
+							"displayName": "cp852"
+						},
+						"cp855": {
+							"displayName": "cp855"
+						},
+						"cp856": {
+							"displayName": "cp856"
+						},
+						"cp857": {
+							"displayName": "cp857"
+						},
+						"cp858": {
+							"displayName": "cp858"
+						},
+						"cp860": {
+							"displayName": "cp860"
+						},
+						"cp861": {
+							"displayName": "cp861"
+						},
+						"cp862": {
+							"displayName": "cp862"
+						},
+						"cp863": {
+							"displayName": "cp863"
+						},
+						"cp864": {
+							"displayName": "cp864"
+						},
+						"cp865": {
+							"displayName": "cp865"
+						},
+						"cp866": {
+							"displayName": "cp866"
+						},
+						"cp869": {
+							"displayName": "cp869"
+						},
+						"cp922": {
+							"displayName": "cp922"
+						},
+						"cp936": {
+							"displayName": "cp936"
+						},
+						"cp949": {
+							"displayName": "cp949"
+						},
+						"cp950": {
+							"displayName": "cp950"
+						},
+						"eucjp": {
+							"displayName": "eucjp"
+						},
+						"gb18030": {
+							"displayName": "gb18030"
+						},
+						"gbk": {
+							"displayName": "gbk"
+						},
+						"georgianacademy": {
+							"displayName": "georgianacademy"
+						},
+						"georgianps": {
+							"displayName": "georgianps"
+						},
+						"hex": {
+							"displayName": "hex"
+						},
+						"hproman8": {
+							"displayName": "hproman8"
+						},
+						"iso646cn": {
+							"displayName": "iso646cn"
+						},
+						"iso646jp": {
+							"displayName": "iso646jp"
+						},
+						"iso88591": {
+							"displayName": "iso88591"
+						},
+						"iso885910": {
+							"displayName": "iso885910"
+						},
+						"iso885911": {
+							"displayName": "iso885911"
+						},
+						"iso885913": {
+							"displayName": "iso885913"
+						},
+						"iso885914": {
+							"displayName": "iso885914"
+						},
+						"iso885915": {
+							"displayName": "iso885915"
+						},
+						"iso885916": {
+							"displayName": "iso885916"
+						},
+						"iso88592": {
+							"displayName": "iso88592"
+						},
+						"iso88593": {
+							"displayName": "iso88593"
+						},
+						"iso88594": {
+							"displayName": "iso88594"
+						},
+						"iso88595": {
+							"displayName": "iso88595"
+						},
+						"iso88596": {
+							"displayName": "iso88596"
+						},
+						"iso88597": {
+							"displayName": "iso88597"
+						},
+						"iso88598": {
+							"displayName": "iso88598"
+						},
+						"iso88599": {
+							"displayName": "iso88599"
+						},
+						"koi8r": {
+							"displayName": "koi8r"
+						},
+						"koi8ru": {
+							"displayName": "koi8ru"
+						},
+						"koi8t": {
+							"displayName": "koi8t"
+						},
+						"koi8u": {
+							"displayName": "koi8u"
+						},
+						"maccenteuro": {
+							"displayName": "maccenteuro"
+						},
+						"maccroatian": {
+							"displayName": "maccroatian"
+						},
+						"maccyrillic": {
+							"displayName": "maccyrillic"
+						},
+						"macgreek": {
+							"displayName": "macgreek"
+						},
+						"maciceland": {
+							"displayName": "maciceland"
+						},
+						"macintosh": {
+							"displayName": "macintosh"
+						},
+						"macroman": {
+							"displayName": "macroman"
+						},
+						"macromania": {
+							"displayName": "macromania"
+						},
+						"macthai": {
+							"displayName": "macthai"
+						},
+						"macturkish": {
+							"displayName": "macturkish"
+						},
+						"macukraine": {
+							"displayName": "macukraine"
+						},
+						"mik": {
+							"displayName": "mik"
+						},
+						"pt154": {
+							"displayName": "pt154"
+						},
+						"rk1048": {
+							"displayName": "rk1048"
+						},
+						"shiftjis": {
+							"displayName": "shiftjis"
+						},
+						"tcvn": {
+							"displayName": "tcvn"
+						},
+						"tis620": {
+							"displayName": "tis620"
+						},
+						"ucs2": {
+							"displayName": "ucs2"
+						},
+						"utf16": {
+							"displayName": "utf16"
+						},
+						"utf16be": {
+							"displayName": "utf16be"
+						},
+						"utf32": {
+							"displayName": "utf32"
+						},
+						"utf32be": {
+							"displayName": "utf32be"
+						},
+						"utf32le": {
+							"displayName": "utf32le"
+						},
+						"utf7": {
+							"displayName": "utf7"
+						},
+						"utf7imap": {
+							"displayName": "utf7imap"
+						},
+						"utf8": {
+							"displayName": "utf8"
+						},
+						"viscii": {
+							"displayName": "viscii"
+						},
+						"windows1250": {
+							"displayName": "windows1250"
+						},
+						"windows1251": {
+							"displayName": "windows1251"
+						},
+						"windows1252": {
+							"displayName": "windows1252"
+						},
+						"windows1253": {
+							"displayName": "windows1253"
+						},
+						"windows1254": {
+							"displayName": "windows1254"
+						},
+						"windows1255": {
+							"displayName": "windows1255"
+						},
+						"windows1256": {
+							"displayName": "windows1256"
+						},
+						"windows1257": {
+							"displayName": "windows1257"
+						},
+						"windows1258": {
+							"displayName": "windows1258"
+						},
+						"windows874": {
+							"displayName": "windows874"
+						}
+					}
+				},
+				"stripBOM": {
+					"displayName": "Strip BOM"
+				},
+				"fileName": {
+					"displayName": "File Name",
+					"description": "The file name to set",
+					"placeholder": "example.json"
+				},
+				"jsonParse": {
+					"displayName": "JSON Parse",
+					"description": "Whether to run JSON parse on the data to get proper object data"
+				},
+				"keepSource": {
+					"displayName": "Keep Source",
+					"description": "Whether the source key should be kept. By default it will be deleted."
+				},
+				"keepAsBase64": {
+					"displayName": "Keep As Base64",
+					"description": "Whether to keep the binary data as base64 string"
+				},
+				"mimeType": {
+					"displayName": "MIME Type",
+					"description": "The mime-type to set. By default will the mime-type for JSON be set.",
+					"placeholder": "application/json"
+				},
+				"useRawData": {
+					"displayName": "Use Raw Data",
+					"description": "Whether to use data as is and do not JSON.stringify it"
+				}
+			}
+		}
+	}
+}

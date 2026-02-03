@@ -1,0 +1,47 @@
+{
+	"header": {
+		"displayName": "Twake",
+		"description": "Consume Twake API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"message": {
+					"displayName": "Message",
+					"description": "Send data to the message app"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"send": {
+					"displayName": "Send",
+					"description": "Send a message"
+				}
+			}
+		},
+		"channelId": {
+			"displayName": "Channel Name or ID",
+			"description": "Channel's ID. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		},
+		"content": {
+			"displayName": "Content",
+			"description": "Message content"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"senderIcon": {
+					"displayName": "Sender Icon",
+					"description": "URL of the image/icon"
+				},
+				"senderName": {
+					"displayName": "Sender Name"
+				}
+			}
+		}
+	}
+}

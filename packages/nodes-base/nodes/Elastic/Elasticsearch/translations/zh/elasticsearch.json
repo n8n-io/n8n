@@ -1,0 +1,369 @@
+{
+	"header": {
+		"displayName": "Elasticsearch",
+		"description": "使用Elasticsearch API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"document": {
+					"displayName": "文档"
+				},
+				"index": {
+					"displayName": "索引"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建文档"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除文档"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取文档"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个文档"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新文档"
+				}
+			}
+		},
+		"indexId": {
+			"displayName": "索引ID",
+			"description": "要检索的索引ID"
+		},
+		"documentId": {
+			"displayName": "文档ID",
+			"description": "要更新的文档ID"
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加字段",
+			"options": {
+				"bulkOperation": {
+					"displayName": "批量更新",
+					"description": "是否使用批量操作来更新文档"
+				},
+				"_source_excludes": {
+					"displayName": "源字段排除",
+					"description": "要从响应中排除的源字段的逗号分隔列表"
+				},
+				"_source_includes": {
+					"displayName": "源包含字段",
+					"description": "逗号分隔的源字段列表，包含在响应中"
+				},
+				"stored_fields": {
+					"displayName": "存储字段",
+					"description": "是否从索引中检索存储的文档字段，而非文档的<code>_source</code>。默认为false。"
+				},
+				"allow_no_indices": {
+					"displayName": "允许无索引",
+					"description": "如果设为false，当以下任一目标仅指向缺失/已关闭的索引时返回错误：通配符表达式、索引别名或<code>_all</code>值。默认为true。"
+				},
+				"allow_partial_search_results": {
+					"displayName": "允许部分搜索结果",
+					"description": "<p>如果为true，当分片请求超时或分片失败时返回部分结果。</p><p>如果为false，则返回错误且不提供部分结果。默认为true。</p>"
+				},
+				"batched_reduce_size": {
+					"displayName": "批量归约大小",
+					"description": "应在协调节点上一次归约的分片结果数量。默认为512。"
+				},
+				"ccs_minimize_roundtrips": {
+					"displayName": "CCS最小化往返次数",
+					"description": "执行跨集群搜索(CCS)请求时，是否最小化协调节点与远程集群之间的网络往返次数。默认为true。"
+				},
+				"docvalue_fields": {
+					"displayName": "文档值字段",
+					"description": "逗号分隔的字段列表，用于为每个匹配结果返回字段的文档值表示"
+				},
+				"expand_wildcards": {
+					"displayName": "展开通配符",
+					"description": "通配符表达式可匹配的索引类型。默认为<code>open</code>",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						},
+						"closed": {
+							"displayName": "已关闭"
+						},
+						"hidden": {
+							"displayName": "隐藏"
+						},
+						"none": {
+							"displayName": "无"
+						},
+						"open": {
+							"displayName": "打开"
+						}
+					}
+				},
+				"explain": {
+					"displayName": "说明",
+					"description": "是否在命中结果中返回分数计算的详细信息。默认为 false。"
+				},
+				"ignore_throttled": {
+					"displayName": "忽略已限流的",
+					"description": "冻结时是否忽略具体、扩展或别名索引。默认为 true。"
+				},
+				"ignore_unavailable": {
+					"displayName": "忽略不可用",
+					"description": "是否在响应中排除缺失或已关闭的索引。默认为 false。"
+				},
+				"max_concurrent_shard_requests": {
+					"displayName": "最大并发分片请求数",
+					"description": "定义此搜索在每个节点上并发执行的分片请求数量。默认为5。"
+				},
+				"pre_filter_shard_size": {
+					"displayName": "预过滤分片大小",
+					"description": "定义一个阈值，用于基于查询重写强制执行预过滤往返以预过滤搜索分片。仅在搜索请求扩展到的分片数量超过阈值时使用。"
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "使用<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html\">Elasticsearch查询DSL</a>中的查询",
+					"placeholder": "[0]{\n  \"query\": {\n    \"term\": {\n      \"user.id\": \"john\"\n    }\n  }\n}"
+				},
+				"request_cache": {
+					"displayName": "请求缓存",
+					"description": "是否对size为0的请求启用搜索结果缓存。请参阅<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-request-cache.html\">Elasticsearch分片请求缓存设置</a>。"
+				},
+				"routing": {
+					"displayName": "路由",
+					"description": "定位此主分片"
+				},
+				"search_type": {
+					"displayName": "搜索类型",
+					"description": "如何计算分布式词频以进行相关性评分。默认为查询后获取。",
+					"options": {
+						"dfs_query_then_fetch": {
+							"displayName": "DFS查询然后获取"
+						},
+						"query_then_fetch": {
+							"displayName": "查询后获取"
+						}
+					}
+				},
+				"seq_no_primary_term": {
+					"displayName": "序列号与主项",
+					"description": "是否返回每次命中的最后修改的序列号和主项。请参阅<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/optimistic-concurrency-control.html\">乐观并发控制</a>。"
+				},
+				"sort": {
+					"displayName": "排序",
+					"description": "逗号分隔的<code>字段:方向</code>对列表"
+				},
+				"stats": {
+					"displayName": "统计信息",
+					"description": "用于日志记录和统计目的的请求标签"
+				},
+				"terminate_after": {
+					"displayName": "执行后终止",
+					"description": "每个分片收集的最大文档数"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待活动分片的时长。默认为<code>1m</code>（一分钟）。请参阅<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units\">Elasticsearch时间单位参考</a>"
+				},
+				"track_scores": {
+					"displayName": "跟踪分数",
+					"description": "是否计算并返回文档分数，即使这些分数不用于排序。默认为 false。"
+				},
+				"track_total_hits": {
+					"displayName": "追踪总命中数",
+					"description": "精确统计匹配查询的命中数量。默认为10000。"
+				},
+				"version": {
+					"displayName": "版本",
+					"description": "是否在命中结果中返回文档版本。默认为 false。"
+				},
+				"pipeline": {
+					"displayName": "流水线ID",
+					"description": "用于预处理传入文档的流水线ID"
+				},
+				"refresh": {
+					"displayName": "刷新",
+					"description": "若为true，Elasticsearch刷新受影响的分片以使此操作对搜索可见；若为wait_for则等待刷新以使此操作对搜索可见；若为false则不进行任何刷新操作",
+					"options": {
+						"true": {
+							"displayName": "真",
+							"description": "刷新受影响的分片以使此操作对搜索可见"
+						},
+						"wait_for": {
+							"displayName": "等待",
+							"description": "等待刷新以使此操作可见"
+						},
+						"false": {
+							"displayName": "假",
+							"description": "刷新时不做任何操作"
+						}
+					}
+				}
+			}
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"paginateNotice": {
+			"displayName": "默认情况下，您无法分页浏览超过10,000条结果。要浏览更多结果，请从选项中添加“排序”。"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"dataToSend": {
+			"displayName": "要发送的数据",
+			"description": "是否将本节点接收的输入数据插入到新行中",
+			"options": {
+				"defineBelow": {
+					"displayName": "为每列定义以下内容",
+					"description": "为每个目标列设置值"
+				},
+				"autoMapInputData": {
+					"displayName": "自动映射输入数据到列",
+					"description": "当节点输入属性与目标列名匹配时使用"
+				}
+			}
+		},
+		"inputsToIgnore": {
+			"displayName": "要忽略的输入",
+			"description": "要避免发送的输入属性列表，用逗号分隔。留空则发送所有属性。",
+			"placeholder": "输入属性..."
+		},
+		"fieldsUi": {
+			"displayName": "要发送的字段",
+			"placeholder": "添加字段",
+			"multipleValueButtonText": "添加要发送的字段",
+			"options": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段名称"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				}
+			},
+			"values": {
+				"fieldValues": {
+					"displayName": "字段",
+					"options": {
+						"fieldId": {
+							"displayName": "字段名称"
+						},
+						"fieldValue": {
+							"displayName": "字段值"
+						}
+					}
+				},
+				"fieldsUi": {
+					"displayName": "要发送的字段",
+					"placeholder": "添加字段"
+				}
+			}
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"documentId": {
+					"displayName": "文档ID",
+					"description": "要创建并添加到索引的文档ID"
+				},
+				"routing": {
+					"displayName": "路由",
+					"description": "定位此主分片"
+				},
+				"timeout": {
+					"displayName": "超时时间",
+					"description": "等待响应的超时时间。如果在超时前未收到响应，请求将失败并返回错误。默认为<code>30秒</code>。请参阅<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units\">Elasticsearch时间单位参考</a>"
+				},
+				"aliases": {
+					"displayName": "别名",
+					"description": "索引别名，包含索引，作为<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html\">别名对象</a>",
+					"placeholder": "[0]{\n  \"aliases\": {\n    \"alias_1\": {},\n    \"alias_2\": {\n      \"filter\": {\n        \"term\": { \"user.id\": \"kimchy\" }\n      },\n      \"routing\": \"shard-1\"\n    }\n  }\n}"
+				},
+				"include_type_name": {
+					"displayName": "包含类型名称",
+					"description": "是否在映射体中期望映射类型。默认为 false。"
+				},
+				"mappings": {
+					"displayName": "映射",
+					"description": "索引中字段的映射，作为<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html\">映射对象</a>",
+					"placeholder": "[0]{\n  \"mappings\": {\n    \"properties\": {\n      \"field1\": { \"type\": \"text\" }\n    }\n  }\n}"
+				},
+				"master_timeout": {
+					"displayName": "主节点超时",
+					"description": "等待主节点连接的时间。如果在超时前未收到响应，请求将失败并返回错误。默认为<code>1m</code>。请参阅<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units\">Elasticsearch时间单位参考</a>"
+				},
+				"settings": {
+					"displayName": "设置",
+					"description": "索引的配置选项，作为<a href=\"https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-modules-settings\">索引设置对象</a>",
+					"placeholder": "[0]{\n  \"settings\": {\n    \"index\": {\n      \"number_of_shards\": 3,\n      \"number_of_replicas\": 2\n    }\n  }\n}"
+				},
+				"wait_for_active_shards": {
+					"displayName": "等待活动分片",
+					"description": "在继续操作之前必须处于活动状态的分片副本数量。设置为<code>all</code>或任何不超过索引总分片数的正整数。默认值：1（主分片）。"
+				},
+				"allow_no_indices": {
+					"displayName": "允许无索引",
+					"description": "如果设为false，当以下任一目标仅指向缺失/已关闭的索引时返回错误：通配符表达式、索引别名或<code>_all</code>值。默认为true。"
+				},
+				"expand_wildcards": {
+					"displayName": "展开通配符",
+					"description": "通配符表达式可匹配的索引类型。默认为<code>open</code>",
+					"options": {
+						"all": {
+							"displayName": "全部"
+						},
+						"closed": {
+							"displayName": "已关闭"
+						},
+						"hidden": {
+							"displayName": "隐藏"
+						},
+						"none": {
+							"displayName": "无"
+						},
+						"open": {
+							"displayName": "打开"
+						}
+					}
+				},
+				"flat_settings": {
+					"displayName": "扁平化设置",
+					"description": "是否以扁平格式返回设置。默认为 false。"
+				},
+				"ignore_unavailable": {
+					"displayName": "忽略不可用",
+					"description": "是否要求针对缺失索引返回错误。默认为 false。"
+				},
+				"include_defaults": {
+					"displayName": "包含默认值",
+					"description": "是否在响应中返回所有默认设置。默认为 false。"
+				},
+				"local": {
+					"displayName": "本地",
+					"description": "是否仅从本地节点检索信息。默认为 false。"
+				}
+			}
+		}
+	}
+}

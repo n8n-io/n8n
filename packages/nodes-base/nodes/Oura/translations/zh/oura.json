@@ -1,0 +1,62 @@
+{
+	"header": {
+		"displayName": "Oura",
+		"description": "使用Oura API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"profile": {
+					"displayName": "个人资料"
+				},
+				"summary": {
+					"displayName": "摘要"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取",
+					"description": "获取用户的个人信息"
+				},
+				"getActivity": {
+					"displayName": "获取活动摘要",
+					"description": "获取用户的活动摘要"
+				},
+				"getReadiness": {
+					"displayName": "获取就绪状态摘要",
+					"description": "获取用户的就绪状态摘要"
+				},
+				"getSleep": {
+					"displayName": "获取睡眠周期",
+					"description": "获取用户睡眠摘要"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"end": {
+					"displayName": "结束日期",
+					"description": "汇总检索的结束日期。如果省略，默认为当天。"
+				},
+				"start": {
+					"displayName": "开始日期",
+					"description": "摘要检索的开始日期。如果省略，默认为一周前。"
+				}
+			}
+		}
+	}
+}

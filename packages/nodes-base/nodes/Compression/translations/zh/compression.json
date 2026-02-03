@@ -1,0 +1,50 @@
+{
+	"header": {
+		"displayName": "压缩",
+		"description": "压缩和解压文件"
+	},
+	"nodeView": {
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"compress": {
+					"displayName": "压缩",
+					"description": "将文件压缩为zip或gzip归档文件"
+				},
+				"decompress": {
+					"displayName": "解压",
+					"description": "解压zip或gzip压缩文件"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "输入二进制字段",
+			"description": "要处理多个文件，请使用逗号分隔的二进制字段名称列表",
+			"placeholder": "例如：data"
+		},
+		"outputFormat": {
+			"displayName": "输出格式",
+			"description": "输出的格式",
+			"options": {
+				"gzip": {
+					"displayName": "Gzip"
+				},
+				"zip": {
+					"displayName": "压缩"
+				}
+			}
+		},
+		"fileName": {
+			"displayName": "文件名",
+			"description": "输出文件名",
+			"placeholder": "例如：data.txt"
+		},
+		"binaryPropertyOutput": {
+			"displayName": "将输出文件放入字段"
+		},
+		"outputPrefix": {
+			"displayName": "输出前缀",
+			"description": "解压缩文件的前缀"
+		}
+	}
+}

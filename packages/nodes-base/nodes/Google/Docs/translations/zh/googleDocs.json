@@ -1,0 +1,496 @@
+{
+	"header": {
+		"displayName": "Google文档",
+		"description": "使用Google文档API。"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"serviceAccount": {
+					"displayName": "服务账号"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2（推荐）"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"document": {
+					"displayName": "文档"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建"
+				},
+				"get": {
+					"displayName": "获取"
+				},
+				"update": {
+					"displayName": "更新"
+				}
+			}
+		},
+		"driveId": {
+			"displayName": "驱动器名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"folderId": {
+			"displayName": "文件夹名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"title": {
+			"displayName": "标题"
+		},
+		"documentURL": {
+			"displayName": "文档ID或URL",
+			"description": "文档URL中的ID（或直接粘贴完整URL）"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"actionsUi": {
+			"displayName": "操作",
+			"description": "应用于更新文档的操作",
+			"placeholder": "添加操作",
+			"multipleValueButtonText": "添加操作",
+			"options": {
+				"actionFields": {
+					"displayName": "操作字段",
+					"options": {
+						"object": {
+							"displayName": "对象",
+							"description": "更新对象",
+							"options": {
+								"footer": {
+									"displayName": "页脚"
+								},
+								"header": {
+									"displayName": "页眉"
+								},
+								"namedRange": {
+									"displayName": "命名范围"
+								},
+								"pageBreak": {
+									"displayName": "分页符"
+								},
+								"paragraphBullets": {
+									"displayName": "[0]段落要点"
+								},
+								"positionedObject": {
+									"displayName": "已定位对象"
+								},
+								"table": {
+									"displayName": "表格"
+								},
+								"tableColumn": {
+									"displayName": "表格列"
+								},
+								"tableRow": {
+									"displayName": "表格行"
+								},
+								"text": {
+									"displayName": "文本"
+								}
+							}
+						},
+						"action": {
+							"displayName": "操作",
+							"description": "更新操作",
+							"options": {
+								"delete": {
+									"displayName": "删除"
+								}
+							}
+						},
+						"insertSegment": {
+							"displayName": "插入片段",
+							"description": "创建对象的位置",
+							"options": {
+								"header": {
+									"displayName": "页眉"
+								},
+								"body": {
+									"displayName": "正文"
+								},
+								"footer": {
+									"displayName": "页脚"
+								}
+							}
+						},
+						"segmentId": {
+							"displayName": "细分ID",
+							"description": "页眉、页脚或脚注的ID。<code>文档 → 获取</code>操作会列出所有段落ID（请确保禁用<code>simple</code>切换开关）。"
+						},
+						"index": {
+							"displayName": "索引",
+							"description": "从指定段开始计算的从零开始的索引（使用索引 + 1 来引用表格）"
+						},
+						"name": {
+							"displayName": "名称",
+							"description": "命名范围的名称。名称不需要唯一。"
+						},
+						"startIndex": {
+							"displayName": "起始索引",
+							"description": "此范围的从零开始的起始索引"
+						},
+						"endIndex": {
+							"displayName": "结束索引",
+							"description": "此范围的从零开始的结束索引"
+						},
+						"bulletPreset": {
+							"displayName": "样式",
+							"description": "列表项目符号的预设图案",
+							"options": {
+								"BULLET_DISC_CIRCLE_SQUARE": {
+									"displayName": "项目符号列表",
+									"description": "一个项目符号列表，前三个列表嵌套级别分别使用 <code>DISC</code>、<code>CIRCLE</code> 和 <code>SQUARE</code> 项目符号字形"
+								},
+								"BULLET_CHECKBOX": {
+									"displayName": "复选框列表",
+									"description": "在所有列表嵌套级别使用复选框项目符号的列表"
+								},
+								"NUMBERED_DECIMAL_NESTED": {
+									"displayName": "编号列表",
+									"description": "一种使用<code>DECIMAL</code>数字字形并用句点分隔的编号列表，其中每个嵌套级别使用前一个嵌套级别的字形作为前缀。例如：1., 1.1., 2., 2.2。"
+								}
+							}
+						},
+						"footerId": {
+							"displayName": "页脚ID",
+							"description": "要删除的页脚ID。可通过<code>get document</code>操作获取，在<code>footers</code>属性下查找。"
+						},
+						"headerId": {
+							"displayName": "标头ID",
+							"description": "要删除的标头ID。要获取它，请使用<code>get document</code>操作，您可以在<code>headers</code>属性下找到。"
+						},
+						"namedRangeReference": {
+							"displayName": "指定范围依据",
+							"description": "该值决定要删除哪个或哪些范围",
+							"options": {
+								"namedRangeId": {
+									"displayName": "ID"
+								},
+								"name": {
+									"displayName": "名称"
+								}
+							}
+						},
+						"value": {
+							"displayName": "名称",
+							"description": "范围名称"
+						},
+						"objectId": {
+							"displayName": "对象ID",
+							"description": "要删除的定位对象ID（该对象与段落绑定，并相对于段落起始位置定位），参见Google<a href=\"https://developers.google.com/docs/api/reference/rest/v1/documents#positionedobject\" target=\"_blank\">文档</a>"
+						},
+						"locationChoice": {
+							"displayName": "插入位置",
+							"description": "文本将被插入的位置",
+							"options": {
+								"endOfSegmentLocation": {
+									"displayName": "在指定位置末尾",
+									"description": "在页眉、页脚、脚注或文档正文的末尾插入文本"
+								},
+								"location": {
+									"displayName": "在索引"
+								}
+							}
+						},
+						"rows": {
+							"displayName": "行数",
+							"description": "表格中的行数"
+						},
+						"columns": {
+							"displayName": "列",
+							"description": "表中的列数"
+						},
+						"text": {
+							"displayName": "旧文本",
+							"description": "要在文档中搜索的文本"
+						},
+						"replaceText": {
+							"displayName": "新文本",
+							"description": "用于替换匹配文本的文本"
+						},
+						"matchCase": {
+							"displayName": "匹配大小写",
+							"description": "搜索是否应区分大小写"
+						},
+						"insertPosition": {
+							"displayName": "插入位置",
+							"options": {
+								"false": {
+									"displayName": "索引前内容"
+								},
+								"true": {
+									"displayName": "索引后内容"
+								}
+							}
+						},
+						"rowIndex": {
+							"displayName": "行索引",
+							"description": "从零开始的行索引"
+						},
+						"columnIndex": {
+							"displayName": "列索引",
+							"description": "从零开始的列索引"
+						}
+					}
+				}
+			},
+			"values": {
+				"actionFields": {
+					"displayName": "操作字段",
+					"options": {
+						"object": {
+							"displayName": "对象",
+							"description": "更新对象",
+							"options": {
+								"footer": {
+									"displayName": "页脚"
+								},
+								"header": {
+									"displayName": "页眉"
+								},
+								"namedRange": {
+									"displayName": "命名范围"
+								},
+								"pageBreak": {
+									"displayName": "分页符"
+								},
+								"paragraphBullets": {
+									"displayName": "[0]段落要点"
+								},
+								"positionedObject": {
+									"displayName": "已定位对象"
+								},
+								"table": {
+									"displayName": "表格"
+								},
+								"tableColumn": {
+									"displayName": "表格列"
+								},
+								"tableRow": {
+									"displayName": "表格行"
+								},
+								"text": {
+									"displayName": "文本"
+								}
+							}
+						},
+						"action": {
+							"displayName": "操作",
+							"description": "更新操作",
+							"options": {
+								"delete": {
+									"displayName": "删除"
+								}
+							}
+						},
+						"insertSegment": {
+							"displayName": "插入片段",
+							"description": "创建对象的位置",
+							"options": {
+								"header": {
+									"displayName": "页眉"
+								},
+								"body": {
+									"displayName": "正文"
+								},
+								"footer": {
+									"displayName": "页脚"
+								}
+							}
+						},
+						"segmentId": {
+							"displayName": "细分ID",
+							"description": "页眉、页脚或脚注的ID。<code>文档 → 获取</code>操作会列出所有段落ID（请确保禁用<code>simple</code>切换开关）。"
+						},
+						"index": {
+							"displayName": "索引",
+							"description": "从指定段开始计算的从零开始的索引（使用索引 + 1 来引用表格）"
+						},
+						"name": {
+							"displayName": "名称",
+							"description": "命名范围的名称。名称不需要唯一。"
+						},
+						"startIndex": {
+							"displayName": "起始索引",
+							"description": "此范围的从零开始的起始索引"
+						},
+						"endIndex": {
+							"displayName": "结束索引",
+							"description": "此范围的从零开始的结束索引"
+						},
+						"bulletPreset": {
+							"displayName": "样式",
+							"description": "列表项目符号的预设图案",
+							"options": {
+								"BULLET_DISC_CIRCLE_SQUARE": {
+									"displayName": "项目符号列表",
+									"description": "一个项目符号列表，前三个列表嵌套级别分别使用 <code>DISC</code>、<code>CIRCLE</code> 和 <code>SQUARE</code> 项目符号字形"
+								},
+								"BULLET_CHECKBOX": {
+									"displayName": "复选框列表",
+									"description": "在所有列表嵌套级别使用复选框项目符号的列表"
+								},
+								"NUMBERED_DECIMAL_NESTED": {
+									"displayName": "编号列表",
+									"description": "一种使用<code>DECIMAL</code>数字字形并用句点分隔的编号列表，其中每个嵌套级别使用前一个嵌套级别的字形作为前缀。例如：1., 1.1., 2., 2.2。"
+								}
+							}
+						},
+						"footerId": {
+							"displayName": "页脚ID",
+							"description": "要删除的页脚ID。可通过<code>get document</code>操作获取，在<code>footers</code>属性下查找。"
+						},
+						"headerId": {
+							"displayName": "标头ID",
+							"description": "要删除的标头ID。要获取它，请使用<code>get document</code>操作，您可以在<code>headers</code>属性下找到。"
+						},
+						"namedRangeReference": {
+							"displayName": "指定范围依据",
+							"description": "该值决定要删除哪个或哪些范围",
+							"options": {
+								"namedRangeId": {
+									"displayName": "ID"
+								},
+								"name": {
+									"displayName": "名称"
+								}
+							}
+						},
+						"value": {
+							"displayName": "名称",
+							"description": "范围名称"
+						},
+						"objectId": {
+							"displayName": "对象ID",
+							"description": "要删除的定位对象ID（该对象与段落绑定，并相对于段落起始位置定位），参见Google<a href=\"https://developers.google.com/docs/api/reference/rest/v1/documents#positionedobject\" target=\"_blank\">文档</a>"
+						},
+						"locationChoice": {
+							"displayName": "插入位置",
+							"description": "文本将被插入的位置",
+							"options": {
+								"endOfSegmentLocation": {
+									"displayName": "在指定位置末尾",
+									"description": "在页眉、页脚、脚注或文档正文的末尾插入文本"
+								},
+								"location": {
+									"displayName": "在索引"
+								}
+							}
+						},
+						"rows": {
+							"displayName": "行数",
+							"description": "表格中的行数"
+						},
+						"columns": {
+							"displayName": "列",
+							"description": "表中的列数"
+						},
+						"text": {
+							"displayName": "旧文本",
+							"description": "要在文档中搜索的文本"
+						},
+						"replaceText": {
+							"displayName": "新文本",
+							"description": "用于替换匹配文本的文本"
+						},
+						"matchCase": {
+							"displayName": "匹配大小写",
+							"description": "搜索是否应区分大小写"
+						},
+						"insertPosition": {
+							"displayName": "插入位置",
+							"options": {
+								"false": {
+									"displayName": "索引前内容"
+								},
+								"true": {
+									"displayName": "索引后内容"
+								}
+							}
+						},
+						"rowIndex": {
+							"displayName": "行索引",
+							"description": "从零开始的行索引"
+						},
+						"columnIndex": {
+							"displayName": "列索引",
+							"description": "从零开始的列索引"
+						}
+					}
+				},
+				"actionsUi": {
+					"displayName": "操作",
+					"placeholder": "添加操作"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"writeControlObject": {
+					"displayName": "写入控制对象",
+					"options": {
+						"control": {
+							"displayName": "修订模式",
+							"description": "确定如何将更改应用到修订",
+							"options": {
+								"targetRevisionId": {
+									"displayName": "目标",
+									"description": "将更改应用到最新修订版。否则更改将不会被处理。"
+								},
+								"requiredRevisionId": {
+									"displayName": "必填",
+									"description": "将变更应用到提供的修订版本，同时整合其他协作者的更改。此模式用于最新修订版本，否则变更将不会被处理。"
+								}
+							}
+						},
+						"value": {
+							"displayName": "修订ID"
+						}
+					}
+				}
+			},
+			"values": {
+				"writeControlObject": {
+					"displayName": "写入控制对象",
+					"options": {
+						"control": {
+							"displayName": "修订模式",
+							"description": "确定如何将更改应用到修订",
+							"options": {
+								"targetRevisionId": {
+									"displayName": "目标",
+									"description": "将更改应用到最新修订版。否则更改将不会被处理。"
+								},
+								"requiredRevisionId": {
+									"displayName": "必填",
+									"description": "将变更应用到提供的修订版本，同时整合其他协作者的更改。此模式用于最新修订版本，否则变更将不会被处理。"
+								}
+							}
+						},
+						"value": {
+							"displayName": "修订ID"
+						}
+					}
+				},
+				"updateFields": {
+					"displayName": "更新字段",
+					"placeholder": "添加字段"
+				}
+			}
+		}
+	}
+}

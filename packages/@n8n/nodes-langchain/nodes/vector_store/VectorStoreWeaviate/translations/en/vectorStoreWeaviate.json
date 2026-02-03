@@ -1,0 +1,154 @@
+{
+	"header": {
+		"displayName": "Weaviate Vector Store",
+		"description": "Work with your data in a Weaviate Cluster"
+	},
+	"nodeView": {
+		"ragStarterCallout": {
+			"displayName": "Tip: Get a feel for vector stores in n8n with our"
+		},
+		"mode": {
+			"displayName": "Operation Mode",
+			"options": {
+				"load": {
+					"displayName": "Get Many",
+					"description": "Get many ranked documents from vector store for query"
+				},
+				"insert": {
+					"displayName": "Insert Documents",
+					"description": "Insert documents into vector store"
+				},
+				"retrieve": {
+					"displayName": "Retrieve Documents (As Vector Store for Chain/Tool)",
+					"description": "Retrieve documents from vector store to be used as vector store with AI nodes"
+				},
+				"retrieve-as-tool": {
+					"displayName": "Retrieve Documents (As Tool for AI Agent)",
+					"description": "Retrieve documents from vector store to be used as tool with AI nodes"
+				}
+			}
+		},
+		"notice": {
+			"displayName": "This node must be connected to a vector store retriever. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_retriever'>Insert one</a>"
+		},
+		"toolName": {
+			"displayName": "Name",
+			"description": "Name of the vector store",
+			"placeholder": "e.g. company_knowledge_base"
+		},
+		"toolDescription": {
+			"displayName": "Description",
+			"description": "Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often",
+			"placeholder": "e.g. Work with your data in a Weaviate Cluster"
+		},
+		"weaviateCollection": {
+			"displayName": "Weaviate Collection"
+		},
+		"embeddingBatchSize": {
+			"displayName": "Embedding Batch Size",
+			"description": "Number of documents to embed in a single batch"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"tenant": {
+					"displayName": "Tenant Name",
+					"description": "Tenant Name. Collection must have been created with tenant support enabled."
+				},
+				"textKey": {
+					"displayName": "Text Key",
+					"description": "The key in the document that contains the embedded text"
+				},
+				"skip_init_checks": {
+					"displayName": "Skip Init Checks",
+					"description": "Whether to skip init checks while instantiating the client"
+				},
+				"timeout_init": {
+					"displayName": "Init Timeout",
+					"description": "Number of timeout seconds for initial checks"
+				},
+				"timeout_insert": {
+					"displayName": "Insert Timeout",
+					"description": "Number of timeout seconds for inserts"
+				},
+				"timeout_query": {
+					"displayName": "Query Timeout",
+					"description": "Number of timeout seconds for queries"
+				},
+				"proxy_grpc": {
+					"displayName": "GRPC Proxy",
+					"description": "Proxy to use for GRPC"
+				},
+				"clearStore": {
+					"displayName": "Clear Data",
+					"description": "Whether to clear the Collection/Tenant before inserting new data"
+				},
+				"searchFilterJson": {
+					"displayName": "Search Filters",
+					"description": "Filter pageContent or metadata using this <a href=\"https://weaviate.io/\" target=\"_blank\">filtering syntax</a>"
+				},
+				"metadataKeys": {
+					"displayName": "Metadata Keys",
+					"description": "Select the metadata to retrieve along the content"
+				},
+				"hybridQuery": {
+					"displayName": "Hybrid: Query Text",
+					"description": "Provide a query text to combine vector search with a keyword/text search"
+				},
+				"hybridExplainScore": {
+					"displayName": "Hybrid: Explain Score",
+					"description": "Whether to show the score fused between hybrid and vector search explanation"
+				},
+				"fusionType": {
+					"displayName": "Hybrid: Fusion Type",
+					"description": "Select the fusion type for combining vector and keyword search results",
+					"options": {
+						"RelativeScore": {
+							"displayName": "Relative Score"
+						},
+						"Ranked": {
+							"displayName": "Ranked"
+						}
+					}
+				},
+				"autoCutLimit": {
+					"displayName": "Hybrid: Auto Cut Limit",
+					"description": "Limit result groups by detecting sudden jumps in score"
+				},
+				"alpha": {
+					"displayName": "Hybrid: Alpha",
+					"description": "Change the relative weights of the keyword and vector components. 1.0 = pure vector, 0.0 = pure keyword."
+				},
+				"queryProperties": {
+					"displayName": "Hybrid: Query Properties",
+					"description": "Comma-separated list of properties to include in the query with optionally weighted values, e.g., \"question^2,answer\""
+				},
+				"maxVectorDistance": {
+					"displayName": "Hybrid: Max Vector Distance",
+					"description": "Set the maximum allowable distance for the vector search component"
+				}
+			}
+		},
+		"prompt": {
+			"displayName": "Prompt",
+			"description": "Search prompt to retrieve matching documents from the vector store using similarity-based ranking"
+		},
+		"topK": {
+			"displayName": "Limit",
+			"description": "Number of top results to fetch from vector store"
+		},
+		"includeDocumentMetadata": {
+			"displayName": "Include Metadata",
+			"description": "Whether or not to include document metadata"
+		},
+		"useReranker": {
+			"displayName": "Rerank Results",
+			"description": "Whether or not to rerank results"
+		},
+		"id": {
+			"displayName": "ID",
+			"description": "ID of an embedding entry"
+		}
+	}
+}

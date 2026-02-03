@@ -1,0 +1,125 @@
+{
+	"header": {
+		"displayName": "Pushover",
+		"description": "使用 Pushover API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"message": {
+					"displayName": "消息"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"push": {
+					"displayName": "推送"
+				}
+			}
+		},
+		"userKey": {
+			"displayName": "用户密钥",
+			"description": "您的用户（或您自己）的用户/组密钥（非电子邮件地址），登录<a href=\"https://pushover.net/\">仪表板</a>后可见（在<a href=\"https://support.pushover.net/i44-example-code-and-pushover-libraries\">库</a>和代码示例中通常称为<code>USER_KEY</code>）"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "您的消息"
+		},
+		"priority": {
+			"displayName": "优先级",
+			"description": "发送-2表示不生成通知/提醒，-1表示始终发送静默通知，1表示显示为高优先级并绕过用户的静默时段，或2表示还需要用户确认",
+			"options": {
+				"0": {
+					"displayName": "普通优先级"
+				},
+				"1": {
+					"displayName": "高优先级"
+				},
+				"2": {
+					"displayName": "紧急优先级"
+				},
+				"-2": {
+					"displayName": "最低优先级"
+				},
+				"-1": {
+					"displayName": "低优先级"
+				}
+			}
+		},
+		"retry": {
+			"displayName": "重试间隔（秒）",
+			"description": "指定Pushover服务器向用户重复发送相同通知的频率（以秒为单位）。此参数的重试间隔必须至少为30秒。"
+		},
+		"expire": {
+			"displayName": "过期时间（秒）",
+			"description": "指定您的通知将持续重试多少秒（每次重试间隔秒数）"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"attachmentsUi": {
+					"displayName": "附件",
+					"placeholder": "添加附件",
+					"options": {
+						"attachmentsValues": {
+							"displayName": "附件属性",
+							"options": {
+								"binaryPropertyName": {
+									"displayName": "输入二进制字段",
+									"placeholder": "数据"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachmentsValues": {
+							"displayName": "附件属性",
+							"options": {
+								"binaryPropertyName": {
+									"displayName": "输入二进制字段",
+									"placeholder": "数据"
+								}
+							}
+						},
+						"attachmentsUi": {
+							"displayName": "附件",
+							"placeholder": "添加附件"
+						}
+					}
+				},
+				"device": {
+					"displayName": "设备",
+					"description": "您用户的设备名称，用于将消息直接发送到该设备，而不是用户的所有设备（多个设备可以用逗号分隔）"
+				},
+				"html": {
+					"displayName": "HTML格式设置",
+					"description": "是否启用HTML标签消息格式化"
+				},
+				"sound": {
+					"displayName": "声音名称或ID",
+					"description": "设备客户端支持的某个声音名称，用于覆盖用户的默认声音选择。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+				},
+				"timestamp": {
+					"displayName": "时间戳",
+					"description": "显示给用户的消息日期和时间Unix时间戳，而非消息被API接收的时间"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "消息标题，否则使用应用名称"
+				},
+				"url": {
+					"displayName": "URL",
+					"description": "用于显示消息的补充URL"
+				},
+				"url_title": {
+					"displayName": "URL标题",
+					"description": "补充URL的标题，否则仅显示URL"
+				}
+			}
+		}
+	}
+}

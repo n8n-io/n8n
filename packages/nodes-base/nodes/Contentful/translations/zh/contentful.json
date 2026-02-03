@@ -1,0 +1,125 @@
+{
+	"header": {
+		"displayName": "Contentful",
+		"description": "使用 Contentful API"
+	},
+	"nodeView": {
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "选择数据来源，交付API或预览API",
+			"options": {
+				"deliveryApi": {
+					"displayName": "交付API"
+				},
+				"previewApi": {
+					"displayName": "预览API"
+				}
+			}
+		},
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"asset": {
+					"displayName": "资产"
+				},
+				"contentType": {
+					"displayName": "内容类型"
+				},
+				"entry": {
+					"displayName": "入口"
+				},
+				"locale": {
+					"displayName": "语言区域"
+				},
+				"space": {
+					"displayName": "空间"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"get": {
+					"displayName": "获取"
+				},
+				"getAll": {
+					"displayName": "获取多个"
+				}
+			}
+		},
+		"environmentId": {
+			"displayName": "环境ID",
+			"description": "Contentful环境ID（例如master、staging等）。根据您的套餐，您可能没有环境。在这种情况下请使用“master”。"
+		},
+		"contentTypeId": {
+			"displayName": "内容类型ID"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"rawData": {
+					"displayName": "原始数据",
+					"description": "数据是否应以RAW格式返回而非解析后返回"
+				},
+				"content_type": {
+					"displayName": "内容类型ID",
+					"description": "搜索具有特定内容类型的条目"
+				},
+				"equal": {
+					"displayName": "等于",
+					"description": "搜索所有匹配条件的数据：{attribute}={value}。属性可使用点符号表示。",
+					"placeholder": "fields.title=n8n"
+				},
+				"exclude": {
+					"displayName": "排除",
+					"description": "搜索符合条件的所有数据：{attribute}[nin]={value}。属性可使用点标记法。",
+					"placeholder": "fields.tags[nin]=accessories,flowers"
+				},
+				"exist": {
+					"displayName": "存在",
+					"description": "搜索符合条件的所有数据：{attribute}[exists]={value}。属性可使用点标记法。",
+					"placeholder": "fields.tags[exists]=true"
+				},
+				"select": {
+					"displayName": "字段",
+					"description": "select操作符允许您选择从实体返回哪些字段。您可以通过组合逗号分隔的操作符来选择多个值。",
+					"placeholder": "fields.title"
+				},
+				"include": {
+					"displayName": "包含",
+					"description": "搜索所有符合条件的数据：{attribute}[in]={value}。属性可使用点表示法。",
+					"placeholder": "fields.tags[in]=accessories,flowers"
+				},
+				"notEqual": {
+					"displayName": "不等于",
+					"description": "搜索所有匹配条件的数据: {attribute}[ne]={value}。属性可使用点表示法。",
+					"placeholder": "fields.title[ne]=n8n"
+				},
+				"order": {
+					"displayName": "排序",
+					"description": "您可以通过指定排序搜索参数来对响应中的项目进行排序。您可以使用系统属性（如sys.createdAt）或字段值（如fields.myCustomDateField）进行排序。",
+					"placeholder": "sys.createdAt"
+				},
+				"query": {
+					"displayName": "查询",
+					"description": "全文搜索不区分大小写，可能返回比预期更多的结果。查询仅接受超过1个字符的值。"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"entryId": {
+			"displayName": "条目ID"
+		},
+		"assetId": {
+			"displayName": "资产ID"
+		}
+	}
+}

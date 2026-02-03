@@ -1,0 +1,20 @@
+{
+	"header": {
+		"displayName": "便签",
+		"description": "让您的工作流更易于理解"
+	},
+	"nodeView": {
+		"content": {
+			"displayName": "内容"
+		},
+		"height": {
+			"displayName": "高度"
+		},
+		"width": {
+			"displayName": "宽度"
+		},
+		"color": {
+			"displayName": "颜色"
+		}
+	}
+}

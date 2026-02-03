@@ -1,0 +1,137 @@
+{
+	"header": {
+		"displayName": "HTML Extract",
+		"description": "Extracts data from HTML"
+	},
+	"nodeView": {
+		"sourceData": {
+			"displayName": "Source Data",
+			"description": "If HTML should be read from binary or JSON data",
+			"options": {
+				"binary": {
+					"displayName": "Binary"
+				},
+				"json": {
+					"displayName": "JSON"
+				}
+			}
+		},
+		"dataPropertyName": {
+			"displayName": "JSON Property",
+			"description": "Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings."
+		},
+		"extractionValues": {
+			"displayName": "Extraction Values",
+			"placeholder": "Add Value",
+			"multipleValueButtonText": "Add Value",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"key": {
+							"displayName": "Key",
+							"description": "The key under which the extracted value should be saved"
+						},
+						"cssSelector": {
+							"displayName": "CSS Selector",
+							"description": "The CSS selector to use",
+							"placeholder": ".price"
+						},
+						"returnValue": {
+							"displayName": "Return Value",
+							"description": "What kind of data should be returned",
+							"options": {
+								"attribute": {
+									"displayName": "Attribute",
+									"description": "Get an attribute value like \"class\" from an element"
+								},
+								"html": {
+									"displayName": "HTML",
+									"description": "Get the HTML the element contains"
+								},
+								"text": {
+									"displayName": "Text",
+									"description": "Get only the text content of the element"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Get value of an input, select or textarea"
+								}
+							}
+						},
+						"attribute": {
+							"displayName": "Attribute",
+							"description": "The name of the attribute to return the value off",
+							"placeholder": "class"
+						},
+						"returnArray": {
+							"displayName": "Return Array",
+							"description": "Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string."
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"key": {
+							"displayName": "Key",
+							"description": "The key under which the extracted value should be saved"
+						},
+						"cssSelector": {
+							"displayName": "CSS Selector",
+							"description": "The CSS selector to use",
+							"placeholder": ".price"
+						},
+						"returnValue": {
+							"displayName": "Return Value",
+							"description": "What kind of data should be returned",
+							"options": {
+								"attribute": {
+									"displayName": "Attribute",
+									"description": "Get an attribute value like \"class\" from an element"
+								},
+								"html": {
+									"displayName": "HTML",
+									"description": "Get the HTML the element contains"
+								},
+								"text": {
+									"displayName": "Text",
+									"description": "Get only the text content of the element"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "Get value of an input, select or textarea"
+								}
+							}
+						},
+						"attribute": {
+							"displayName": "Attribute",
+							"description": "The name of the attribute to return the value off",
+							"placeholder": "class"
+						},
+						"returnArray": {
+							"displayName": "Return Array",
+							"description": "Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string."
+						}
+					}
+				},
+				"extractionValues": {
+					"displayName": "Extraction Values",
+					"placeholder": "Add Value"
+				}
+			}
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add option",
+			"options": {
+				"trimValues": {
+					"displayName": "Trim Values",
+					"description": "Whether to remove automatically all spaces and newlines from the beginning and end of the values"
+				}
+			}
+		}
+	}
+}

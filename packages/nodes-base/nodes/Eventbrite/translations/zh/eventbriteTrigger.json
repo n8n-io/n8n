@@ -1,0 +1,35 @@
+{
+	"header": {
+		"displayName": "Eventbrite触发器",
+		"description": "通过Webhook处理Eventbrite事件"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "身份验证",
+			"options": {
+				"privateKey": {
+					"displayName": "私钥"
+				},
+				"oAuth2": {
+					"displayName": "OAuth2"
+				}
+			}
+		},
+		"organization": {
+			"displayName": "组织名称或ID",
+			"description": "要操作的Eventbrite组织。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"event": {
+			"displayName": "事件名称或ID",
+			"description": "将触发器限制为此事件。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+		},
+		"actions": {
+			"displayName": "操作",
+			"description": "要订阅的一个或多个操作"
+		},
+		"resolveData": {
+			"displayName": "解析数据",
+			"description": "默认情况下，webhook数据仅包含用于手动接收对象数据的URL。如果激活此选项，它将自动解析数据。"
+		}
+	}
+}

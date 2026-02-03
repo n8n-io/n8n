@@ -1,0 +1,948 @@
+{
+	"header": {
+		"displayName": "TheHive",
+		"description": "使用TheHive API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"alert": {
+					"displayName": "警报"
+				},
+				"case": {
+					"displayName": "用例"
+				},
+				"log": {
+					"displayName": "日志"
+				},
+				"observable": {
+					"displayName": "可观察对象"
+				},
+				"task": {
+					"displayName": "任务"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建任务日志"
+				},
+				"executeResponder": {
+					"displayName": "执行响应器",
+					"description": "在选定日志上执行响应器"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个任务日志"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取单个日志"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"id": {
+			"displayName": "日志ID",
+			"description": "任务ID"
+		},
+		"caseId": {
+			"displayName": "案例ID",
+			"description": "案件ID"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "任务详情"
+		},
+		"description": {
+			"displayName": "描述",
+			"description": "案例描述"
+		},
+		"severity": {
+			"displayName": "严重性",
+			"description": "警报严重性。默认=中等。",
+			"options": {
+				"1": {
+					"displayName": "低"
+				},
+				"2": {
+					"displayName": "中等"
+				},
+				"3": {
+					"displayName": "高"
+				}
+			}
+		},
+		"date": {
+			"displayName": "日期",
+			"description": "警报触发日期和时间 默认=当前时间"
+		},
+		"tags": {
+			"displayName": "标签",
+			"description": "用例标签",
+			"placeholder": "标签1,标签2,标签3..."
+		},
+		"tlp": {
+			"displayName": "TLP",
+			"description": "交通灯协议(TLP)。默认=琥珀色。",
+			"options": {
+				"0": {
+					"displayName": "白色"
+				},
+				"1": {
+					"displayName": "绿色"
+				},
+				"2": {
+					"displayName": "琥珀"
+				},
+				"3": {
+					"displayName": "红色"
+				}
+			}
+		},
+		"status": {
+			"displayName": "状态",
+			"description": "日志状态（正常或已删除）默认=正常",
+			"options": {
+				"New": {
+					"displayName": "新建"
+				},
+				"Updated": {
+					"displayName": "已更新"
+				},
+				"Ignored": {
+					"displayName": "已忽略"
+				},
+				"Imported": {
+					"displayName": "已导入"
+				},
+				"Ok": {
+					"displayName": "好的"
+				},
+				"Deleted": {
+					"displayName": "已删除"
+				},
+				"Cancel": {
+					"displayName": "取消"
+				},
+				"Completed": {
+					"displayName": "已完成"
+				},
+				"InProgress": {
+					"displayName": "执行中"
+				},
+				"Waiting": {
+					"displayName": "等待中"
+				}
+			}
+		},
+		"type": {
+			"displayName": "类型",
+			"description": "警报类型"
+		},
+		"source": {
+			"displayName": "选择数据来源，交付API或预览API",
+			"description": "警报来源"
+		},
+		"sourceRef": {
+			"displayName": "源引用",
+			"description": "警报的源引用"
+		},
+		"follow": {
+			"displayName": "关注",
+			"description": "警报在更新时是否变为活动状态 默认值=true"
+		},
+		"artifactUi": {
+			"displayName": "制品",
+			"description": "制品属性",
+			"placeholder": "添加制品",
+			"multipleValueButtonText": "添加制品",
+			"options": {
+				"artifactValues": {
+					"displayName": "工件",
+					"options": {
+						"dataType": {
+							"displayName": "数据类型名称或ID",
+							"description": "可观察对象的类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"data": {
+							"displayName": "数据"
+						},
+						"binaryProperty": {
+							"displayName": "输入二进制字段"
+						},
+						"message": {
+							"displayName": "消息"
+						},
+						"tags": {
+							"displayName": "用例标签"
+						}
+					}
+				}
+			},
+			"values": {
+				"artifactValues": {
+					"displayName": "工件",
+					"options": {
+						"dataType": {
+							"displayName": "数据类型名称或ID",
+							"description": "可观察对象的类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+						},
+						"data": {
+							"displayName": "数据"
+						},
+						"binaryProperty": {
+							"displayName": "输入二进制字段"
+						},
+						"message": {
+							"displayName": "消息"
+						},
+						"tags": {
+							"displayName": "用例标签"
+						}
+					}
+				},
+				"artifactUi": {
+					"displayName": "工件",
+					"placeholder": "添加制品"
+				}
+			}
+		},
+		"responder": {
+			"displayName": "响应者名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"jsonParameters": {
+			"displayName": "JSON参数"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"caseTemplate": {
+					"displayName": "案例模板",
+					"description": "从此警报创建案例时使用的案例模板"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFields": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值。如果类型不是字符串，请使用表达式。"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值。如果类型不是字符串，请使用表达式。"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"customFieldsJson": {
+					"displayName": "自定义字段（JSON）",
+					"description": "JSON格式的自定义字段。如果设置，将覆盖自定义字段UI。"
+				}
+			}
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加字段",
+			"options": {
+				"artifactUi": {
+					"displayName": "工件",
+					"placeholder": "添加制品",
+					"multipleValueButtonText": "添加制品",
+					"options": {
+						"artifactValues": {
+							"displayName": "工件",
+							"options": {
+								"dataType": {
+									"displayName": "数据类型名称或ID",
+									"description": "可观察对象的类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"data": {
+									"displayName": "数据"
+								},
+								"binaryProperty": {
+									"displayName": "输入二进制字段"
+								},
+								"message": {
+									"displayName": "消息"
+								},
+								"tags": {
+									"displayName": "用例标签"
+								}
+							}
+						}
+					},
+					"values": {
+						"artifactValues": {
+							"displayName": "工件",
+							"options": {
+								"dataType": {
+									"displayName": "数据类型名称或ID",
+									"description": "可观察对象的类型。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"data": {
+									"displayName": "数据"
+								},
+								"binaryProperty": {
+									"displayName": "输入二进制字段"
+								},
+								"message": {
+									"displayName": "消息"
+								},
+								"tags": {
+									"displayName": "用例标签"
+								}
+							}
+						},
+						"artifactUi": {
+							"displayName": "工件",
+							"placeholder": "添加制品"
+						}
+					}
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFields": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值。如果类型不是字符串，请使用表达式。"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值。如果类型不是字符串，请使用表达式。"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"customFieldsJson": {
+					"displayName": "自定义字段（JSON）",
+					"description": "JSON格式的自定义字段。如果设置，将覆盖自定义字段UI。"
+				},
+				"caseTemplate": {
+					"displayName": "案例模板",
+					"description": "从此警报创建案例时使用的案例模板"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "任务详情"
+				},
+				"follow": {
+					"displayName": "关注",
+					"description": "警报在更新时是否变为活动状态 默认=true"
+				},
+				"severity": {
+					"displayName": "严重程度",
+					"description": "警报严重性。默认=中等。",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						}
+					}
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"New": {
+							"displayName": "新建"
+						},
+						"Updated": {
+							"displayName": "已更新"
+						},
+						"Ignored": {
+							"displayName": "已忽略"
+						},
+						"Imported": {
+							"displayName": "已导入"
+						},
+						"Ok": {
+							"displayName": "好的"
+						},
+						"Deleted": {
+							"displayName": "已删除"
+						},
+						"Open": {
+							"displayName": "打开"
+						},
+						"Resolved": {
+							"displayName": "已解析"
+						},
+						"Cancel": {
+							"displayName": "取消"
+						},
+						"Completed": {
+							"displayName": "已完成"
+						},
+						"InProgress": {
+							"displayName": "执行中"
+						},
+						"Waiting": {
+							"displayName": "等待中"
+						}
+					},
+					"description": "任务状态。默认=等待中。"
+				},
+				"tags": {
+					"displayName": "标签",
+					"placeholder": "标签1,标签2"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "任务详情"
+				},
+				"tlp": {
+					"displayName": "TLP",
+					"description": "交通灯协议(TLP)。默认=琥珀色。",
+					"options": {
+						"0": {
+							"displayName": "白色"
+						},
+						"1": {
+							"displayName": "绿色"
+						},
+						"2": {
+							"displayName": "琥珀"
+						},
+						"3": {
+							"displayName": "红色"
+						}
+					}
+				},
+				"message": {
+					"displayName": "消息",
+					"description": "在案件背景下的可观察对象描述"
+				},
+				"ioc": {
+					"displayName": "IOC",
+					"description": "该可观测对象是否为IOC（入侵指标）"
+				},
+				"sighted": {
+					"displayName": "已查看",
+					"description": "是否之前已查看"
+				},
+				"endDate": {
+					"displayName": "结束日期",
+					"description": "任务结束日期。当状态设置为“已完成”时自动设置。"
+				},
+				"flag": {
+					"displayName": "标记",
+					"description": "是否标记任务。默认=false。"
+				},
+				"impactStatus": {
+					"displayName": "影响状态",
+					"description": "案例的影响状态",
+					"options": {
+						"NoImpact": {
+							"displayName": "无影响"
+						},
+						"WithImpact": {
+							"displayName": "使用Impact"
+						},
+						"NotApplicable": {
+							"displayName": "不适用"
+						}
+					}
+				},
+				"metrics": {
+					"displayName": "指标 (JSON)",
+					"description": "指标列表"
+				},
+				"owner": {
+					"displayName": "所有者",
+					"description": "任务所有者。当状态设置为进行中时，此字段会自动设置为当前用户。"
+				},
+				"resolutionStatus": {
+					"displayName": "解决状态",
+					"description": "案例的解决状态",
+					"options": {
+						"Duplicated": {
+							"displayName": "已复制"
+						},
+						"FalsePositive": {
+							"displayName": "误报"
+						},
+						"Indeterminate": {
+							"displayName": "不确定"
+						},
+						"Other": {
+							"displayName": "其他"
+						},
+						"TruePositive": {
+							"displayName": "真阳性"
+						}
+					}
+				},
+				"startDate": {
+					"displayName": "开始日期",
+					"description": "任务开始日期。当状态设置为“打开”时自动设置。"
+				},
+				"summary": {
+					"displayName": "摘要",
+					"description": "结案时需提供的案例摘要"
+				}
+			}
+		},
+		"options": {
+			"displayName": "选项",
+			"placeholder": "添加选项",
+			"options": {
+				"sort": {
+					"displayName": "排序",
+					"placeholder": "属性,表达式+状态",
+					"description": "指定排序属性,+为升序,-为降序"
+				},
+				"includeSimilar": {
+					"displayName": "包含相似案例",
+					"description": "是否包含相似案例"
+				},
+				"tags": {
+					"displayName": "可观察标签",
+					"placeholder": "标签1,标签2"
+				},
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFields": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值。如果类型不是字符串，请使用表达式。"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值。如果类型不是字符串，请使用表达式。"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"customFieldsJson": {
+					"displayName": "自定义字段（JSON）",
+					"description": "JSON格式的自定义字段。如果设置，将覆盖自定义字段UI。"
+				},
+				"endDate": {
+					"displayName": "结束日期",
+					"description": "任务结束日期。当状态设置为“已完成”时自动设置。"
+				},
+				"summary": {
+					"displayName": "摘要",
+					"description": "结案时需提供的案例摘要"
+				},
+				"metrics": {
+					"displayName": "指标 (JSON)",
+					"description": "指标列表"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "任务详情"
+				},
+				"owner": {
+					"displayName": "所有者",
+					"description": "任务所有者。当状态设置为进行中时，此字段会自动设置为当前用户。"
+				},
+				"startDate": {
+					"displayName": "开始日期",
+					"description": "任务开始日期。当状态设置为“打开”时自动设置。"
+				},
+				"attachmentValues": {
+					"displayName": "附件",
+					"description": "日志中附带的文件",
+					"placeholder": "添加附件",
+					"options": {
+						"attachmentValues": {
+							"displayName": "附件",
+							"options": {
+								"binaryProperty": {
+									"displayName": "输入二进制字段",
+									"description": "保存二进制数据的输入二进制字段名称"
+								}
+							}
+						}
+					},
+					"values": {
+						"attachmentValues": {
+							"displayName": "附件",
+							"placeholder": "添加附件"
+						}
+					}
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"customFieldsUi": {
+					"displayName": "自定义字段",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"customFields": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值。如果类型不是字符串，请使用表达式。"
+								}
+							}
+						}
+					},
+					"values": {
+						"customFields": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+								},
+								"value": {
+									"displayName": "值",
+									"description": "自定义字段值。如果类型不是字符串，请使用表达式。"
+								}
+							}
+						},
+						"customFieldsUi": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "任务详情",
+					"placeholder": "表达式,自由文本"
+				},
+				"follow": {
+					"displayName": "关注",
+					"description": "警报在更新时是否变为活动状态 默认=true"
+				},
+				"severity": {
+					"displayName": "严重程度",
+					"description": "警报严重性。默认=中等。",
+					"options": {
+						"1": {
+							"displayName": "低"
+						},
+						"2": {
+							"displayName": "中等"
+						},
+						"3": {
+							"displayName": "高"
+						}
+					}
+				},
+				"tags": {
+					"displayName": "标签",
+					"placeholder": "标签1,标签2"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "任务详情"
+				},
+				"tlp": {
+					"displayName": "TLP",
+					"description": "交通灯协议(TLP)。默认=琥珀色。",
+					"options": {
+						"0": {
+							"displayName": "白色"
+						},
+						"1": {
+							"displayName": "绿色"
+						},
+						"2": {
+							"displayName": "琥珀"
+						},
+						"3": {
+							"displayName": "红色"
+						}
+					}
+				},
+				"dataType": {
+					"displayName": "数据类型名称或ID",
+					"description": "从列表中选择，或使用<expression>表达式</expression>指定ID"
+				},
+				"range": {
+					"displayName": "日期范围",
+					"options": {
+						"dateRange": {
+							"displayName": "添加日期范围输入",
+							"options": {
+								"fromDate": {
+									"displayName": "起始日期"
+								},
+								"toDate": {
+									"displayName": "截止日期"
+								}
+							}
+						}
+					},
+					"values": {
+						"dateRange": {
+							"displayName": "添加日期范围输入",
+							"options": {
+								"fromDate": {
+									"displayName": "起始日期"
+								},
+								"toDate": {
+									"displayName": "截止日期"
+								}
+							}
+						},
+						"range": {
+							"displayName": "日期范围"
+						}
+					}
+				},
+				"ioc": {
+					"displayName": "IOC",
+					"description": "该可观测对象是否为IOC（入侵指标）"
+				},
+				"keyword": {
+					"displayName": "关键词",
+					"placeholder": "表达式,自由文本"
+				},
+				"message": {
+					"displayName": "消息",
+					"description": "在案件背景下的可观察对象描述"
+				},
+				"sighted": {
+					"displayName": "已查看"
+				},
+				"Status": {
+					"displayName": "状态",
+					"description": "可观察状态。默认=正常。",
+					"options": {
+						"Ok": {
+							"displayName": "好的"
+						},
+						"Deleted": {
+							"displayName": "已删除"
+						}
+					}
+				},
+				"data": {
+					"displayName": "值",
+					"placeholder": "example.com; 8.8.8.8"
+				},
+				"endDate": {
+					"displayName": "结束日期",
+					"description": "任务结束日期。当状态设置为“已完成”时自动设置。"
+				},
+				"flag": {
+					"displayName": "标记",
+					"description": "是否标记任务。默认=false。"
+				},
+				"impactStatus": {
+					"displayName": "影响状态",
+					"options": {
+						"NoImpact": {
+							"displayName": "无影响"
+						},
+						"WithImpact": {
+							"displayName": "使用Impact"
+						},
+						"NotApplicable": {
+							"displayName": "不适用"
+						}
+					}
+				},
+				"owner": {
+					"displayName": "所有者",
+					"description": "任务所有者。当状态设置为进行中时，此字段会自动设置为当前用户。"
+				},
+				"resolutionStatus": {
+					"displayName": "解决状态",
+					"options": {
+						"Duplicated": {
+							"displayName": "已复制"
+						},
+						"False Positive": {
+							"displayName": "误报"
+						},
+						"Indeterminate": {
+							"displayName": "不确定"
+						},
+						"Other": {
+							"displayName": "其他"
+						},
+						"True Positive": {
+							"displayName": "真阳性"
+						}
+					}
+				},
+				"startDate": {
+					"displayName": "开始日期",
+					"description": "任务开始日期。当状态设置为“打开”时自动设置。"
+				},
+				"status": {
+					"displayName": "状态",
+					"options": {
+						"Open": {
+							"displayName": "打开"
+						},
+						"Resolved": {
+							"displayName": "已解析"
+						},
+						"Deleted": {
+							"displayName": "已删除"
+						},
+						"Cancel": {
+							"displayName": "取消"
+						},
+						"Completed": {
+							"displayName": "已完成"
+						},
+						"InProgress": {
+							"displayName": "执行中"
+						},
+						"Waiting": {
+							"displayName": "等待中"
+						}
+					},
+					"description": "任务状态。默认=等待中。"
+				},
+				"summary": {
+					"displayName": "摘要",
+					"description": "结案时需提供的案例摘要"
+				}
+			}
+		},
+		"dataType": {
+			"displayName": "数据类型名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"data": {
+			"displayName": "数据"
+		},
+		"binaryProperty": {
+			"displayName": "输入二进制字段",
+			"description": "表示附件文件的输入二进制字段名称"
+		},
+		"message": {
+			"displayName": "消息",
+			"description": "日志内容"
+		},
+		"startDate": {
+			"displayName": "开始日期",
+			"description": "日志提交日期 默认=现在"
+		},
+		"ioc": {
+			"displayName": "IOC",
+			"description": "该可观测对象是否为IOC（入侵指标）"
+		},
+		"sighted": {
+			"displayName": "已查看",
+			"description": "是否先前已查看"
+		},
+		"analyzers": {
+			"displayName": "分析器名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"owner": {
+			"displayName": "所有者"
+		},
+		"flag": {
+			"displayName": "标记",
+			"description": "是否标记任务。默认=false。"
+		},
+		"taskId": {
+			"displayName": "任务ID",
+			"description": "任务ID"
+		}
+	}
+}

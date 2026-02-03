@@ -1,0 +1,136 @@
+{
+	"header": {
+		"displayName": "Rename Keys",
+		"description": "Update item field names"
+	},
+	"nodeView": {
+		"keys": {
+			"displayName": "Keys",
+			"description": "Adds a key which should be renamed",
+			"placeholder": "Add new key",
+			"multipleValueButtonText": "Add new key",
+			"options": {
+				"key": {
+					"displayName": "Key",
+					"options": {
+						"currentKey": {
+							"displayName": "Current Key Name",
+							"description": "The current name of the key. It is also possible to define deep keys by using dot-notation like for example: \"level1.level2.currentKey\".",
+							"placeholder": "currentKey"
+						},
+						"newKey": {
+							"displayName": "New Key Name",
+							"description": "The name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: \"level1.level2.newKey\".",
+							"placeholder": "newKey"
+						}
+					}
+				}
+			},
+			"values": {
+				"key": {
+					"displayName": "Key",
+					"options": {
+						"currentKey": {
+							"displayName": "Current Key Name",
+							"description": "The current name of the key. It is also possible to define deep keys by using dot-notation like for example: \"level1.level2.currentKey\".",
+							"placeholder": "currentKey"
+						},
+						"newKey": {
+							"displayName": "New Key Name",
+							"description": "The name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: \"level1.level2.newKey\".",
+							"placeholder": "newKey"
+						}
+					}
+				},
+				"keys": {
+					"displayName": "Keys",
+					"placeholder": "Add new key"
+				}
+			}
+		},
+		"additionalOptions": {
+			"displayName": "Additional Options",
+			"placeholder": "Add option",
+			"options": {
+				"regexReplacement": {
+					"displayName": "Regex",
+					"description": "Adds a regular expression",
+					"placeholder": "Add new regular expression",
+					"multipleValueButtonText": "Add new regular expression",
+					"options": {
+						"replacements": {
+							"displayName": "Replacement",
+							"options": {
+								"regExNotice": {
+									"displayName": "Be aware that by using regular expression previously renamed keys can be affected"
+								},
+								"searchRegex": {
+									"displayName": "Regular Expression",
+									"description": "Regex to match the key name",
+									"placeholder": "e.g. [N-n]ame"
+								},
+								"replaceRegex": {
+									"displayName": "Replace With",
+									"description": "The name the key/s should be renamed to. It's possible to use regex captures e.g. $1, $2, ...",
+									"placeholder": "replacedName"
+								},
+								"options": {
+									"displayName": "Options",
+									"placeholder": "Add Regex Option",
+									"options": {
+										"caseInsensitive": {
+											"displayName": "Case Insensitive",
+											"description": "Whether to use case insensitive match"
+										},
+										"depth": {
+											"displayName": "Max Depth",
+											"description": "Maximum depth to replace keys"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"replacements": {
+							"displayName": "Replacement",
+							"options": {
+								"regExNotice": {
+									"displayName": "Be aware that by using regular expression previously renamed keys can be affected"
+								},
+								"searchRegex": {
+									"displayName": "Regular Expression",
+									"description": "Regex to match the key name",
+									"placeholder": "e.g. [N-n]ame"
+								},
+								"replaceRegex": {
+									"displayName": "Replace With",
+									"description": "The name the key/s should be renamed to. It's possible to use regex captures e.g. $1, $2, ...",
+									"placeholder": "replacedName"
+								},
+								"options": {
+									"displayName": "Options",
+									"placeholder": "Add Regex Option",
+									"options": {
+										"caseInsensitive": {
+											"displayName": "Case Insensitive",
+											"description": "Whether to use case insensitive match"
+										},
+										"depth": {
+											"displayName": "Max Depth",
+											"description": "Maximum depth to replace keys"
+										}
+									}
+								}
+							}
+						},
+						"regexReplacement": {
+							"displayName": "Regex",
+							"placeholder": "Add new regular expression"
+						}
+					}
+				}
+			}
+		}
+	}
+}

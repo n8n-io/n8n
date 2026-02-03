@@ -1,0 +1,202 @@
+{
+	"header": {
+		"displayName": "Call n8n Workflow Tool",
+		"description": "Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool."
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI agent. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"noticeTemplateExample": {
+			"displayName": "See an example of a workflow to suggest meeting slots using AI <a href=\"/templates/1953\" target=\"_blank\">here</a>."
+		},
+		"name": {
+			"displayName": "Name",
+			"placeholder": "e.g. My_Color_Tool",
+			"description": "The name of the function to be called, could contain letters, numbers, and underscores only"
+		},
+		"description": {
+			"displayName": "Description",
+			"placeholder": "Call this tool to get a random color. The input should be a string with comma separted names of colors to exclude."
+		},
+		"executeNotice": {
+			"displayName": "This tool will call the workflow you define below, and look in the last node for the response. The workflow needs to start with an Execute Workflow trigger"
+		},
+		"source": {
+			"displayName": "Source",
+			"description": "Where to get the workflow to execute from",
+			"options": {
+				"database": {
+					"displayName": "Database",
+					"description": "Load the workflow from the database by ID"
+				},
+				"parameter": {
+					"displayName": "Define Below",
+					"description": "Pass the JSON code of a workflow"
+				}
+			}
+		},
+		"workflowId": {
+			"displayName": "Workflow",
+			"description": "The workflow to execute"
+		},
+		"workflowJson": {
+			"displayName": "Workflow JSON",
+			"description": "The workflow JSON code to execute"
+		},
+		"responsePropertyName": {
+			"displayName": "Field to Return",
+			"description": "Where to find the data that this tool should return. n8n will look in the output of the last-executed node of the workflow for a field with this name, and return its value."
+		},
+		"fields": {
+			"displayName": "Extra Workflow Inputs",
+			"description": "These will be output by the 'execute workflow' trigger of the workflow being called",
+			"placeholder": "Add Value",
+			"multipleValueButtonText": "Add Value",
+			"options": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name.",
+							"placeholder": "e.g. fieldName"
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "The field value type",
+							"options": {
+								"stringValue": {
+									"displayName": "String"
+								},
+								"numberValue": {
+									"displayName": "Number"
+								},
+								"booleanValue": {
+									"displayName": "Boolean"
+								},
+								"arrayValue": {
+									"displayName": "Array"
+								},
+								"objectValue": {
+									"displayName": "Object"
+								}
+							}
+						},
+						"stringValue": {
+							"displayName": "Value"
+						},
+						"numberValue": {
+							"displayName": "Value"
+						},
+						"booleanValue": {
+							"displayName": "Value",
+							"options": {
+								"true": {
+									"displayName": "True"
+								},
+								"false": {
+									"displayName": "False"
+								}
+							}
+						},
+						"arrayValue": {
+							"displayName": "Value",
+							"placeholder": "e.g. [ arrayItem1, arrayItem2, arrayItem3 ]"
+						},
+						"objectValue": {
+							"displayName": "Value"
+						}
+					}
+				}
+			},
+			"values": {
+				"values": {
+					"displayName": "Values",
+					"values": {
+						"name": {
+							"displayName": "Name",
+							"description": "Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name.",
+							"placeholder": "e.g. fieldName"
+						},
+						"type": {
+							"displayName": "Type",
+							"description": "The field value type",
+							"options": {
+								"stringValue": {
+									"displayName": "String"
+								},
+								"numberValue": {
+									"displayName": "Number"
+								},
+								"booleanValue": {
+									"displayName": "Boolean"
+								},
+								"arrayValue": {
+									"displayName": "Array"
+								},
+								"objectValue": {
+									"displayName": "Object"
+								}
+							}
+						},
+						"stringValue": {
+							"displayName": "Value"
+						},
+						"numberValue": {
+							"displayName": "Value"
+						},
+						"booleanValue": {
+							"displayName": "Value",
+							"options": {
+								"true": {
+									"displayName": "True"
+								},
+								"false": {
+									"displayName": "False"
+								}
+							}
+						},
+						"arrayValue": {
+							"displayName": "Value",
+							"placeholder": "e.g. [ arrayItem1, arrayItem2, arrayItem3 ]"
+						},
+						"objectValue": {
+							"displayName": "Value"
+						}
+					}
+				},
+				"fields": {
+					"displayName": "Extra Workflow Inputs",
+					"placeholder": "Add Value"
+				}
+			}
+		},
+		"specifyInputSchema": {
+			"displayName": "Specify Input Schema",
+			"description": "Whether to specify the schema for the function. This would require the LLM to provide the input in the correct format and would validate it against the schema."
+		},
+		"schemaType": {
+			"displayName": "Schema Type",
+			"description": "How to specify the schema for the function",
+			"options": {
+				"fromJson": {
+					"displayName": "Generate From JSON Example",
+					"description": "Generate a schema from an example JSON object"
+				},
+				"manual": {
+					"displayName": "Define using JSON Schema",
+					"description": "Define the JSON schema manually"
+				}
+			}
+		},
+		"jsonSchemaExample": {
+			"displayName": "JSON Example",
+			"description": "Example JSON object to use to generate the schema"
+		},
+		"inputSchema": {
+			"displayName": "Input Schema",
+			"description": "Schema to use for the function"
+		}
+	}
+}

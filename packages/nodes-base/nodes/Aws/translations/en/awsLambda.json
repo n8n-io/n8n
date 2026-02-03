@@ -1,0 +1,55 @@
+{
+	"header": {
+		"displayName": "AWS Lambda",
+		"description": "Invoke functions on AWS Lambda"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"invoke": {
+					"displayName": "Invoke",
+					"description": "Invoke a function"
+				}
+			}
+		},
+		"function": {
+			"displayName": "Function Name or ID",
+			"description": "The function you want to invoke. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			"options": {}
+		},
+		"qualifier": {
+			"displayName": "Qualifier",
+			"description": "Specify a version or alias to invoke a published version of the function"
+		},
+		"invocationType": {
+			"displayName": "Invocation Type",
+			"description": "Specify if the workflow should wait for the function to return the results",
+			"options": {
+				"RequestResponse": {
+					"displayName": "Wait for Results",
+					"description": "Invoke the function synchronously and wait for the response"
+				},
+				"Event": {
+					"displayName": "Continue Workflow",
+					"description": "Invoke the function and immediately continue the workflow"
+				}
+			}
+		},
+		"payload": {
+			"displayName": "JSON Input",
+			"description": "The JSON that you want to provide to your Lambda function as input"
+		}
+	}
+}

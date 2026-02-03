@@ -1,0 +1,176 @@
+{
+	"header": {
+		"displayName": "Iterable",
+		"description": "Consume Iterable API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "Resource",
+			"options": {
+				"event": {
+					"displayName": "Event"
+				},
+				"user": {
+					"displayName": "User"
+				},
+				"userList": {
+					"displayName": "User List"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"track": {
+					"displayName": "Track",
+					"description": "Record the actions a user perform"
+				},
+				"upsert": {
+					"displayName": "Create or Update",
+					"description": "Create a new user, or update the current one if it already exists (upsert)"
+				},
+				"delete": {
+					"displayName": "Delete",
+					"description": "Delete a user"
+				},
+				"get": {
+					"displayName": "Get",
+					"description": "Get a user"
+				},
+				"add": {
+					"displayName": "Add",
+					"description": "Add user to list"
+				},
+				"remove": {
+					"displayName": "Remove",
+					"description": "Remove a user from a list"
+				}
+			}
+		},
+		"name": {
+			"displayName": "Name",
+			"description": "The name of the event to track"
+		},
+		"additionalFields": {
+			"displayName": "Additional Fields",
+			"placeholder": "Add Field",
+			"options": {
+				"campaignId": {
+					"displayName": "Campaign ID",
+					"description": "Attribute unsubscribe to a campaign"
+				},
+				"createdAt": {
+					"displayName": "Created At",
+					"description": "Time event happened"
+				},
+				"dataFieldsUi": {
+					"displayName": "Data Fields",
+					"placeholder": "Add Data Field",
+					"multipleValueButtonText": "Add Data Field",
+					"options": {
+						"dataFieldValues": {
+							"displayName": "Data Field",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The end user specified key of the user defined data"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						}
+					},
+					"values": {
+						"dataFieldValues": {
+							"displayName": "Data Field",
+							"options": {
+								"key": {
+									"displayName": "Key",
+									"description": "The end user specified key of the user defined data"
+								},
+								"value": {
+									"displayName": "Value",
+									"description": "The end user specified value of the user defined data"
+								}
+							}
+						},
+						"dataFieldsUi": {
+							"displayName": "Data Fields",
+							"placeholder": "Add Data Field"
+						}
+					}
+				},
+				"email": {
+					"displayName": "Email",
+					"description": "Either email or userId must be passed in to identify the user. If both are passed in, email takes precedence.",
+					"placeholder": "name@email.com"
+				},
+				"id": {
+					"displayName": "ID",
+					"description": "Optional event ID. If an event exists with that ID, the event will be updated. If none is specified, a new ID will automatically be generated and returned."
+				},
+				"templateId": {
+					"displayName": "Template ID"
+				},
+				"userId": {
+					"displayName": "User ID",
+					"description": "userId that was passed into the updateUser call"
+				},
+				"mergeNestedObjects": {
+					"displayName": "Merge Nested Objects",
+					"description": "Whether to merge top level objects instead of overwriting (default: false), e.g. if user profile has data: {mySettings:{mobile:true}} and change contact field has data: {mySettings:{email:true}}, the resulting profile: {mySettings:{mobile:true,email:true}}"
+				},
+				"channelUnsubscribe": {
+					"displayName": "Channel Unsubscribe",
+					"description": "Whether to unsubscribe email from list's associated channel - essentially a global unsubscribe"
+				}
+			}
+		},
+		"identifier": {
+			"displayName": "Identifier",
+			"description": "Identifier to be used",
+			"options": {
+				"email": {
+					"displayName": "Email"
+				},
+				"userId": {
+					"displayName": "User ID"
+				}
+			}
+		},
+		"value": {
+			"displayName": "Value"
+		},
+		"preferUserId": {
+			"displayName": "Create If Doesn't Exist",
+			"description": "Whether to create a new user if the idetifier does not exist"
+		},
+		"by": {
+			"displayName": "By",
+			"description": "Identifier to be used",
+			"options": {
+				"email": {
+					"displayName": "Email"
+				},
+				"userId": {
+					"displayName": "User ID"
+				}
+			}
+		},
+		"userId": {
+			"displayName": "User ID",
+			"description": "Unique identifier for a particular user"
+		},
+		"email": {
+			"displayName": "Email",
+			"description": "Email for a particular user",
+			"placeholder": "name@email.com"
+		},
+		"listId": {
+			"displayName": "List Name or ID",
+			"description": "Identifier to be used. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>."
+		}
+	}
+}

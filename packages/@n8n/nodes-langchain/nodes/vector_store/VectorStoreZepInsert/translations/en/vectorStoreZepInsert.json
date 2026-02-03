@@ -1,0 +1,31 @@
+{
+	"header": {
+		"displayName": "Zep Vector Store: Insert",
+		"description": "Insert data into Zep Vector Store index"
+	},
+	"nodeView": {
+		"deprecationNotice": {
+			"displayName": "This Zep integration is deprecated and will be removed in a future version."
+		},
+		"collectionName": {
+			"displayName": "Collection Name"
+		},
+		"notice": {
+			"displayName": "Specify the document to load in the document loader sub-node"
+		},
+		"options": {
+			"displayName": "Options",
+			"placeholder": "Add Option",
+			"options": {
+				"embeddingDimensions": {
+					"displayName": "Embedding Dimensions",
+					"description": "Whether to allow using characters from the Unicode surrogate blocks"
+				},
+				"isAutoEmbedded": {
+					"displayName": "Is Auto Embedded",
+					"description": "Whether to automatically embed documents when they are added"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,286 @@
+{
+	"header": {
+		"displayName": "工作流",
+		"description": "使用工作流API"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"task": {
+					"displayName": "任务",
+					"description": "任务是工作单元，可以是私有的或分配给列表的。通过此端点，您可以在Flow中操作您的任务，包括创建新任务。"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建新任务"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新任务"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取任务"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个任务"
+				}
+			}
+		},
+		"workspaceId": {
+			"displayName": "工作区ID",
+			"description": "在指定工作区下创建资源"
+		},
+		"name": {
+			"displayName": "名称",
+			"description": "任务的标题"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"ownerid": {
+					"displayName": "所有者ID",
+					"description": "此任务将被分配给的账户ID"
+				},
+				"listID": {
+					"displayName": "列表ID",
+					"description": "将新任务放入列表（\"项目\"）。省略此参数可使任务保持私有。"
+				},
+				"startsOn": {
+					"displayName": "开始于",
+					"description": "任务应开始的日期"
+				},
+				"dueOn": {
+					"displayName": "截止日期",
+					"description": "任务应到期的日期"
+				},
+				"mirrorParentSubscribers": {
+					"displayName": "镜像父任务订阅者",
+					"description": "如果此任务为子任务（此项为真），父任务的订阅者将被镜像到此任务"
+				},
+				"mirrorParentTags": {
+					"displayName": "镜像父任务标签",
+					"description": "如果此任务将作为子任务（此选项为真），父任务的标签将被镜像到此任务"
+				},
+				"noteContent": {
+					"displayName": "笔记内容",
+					"description": "提供任务的笔记内容"
+				},
+				"noteMimeType": {
+					"displayName": "备注MIME类型",
+					"description": "识别用于格式化给定备注的标记语言",
+					"options": {
+						"text/plain": {
+							"displayName": "附件的MIME类型"
+						},
+						"text/x-markdown": {
+							"displayName": "text/x-markdown"
+						},
+						"text/html": {
+							"displayName": "text/html"
+						}
+					}
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "如果提供，此任务将成为指定任务的子任务"
+				},
+				"positionList": {
+					"displayName": "位置列表",
+					"description": "决定在列表中显示或分组任务时的排序顺序"
+				},
+				"positionUpcoming": {
+					"displayName": "位置：即将到期",
+					"description": "确定按截止日期分组显示任务时的排序顺序"
+				},
+				"position": {
+					"displayName": "位置",
+					"description": "确定任务的排序方式"
+				},
+				"sectionId": {
+					"displayName": "分区ID",
+					"description": "指定在哪个分区下创建此任务"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "要应用到新任务的标签名称列表，用逗号(,)分隔"
+				}
+			}
+		},
+		"taskId": {
+			"displayName": "任务ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"placeholder": "添加更新字段",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "任务的标题"
+				},
+				"completed": {
+					"displayName": "已完成",
+					"description": "是否完成任务"
+				},
+				"ownerid": {
+					"displayName": "所有者ID",
+					"description": "此任务将被分配给的账户ID"
+				},
+				"listID": {
+					"displayName": "列表ID",
+					"description": "将新任务放入列表（\"项目\"）。省略此参数可使任务保持私有。"
+				},
+				"startsOn": {
+					"displayName": "开始于",
+					"description": "任务应开始的日期"
+				},
+				"dueOn": {
+					"displayName": "截止日期",
+					"description": "任务应到期的日期"
+				},
+				"mirrorParentSubscribers": {
+					"displayName": "镜像父任务订阅者",
+					"description": "如果此任务为子任务（此项为真），父任务的订阅者将被镜像到此任务"
+				},
+				"mirrorParentTags": {
+					"displayName": "镜像父任务标签",
+					"description": "如果此任务将作为子任务（此选项为真），父任务的标签将被镜像到此任务"
+				},
+				"noteContent": {
+					"displayName": "笔记内容",
+					"description": "提供任务的笔记内容"
+				},
+				"noteMimeType": {
+					"displayName": "备注MIME类型",
+					"description": "识别用于格式化给定备注的标记语言",
+					"options": {
+						"text/plain": {
+							"displayName": "文本/纯文本"
+						},
+						"text/x-markdown": {
+							"displayName": "text/x-markdown"
+						},
+						"text/html": {
+							"displayName": "文本/HTML"
+						}
+					}
+				},
+				"parentId": {
+					"displayName": "父级ID",
+					"description": "如果提供，此任务将成为指定任务的子任务"
+				},
+				"positionList": {
+					"displayName": "位置列表",
+					"description": "决定在列表中显示或分组任务时的排序顺序"
+				},
+				"positionUpcoming": {
+					"displayName": "位置：即将到期",
+					"description": "确定按截止日期分组显示任务时的排序顺序"
+				},
+				"position": {
+					"displayName": "位置",
+					"description": "确定任务的排序方式"
+				},
+				"sectionId": {
+					"displayName": "分区ID",
+					"description": "指定在哪个分区下创建此任务"
+				},
+				"tags": {
+					"displayName": "标签",
+					"description": "要应用到新任务的标签名称列表，用逗号(,)分隔"
+				}
+			}
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"include": {
+					"displayName": "包含"
+				},
+				"order": {
+					"displayName": "排序",
+					"options": {
+						"account_id": {
+							"displayName": "账户ID"
+						},
+						"completed_at": {
+							"displayName": "完成时间"
+						},
+						"created_at": {
+							"displayName": "创建时间"
+						},
+						"due_on": {
+							"displayName": "截止日期"
+						},
+						"list_id": {
+							"displayName": "列表ID"
+						},
+						"name": {
+							"displayName": "名称"
+						},
+						"owner_id": {
+							"displayName": "所有者ID"
+						},
+						"position": {
+							"displayName": "位置"
+						},
+						"section_id": {
+							"displayName": "分区ID"
+						},
+						"starts_on": {
+							"displayName": "开始于"
+						},
+						"updated_at": {
+							"displayName": "更新时间"
+						}
+					}
+				},
+				"workspaceId": {
+					"displayName": "工作区ID",
+					"description": "在指定工作区下创建资源"
+				},
+				"createdBefore": {
+					"displayName": "创建于之前",
+					"description": "选择在特定时间之前创建的资源"
+				},
+				"createdAfter": {
+					"displayName": "创建时间晚于",
+					"description": "选择在特定时间后创建的资源"
+				},
+				"updateBefore": {
+					"displayName": "更新于之前",
+					"description": "选择在特定时间之前更新的资源"
+				},
+				"updateAfter": {
+					"displayName": "更新之后",
+					"description": "选择在特定时间之后更新的资源"
+				},
+				"deleted": {
+					"displayName": "已删除",
+					"description": "是否选择已删除的资源"
+				},
+				"cleared": {
+					"displayName": "已清除",
+					"description": "是否选择已清除的资源"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		}
+	}
+}

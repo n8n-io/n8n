@@ -1,0 +1,1888 @@
+{
+	"header": {
+		"displayName": "ActiveCampaign",
+		"description": "在ActiveCampaign中创建和编辑数据"
+	},
+	"nodeView": {
+		"resource": {
+			"displayName": "资源",
+			"options": {
+				"account": {
+					"displayName": "账户"
+				},
+				"accountContact": {
+					"displayName": "账户联系人"
+				},
+				"connection": {
+					"displayName": "连接"
+				},
+				"contact": {
+					"displayName": "联系人"
+				},
+				"contactList": {
+					"displayName": "联系人列表"
+				},
+				"contactTag": {
+					"displayName": "联系人标签"
+				},
+				"deal": {
+					"displayName": "交易"
+				},
+				"ecommerceCustomer": {
+					"displayName": "电商客户"
+				},
+				"ecommerceOrder": {
+					"displayName": "电商订单"
+				},
+				"ecommerceOrderProducts": {
+					"displayName": "电商订单商品"
+				},
+				"list": {
+					"displayName": "列表"
+				},
+				"tag": {
+					"displayName": "标签"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "操作",
+			"options": {
+				"create": {
+					"displayName": "创建",
+					"description": "创建电商客户"
+				},
+				"delete": {
+					"displayName": "删除",
+					"description": "删除电商客户"
+				},
+				"get": {
+					"displayName": "获取",
+					"description": "获取电商客户数据"
+				},
+				"getAll": {
+					"displayName": "获取多个",
+					"description": "获取多个订单产品的数据"
+				},
+				"update": {
+					"displayName": "更新",
+					"description": "更新电商客户"
+				},
+				"add": {
+					"displayName": "添加",
+					"description": "为联系人添加标签"
+				},
+				"remove": {
+					"displayName": "移除",
+					"description": "从联系人中移除标签"
+				},
+				"createNote": {
+					"displayName": "创建备注",
+					"description": "创建交易备注"
+				},
+				"updateNote": {
+					"displayName": "更新交易备注",
+					"description": "更新交易备注"
+				},
+				"getByProductId": {
+					"displayName": "按产品ID获取",
+					"description": "获取已订购产品的数据"
+				},
+				"getByOrderId": {
+					"displayName": "按订单ID获取",
+					"description": "获取订单产品数据"
+				}
+			}
+		},
+		"tagType": {
+			"displayName": "类型",
+			"description": "新标签的标签类型",
+			"options": {
+				"contact": {
+					"displayName": "联系人",
+					"description": "标记联系人"
+				},
+				"template": {
+					"displayName": "模板",
+					"description": "标签模板"
+				}
+			}
+		},
+		"name": {
+			"displayName": "账户名称",
+			"description": "外部服务中与该账户关联的名称。通常为公司名称（例如“我的玩具店有限公司”）。"
+		},
+		"additionalFields": {
+			"displayName": "附加字段",
+			"placeholder": "添加字段",
+			"options": {
+				"description": {
+					"displayName": "描述",
+					"description": "交易的描述"
+				},
+				"accountUrl": {
+					"displayName": "账户URL",
+					"description": "账户网站"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "添加自定义字段以设置未预定义的值",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"property": {
+							"displayName": "字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"jobTitle": {
+					"displayName": "职位名称",
+					"description": "客户联系人的职位名称"
+				},
+				"fieldValues": {
+					"displayName": "自定义字段",
+					"description": "添加自定义字段以设置未预定义的值",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"property": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"fieldValues": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "要创建的联系人的名字"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "要创建的联系人姓氏"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "联系人的电话号码"
+				},
+				"datetime": {
+					"displayName": "日期时间",
+					"description": "在指定日期创建的通讯录"
+				},
+				"email": {
+					"displayName": "电子邮件",
+					"description": "要获取的联系人电子邮件地址",
+					"placeholder": "name@email.com"
+				},
+				"email_like": {
+					"displayName": "邮箱相似",
+					"description": "筛选邮箱地址中包含给定值的联系人"
+				},
+				"exclude": {
+					"displayName": "排除",
+					"description": "从响应中排除指定ID的联系人"
+				},
+				"formid": {
+					"displayName": "表单ID",
+					"description": "筛选与指定表单关联的联系人"
+				},
+				"listid": {
+					"displayName": "列表ID",
+					"description": "筛选与给定列表关联的联系人"
+				},
+				"search": {
+					"displayName": "搜索",
+					"description": "筛选联系人姓名、组织、电话或邮箱中匹配给定值的联系人"
+				},
+				"segmentid": {
+					"displayName": "细分ID",
+					"description": "仅返回匹配列表细分的联系人"
+				},
+				"seriesid": {
+					"displayName": "系列ID",
+					"description": "筛选与指定自动化关联的联系人"
+				},
+				"status": {
+					"displayName": "交易状态",
+					"options": {
+						"0": {
+							"displayName": "未确认"
+						},
+						"1": {
+							"displayName": "激活状态"
+						},
+						"2": {
+							"displayName": "已取消订阅"
+						},
+						"3": {
+							"displayName": "退回"
+						},
+						"-1": {
+							"displayName": "任意"
+						}
+					},
+					"description": "交易的状态"
+				},
+				"tagid": {
+					"displayName": "标签ID",
+					"description": "筛选与指定标签关联的联系人"
+				},
+				"filters[created_before]": {
+					"displayName": "创建于之前",
+					"description": "筛选在此日期之前创建的联系人"
+				},
+				"filters[created_after]": {
+					"displayName": "创建时间晚于",
+					"description": "筛选在此日期之后创建的联系人"
+				},
+				"filters[updated_before]": {
+					"displayName": "更新早于",
+					"description": "筛选在此日期之前更新的联系人"
+				},
+				"filters[updated_after]": {
+					"displayName": "更新于之后",
+					"description": "筛选在此日期之后更新的联系人"
+				},
+				"waitid": {
+					"displayName": "等待ID",
+					"description": "按自动化区块等待队列中的联系人筛选"
+				},
+				"orderBy": {
+					"displayName": "排序方式",
+					"options": {
+						"orders[cdate]": {
+							"displayName": "创建日期",
+							"description": "按创建日期排序联系人"
+						},
+						"orders[email]": {
+							"displayName": "电子邮件",
+							"description": "按邮箱排序联系人"
+						},
+						"orders[first_name]": {
+							"displayName": "名字",
+							"description": "按名字排序联系人"
+						},
+						"orders[last_name]": {
+							"displayName": "姓氏",
+							"description": "按姓氏排序联系人"
+						},
+						"orders[name]": {
+							"displayName": "名称",
+							"description": "按全名排序联系人"
+						},
+						"orders[score]": {
+							"displayName": "评分",
+							"description": "按评分排序联系人"
+						}
+					}
+				},
+				"percent": {
+					"displayName": "交易百分比",
+					"description": "交易的比例"
+				},
+				"shippingAmount": {
+					"displayName": "运费金额",
+					"description": "订单总运费金额（以分为单位）"
+				},
+				"taxAmount": {
+					"displayName": "税额",
+					"description": "订单总税额（以分为单位）"
+				},
+				"discountAmount": {
+					"displayName": "折扣金额",
+					"description": "订单的总折扣金额（以分为单位）"
+				},
+				"orderUrl": {
+					"displayName": "订单URL",
+					"description": "外部服务中的订单URL"
+				},
+				"externalUpdatedDate": {
+					"displayName": "外部更新日期",
+					"description": "订单更新日期"
+				},
+				"shippingMethod": {
+					"displayName": "配送方式",
+					"description": "订单的配送方式"
+				},
+				"orderNumber": {
+					"displayName": "订单编号",
+					"description": "订单编号。这可能与外部ID不同。"
+				},
+				"acceptsMarketing": {
+					"displayName": "接受营销",
+					"description": "客户是否已选择接收营销通讯"
+				}
+			}
+		},
+		"tagId": {
+			"displayName": "标签名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"updateFields": {
+			"displayName": "更新字段",
+			"description": "要更新的字段",
+			"placeholder": "添加字段",
+			"options": {
+				"tag": {
+					"displayName": "标签",
+					"description": "联系人姓名"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "交易的描述"
+				},
+				"name": {
+					"displayName": "账户名称",
+					"description": "外部服务中与该账户关联的名称。通常为公司名称（例如“我的玩具店有限公司”）。"
+				},
+				"accountUrl": {
+					"displayName": "账户URL",
+					"description": "账户网站"
+				},
+				"fields": {
+					"displayName": "字段",
+					"description": "添加自定义字段以设置未预定义的值",
+					"placeholder": "添加字段",
+					"multipleValueButtonText": "添加字段",
+					"options": {
+						"property": {
+							"displayName": "字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "字段",
+							"options": {
+								"customFieldId": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"fieldValue": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"fields": {
+							"displayName": "字段",
+							"placeholder": "添加字段"
+						}
+					}
+				},
+				"jobTitle": {
+					"displayName": "职位名称",
+					"description": "客户联系人的职位名称"
+				},
+				"fieldValues": {
+					"displayName": "自定义字段",
+					"description": "添加自定义字段以设置未预定义的值",
+					"placeholder": "添加自定义字段",
+					"multipleValueButtonText": "添加自定义字段",
+					"options": {
+						"property": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						}
+					},
+					"values": {
+						"property": {
+							"displayName": "自定义字段",
+							"options": {
+								"field": {
+									"displayName": "字段名称或ID",
+									"description": "要设置的字段ID。从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID。"
+								},
+								"value": {
+									"displayName": "字段值",
+									"description": "要设置的字段值"
+								}
+							}
+						},
+						"fieldValues": {
+							"displayName": "自定义字段",
+							"placeholder": "添加自定义字段"
+						}
+					}
+				},
+				"email": {
+					"displayName": "客户邮箱",
+					"description": "客户的邮箱地址",
+					"placeholder": "name@email.com"
+				},
+				"firstName": {
+					"displayName": "名字",
+					"description": "联系人的名字"
+				},
+				"lastName": {
+					"displayName": "姓氏",
+					"description": "联系人的姓氏"
+				},
+				"phone": {
+					"displayName": "电话",
+					"description": "联系人的电话号码"
+				},
+				"title": {
+					"displayName": "标题",
+					"description": "交易标题"
+				},
+				"contact": {
+					"displayName": "交易的联系人ID",
+					"description": "交易联系人的ID"
+				},
+				"value": {
+					"displayName": "交易金额",
+					"description": "交易金额（以分为单位）"
+				},
+				"currency": {
+					"displayName": "订单货币",
+					"description": "订单的货币（3位ISO代码，例如“USD”）",
+					"options": {
+						"eur": {
+							"displayName": "欧元"
+						},
+						"usd": {
+							"displayName": "美元"
+						},
+						"gbp": {
+							"displayName": "英镑"
+						},
+						"chf": {
+							"displayName": "瑞士法郎"
+						},
+						"cny": {
+							"displayName": "人民币"
+						},
+						"": {
+							"displayName": "[0]--------"
+						},
+						"aed": {
+							"displayName": "阿联酋迪拉姆"
+						},
+						"afn": {
+							"displayName": "阿富汗尼"
+						},
+						"all": {
+							"displayName": "阿尔巴尼亚列克"
+						},
+						"amd": {
+							"displayName": "亚美尼亚德拉姆"
+						},
+						"ang": {
+							"displayName": "荷属安的列斯盾"
+						},
+						"aoa": {
+							"displayName": "安哥拉宽扎"
+						},
+						"ars": {
+							"displayName": "阿根廷比索"
+						},
+						"aud": {
+							"displayName": "澳大利亚元"
+						},
+						"awg": {
+							"displayName": "阿鲁巴弗罗林"
+						},
+						"azn": {
+							"displayName": "阿塞拜疆马纳特"
+						},
+						"bam": {
+							"displayName": "波斯尼亚-黑塞哥维那可兑换马克"
+						},
+						"bbd": {
+							"displayName": "巴巴多斯元"
+						},
+						"bdt": {
+							"displayName": "孟加拉塔卡"
+						},
+						"bgn": {
+							"displayName": "保加利亚列弗"
+						},
+						"bhd": {
+							"displayName": "巴林第纳尔"
+						},
+						"bif": {
+							"displayName": "布隆迪法郎"
+						},
+						"bmd": {
+							"displayName": "百慕大元"
+						},
+						"bnd": {
+							"displayName": "文莱元"
+						},
+						"bob": {
+							"displayName": "玻利维亚诺"
+						},
+						"brl": {
+							"displayName": "巴西雷亚尔"
+						},
+						"bsd": {
+							"displayName": "巴哈马元"
+						},
+						"btc": {
+							"displayName": "比特币"
+						},
+						"btn": {
+							"displayName": "不丹努尔特鲁姆"
+						},
+						"bwp": {
+							"displayName": "博茨瓦纳普拉"
+						},
+						"byn": {
+							"displayName": "白俄罗斯卢布"
+						},
+						"bzd": {
+							"displayName": "伯利兹元"
+						},
+						"cad": {
+							"displayName": "加拿大元"
+						},
+						"cdf": {
+							"displayName": "刚果法郎"
+						},
+						"clf": {
+							"displayName": "智利发展单位（UF）"
+						},
+						"clp": {
+							"displayName": "智利比索"
+						},
+						"cnh": {
+							"displayName": "离岸人民币"
+						},
+						"cop": {
+							"displayName": "哥伦比亚比索"
+						},
+						"crc": {
+							"displayName": "哥斯达黎加科朗"
+						},
+						"cuc": {
+							"displayName": "古巴可兑换比索"
+						},
+						"cup": {
+							"displayName": "古巴比索"
+						},
+						"cve": {
+							"displayName": "佛得角埃斯库多"
+						},
+						"czk": {
+							"displayName": "捷克克朗"
+						},
+						"djf": {
+							"displayName": "吉布提法郎"
+						},
+						"dkk": {
+							"displayName": "丹麦克朗"
+						},
+						"dop": {
+							"displayName": "多米尼加比索"
+						},
+						"dzd": {
+							"displayName": "阿尔及利亚第纳尔"
+						},
+						"egp": {
+							"displayName": "埃及镑"
+						},
+						"ern": {
+							"displayName": "厄立特里亚纳克法"
+						},
+						"etb": {
+							"displayName": "埃塞俄比亚比尔"
+						},
+						"fjd": {
+							"displayName": "斐济元"
+						},
+						"fkp": {
+							"displayName": "福克兰群岛镑"
+						},
+						"gel": {
+							"displayName": "格鲁吉亚拉里"
+						},
+						"ggp": {
+							"displayName": "根西岛镑"
+						},
+						"ghs": {
+							"displayName": "加纳塞地"
+						},
+						"gip": {
+							"displayName": "直布罗陀镑"
+						},
+						"gmd": {
+							"displayName": "冈比亚达拉西"
+						},
+						"gnf": {
+							"displayName": "几内亚法郎"
+						},
+						"gtq": {
+							"displayName": "危地马拉格查尔"
+						},
+						"gyd": {
+							"displayName": "圭亚那元"
+						},
+						"hkd": {
+							"displayName": "港币"
+						},
+						"hnl": {
+							"displayName": "洪都拉斯伦皮拉"
+						},
+						"hrk": {
+							"displayName": "克罗地亚库纳"
+						},
+						"htg": {
+							"displayName": "海地古德"
+						},
+						"huf": {
+							"displayName": "匈牙利福林"
+						},
+						"idr": {
+							"displayName": "印尼盾"
+						},
+						"ils": {
+							"displayName": "以色列新谢克尔"
+						},
+						"imp": {
+							"displayName": "马恩岛镑"
+						},
+						"inr": {
+							"displayName": "印度卢比"
+						},
+						"iqd": {
+							"displayName": "伊拉克第纳尔"
+						},
+						"irr": {
+							"displayName": "伊朗里亚尔"
+						},
+						"isk": {
+							"displayName": "冰岛克朗"
+						},
+						"jep": {
+							"displayName": "泽西镑"
+						},
+						"jmd": {
+							"displayName": "牙买加元"
+						},
+						"jod": {
+							"displayName": "约旦第纳尔"
+						},
+						"jpy": {
+							"displayName": "日元"
+						},
+						"kes": {
+							"displayName": "肯尼亚先令"
+						},
+						"kgs": {
+							"displayName": "吉尔吉斯斯坦索姆"
+						},
+						"khr": {
+							"displayName": "柬埔寨瑞尔"
+						},
+						"kmf": {
+							"displayName": "科摩罗法郎"
+						},
+						"kpw": {
+							"displayName": "朝鲜元"
+						},
+						"krw": {
+							"displayName": "韩元"
+						},
+						"kwd": {
+							"displayName": "科威特第纳尔"
+						},
+						"kyd": {
+							"displayName": "开曼群岛元"
+						},
+						"kzt": {
+							"displayName": "哈萨克斯坦坚戈"
+						},
+						"lak": {
+							"displayName": "老挝基普"
+						},
+						"lbp": {
+							"displayName": "黎巴嫩镑"
+						},
+						"lkr": {
+							"displayName": "斯里兰卡卢比"
+						},
+						"lrd": {
+							"displayName": "利比里亚元"
+						},
+						"lsl": {
+							"displayName": "莱索托洛蒂"
+						},
+						"lyd": {
+							"displayName": "利比亚第纳尔"
+						},
+						"mad": {
+							"displayName": "摩洛哥迪拉姆"
+						},
+						"mdl": {
+							"displayName": "摩尔多瓦列伊"
+						},
+						"mga": {
+							"displayName": "马达加斯加阿里亚里"
+						},
+						"mkd": {
+							"displayName": "马其顿代纳尔"
+						},
+						"mmk": {
+							"displayName": "缅甸元"
+						},
+						"mnt": {
+							"displayName": "蒙古图格里克"
+						},
+						"mop": {
+							"displayName": "澳门元"
+						},
+						"mro": {
+							"displayName": "毛里塔尼亚乌吉亚（2018年前）"
+						},
+						"mru": {
+							"displayName": "毛里塔尼亚乌吉亚"
+						},
+						"mur": {
+							"displayName": "毛里求斯卢比"
+						},
+						"mvr": {
+							"displayName": "马尔代夫拉菲亚"
+						},
+						"mwk": {
+							"displayName": "马拉维克瓦查"
+						},
+						"mxn": {
+							"displayName": "墨西哥比索"
+						},
+						"myr": {
+							"displayName": "马来西亚林吉特"
+						},
+						"mzn": {
+							"displayName": "莫桑比克梅蒂卡尔"
+						},
+						"nad": {
+							"displayName": "纳米比亚元"
+						},
+						"ngn": {
+							"displayName": "尼日利亚奈拉"
+						},
+						"nio": {
+							"displayName": "尼加拉瓜科多巴"
+						},
+						"nok": {
+							"displayName": "挪威克朗"
+						},
+						"npr": {
+							"displayName": "尼泊尔卢比"
+						},
+						"nzd": {
+							"displayName": "新西兰元"
+						},
+						"omr": {
+							"displayName": "阿曼里亚尔"
+						},
+						"pab": {
+							"displayName": "巴拿马巴波亚"
+						},
+						"pen": {
+							"displayName": "秘鲁新索尔"
+						},
+						"pgk": {
+							"displayName": "巴布亚新几内亚基那"
+						},
+						"php": {
+							"displayName": "菲律宾比索"
+						},
+						"pkr": {
+							"displayName": "巴基斯坦卢比"
+						},
+						"pln": {
+							"displayName": "波兰兹罗提"
+						},
+						"pyg": {
+							"displayName": "巴拉圭瓜拉尼"
+						},
+						"qar": {
+							"displayName": "卡塔尔里亚尔"
+						},
+						"ron": {
+							"displayName": "罗马尼亚列伊"
+						},
+						"rsd": {
+							"displayName": "塞尔维亚第纳尔"
+						},
+						"rub": {
+							"displayName": "俄罗斯卢布"
+						},
+						"rwf": {
+							"displayName": "卢旺达法郎"
+						},
+						"sar": {
+							"displayName": "沙特里亚尔"
+						},
+						"sbd": {
+							"displayName": "所罗门群岛元"
+						},
+						"scr": {
+							"displayName": "塞舌尔卢比"
+						},
+						"sdg": {
+							"displayName": "苏丹镑"
+						},
+						"sek": {
+							"displayName": "瑞典克朗"
+						},
+						"sgd": {
+							"displayName": "新加坡元"
+						},
+						"shp": {
+							"displayName": "圣赫勒拿镑"
+						},
+						"sll": {
+							"displayName": "塞拉利昂利昂"
+						},
+						"sos": {
+							"displayName": "索马里先令"
+						},
+						"srd": {
+							"displayName": "苏里南元"
+						},
+						"ssp": {
+							"displayName": "南苏丹镑"
+						},
+						"std": {
+							"displayName": "圣多美和普林西比多布拉（2018年前）"
+						},
+						"stn": {
+							"displayName": "圣多美和普林西比多布拉"
+						},
+						"svc": {
+							"displayName": "萨尔瓦多科朗"
+						},
+						"syp": {
+							"displayName": "叙利亚镑"
+						},
+						"szl": {
+							"displayName": "斯威士兰里兰吉尼"
+						},
+						"thb": {
+							"displayName": "泰铢"
+						},
+						"tjs": {
+							"displayName": "塔吉克斯坦索莫尼"
+						},
+						"tmt": {
+							"displayName": "土库曼斯坦马纳特"
+						},
+						"tnd": {
+							"displayName": "突尼斯第纳尔"
+						},
+						"top": {
+							"displayName": "汤加潘加"
+						},
+						"try": {
+							"displayName": "土耳其里拉"
+						},
+						"ttd": {
+							"displayName": "特立尼达和多巴哥元"
+						},
+						"twd": {
+							"displayName": "新台币"
+						},
+						"tzs": {
+							"displayName": "坦桑尼亚先令"
+						},
+						"uah": {
+							"displayName": "乌克兰格里夫纳"
+						},
+						"ugx": {
+							"displayName": "乌干达先令"
+						},
+						"uyu": {
+							"displayName": "乌拉圭比索"
+						},
+						"uzs": {
+							"displayName": "乌兹别克斯坦索姆"
+						},
+						"vef": {
+							"displayName": "委内瑞拉玻利瓦尔富尔特"
+						},
+						"vnd": {
+							"displayName": "越南盾"
+						},
+						"vuv": {
+							"displayName": "瓦努阿图瓦图"
+						},
+						"wst": {
+							"displayName": "萨摩亚塔拉"
+						},
+						"xaf": {
+							"displayName": "中非金融合作法郎"
+						},
+						"xag": {
+							"displayName": "银盎司"
+						},
+						"xau": {
+							"displayName": "金衡盎司"
+						},
+						"xcd": {
+							"displayName": "东加勒比元"
+						},
+						"xdr": {
+							"displayName": "特别提款权"
+						},
+						"xof": {
+							"displayName": "西非金融共同体法郎"
+						},
+						"xpd": {
+							"displayName": "钯金盎司"
+						},
+						"xpf": {
+							"displayName": "CFP法郎"
+						},
+						"xpt": {
+							"displayName": "铂金盎司"
+						},
+						"yer": {
+							"displayName": "也门里亚尔"
+						},
+						"zar": {
+							"displayName": "南非兰特"
+						},
+						"zmw": {
+							"displayName": "赞比亚克瓦查"
+						},
+						"zwl": {
+							"displayName": "津巴布韦元"
+						}
+					}
+				},
+				"group": {
+					"displayName": "交易管道ID",
+					"description": "交易的管道ID"
+				},
+				"stage": {
+					"displayName": "交易阶段ID",
+					"description": "交易的阶段ID"
+				},
+				"owner": {
+					"displayName": "交易负责人ID",
+					"description": "交易的负责人ID"
+				},
+				"percent": {
+					"displayName": "交易百分比",
+					"description": "交易的比例"
+				},
+				"status": {
+					"displayName": "状态",
+					"description": "连接状态 (0 = 错误; 1 = 已连接)"
+				},
+				"service": {
+					"displayName": "服务",
+					"description": "服务名称"
+				},
+				"externalid": {
+					"displayName": "客户ID",
+					"description": "外部服务中的客户ID"
+				},
+				"logoUrl": {
+					"displayName": "Logo URL",
+					"description": "外部服务的Logo图片URL"
+				},
+				"linkUrl": {
+					"displayName": "链接URL",
+					"description": "可在第三方网站管理外部服务集成的页面URL"
+				},
+				"syncStatus": {
+					"displayName": "同步状态",
+					"description": "连接上触发的同步状态（0 = 同步停止；1 = 同步运行）"
+				},
+				"externalcheckoutid": {
+					"displayName": "外部结账ID",
+					"description": "外部服务中的购物车ID。仅当未包含EXTERNALID时需要。"
+				},
+				"source": {
+					"displayName": "订单来源",
+					"description": "订单来源代码 (0 - 不触发自动化, 1 - 触发自动化)"
+				},
+				"totalPrice": {
+					"displayName": "总价",
+					"description": "订单总价（以分为单位），包含税费和运费。（例如：$456.78 => 45678）。必须大于或等于零。"
+				},
+				"connectionid": {
+					"displayName": "服务ID",
+					"description": "客户来源服务的连接对象ID"
+				},
+				"customerid": {
+					"displayName": "客户ID",
+					"description": "与此订单关联的客户ID"
+				},
+				"externalupdatedDate": {
+					"displayName": "创建日期",
+					"description": "订单下达日期"
+				},
+				"abandonedDate": {
+					"displayName": "放弃日期",
+					"description": "购物车被放弃的日期。仅在包含外部结账ID时需要。"
+				},
+				"shippingAmount": {
+					"displayName": "运费金额",
+					"description": "订单总运费金额（以分为单位）"
+				},
+				"taxAmount": {
+					"displayName": "税额",
+					"description": "订单总税额（以分为单位）"
+				},
+				"discountAmount": {
+					"displayName": "折扣金额",
+					"description": "订单的总折扣金额（以分为单位）"
+				},
+				"orderUrl": {
+					"displayName": "订单URL",
+					"description": "外部服务中的订单URL"
+				},
+				"externalUpdatedDate": {
+					"displayName": "外部更新日期",
+					"description": "订单更新日期"
+				},
+				"shippingMethod": {
+					"displayName": "配送方式",
+					"description": "订单的配送方式"
+				},
+				"orderNumber": {
+					"displayName": "订单编号",
+					"description": "订单编号。这可能与外部ID不同。"
+				},
+				"orderProducts": {
+					"displayName": "产品",
+					"description": "所有已订购产品",
+					"placeholder": "添加产品字段",
+					"multipleValueButtonText": "添加产品",
+					"options": {
+						"name": {
+							"displayName": "名称",
+							"description": "产品名称"
+						},
+						"price": {
+							"displayName": "价格",
+							"description": "产品价格，单位为分（例如：$456.78 => 45678）。必须大于或等于零。"
+						},
+						"quantity": {
+							"displayName": "产品数量",
+							"description": "订购数量"
+						},
+						"externalid": {
+							"displayName": "产品外部ID",
+							"description": "产品在外部服务中的ID"
+						},
+						"category": {
+							"displayName": "产品类别",
+							"description": "产品的类别"
+						},
+						"sku": {
+							"displayName": "SKU",
+							"description": "产品的SKU"
+						},
+						"description": {
+							"displayName": "描述",
+							"description": "产品描述"
+						},
+						"imageUrl": {
+							"displayName": "图片URL",
+							"description": "显示产品图片的图片URL"
+						},
+						"productUrl": {
+							"displayName": "产品URL",
+							"description": "指向您商店中产品的链接URL"
+						}
+					}
+				},
+				"acceptsMarketing": {
+					"displayName": "接受营销",
+					"description": "客户是否已选择接收营销通讯"
+				}
+			}
+		},
+		"returnAll": {
+			"displayName": "返回全部",
+			"description": "是否返回所有结果或仅返回指定限制内的结果"
+		},
+		"limit": {
+			"displayName": "限制",
+			"description": "返回的最大结果数量"
+		},
+		"simple": {
+			"displayName": "简化",
+			"description": "是否返回简化版本的响应而非原始数据"
+		},
+		"contactId": {
+			"displayName": "联系人ID",
+			"description": "要获取的联系人ID"
+		},
+		"contactTagId": {
+			"displayName": "联系人标签ID",
+			"description": "要删除的联系人标签ID"
+		},
+		"listId": {
+			"displayName": "列表ID"
+		},
+		"accountId": {
+			"displayName": "账户ID",
+			"description": "要获取的账户ID"
+		},
+		"filters": {
+			"displayName": "筛选器",
+			"placeholder": "添加筛选器",
+			"options": {
+				"search": {
+					"displayName": "搜索",
+					"description": "按名称搜索"
+				}
+			}
+		},
+		"account": {
+			"displayName": "账户ID"
+		},
+		"contact": {
+			"displayName": "交易的联系人ID",
+			"description": "交易联系人的ID"
+		},
+		"accountContactId": {
+			"displayName": "账户联系人ID",
+			"description": "账户ID"
+		},
+		"email": {
+			"displayName": "客户邮箱",
+			"description": "客户的电子邮件地址",
+			"placeholder": "name@email.com"
+		},
+		"updateIfExists": {
+			"displayName": "存在时更新",
+			"description": "如果用户已存在是否更新。如果未设置且用户已存在，则会报错。"
+		},
+		"title": {
+			"displayName": "标题",
+			"description": "交易标题"
+		},
+		"value": {
+			"displayName": "交易金额",
+			"description": "交易金额（以分为单位）"
+		},
+		"currency": {
+			"displayName": "订单货币",
+			"description": "订单的货币（3位ISO代码，例如“USD”）",
+			"options": {
+				"eur": {
+					"displayName": "欧元"
+				},
+				"usd": {
+					"displayName": "美元"
+				},
+				"gbp": {
+					"displayName": "英镑"
+				},
+				"chf": {
+					"displayName": "瑞士法郎"
+				},
+				"cny": {
+					"displayName": "人民币"
+				},
+				"": {
+					"displayName": "[0]--------"
+				},
+				"aed": {
+					"displayName": "阿联酋迪拉姆"
+				},
+				"afn": {
+					"displayName": "阿富汗尼"
+				},
+				"all": {
+					"displayName": "阿尔巴尼亚列克"
+				},
+				"amd": {
+					"displayName": "亚美尼亚德拉姆"
+				},
+				"ang": {
+					"displayName": "荷属安的列斯盾"
+				},
+				"aoa": {
+					"displayName": "安哥拉宽扎"
+				},
+				"ars": {
+					"displayName": "阿根廷比索"
+				},
+				"aud": {
+					"displayName": "澳大利亚元"
+				},
+				"awg": {
+					"displayName": "阿鲁巴弗罗林"
+				},
+				"azn": {
+					"displayName": "阿塞拜疆马纳特"
+				},
+				"bam": {
+					"displayName": "波斯尼亚-黑塞哥维那可兑换马克"
+				},
+				"bbd": {
+					"displayName": "巴巴多斯元"
+				},
+				"bdt": {
+					"displayName": "孟加拉塔卡"
+				},
+				"bgn": {
+					"displayName": "保加利亚列弗"
+				},
+				"bhd": {
+					"displayName": "巴林第纳尔"
+				},
+				"bif": {
+					"displayName": "布隆迪法郎"
+				},
+				"bmd": {
+					"displayName": "百慕大元"
+				},
+				"bnd": {
+					"displayName": "文莱元"
+				},
+				"bob": {
+					"displayName": "玻利维亚诺"
+				},
+				"brl": {
+					"displayName": "巴西雷亚尔"
+				},
+				"bsd": {
+					"displayName": "巴哈马元"
+				},
+				"btc": {
+					"displayName": "比特币"
+				},
+				"btn": {
+					"displayName": "不丹努尔特鲁姆"
+				},
+				"bwp": {
+					"displayName": "博茨瓦纳普拉"
+				},
+				"byn": {
+					"displayName": "白俄罗斯卢布"
+				},
+				"bzd": {
+					"displayName": "伯利兹元"
+				},
+				"cad": {
+					"displayName": "加拿大元"
+				},
+				"cdf": {
+					"displayName": "刚果法郎"
+				},
+				"clf": {
+					"displayName": "智利发展单位（UF）"
+				},
+				"clp": {
+					"displayName": "智利比索"
+				},
+				"cnh": {
+					"displayName": "离岸人民币"
+				},
+				"cop": {
+					"displayName": "哥伦比亚比索"
+				},
+				"crc": {
+					"displayName": "哥斯达黎加科朗"
+				},
+				"cuc": {
+					"displayName": "古巴可兑换比索"
+				},
+				"cup": {
+					"displayName": "古巴比索"
+				},
+				"cve": {
+					"displayName": "佛得角埃斯库多"
+				},
+				"czk": {
+					"displayName": "捷克克朗"
+				},
+				"djf": {
+					"displayName": "吉布提法郎"
+				},
+				"dkk": {
+					"displayName": "丹麦克朗"
+				},
+				"dop": {
+					"displayName": "多米尼加比索"
+				},
+				"dzd": {
+					"displayName": "阿尔及利亚第纳尔"
+				},
+				"egp": {
+					"displayName": "埃及镑"
+				},
+				"ern": {
+					"displayName": "厄立特里亚纳克法"
+				},
+				"etb": {
+					"displayName": "埃塞俄比亚比尔"
+				},
+				"fjd": {
+					"displayName": "斐济元"
+				},
+				"fkp": {
+					"displayName": "福克兰群岛镑"
+				},
+				"gel": {
+					"displayName": "格鲁吉亚拉里"
+				},
+				"ggp": {
+					"displayName": "根西岛镑"
+				},
+				"ghs": {
+					"displayName": "加纳塞地"
+				},
+				"gip": {
+					"displayName": "直布罗陀镑"
+				},
+				"gmd": {
+					"displayName": "冈比亚达拉西"
+				},
+				"gnf": {
+					"displayName": "几内亚法郎"
+				},
+				"gtq": {
+					"displayName": "危地马拉格查尔"
+				},
+				"gyd": {
+					"displayName": "圭亚那元"
+				},
+				"hkd": {
+					"displayName": "港币"
+				},
+				"hnl": {
+					"displayName": "洪都拉斯伦皮拉"
+				},
+				"hrk": {
+					"displayName": "克罗地亚库纳"
+				},
+				"htg": {
+					"displayName": "海地古德"
+				},
+				"huf": {
+					"displayName": "匈牙利福林"
+				},
+				"idr": {
+					"displayName": "印尼盾"
+				},
+				"ils": {
+					"displayName": "以色列新谢克尔"
+				},
+				"imp": {
+					"displayName": "马恩岛镑"
+				},
+				"inr": {
+					"displayName": "印度卢比"
+				},
+				"iqd": {
+					"displayName": "伊拉克第纳尔"
+				},
+				"irr": {
+					"displayName": "伊朗里亚尔"
+				},
+				"isk": {
+					"displayName": "冰岛克朗"
+				},
+				"jep": {
+					"displayName": "泽西镑"
+				},
+				"jmd": {
+					"displayName": "牙买加元"
+				},
+				"jod": {
+					"displayName": "约旦第纳尔"
+				},
+				"jpy": {
+					"displayName": "日元"
+				},
+				"kes": {
+					"displayName": "肯尼亚先令"
+				},
+				"kgs": {
+					"displayName": "吉尔吉斯斯坦索姆"
+				},
+				"khr": {
+					"displayName": "柬埔寨瑞尔"
+				},
+				"kmf": {
+					"displayName": "科摩罗法郎"
+				},
+				"kpw": {
+					"displayName": "朝鲜元"
+				},
+				"krw": {
+					"displayName": "韩元"
+				},
+				"kwd": {
+					"displayName": "科威特第纳尔"
+				},
+				"kyd": {
+					"displayName": "开曼群岛元"
+				},
+				"kzt": {
+					"displayName": "哈萨克斯坦坚戈"
+				},
+				"lak": {
+					"displayName": "老挝基普"
+				},
+				"lbp": {
+					"displayName": "黎巴嫩镑"
+				},
+				"lkr": {
+					"displayName": "斯里兰卡卢比"
+				},
+				"lrd": {
+					"displayName": "利比里亚元"
+				},
+				"lsl": {
+					"displayName": "莱索托洛蒂"
+				},
+				"lyd": {
+					"displayName": "利比亚第纳尔"
+				},
+				"mad": {
+					"displayName": "摩洛哥迪拉姆"
+				},
+				"mdl": {
+					"displayName": "摩尔多瓦列伊"
+				},
+				"mga": {
+					"displayName": "马达加斯加阿里亚里"
+				},
+				"mkd": {
+					"displayName": "马其顿代纳尔"
+				},
+				"mmk": {
+					"displayName": "缅甸元"
+				},
+				"mnt": {
+					"displayName": "蒙古图格里克"
+				},
+				"mop": {
+					"displayName": "澳门元"
+				},
+				"mro": {
+					"displayName": "毛里塔尼亚乌吉亚（2018年前）"
+				},
+				"mru": {
+					"displayName": "毛里塔尼亚乌吉亚"
+				},
+				"mur": {
+					"displayName": "毛里求斯卢比"
+				},
+				"mvr": {
+					"displayName": "马尔代夫拉菲亚"
+				},
+				"mwk": {
+					"displayName": "马拉维克瓦查"
+				},
+				"mxn": {
+					"displayName": "墨西哥比索"
+				},
+				"myr": {
+					"displayName": "马来西亚林吉特"
+				},
+				"mzn": {
+					"displayName": "莫桑比克梅蒂卡尔"
+				},
+				"nad": {
+					"displayName": "纳米比亚元"
+				},
+				"ngn": {
+					"displayName": "尼日利亚奈拉"
+				},
+				"nio": {
+					"displayName": "尼加拉瓜科多巴"
+				},
+				"nok": {
+					"displayName": "挪威克朗"
+				},
+				"npr": {
+					"displayName": "尼泊尔卢比"
+				},
+				"nzd": {
+					"displayName": "新西兰元"
+				},
+				"omr": {
+					"displayName": "阿曼里亚尔"
+				},
+				"pab": {
+					"displayName": "巴拿马巴波亚"
+				},
+				"pen": {
+					"displayName": "秘鲁新索尔"
+				},
+				"pgk": {
+					"displayName": "巴布亚新几内亚基那"
+				},
+				"php": {
+					"displayName": "菲律宾比索"
+				},
+				"pkr": {
+					"displayName": "巴基斯坦卢比"
+				},
+				"pln": {
+					"displayName": "波兰兹罗提"
+				},
+				"pyg": {
+					"displayName": "巴拉圭瓜拉尼"
+				},
+				"qar": {
+					"displayName": "卡塔尔里亚尔"
+				},
+				"ron": {
+					"displayName": "罗马尼亚列伊"
+				},
+				"rsd": {
+					"displayName": "塞尔维亚第纳尔"
+				},
+				"rub": {
+					"displayName": "俄罗斯卢布"
+				},
+				"rwf": {
+					"displayName": "卢旺达法郎"
+				},
+				"sar": {
+					"displayName": "沙特里亚尔"
+				},
+				"sbd": {
+					"displayName": "所罗门群岛元"
+				},
+				"scr": {
+					"displayName": "塞舌尔卢比"
+				},
+				"sdg": {
+					"displayName": "苏丹镑"
+				},
+				"sek": {
+					"displayName": "瑞典克朗"
+				},
+				"sgd": {
+					"displayName": "新加坡元"
+				},
+				"shp": {
+					"displayName": "圣赫勒拿镑"
+				},
+				"sll": {
+					"displayName": "塞拉利昂利昂"
+				},
+				"sos": {
+					"displayName": "索马里先令"
+				},
+				"srd": {
+					"displayName": "苏里南元"
+				},
+				"ssp": {
+					"displayName": "南苏丹镑"
+				},
+				"std": {
+					"displayName": "圣多美和普林西比多布拉（2018年前）"
+				},
+				"stn": {
+					"displayName": "圣多美和普林西比多布拉"
+				},
+				"svc": {
+					"displayName": "萨尔瓦多科朗"
+				},
+				"syp": {
+					"displayName": "叙利亚镑"
+				},
+				"szl": {
+					"displayName": "斯威士兰里兰吉尼"
+				},
+				"thb": {
+					"displayName": "泰铢"
+				},
+				"tjs": {
+					"displayName": "塔吉克斯坦索莫尼"
+				},
+				"tmt": {
+					"displayName": "土库曼斯坦马纳特"
+				},
+				"tnd": {
+					"displayName": "突尼斯第纳尔"
+				},
+				"top": {
+					"displayName": "汤加潘加"
+				},
+				"try": {
+					"displayName": "土耳其里拉"
+				},
+				"ttd": {
+					"displayName": "特立尼达和多巴哥元"
+				},
+				"twd": {
+					"displayName": "新台币"
+				},
+				"tzs": {
+					"displayName": "坦桑尼亚先令"
+				},
+				"uah": {
+					"displayName": "乌克兰格里夫纳"
+				},
+				"ugx": {
+					"displayName": "乌干达先令"
+				},
+				"uyu": {
+					"displayName": "乌拉圭比索"
+				},
+				"uzs": {
+					"displayName": "乌兹别克斯坦索姆"
+				},
+				"vef": {
+					"displayName": "委内瑞拉玻利瓦尔富尔特"
+				},
+				"vnd": {
+					"displayName": "越南盾"
+				},
+				"vuv": {
+					"displayName": "瓦努阿图瓦图"
+				},
+				"wst": {
+					"displayName": "萨摩亚塔拉"
+				},
+				"xaf": {
+					"displayName": "中非金融合作法郎"
+				},
+				"xag": {
+					"displayName": "银盎司"
+				},
+				"xau": {
+					"displayName": "金衡盎司"
+				},
+				"xcd": {
+					"displayName": "东加勒比元"
+				},
+				"xdr": {
+					"displayName": "特别提款权"
+				},
+				"xof": {
+					"displayName": "西非金融共同体法郎"
+				},
+				"xpd": {
+					"displayName": "钯金盎司"
+				},
+				"xpf": {
+					"displayName": "CFP法郎"
+				},
+				"xpt": {
+					"displayName": "铂金盎司"
+				},
+				"yer": {
+					"displayName": "也门里亚尔"
+				},
+				"zar": {
+					"displayName": "南非兰特"
+				},
+				"zmw": {
+					"displayName": "赞比亚克瓦查"
+				},
+				"zwl": {
+					"displayName": "津巴布韦元"
+				}
+			}
+		},
+		"group": {
+			"displayName": "交易管道ID",
+			"description": "交易的管道ID"
+		},
+		"stage": {
+			"displayName": "交易阶段ID",
+			"description": "交易的阶段ID"
+		},
+		"owner": {
+			"displayName": "交易负责人ID",
+			"description": "交易的负责人ID"
+		},
+		"dealId": {
+			"displayName": "交易ID",
+			"description": "交易备注的ID"
+		},
+		"dealNote": {
+			"displayName": "交易备注",
+			"description": "交易备注的内容"
+		},
+		"dealNoteId": {
+			"displayName": "交易备注ID",
+			"description": "交易备注的ID"
+		},
+		"service": {
+			"displayName": "服务",
+			"description": "服务名称"
+		},
+		"externalid": {
+			"displayName": "客户ID",
+			"description": "外部服务中的客户ID"
+		},
+		"logoUrl": {
+			"displayName": "Logo URL",
+			"description": "外部服务的Logo图片URL"
+		},
+		"linkUrl": {
+			"displayName": "链接URL",
+			"description": "在第三方网站上管理外部服务集成的页面URL"
+		},
+		"connectionId": {
+			"displayName": "连接ID",
+			"description": "要获取的连接ID"
+		},
+		"externalcheckoutid": {
+			"displayName": "外部结账ID",
+			"description": "外部服务中的购物车ID。仅当未包含外部ID时需要。"
+		},
+		"source": {
+			"displayName": "订单来源",
+			"description": "订单来源代码（0 - 不触发自动化，1 - 触发自动化）"
+		},
+		"totalPrice": {
+			"displayName": "总价",
+			"description": "订单总价（单位：分），包含税费和运费。（例如：$456.78 => 45678）。必须大于或等于零。"
+		},
+		"connectionid": {
+			"displayName": "服务ID",
+			"description": "客户来源服务的连接对象ID"
+		},
+		"customerid": {
+			"displayName": "客户ID",
+			"description": "与此订单关联的客户ID"
+		},
+		"externalCreatedDate": {
+			"displayName": "创建日期",
+			"description": "订单下达日期"
+		},
+		"abandonedDate": {
+			"displayName": "放弃日期",
+			"description": "购物车被放弃的日期。仅在包含外部结账ID时需要。"
+		},
+		"orderProducts": {
+			"displayName": "产品",
+			"description": "所有已订购产品",
+			"placeholder": "添加产品字段",
+			"multipleValueButtonText": "添加产品",
+			"options": {
+				"name": {
+					"displayName": "名称",
+					"description": "产品名称"
+				},
+				"price": {
+					"displayName": "价格",
+					"description": "产品价格，单位为分（例如：$456.78 => 45678）。必须大于或等于零。"
+				},
+				"quantity": {
+					"displayName": "产品数量",
+					"description": "订购数量"
+				},
+				"externalid": {
+					"displayName": "产品外部ID",
+					"description": "产品在外部服务中的ID"
+				},
+				"category": {
+					"displayName": "产品类别",
+					"description": "产品的类别"
+				},
+				"sku": {
+					"displayName": "SKU",
+					"description": "产品的SKU"
+				},
+				"description": {
+					"displayName": "描述",
+					"description": "产品描述"
+				},
+				"imageUrl": {
+					"displayName": "图片URL",
+					"description": "显示产品图片的图片URL"
+				},
+				"productUrl": {
+					"displayName": "产品URL",
+					"description": "指向您商店中产品的链接URL"
+				}
+			}
+		},
+		"orderId": {
+			"displayName": "订单ID",
+			"description": "您希望返回其产品的订单ID"
+		},
+		"ecommerceCustomerId": {
+			"displayName": "客户ID",
+			"description": "要获取的电商客户ID"
+		},
+		"procuctId": {
+			"displayName": "产品ID",
+			"description": "您希望返回的产品ID"
+		}
+	}
+}

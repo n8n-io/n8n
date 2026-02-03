@@ -1,0 +1,157 @@
+{
+	"header": {
+		"displayName": "Google Gemini Chat Model",
+		"description": "Chat Model Google Gemini"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>"
+		},
+		"modelName": {
+			"displayName": "Model",
+			"description": "The model which will generate the completion. <a href=\"https://developers.generativeai.google/api/rest/generativelanguage/models/list\">Learn more</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"maxOutputTokens": {
+					"displayName": "Maximum Number of Tokens",
+					"description": "The maximum number of tokens to generate in the completion"
+				},
+				"temperature": {
+					"displayName": "Sampling Temperature",
+					"description": "Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive."
+				},
+				"topK": {
+					"displayName": "Top K",
+					"description": "Used to remove \"long tail\" low probability responses. Defaults to -1, which disables it."
+				},
+				"topP": {
+					"displayName": "Top P",
+					"description": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both."
+				},
+				"safetySettings": {
+					"displayName": "Safety Settings",
+					"placeholder": "Add Option",
+					"multipleValueButtonText": "Add Option",
+					"options": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"category": {
+									"displayName": "Safety Category",
+									"description": "The category of harmful content to block",
+									"options": {
+										"HARM_CATEGORY_HARASSMENT": {
+											"displayName": "HARM_CATEGORY_HARASSMENT",
+											"description": "Harassment content"
+										},
+										"HARM_CATEGORY_HATE_SPEECH": {
+											"displayName": "HARM_CATEGORY_HATE_SPEECH",
+											"description": "Hate speech and content"
+										},
+										"HARM_CATEGORY_SEXUALLY_EXPLICIT": {
+											"displayName": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+											"description": "Sexually explicit content"
+										},
+										"HARM_CATEGORY_DANGEROUS_CONTENT": {
+											"displayName": "HARM_CATEGORY_DANGEROUS_CONTENT",
+											"description": "Dangerous content"
+										}
+									}
+								},
+								"threshold": {
+									"displayName": "Safety Threshold",
+									"description": "The threshold of harmful content to block",
+									"options": {
+										"HARM_BLOCK_THRESHOLD_UNSPECIFIED": {
+											"displayName": "HARM_BLOCK_THRESHOLD_UNSPECIFIED",
+											"description": "Threshold is unspecified"
+										},
+										"BLOCK_LOW_AND_ABOVE": {
+											"displayName": "BLOCK_LOW_AND_ABOVE",
+											"description": "Content with NEGLIGIBLE will be allowed"
+										},
+										"BLOCK_MEDIUM_AND_ABOVE": {
+											"displayName": "BLOCK_MEDIUM_AND_ABOVE",
+											"description": "Content with NEGLIGIBLE and LOW will be allowed"
+										},
+										"BLOCK_ONLY_HIGH": {
+											"displayName": "BLOCK_ONLY_HIGH",
+											"description": "Content with NEGLIGIBLE, LOW, and MEDIUM will be allowed"
+										},
+										"BLOCK_NONE": {
+											"displayName": "BLOCK_NONE",
+											"description": "All content will be allowed"
+										}
+									}
+								}
+							}
+						}
+					},
+					"values": {
+						"values": {
+							"displayName": "Values",
+							"values": {
+								"category": {
+									"displayName": "Safety Category",
+									"description": "The category of harmful content to block",
+									"options": {
+										"HARM_CATEGORY_HARASSMENT": {
+											"displayName": "HARM_CATEGORY_HARASSMENT",
+											"description": "Harassment content"
+										},
+										"HARM_CATEGORY_HATE_SPEECH": {
+											"displayName": "HARM_CATEGORY_HATE_SPEECH",
+											"description": "Hate speech and content"
+										},
+										"HARM_CATEGORY_SEXUALLY_EXPLICIT": {
+											"displayName": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+											"description": "Sexually explicit content"
+										},
+										"HARM_CATEGORY_DANGEROUS_CONTENT": {
+											"displayName": "HARM_CATEGORY_DANGEROUS_CONTENT",
+											"description": "Dangerous content"
+										}
+									}
+								},
+								"threshold": {
+									"displayName": "Safety Threshold",
+									"description": "The threshold of harmful content to block",
+									"options": {
+										"HARM_BLOCK_THRESHOLD_UNSPECIFIED": {
+											"displayName": "HARM_BLOCK_THRESHOLD_UNSPECIFIED",
+											"description": "Threshold is unspecified"
+										},
+										"BLOCK_LOW_AND_ABOVE": {
+											"displayName": "BLOCK_LOW_AND_ABOVE",
+											"description": "Content with NEGLIGIBLE will be allowed"
+										},
+										"BLOCK_MEDIUM_AND_ABOVE": {
+											"displayName": "BLOCK_MEDIUM_AND_ABOVE",
+											"description": "Content with NEGLIGIBLE and LOW will be allowed"
+										},
+										"BLOCK_ONLY_HIGH": {
+											"displayName": "BLOCK_ONLY_HIGH",
+											"description": "Content with NEGLIGIBLE, LOW, and MEDIUM will be allowed"
+										},
+										"BLOCK_NONE": {
+											"displayName": "BLOCK_NONE",
+											"description": "All content will be allowed"
+										}
+									}
+								}
+							}
+						},
+						"safetySettings": {
+							"displayName": "Safety Settings",
+							"placeholder": "Add Option"
+						}
+					}
+				}
+			}
+		}
+	}
+}

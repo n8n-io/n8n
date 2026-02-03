@@ -1,0 +1,35 @@
+{
+	"header": {
+		"displayName": "AWS Textract",
+		"description": "Sends data to Amazon Textract"
+	},
+	"nodeView": {
+		"authentication": {
+			"displayName": "Authentication",
+			"options": {
+				"iam": {
+					"displayName": "AWS (IAM)"
+				},
+				"assumeRole": {
+					"displayName": "AWS (Assume Role)"
+				}
+			}
+		},
+		"operation": {
+			"displayName": "Operation",
+			"options": {
+				"analyzeExpense": {
+					"displayName": "Analyze Receipt or Invoice"
+				}
+			}
+		},
+		"binaryPropertyName": {
+			"displayName": "Input Data Field Name",
+			"description": "The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG."
+		},
+		"simple": {
+			"displayName": "Simplify",
+			"description": "Whether to return a simplified version of the response instead of the raw data"
+		}
+	}
+}

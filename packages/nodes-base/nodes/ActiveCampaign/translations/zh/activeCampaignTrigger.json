@@ -1,0 +1,15 @@
+{
+	"header": {
+		"displayName": "ActiveCampaign 触发器",
+		"description": "通过 Webhook 处理 ActiveCampaign 事件"
+	},
+	"nodeView": {
+		"events": {
+			"displayName": "事件名称或ID",
+			"description": "从列表中选择，或使用<a href=\"https://docs.n8n.io/code/expressions/\">表达式</a>指定ID"
+		},
+		"sources": {
+			"displayName": "源"
+		}
+	}
+}

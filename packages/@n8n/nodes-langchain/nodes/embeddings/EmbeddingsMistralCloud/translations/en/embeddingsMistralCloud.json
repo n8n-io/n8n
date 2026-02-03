@@ -1,0 +1,30 @@
+{
+	"header": {
+		"displayName": "Embeddings Mistral Cloud",
+		"description": "Use Embeddings Mistral Cloud"
+	},
+	"nodeView": {
+		"notice": {
+			"displayName": "This node must be connected to a vector store. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_vectorStore'>Insert one</a>"
+		},
+		"model": {
+			"displayName": "Model",
+			"description": "The model which will compute the embeddings. <a href=\"https://docs.mistral.ai/platform/endpoints/\">Learn more</a>."
+		},
+		"options": {
+			"displayName": "Options",
+			"description": "Additional options to add",
+			"placeholder": "Add Option",
+			"options": {
+				"batchSize": {
+					"displayName": "Batch Size",
+					"description": "Maximum number of documents to send in each request"
+				},
+				"stripNewLines": {
+					"displayName": "Strip New Lines",
+					"description": "Whether to strip new lines from the input text"
+				}
+			}
+		}
+	}
+}
