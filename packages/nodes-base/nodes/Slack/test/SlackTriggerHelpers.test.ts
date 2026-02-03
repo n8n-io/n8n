@@ -46,7 +46,7 @@ describe('SlackTriggerHelpers', () => {
 
 	describe('verifySignature', () => {
 		it('should return true when no credentials are provided', async () => {
-			mockWebhookFunctions.getCredentials.mockResolvedValue(null);
+			mockWebhookFunctions.getCredentials.mockResolvedValue({});
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
@@ -157,6 +157,40 @@ describe('SlackTriggerHelpers', () => {
 
 			// Verify that update was called with the expected string (using the timestamp from the request)
 			expect(mockHmac.update).toHaveBeenCalledWith(`v0:${testTimestamp}:${testBody}`);
+		});
+
+		it('should verify timestamp even if signature secret is not set', async () => {
+			// No signature secret in credentials
+			mockWebhookFunctions.getCredentials.mockResolvedValue({
+				apiToken: 'test-token',
+			});
+
+			// Mock Date.now() to return a timestamp that's more than 5 minutes after the request timestamp
+			const futureDate = new Date((parseInt(testTimestamp, 10) + 301) * 1000);
+			jest.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
+
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			// Should return false because timestamp is too old, even though signature secret is not set
+			expect(result).toBe(false);
+			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
+		});
+
+		it('should return true when timestamp is valid even if signature secret is not set', async () => {
+			// No signature secret in credentials
+			mockWebhookFunctions.getCredentials.mockResolvedValue({
+				apiToken: 'test-token',
+			});
+
+			// Keep Date.now() at the same time as the request timestamp (within 5 minute window)
+			const fixedDate = new Date(parseInt(testTimestamp, 10) * 1000);
+			jest.spyOn(Date, 'now').mockImplementation(() => fixedDate.getTime());
+
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			// Should return true because timestamp is valid and signature secret is not required
+			expect(result).toBe(true);
+			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
 		});
 	});
 });
