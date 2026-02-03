@@ -1,9 +1,7 @@
 import type {
 	AINodeConnectionType,
 	CallbackManager,
-	ChunkType,
 	CloseFunction,
-	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -14,10 +12,11 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionHint,
-	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
 	EngineResponse,
+	SendChunkInput,
+	SendStructuredChunk,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -154,29 +153,63 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		return hasHandlers && isStreamingMode && streamingEnabled;
 	}
 
-	async sendChunk(
-		type: ChunkType,
-		itemIndex: number,
-		content?: IDataObject | string,
-	): Promise<void> {
+	async sendChunk(details: SendChunkInput): Promise<void> {
 		const node = this.getNode();
-		const metadata = {
-			nodeId: node.id,
-			nodeName: node.name,
-			itemIndex,
-			runIndex: this.runIndex,
-			timestamp: Date.now(),
-		};
+		let structuredChunk: SendStructuredChunk;
+		switch (details.type) {
+			case 'tool-call-start':
+			case 'tool-call-end':
+				structuredChunk = {
+					type: details.type,
+					metadata: {
+						...details.metadata,
+						timestamp: Date.now(),
+					},
+				};
+				break;
+			case 'item':
+				structuredChunk = {
+					type: 'item',
+					content: details.content,
+					metadata: {
+						nodeId: node.id,
+						nodeName: node.name,
+						nodeType: node.type,
+						itemIndex: details.itemIndex,
+						runIndex: this.runIndex,
+						timestamp: Date.now(),
+					},
+				};
+				break;
+			case 'begin':
+			case 'end':
+				structuredChunk = {
+					type: details.type,
+					metadata: {
+						timestamp: Date.now(),
+					},
+				};
+				break;
+			case 'webhook-response':
+				structuredChunk = {
+					type: 'item',
+					content:
+						typeof details.response === 'string'
+							? details.response
+							: JSON.stringify(details.response),
+					metadata: {
+						nodeId: node.id,
+						nodeName: node.name,
+						nodeType: node.type,
+						itemIndex: details.itemIndex,
+						runIndex: this.runIndex,
+						timestamp: Date.now(),
+					},
+				};
+				break;
+		}
 
-		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
-
-		const message: StructuredChunk = {
-			type,
-			content: parsedContent,
-			metadata,
-		};
-
-		await this.additionalData.hooks?.runHook('sendChunk', [message]);
+		await this.additionalData.hooks?.runHook('sendChunk', [structuredChunk]);
 	}
 
 	async getInputConnectionData(
