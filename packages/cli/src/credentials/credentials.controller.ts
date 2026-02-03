@@ -3,6 +3,7 @@ import {
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
+	ShareCredentialsBodyDto,
 	TransferCredentialBodyDto,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
@@ -319,16 +320,13 @@ export class CredentialsController {
 	@Licensed('feat:sharing')
 	@Put('/:credentialId/share')
 	@ProjectScope('credential:share')
-	async shareCredentials(req: CredentialRequest.Share) {
+	async shareCredentials(
+		req: CredentialRequest.Share,
+		_res: unknown,
+		@Body payload: ShareCredentialsBodyDto,
+	) {
 		const { credentialId } = req.params;
-		const { shareWithIds } = req.body;
-
-		if (
-			!Array.isArray(shareWithIds) ||
-			!shareWithIds.every((userId) => typeof userId === 'string')
-		) {
-			throw new BadRequestError('Bad request');
-		}
+		const { shareWithIds } = payload;
 
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
