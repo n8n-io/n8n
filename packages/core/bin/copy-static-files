@@ -7,7 +7,7 @@ const { packageDir } = require('./common');
 
 const limiter = pLimit(20);
 const staticFiles = glob.sync(
-	['{nodes,credentials}/**/*.{png,svg}', 'nodes/**/__schema__/**/*.json'],
+	['{nodes,credentials}/**/*.{png,svg,json}', 'nodes/**/__schema__/**/*.json'],
 	{
 		cwd: packageDir,
 	},

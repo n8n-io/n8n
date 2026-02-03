@@ -189,10 +189,12 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	});
 
 	const visibleNodeTypes = computed(() => {
-		return allLatestNodeTypes.value
-			.concat(officialCommunityNodeTypes.value)
-			.concat(moduleEnabledNodeTypes.value)
-			.filter((nodeType) => !nodeType.hidden);
+		return (
+			allLatestNodeTypes.value
+				//.concat(officialCommunityNodeTypes.value)
+				.concat(moduleEnabledNodeTypes.value)
+				.filter((nodeType) => !nodeType.hidden)
+		);
 	});
 
 	const nativelyNumberSuffixedDefaults = computed(() => {
@@ -318,15 +320,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			nodeInfos,
 		);
 
-		nodesInformation.forEach((nodeInformation) => {
-			if (nodeInformation.translation) {
-				const nodeType = nodeInformation.name.replace('n8n-nodes-base.', '');
-
-				addNodeTranslation({ [nodeType]: nodeInformation.translation }, rootStore.defaultLocale);
+		nodeInfos.forEach((nodeInfo) => {
+			const nodeType = nodeInfo.name.replace(/^.*\./, '');
+			const nodeInformation = nodesInformation.find((node) => node.name === nodeType);
+			if (nodeInformation?.translation) {
+				nodeInformation.name = nodeInfo.name;
+				addNodeTranslation(nodeInformation, rootStore.defaultLocale);
 			}
 		});
 		if (replace) setNodeTypes(nodesInformation);
-
 		return nodesInformation;
 	};
 

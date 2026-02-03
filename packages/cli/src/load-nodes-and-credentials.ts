@@ -469,12 +469,36 @@ export class LoadNodesAndCredentials {
 		this.loaded = { nodes: {}, credentials: {} };
 		this.types = { nodes: [], credentials: [] };
 
+		// Collect credential types required by included nodes
+		const includedNodeCredentials = new Set<string>();
+		const hasIncludeFilter = this.includeNodes.length > 0;
+
+		// First pass: collect all nodes and their credentials
+		const allNodes: INodeTypeDescription[] = [];
 		for (const loader of Object.values(this.loaders)) {
-			// Reload types if they were released from memory
+			await loader.ensureTypesLoaded();
+			const { types, packageName } = loader;
+			for (const node of types.nodes) {
+				const fullNodeName = `${packageName}.${node.name}`;
+				allNodes.push({ ...node, name: fullNodeName });
+
+				// Collect credentials from included nodes
+				if (!hasIncludeFilter || this.includeNodes.includes(fullNodeName)) {
+					if (node.credentials) {
+						for (const cred of node.credentials) {
+							includedNodeCredentials.add(cred.name);
+						}
+					}
+				}
+			}
+		}
+
+		// Second pass: process loaders
+		for (const loader of Object.values(this.loaders)) {
 			await loader.ensureTypesLoaded();
 
-			// list of node & credential types that will be sent to the frontend
 			const { known, types, directory, packageName } = loader;
+
 			this.types.nodes = this.types.nodes.concat(
 				types.nodes.map(({ name, ...rest }) => ({
 					...rest,
@@ -482,28 +506,43 @@ export class LoadNodesAndCredentials {
 				})),
 			);
 
-			const processedCredentials = types.credentials.map((credential) => {
-				if (this.shouldAddDomainRestrictions(credential)) {
-					const clonedCredential = { ...credential };
-					clonedCredential.properties = this.injectDomainRestrictionFields([
-						...(clonedCredential.properties ?? []),
-					]);
+			const processedCredentials = types.credentials
+				.filter((credential) => {
+					// If no include filter, keep all credentials
+					if (!hasIncludeFilter) {
+						return true;
+					}
+					// Only keep credentials required by included nodes
+					return includedNodeCredentials.has(credential.name);
+				})
+				.map((credential) => {
+					const { httpRequestNode, ...restCredential } = credential;
+
+					if (this.shouldAddDomainRestrictions(credential)) {
+						const clonedCredential = { ...restCredential };
+						clonedCredential.properties = this.injectDomainRestrictionFields([
+							...(clonedCredential.properties ?? []),
+						]);
+						return {
+							...clonedCredential,
+							supportedNodes:
+								loader instanceof PackageDirectoryLoader
+									? clonedCredential.supportedNodes?.map(
+											(nodeName) => `${loader.packageName}.${nodeName}`,
+										)
+									: undefined,
+						};
+					}
 					return {
-						...clonedCredential,
+						...restCredential,
 						supportedNodes:
 							loader instanceof PackageDirectoryLoader
-								? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+								? restCredential.supportedNodes?.map(
+										(nodeName) => `${loader.packageName}.${nodeName}`,
+									)
 								: undefined,
 					};
-				}
-				return {
-					...credential,
-					supportedNodes:
-						loader instanceof PackageDirectoryLoader
-							? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-							: undefined,
-				};
-			});
+				});
 
 			this.types.credentials = this.types.credentials.concat(processedCredentials);
 
@@ -511,7 +550,6 @@ export class LoadNodesAndCredentials {
 			for (const credentialTypeName in loader.credentialTypes) {
 				const credentialType = loader.credentialTypes[credentialTypeName];
 				if (this.shouldAddDomainRestrictions(credentialType)) {
-					// Access properties through the type field
 					credentialType.type.properties = this.injectDomainRestrictionFields([
 						...(credentialType.type.properties ?? []),
 					]);

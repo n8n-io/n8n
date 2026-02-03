@@ -1131,7 +1131,7 @@ export function useCanvasOperations() {
 				!!nodes.find(
 					(n) => n.type === nodeTypeDescription.name && nodeVersions.includes(n.typeVersion),
 				) &&
-				!nodeTypeDescription.hasOwnProperty('properties')
+				!nodeTypeDescription.translation
 			) {
 				nodesToBeFetched.push({
 					name: nodeTypeDescription.name,

@@ -1,10 +1,14 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
-import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 import { ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
-import englishBaseText from './locales/en.json';
+import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 import type { BaseTextKey, LocaleMessages, INodeTranslationHeaders } from './types';
+import type { INodeTypeDescription } from 'n8n-workflow/src';
+
+import englishBaseText from './locales/en.json';
+import chineseBaseText from './locales/zh.json';
+
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
@@ -18,7 +22,7 @@ export const i18nInstance = createI18n({
 	legacy: false,
 	locale: 'en',
 	fallbackLocale: 'en',
-	messages: { en: englishBaseText },
+	messages: { en: englishBaseText, zh: chineseBaseText },
 	warnHtmlMessage: false,
 });
 
@@ -227,8 +231,17 @@ export class I18nClass {
 	 * except for `eventTriggerDescription`.
 	 */
 	nodeText(activeNodeType?: string | null) {
-		const shortNodeType = activeNodeType ? this.shortNodeType(activeNodeType) : ''; // unused in eventTriggerDescription
-		const initialKey = `n8n-nodes-base.nodes.${shortNodeType}.nodeView`;
+		let initialKey: string;
+
+		if (activeNodeType) {
+			const parts = activeNodeType.split('.');
+			const packageName = parts[0];
+			const nodeType = parts.slice(1).join('.');
+			initialKey = `${packageName}.nodes.${nodeType}.nodeView`;
+		} else {
+			initialKey = `n8n-nodes-base.nodes.nodeView`;
+		}
+
 		const context = this;
 
 		return {
@@ -435,13 +448,13 @@ export function loadLanguage(locale: string, messages: LocaleMessages) {
 /**
  * Add a node translation to the i18n instance's `messages` object.
  */
-export function addNodeTranslation(
-	nodeTranslation: { [nodeType: string]: object },
-	language: string,
-) {
+export function addNodeTranslation(nodeInformation: INodeTypeDescription, language: string) {
+	const parts = nodeInformation.name.split('.');
+	const packageName = parts[0];
+	const nodeType = parts.slice(1).join('.');
 	const newMessages = {
-		'n8n-nodes-base': {
-			nodes: nodeTranslation,
+		[packageName]: {
+			nodes: { [nodeType]: nodeInformation.translation },
 		},
 	};
 
