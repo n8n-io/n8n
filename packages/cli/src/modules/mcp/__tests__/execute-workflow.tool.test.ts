@@ -112,8 +112,7 @@ describe('execute-workflow MCP tool', () => {
 			});
 
 			test('throws error when user has no permission to access workflow', async () => {
-				const existingWorkflow = createWorkflow({ activeVersionId: uuid() });
-				(workflowRepository.findById as jest.Mock).mockResolvedValue(existingWorkflow);
+				(workflowRepository.existsBy as jest.Mock).mockResolvedValue(true);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
 
 				await expect(
@@ -142,8 +141,7 @@ describe('execute-workflow MCP tool', () => {
 			});
 
 			test('throws error with correct reason when user has no permission', async () => {
-				const existingWorkflow = createWorkflow({ activeVersionId: uuid() });
-				(workflowRepository.findById as jest.Mock).mockResolvedValue(existingWorkflow);
+				(workflowRepository.existsBy as jest.Mock).mockResolvedValue(true);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
 
 				await expect(
@@ -955,8 +953,7 @@ describe('execute-workflow MCP tool', () => {
 			});
 
 			test('tracks failed execution for no permission with error reason', async () => {
-				const workflow = createWorkflow({ activeVersionId: uuid() });
-				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
+				(workflowRepository.existsBy as jest.Mock).mockResolvedValue(true);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
 
 				const tool = createExecuteWorkflowTool(

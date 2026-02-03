@@ -209,8 +209,7 @@ export const executeWorkflow = async (
 	);
 
 	if (!workflow) {
-		const workflowExists = await workflowRepository.findById(workflowId);
-
+		const workflowExists = await workflowRepository.existsBy({ id: workflowId });
 		if (!workflowExists) {
 			throw new WorkflowAccessError(
 				`Workflow with ID '${workflowId}' does not exist`,
