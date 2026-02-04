@@ -235,7 +235,7 @@ export function createAiMessageFromStreamingState(
 		sessionId,
 		type: 'ai',
 		name: 'AI',
-		content: '',
+		content: [],
 		executionId: streaming?.executionId ?? null,
 		status: 'running',
 		createdAt: new Date().toISOString(),
@@ -263,7 +263,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		sessionId: streaming.sessionId,
 		type: 'human',
 		name: 'User',
-		content: streaming.promptText,
+		content: [{ type: 'text', content: streaming.promptText }],
 		executionId: null,
 		status: 'success',
 		createdAt: new Date().toISOString(),
@@ -306,7 +306,7 @@ export function buildUiMessages(
 			// in running state as an immediate feedback
 			messagesToShow.push({
 				...message,
-				content: '',
+				content: [],
 				status: 'running',
 				...flattenModel(streaming.agent.model),
 			});

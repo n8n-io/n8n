@@ -47,6 +47,7 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { ChatStreamService } from './chat-stream.service';
+import { parseMessage } from '@n8n/chat-hub';
 
 @Service()
 export class ChatHubService {
@@ -799,7 +800,7 @@ export class ChatHubService {
 			sessionId: message.sessionId,
 			type: message.type,
 			name: message.name,
-			content: message.content,
+			content: parseMessage(message),
 			provider: message.provider,
 			model: message.model,
 			workflowId: message.workflowId,

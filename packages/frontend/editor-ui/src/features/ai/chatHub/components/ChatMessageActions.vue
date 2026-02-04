@@ -32,6 +32,8 @@ const currentAlternativeIndex = computed(() => {
 	return message.alternatives.findIndex((id) => id === message.id);
 });
 
+const text = computed(() => message.content.map((c) => c.content).join('\n\n'));
+
 const executionUrl = computed(() => {
 	if (
 		workflowsStore.canViewWorkflows &&
@@ -65,7 +67,7 @@ function handleReadAloud() {
 
 <template>
 	<div :class="$style.actions" data-test-id="chat-message-actions">
-		<CopyButton :content="message.content" data-test-id="chat-message-copy" />
+		<CopyButton :content="text" data-test-id="chat-message-copy" />
 		<N8nTooltip
 			v-if="isSpeechSynthesisAvailable && message.type === 'ai'"
 			placement="bottom"

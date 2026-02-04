@@ -87,7 +87,7 @@ export function createMockMessageDto(
 		sessionId: 'session-123',
 		type: 'human',
 		name: 'User',
-		content: 'Test message',
+		content: [{ type: 'text', content: 'Test message' }],
 		status: 'success',
 		provider: null,
 		model: null,

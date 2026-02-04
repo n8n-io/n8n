@@ -528,13 +528,13 @@ describe('chatHub', () => {
 			} = response;
 
 			expect(Object.keys(messages)).toHaveLength(4);
-			expect(messages[ids[0]].content).toBe('message 1');
+			expect(messages[ids[0]].content[0].content).toBe('message 1');
 			expect(messages[ids[0]].type).toBe('human');
-			expect(messages[ids[1]].content).toBe('message 2');
+			expect(messages[ids[1]].content[0].content).toBe('message 2');
 			expect(messages[ids[1]].type).toBe('ai');
-			expect(messages[ids[2]].content).toBe('message 3');
+			expect(messages[ids[2]].content[0].content).toBe('message 3');
 			expect(messages[ids[2]].type).toBe('human');
-			expect(messages[ids[3]].content).toBe('message 4');
+			expect(messages[ids[3]].content[0].content).toBe('message 4');
 			expect(messages[ids[3]].type).toBe('ai');
 		});
 
@@ -620,12 +620,12 @@ describe('chatHub', () => {
 			} = response;
 
 			expect(Object.keys(messages)).toHaveLength(6);
-			expect(messages[ids[0]].content).toBe('message 1');
-			expect(messages[ids[1]].content).toBe('message 2');
-			expect(messages[ids[2]].content).toBe('message 3a');
-			expect(messages[ids[3]].content).toBe('message 4a');
-			expect(messages[ids[4]].content).toBe('message 3b');
-			expect(messages[ids[5]].content).toBe('message 4b');
+			expect(messages[ids[0]].content[0].content).toBe('message 1');
+			expect(messages[ids[1]].content[0].content).toBe('message 2');
+			expect(messages[ids[2]].content[0].content).toBe('message 3a');
+			expect(messages[ids[3]].content[0].content).toBe('message 4a');
+			expect(messages[ids[4]].content[0].content).toBe('message 3b');
+			expect(messages[ids[5]].content[0].content).toBe('message 4b');
 			expect(messages[ids[4]].previousMessageId).toBe(ids[1]);
 		});
 

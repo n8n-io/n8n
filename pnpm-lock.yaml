@@ -724,6 +724,16 @@ importers:
         specifier: ^0.52.0
         version: 0.52.0
 
+  packages/@n8n/chat-hub:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/@n8n/client-oauth2:
     dependencies:
       axios:
@@ -1771,6 +1781,9 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../@n8n/backend-common
+      '@n8n/chat-hub':
+        specifier: workspace:*
+        version: link:../@n8n/chat-hub
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -2887,6 +2900,9 @@ importers:
       '@n8n/chat':
         specifier: workspace:*
         version: link:../@n8n/chat
+      '@n8n/chat-hub':
+        specifier: workspace:*
+        version: link:../../@n8n/chat-hub
       '@n8n/codemirror-lang':
         specifier: workspace:*
         version: link:../../@n8n/codemirror-lang
