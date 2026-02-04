@@ -8,7 +8,7 @@
 		{
 			"parameters": {},
 			"name": "Start",
-			"type": "n8n-nodes-base.start",
+			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
 			"position": [250, 300],
 			"id": "cb687f80-1046-40f3-bddb-78a67623b70e"

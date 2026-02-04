@@ -15,7 +15,7 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import semver from 'semver';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowResource } from '@/Interface';
 
 import { N8nButton, N8nNotice, N8nText } from '@n8n/design-system';
@@ -34,7 +34,7 @@ const props = defineProps<Props>();
 const communityNodesStore = useCommunityNodesStore();
 const nodeTypesStore = useNodeTypesStore();
 const settingsStore = useSettingsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 
 const modalBus = createEventBus();
 
@@ -227,7 +227,7 @@ onMounted(async () => {
 
 	if (communityStorePackage.value?.installedNodes.length) {
 		const nodeTypes = communityStorePackage.value.installedNodes.map((node) => node.type);
-		const response = await workflowsStore.fetchWorkflowsWithNodesIncluded(nodeTypes);
+		const response = await workflowsListStore.fetchWorkflowsWithNodesIncluded(nodeTypes);
 		workflowsWithPackageNodes.value = response?.data ?? [];
 	}
 

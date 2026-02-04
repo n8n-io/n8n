@@ -16,6 +16,8 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
+	MCP_CLIENT_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
 	MERGE_NODE_TYPE,
 	OPEN_AI_API_CREDENTIAL_TYPE,
 	OPENAI_CHAT_LANGCHAIN_NODE_TYPE,
@@ -28,6 +30,7 @@ import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
 import type {
 	IConnection,
+	IConnections,
 	INode,
 	INodeNameIndex,
 	INodesGraph,
@@ -42,7 +45,7 @@ import type {
 	INodeParameterResourceLocator,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
-import { getNodeParameters } from './node-helpers';
+import { getNodeParameters, isSubNodeType } from './node-helpers';
 import { jsonParse } from './utils';
 import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
@@ -439,11 +442,9 @@ export function generateNodesGraph(
 			nodeItem.language =
 				language === undefined
 					? 'javascript'
-					: language === 'python'
+					: language === 'python' || language === 'pythonNative'
 						? 'python'
-						: language === 'pythonNative'
-							? 'pythonNative'
-							: 'unknown';
+						: 'unknown';
 		} else if (node.type === GUARDRAILS_NODE_TYPE) {
 			nodeItem.operation = node.parameters.operation as string;
 			const usedGuardrails = Object.keys(node.parameters?.guardrails ?? {});
@@ -453,6 +454,8 @@ export function generateNodesGraph(
 			// For 1.3+ node version by default it is true and isn't stored in parameters
 			nodeItem.use_responses_api = (node.parameters?.responsesApiEnabled ??
 				enabledDefault) as boolean;
+		} else if (node.type === MCP_CLIENT_TOOL_NODE_TYPE || node.type === MCP_CLIENT_NODE_TYPE) {
+			nodeItem.mcp_client_auth_method = (node.parameters?.authentication ?? 'none') as string;
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -807,4 +810,95 @@ export function extractLastExecutedNodeStructuredOutputErrorInfo(
 	}
 
 	return info;
+}
+
+export type NodeRole = 'trigger' | 'terminal' | 'internal';
+
+/**
+ * Determines the role of a node in a workflow based on its connections.
+ *
+ * @param nodeName - The name of the node to check
+ * @param connections - The workflow connections (connectionsBySourceNode format)
+ * @param nodeTypes - The node types registry
+ * @param nodes - The workflow nodes
+ * @returns The role of the node:
+ *   - 'trigger': Has no incoming main connections and is not a subnode
+ *   - 'terminal': Has no outgoing connections
+ *   - 'internal': Has both incoming and outgoing connections, or is a subnode
+ */
+export function getNodeRole(
+	nodeName: string,
+	connections: IConnections,
+	nodeTypes: INodeTypes,
+	nodes: INode[],
+): NodeRole {
+	// partial executions of tools get a special name
+	if (nodeName === 'PartialExecutionToolExecutor') {
+		return 'internal';
+	}
+
+	// Check if node is a subnode based on its type description
+	const node = nodes.find((n) => n.name === nodeName);
+	const nodeTypeDescription = node
+		? (nodeTypes.getByNameAndVersion(node.type, node.typeVersion)?.description ?? null)
+		: null;
+	const isSubnode = isSubNodeType(nodeTypeDescription);
+
+	// Subnodes are always internal (they connect via AI connection types, not main)
+	if (isSubnode) {
+		return 'internal';
+	}
+
+	const hasOutgoingConnections = hasOutgoing(nodeName, connections);
+	const hasIncomingMainConnections = hasIncomingMain(nodeName, connections);
+
+	// A trigger has no incoming main connections
+	if (!hasIncomingMainConnections) {
+		return 'trigger';
+	}
+
+	// A terminal node has no outgoing connections
+	if (!hasOutgoingConnections) {
+		return 'terminal';
+	}
+
+	// Otherwise it's internal
+	return 'internal';
+}
+
+function hasOutgoing(nodeName: string, connections: IConnections): boolean {
+	const mainConnections = connections[nodeName]?.[NodeConnectionTypes.Main];
+	if (!mainConnections) {
+		return false;
+	}
+
+	for (const outputIndex of mainConnections) {
+		if (outputIndex && outputIndex.length > 0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function hasIncomingMain(nodeName: string, connections: IConnections): boolean {
+	// Check all source nodes to see if any connect to this node via main connection
+	for (const sourceNode of Object.keys(connections)) {
+		const sourceConnections = connections[sourceNode];
+		const mainConnections = sourceConnections?.[NodeConnectionTypes.Main];
+
+		if (!mainConnections) continue;
+
+		for (const outputIndex of mainConnections) {
+			if (!outputIndex) continue;
+
+			for (const conn of outputIndex) {
+				if (conn.node === nodeName) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
 }

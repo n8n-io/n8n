@@ -21,6 +21,7 @@ export const DATA_TABLE_CARD_ACTIONS = {
 	RENAME: 'rename',
 	DELETE: 'delete',
 	CLEAR: 'clear',
+	DOWNLOAD_CSV: 'download-csv',
 };
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';
@@ -35,6 +36,7 @@ export const MIN_LOADING_TIME = 500; // ms
 
 export const NULL_VALUE = 'Null';
 export const EMPTY_VALUE = 'Empty';
+export const MAX_CELL_DISPLAY_LENGTH = 10000;
 
 export const DATA_TABLE_MODULE_NAME = 'data-table';
 

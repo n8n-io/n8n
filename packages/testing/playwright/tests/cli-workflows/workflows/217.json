@@ -8,7 +8,7 @@
 		{
 			"parameters": {},
 			"name": "Start",
-			"type": "n8n-nodes-base.start",
+			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
 			"position": [250, 300],
 			"id": "f98e5ef3-5e54-4296-83c0-15abef56962d"
@@ -16,7 +16,7 @@
 		{
 			"parameters": {
 				"source": "parameter",
-				"workflowJson": "{\n  \"nodes\": [\n    {\n      \"parameters\": {},\n      \"name\": \"Start\",\n      \"type\": \"n8n-nodes-base.start\",\n      \"typeVersion\": 1,\n      \"position\": [\n        250,\n        300\n      ]\n    },\n    {\n      \"parameters\": {\n        \"functionCode\": \"\\nitems = [\\n{\\n  json:{\\n    message: \\\"Hello from a sub workflow, passed as parameter\\\"\\n  }\\n}\\n\\n]\\nreturn items;\"\n      },\n      \"name\": \"Generate items data\",\n      \"type\": \"n8n-nodes-base.function\",\n      \"typeVersion\": 1,\n      \"position\": [\n        500,\n        300\n      ]\n    }\n  ],\n  \"connections\": {\n    \"Start\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Generate items data\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  }\n}"
+				"workflowJson": "{\n  \"nodes\": [\n    {\n      \"parameters\": {},\n      \"name\": \"Start\",\n      \"type\": \"n8n-nodes-base.manualTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [\n        250,\n        300\n      ]\n    },\n    {\n      \"parameters\": {\n        \"functionCode\": \"\\nitems = [\\n{\\n  json:{\\n    message: \\\"Hello from a sub workflow, passed as parameter\\\"\\n  }\\n}\\n\\n]\\nreturn items;\"\n      },\n      \"name\": \"Generate items data\",\n      \"type\": \"n8n-nodes-base.function\",\n      \"typeVersion\": 1,\n      \"position\": [\n        500,\n        300\n      ]\n    }\n  ],\n  \"connections\": {\n    \"Start\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Generate items data\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  }\n}"
 			},
 			"name": "Execute parameter - workflow",
 			"type": "n8n-nodes-base.executeWorkflow",

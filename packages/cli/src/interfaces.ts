@@ -15,6 +15,7 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
+	IExecutionContext,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -47,7 +48,10 @@ export interface IWorkflowResponse extends IWorkflowBase {
 }
 
 export interface IWorkflowToImport
-	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
+	extends Omit<
+		IWorkflowBase,
+		'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
+	> {
 	owner?:
 		| {
 				type: 'personal';
@@ -72,7 +76,7 @@ export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 export type SaveExecutionDataType = 'all' | 'none';
 
 /** Payload for updating an execution. */
-export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
+export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'storedAt'>;
 
 // Flatted data to save memory when saving in database or transferring
 // via REST API
@@ -138,6 +142,7 @@ export interface IWorkflowErrorData {
 		error: ExecutionError;
 		lastNodeExecuted: string;
 		mode: WorkflowExecuteMode;
+		executionContext?: IExecutionContext;
 	};
 	trigger?: {
 		error: ExecutionError;
@@ -163,6 +168,7 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	error_node_type?: string;
 	is_manual: boolean;
 	crashed?: boolean;
+	used_dynamic_credentials?: boolean;
 }
 
 // ----------------------------------

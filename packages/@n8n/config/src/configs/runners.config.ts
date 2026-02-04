@@ -8,8 +8,7 @@ export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
 @Config
 export class TaskRunnersConfig {
-	@Env('N8N_RUNNERS_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/**
 	 * Whether the task runner should run as a child process spawned by n8n (internal mode)
@@ -43,8 +42,6 @@ export class TaskRunnersConfig {
 
 	/**
 	 * How many concurrent tasks can a runner execute at a time
-	 *
-	 * Kept high for backwards compatibility - n8n v2 will reduce this to `5`
 	 */
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
 	maxConcurrency: number = 10;
@@ -54,7 +51,7 @@ export class TaskRunnersConfig {
 	 * task will be aborted. (In internal mode, the runner will also be
 	 * restarted.) Must be greater than 0.
 	 *
-	 * Kept high for backwards compatibility - n8n v2 will reduce this to `60`
+	 * Kept high for backwards compatibility - n8n v3 will reduce this to `60`
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
 	taskTimeout: number = 300; // 5 minutes
@@ -77,19 +74,4 @@ export class TaskRunnersConfig {
 	 */
 	@Env('N8N_RUNNERS_INSECURE_MODE')
 	insecureMode: boolean = false;
-
-	/**
-	 * Whether to enable the Python task runner (beta). This will replace the
-	 * Pyodide option with the native Python option in the Code node. Expects a
-	 * Python task runner to be available, typically in a sidecar container.
-	 *
-	 * Actions required:
-	 * - Any Code node set to the legacy `python` parameter will need to be manually
-	 * updated to use the new `pythonNative` parameter.
-	 * - Any Code node script relying on Pyodide syntax is likely to need to be manually
-	 * adjusted to account for breaking changes:
-	 * https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/#python-native-beta
-	 */
-	@Env('N8N_NATIVE_PYTHON_RUNNER')
-	isNativePythonRunnerEnabled: boolean = false;
 }

@@ -3,7 +3,8 @@ import { CommandMetadata, type CommandEntry } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import picocolors from 'picocolors';
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
+
 import './zod-alias-support';
 
 /**
@@ -37,7 +38,9 @@ export class CommandRegistry {
 		// Try to load regular commands
 		try {
 			await import(`./commands/${this.commandName.replaceAll(':', '/')}.js`);
-		} catch {}
+		} catch {
+			// Do nothing
+		}
 
 		// Load modules to ensure all module commands are registered
 		await this.moduleRegistry.loadModules();
@@ -53,10 +56,23 @@ export class CommandRegistry {
 			return process.exit(0);
 		}
 
-		const { flags } = this.cliParser.parse({
-			argv: process.argv,
-			flagsSchema: commandEntry.flagsSchema,
-		});
+		let flags: Record<string, unknown>;
+		try {
+			({ flags } = this.cliParser.parse({
+				argv: process.argv,
+				flagsSchema: commandEntry.flagsSchema,
+			}));
+		} catch (error) {
+			if (error instanceof ZodError) {
+				this.logger.error(this.formatZodError(error));
+				this.logger.info('');
+				this.printCommandUsage(commandEntry);
+				return process.exit(1);
+			}
+
+			// Preserve previous behavior for non-Zod errors
+			throw error;
+		}
 
 		const command = Container.get(commandEntry.class);
 		command.flags = flags;
@@ -162,5 +178,32 @@ export class CommandRegistry {
 		}
 
 		this.logger.info(output);
+	}
+
+	private formatZodError(error: ZodError): string {
+		const issuesByFlag: Record<string, z.ZodIssue[]> = {};
+
+		for (const issue of error.issues) {
+			const flag = (issue.path[0] as string | undefined) ?? 'flags';
+			if (!issuesByFlag[flag]) issuesByFlag[flag] = [];
+			issuesByFlag[flag].push(issue);
+		}
+
+		let output = '';
+
+		output += picocolors.red(
+			`\nError: Invalid flags provided for command "${this.commandName}".\n\n`,
+		);
+
+		for (const [flag, issues] of Object.entries(issuesByFlag)) {
+			const flagLabel = flag === 'flags' ? '(general)' : `--${flag}`;
+			output += `  ${picocolors.bold(flagLabel)}\n`;
+			for (const issue of issues) {
+				output += `    - ${issue.message}\n`;
+			}
+			output += '\n';
+		}
+
+		return output.trimEnd();
 	}
 }

@@ -1,16 +1,28 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
-import { Body, Post, Get, Patch, RestController, GlobalScope, Param } from '@n8n/decorators';
+import {
+	Body,
+	Post,
+	Get,
+	Patch,
+	RestController,
+	GlobalScope,
+	Param,
+	ProjectScope,
+} from '@n8n/decorators';
 import type { Response } from 'express';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availability.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
+import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import { McpSettingsService } from './mcp.settings.service';
+import { findMcpSupportedTrigger } from './mcp.utils';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { listQueryMiddleware } from '@/middlewares';
+import type { ListQuery } from '@/requests';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -56,7 +68,34 @@ export class McpSettingsController {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
 	}
 
-	@GlobalScope('mcp:manage')
+	@Get('/workflows', { middlewares: listQueryMiddleware })
+	async getMcpEligibleWorkflows(req: ListQuery.Request, res: Response) {
+		const supportedTriggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
+
+		const options: ListQuery.Options = {
+			...req.listQueryOptions,
+			filter: {
+				...req.listQueryOptions?.filter,
+				active: true,
+				isArchived: false,
+				availableInMCP: false,
+				triggerNodeTypes: supportedTriggerNodeTypes,
+			},
+		};
+
+		const { workflows, count } = await this.workflowService.getMany(
+			req.user,
+			options,
+			false, // includeScopes
+			false, // includeFolders
+			false, // onlySharedWithMe
+			['workflow:update'], // requiredScopes - only return workflows the user can edit
+		);
+
+		res.json({ count, data: workflows });
+	}
+
+	@ProjectScope('workflow:update')
 	@Patch('/workflows/:workflowId/toggle-access')
 	async toggleWorkflowMCPAccess(
 		req: AuthenticatedRequest,
@@ -64,9 +103,12 @@ export class McpSettingsController {
 		@Param('workflowId') workflowId: string,
 		@Body dto: UpdateWorkflowAvailabilityDto,
 	) {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:update',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			req.user,
+			['workflow:update'],
+			{ includeActiveVersion: true },
+		);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to update MCP availability without permissions', {
@@ -78,16 +120,18 @@ export class McpSettingsController {
 			);
 		}
 
-		if (!workflow.active && dto.availableInMCP) {
-			throw new BadRequestError('MCP access can only be set for active workflows');
-		}
+		if (dto.availableInMCP) {
+			if (!workflow.activeVersionId) {
+				throw new BadRequestError('MCP access can only be set for published workflows');
+			}
+			const nodes = workflow.activeVersion?.nodes ?? [];
+			const supportedTrigger = findMcpSupportedTrigger(nodes);
 
-		const hasWebhooks = workflow.nodes.some(
-			(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
-		);
-
-		if (!hasWebhooks) {
-			throw new BadRequestError('MCP access can only be set for webhook-triggered workflows');
+			if (!supportedTrigger) {
+				throw new BadRequestError(
+					`MCP access can only be set for published workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+				);
+			}
 		}
 
 		const workflowUpdate = new WorkflowEntity();
@@ -98,14 +142,7 @@ export class McpSettingsController {
 		};
 		workflowUpdate.versionId = workflow.versionId;
 
-		const updatedWorkflow = await this.workflowService.update(
-			req.user,
-			workflowUpdate,
-			workflowId,
-			undefined, // tags
-			undefined, // parentFolderId
-			false, // forceSave
-		);
+		const updatedWorkflow = await this.workflowService.update(req.user, workflowUpdate, workflowId);
 
 		return {
 			id: updatedWorkflow.id,

@@ -1,5 +1,6 @@
 import glob from 'fast-glob';
 
+import { CUSTOM_NODES_PACKAGE_NAME } from './constants';
 import { DirectoryLoader } from './directory-loader';
 
 /**
@@ -7,7 +8,7 @@ import { DirectoryLoader } from './directory-loader';
  * e.g. `~/.n8n/custom`
  */
 export class CustomDirectoryLoader extends DirectoryLoader {
-	packageName = 'CUSTOM';
+	packageName = CUSTOM_NODES_PACKAGE_NAME;
 
 	constructor(directory: string, excludeNodes: string[] = [], includeNodes: string[] = []) {
 		super(directory, excludeNodes, includeNodes);

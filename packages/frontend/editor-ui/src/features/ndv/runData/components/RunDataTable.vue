@@ -11,6 +11,7 @@ import { useTemplateRef, computed, onMounted, ref, watch } from 'vue';
 import Draggable from '@/app/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
+import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { storeToRefs } from 'pinia';
@@ -212,6 +213,7 @@ function getExpression(column: string) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column],
+		binaryMode: workflowsStore.workflow.settings?.binaryMode,
 	});
 }
 
@@ -244,6 +246,7 @@ function getCellExpression(path: Array<string | number>, colIndex: number) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column, ...path],
+		binaryMode: workflowsStore.workflow.settings?.binaryMode,
 	});
 }
 
@@ -744,6 +747,10 @@ watch(
 									@mouseenter="() => onMouseEnterKey(path, index2)"
 									@mouseleave="onMouseLeaveKey"
 								/>
+							</template>
+
+							<template #binary="{ value }">
+								<BinaryEntryDataTable :value="value" />
 							</template>
 
 							<template #value="{ value }">

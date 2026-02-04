@@ -10,6 +10,11 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+// Mock generateShortId to return a predictable value for testing
+vi.mock('../builder.utils', () => ({
+	generateShortId: () => 'abc123',
+}));
+
 describe('useBuilderMessages', () => {
 	let builderMessages: ReturnType<typeof useBuilderMessages>;
 
@@ -36,7 +41,7 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toMatchObject({
-				id: 'test-id-0',
+				id: 'test-id--abc123--0',
 				role: 'assistant',
 				type: 'text',
 				content: 'Hello, how can I help?',
@@ -72,7 +77,7 @@ describe('useBuilderMessages', () => {
 			expect(result.messages).toHaveLength(1);
 			const toolMessage = result.messages[0] as ChatUI.ToolMessage;
 			expect(toolMessage).toMatchObject({
-				id: 'call-123', // Should use toolCallId as ID
+				id: 'test-id--abc123--0-call-123', // Format is messageId-toolCallId
 				role: 'assistant',
 				type: 'tool',
 				toolName: 'add_nodes',
@@ -164,7 +169,7 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toMatchObject({
-				id: 'test-id-0', // Should fall back to generated ID
+				id: 'test-id--abc123--0-undefined', // Format is messageId-toolCallId (undefined when missing)
 				type: 'tool',
 				toolName: 'some_tool',
 			});
@@ -224,7 +229,7 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0]).toMatchObject({
-				id: 'test-id-0',
+				id: 'test-id--abc123--0',
 				type: 'workflow-updated',
 				codeSnippet: '{"nodes": [], "connections": {}}',
 				read: false,
@@ -262,11 +267,11 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(3);
 			expect(result.messages[0].type).toBe('text');
-			expect(result.messages[0].id).toBe('batch-id-0');
+			expect(result.messages[0].id).toBe('batch-id--abc123--0');
 			expect(result.messages[1].type).toBe('tool');
-			expect(result.messages[1].id).toBe('call-123'); // Uses toolCallId
+			expect(result.messages[1].id).toBe('batch-id--abc123--1-call-123'); // Format is messageId-toolCallId
 			expect(result.messages[2].type).toBe('workflow-updated');
-			expect(result.messages[2].id).toBe('batch-id-2');
+			expect(result.messages[2].id).toBe('batch-id--abc123--2');
 		});
 
 		it('should show tool name when tool is in progress with displayTitle', () => {
@@ -668,7 +673,7 @@ describe('useBuilderMessages', () => {
 			expect(result.shouldClearThinking).toBe(true);
 		});
 
-		it('should only apply rating to the last text message after workflow-updated', () => {
+		it('should not apply inline rating (rating is now in footer)', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -701,24 +706,14 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(4);
 
-			// First text message should NOT have showRating (comes before workflow-updated)
-			const firstText = result.messages[0];
-			expect(firstText.showRating).toBeUndefined();
-
-			// Workflow-updated message should not have rating
-			expect(result.messages[1].type).toBe('workflow-updated');
-
-			// Middle text message should NOT have rating
-			const middleText = result.messages[2];
-			expect(middleText.showRating).toBeUndefined();
-
-			// Only the LAST text message should have showRating with minimal style
-			const lastText = result.messages[3];
-			expect(lastText.showRating).toBe(true);
-			expect(lastText.ratingStyle).toBe('minimal');
+			// No messages should have inline rating (rating is now handled in footer)
+			result.messages.forEach((message) => {
+				expect(message.showRating).toBeUndefined();
+				expect(message.ratingStyle).toBeUndefined();
+			});
 		});
 
-		it('should not apply rating to text messages without workflow-updated', () => {
+		it('should not apply inline rating regardless of workflow state (rating is in footer)', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -740,7 +735,7 @@ describe('useBuilderMessages', () => {
 			expect(textMessage.ratingStyle).toBeUndefined();
 		});
 
-		it('should not apply rating when tools are still running', () => {
+		it('should not apply inline rating when tools are running (rating is in footer)', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -774,15 +769,13 @@ describe('useBuilderMessages', () => {
 				'test-id',
 			);
 
-			// No messages should have rating while tools are running
-			const firstMessage = result.messages[0];
-			expect(firstMessage.showRating).toBeUndefined();
-
-			const lastMessage = result.messages[3];
-			expect(lastMessage.showRating).toBeUndefined();
+			// No messages should have inline rating (rating is now in footer)
+			result.messages.forEach((message) => {
+				expect(message.showRating).toBeUndefined();
+			});
 		});
 
-		it('should apply rating to the last text message after all tools complete', () => {
+		it('should not apply inline rating even after all tools complete (rating is in footer)', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
 					id: 'msg-1',
@@ -825,13 +818,11 @@ describe('useBuilderMessages', () => {
 				'test-id',
 			);
 
-			// Only the last text message should have rating
-			const firstMessage = result.messages[0];
-			expect(firstMessage.showRating).toBeUndefined();
-
-			const lastMessage = result.messages[3];
-			expect(lastMessage.showRating).toBe(true);
-			expect(lastMessage.ratingStyle).toBe('minimal');
+			// No messages should have inline rating (rating is now in footer)
+			result.messages.forEach((message) => {
+				expect(message.showRating).toBeUndefined();
+				expect(message.ratingStyle).toBeUndefined();
+			});
 		});
 	});
 
@@ -988,7 +979,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.messages[0].id).toBe('test-id-0');
+			expect(result.messages[0].id).toBe('test-id--abc123--0-undefined'); // Format is messageId-toolCallId (undefined when missing)
 		});
 
 		it('should handle workflow-updated messages with invalid JSON', () => {
@@ -1210,10 +1201,10 @@ describe('useBuilderMessages', () => {
 			const workflowUpdates = result.messages.filter((m) => m.type === 'workflow-updated');
 			expect(workflowUpdates).toHaveLength(2);
 
-			// Check final text message has rating
+			// Check final text message does NOT have inline rating (rating is now in footer)
 			const textMessage = result.messages.find((m) => m.type === 'text');
-			expect(textMessage?.showRating).toBe(true);
-			expect(textMessage?.ratingStyle).toBe('minimal');
+			expect(textMessage?.showRating).toBeUndefined();
+			expect(textMessage?.ratingStyle).toBeUndefined();
 
 			// Should clear thinking since tools are complete and text is present
 			expect(result.shouldClearThinking).toBe(true);
@@ -1293,8 +1284,9 @@ describe('useBuilderMessages', () => {
 			const workflowUpdate = result.messages.find((m) => m.type === 'workflow-updated');
 			expect(workflowUpdate).toBeTruthy();
 
+			// Text message should NOT have inline rating (rating is now in footer)
 			const textMessage = result.messages.find((m) => m.type === 'text');
-			expect(textMessage?.showRating).toBe(true);
+			expect(textMessage?.showRating).toBeUndefined();
 			expect(textMessage?.content).toContain('error');
 		});
 
@@ -1526,7 +1518,7 @@ describe('useBuilderMessages', () => {
 			expect(result.messages).toHaveLength(1);
 			const errorMessage = result.messages[0] as ChatUI.ErrorMessage;
 			expect(errorMessage).toMatchObject({
-				id: 'test-id-0',
+				id: 'test-id--abc123--0',
 				role: 'assistant',
 				type: 'error',
 				content: 'Something went wrong',

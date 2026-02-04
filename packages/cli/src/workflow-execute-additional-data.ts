@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
-import { UnexpectedError, Workflow } from 'n8n-workflow';
+import { UnexpectedError, Workflow, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -16,7 +16,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
@@ -30,6 +29,7 @@ import type {
 	EnvProviderState,
 	ExecuteWorkflowData,
 	RelatedExecution,
+	IRunExecutionData,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -37,7 +37,8 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionDataService } from '@/executions/execution-data.service';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
+import { isManualOrChatExecution } from '@/executions/execution.utils';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
@@ -51,11 +52,11 @@ import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-export async function getRunData(
+export function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
 	parentExecution?: RelatedExecution,
-): Promise<IWorkflowExecutionDataProcess> {
+): IWorkflowExecutionDataProcess {
 	const mode = 'integrated';
 
 	const startingNode = findSubworkflowStart(workflowData.nodes);
@@ -78,20 +79,12 @@ export async function getRunData(
 		source: null,
 	});
 
-	const runExecutionData: IRunExecutionData = {
-		startData: {},
-		resultData: {
-			runData: {},
-		},
+	const runExecutionData = createRunExecutionData({
 		executionData: {
-			contextData: {},
-			metadata: {},
 			nodeExecutionStack,
-			waitingExecution: {},
-			waitingExecutionSource: {},
 		},
 		parentExecution,
-	};
+	});
 
 	return {
 		executionMode: mode,
@@ -100,44 +93,102 @@ export async function getRunData(
 	};
 }
 
-export async function getWorkflowData(
+/**
+ * Fetches workflow from database or returns provided code.
+ * Shared helper for getDraftWorkflowData and getPublishedWorkflowData.
+ */
+async function fetchWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
-): Promise<IWorkflowBase> {
+) {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
 		throw new UnexpectedError(
 			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
 		);
 	}
 
-	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
-		const relations = Container.get(GlobalConfig).tags.disabled ? [] : ['tags'];
+		const baseRelations = ['activeVersion'];
+		const relations = Container.get(GlobalConfig).tags.disabled
+			? [...baseRelations]
+			: [...baseRelations, 'tags'];
 
-		workflowData = await Container.get(WorkflowRepository).get(
+		const workflowFromDb = await Container.get(WorkflowRepository).get(
 			{ id: workflowInfo.id },
 			{ relations },
 		);
 
-		if (workflowData === undefined || workflowData === null) {
+		if (workflowFromDb === undefined || workflowFromDb === null) {
 			throw new UnexpectedError('Workflow does not exist.', {
 				extra: { workflowId: workflowInfo.id },
 			});
 		}
+
+		return workflowFromDb;
 	} else {
-		workflowData = workflowInfo.code ?? null;
+		const workflowData = workflowInfo.code;
 		if (workflowData) {
 			if (!workflowData.id) {
 				workflowData.id = parentWorkflowId;
 			}
-			if (!workflowData.settings) {
-				workflowData.settings = parentWorkflowSettings;
-			}
+			workflowData.settings ??= parentWorkflowSettings;
 		}
+		return workflowData;
+	}
+}
+
+/**
+ * Loads draft workflow data for sub-workflow execution.
+ * Used for manual/chat executions to allow iterating on sub-workflows without publishing.
+ * Always uses the draft version (nodes/connections from WorkflowEntity).
+ */
+export async function getDraftWorkflowData(
+	workflowInfo: IExecuteWorkflowInfo,
+	parentWorkflowId: string,
+	parentWorkflowSettings?: IWorkflowSettings,
+): Promise<IWorkflowBase> {
+	const workflowData = await fetchWorkflowData(
+		workflowInfo,
+		parentWorkflowId,
+		parentWorkflowSettings,
+	);
+	return workflowData!;
+}
+
+/**
+ * Loads published workflow data for sub-workflow execution.
+ * Used for production executions - requires the workflow to have an active (published) version.
+ * Uses nodes/connections from the activeVersion in WorkflowHistory.
+ */
+export async function getPublishedWorkflowData(
+	workflowInfo: IExecuteWorkflowInfo,
+	parentWorkflowId: string,
+	parentWorkflowSettings?: IWorkflowSettings,
+): Promise<IWorkflowBase> {
+	const workflowData = await fetchWorkflowData(
+		workflowInfo,
+		parentWorkflowId,
+		parentWorkflowSettings,
+	);
+
+	// If workflow was provided as code, return as-is
+	if (workflowInfo.code !== undefined) {
+		return workflowData!;
 	}
 
-	return workflowData!;
+	// For workflows from database, ensure active version exists and use it
+	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
+		return {
+			...workflowData,
+			nodes: workflowData.activeVersion.nodes,
+			connections: workflowData.activeVersion.connections,
+		};
+	}
+
+	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+		extra: { workflowId: workflowInfo.id },
+	});
 }
 
 /**
@@ -150,15 +201,36 @@ export async function executeWorkflow(
 ): Promise<ExecuteWorkflowData> {
 	const activeExecutions = Container.get(ActiveExecutions);
 
+	// Use draft sub-workflows for manual/chat executions to enable
+	// iterating on sub-workflows without requiring them to be published
+	const useDraftVersion = isManualOrChatExecution(options.executionMode);
+
 	const workflowData =
 		options.loadedWorkflowData ??
-		(await getWorkflowData(workflowInfo, options.parentWorkflowId, options.parentWorkflowSettings));
+		(useDraftVersion
+			? await getDraftWorkflowData(
+					workflowInfo,
+					options.parentWorkflowId,
+					options.parentWorkflowSettings,
+				)
+			: await getPublishedWorkflowData(
+					workflowInfo,
+					options.parentWorkflowId,
+					options.parentWorkflowSettings,
+				));
 
 	const runData =
-		options.loadedRunData ??
-		(await getRunData(workflowData, options.inputData, options.parentExecution));
+		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
 
 	const executionId = await activeExecutions.add(runData);
+
+	Container.get(EventService).emit('workflow-executed', {
+		user: additionalData.userId ? { id: additionalData.userId } : undefined,
+		workflowId: workflowData.id,
+		workflowName: workflowData.name,
+		executionId,
+		source: 'integrated',
+	});
 
 	const executionPromise = startExecution(
 		additionalData,
@@ -192,7 +264,7 @@ async function startExecution(
 		name: workflowName,
 		nodes: workflowData.nodes,
 		connections: workflowData.connections,
-		active: workflowData.active,
+		active: workflowData.activeVersionId !== null,
 		nodeTypes,
 		staticData: workflowData.staticData,
 		settings: workflowData.settings,
@@ -219,12 +291,17 @@ async function startExecution(
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
-		const additionalDataIntegrated = await getBase();
+		const workflowSettings = workflowData.settings;
+		const additionalDataIntegrated = await getBase({
+			workflowId: workflowData.id,
+			workflowSettings,
+		});
 		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions(
 			runData.executionMode,
 			executionId,
 			workflowData,
 			additionalData.userId,
+			options.parentExecution,
 		);
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
@@ -240,7 +317,6 @@ async function startExecution(
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-		const workflowSettings = workflowData.settings;
 		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
 			// We might have received a max timeout timestamp from the parent workflow
 			// If we did, then we get the minimum time between the two timeouts
@@ -266,7 +342,7 @@ async function startExecution(
 		data = await execution;
 	} catch (error) {
 		const executionError = error as ExecutionError;
-		const fullRunData = Container.get(ExecutionDataService).generateFailedExecutionFromError(
+		const fullRunData = Container.get(FailedRunFactory).generateFailedExecutionFromError(
 			runData.executionMode,
 			executionError,
 			'node' in executionError ? executionError.node : undefined,
@@ -375,12 +451,14 @@ export async function getBase({
 	projectId,
 	currentNodeParameters,
 	executionTimeoutTimestamp,
+	workflowSettings,
 }: {
 	userId?: string;
 	workflowId?: string;
 	projectId?: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
+	workflowSettings?: IWorkflowSettings;
 } = {}): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
@@ -405,6 +483,7 @@ export async function getBase({
 		userId,
 		setExecutionStatus,
 		variables,
+		workflowSettings,
 		async getRunExecutionData(executionId) {
 			const executionRepository = Container.get(ExecutionRepository);
 			const executionData = await executionRepository.findSingleExecution(executionId, {
@@ -454,6 +533,7 @@ export async function getBase({
 		},
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
+		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
 	};
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {

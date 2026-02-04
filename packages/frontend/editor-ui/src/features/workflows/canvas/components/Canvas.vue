@@ -85,6 +85,8 @@ const emit = defineEmits<{
 	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
+	'copy:production:url': [id: string];
+	'copy:test:url': [id: string];
 	'delete:node': [id: string];
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
@@ -107,10 +109,16 @@ const emit = defineEmits<{
 	'click:connection:add': [connection: Connection];
 	'click:pane': [position: XYPosition];
 	'run:workflow': [];
-	'save:workflow': [];
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
-	'tidy-up': [CanvasLayoutEvent, { trackEvents?: boolean }];
+	'tidy-up': [
+		CanvasLayoutEvent,
+		{
+			trackEvents?: boolean;
+			trackHistory?: boolean;
+			trackBulk?: boolean;
+		},
+	];
 	'toggle:focus-panel': [];
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
@@ -131,6 +139,7 @@ const props = withDefaults(
 		keyBindings?: boolean;
 		loading?: boolean;
 		suppressInteraction?: boolean;
+		hideControls?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -143,6 +152,7 @@ const props = withDefaults(
 		keyBindings: true,
 		loading: false,
 		suppressInteraction: false,
+		hideControls: false,
 	},
 );
 
@@ -352,11 +362,14 @@ const keyMap = computed(() => {
 		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
-		ctrl_s: () => emit('save:workflow'),
+		// override the default cmd+s which saves the page html as file
+		ctrl_s: () => {},
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
 		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
+		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
+		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
 	};
 	return fullKeymap;
 });
@@ -750,6 +763,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return emit('update:nodes:pin', nodeIds, 'context-menu');
 		case 'execute':
 			return emit('run:node', nodeIds[0]);
+		case 'copy_production_url':
+			return emit('copy:production:url', nodeIds[0]);
+		case 'copy_test_url':
+			return emit('copy:test:url', nodeIds[0]);
 		case 'toggle_activation':
 			return emit('update:nodes:enabled', nodeIds);
 		case 'open':
@@ -779,7 +796,15 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
 
-	emit('tidy-up', { result, target, source: payload.source }, { trackEvents: payload.trackEvents });
+	emit(
+		'tidy-up',
+		{ result, target, source: payload.source },
+		{
+			trackEvents: payload.trackEvents,
+			trackHistory: payload.trackHistory,
+			trackBulk: payload.trackBulk,
+		},
+	);
 
 	await nextTick();
 	if (applyOnSelection) {
@@ -1048,6 +1073,7 @@ defineExpose({
 		</Transition>
 
 		<CanvasControlButtons
+			v-if="!hideControls"
 			data-test-id="canvas-controls"
 			:class="$style.canvasControls"
 			:position="controlsPosition"

@@ -2,139 +2,195 @@ import { useStorage } from '@/app/composables/useStorage';
 
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useRouter } from 'vue-router';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
-import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
-import { useWorkflowSaving } from './useWorkflowSaving';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import type { INode } from 'n8n-workflow';
+import type { ResponseError } from '@n8n/rest-api-client/utils';
+import type { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
 
-	const router = useRouter();
-	const workflowHelpers = useWorkflowHelpers();
-	const workflowSaving = useWorkflowSaving({ router });
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
 	const toast = useToast();
 	const i18n = useI18n();
-	const npsSurveyStore = useNpsSurveyStore();
+	const collaborationStore = useCollaborationStore();
 
-	//methods
-
-	const updateWorkflowActivation = async (
-		workflowId: string | undefined,
-		newActiveState: boolean,
-		telemetrySource?: string,
-	): Promise<boolean> => {
-		// Add return type
-		updatingWorkflowActivation.value = true;
-		const nodesIssuesExist = workflowsStore.nodesIssuesExist;
-
-		let currWorkflowId: string | undefined = workflowId;
-		if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			const saved = await workflowSaving.saveCurrentWorkflow();
-			if (!saved) {
-				updatingWorkflowActivation.value = false;
-				return false; // Return false if save failed
+	const parseWebhookConflictError = (error: ResponseError) => {
+		try {
+			const { errorCode, hint } = error;
+			if (errorCode === 409) {
+				const parsedHint = JSON.parse(hint ?? '') as Array<{
+					trigger: INode;
+					conflict: Awaited<ReturnType<typeof findWebhook>>;
+				}>;
+				if (
+					Array.isArray(parsedHint) &&
+					parsedHint.length > 0 &&
+					Object.hasOwn(parsedHint[0] as object, 'trigger')
+				) {
+					return parsedHint;
+				}
 			}
-			currWorkflowId = workflowsStore.workflowId;
+			return null;
+		} catch {
+			return null;
 		}
-		const isCurrentWorkflow = currWorkflowId === workflowsStore.workflowId;
+	};
 
-		const activeWorkflows = workflowsStore.activeWorkflows;
-		const isWorkflowActive = activeWorkflows.includes(currWorkflowId);
+	const handleWebhookConflictError = async (error: ResponseError) => {
+		const { trigger, conflict } = parseWebhookConflictError(error)?.pop() || {};
+		let workflowName = conflict?.workflowId;
+		try {
+			if (conflict?.workflowId) {
+				const conflictingWorkflow = await workflowsListStore.fetchWorkflow(conflict?.workflowId);
+				workflowName = conflictingWorkflow.name;
+			}
+		} catch {}
+
+		uiStore.openModalWithData({
+			name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
+			data: {
+				triggerType: trigger?.type,
+				workflowName,
+				...conflict,
+			},
+		});
+	};
+
+	const isWebhookConflictError = (error: ResponseError) => {
+		return parseWebhookConflictError(error) !== null;
+	};
+
+	const publishWorkflow = async (
+		workflowId: string,
+		versionId: string,
+		options?: { name?: string; description?: string },
+	) => {
+		updatingWorkflowActivation.value = true;
+
+		collaborationStore.requestWriteAccess();
+
+		const workflow = workflowsListStore.getWorkflowById(workflowId);
+		const hadPublishedVersion = !!workflow.activeVersion;
+
+		if (!hadPublishedVersion) {
+			const telemetryPayload = {
+				workflow_id: workflowId,
+				is_active: true,
+				previous_status: false,
+				ndv_input: false,
+			};
+			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+		}
+
+		try {
+			const expectedChecksum =
+				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+
+			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
+				versionId,
+				name: options?.name,
+				description: options?.description,
+				expectedChecksum,
+			});
+
+			if (!updatedWorkflow.activeVersion || !updatedWorkflow.checksum) {
+				throw new Error('Failed to publish workflow');
+			}
+
+			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
+
+			if (workflowId === workflowsStore.workflowId) {
+				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			}
+
+			void useExternalHooks().run('workflow.published', {
+				workflowId,
+				versionId: updatedWorkflow.activeVersion.versionId,
+			});
+
+			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
+				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
+			}
+			return { success: true };
+		} catch (error) {
+			if (isWebhookConflictError(error)) {
+				await handleWebhookConflictError(error);
+				return { success: false, errorHandled: true };
+			} else {
+				toast.showError(
+					error,
+					i18n.baseText('workflowActivator.showError.title', {
+						interpolate: { newStateName: 'published' },
+					}) + ':',
+				);
+				// Only update workflow state to inactive if this is not a validation error
+				if (!error.meta?.validationError) {
+					workflowsStore.setWorkflowInactive(workflowId);
+				}
+			}
+			return { success: false };
+		} finally {
+			updatingWorkflowActivation.value = false;
+		}
+	};
+
+	const unpublishWorkflowFromHistory = async (workflowId: string) => {
+		updatingWorkflowActivation.value = true;
+
+		collaborationStore.requestWriteAccess();
+
+		const workflow = workflowsListStore.getWorkflowById(workflowId);
+		const wasPublished = !!workflow.activeVersion;
 
 		const telemetryPayload = {
-			workflow_id: currWorkflowId,
-			is_active: newActiveState,
-			previous_status: isWorkflowActive,
-			ndv_input: telemetrySource === 'ndv',
+			workflow_id: workflowId,
+			is_active: false,
+			previous_status: wasPublished,
+			ndv_input: false,
 		};
+
 		telemetry.track('User set workflow active status', telemetryPayload);
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 		try {
-			if (isWorkflowActive && newActiveState) {
-				toast.showMessage({
-					title: i18n.baseText('workflowActivator.workflowIsActive'),
-					type: 'success',
-				});
-				updatingWorkflowActivation.value = false;
+			await workflowsStore.deactivateWorkflow(workflowId);
 
-				return true; // Already active, return true
-			}
+			void useExternalHooks().run('workflow.unpublished', {
+				workflowId,
+			});
 
-			if (isCurrentWorkflow && nodesIssuesExist && newActiveState) {
-				toast.showMessage({
-					title: i18n.baseText(
-						'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
-					),
-					message: i18n.baseText(
-						'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message',
-					),
-					type: 'error',
-				});
-
-				updatingWorkflowActivation.value = false;
-				return false; // Return false if there are node issues
-			}
-
-			await workflowHelpers.updateWorkflow(
-				{ workflowId: currWorkflowId, active: newActiveState },
-				!uiStore.stateIsDirty,
-			);
+			return true;
 		} catch (error) {
-			const newStateName = newActiveState ? 'activated' : 'deactivated';
 			toast.showError(
 				error,
 				i18n.baseText('workflowActivator.showError.title', {
-					interpolate: { newStateName },
+					interpolate: { newStateName: 'deactivated' },
 				}) + ':',
 			);
+			return false;
+		} finally {
 			updatingWorkflowActivation.value = false;
-			return false; // Return false if update failed
 		}
-
-		const activationEventName = isCurrentWorkflow
-			? 'workflow.activeChangeCurrent'
-			: 'workflow.activeChange';
-		void useExternalHooks().run(activationEventName, {
-			workflowId: currWorkflowId,
-			active: newActiveState,
-		});
-
-		updatingWorkflowActivation.value = false;
-
-		if (isCurrentWorkflow) {
-			if (newActiveState && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
-				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
-			} else {
-				await npsSurveyStore.fetchPromptsData();
-			}
-		}
-
-		return newActiveState; // Return the new state after successful update
-	};
-
-	const activateCurrentWorkflow = async (telemetrySource?: string) => {
-		const workflowId = workflowsStore.workflowId;
-		return await updateWorkflowActivation(workflowId, true, telemetrySource);
 	};
 
 	return {
-		activateCurrentWorkflow,
-		updateWorkflowActivation,
 		updatingWorkflowActivation,
+		publishWorkflow,
+		unpublishWorkflowFromHistory,
 	};
 }

@@ -7,6 +7,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import VirtualSchema from './VirtualSchema.vue';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import * as calloutHelpers from '@/app/composables/useCalloutHelpers';
 import {
 	IF_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -21,6 +22,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
+import { computed } from 'vue';
 import {
 	createResultOk,
 	NodeConnectionTypes,
@@ -97,6 +99,13 @@ const customerDatastoreNode = createTestNode({
 	disabled: false,
 });
 
+const mergeNode = createTestNode({
+	name: 'Merge',
+	type: 'n8n-nodes-base.merge',
+	typeVersion: 3,
+	disabled: false,
+});
+
 const defaultNodes = [
 	{ name: 'Manual Trigger', indicies: [], depth: 1 },
 	{ name: 'Set2', indicies: [], depth: 2 },
@@ -122,6 +131,8 @@ const mockI18nKeys: Record<string, string> = {
 		'The fields below come from the last successful execution. {execute} to refresh them.',
 	'dataMapping.schemaView.previewLastExecution.executePreviousNodes': 'Execute node',
 	'dataMapping.schemaView.preview.executeNode': 'Execute the node',
+	'dataMapping.schemaView.mergeNotice':
+		'This schema shows fields from multiple items. Some fields may be absent in individual items.',
 	'node.disabled': 'Deactivated',
 	'ndv.input.noOutputData.executePrevious': 'Execute previous nodes',
 	'ndv.search.noNodeMatch.title': 'No matching nodes',
@@ -146,6 +157,7 @@ async function setupStore() {
 			nodeWithCredential,
 			splitInBatchesNode,
 			customerDatastoreNode,
+			mergeNode,
 		],
 	};
 
@@ -178,6 +190,10 @@ async function setupStore() {
 		}),
 		mockNodeTypeDescription({
 			name: 'n8n-nodes-base.n8nTrainingCustomerDatastore',
+			outputs: [NodeConnectionTypes.Main],
+		}),
+		mockNodeTypeDescription({
+			name: 'n8n-nodes-base.merge',
 			outputs: [NodeConnectionTypes.Main],
 		}),
 	]);
@@ -221,6 +237,7 @@ describe('VirtualSchema.vue', () => {
 	const DynamicScrollerItemStub = {
 		template: '<slot></slot>',
 	};
+
 	const NoticeStub = {
 		template: '<div v-bind="$attrs"><slot></slot></div>',
 	};
@@ -230,11 +247,29 @@ describe('VirtualSchema.vue', () => {
 			'<button v-bind="$attrs" @click="(e) => { e.stopPropagation(); $emit(\'click\', e); }"><slot></slot></button>',
 	};
 
+	const N8nCalloutStub = {
+		template:
+			'<div class="n8n-callout" v-bind="$attrs"><slot></slot><slot name="trailingContent"></slot></div>',
+	};
+
+	const NodeIconStub = {
+		template: '<node-icon-stub :node-type="nodeType.name" :size="size"></node-icon-stub>',
+		props: ['node-type', 'size'],
+	};
+
 	beforeEach(async () => {
 		cleanup();
 		vi.resetAllMocks();
 		vi.setSystemTime('2025-01-01');
 		const pinia = await setupStore();
+
+		vi.spyOn(calloutHelpers, 'useCalloutHelpers').mockReturnValue({
+			isCalloutDismissed: vi.fn(() => false),
+			dismissCallout: vi.fn(),
+			openSampleWorkflowTemplate: vi.fn(),
+			getTutorialTemplatesNodeCreatorItems: vi.fn(() => []),
+			isRagStarterCalloutVisible: computed(() => false),
+		});
 
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {
@@ -243,11 +278,9 @@ describe('VirtualSchema.vue', () => {
 					DynamicScrollerItem: DynamicScrollerItemStub,
 					N8nIcon: true,
 					N8nLink: N8nLinkStub,
+					N8nCallout: N8nCalloutStub,
 					Notice: NoticeStub,
-					NodeIcon: {
-						template: '<node-icon-stub :node-type="nodeType.name" :size="size"></node-icon-stub>',
-						props: ['node-type', 'size'],
-					},
+					NodeIcon: NodeIconStub,
 				},
 				mocks: {
 					$locale: {
@@ -570,8 +603,26 @@ describe('VirtualSchema.vue', () => {
 		function dragDropPill(pill: HTMLElement) {
 			const ndvStore = useNDVStore();
 			const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
-			fireEvent(pill, new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
-			fireEvent(window, new MouseEvent('mousemove', { bubbles: true, button: 0, buttons: 1 }));
+			fireEvent(
+				pill,
+				new MouseEvent('mousedown', {
+					bubbles: true,
+					button: 0,
+					buttons: 1,
+					clientX: 100,
+					clientY: 100,
+				}),
+			);
+			fireEvent(
+				window,
+				new MouseEvent('mousemove', {
+					bubbles: true,
+					button: 0,
+					buttons: 1,
+					clientX: 120,
+					clientY: 120,
+				}),
+			);
 			expect(reset).toHaveBeenCalled();
 
 			vi.useRealTimers();
@@ -1057,9 +1108,8 @@ describe('VirtualSchema.vue', () => {
 
 	describe('execute event emission', () => {
 		it('should emit execute event when schema preview execute link is clicked', async () => {
-			// Set up schema preview mode
 			useWorkflowsStore().pinData({
-				node: mockNode1,
+				node: mockNode2,
 				data: [],
 			});
 
@@ -1079,22 +1129,68 @@ describe('VirtualSchema.vue', () => {
 
 			const { emitted, getByText } = renderComponent({
 				props: {
+					nodes: [{ name: mockNode2.name, indicies: [], depth: 1 }],
+				},
+			});
+
+			const executeLink = await waitFor(() => getByText('Execute the node'));
+			expect(executeLink).toBeInTheDocument();
+
+			fireEvent.click(executeLink);
+
+			await waitFor(() => {
+				expect(emitted()).toHaveProperty('execute');
+				expect(emitted().execute[0]).toEqual([mockNode2.name]);
+			});
+		});
+	});
+
+	describe('trigger node schema preview', () => {
+		it('should not call getSchemaPreview for trigger nodes', async () => {
+			const schemaPreviewStore = useSchemaPreviewStore();
+			const getSchemaPreviewSpy = vi.spyOn(schemaPreviewStore, 'getSchemaPreview');
+
+			const { getAllByText } = renderComponent({
+				props: {
 					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
 				},
 			});
 
-			// Wait for the preview execute link to appear
-			const executeLink = await waitFor(() => getByText('Execute the node'));
-			expect(executeLink).toBeInTheDocument();
-
-			// Click the execute link
-			fireEvent.click(executeLink);
-
-			// Verify the execute event was emitted with the node name
 			await waitFor(() => {
-				expect(emitted()).toHaveProperty('execute');
-				expect(emitted().execute[0]).toEqual([mockNode1.name]);
+				expect(getAllByText('Execute previous nodes').length).toBe(1);
 			});
+
+			expect(getSchemaPreviewSpy).not.toHaveBeenCalled();
+		});
+
+		it('should call getSchemaPreview for non-trigger nodes without data', async () => {
+			const schemaPreviewStore = useSchemaPreviewStore();
+			const getSchemaPreviewSpy = vi
+				.spyOn(schemaPreviewStore, 'getSchemaPreview')
+				.mockResolvedValue(
+					createResultOk({
+						type: 'object',
+						properties: {
+							id: { type: 'string' },
+						},
+					}),
+				);
+
+			const { getAllByTestId } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode2.name, indicies: [], depth: 1 }],
+				},
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('run-data-schema-header')).toHaveLength(2);
+			});
+
+			expect(getSchemaPreviewSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					nodeType: SET_NODE_TYPE,
+				}),
+			);
 		});
 	});
 
@@ -1170,6 +1266,113 @@ describe('VirtualSchema.vue', () => {
 			const allItems = queryAllByTestId('run-data-schema-item');
 			const hasPreviewData = allItems.some((item) => item.textContent?.includes('Preview Data'));
 			expect(hasPreviewData).toBe(false);
+		});
+	});
+
+	describe('merge node callout', () => {
+		it('should show callout when viewing Merge node output with more than 1 item', async () => {
+			const testData = [{ field1: 'value1', field2: 'value2' }, { field1: 'value3' }];
+			expect(testData.length).toBeGreaterThan(1);
+
+			const { getByText } = renderComponent({
+				props: {
+					node: mergeNode,
+					paneType: 'output',
+					data: testData,
+				},
+			});
+
+			await waitFor(() => {
+				expect(
+					getByText(
+						'This schema shows fields from multiple items. Some fields may be absent in individual items.',
+					),
+				).toBeInTheDocument();
+			});
+		});
+
+		it.each([
+			{ itemCount: 0, data: [] },
+			{ itemCount: 1, data: [{ field1: 'value1' }] },
+		])(
+			'should not show callout when Merge node output has $itemCount item(s)',
+			async ({ data }) => {
+				const { queryByText } = renderComponent({
+					props: {
+						node: mergeNode,
+						paneType: 'output',
+						data,
+					},
+				});
+
+				await waitFor(() => {
+					expect(
+						queryByText(
+							'This schema shows fields from multiple items. Some fields may be absent in individual items.',
+						),
+					).toBe(null);
+				});
+			},
+		);
+
+		it('should not show callout when viewing non-Merge node', async () => {
+			mockNodeOutputData(mockNode1.name, [{ json: { field1: 'value1' } }]);
+
+			const { queryByText } = renderComponent({
+				props: {
+					paneType: 'input',
+					nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+				},
+			});
+
+			await waitFor(() => {
+				expect(
+					queryByText(
+						'This schema shows fields from multiple items. Some fields may be absent in individual items.',
+					),
+				).toBe(null);
+			});
+		});
+
+		it('should show dismiss button on callout in output panel', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					node: mergeNode,
+					paneType: 'output',
+					data: [{ field1: 'value1', field2: 'value2' }, { field1: 'value3' }],
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('callout-dismiss-icon')).toBeInTheDocument();
+			});
+		});
+
+		it('should hide callout when dismissed', async () => {
+			const dismissMock = vi.fn();
+			vi.spyOn(calloutHelpers, 'useCalloutHelpers').mockReturnValue({
+				isCalloutDismissed: vi.fn((id: string) => id === 'Merge-mergeNotice'),
+				dismissCallout: dismissMock,
+				openSampleWorkflowTemplate: vi.fn(),
+				getTutorialTemplatesNodeCreatorItems: vi.fn(() => []),
+				isRagStarterCalloutVisible: computed(() => false),
+			});
+
+			const { queryByText } = renderComponent({
+				props: {
+					node: mergeNode,
+					paneType: 'output',
+					data: [{ field1: 'value1', field2: 'value2' }, { field1: 'value3' }],
+				},
+			});
+
+			await waitFor(() => {
+				expect(
+					queryByText(
+						'This schema shows fields from multiple items. Some fields may be absent in individual items.',
+					),
+				).toBe(null);
+			});
 		});
 	});
 });

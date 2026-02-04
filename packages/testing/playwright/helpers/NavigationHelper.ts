@@ -56,6 +56,11 @@ export class NavigationHelper {
 		await this.page.goto(url);
 	}
 
+	async toDatatables(projectId?: string): Promise<void> {
+		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
+		await this.page.goto(url);
+	}
+
 	/**
 	 * Navigate to variables page (global only)
 	 * URL: /variables
@@ -253,5 +258,37 @@ export class NavigationHelper {
 	 */
 	async toExternalSecrets(): Promise<void> {
 		await this.page.goto('/settings/external-secrets');
+	}
+
+	/**
+	 * Navigate to settings page
+	 * URL: /settings/chat
+	 */
+	async toChatHubSettings(): Promise<void> {
+		await this.page.goto('/settings/chat');
+	}
+
+	/**
+	 * Navigate to ChatHub chat page
+	 * URL: /home/chat
+	 */
+	async toChatHub() {
+		await this.page.goto('/home/chat');
+	}
+
+	/**
+	 * Navigate to ChatHub personal agent list
+	 * URL: /home/chat/personal-agents
+	 */
+	async toChatHubPersonalAgents() {
+		await this.page.goto('/home/chat/personal-agents');
+	}
+
+	/**
+	 * Navigate to ChatHub workflow agent list
+	 * URL: /home/chat/workflow-agents
+	 */
+	async toChatHubWorkflowAgents() {
+		await this.page.goto('/home/chat/workflow-agents');
 	}
 }

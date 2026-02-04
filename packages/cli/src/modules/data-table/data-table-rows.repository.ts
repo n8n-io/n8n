@@ -50,7 +50,6 @@ type QueryBuilder = SelectQueryBuilder<any>;
  *
  * Why the crazy backslashes:
  * - Postgres/SQLite/Oracle/SQL Server: `ESCAPE '\'` is written as-is.
- * - MySQL/MariaDB: the SQL literal itself requires two backslashes (`'\\'`) to mean one.
  */
 function getConditionAndParams(
 	filter: DataTableFilter['filters'][number],
@@ -101,14 +100,6 @@ function getConditionAndParams(
 				return [`${columnRef} GLOB :${paramName}`, { [paramName]: globValue }];
 			}
 
-			if (['mysql', 'mariadb'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(value as string);
-				return [
-					`${columnRef} LIKE BINARY :${paramName} ESCAPE '\\\\'`,
-					{ [paramName]: escapedValue },
-				];
-			}
-
 			// PostgreSQL: LIKE is case-sensitive
 			if (dbType === 'postgres') {
 				const escapedValue = escapeLikeSpecials(value as string);
@@ -124,14 +115,6 @@ function getConditionAndParams(
 				const escapedValue = escapeLikeSpecials(value as string);
 				return [
 					`UPPER(${columnRef}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
-					{ [paramName]: escapedValue },
-				];
-			}
-
-			if (['mysql', 'mariadb'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(value as string);
-				return [
-					`UPPER(${columnRef}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
 					{ [paramName]: escapedValue },
 				];
 			}
@@ -330,7 +313,7 @@ export class DataTableRowsRepository {
 			if (!useReturning && returnData) {
 				// Only Postgres supports RETURNING statement on updates (with our typeorm),
 				// on other engines we must query the list of updates rows later by ID
-				affectedRows = await this.getAffectedRowsForUpdate(dataTableId, filter, columns, true, trx);
+				affectedRows = await this.getAffectedRowsForUpdate(dataTableId, filter, columns, true, em);
 			}
 
 			setData.updatedAt = normalizeValueForDatabase(new Date(), 'date', dbType);
@@ -564,23 +547,16 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
-		return await withTransaction(
-			this.dataSource.manager,
-			trx,
-			async (em) => {
-				const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em);
-				const data: DataTableRowsReturn = await query.select('*').getRawMany();
-				const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
-					count: number | string | null;
-				}>();
-				const count =
-					typeof countResult?.count === 'number'
-						? countResult.count
-						: Number(countResult?.count) || 0;
-				return { count: count ?? -1, data };
-			},
-			false,
-		);
+		const em = trx ?? this.dataSource.manager;
+
+		const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em);
+		const data: DataTableRowsReturn = await query.select('*').getRawMany();
+		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
+			count: number | string | null;
+		}>();
+		const count =
+			typeof countResult?.count === 'number' ? countResult.count : Number(countResult?.count) || 0;
+		return { count: count ?? -1, data };
 	}
 
 	async getManyByIds(
@@ -589,32 +565,27 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
-		return await withTransaction(
-			this.dataSource.manager,
-			trx,
-			async (em) => {
-				const table = toTableName(dataTableId);
-				const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-				const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
-					this.dataSource.driver.escape(x),
-				);
-				const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+		const em = trx ?? this.dataSource.manager;
 
-				if (ids.length === 0) {
-					return [];
-				}
-
-				const rows = await em
-					.createQueryBuilder()
-					.select(selectColumns)
-					.from(table, 'dataTable')
-					.where({ id: In(ids) })
-					.getRawMany<DataTableRawRowReturn>();
-
-				return normalizeRows(rows, columns);
-			},
-			false,
+		const table = toTableName(dataTableId);
+		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
 		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+
+		if (ids.length === 0) {
+			return [];
+		}
+
+		const rows = await em
+			.createQueryBuilder()
+			.select(selectColumns)
+			.from(table, 'dataTable')
+			.where({ id: In(ids) })
+			.getRawMany<DataTableRawRowReturn>();
+
+		return normalizeRows(rows, columns);
 	}
 
 	private getManyQuery(
@@ -651,7 +622,6 @@ export class DataTableRowsRepository {
 		const dbType = this.dataSource.options.type;
 		const searchTerm = rawSearch.includes('%') ? rawSearch : `%${rawSearch}%`;
 		const isSqlite = ['sqlite', 'sqlite-pooled'].includes(dbType);
-		const isMy = ['mysql', 'mariadb'].includes(dbType);
 		const isPg = dbType === 'postgres';
 
 		const allColumnNames: string[] = columns.map((c) => c.name);
@@ -664,11 +634,6 @@ export class DataTableRowsRepository {
 			const colRef = `${tableRefQuoted}.${quoteIdentifier(col, dbType)}`;
 			if (isSqlite) {
 				conditions.push(`UPPER(CAST(${colRef} AS TEXT)) LIKE UPPER(:search) ESCAPE '\\'`);
-				continue;
-			}
-
-			if (isMy) {
-				conditions.push(`UPPER(CAST(${colRef} AS CHAR)) LIKE UPPER(:search) ESCAPE '\\\\'`);
 				continue;
 			}
 

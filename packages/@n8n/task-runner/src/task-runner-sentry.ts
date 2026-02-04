@@ -15,7 +15,8 @@ export class TaskRunnerSentry {
 	) {}
 
 	async initIfEnabled() {
-		const { dsn, n8nVersion, environment, deploymentName } = this.config;
+		const { dsn, n8nVersion, environment, deploymentName, profilesSampleRate, tracesSampleRate } =
+			this.config;
 
 		if (!dsn) return;
 
@@ -27,6 +28,11 @@ export class TaskRunnerSentry {
 			serverName: deploymentName,
 			beforeSendFilter: this.filterOutUserCodeErrors,
 			withEventLoopBlockDetection: false,
+			tracesSampleRate,
+			profilesSampleRate,
+			eligibleIntegrations: {
+				Http: true,
+			},
 		});
 	}
 
@@ -56,8 +62,20 @@ export class TaskRunnerSentry {
 		const frames = error.stacktrace?.frames;
 		if (!frames) return false;
 
-		return frames.some(
-			(frame) => frame.filename === 'node:vm' && frame.function === 'runInContext',
-		);
+		return frames.some((frame) => {
+			if (frame.filename === 'node:vm' && frame.function === 'runInContext') {
+				return true;
+			}
+
+			if (frame.filename === 'evalmachine.<anonymous>') {
+				return true;
+			}
+
+			if (frame.function === 'VmCodeWrapper') {
+				return true;
+			}
+
+			return false;
+		});
 	}
 }

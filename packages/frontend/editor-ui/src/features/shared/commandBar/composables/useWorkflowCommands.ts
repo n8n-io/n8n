@@ -8,9 +8,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
@@ -24,7 +24,6 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import type { CommandGroup, CommandBarItem } from '../types';
 import uniqBy from 'lodash/uniqBy';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -34,9 +33,6 @@ const ITEM_ID = {
 	OPEN_CREDENTIAL: 'open-credential',
 	OPEN_SUB_WORKFLOW: 'open-sub-workflow',
 	TEST_WORKFLOW: 'test-workflow',
-	SAVE_WORKFLOW: 'save-workflow',
-	ACTIVATE_WORKFLOW: 'activate-workflow',
-	DEACTIVATE_WORKFLOW: 'deactivate-workflow',
 	SELECT_ALL: 'select-all',
 	OPEN_WORKFLOW_SETTINGS: 'open-workflow-settings',
 	TIDY_UP_WORKFLOW: 'tidy-up-workflow',
@@ -49,6 +45,8 @@ const ITEM_ID = {
 	ARCHIVE_WORKFLOW: 'archive-workflow',
 	UNARCHIVE_WORKFLOW: 'unarchive-workflow',
 	DELETE_WORKFLOW: 'delete-workflow',
+	PUBLISH_WORKFLOW: 'publish-workflow',
+	UNPUBLISH_WORKFLOW: 'unpublish-workflow',
 } as const;
 
 export function useWorkflowCommands(): CommandGroup {
@@ -59,6 +57,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const tagsStore = useTagsStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
+	const collaborationStore = useCollaborationStore();
 
 	const router = useRouter();
 
@@ -66,11 +65,10 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const workflowHelpers = useWorkflowHelpers();
 	const telemetry = useTelemetry();
-	const workflowSaving = useWorkflowSaving({ router });
-	const workflowActivate = useWorkflowActivate();
 
-	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
-	const isWorkflowSaving = computed(() => uiStore.isActionActive.workflowSaving);
+	const isReadOnly = computed(
+		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+	);
 	const isArchived = computed(() => workflowsStore.workflow.isArchived);
 
 	const workflowPermissions = computed(
@@ -79,7 +77,7 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
 		(workflowPermissions.value[permission] === true && !isReadOnly.value) ||
-		workflowsStore.isNewWorkflow;
+		!workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 
 	const credentialCommands = computed<CommandBarItem[]>(() => {
 		const credentials = uniqBy(
@@ -118,37 +116,34 @@ export function useWorkflowCommands(): CommandGroup {
 	const canvasActions = computed<CommandBarItem[]>(() => [
 		...(hasPermission('update') && !isArchived.value
 			? [
-					...(!isWorkflowSaving.value
-						? [
-								{
-									id: ITEM_ID.SAVE_WORKFLOW,
-									title: {
-										component: CommandBarItemTitle,
-										props: {
-											title: i18n.baseText('commandBar.workflow.save'),
-											shortcut: {
-												metaKey: true,
-												keys: ['s'],
-											},
-										},
-									},
-									keywords: [i18n.baseText('commandBar.workflow.save')],
-									section: i18n.baseText('commandBar.sections.workflow'),
-									handler: async () => {
-										const saved = await workflowSaving.saveCurrentWorkflow();
-										if (saved) {
-											canvasEventBus.emit('saved:workflow');
-										}
-									},
-									icon: {
-										component: N8nIcon,
-										props: {
-											icon: 'save',
-										},
-									},
-								},
-							]
-						: []),
+					{
+						id: ITEM_ID.PUBLISH_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.publish'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						handler: () => {
+							nodeViewEventBus.emit('publishWorkflow');
+						},
+						icon: {
+							component: N8nIcon,
+							props: {
+								icon: 'circle-check',
+							},
+						},
+					},
+					{
+						id: ITEM_ID.UNPUBLISH_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.unpublish'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						handler: () => {
+							nodeViewEventBus.emit('unpublishWorkflow');
+						},
+						icon: {
+							component: N8nIcon,
+							props: {
+								icon: 'circle-minus',
+							},
+						},
+					},
 					{
 						id: ITEM_ID.TEST_WORKFLOW,
 						title: {
@@ -301,44 +296,6 @@ export function useWorkflowCommands(): CommandGroup {
 			: []),
 	]);
 
-	const activateCommands = computed<CommandBarItem[]>(() => {
-		if (!hasPermission('update') || isArchived.value) return [];
-
-		return workflowsStore.isWorkflowActive
-			? [
-					{
-						id: ITEM_ID.DEACTIVATE_WORKFLOW,
-						title: i18n.baseText('commandBar.workflow.deactivate'),
-						section: i18n.baseText('commandBar.sections.workflow'),
-						handler: () => {
-							void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, false);
-						},
-						icon: {
-							component: N8nIcon,
-							props: {
-								icon: 'power-off',
-							},
-						},
-					},
-				]
-			: [
-					{
-						id: ITEM_ID.ACTIVATE_WORKFLOW,
-						title: i18n.baseText('commandBar.workflow.activate'),
-						section: i18n.baseText('commandBar.sections.workflow'),
-						handler: () => {
-							void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, true);
-						},
-						icon: {
-							component: N8nIcon,
-							props: {
-								icon: 'power',
-							},
-						},
-					},
-				];
-	});
-
 	const subworkflowCommands = computed<CommandBarItem[]>(() => {
 		const subworkflows = editableWorkflow.value.nodes
 			.filter((node) => node.type === EXECUTE_WORKFLOW_NODE_TYPE)
@@ -423,6 +380,10 @@ export function useWorkflowCommands(): CommandGroup {
 	});
 
 	const importCommands = computed<CommandBarItem[]>(() => {
+		if (!hasPermission('update') || isArchived.value) {
+			return [];
+		}
+
 		return [
 			{
 				id: ITEM_ID.IMPORT_WORKFLOW_FROM_URL,
@@ -512,7 +473,6 @@ export function useWorkflowCommands(): CommandGroup {
 	const workflowCommands = computed<CommandBarItem[]>(() => {
 		return [
 			...canvasActions.value,
-			...activateCommands.value,
 			...subworkflowCommands.value,
 			...exportCommands.value,
 			...importCommands.value,

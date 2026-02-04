@@ -34,13 +34,16 @@ import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
+import { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 import { WorkflowHistoryConfig } from './configs/workflow-history.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
+export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
+export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
@@ -55,6 +58,7 @@ export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
+export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -217,4 +221,7 @@ export class GlobalConfig {
 
 	@Nested
 	dataTable: DataTableConfig;
+
+	@Nested
+	workflowHistoryCompaction: WorkflowHistoryCompactionConfig;
 }

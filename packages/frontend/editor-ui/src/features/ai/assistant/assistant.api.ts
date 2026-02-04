@@ -17,6 +17,7 @@ export function chatWithBuilder(
 	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
+	versionId?: string,
 	abortSignal?: AbortSignal,
 ): void {
 	void streamRequest<ChatRequest.ResponsePayload>(
@@ -26,6 +27,7 @@ export function chatWithBuilder(
 			...payload,
 			payload: {
 				...payload.payload,
+				versionId,
 			},
 		},
 		onMessageUpdated,
@@ -112,21 +114,20 @@ export async function getAiSessions(
 	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', body);
 }
 
-export async function getSessionsMetadata(
-	ctx: IRestApiContext,
-	workflowId?: string,
-): Promise<{
-	hasMessages: boolean;
-}> {
-	const body: IDataObject = {
-		workflowId,
-	};
-	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions/metadata', body);
-}
-
 export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
 	creditsQuota: number;
 	creditsClaimed: number;
 }> {
 	return await makeRestApiRequest(ctx, 'GET', '/ai/build/credits');
+}
+
+export async function truncateBuilderMessages(
+	ctx: IRestApiContext,
+	workflowId: string,
+	messageId: string,
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/build/truncate-messages', {
+		workflowId,
+		messageId,
+	});
 }

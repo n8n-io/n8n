@@ -38,6 +38,11 @@ const properties: INodeProperties[] = [
 					'Whether to use the stable version of the model instead of the latest version, accuracy may be slightly lower',
 			},
 		],
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { lt: 2.1 } }],
+			},
+		},
 	},
 ];
 
@@ -52,8 +57,12 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const input = this.getNodeParameter('input', i) as string;
-	const options = this.getNodeParameter('options', i);
-	const model = options.useStableModel ? 'text-moderation-stable' : 'text-moderation-latest';
+	const version = this.getNode().typeVersion;
+	let model = 'omni-moderation-latest';
+	if (version < 2.1) {
+		const options = this.getNodeParameter('options', i);
+		model = options.useStableModel ? 'text-moderation-stable' : 'text-moderation-latest';
+	}
 
 	const body = {
 		input,

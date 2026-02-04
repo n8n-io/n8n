@@ -45,7 +45,7 @@ import {
 } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
+import { computedAsync, onClickOutside, type VueInstance } from '@vueuse/core';
 import {
 	buildValueFromOverride,
 	isFromAIOverrideValue,
@@ -147,9 +147,11 @@ const searchFilter = ref('');
 const cachedResponses = ref<Record<string, IResourceLocatorQuery>>({});
 const hasCompletedASearch = ref(false);
 const width = ref(0);
-const inputRef = ref<HTMLInputElement>();
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 const containerRef = ref<HTMLDivElement>();
 const dropdownRef = ref<InstanceType<typeof ResourceLocatorDropdown>>();
+const showSlowLoadNotice = ref(false);
+const longLoadingTimer = ref<NodeJS.Timeout | null>(null);
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -246,7 +248,7 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	return props.modelValue?.value ?? '';
 });
 
-const urlValue = computed(() => {
+const urlValue = computedAsync(async () => {
 	if (isListMode.value && typeof props.modelValue === 'object') {
 		return props.modelValue?.cachedResultUrl ?? null;
 	}
@@ -269,14 +271,14 @@ const urlValue = computed(() => {
 		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
 		if (typeof value === 'string') {
 			const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
-			const resolved = workflowHelpers.resolveExpression(expression);
+			const resolved = await workflowHelpers.resolveExpression(expression);
 
 			return typeof resolved === 'string' ? resolved : null;
 		}
 	}
 
 	return null;
-});
+}, null);
 
 const currentRequestParams = computed(() => {
 	return {
@@ -329,6 +331,9 @@ const currentQueryError = computed(() => {
 });
 
 const isSearchable = computed(() => !!getPropertyArgument(currentMode.value, 'searchable'));
+const slowLoadNotice = computed(() => getPropertyArgument(currentMode.value, 'slowLoadNotice'));
+const slowLoadNoticeMessage = computed(() => slowLoadNotice.value?.message);
+const slowLoadNoticeTimeout = computed(() => slowLoadNotice.value?.timeout ?? 10_000);
 
 const skipCredentialsCheckInRLC = computed(
 	() => !!getPropertyArgument(currentMode.value, 'skipCredentialsCheckInRLC'),
@@ -410,7 +415,7 @@ const handleAddResourceClick = async () => {
 		return;
 	}
 
-	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+	const resolvedNodeParameters = await workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
 	);
@@ -481,6 +486,26 @@ watch(currentMode, (mode) => {
 	}
 });
 
+watch([currentQueryLoading, resourceDropdownVisible], ([isLoading, isDropdownVisible]) => {
+	if (!slowLoadNoticeMessage.value) return;
+
+	if (isLoading && isDropdownVisible) {
+		if (longLoadingTimer.value) {
+			clearTimeout(longLoadingTimer.value);
+		}
+		showSlowLoadNotice.value = false;
+		longLoadingTimer.value = setTimeout(() => {
+			showSlowLoadNotice.value = true;
+		}, slowLoadNoticeTimeout.value);
+	} else {
+		if (longLoadingTimer.value) {
+			clearTimeout(longLoadingTimer.value);
+			longLoadingTimer.value = null;
+		}
+		showSlowLoadNotice.value = false;
+	}
+});
+
 watch(
 	() => props.dependentParametersValues,
 	(currentValue, oldValue) => {
@@ -519,6 +544,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	props.eventBus.off('refreshList', refreshList);
 	window.removeEventListener('resize', setWidth);
+	if (longLoadingTimer.value) {
+		clearTimeout(longLoadingTimer.value);
+	}
 });
 
 onClickOutside(dropdownRef as Ref<VueInstance>, hideResourceDropdown);
@@ -556,10 +584,10 @@ function openResource(url: string) {
 	trackEvent('User clicked resource locator link');
 }
 
-function getPropertyArgument(
+function getPropertyArgument<T extends keyof INodePropertyModeTypeOptions>(
 	parameter: INodePropertyMode,
-	argumentName: keyof INodePropertyModeTypeOptions,
-): string | number | boolean | INodePropertyModeTypeOptions['allowNewResource'] | undefined {
+	argumentName: T,
+): INodePropertyModeTypeOptions[T] | undefined {
 	return parameter.typeOptions?.[argumentName];
 }
 
@@ -635,6 +663,12 @@ function onInputMouseDown(event: MouseEvent): void {
 	if (isListMode.value) {
 		event.preventDefault();
 	}
+}
+
+function onInputContainerClick(): void {
+	// Focus the input when clicking anywhere in the container
+	// This ensures the dropdown opens in list mode even when clicking on the container itself
+	inputRef.value?.focus();
 }
 
 function onModeSelected(value: string): void {
@@ -748,10 +782,10 @@ async function loadResources() {
 			});
 		}
 
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			params.parameters,
-		) as INodeParameters;
+		)) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 
 		const requestParams: ResourceLocatorRequestDto = {
@@ -962,6 +996,8 @@ function removeOverride() {
 			:width="width"
 			:event-bus="eventBus"
 			:allow-new-resources="allowNewResources"
+			:slow-load-notice="slowLoadNoticeMessage"
+			:show-slow-load-notice="showSlowLoadNotice"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="loadResourcesDebounced"
@@ -1054,7 +1090,11 @@ function removeOverride() {
 					</N8nSelect>
 				</div>
 
-				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
+				<div
+					:class="$style.inputContainer"
+					data-test-id="rlc-input-container"
+					@click="onInputContainerClick"
+				>
 					<DraggableTarget
 						type="mapping"
 						:disabled="hasOnlyListMode"
@@ -1114,10 +1154,9 @@ function removeOverride() {
 									@mousedown="onInputMouseDown"
 								>
 									<template v-if="isListMode" #suffix>
-										<i
+										<N8nIcon
+											icon="chevron-down"
 											:class="{
-												['el-input__icon']: true,
-												['el-icon-arrow-down']: true,
 												[$style.selectIcon]: true,
 												[$style.isReverse]: resourceDropdownVisible,
 											}"

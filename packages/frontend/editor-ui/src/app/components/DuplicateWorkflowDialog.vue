@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { ref, watch, onMounted, nextTick } from 'vue';
-import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
+import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import Modal from '@/app/components/Modal.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -29,6 +30,7 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+
 const workflowSaving = useWorkflowSaving({ router });
 const workflowHelpers = useWorkflowHelpers();
 const { showMessage, showError } = useToast();
@@ -38,6 +40,7 @@ const telemetry = useTelemetry();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 
 const name = ref('');
 const currentTagIds = ref(props.data.tags);
@@ -88,7 +91,7 @@ const save = async (): Promise<void> => {
 
 	try {
 		let workflowToUpdate: WorkflowDataUpdate | undefined;
-		if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		if (workflowsStore.isWorkflowSaved[props.data.id]) {
 			const {
 				createdAt,
 				updatedAt,
@@ -96,8 +99,11 @@ const save = async (): Promise<void> => {
 				id,
 				homeProject,
 				sharedWithProjects,
+				activeVersionId,
+				activeVersion,
+				active,
 				...workflow
-			} = await workflowsStore.fetchWorkflow(props.data.id);
+			} = await workflowsListStore.fetchWorkflow(props.data.id);
 			workflowToUpdate = workflow;
 
 			workflowHelpers.removeForeignCredentialsFromWorkflow(
@@ -106,17 +112,18 @@ const save = async (): Promise<void> => {
 			);
 		}
 
-		const workflowId = await workflowSaving.saveAsNewWorkflow({
+		const duplicatedWorkflowId = await workflowSaving.saveAsNewWorkflow({
 			name: workflowName,
 			data: workflowToUpdate,
 			tags: currentTagIds.value,
 			resetWebhookUrls: true,
 			openInNewWindow: true,
 			resetNodeIds: true,
+			requestNewId: true,
 			parentFolderId,
 		});
 
-		if (workflowId) {
+		if (duplicatedWorkflowId) {
 			closeDialog();
 			telemetry.track('User duplicated workflow', {
 				old_workflow_id: currentWorkflowId,

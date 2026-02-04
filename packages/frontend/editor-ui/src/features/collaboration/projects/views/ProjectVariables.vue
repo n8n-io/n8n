@@ -71,7 +71,6 @@ const globalPermissions = computed(
 const projectPermissions = computed(
 	() => getResourcePermissions(projectsStore.currentProject?.scopes).projectVariable,
 );
-
 const { isLoading, execute } = useAsyncState(environmentsStore.fetchAllVariables, [], {
 	immediate: true,
 });
@@ -280,7 +279,6 @@ sourceControlStore.$onAction(({ name, after }) => {
 });
 
 const unavailableNoticeProps = computed(() => ({
-	emoji: '👋',
 	heading: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.title),
 	description: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.description),
 	buttonText: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.button),
@@ -391,7 +389,6 @@ onMounted(() => {
 			<N8nActionBox
 				v-else-if="!canCreateVariables"
 				data-test-id="cannot-create-variables"
-				emoji="👋"
 				:heading="
 					i18n.baseText('variables.empty.notAllowedToCreate.heading', {
 						interpolate: { name: usersStore.currentUser?.firstName ?? '' },
@@ -424,12 +421,15 @@ onMounted(() => {
 				</td>
 				<td v-if="isFeatureEnabled" align="right">
 					<div class="action-buttons">
-						<N8nTooltip :disabled="globalPermissions.update" placement="top">
+						<N8nTooltip
+							:disabled="globalPermissions.update ?? projectPermissions.update"
+							placement="top"
+						>
 							<N8nButton
 								data-test-id="variable-row-edit-button"
 								type="tertiary"
 								class="mr-xs"
-								:disabled="!globalPermissions.update"
+								:disabled="!(globalPermissions.update ?? projectPermissions.update)"
 								@click="openEditVariableModal(data)"
 							>
 								{{ i18n.baseText('variables.row.button.edit') }}
@@ -438,11 +438,14 @@ onMounted(() => {
 								{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
 							</template>
 						</N8nTooltip>
-						<N8nTooltip :disabled="globalPermissions.delete" placement="top">
+						<N8nTooltip
+							:disabled="globalPermissions.delete ?? projectPermissions.delete"
+							placement="top"
+						>
 							<N8nButton
 								data-test-id="variable-row-delete-button"
 								type="tertiary"
-								:disabled="!globalPermissions.delete"
+								:disabled="!(globalPermissions.delete ?? projectPermissions.delete)"
 								@click="handleDeleteVariable(data)"
 							>
 								{{ i18n.baseText('variables.row.button.delete') }}

@@ -41,7 +41,7 @@ describe('components', () => {
 					const wrapper = render(N8nNotice, {
 						props: {
 							id: 'notice',
-							content: '<strong>Hello world!</strong> This is a notice.',
+							content: '<a href="https://example.com">Hello world!</a> This is a notice.',
 						},
 						global: {
 							directives: {
@@ -53,7 +53,7 @@ describe('components', () => {
 						},
 					});
 
-					expect(wrapper.container.querySelectorAll('strong')).toHaveLength(1);
+					expect(wrapper.container.querySelectorAll('a')).toHaveLength(1);
 					expect(wrapper.html()).toMatchSnapshot();
 				});
 

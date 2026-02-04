@@ -31,7 +31,6 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	config.set('ldap.disabled', true);
-	await utils.setInstanceOwnerSetUp(true);
 });
 
 describe('POST /login', () => {

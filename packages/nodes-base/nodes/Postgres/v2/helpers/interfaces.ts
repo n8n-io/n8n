@@ -33,7 +33,6 @@ export type ConnectionsData = { db: PgpDatabase; pgp: PgpClient };
 
 export type QueriesRunner = (
 	queries: QueryWithValues[],
-	items: INodeExecutionData[],
 	options: IDataObject,
 ) => Promise<INodeExecutionData[]>;
 

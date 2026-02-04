@@ -1,7 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import DataTableCard from '@/features/core/dataTable/components/DataTableCard.vue';
-import { createPinia, setActivePinia } from 'pinia';
 import type { DataTableResource } from '@/features/core/dataTable/types';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { createTestingPinia } from '@pinia/testing';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 
 vi.mock('@/features/collaboration/projects/projects.store');
 
@@ -67,11 +69,18 @@ const renderComponent = createComponentRenderer(DataTableCard, {
 });
 
 describe('DataTableCard', () => {
-	let pinia: ReturnType<typeof createPinia>;
+	let dataTableStore: MockedStore<typeof useDataTableStore>;
 
 	beforeEach(async () => {
-		pinia = createPinia();
-		setActivePinia(pinia);
+		createTestingPinia();
+		dataTableStore = mockedStore(useDataTableStore);
+		// @ts-expect-error partial data match
+		dataTableStore.projectPermissions = {
+			dataTable: {
+				delete: true,
+				update: true,
+			},
+		};
 	});
 
 	afterEach(() => {

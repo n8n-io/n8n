@@ -15,8 +15,10 @@ import {
 	FolderRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
@@ -52,6 +54,7 @@ export class EnterpriseWorkflowService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly folderService: FolderService,
 		private readonly folderRepository: FolderRepository,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async shareWithProjects(
@@ -269,6 +272,64 @@ export class EnterpriseWorkflowService {
 		});
 	}
 
+	/**
+	 * Get workflow IDs that use at least one resolvable credential.
+	 * Used to populate `hasResolvableCredentials` in workflow list responses.
+	 */
+	async getWorkflowIdsWithResolvableCredentials(workflowIds: string[]): Promise<Set<string>> {
+		if (workflowIds.length === 0) {
+			return new Set();
+		}
+
+		// Fetch workflows with just the nodes field
+		const workflows = await this.workflowRepository.findByIds(workflowIds, {
+			fields: ['id', 'nodes'],
+		});
+
+		// Extract all credential IDs from all workflows
+		const credentialIdToWorkflowIds = new Map<string, string[]>();
+		for (const workflow of workflows) {
+			if (!workflow.nodes) continue;
+			for (const node of workflow.nodes) {
+				if (!node.credentials) continue;
+				for (const credentialType of Object.keys(node.credentials)) {
+					const credentialId = node.credentials[credentialType]?.id;
+					if (credentialId) {
+						const workflowIdsList = credentialIdToWorkflowIds.get(credentialId) ?? [];
+						workflowIdsList.push(workflow.id);
+						credentialIdToWorkflowIds.set(credentialId, workflowIdsList);
+					}
+				}
+			}
+		}
+
+		if (credentialIdToWorkflowIds.size === 0) {
+			return new Set();
+		}
+
+		// Query credentials that are resolvable
+		const resolvableCredentials = await this.credentialsRepository.find({
+			where: {
+				id: In(Array.from(credentialIdToWorkflowIds.keys())),
+				isResolvable: true,
+			},
+			select: ['id'],
+		});
+
+		// Build set of workflow IDs that have resolvable credentials
+		const workflowIdsWithResolvableCredentials = new Set<string>();
+		for (const credential of resolvableCredentials) {
+			const workflowIdsList = credentialIdToWorkflowIds.get(credential.id);
+			if (workflowIdsList) {
+				for (const workflowId of workflowIdsList) {
+					workflowIdsWithResolvableCredentials.add(workflowId);
+				}
+			}
+		}
+
+		return workflowIdsWithResolvableCredentials;
+	}
+
 	async transferWorkflow(
 		user: User,
 		workflowId: string,
@@ -277,9 +338,14 @@ export class EnterpriseWorkflowService {
 		destinationParentFolderId?: string,
 	) {
 		// 1. get workflow
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:move',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:move'],
+			{
+				includeParentFolder: true,
+			},
+		);
 		NotFoundError.isDefinedAndNotNull(
 			workflow,
 			`Could not find workflow with the id "${workflowId}". Make sure you have the permission to move it.`,
@@ -307,9 +373,12 @@ export class EnterpriseWorkflowService {
 		);
 
 		// 5. checks
-		if (sourceProject.id === destinationProject.id) {
+		if (
+			sourceProject.id === destinationProject.id &&
+			destinationParentFolderId === workflow.parentFolder?.id
+		) {
 			throw new TransferWorkflowError(
-				"You can't transfer a workflow into the project that's already owning it.",
+				"You can't transfer a workflow into the same destination it already belongs to.",
 			);
 		}
 
@@ -328,14 +397,15 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
+		const wasActive = this.isActiveWorkflow(workflow);
+
 		// 6. deactivate workflow if necessary
-		const wasActive = workflow.active;
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
 		// 7. transfer the workflow
-		await this.transferWorkflowOwnership([workflow], destinationProject.id);
+		await this.transferWorkflowOwnership([workflow], destinationProject);
 
 		// 8. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
@@ -343,12 +413,9 @@ export class EnterpriseWorkflowService {
 		// 9. Move workflow to the right folder if any
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 10. Update potential cached project association
-		await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
-
-		// 11. try to activate it again if it was active
+		// 10. try to activate it again if it was active
 		if (wasActive) {
-			return await this.attemptWorkflowReactivation(workflowId);
+			return await this.attemptWorkflowReactivation(workflowId, workflow.activeVersionId, user.id);
 		}
 
 		return;
@@ -395,14 +462,14 @@ export class EnterpriseWorkflowService {
 		// 2. Get all workflows in the nested folders
 
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'active', 'shared'],
+			select: ['id', 'activeVersionId', 'shared'],
 			relations: ['shared', 'shared.project'],
 			where: {
 				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
 			},
 		});
 
-		const activeWorkflows = workflows.filter((w) => w.active).map((w) => w.id);
+		const activeWorkflows = workflows.filter((x) => this.isActiveWorkflow(x));
 
 		// 3. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(
@@ -442,13 +509,13 @@ export class EnterpriseWorkflowService {
 
 		// 5. deactivate all workflows if necessary
 		const deactivateWorkflowsPromises = activeWorkflows.map(
-			async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
+			async (workflow) => await this.activeWorkflowManager.remove(workflow.id),
 		);
 
 		await Promise.all(deactivateWorkflowsPromises);
 
 		// 6. transfer the workflows
-		await this.transferWorkflowOwnership(workflows, destinationProject.id);
+		await this.transferWorkflowOwnership(workflows, destinationProject);
 
 		// 7. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
@@ -463,8 +530,8 @@ export class EnterpriseWorkflowService {
 
 		// 9. try to activate workflows again if they were active
 
-		for (const workflowId of activeWorkflows) {
-			await this.attemptWorkflowReactivation(workflowId);
+		for (const workflow of activeWorkflows) {
+			await this.attemptWorkflowReactivation(workflow.id, workflow.activeVersionId, user.id);
 		}
 	}
 
@@ -479,12 +546,21 @@ export class EnterpriseWorkflowService {
 		};
 	}
 
-	private async attemptWorkflowReactivation(workflowId: string) {
+	private async attemptWorkflowReactivation(workflowId: string, versionId: string, userId: string) {
 		try {
 			await this.activeWorkflowManager.add(workflowId, 'update');
+
 			return;
 		} catch (error) {
 			await this.workflowRepository.updateActiveState(workflowId, false);
+
+			// If reactivation failed we track deactivation of the workflow
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId,
+				event: 'deactivated',
+				userId,
+			});
 
 			if (error instanceof WorkflowActivationError) {
 				return this.formatActivationError(error);
@@ -496,7 +572,7 @@ export class EnterpriseWorkflowService {
 
 	private async transferWorkflowOwnership(
 		workflows: WorkflowEntity[],
-		destinationProjectId: string,
+		destinationProject: Project,
 	) {
 		await this.workflowRepository.manager.transaction(async (trx) => {
 			for (const workflow of workflows) {
@@ -507,12 +583,17 @@ export class EnterpriseWorkflowService {
 				await trx.save(
 					trx.create(SharedWorkflow, {
 						workflowId: workflow.id,
-						projectId: destinationProjectId,
+						projectId: destinationProject.id,
 						role: 'workflow:owner',
 					}),
 				);
 			}
 		});
+
+		// Update workflow project cache entries
+		for (const workflow of workflows) {
+			await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
+		}
 	}
 
 	private async shareCredentialsWithProject(
@@ -521,18 +602,25 @@ export class EnterpriseWorkflowService {
 		projectId: string,
 	) {
 		await this.workflowRepository.manager.transaction(async (trx) => {
-			const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
-				user,
-				['credential:share'],
-				trx,
-			);
+			let credentialIdsToShare: string[];
 
-			const credentialsToShare = allCredentials.filter((c) => credentialIds.includes(c.id));
+			if (hasGlobalScope(user, ['credential:share'], { mode: 'allOf' })) {
+				credentialIdsToShare = credentialIds;
+			} else {
+				const accessibleIds = new Set(
+					await this.credentialsFinderService.getCredentialIdsByUserAndRole(
+						[user.id],
+						{ scopes: ['credential:share'] },
+						trx,
+					),
+				);
+				credentialIdsToShare = credentialIds.filter((id) => accessibleIds.has(id));
+			}
 
-			for (const credential of credentialsToShare) {
+			for (const credentialId of credentialIdsToShare) {
 				await this.enterpriseCredentialsService.shareWithProjects(
 					user,
-					credential.id,
+					credentialId,
 					[projectId],
 					trx,
 				);
@@ -565,5 +653,11 @@ export class EnterpriseWorkflowService {
 				},
 			);
 		});
+	}
+
+	private isActiveWorkflow(
+		workflow: WorkflowEntity,
+	): workflow is WorkflowEntity & { activeVersionId: string } {
+		return workflow.activeVersionId !== null;
 	}
 }

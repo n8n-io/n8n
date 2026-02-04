@@ -20,4 +20,18 @@ export class ProjectTabsComponent {
 			.getByRole('link', { name: /workflows/i })
 			.click();
 	}
+
+	async clickDataTablesTab() {
+		await this.page
+			.getByTestId('project-tabs')
+			.getByRole('link', { name: /data tables/i })
+			.click();
+	}
+
+	async clickVariablesTab() {
+		await this.page
+			.getByTestId('project-tabs')
+			.getByRole('link', { name: /variables/i })
+			.click();
+	}
 }

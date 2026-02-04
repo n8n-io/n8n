@@ -7,6 +7,8 @@ import CredentialCard from './CredentialCard.vue';
 import type { CredentialsResource } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import type { FrontendSettings } from '@n8n/api-types';
 
 const renderComponent = createComponentRenderer(CredentialCard);
 
@@ -24,11 +26,18 @@ const createCredential = (overrides = {}): CredentialsResource =>
 
 describe('CredentialCard', () => {
 	let projectsStore: ReturnType<typeof useProjectsStore>;
+	let settingsStore: ReturnType<typeof useSettingsStore>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		projectsStore = useProjectsStore();
+		settingsStore = useSettingsStore();
+		settingsStore.settings = {
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+		} as unknown as FrontendSettings;
 	});
 
 	it('should render name and home project name', () => {
@@ -92,5 +101,109 @@ describe('CredentialCard', () => {
 		const { getByRole } = renderComponent({ props: { data, readOnly: true } });
 		const heading = getByRole('heading');
 		expect(heading).toHaveTextContent('Read only');
+	});
+
+	describe('global credentials', () => {
+		it('should display global badge when credential has isGlobal true', () => {
+			const data = createCredential({
+				isGlobal: true,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+
+			const globalBadge = getByTestId('credential-global-badge');
+			expect(globalBadge).toBeInTheDocument();
+			expect(globalBadge).toHaveTextContent('Global');
+		});
+
+		it('should not display global badge when credential has isGlobal false', () => {
+			const data = createCredential({
+				isGlobal: false,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-global-badge')).not.toBeInTheDocument();
+		});
+
+		it('should not display global badge when isGlobal is undefined', () => {
+			const data = createCredential({
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-global-badge')).not.toBeInTheDocument();
+		});
+
+		it('should display both project badge and global badge for global credentials', () => {
+			const projectName = 'Test Project';
+			const data = createCredential({
+				isGlobal: true,
+				homeProject: {
+					name: projectName,
+				},
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+
+			// Project badge should be present
+			const projectBadge = getByTestId('card-badge');
+			expect(projectBadge).toBeInTheDocument();
+			expect(projectBadge).toHaveTextContent(projectName);
+
+			// Global badge should also be present
+			const globalBadge = getByTestId('credential-global-badge');
+			expect(globalBadge).toBeInTheDocument();
+			expect(globalBadge).toHaveTextContent('Global');
+		});
+	});
+
+	describe('resolvable credentials', () => {
+		it('should display dynamic icon when credential has isResolvable true', () => {
+			const data = createCredential({
+				isResolvable: true,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+
+			expect(getByTestId('credential-card-dynamic')).toBeInTheDocument();
+		});
+
+		it('should not display dynamic icon when credential has isResolvable false', () => {
+			const data = createCredential({
+				isResolvable: false,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-dynamic')).not.toBeInTheDocument();
+		});
+
+		it('should not display dynamic icon when isResolvable is undefined', () => {
+			const data = createCredential({
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-dynamic')).not.toBeInTheDocument();
+		});
 	});
 });

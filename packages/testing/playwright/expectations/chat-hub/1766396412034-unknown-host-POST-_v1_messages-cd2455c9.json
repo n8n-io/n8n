@@ -1,0 +1,103 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-opus-4-5-20251101",
+        "stream": true,
+        "max_tokens": 8192,
+        "thinking": {
+          "type": "disabled"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Hello"
+          }
+        ],
+        "system": "reply in Japanese\n\nThe user's current local date and time is: 2025-01-15T07:00:00.000-05:00 (timezone: America/New_York).\nWhen you need to reference \"now\", use this date and time.\n\nYou can only produce text responses.\nYou cannot create, generate, edit, or display images, videos, or other non-text content.\nIf the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools."
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNS0yMDI1MTEwMSIsInN0cmVhbSI6dHJ1ZSwibWF4X3Rva2VucyI6ODE5MiwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJIZWxsbyJ9XSwic3lzdGVtIjoicmVwbHkgaW4gSmFwYW5lc2VcblxuVGhlIHVzZXIncyBjdXJyZW50IGxvY2FsIGRhdGUgYW5kIHRpbWUgaXM6IDIwMjUtMDEtMTVUMDc6MDA6MDAuMDAwLTA1OjAwICh0aW1lem9uZTogQW1lcmljYS9OZXdfWW9yaykuXG5XaGVuIHlvdSBuZWVkIHRvIHJlZmVyZW5jZSBcIm5vd1wiLCB1c2UgdGhpcyBkYXRlIGFuZCB0aW1lLlxuXG5Zb3UgY2FuIG9ubHkgcHJvZHVjZSB0ZXh0IHJlc3BvbnNlcy5cbllvdSBjYW5ub3QgY3JlYXRlLCBnZW5lcmF0ZSwgZWRpdCwgb3IgZGlzcGxheSBpbWFnZXMsIHZpZGVvcywgb3Igb3RoZXIgbm9uLXRleHQgY29udGVudC5cbklmIHRoZSB1c2VyIGFza3MgeW91IHRvIGdlbmVyYXRlIG9yIGVkaXQgYW4gaW1hZ2UgKG9yIG90aGVyIG1lZGlhKSwgZXhwbGFpbiB0aGF0IHlvdSBhcmUgbm90IGFibGUgdG8gZG8gdGhhdCBhbmQsIGlmIGhlbHBmdWwsIGRlc2NyaWJlIGluIHdvcmRzIHdoYXQgdGhlIGltYWdlIGNvdWxkIGxvb2sgbGlrZSBvciBob3cgdGhleSBjb3VsZCBjcmVhdGUgaXQgdXNpbmcgZXh0ZXJuYWwgdG9vbHMuIn0="
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "3309"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011CWMWCikNq1BvYq1x8kPnR"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2025-12-22T09:40:06Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "4800000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "4800000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2025-12-22T09:40:06Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "800000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "800000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2025-12-22T09:40:06Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "4000000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "4000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Mon, 22 Dec 2025 09:40:09 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "9b1ea7e3cfbc9965-TXL"
+      ]
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-opus-4-5-20251101\",\"id\":\"msg_01G73d5sCLR2saM9QMFZ17Dy\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":146,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":1,\"service_tier\":\"standard\"}}      }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"} }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"こ\"}        }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"んにちは！\"}}\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"何\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"かお手伝いできること\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"は\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"ありますか？\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"😊\"}        }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"input_tokens\":146,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":25}     }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"               }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtb3B1cy00LTUtMjAyNTExMDEiLCJpZCI6Im1zZ18wMUc3M2Q1c0NMUjJzYU05UU1GWjE3RHkiLCJ0eXBlIjoibWVzc2FnZSIsInJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24iOm51bGwsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTQ2LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MSwic2VydmljZV90aWVyIjoic3RhbmRhcmQifX0gICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRleHQiLCJ0ZXh0IjoiIn0gfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiLjgZMifSAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiLjgpPjgavjgaHjga/vvIEifX0KCmV2ZW50OiBwaW5nCmRhdGE6IHsidHlwZSI6ICJwaW5nIn0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0Ijoi5L2VIn0gICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IuOBi+OBiuaJi+S8neOBhOOBp+OBjeOCi+OBk+OBqCJ9ICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiLjga8ifSAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0Ijoi44GC44KK44G+44GZ44GL77yfIn0gICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IvCfmIoifSAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MH0KCmV2ZW50OiBtZXNzYWdlX2RlbHRhCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2VfZGVsdGEiLCJkZWx0YSI6eyJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbH0sInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTQ2LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJvdXRwdXRfdG9rZW5zIjoyNX0gICAgIH0KCmV2ZW50OiBtZXNzYWdlX3N0b3AKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdG9wIiAgICAgICAgICAgICAgIH0KCg==",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "1766396412034-unknown-host-POST-_v1_messages-cd2455c9.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

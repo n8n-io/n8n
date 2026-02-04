@@ -1,5 +1,5 @@
 import { inDevelopment, inProduction } from '@n8n/backend-common';
-import { DatabaseConfig, SecurityConfig, WorkflowsConfig } from '@n8n/config';
+import { SecurityConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -21,7 +21,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { isLdapEnabled } from '@/ldap.ee/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
@@ -36,6 +35,7 @@ import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
+import '@/controllers/dynamic-templates.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
@@ -53,8 +53,8 @@ import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
+import '@/controllers/security-settings.controller';
 import '@/credentials/credentials.controller';
-import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/license/license.controller';
@@ -114,12 +114,6 @@ export class Server extends AbstractServer {
 			await import('@/controllers/debug.controller');
 		}
 
-		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
-			await import('@/ldap.ee/ldap.controller.ee');
-			await Container.get(LdapService).init();
-		}
-
 		if (inE2ETests) {
 			await import('@/controllers/e2e.controller');
 		}
@@ -137,53 +131,14 @@ export class Server extends AbstractServer {
 			await import('@/controllers/tags.controller');
 		}
 
-		// ----------------------------------------
-		// SAML
-		// ----------------------------------------
-
-		// initialize SamlService if it is licensed, even if not enabled, to
-		// set up the initial environment
-		try {
-			const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
-			await Container.get(SamlService).init();
-			await import('@/sso.ee/saml/routes/saml.controller.ee');
-		} catch (error) {
-			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
-		}
-
 		if (this.globalConfig.diagnostics.enabled) {
 			await import('@/controllers/telemetry.controller');
 			await import('@/controllers/posthog.controller');
 		}
 
 		// ----------------------------------------
-		// OIDC
+		// Variables
 		// ----------------------------------------
-
-		try {
-			// in the short term, we load the OIDC module here to ensure it is initialized
-			// ideally we want to migrate this to a module and be able to load it dynamically
-			// when the license changes, but that requires some refactoring
-			const { OidcService } = await import('@/sso.ee/oidc/oidc.service.ee');
-			await Container.get(OidcService).init();
-			await import('@/sso.ee/oidc/routes/oidc.controller.ee');
-		} catch (error) {
-			this.logger.warn(`OIDC initialization failed: ${(error as Error).message}`);
-		}
-
-		// ----------------------------------------
-		// Source Control
-		// ----------------------------------------
-
-		try {
-			const { SourceControlService } = await import(
-				'@/environments.ee/source-control/source-control.service.ee'
-			);
-			await Container.get(SourceControlService).init();
-			await import('@/environments.ee/source-control/source-control.controller.ee');
-		} catch (error) {
-			this.logger.warn(`Source control initialization failed: ${(error as Error).message}`);
-		}
 
 		try {
 			await import('@/environments.ee/variables/variables.controller.ee');
@@ -200,7 +155,7 @@ export class Server extends AbstractServer {
 
 		const { frontendService } = this;
 		if (frontendService) {
-			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
+			await this.externalHooks.run('frontend.settings', [await frontendService.getSettings()]);
 		}
 
 		await this.postHogClient.init();
@@ -215,7 +170,7 @@ export class Server extends AbstractServer {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			if (frontendService) {
-				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 			}
 		}
 
@@ -328,7 +283,11 @@ export class Server extends AbstractServer {
 
 		// Protect type files with authentication regardless of UI availability
 		const authService = Container.get(AuthService);
-		const protectedTypeFiles = ['/types/nodes.json', '/types/credentials.json'];
+		const protectedTypeFiles = [
+			'/types/nodes.json',
+			'/types/credentials.json',
+			'/types/node-versions.json',
+		];
 		protectedTypeFiles.forEach((path) => {
 			this.app.get(
 				path,
@@ -487,7 +446,9 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/settings`,
 				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
-					return req.user ? frontendService.getSettings() : frontendService.getPublicSettings();
+					return req.user
+						? await frontendService.getSettings()
+						: await frontendService.getPublicSettings(!!req.authInfo?.mfaEnrollmentRequired);
 				}),
 			);
 		}
@@ -495,12 +456,6 @@ export class Server extends AbstractServer {
 
 	private async initializeWorkflowIndexing() {
 		if (Container.get(WorkflowsConfig).indexingEnabled) {
-			if (Container.get(DatabaseConfig).isLegacySqlite) {
-				this.logger.warn(
-					'Workflow indexing is disabled because legacy Sqlite databases are not supported. Please migrate the database to enable workflow indexing.',
-				);
-				return;
-			}
 			const { WorkflowIndexService } = await import(
 				'@/modules/workflow-index/workflow-index.service'
 			);

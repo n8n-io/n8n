@@ -1,17 +1,21 @@
 import { LicenseState } from '@n8n/backend-common';
-import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { SettingsRepository } from '@n8n/db';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
+import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 
-import config from '@/config';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ExternalSecretsProviderLifecycle } from '@/modules/external-secrets.ee/provider-lifecycle.service';
+import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
+import { ExternalSecretsRetryManager } from '@/modules/external-secrets.ee/retry-manager.service';
+import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
+import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
 import type {
 	ExternalSecretsSettings,
 	SecretsProviderState,
@@ -45,11 +49,13 @@ const testServer = setupTestServer({
 const connectedDate = '2023-08-01T12:32:29.000Z';
 
 async function setExternalSecretsSettings(settings: ExternalSecretsSettings) {
-	await Container.get(ExternalSecretsManager).saveAndSetSettings(settings);
+	const settingsStore = Container.get(ExternalSecretsSettingsStore);
+	await settingsStore.save(settings);
 }
 
 async function getExternalSecretsSettings(): Promise<ExternalSecretsSettings | null> {
-	return await Container.get(ExternalSecretsManager).getDecryptedSettings();
+	const settingsStore = Container.get(ExternalSecretsSettingsStore);
+	return await settingsStore.reload();
 }
 
 const eventService = mock<EventService>();
@@ -58,17 +64,32 @@ const logger = mockLogger();
 
 const resetManager = async () => {
 	Container.get(ExternalSecretsManager).shutdown();
+
+	// Get all service dependencies from Container
+	const config = Container.get(ExternalSecretsConfig);
+	const settingsStore = Container.get(ExternalSecretsSettingsStore);
+	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
+	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
+	const retryManager = Container.get(ExternalSecretsRetryManager);
+	const secretsCache = Container.get(ExternalSecretsSecretsCache);
+	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
+	const cipher = Container.get(Cipher);
+
 	Container.set(
 		ExternalSecretsManager,
 		new ExternalSecretsManager(
 			logger,
-			mock(),
-			Container.get(SettingsRepository),
-			Container.get(License),
+			config,
 			mockProvidersInstance,
-			Container.get(Cipher),
 			eventService,
 			mock(),
+			settingsStore,
+			providerRegistry,
+			providerLifecycle,
+			retryManager,
+			secretsCache,
+			secretsProviderConnectionRepository,
+			cipher,
 		),
 	);
 
@@ -112,18 +133,32 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
+
+	// Get all service dependencies from Container
+	const config = Container.get(ExternalSecretsConfig);
+	const settingsStore = Container.get(ExternalSecretsSettingsStore);
+	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
+	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
+	const retryManager = Container.get(ExternalSecretsRetryManager);
+	const secretsCache = Container.get(ExternalSecretsSecretsCache);
+	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
+	const cipher = Container.get(Cipher);
+
 	Container.set(
 		ExternalSecretsManager,
 		new ExternalSecretsManager(
 			logger,
-			mock(),
-			Container.get(SettingsRepository),
-			Container.get(License),
+			config,
 			mockProvidersInstance,
-			Container.get(Cipher),
 			eventService,
 			mock(),
+			settingsStore,
+			providerRegistry,
+			providerLifecycle,
+			retryManager,
+			secretsCache,
+			secretsProviderConnectionRepository,
+			cipher,
 		),
 	);
 });
@@ -346,20 +381,6 @@ describe('POST /external-secrets/providers/:provider/update', () => {
 			Container.get(ExternalSecretsManager).getProvider('dummy')!,
 			'update',
 		);
-
-		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy/update');
-		expect(resp.status).toBe(400);
-		expect(resp.body.data).toEqual({ updated: false });
-		expect(updateSpy).not.toBeCalled();
-	});
-
-	test('can not update provider without a valid license', async () => {
-		const updateSpy = jest.spyOn(
-			Container.get(ExternalSecretsManager).getProvider('dummy')!,
-			'update',
-		);
-
-		testServer.license.disable('feat:externalSecrets');
 
 		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy/update');
 		expect(resp.status).toBe(400);

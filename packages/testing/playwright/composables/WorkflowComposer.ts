@@ -1,4 +1,3 @@
-import type { Request } from '@playwright/test';
 import { expect } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -34,19 +33,28 @@ export class WorkflowComposer {
 
 	/**
 	 * Creates a new workflow by clicking the add workflow button and setting the name
+	 * Workflow is autosaved after a name update
 	 * @param workflowName - The name of the workflow to create
 	 */
 	async createWorkflow(workflowName = 'My New Workflow') {
 		await this.n8n.workflows.addResource.workflow();
 		await this.n8n.canvas.setWorkflowName(workflowName);
+		await this.n8n.page.keyboard.press('Enter');
 
-		const responsePromise = this.n8n.page.waitForResponse(
-			(response) =>
-				response.url().includes('/rest/workflows') && response.request().method() === 'POST',
-		);
-		await this.n8n.canvas.saveWorkflow();
+		await this.n8n.canvas.waitForSaveWorkflowCompleted();
+	}
 
-		await responsePromise;
+	/**
+	 * Creates a new workflow by clicking the add workflow button
+	 * Workflow is autosaved after a name update
+	 * @param workflowName - The name of the workflow to create
+	 */
+	async createWorkflowFromSidebar(workflowName = 'My New Workflow') {
+		await this.n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
+		await this.n8n.canvas.setWorkflowName(workflowName);
+		await this.n8n.page.keyboard.press('Enter');
+
+		await this.n8n.canvas.waitForSaveWorkflowCompleted();
 	}
 
 	/**
@@ -100,18 +108,6 @@ export class WorkflowComposer {
 	}
 
 	/**
-	 * Saves the current workflow and waits for the POST request to complete
-	 * @returns The Request object containing the save request details
-	 */
-	async saveWorkflowAndWaitForRequest(): Promise<Request> {
-		const saveRequestPromise = this.n8n.page.waitForRequest(
-			(req) => req.url().includes('/rest/workflows') && req.method() === 'POST',
-		);
-		await this.n8n.canvas.clickSaveWorkflowButton();
-		return await saveRequestPromise;
-	}
-
-	/**
 	 * Duplicates a workflow via the duplicate modal UI.
 	 * Verifies the form interaction completes without errors.
 	 * Note: This opens a new window/tab with the duplicated workflow but doesn't interact with it.
@@ -153,9 +149,9 @@ export class WorkflowComposer {
 		});
 		const workflows = await response.json();
 		return workflows.data[0];
-  }
- 
-  /**
+	}
+
+	/**
 	 * Moves a workflow to a different project or user.
 	 * @param workflowName - The name of the workflow to move
 	 * @param projectNameOrEmail - The destination project name or user email

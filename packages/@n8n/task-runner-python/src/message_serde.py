@@ -50,6 +50,7 @@ def _parse_task_settings(d: dict) -> BrokerTaskSettings:
         workflow_id = settings_dict.get("workflowId", "Unknown")
         node_name = settings_dict.get("nodeName", "Unknown")
         node_id = settings_dict.get("nodeId", "Unknown")
+        query = settings_dict.get("query")
     except KeyError as e:
         raise ValueError(f"Missing field in task settings message: {e}")
 
@@ -64,6 +65,7 @@ def _parse_task_settings(d: dict) -> BrokerTaskSettings:
             workflow_id=workflow_id,
             node_name=node_name,
             node_id=node_id,
+            query=query,
         ),
     )
 

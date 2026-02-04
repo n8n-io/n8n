@@ -117,9 +117,6 @@ function onEdit(id: string) {
 		<div :class="$style.header">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
-				<span :style="{ fontSize: 'var(--font-size--sm)', color: 'var(--color--text--tint-1)' }">
-					({{ i18n.baseText('generic.beta') }})
-				</span>
 			</N8nHeading>
 		</div>
 		<p v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.topHint">
@@ -136,7 +133,7 @@ function onEdit(id: string) {
 					<template #webhookAction>
 						<a
 							data-test-id="webhook-docs-link"
-							href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
+							href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
 							target="_blank"
 							v-text="i18n.baseText('settings.api.view.info.webhook')"
 						/>

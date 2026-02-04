@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
+import { onMounted, onUnmounted, defineAsyncComponent, shallowRef } from 'vue';
 import type { Component } from 'vue';
 import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 
 // Keep track of registered modals
-const registeredModals = ref<
+// Using shallowRef() to fix "Vue received a Component that was made a reactive object. This can lead to unnecessary performance overhead..."
+const registeredModals = shallowRef<
 	Array<{
 		key: string;
 		component: Component;

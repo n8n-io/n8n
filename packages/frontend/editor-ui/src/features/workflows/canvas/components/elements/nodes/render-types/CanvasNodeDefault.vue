@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { useCanvas } from '../../../../composables/useCanvas';
+import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 }>();
 
 const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
+const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
 const route = useRoute();
 const {
 	id,
@@ -66,12 +68,14 @@ const classes = computed(() => {
 		[$style.success]: hasRunData.value && executionStatus.value === 'success',
 		[$style.error]: hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,
-		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
+		[$style.waiting]: executionWaiting.value || executionStatus.value === 'waiting',
 		[$style.running]: executionRunning.value || executionWaitingForNext.value,
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
+		waiting: executionWaiting.value || executionStatus.value === 'waiting',
+		running: executionRunning.value || executionWaitingForNext.value,
 	};
 });
 
@@ -88,10 +92,14 @@ const nodeSize = computed(() =>
 	),
 );
 
+const nodeBorderOpacity = calculateNodeBorderOpacity();
+
 const styles = computed(() => ({
 	'--canvas-node--width': `${nodeSize.value.width}px`,
 	'--canvas-node--height': `${nodeSize.value.height}px`,
 	'--node--icon--size': `${iconSize.value}px`,
+	'--canvas-node--border--opacity-light': nodeBorderOpacity.value.light,
+	'--canvas-node--border--opacity-dark': nodeBorderOpacity.value.dark,
 }));
 
 const dataTestId = computed(() => {
@@ -190,7 +198,7 @@ function onActivate(event: MouseEvent) {
 
 <style lang="scss" module>
 .node {
-	--canvas-node--border-width: 2px;
+	--canvas-node--border-width: 1.5px;
 	--trigger-node--radius: 36px;
 	--canvas-node--status-icons--margin: var(--spacing--3xs);
 	--node--icon--color: var(--color--foreground--shade-1);
@@ -202,13 +210,30 @@ function onActivate(event: MouseEvent) {
 	align-items: center;
 	justify-content: center;
 	background: var(--canvas-node--color--background, var(--node--color--background));
+	background-clip: padding-box;
 	border: var(--canvas-node--border-width) solid
-		var(--canvas-node--border-color, var(--color--foreground--shade-2));
+		var(
+			--canvas-node--border-color,
+			light-dark(
+				oklch(
+					from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)
+				),
+				oklch(
+					from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15)
+				)
+			)
+		);
 	border-radius: var(--radius--lg);
 
 	&.trigger {
 		border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
 			var(--trigger-node--radius);
+
+		&.running::after,
+		&.waiting::after {
+			border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
+				var(--trigger-node--radius);
+		}
 	}
 
 	/**
@@ -216,13 +241,12 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		background: var(
-			--canvas-node--color--background,
-			var(--node-type--supplemental--color--background)
-		);
-		border: var(--canvas-node--border-width) solid
-			var(--canvas-node--border-color, var(--color--foreground--shade-1));
 		border-radius: calc(var(--canvas-node--height) / 2);
+
+		&.running::after,
+		&.waiting::after {
+			border-radius: calc(var(--canvas-node--height) / 2);
+		}
 
 		.statusIcons {
 			right: unset;
@@ -262,11 +286,9 @@ function onActivate(event: MouseEvent) {
 				margin-left: calc((var(--canvas-node--height) - var(--node--icon--size) - 4px) / 2);
 			}
 
-			&:not(.running) {
-				.statusIcons {
-					position: static;
-					margin-right: var(--spacing--2xs);
-				}
+			.statusIcons {
+				position: static;
+				margin-right: var(--spacing--2xs);
 			}
 
 			.description {
@@ -282,11 +304,12 @@ function onActivate(event: MouseEvent) {
 
 	&.selected {
 		/* stylelint-disable-next-line @n8n/css-var-naming */
-		box-shadow: 0 0 0 calc(8px * var(--canvas-zoom-compensation-factor, 1))
+		box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
 			var(--canvas--color--selected-transparent);
 	}
 
 	&.success {
+		--canvas-node--border-width: 2px;
 		--canvas-node--border-color: var(
 			--color-canvas-node-success-border-color,
 			var(--color--success)
@@ -294,6 +317,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.warning {
+		--canvas-node--border-width: 2px;
 		--canvas-node--border-color: var(--color--warning);
 	}
 
@@ -302,6 +326,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.pinned {
+		--canvas-node--border-width: 2px;
 		--canvas-node--border-color: var(
 			--color-canvas-node-pinned-border-color,
 			var(--node--border-color--pinned)
@@ -316,7 +341,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.running {
-		background-color: var(--node--color--background--executing);
+		border-color: transparent;
 		--canvas-node--border-color: var(
 			--color-canvas-node-running-border-color,
 			var(--node--border-color--running)
@@ -324,12 +349,51 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.waiting {
-		--canvas-node--border-color: var(
-			--color-canvas-node-waiting-border-color,
-			var(--color--secondary)
-		);
+		--canvas-node--border-color: transparent;
 	}
 }
+
+/* stylelint-disable */
+.running::after,
+.waiting::after {
+	content: '';
+	position: absolute;
+	inset: -3px;
+	border-radius: 10px;
+	z-index: -1;
+	background: conic-gradient(
+		from var(--node--gradient-angle),
+		rgba(255, 109, 90, 1),
+		rgba(255, 109, 90, 1) 20%,
+		rgba(255, 109, 90, 0.2) 35%,
+		rgba(255, 109, 90, 0.2) 65%,
+		rgba(255, 109, 90, 1) 90%,
+		rgba(255, 109, 90, 1)
+	);
+}
+
+.running::after {
+	animation: border-rotate 1.5s linear infinite;
+}
+.waiting::after {
+	animation: border-rotate 4.5s linear infinite;
+}
+
+@property --node--gradient-angle {
+	syntax: '<angle>';
+	initial-value: 0deg;
+	inherits: false;
+}
+
+@keyframes border-rotate {
+	from {
+		--node--gradient-angle: 0deg;
+	}
+	to {
+		--node--gradient-angle: 360deg;
+	}
+}
+/* stylelint-enable */
 
 .description {
 	top: 100%;

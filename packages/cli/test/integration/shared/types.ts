@@ -48,7 +48,15 @@ type EndpointGroup =
 	| 'third-party-licenses'
 	| 'mcp';
 
-type ModuleName = 'insights' | 'external-secrets' | 'community-packages' | 'data-table' | 'mcp';
+type ModuleName =
+	| 'insights'
+	| 'external-secrets'
+	| 'community-packages'
+	| 'data-table'
+	| 'mcp'
+	| 'dynamic-credentials'
+	| 'log-streaming'
+	| 'ldap';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

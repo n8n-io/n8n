@@ -1,5 +1,8 @@
 export { DirectedGraph } from './directed-graph';
-export { findTriggerForPartialExecution } from './find-trigger-for-partial-execution';
+export {
+	findTriggerForPartialExecution,
+	anyReachableRootHasRunData,
+} from './find-trigger-for-partial-execution';
 export { findStartNodes } from './find-start-nodes';
 export { findSubgraph } from './find-subgraph';
 export { recreateNodeExecutionStack } from './recreate-node-execution-stack';

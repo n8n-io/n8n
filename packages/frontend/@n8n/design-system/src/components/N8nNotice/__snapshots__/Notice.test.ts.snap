@@ -2,7 +2,7 @@
 
 exports[`components > N8nNotice > props > content > should render HTML 1`] = `
 "<div id="notice" class="notice notice warning" role="alert">
-  <div class="notice-content"><span class="n8n-text compact size-small regular"><span id="notice-content" class="truncated" role="region"><strong>Hello world!</strong> This is a notice.</span></span></div>
+  <div class="notice-content"><span class="n8n-text compact size-small regular"><span id="notice-content" class="truncated" role="region"><a href="https://example.com">Hello world!</a> This is a notice.</span></span></div>
 </div>"
 `;
 

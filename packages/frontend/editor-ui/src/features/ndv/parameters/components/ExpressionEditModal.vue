@@ -191,6 +191,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
 						:mapping-enabled="!isReadOnly"
 						:connection-type="NodeConnectionTypes.Main"
+						:preview-execution="workflowsStore.lastSuccessfulExecution"
 						pane-type="input"
 					/>
 				</div>

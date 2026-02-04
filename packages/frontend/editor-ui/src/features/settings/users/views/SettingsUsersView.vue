@@ -10,7 +10,12 @@ import {
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import {
+	DEBOUNCE_TIME,
+	EnterpriseEditionFeature,
+	getDebounceTime,
+	MODAL_CONFIRM,
+} from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import type { InvitableRoleName } from '../users.types';
@@ -27,8 +32,11 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
-
+import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import { ElSwitch } from 'element-plus';
+import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
 import {
 	N8nActionBox,
 	N8nBadge,
@@ -41,8 +49,11 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useMessage } from '@/app/composables/useMessage';
+
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
+const message = useMessage();
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -50,6 +61,8 @@ const usersStore = useUsersStore();
 const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const userRoleProvisioningStore = useUserRoleProvisioningStore();
+const postHog = usePostHog();
 
 const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 
@@ -70,20 +83,44 @@ const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
 );
 
+const isInstanceRoleProvisioningEnabled = computed(
+	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
+);
+
+const isTamperProofInviteLinksEnabled = computed(() =>
+	postHog.isVariantEnabled(TAMPER_PROOF_INVITE_LINKS.name, TAMPER_PROOF_INVITE_LINKS.variant),
+);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
 	if (!showUMSetupWarning.value) {
 		await updateUsersTableData(usersTableState.value);
 	}
+
+	await userRoleProvisioningStore.getProvisioningConfig();
 });
 
 const usersListActions = computed((): Array<UserAction<IUser>> => {
 	return [
 		{
+			label: i18n.baseText('settings.users.actions.generateInviteLink'),
+			value: 'generateInviteLink',
+			guard: (user) =>
+				isTamperProofInviteLinksEnabled.value &&
+				hasPermission(['rbac'], { rbac: { scope: 'user:generateInviteLink' } }) &&
+				usersStore.usersLimitNotReached &&
+				user.id !== usersStore.currentUserId &&
+				!user.firstName,
+		},
+		{
 			label: i18n.baseText('settings.users.actions.copyInviteLink'),
 			value: 'copyInviteLink',
-			guard: (user) => usersStore.usersLimitNotReached && !user.firstName && !!user.inviteAcceptUrl,
+			guard: (user) =>
+				!isTamperProofInviteLinksEnabled.value &&
+				usersStore.usersLimitNotReached &&
+				!user.firstName &&
+				!!user.inviteAcceptUrl,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.reinvite'),
@@ -130,6 +167,11 @@ const userRoles = computed((): Array<{ value: Role; label: string; disabled?: bo
 			label: i18n.baseText('auth.roles.member'),
 		},
 		{
+			value: ROLE.ChatUser,
+			label: i18n.baseText('auth.roles.chatUser'),
+			disabled: !isAdvancedPermissionsEnabled.value,
+		},
+		{
 			value: ROLE.Admin,
 			label: i18n.baseText('auth.roles.admin'),
 			disabled: !isAdvancedPermissionsEnabled.value,
@@ -147,6 +189,9 @@ async function onUsersListAction({ action, userId }: { action: string; userId: s
 			break;
 		case 'copyInviteLink':
 			await onCopyInviteLink(userId);
+			break;
+		case 'generateInviteLink':
+			await onGenerateInviteLink(userId);
 			break;
 		case 'copyPasswordResetLink':
 			await onCopyPasswordResetLink(userId);
@@ -215,6 +260,23 @@ async function onCopyInviteLink(userId: string) {
 		});
 	}
 }
+async function onGenerateInviteLink(userId: string) {
+	try {
+		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+		if (user) {
+			const url = await usersStore.generateInviteLink({ id: userId });
+			void clipboard.copy(url.link);
+
+			showToast({
+				type: 'success',
+				title: i18n.baseText('settings.users.inviteUrlCreated'),
+				message: i18n.baseText('settings.users.inviteUrlCreated.message'),
+			});
+		}
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.inviteLinkError'));
+	}
+}
 async function onCopyPasswordResetLink(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
@@ -281,26 +343,50 @@ const onUpdateRole = async (payload: { userId: string; role: Role }) => {
 };
 
 async function onRoleChange(user: User, newRoleName: Role) {
+	if (newRoleName === user.role) return;
+
+	const name =
+		user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.email ?? '');
+	const role = userRoles.value.find(({ value }) => value === newRoleName)?.label ?? newRoleName;
+
+	if (newRoleName === ROLE.ChatUser) {
+		const confirmed = await message.confirm(
+			i18n.baseText('settings.users.userRoleUpdated.confirm.message', {
+				interpolate: {
+					role,
+				},
+			}),
+			i18n.baseText('settings.users.userRoleUpdated.confirm.title', {
+				interpolate: {
+					user: name,
+				},
+			}),
+			{
+				confirmButtonText: i18n.baseText('settings.users.userRoleUpdated.confirm.button'),
+				cancelButtonText: i18n.baseText('settings.users.userRoleUpdated.cancel.button'),
+			},
+		);
+
+		if (confirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
 	try {
 		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
-
-		const role = userRoles.value.find(({ value }) => value === newRoleName)?.label || newRoleName;
 
 		showToast({
 			type: 'success',
 			title: i18n.baseText('settings.users.userRoleUpdated'),
 			message: i18n.baseText('settings.users.userRoleUpdated.message', {
 				interpolate: {
-					user:
-						user.firstName && user.lastName
-							? `${user.firstName} ${user.lastName}`
-							: (user.email ?? ''),
+					user: name,
 					role,
 				},
 			}),
 		});
 	} catch (e) {
-		showError(e, i18n.baseText('settings.users.userReinviteError'));
+		showError(e, i18n.baseText('settings.users.userRoleUpdatedError'));
 	}
 }
 
@@ -345,7 +431,7 @@ const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions
 const debouncedUpdateUsersTableData = useDebounceFn(() => {
 	usersTableState.value.page = 0; // Reset to first page on search
 	void updateUsersTableData(usersTableState.value);
-}, 300);
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 const onSearch = (value: string) => {
 	search.value = value;
@@ -448,6 +534,12 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				</EnterpriseEdition>
 			</div>
 		</div>
+		<div v-if="isInstanceRoleProvisioningEnabled" :class="$style.container">
+			<N8nAlert
+				type="info"
+				:title="i18n.baseText('settings.provisioningInstanceRolesHandledBySsoProvider.description')"
+			/>
+		</div>
 		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
 			<N8nInput
 				:class="$style.search"
@@ -467,7 +559,11 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				</template>
 				<div>
 					<N8nButton
-						:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
+						:disabled="
+							ssoStore.isSamlLoginEnabled ||
+							!usersStore.usersLimitNotReached ||
+							isInstanceRoleProvisioningEnabled
+						"
 						:label="i18n.baseText('settings.users.invite')"
 						size="large"
 						data-test-id="settings-users-invite-button"
@@ -485,6 +581,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 			<SettingsUsersTable
 				v-model:table-options="usersTableState"
 				data-test-id="settings-users-table"
+				:can-edit-role="!isInstanceRoleProvisioningEnabled"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
 				:actions="usersListActions"

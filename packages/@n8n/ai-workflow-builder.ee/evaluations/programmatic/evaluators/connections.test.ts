@@ -122,30 +122,35 @@ describe('evaluateConnections', () => {
 			displayName: 'Manual Trigger',
 			group: ['trigger'],
 			description: 'Starts the workflow manually',
+			version: 1,
 			inputs: [],
 			outputs: [NodeConnectionTypes.Main],
 		},
 		{
 			name: 'n8n-nodes-test.code',
 			displayName: 'Code',
+			version: 1,
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
 		},
 		{
 			name: 'n8n-nodes-test.httpRequest',
 			displayName: 'HTTP Request',
+			version: 1,
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
 		},
 		{
 			name: 'n8n-nodes-test.openAi',
 			displayName: 'OpenAI',
+			version: 1,
 			inputs: `={{(() => { return [{ type: "${NodeConnectionTypes.Main}" }, { type: "${NodeConnectionTypes.AiTool}", displayName: "Tools" }]; })()}}`,
 			outputs: [NodeConnectionTypes.Main],
 		},
 		{
 			name: 'n8n-nodes-test.agent',
 			displayName: 'AI Agent',
+			version: [1, 2, 3],
 			inputs: [
 				{ type: NodeConnectionTypes.AiTool, required: true, maxConnections: -1 },
 				{ type: NodeConnectionTypes.Main },
@@ -155,12 +160,14 @@ describe('evaluateConnections', () => {
 		{
 			name: 'n8n-nodes-test.merge',
 			displayName: 'Merge',
+			version: 1,
 			inputs: `={{ Array.from({ length: $parameter.numberInputs || 2 }, (_, i) => ({ type: "${NodeConnectionTypes.Main}", displayName: \`Input $\{i + 1}\` })) }}`,
 			outputs: [NodeConnectionTypes.Main],
 		},
 		{
 			name: 'n8n-nodes-test.llmChain',
 			displayName: 'LLM Chain',
+			version: 1,
 			inputs: [
 				{ type: NodeConnectionTypes.Main },
 				{ type: NodeConnectionTypes.AiLanguageModel, required: true, maxConnections: 1 },
@@ -171,12 +178,14 @@ describe('evaluateConnections', () => {
 		{
 			name: 'n8n-nodes-test.chatOpenAi',
 			displayName: 'Chat OpenAI',
+			version: 1,
 			inputs: [],
 			outputs: [NodeConnectionTypes.AiLanguageModel],
 		},
 		{
 			name: 'n8n-nodes-test.vectorStore',
 			displayName: 'Vector Store',
+			version: [1, 1.1, 1.2, 1.3],
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;
@@ -201,6 +210,7 @@ describe('evaluateConnections', () => {
 		{
 			name: 'n8n-nodes-test.embeddingsOpenAi',
 			displayName: 'OpenAI Embeddings',
+			version: [1, 1.1, 1.2],
 			inputs: [],
 			outputs: [NodeConnectionTypes.AiEmbedding],
 		},
@@ -286,6 +296,31 @@ describe('evaluateConnections', () => {
 			expect(violations).toContainEqual(
 				expect.objectContaining({
 					description: 'Node type n8n-nodes-test.unknown not found for node Unknown Node',
+				}),
+			);
+		});
+
+		it('should detect node type with unregistered version', () => {
+			const workflow = mock<SimpleWorkflow>({
+				name: 'Test Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Code Node',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 99, // Version that doesn't exist
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			});
+
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					name: 'node-type-not-found',
+					description: 'Node type n8n-nodes-test.code not found for node Code Node',
 				}),
 			);
 		});

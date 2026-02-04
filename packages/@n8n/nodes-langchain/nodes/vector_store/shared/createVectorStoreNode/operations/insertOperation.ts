@@ -64,6 +64,10 @@ export async function handleInsertOperation<T extends VectorStore = VectorStore>
 
 	// For the version 1.1, we run the populateVectorStore in batches
 	if (nodeVersion >= 1.1) {
+		if (args.beforeInsert) {
+			await args.beforeInsert(context, embeddings, 0);
+		}
+
 		const embeddingBatchSize =
 			(context.getNodeParameter('embeddingBatchSize', 0, 200) as number) ?? 200;
 

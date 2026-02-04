@@ -647,4 +647,34 @@ describe('sanitizeCurlUrlPlaceholders', () => {
 			'curl https://api.example.com/{USER_ID} -H "Content-Type: application/json" -d \'{"content": "<div><b>Text</b></div>"}\'',
 		);
 	});
+
+	test('should parse cURL command with unknown content-type', () => {
+		const curl = `curl --request POST \
+  --url https://example.com/api \
+  --header 'content-type: text/xml' \
+  --data '<some>value</some>'`;
+
+		const parameters = toHttpNodeParameters(curl);
+
+		expect(parameters.url).toBe('https://example.com/api');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.contentType).toBe('raw');
+		expect(parameters.rawContentType).toBe('text/xml');
+		expect(parameters.body).toEqual('<some>value</some>');
+	});
+
+	test('should parse cURL command with content-type containing encoding as raw', () => {
+		const curl = `curl --request POST \
+  --url https://example.com/api \
+  --header 'content-type: application/json; charset=UTF-8' \
+  --data '{"userId":"123","active":false,"visited":false}'`;
+
+		const parameters = toHttpNodeParameters(curl);
+
+		expect(parameters.url).toBe('https://example.com/api');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.contentType).toBe('raw');
+		expect(parameters.rawContentType).toBe('application/json; charset=UTF-8');
+		expect(parameters.body).toEqual('{"userId":"123","active":false,"visited":false}');
+	});
 });

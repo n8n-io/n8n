@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData, IRunExecutionData } from 'n8n-workflow';
 import Draggable from '@/app/components/Draggable.vue';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { isString } from '@/app/utils/typeGuards';
@@ -16,6 +16,7 @@ import TextWithHighlights from './TextWithHighlights.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/features/ndv/runData/components/RunDataJsonActions.vue'),
@@ -35,6 +36,7 @@ const props = withDefaults(
 		totalRuns: number | undefined;
 		search: string | undefined;
 		compact?: boolean;
+		execution?: IRunExecutionData;
 	}>(),
 	{
 		editMode: () => ({}),
@@ -46,6 +48,7 @@ const ndvStore = useNDVStore();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
+const workflowsStore = useWorkflowsStore();
 
 const selectedJsonPath = ref(nonExistingJsonPath);
 const draggingPath = ref<null | string>(null);
@@ -72,6 +75,7 @@ const getJsonParameterPath = (path: string) => {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: subPath,
+		binaryMode: workflowsStore.workflow.settings?.binaryMode,
 	});
 };
 
@@ -147,6 +151,7 @@ const getListItemName = (path: string) => {
 				:json-data="jsonData"
 				:output-index="outputIndex"
 				:run-index="runIndex"
+				:execution="execution"
 			/>
 		</Suspense>
 		<Draggable

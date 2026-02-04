@@ -6,7 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { reactive, ref } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
@@ -74,7 +74,7 @@ const mockWorkflow = createTestWorkflow({
 		{
 			id: 'node1',
 			name: 'Start',
-			type: 'n8n-nodes-base.start',
+			type: 'n8n-nodes-base.manualTrigger',
 			typeVersion: 1,
 			position: [250, 300],
 			parameters: {},
@@ -116,7 +116,7 @@ const renderModal = createComponentRenderer(WorkflowDiffModal, {
 describe('WorkflowDiffModal', () => {
 	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let sourceControlStore: MockedStore<typeof useSourceControlStore>;
-	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -134,14 +134,14 @@ describe('WorkflowDiffModal', () => {
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
-		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		nodeTypesStore.loadNodeTypesIfNotLoaded.mockResolvedValue();
 		sourceControlStore.getRemoteWorkflow.mockResolvedValue({
 			content: mockWorkflow,
 			type: 'workflow',
 		});
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		sourceControlStore.preferences.branchName = 'main';
 	});
 
@@ -151,6 +151,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -167,6 +168,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -185,6 +187,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -201,6 +204,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -222,6 +226,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -238,6 +243,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -259,13 +265,14 @@ describe('WorkflowDiffModal', () => {
 			content: remoteWorkflow,
 			type: 'workflow',
 		});
-		workflowsStore.fetchWorkflow.mockResolvedValue(localWorkflow);
+		workflowsListStore.fetchWorkflow.mockResolvedValue(localWorkflow);
 
 		const { getByText } = renderModal({
 			props: {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -280,6 +287,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -295,6 +303,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'pull',
 				},
 			},
@@ -305,6 +314,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -321,6 +331,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -350,6 +361,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -378,6 +390,7 @@ describe('WorkflowDiffModal', () => {
 				data: {
 					eventBus,
 					workflowId: 'test-workflow-id',
+					workflowStatus: 'modified',
 					direction: 'push',
 				},
 			},
@@ -406,13 +419,14 @@ describe('WorkflowDiffModal', () => {
 				content: mockWorkflow,
 				type: 'workflow',
 			});
-			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Workflow not found'));
+			workflowsListStore.fetchWorkflow.mockRejectedValue(new Error('Workflow not found'));
 
 			const { getByText } = renderModal({
 				props: {
 					data: {
 						eventBus,
 						workflowId: 'new-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'pull',
 					},
 				},
@@ -426,13 +440,14 @@ describe('WorkflowDiffModal', () => {
 
 		it('should handle missing target workflow without crashing', async () => {
 			sourceControlStore.getRemoteWorkflow.mockRejectedValue(new Error('Workflow not found'));
-			workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+			workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 
 			const { getByText } = renderModal({
 				props: {
 					data: {
 						eventBus,
 						workflowId: 'missing-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -450,6 +465,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -466,6 +482,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'pull',
 					},
 				},
@@ -488,6 +505,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -509,26 +527,28 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
 			});
 
 			await vi.waitFor(() => {
-				expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('test-workflow-id');
+				expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith('test-workflow-id');
 			});
 		});
 	});
 
 	describe('Error Handling - Local Workflow', () => {
 		it('should show toast error and close modal when local workflow fails to load', async () => {
-			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Local API error') as never);
+			workflowsListStore.fetchWorkflow.mockRejectedValue(new Error('Local API error') as never);
 
 			renderModal({
 				props: {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -541,13 +561,14 @@ describe('WorkflowDiffModal', () => {
 		});
 
 		it('should continue loading remote workflow when local fails', async () => {
-			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Local API error') as never);
+			workflowsListStore.fetchWorkflow.mockRejectedValue(new Error('Local API error') as never);
 
 			renderModal({
 				props: {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -564,13 +585,14 @@ describe('WorkflowDiffModal', () => {
 			sourceControlStore.getRemoteWorkflow.mockRejectedValue(
 				new Error('Remote API error') as never,
 			);
-			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Local API error') as never);
+			workflowsListStore.fetchWorkflow.mockRejectedValue(new Error('Local API error') as never);
 
 			renderModal({
 				props: {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -590,6 +612,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -597,7 +620,7 @@ describe('WorkflowDiffModal', () => {
 
 			await vi.waitFor(() => {
 				expect(sourceControlStore.getRemoteWorkflow).toHaveBeenCalledWith('test-workflow-id');
-				expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('test-workflow-id');
+				expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith('test-workflow-id');
 			});
 		});
 
@@ -607,6 +630,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -623,6 +647,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -630,7 +655,7 @@ describe('WorkflowDiffModal', () => {
 
 			await vi.waitFor(() => {
 				expect(sourceControlStore.getRemoteWorkflow).toHaveBeenCalled();
-				expect(workflowsStore.fetchWorkflow).toHaveBeenCalled();
+				expect(workflowsListStore.fetchWorkflow).toHaveBeenCalled();
 			});
 
 			expect(mockShowError).not.toHaveBeenCalled();
@@ -650,6 +675,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -676,6 +702,7 @@ describe('WorkflowDiffModal', () => {
 					data: {
 						eventBus,
 						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
 						direction: 'push',
 					},
 				},
@@ -688,6 +715,44 @@ describe('WorkflowDiffModal', () => {
 			expect(mockRouterReplace).toHaveBeenCalledTimes(1);
 			expect(mockRouterReplace).toHaveBeenCalledWith({
 				query: { other: 'param' },
+			});
+		});
+	});
+
+	describe('remote workflow loading', () => {
+		it('should not call getRemoteWorkflow when direction is push and workflowStatus is created', async () => {
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						workflowStatus: 'created',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith('test-workflow-id');
+			});
+
+			expect(sourceControlStore.getRemoteWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should call getRemoteWorkflow when direction is push and workflowStatus is not created', async () => {
+			renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						workflowStatus: 'modified',
+						direction: 'push',
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(sourceControlStore.getRemoteWorkflow).toHaveBeenCalledWith('test-workflow-id');
 			});
 		});
 	});

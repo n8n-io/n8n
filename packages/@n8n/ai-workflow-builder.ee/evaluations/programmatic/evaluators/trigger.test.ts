@@ -29,6 +29,14 @@ describe('evaluateTrigger', () => {
 			outputs: ['main'],
 		}),
 		mock<INodeTypeDescription>({
+			name: 'n8n-nodes-base.executeWorkflowTrigger',
+			displayName: 'Execute Workflow Trigger',
+			group: ['trigger'],
+			inputs: [],
+			outputs: ['main'],
+			maxNodes: 1,
+		}),
+		mock<INodeTypeDescription>({
 			name: 'n8n-nodes-base.code',
 			displayName: 'Code',
 			group: ['transform'],
@@ -52,7 +60,7 @@ describe('evaluateTrigger', () => {
 	];
 
 	describe('basic trigger validation', () => {
-		it('should detect workflow with no nodes', () => {
+		it('should return no violations for workflow with no nodes', () => {
 			const workflow = mock<SimpleWorkflow>({
 				name: 'Empty Workflow',
 				nodes: [],
@@ -61,9 +69,7 @@ describe('evaluateTrigger', () => {
 
 			const result = evaluateTrigger(workflow, mockNodeTypes);
 
-			expect(result.violations).toContainEqual(
-				expect.objectContaining({ description: 'Workflow has no nodes' }),
-			);
+			expect(result.violations).toEqual([]);
 		});
 
 		it('should detect workflow with no trigger nodes', () => {

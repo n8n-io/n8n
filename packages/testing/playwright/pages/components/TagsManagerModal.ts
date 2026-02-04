@@ -49,6 +49,19 @@ export class TagsManagerModal extends BasePage {
 		await this.root.getByRole('button', { name: 'Add new' }).click();
 	}
 
+	async clickCreateTagButton(): Promise<void> {
+		await this.root.getByRole('button', { name: 'Create a tag' }).click();
+	}
+
+	/**
+	 * Start adding a new tag, handling both empty state ("Create a tag") and existing tags ("Add new")
+	 */
+	async addTag(): Promise<void> {
+		const addNewButton = this.root.getByRole('button', { name: 'Add new' });
+		const createTagButton = this.root.getByRole('button', { name: 'Create a tag' });
+		await addNewButton.or(createTagButton).click();
+	}
+
 	async clickDoneButton(): Promise<void> {
 		await this.clickButtonByName('Done');
 	}

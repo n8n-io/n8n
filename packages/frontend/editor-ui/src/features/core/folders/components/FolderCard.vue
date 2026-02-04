@@ -22,10 +22,11 @@ import {
 	N8nIcon,
 	N8nText,
 } from '@n8n/design-system';
+
 type Props = {
 	data: FolderResource;
 	personalProject: Project | null;
-	actions: Array<UserAction<IUser>>;
+	actions?: Array<UserAction<IUser>>;
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };
@@ -255,7 +256,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	cursor: pointer;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 

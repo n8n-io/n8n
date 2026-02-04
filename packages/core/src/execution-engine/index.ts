@@ -1,4 +1,4 @@
-import type { DataTableProxyProvider } from 'n8n-workflow';
+import type { DataTableProxyProvider, IExecutionContext, IWorkflowSettings } from 'n8n-workflow';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
@@ -12,6 +12,16 @@ declare module 'n8n-workflow' {
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.
 		dataTableProjectId?: string;
+		/**
+		 * Execution context for dynamic credential resolution (EE feature).
+		 * Contains encrypted credential context that can be decrypted by resolvers.
+		 */
+		executionContext?: IExecutionContext;
+		/**
+		 * Workflow settings (EE feature).
+		 * Contains workflow-level configuration including credential resolver ID.
+		 */
+		workflowSettings?: IWorkflowSettings;
 	}
 }
 
@@ -22,6 +32,7 @@ export * from './node-execution-context';
 export * from './partial-execution-utils';
 export * from './node-execution-context/utils/execution-metadata';
 export * from './workflow-execute';
+export * from './execution-context-hook-registry.service';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
 export { isEngineRequest } from './requests-response';

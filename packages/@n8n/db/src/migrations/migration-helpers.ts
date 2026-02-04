@@ -90,17 +90,15 @@ function parseJson<T>(data: string | T): T {
 
 const globalConfig = Container.get(GlobalConfig);
 const dbType = globalConfig.database.type;
-const isMysql = ['mariadb', 'mysqldb'].includes(dbType);
 const isSqlite = dbType === 'sqlite';
 const isPostgres = dbType === 'postgresdb';
-const dbName = globalConfig.database[dbType === 'mariadb' ? 'mysqldb' : dbType].database;
+const dbName = globalConfig.database[dbType].database;
 const tablePrefix = globalConfig.database.tablePrefix;
 
 const createContext = (queryRunner: QueryRunner, migration: Migration): MigrationContext => ({
 	logger: Container.get(Logger),
 	tablePrefix,
 	dbType,
-	isMysql,
 	isSqlite,
 	isPostgres,
 	dbName,
@@ -169,8 +167,9 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 		batchSize = batchSize ?? 10;
 		let migrated = 0;
 		while (migrated < total) {
+			const offset = migrated > 0 ? ` OFFSET ${migrated}` : '';
 			await queryRunner.query(
-				`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} LIMIT ${migrated}, ${batchSize}`,
+				`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} ${offset} LIMIT ${batchSize}`,
 			);
 			migrated += batchSize;
 		}

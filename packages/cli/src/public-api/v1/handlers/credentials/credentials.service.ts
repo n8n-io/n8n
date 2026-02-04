@@ -8,18 +8,23 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
-import type {
-	DisplayCondition,
-	IDataObject,
-	INodeProperties,
-	INodePropertyOptions,
+import {
+	BaseError,
+	type DisplayCondition,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type INodeProperties,
+	type INodePropertyOptions,
 } from 'n8n-workflow';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { CredentialRequest } from '@/requests';
 
 import type { IDependency, IJsonSchema } from '../../../types';
+
+export class CredentialsIsNotUpdatableError extends BaseError {}
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
@@ -91,9 +96,93 @@ export async function saveCredential(
 		projectId: project?.id,
 		projectType: project?.type,
 		publicApi: true,
+		isDynamic: credential.isResolvable ?? false,
 	});
 
 	return result;
+}
+
+export async function updateCredential(
+	credentialId: string,
+	updateData: {
+		type?: string;
+		name?: string;
+		data?: ICredentialDataDecryptedObject;
+		isGlobal?: boolean;
+		isResolvable?: boolean;
+		isPartialData?: boolean;
+	},
+): Promise<ICredentialsDb | null> {
+	const existingCredential = await getCredentials(credentialId);
+	if (!existingCredential) {
+		return null;
+	}
+
+	if (existingCredential.isManaged) {
+		throw new CredentialsIsNotUpdatableError('Managed credentials cannot be updated.');
+	}
+
+	// Merge the update data with existing credential
+	const credentialData: Partial<CredentialsEntity> = {};
+
+	if (updateData.name !== undefined) {
+		credentialData.name = updateData.name;
+	}
+
+	if (updateData.type !== undefined) {
+		credentialData.type = updateData.type;
+	}
+
+	// If data is provided, encrypt it
+	if (updateData.data !== undefined) {
+		const credentialsService = Container.get(CredentialsService);
+
+		// Decrypt existing data to access oauthTokenData
+		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
+
+		let dataToEncrypt: ICredentialDataDecryptedObject;
+
+		// If isPartialData is true, merge with existing decrypted data and unredact
+		if (updateData.isPartialData === true) {
+			// First merge existing decrypted data with new data
+			// This ensures all existing fields are preserved unless explicitly overridden
+			const mergedData = {
+				...decryptedData,
+				...updateData.data,
+			};
+
+			// Then unredact any redacted values (e.g., replace "***" with original values)
+			dataToEncrypt = credentialsService.unredact(mergedData, decryptedData);
+		} else {
+			// isPartialData is false or undefined (default): replace entire data object
+			dataToEncrypt = updateData.data;
+		}
+
+		const newCredential = new CredentialsEntity();
+		Object.assign(newCredential, {
+			id: credentialId,
+			name: updateData.name ?? existingCredential.name,
+			type: updateData.type ?? existingCredential.type,
+			data: dataToEncrypt,
+		});
+
+		const encryptedData = await encryptCredential(newCredential);
+		Object.assign(credentialData, encryptedData);
+	}
+
+	if (updateData.isResolvable !== undefined) {
+		credentialData.isResolvable = updateData.isResolvable;
+	}
+
+	if (updateData.isGlobal !== undefined) {
+		credentialData.isGlobal = updateData.isGlobal;
+	}
+
+	credentialData.updatedAt = new Date();
+
+	await Container.get(CredentialsRepository).update(credentialId, credentialData);
+
+	return await getCredentials(credentialId);
 }
 
 export async function removeCredential(
@@ -215,11 +304,12 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 				dependantValue = displayOptionsValues[0];
 			}
 
-			if (propertyRequiredDependencies[dependantName] === undefined) {
-				propertyRequiredDependencies[dependantName] = {};
-			}
+			// Create a unique key for each dependant name and value combination
+			// so that if multiple properties depend on the same property but different values
+			// they get their own if-then-else block
+			const dependencyKey = `${dependantName}:${JSON.stringify(dependantValue)}`;
 
-			if (!resolveProperties.includes(dependantName)) {
+			if (!resolveProperties.includes(dependencyKey)) {
 				let conditionalValue;
 				if (typeof dependantValue === 'object' && dependantValue._cnd) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -285,7 +375,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						enum: [dependantValue],
 					};
 				}
-				propertyRequiredDependencies[dependantName] = {
+				propertyRequiredDependencies[dependencyKey] = {
 					if: {
 						properties: {
 							[dependantName]: conditionalValue,
@@ -298,14 +388,13 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						allOf: [],
 					},
 				};
+				resolveProperties.push(dependencyKey);
 			}
 
-			propertyRequiredDependencies[dependantName].then?.allOf.push({ required: [property.name] });
-			propertyRequiredDependencies[dependantName].else?.allOf.push({
+			propertyRequiredDependencies[dependencyKey].then?.allOf.push({ required: [property.name] });
+			propertyRequiredDependencies[dependencyKey].else?.allOf.push({
 				not: { required: [property.name] },
 			});
-
-			resolveProperties.push(dependantName);
 			// remove global required
 			requiredFields = requiredFields.filter((field) => field !== property.name);
 		}

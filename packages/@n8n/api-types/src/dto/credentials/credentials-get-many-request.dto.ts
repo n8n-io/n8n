@@ -21,4 +21,10 @@ export class CredentialsGetManyRequestQuery extends Z.class({
 	includeData: booleanFromString.optional(),
 
 	onlySharedWithMe: booleanFromString.optional(),
+
+	/**
+	 * Includes global credentials (credentials available to all users).
+	 * Defaults to false.
+	 */
+	includeGlobal: booleanFromString.optional().default('false'),
 }) {}

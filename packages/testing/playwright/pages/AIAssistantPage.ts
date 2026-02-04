@@ -123,14 +123,18 @@ export class AIAssistantPage extends BasePage {
 	async waitForStreamingComplete(options?: { timeout?: number }) {
 		const timeout = options?.timeout ?? 60000;
 		// Wait for at least one assistant message to appear (indicating streaming has produced output)
-		// and ensure the send button is re-enabled (indicating streaming is complete)
 		await this.getChatMessagesAssistant().first().waitFor({ state: 'visible', timeout });
+		// Wait for streaming to end by checking for the send button's arrow-up icon
+		// During streaming, a stop button with filled-square icon is shown instead
+		// After streaming, the send button with arrow-up icon appears
 		await this.page.waitForFunction(
 			() => {
-				const sendButton = document.querySelector(
-					'[data-test-id="send-message-button"]',
-				) as HTMLButtonElement;
-				return sendButton && !sendButton.disabled;
+				const sendButton = document.querySelector('[data-test-id="send-message-button"]');
+				if (!sendButton) return false;
+				// The arrow-up icon indicates the send button (not streaming)
+				// The filled-square icon indicates the stop button (streaming)
+				const sendIcon = sendButton.querySelector('[data-icon="arrow-up"]');
+				return sendIcon !== null;
 			},
 			{ timeout },
 		);

@@ -8,6 +8,9 @@ export const workflowHistoryDataFactory: () => WorkflowHistory = () => ({
 	authors: Array.from({ length: faker.number.int({ min: 2, max: 5 }) }, faker.person.fullName).join(
 		', ',
 	),
+	workflowPublishHistory: [],
+	name: faker.lorem.word(),
+	description: faker.lorem.sentence(),
 });
 
 export const workflowVersionDataFactory: () => WorkflowVersion = () => ({

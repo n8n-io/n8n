@@ -10,7 +10,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRunExecutionData,
 	NodeParameterValueType,
 } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
@@ -19,6 +18,7 @@ process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
 // eslint-disable-next-line import/order
 import * as Helpers from './helpers';
+import { createRunExecutionData, type IRunExecutionData } from '../src';
 
 interface StubNode {
 	name: string;
@@ -1743,6 +1743,8 @@ describe('Workflow', () => {
 
 		for (const testData of tests) {
 			test(testData.description, () => {
+				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
 				const nodes: INode[] = [
 					{
 						name: 'Node1',
@@ -1820,7 +1822,7 @@ describe('Workflow', () => {
 				const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 				const activeNodeName = testData.input.hasOwnProperty('Node3') ? 'Node3' : 'Node2';
 
-				const runExecutionData: IRunExecutionData = {
+				const runExecutionData = createRunExecutionData({
 					resultData: {
 						runData: {
 							Node1: [
@@ -1849,7 +1851,7 @@ describe('Workflow', () => {
 							'Node 4 with spaces': [],
 						},
 					},
-				};
+				});
 
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -1904,7 +1906,7 @@ describe('Workflow', () => {
 			const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 			const activeNodeName = 'Node1';
 
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				resultData: {
 					runData: {
 						Node1: [
@@ -1926,7 +1928,7 @@ describe('Workflow', () => {
 						],
 					},
 				},
-			};
+			});
 
 			const itemIndex = 0;
 			const runIndex = 0;

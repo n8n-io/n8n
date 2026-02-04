@@ -1,3 +1,4 @@
+import type { InstanceType } from '@n8n/constants';
 import { ModuleMetadata } from '@n8n/decorators';
 import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -33,9 +34,16 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
+		'mcp',
 		'provisioning',
 		'breaking-changes',
-		'mcp',
+		'source-control',
+		'dynamic-credentials',
+		'chat-hub',
+		'sso-oidc',
+		'sso-saml',
+		'log-streaming',
+		'ldap',
 	];
 
 	private readonly activeModules: string[] = [];
@@ -96,6 +104,8 @@ export class ModuleRegistry {
 			const loadDir = await Container.get(ModuleClass).loadDir?.();
 
 			if (loadDir) this.loadDirs.push(loadDir);
+
+			await Container.get(ModuleClass).commands?.();
 		}
 	}
 
@@ -107,12 +117,19 @@ export class ModuleRegistry {
 	 *
 	 * `ModuleRegistry.loadModules` must have been called before.
 	 */
-	async initModules() {
+	async initModules(instanceType: InstanceType) {
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
-			const { licenseFlag, class: ModuleClass } = moduleEntry;
+			const { licenseFlag, instanceTypes, class: ModuleClass } = moduleEntry;
 
 			if (licenseFlag !== undefined && !this.licenseState.isLicensed(licenseFlag)) {
 				this.logger.debug(`Skipped init for unlicensed module "${moduleName}"`);
+				continue;
+			}
+
+			if (instanceTypes !== undefined && !instanceTypes.includes(instanceType)) {
+				this.logger.debug(
+					`Skipped init for module "${moduleName}" (instance type "${instanceType}" not in: ${instanceTypes.join(', ')})`,
+				);
 				continue;
 			}
 

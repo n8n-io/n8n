@@ -9,5 +9,5 @@ import {
 
 export class AddDataTableRowsDto extends Z.class({
 	data: z.array(z.record(dataTableColumnNameSchema, dataTableColumnValueSchema)),
-	returnType: insertRowReturnType,
+	returnType: insertRowReturnType.optional().default('count'),
 }) {}

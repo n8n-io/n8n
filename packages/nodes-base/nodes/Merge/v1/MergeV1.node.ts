@@ -20,7 +20,6 @@ export class MergeV1 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			icon: 'fa:code-branch',
 			version: 1,
 			defaults: {
 				name: 'Merge',

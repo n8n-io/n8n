@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 
+import MessageRating from './messages/MessageRating.vue';
 import MessageWrapper from './messages/MessageWrapper.vue';
+import ThinkingMessage from './messages/ThinkingMessage.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
-import { isTaskAbortedMessage, isToolMessage } from '../../types/assistant';
+import { isTaskAbortedMessage, isToolMessage, isThinkingGroupMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
-import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
@@ -17,6 +18,7 @@ import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
+const $style = useCssModule();
 
 interface Props {
 	user?: {
@@ -26,6 +28,7 @@ interface Props {
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
 	disabled?: boolean;
+	disabledTooltip?: string;
 	loadingMessage?: string;
 	sessionId?: string;
 	inputPlaceholder?: string;
@@ -36,6 +39,8 @@ interface Props {
 	showAskOwnerTooltip?: boolean;
 	maxCharacterLength?: number;
 	suggestions?: WorkflowSuggestion[];
+	workflowId?: string;
+	pruneTimeHours?: number;
 }
 
 const emit = defineEmits<{
@@ -46,6 +51,10 @@ const emit = defineEmits<{
 	codeUndo: [number];
 	feedback: [RatingFeedback];
 	'upgrade-click': [];
+	restore: [versionId: string];
+	restoreConfirm: [versionId: string, messageId: string];
+	restoreCancel: [];
+	showVersion: [versionId: string];
 }>();
 
 const onClose = () => emit('close');
@@ -78,79 +87,132 @@ function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.As
 	);
 }
 
-function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+function groupToolMessagesIntoThinking(
+	messages: ChatUI.AssistantMessage[],
+	options: {
+		streaming?: boolean;
+		loadingMessage?: string;
+		t: (key: string) => string;
+	},
+): ChatUI.AssistantMessage[] {
 	const result: ChatUI.AssistantMessage[] = [];
 	let i = 0;
 
 	while (i < messages.length) {
 		const currentMsg = messages[i];
 
-		// If it's not a tool message, add it as-is and continue
+		// If it's not a tool message, add it as-is
 		if (!isToolMessage(currentMsg)) {
 			result.push(currentMsg);
 			i++;
 			continue;
 		}
 
-		// Collect consecutive tool messages with the same toolName
-		const toolMessagesGroup = [currentMsg];
+		// Collect ALL consecutive tool messages
+		const toolGroup: ChatUI.ToolMessage[] = [currentMsg];
 		let j = i + 1;
 
 		while (j < messages.length) {
-			const nextMsg = messages[j];
-			if (isToolMessage(nextMsg) && nextMsg.toolName === currentMsg.toolName) {
-				toolMessagesGroup.push(nextMsg);
-				j++;
-			} else {
-				break;
-			}
+			const msg = messages[j];
+			if (!isToolMessage(msg)) break;
+			toolGroup.push(msg);
+			j++;
 		}
 
-		// If we have multiple tool messages with the same toolName, collapse them
-		if (toolMessagesGroup.length > 1) {
-			// Determine the status to show based on priority rules
-			const lastMessage = toolMessagesGroup[toolMessagesGroup.length - 1];
-			let titleSource = lastMessage;
+		// Deduplicate tool messages by toolName, keeping the latest status for each unique tool type
+		// This matches the original behavior where multiple calls to the same tool (e.g., get_node_details)
+		// are collapsed into a single entry showing the most recent status
+		const uniqueToolsMap = new Map<string, ChatUI.ToolMessage>();
+		for (const tool of toolGroup) {
+			// Group by toolName so multiple calls to the same tool are collapsed
+			const key = tool.toolName;
+			// Later messages in the array have the most recent status, so they overwrite earlier ones
+			uniqueToolsMap.set(key, tool);
+		}
+		const uniqueTools = Array.from(uniqueToolsMap.values());
 
-			// Check if we have running messages - if so, show the last running one and use its titles
-			const runningMessages = toolMessagesGroup.filter((msg) => msg.status === 'running');
-			const errorMessage = toolMessagesGroup.find((msg) => msg.status === 'error');
-			if (runningMessages.length > 0) {
-				const lastRunning = runningMessages[runningMessages.length - 1];
-				titleSource = lastRunning;
-			} else if (errorMessage) {
-				titleSource = errorMessage;
-			}
+		// Check if this is the last group of tools in the messages
+		const isLastToolGroup = j >= messages.length;
+		const allToolsCompleted = uniqueTools.every((m) => m.status === 'completed');
+		const hasRunningTool = uniqueTools.some((m) => m.status === 'running');
 
-			// Combine all updates from all messages in the group
-			const combinedUpdates = toolMessagesGroup.flatMap((msg) => msg.updates || []);
+		// Build the items array - use toolName as id since we dedupe by toolName
+		const items: ChatUI.ThinkingItem[] = uniqueTools.map((m) => ({
+			id: `tool-${m.toolName}`,
+			displayTitle:
+				m.customDisplayTitle ||
+				m.displayTitle ||
+				m.toolName
+					.split('_')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' '),
+			status: m.status,
+		}));
 
-			// Create collapsed message using last message as base, but with titles from titleSource
-			const collapsedMessage: ChatUI.ToolMessage = {
-				...lastMessage,
-				displayTitle: titleSource.displayTitle,
-				customDisplayTitle:
-					titleSource.status === 'running' ? titleSource.customDisplayTitle : undefined,
-				status: titleSource.status,
-				updates: combinedUpdates,
-			};
+		// If this is the last group, all tools completed, and we're still streaming,
+		// add a "Thinking" item to show the AI is processing
+		if (isLastToolGroup && allToolsCompleted && options.streaming && options.loadingMessage) {
+			items.push({
+				id: 'thinking-item',
+				displayTitle: options.loadingMessage,
+				status: 'running',
+			});
+		}
 
-			result.push(collapsedMessage);
+		// Determine the latest status text - prioritize running tools, then thinking state, then completed
+		const runningTool = uniqueTools.find((m) => m.status === 'running');
+		let latestStatus: string;
+
+		if (hasRunningTool) {
+			latestStatus =
+				runningTool?.customDisplayTitle ||
+				runningTool?.displayTitle ||
+				runningTool?.toolName
+					.split('_')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' ') ||
+				options.t('assistantChat.thinking.processing');
+		} else if (
+			isLastToolGroup &&
+			allToolsCompleted &&
+			options.streaming &&
+			options.loadingMessage
+		) {
+			// Still streaming after tools completed - show thinking message
+			latestStatus = options.loadingMessage;
+		} else if (allToolsCompleted && !options.streaming) {
+			latestStatus = options.t('assistantChat.thinking.workflowGenerated');
+		} else if (allToolsCompleted) {
+			latestStatus = options.loadingMessage ?? options.t('assistantChat.thinking.processing');
 		} else {
-			// Single tool message, add as-is
-			result.push(currentMsg);
+			latestStatus = options.t('assistantChat.thinking.thinking');
 		}
 
+		// Create a ThinkingGroup message with deduplicated items
+		// Use a stable ID so Vue preserves component state when items update
+		const thinkingGroup: ChatUI.ThinkingGroupMessage = {
+			id: 'thinking-group',
+			role: 'assistant',
+			type: 'thinking-group',
+			items,
+			latestStatusText: latestStatus,
+		};
+
+		result.push(thinkingGroup);
 		i = j;
 	}
 
 	return result;
 }
 
-// Ensure all messages have required id and read properties, and collapse tool messages
+// Ensure all messages have required id and read properties, and group tool messages into thinking blocks
 const normalizedMessages = computed(() => {
 	const normalized = normalizeMessages(props.messages);
-	return collapseToolMessages(filterOutHiddenMessages(normalized));
+	return groupToolMessagesIntoThinking(filterOutHiddenMessages(normalized), {
+		streaming: props.streaming,
+		loadingMessage: props.loadingMessage,
+		t,
+	});
 });
 
 // Get quickReplies from the last message in the original messages (before filtering)
@@ -167,7 +229,6 @@ const textInputValue = ref<string>('');
 const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
-const messagesRef = ref<HTMLDivElement | null>(null);
 const inputWrapperRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
@@ -186,9 +247,36 @@ const showSuggestions = computed(() => {
 	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
 });
 
+// Check if we have any thinking group (tool messages grouped into thinking blocks)
+const hasAnyThinkingGroup = computed(() => {
+	return normalizedMessages.value.some((msg) => msg.type === 'thinking-group');
+});
+
+// Show placeholder when streaming with loading message but no tool messages have arrived yet
+const showThinkingPlaceholder = computed(() => {
+	return props.streaming && props.loadingMessage && !hasAnyThinkingGroup.value;
+});
+
 const showBottomInput = computed(() => {
 	// Hide bottom input when showing suggestions (blank state with suggestions)
 	return !showSuggestions.value;
+});
+
+const showFooterRating = computed(() => {
+	if (props.streaming || !props.messages?.length) {
+		return false;
+	}
+
+	// Check if there's a workflow-updated message in the original messages
+	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
+	// and check the last visible message (from normalizedMessages)
+	const hasWorkflowUpdate = props.messages.some((msg) => msg.type === 'workflow-updated');
+	if (!hasWorkflowUpdate || !normalizedMessages.value.length) {
+		return false;
+	}
+
+	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
+	return lastMsg.role !== 'user' && lastMsg.type !== 'thinking-group';
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -223,19 +311,6 @@ function scrollToBottom() {
 	scrollAreaRef.value?.scrollToBottom({ smooth: true });
 }
 
-function isScrolledToBottom(): boolean {
-	const position = scrollAreaRef.value?.getScrollPosition();
-	if (!position) return false;
-
-	const threshold = 10; // Allow for small rounding errors
-	const isAtBottom =
-		Math.abs(
-			position.height - position.top - (messagesRef.value?.parentElement?.clientHeight || 0),
-		) <= threshold;
-
-	return isAtBottom;
-}
-
 function scrollToBottomImmediate() {
 	scrollAreaRef.value?.scrollToBottom({ smooth: false });
 }
@@ -257,119 +332,43 @@ watch(
 	{ immediate: true, deep: true },
 );
 
-// Setup ResizeObserver to maintain scroll position when input height changes
-let resizeObserver: ResizeObserver | null = null;
-let scrollLockActive = false;
-let scrollHandler: (() => void) | null = null;
-let userIsAtBottom = true;
+// Setup initial scroll to bottom
 let isMounted = true;
-
-function setupInputObservers() {
-	if (!isMounted) {
-		return;
-	}
-
-	if (!inputWrapperRef.value || !scrollAreaRef.value || !('ResizeObserver' in window)) {
-		return;
-	}
-
-	// Clean up any existing observers first
-	cleanupInputObservers();
-
-	// Reset state
-	userIsAtBottom = true;
-
-	// Get the viewport element to attach scroll listener
-	const viewport = messagesRef.value?.parentElement;
-	if (!viewport) return;
-
-	// Create scroll handler function so we can remove it later
-	scrollHandler = () => {
-		if (!scrollLockActive) {
-			userIsAtBottom = isScrolledToBottom();
-		}
-	};
-
-	// Monitor user scrolling
-	viewport.addEventListener('scroll', scrollHandler);
-
-	// Monitor input size changes
-	resizeObserver = new ResizeObserver(() => {
-		if (!isMounted) {
-			return;
-		}
-
-		// Only maintain scroll if user was at bottom
-		if (userIsAtBottom) {
-			scrollLockActive = true;
-			// Double RAF for layout stability
-			requestAnimationFrame(() => {
-				if (!isMounted) {
-					return;
-				}
-				requestAnimationFrame(() => {
-					if (!isMounted) {
-						return;
-					}
-					scrollToBottomImmediate();
-					// Check if we're still at bottom after auto-scroll
-					userIsAtBottom = isScrolledToBottom();
-					scrollLockActive = false;
-				});
-			});
-		}
-	});
-
-	resizeObserver.observe(inputWrapperRef.value);
-
-	// Start at bottom
-	scrollToBottomImmediate();
-}
-
-function cleanupInputObservers() {
-	const viewport = messagesRef.value?.parentElement;
-	if (scrollHandler && viewport) {
-		viewport.removeEventListener('scroll', scrollHandler);
-		scrollHandler = null;
-	}
-	if (resizeObserver) {
-		resizeObserver.disconnect();
-		resizeObserver = null;
-	}
-}
 
 // Watch for when the input becomes available and set up observers
 watch(
 	showBottomInput,
 	async (isShown) => {
-		if (isShown) {
-			// Wait for the input to be mounted in the DOM
-			await nextTick();
-			setupInputObservers();
-		} else {
-			// Clean up when input is hidden
-			cleanupInputObservers();
+		if (!isShown) {
+			return;
 		}
+		// Wait for the input to be mounted in the DOM
+		await nextTick();
+
+		if (!isMounted || !inputWrapperRef.value || !scrollAreaRef.value) {
+			return;
+		}
+
+		// Start at bottom
+		scrollToBottomImmediate();
 	},
 	{ immediate: true },
 );
 
 onUnmounted(() => {
 	isMounted = false;
-	cleanupInputObservers();
 });
 
 function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {
-	const $style = useCssModule();
+	const isToolOrThinking = message.type === 'tool' || message.type === 'thinking-group';
+	const nextMsg = normalizedMessages.value[messageCount + 1];
+	const nextIsToolOrThinking = nextMsg?.type === 'tool' || nextMsg?.type === 'thinking-group';
+
 	return {
-		[$style.firstToolMessage]:
-			message.type === 'tool' &&
-			(messageCount === 0 || normalizedMessages.value[messageCount - 1].type !== 'tool'),
 		[$style.lastToolMessage]:
-			message.type === 'tool' &&
+			isToolOrThinking &&
 			((messageCount === normalizedMessages.value.length - 1 && !props.loadingMessage) ||
-				(messageCount < normalizedMessages.value.length - 1 &&
-					normalizedMessages.value[messageCount + 1]?.type !== 'tool')),
+				(messageCount < normalizedMessages.value.length - 1 && !nextIsToolOrThinking)),
 	};
 }
 
@@ -421,7 +420,19 @@ defineExpose({
 									message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
 								"
 							>
+								<!-- Handle ThinkingGroup messages -->
+								<ThinkingMessage
+									v-if="isThinkingGroupMessage(message)"
+									:items="message.items"
+									:default-expanded="true"
+									:latest-status-text="message.latestStatusText"
+									:is-streaming="streaming"
+									:class="getMessageStyles(message, i)"
+								/>
+
+								<!-- Handle regular messages -->
 								<MessageWrapper
+									v-else
 									:message="message"
 									:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 									:user="user"
@@ -429,9 +440,18 @@ defineExpose({
 									:is-last-message="i === normalizedMessages.length - 1"
 									:class="getMessageStyles(message, i)"
 									:color="getMessageColor(message)"
+									:workflow-id="workflowId"
+									:prune-time-hours="pruneTimeHours"
 									@code-replace="() => emit('codeReplace', i)"
 									@code-undo="() => emit('codeUndo', i)"
 									@feedback="onRateMessage"
+									@restore="(versionId: string) => emit('restore', versionId)"
+									@restore-confirm="
+										(versionId: string, messageId: string) =>
+											emit('restoreConfirm', versionId, messageId)
+									"
+									@restore-cancel="emit('restoreCancel')"
+									@show-version="(versionId: string) => emit('showVersion', versionId)"
 								>
 									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
 										<slot name="custom-message" v-bind="customMessageProps" />
@@ -463,19 +483,17 @@ defineExpose({
 							</data>
 							<slot name="messagesFooter" />
 						</div>
-						<div
-							v-if="loadingMessage"
-							:class="{
-								[$style.message]: true,
-								[$style.loading]: normalizedMessages?.length,
-								[$style.firstToolMessage]:
-									normalizedMessages?.length === 0 ||
-									normalizedMessages[normalizedMessages.length - 1].type !== 'tool',
-								[$style.lastToolMessage]: true,
-							}"
-						>
-							<AssistantLoadingMessage :message="loadingMessage" />
-						</div>
+						<!-- Placeholder thinking message when there are no tools yet called -->
+						<ThinkingMessage
+							v-if="showThinkingPlaceholder"
+							:items="[
+								{ id: 'thinking-placeholder', displayTitle: loadingMessage!, status: 'running' },
+							]"
+							:latest-status-text="loadingMessage!"
+							:default-expanded="true"
+							:is-streaming="true"
+							:class="$style.lastToolMessage"
+						/>
 					</div>
 				</N8nScrollArea>
 			</div>
@@ -497,6 +515,7 @@ defineExpose({
 								v-model="textInputValue"
 								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
 								:disabled="disabled"
+								:disabled-tooltip="disabledTooltip"
 								:streaming="streaming"
 								:credits-quota="creditsQuota"
 								:credits-remaining="creditsRemaining"
@@ -504,6 +523,7 @@ defineExpose({
 								:max-length="maxCharacterLength"
 								:min-lines="2"
 								data-test-id="chat-suggestions-input"
+								autofocus
 								@upgrade-click="emit('upgrade-click')"
 								@submit="onSendMessage"
 								@stop="emit('stop')"
@@ -532,10 +552,20 @@ defineExpose({
 				</template>
 			</div>
 		</div>
+		<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
+			<MessageRating minimal @feedback="onRateMessage" />
+		</div>
+		<div v-if="$slots.inputHeader && showBottomInput" :class="$style.inputHeaderWrapper">
+			<slot name="inputHeader" />
+		</div>
 		<div
 			v-if="showBottomInput"
 			ref="inputWrapperRef"
-			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
+			:class="{
+				[$style.inputWrapper]: true,
+				[$style.inputWrapperWithHeader]: $slots.inputHeader,
+				[$style.disabledInput]: sessionEnded,
+			}"
 			data-test-id="chat-input-wrapper"
 		>
 			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
@@ -547,6 +577,7 @@ defineExpose({
 				v-model="textInputValue"
 				:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
+				:disabled-tooltip="disabledTooltip"
 				:streaming="streaming"
 				:credits-quota="creditsQuota"
 				:credits-remaining="creditsRemaining"
@@ -554,6 +585,7 @@ defineExpose({
 				:max-length="maxCharacterLength"
 				:refocus-after-send="true"
 				data-test-id="chat-input"
+				autofocus
 				@upgrade-click="emit('upgrade-click')"
 				@submit="onSendMessage"
 				@stop="emit('stop')"
@@ -601,10 +633,24 @@ defineExpose({
 	border-top: 0;
 	border-bottom: 0;
 	position: relative;
+	line-height: var(--line-height--xl);
 
 	pre,
 	code {
 		text-wrap: wrap;
+	}
+
+	// Add a gradient fade at the bottom of the messages area
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: var(--spacing--xs);
+		height: var(--spacing--md);
+		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
+		pointer-events: none;
+		z-index: 1;
 	}
 }
 
@@ -635,21 +681,22 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--xl); // Extra padding for fade area
+	padding-bottom: var(--spacing--lg);
+
+	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
+	:global(p) {
+		line-height: var(--line-height--xl);
+	}
 }
 
 .message {
 	margin-bottom: var(--spacing--sm);
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 }
 
-.firstToolMessage {
-	margin-top: var(--spacing--md);
-}
-
 .lastToolMessage {
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
 }
 
 .chatTitle {
@@ -697,6 +744,28 @@ defineExpose({
 	color: var(--color--text);
 }
 
+.feedbackWrapper {
+	display: flex;
+	justify-content: start;
+	padding: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
+	border-left: var(--border);
+	border-right: var(--border);
+	background-color: var(--color--background--light-2);
+}
+
+.inputHeaderWrapper {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+	border-left: var(--border);
+	border-right: var(--border);
+	background-color: transparent;
+
+	> :first-child {
+		width: 90%;
+	}
+}
+
 .inputWrapper {
 	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--xs);
 	background-color: transparent;
@@ -704,19 +773,10 @@ defineExpose({
 	position: relative;
 	border-left: var(--border);
 	border-right: var(--border);
+}
 
-	// Add a gradient fade from the chat to the input
-	&::before {
-		content: '';
-		position: absolute;
-		top: calc(-1 * var(--spacing--md));
-		left: 0;
-		right: var(--spacing--xs);
-		height: var(--spacing--md);
-		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
-		pointer-events: none;
-		z-index: 1;
-	}
+.inputWrapperWithHeader {
+	padding-top: 0;
 }
 
 .disabledInput {

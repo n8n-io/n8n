@@ -177,7 +177,7 @@ export type CanvasNodeEventBusEvents = {
 
 export type CanvasEventBusEvents = {
 	fitView: never;
-	'saved:workflow': never;
+	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
 	'nodes:selectAll': never;
@@ -186,7 +186,13 @@ export type CanvasEventBusEvents = {
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
-	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[]; trackEvents?: boolean };
+	tidyUp: {
+		source: CanvasLayoutSource;
+		nodeIdsFilter?: string[];
+		trackEvents?: boolean;
+		trackHistory?: boolean;
+		trackBulk?: boolean;
+	};
 	'create:sticky': never;
 };
 
@@ -221,6 +227,12 @@ export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position']
 export type ExecutionOutputMapData = {
 	total: number;
 	iterations: number;
+	byTarget?: {
+		[targetNodeId: string]: {
+			total: number;
+			iterations: number;
+		};
+	};
 };
 
 export type ExecutionOutputMap = {

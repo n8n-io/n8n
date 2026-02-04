@@ -11,6 +11,7 @@
 	"licenseFeatures": {
 		"feat:sharing": true,
 		"feat:advancedExecutionFilters": true,
+		"feat:apiDisabled": true,
 		"quota:users": -1,
 		"quota:maxVariables": -1,
 		"feat:variables": true

@@ -88,36 +88,15 @@ class PostgresConfig {
 	@Env('DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT')
 	idleTimeoutMs: number = 30_000;
 
+	/** Postgres statement timeout (ms). If a query takes longer than this time to complete, it is terminated. Set `0` to disable. */
+	@Env('DB_POSTGRESDB_STATEMENT_TIMEOUT')
+	statementTimeoutMs: number = 5 * 60 * 1000; // 5 minutes
+
 	@Nested
 	ssl: PostgresSSLConfig;
 }
 
-@Config
-class MysqlConfig {
-	/** @deprecated MySQL database name */
-	@Env('DB_MYSQLDB_DATABASE')
-	database: string = 'n8n';
-
-	/** MySQL database host */
-	@Env('DB_MYSQLDB_HOST')
-	host: string = 'localhost';
-
-	/** MySQL database password */
-	@Env('DB_MYSQLDB_PASSWORD')
-	password: string = '';
-
-	/** MySQL database port */
-	@Env('DB_MYSQLDB_PORT')
-	port: number = 3306;
-
-	/** MySQL database user */
-	@Env('DB_MYSQLDB_USER')
-	user: string = 'root';
-
-	/** MySQL connection pool size */
-	@Env('DB_MYSQLDB_POOL_SIZE')
-	poolSize: number = 10;
-}
+const sqlitePoolSizeSchema = z.coerce.number().int().gte(1);
 
 @Config
 export class SqliteConfig {
@@ -125,15 +104,9 @@ export class SqliteConfig {
 	@Env('DB_SQLITE_DATABASE')
 	database: string = 'database.sqlite';
 
-	/** SQLite database pool size. Set to `0` to disable pooling. */
-	@Env('DB_SQLITE_POOL_SIZE')
-	poolSize: number = 0;
-
-	/**
-	 * Enable SQLite WAL mode.
-	 */
-	@Env('DB_SQLITE_ENABLE_WAL')
-	enableWAL: boolean = this.poolSize > 1;
+	/** SQLite database pool size. Must be equal to or higher than `1`. */
+	@Env('DB_SQLITE_POOL_SIZE', sqlitePoolSizeSchema)
+	poolSize: number = 3;
 
 	/**
 	 * Run `VACUUM` on startup to rebuild the database, reducing file size and optimizing indexes.
@@ -144,7 +117,7 @@ export class SqliteConfig {
 	executeVacuumOnStartup: boolean = false;
 }
 
-const dbTypeSchema = z.enum(['sqlite', 'mariadb', 'mysqldb', 'postgresdb']);
+const dbTypeSchema = z.enum(['sqlite', 'postgresdb']);
 type DbType = z.infer<typeof dbTypeSchema>;
 
 @Config
@@ -152,15 +125,6 @@ export class DatabaseConfig {
 	/** Type of database to use */
 	@Env('DB_TYPE', dbTypeSchema)
 	type: DbType = 'sqlite';
-
-	/**
-	 * Is true if the default sqlite data source of TypeORM is used, as opposed
-	 * to any other (e.g. postgres)
-	 * This also returns false if n8n's new pooled sqlite data source is used.
-	 */
-	get isLegacySqlite() {
-		return this.type === 'sqlite' && this.sqlite.poolSize === 0;
-	}
 
 	/** Prefix for table names */
 	@Env('DB_TABLE_PREFIX')
@@ -177,9 +141,6 @@ export class DatabaseConfig {
 
 	@Nested
 	postgresdb: PostgresConfig;
-
-	@Nested
-	mysqldb: MysqlConfig;
 
 	@Nested
 	sqlite: SqliteConfig;

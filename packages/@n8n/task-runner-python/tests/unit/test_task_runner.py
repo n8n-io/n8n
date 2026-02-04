@@ -21,7 +21,6 @@ class TestTaskRunnerConnectionRetry:
             external_allow={"*"},
             builtins_deny=set(),
             env_deny=False,
-            pipe_reader_timeout=3.0,
         )
 
     @pytest.mark.asyncio

@@ -45,6 +45,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import {
@@ -121,6 +122,7 @@ const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
@@ -156,7 +158,7 @@ const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const { isPreviewMode } = useSettingsStore();
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(
-	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
+	() => workflowsListStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -457,7 +459,7 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(isToolNode.value, i18n.baseText.bind(i18n)),
 );
 
 const iconSource = computed(() =>
@@ -821,7 +823,12 @@ function handleSelectAction(params: INodeParameters) {
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<N8nBlockUi :show="blockUI" />
+		<N8nBlockUi
+			:show="blockUI"
+			:class="{
+				[$style.uiBlockerNdvV2]: isNdvV2,
+			}"
+		/>
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
@@ -832,7 +839,7 @@ function handleSelectAction(params: INodeParameters) {
 
 <style lang="scss" module>
 .header {
-	background-color: var(--color--background);
+	background-color: var(--ndv--header--color);
 }
 
 .featureRequest {
@@ -850,6 +857,10 @@ function handleSelectAction(params: INodeParameters) {
 		color: var(--color--text--tint-1);
 	}
 }
+
+.uiBlockerNdvV2 {
+	border-radius: 0;
+}
 </style>
 
 <style lang="scss" scoped>
@@ -857,7 +868,7 @@ function handleSelectAction(params: INodeParameters) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color--background--light-3);
+	background-color: var(--ndv--background--color);
 	height: 100%;
 	width: 100%;
 

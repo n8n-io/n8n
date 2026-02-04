@@ -10,7 +10,7 @@ describe('OnLifecycleEvent', () => {
 	beforeEach(() => {
 		lifecycleMetadata = new LifecycleMetadata();
 		Container.set(LifecycleMetadata, lifecycleMetadata);
-		jest.spyOn(lifecycleMetadata, 'register');
+		vi.spyOn(lifecycleMetadata, 'register');
 	});
 
 	it('should register a method decorated with OnLifecycleEvent', () => {

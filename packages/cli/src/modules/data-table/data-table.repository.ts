@@ -3,6 +3,7 @@ import {
 	type DataTableCreateColumnSchema,
 	type ListDataTableQueryDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Project, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,8 +25,24 @@ export class DataTableRepository extends Repository<DataTable> {
 		dataSource: DataSource,
 		private ddlService: DataTableDDLService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly logger: Logger,
 	) {
 		super(DataTable, dataSource.manager);
+	}
+
+	/**
+	 * Updates the updatedAt timestamp for a data table without modifying any other fields.
+	 * This is used to track when the table's content (rows/columns) has changed.
+	 *
+	 * Note: This method logs but does not throw errors to ensure that timestamp
+	 * update failures don't affect the primary data operations.
+	 */
+	async touchUpdatedAt(dataTableId: string, trx?: EntityManager) {
+		await withTransaction(this.manager, trx, async (em) => {
+			await em.update(DataTable, { id: dataTableId }, { updatedAt: new Date() });
+		}).catch((error) => {
+			this.logger.warn('Failed to update DataTable timestamp', { dataTableId, error });
+		});
 	}
 
 	async createDataTable(
@@ -334,31 +351,6 @@ export class DataTableRepository extends Repository<DataTable> {
            AND c.relname LIKE '${tablePattern}'
            AND c.relkind IN ('r', 'm', 'p')
       `;
-				break;
-			}
-
-			case 'mysqldb':
-			case 'mariadb': {
-				const databaseName = this.globalConfig.database.mysqldb.database;
-				const isMariaDb = dbType === 'mariadb';
-				const innodbTables = isMariaDb ? 'INNODB_SYS_TABLES' : 'INNODB_TABLES';
-				const innodbTablespaces = isMariaDb ? 'INNODB_SYS_TABLESPACES' : 'INNODB_TABLESPACES';
-				sql = `
-        SELECT t.TABLE_NAME AS table_name,
-            COALESCE(
-                (
-                  SELECT SUM(ists.ALLOCATED_SIZE)
-                    FROM information_schema.${innodbTables} ist
-                    JOIN information_schema.${innodbTablespaces} ists
-                      ON ists.SPACE = ist.SPACE
-                   WHERE ist.NAME = CONCAT(t.TABLE_SCHEMA, '/', t.TABLE_NAME)
-                ),
-                (t.DATA_LENGTH + t.INDEX_LENGTH)
-            ) AS table_bytes
-        FROM information_schema.TABLES t
-        WHERE t.TABLE_SCHEMA = '${databaseName}'
-          AND t.TABLE_NAME LIKE '${tablePattern}'
-    `;
 				break;
 			}
 

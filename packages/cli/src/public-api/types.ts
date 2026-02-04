@@ -1,5 +1,12 @@
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type {
+	AddDataTableRowsDto,
+	CreateDataTableDto,
+	UpdateDataTableDto,
+	UpdateDataTableRowDto,
+	UpsertDataTableRowDto,
+} from '@n8n/api-types';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -82,10 +89,16 @@ export declare namespace WorkflowRequest {
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
-	type Activate = Get;
+	type Activate = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{ versionId?: string; name?: string; description?: string },
+		{}
+	>;
 	type GetTags = Get;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
+	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 
 export declare namespace UserRequest {
@@ -139,6 +152,20 @@ export declare namespace CredentialRequest {
 		{}
 	>;
 
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{
+			type?: string;
+			name?: string;
+			data?: ICredentialDataDecryptedObject;
+			isGlobal?: boolean;
+			isResolvable?: boolean;
+			isPartialData?: boolean;
+		},
+		{}
+	>;
+
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
@@ -171,6 +198,64 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
+}
+
+// ----------------------------------
+//           /data-tables
+// ----------------------------------
+
+export declare namespace DataTableRequest {
+	type List = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			filter?: string;
+			sortBy?: string;
+		}
+	>;
+
+	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
+
+	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
+	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
+
+	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
+	type GetRows = AuthenticatedRequest<
+		{ dataTableId: string },
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			filter?: string;
+			sortBy?: string;
+			search?: string;
+		}
+	>;
+
+	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
+
+	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
+
+	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
+
+	type DeleteRows = AuthenticatedRequest<
+		{ dataTableId: string },
+		{},
+		{},
+		{
+			filter?: string;
+			returnData?: string | boolean;
+			dryRun?: string | boolean;
+		}
+	>;
 }
 
 // ----------------------------------

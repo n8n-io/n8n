@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
+import RestoreVersionLink from './RestoreVersionLink.vue';
 import { useMarkdown } from './useMarkdown';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
@@ -18,12 +19,16 @@ interface Props {
 	streaming?: boolean;
 	isLastMessage?: boolean;
 	color?: string;
+	pruneTimeHours?: number;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
+	restoreConfirm: [versionId: string, messageId: string];
+	restoreCancel: [];
+	showVersion: [versionId: string];
 }>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
@@ -31,6 +36,38 @@ const { t } = useI18n();
 const isClipboardSupported = computed(() => {
 	return navigator.clipboard?.writeText;
 });
+
+// User message expand/collapse functionality
+const isExpanded = ref(false);
+const userContentRef = ref<HTMLElement | null>(null);
+const isOverflowing = ref(false);
+// Should match --assistant--text-message--collapsed--max-height in _tokens.scss
+const MAX_HEIGHT = 200;
+
+function checkOverflow() {
+	if (userContentRef.value) {
+		isOverflowing.value = userContentRef.value.scrollHeight > MAX_HEIGHT;
+	}
+}
+
+function toggleExpanded() {
+	isExpanded.value = !isExpanded.value;
+}
+
+onMounted(() => {
+	void nextTick(() => {
+		checkOverflow();
+	});
+});
+
+watch(
+	() => props.message.content,
+	() => {
+		void nextTick(() => {
+			checkOverflow();
+		});
+	},
+);
 
 async function onCopyButtonClick(content: string, e: MouseEvent) {
 	const button = e.target as HTMLButtonElement;
@@ -49,12 +86,35 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		:user="user"
 		@feedback="(feedback) => emit('feedback', feedback)"
 	>
-		<div :class="$style.textMessage">
-			<span
-				v-if="message.role === 'user'"
-				v-n8n-html="renderMarkdown(message.content)"
-				:class="$style.renderedContent"
-			></span>
+		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
+			<!-- Restore version link for user messages with revertVersion - positioned before the message -->
+			<RestoreVersionLink
+				v-if="message.role === 'user' && message.revertVersion && message.id"
+				:revert-version="message.revertVersion"
+				:streaming="streaming"
+				:prune-time-hours="pruneTimeHours"
+				@restore-confirm="(versionId) => emit('restoreConfirm', versionId, message.id!)"
+				@restore-cancel="emit('restoreCancel')"
+				@show-version="(versionId) => emit('showVersion', versionId)"
+			/>
+			<!-- User message with container -->
+			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
+				<div
+					ref="userContentRef"
+					:class="[$style.userContent, { [$style.collapsed]: !isExpanded && isOverflowing }]"
+				>
+					<span v-n8n-html="renderMarkdown(message.content)" :class="$style.renderedContent"></span>
+				</div>
+				<button
+					v-if="isOverflowing"
+					:class="$style.showMoreButton"
+					type="button"
+					@click="toggleExpanded"
+				>
+					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
+				</button>
+			</div>
+			<!-- Assistant message - simple text without container -->
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"
@@ -92,10 +152,47 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .textMessage {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
-	font-size: var(--font-size--2xs);
-	line-height: 1.6;
+	gap: var(--spacing--2xs);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 	word-break: break-word;
+}
+
+// User messages align right
+.userMessage {
+	align-items: flex-end;
+}
+
+// User message container styles per Figma
+.userMessageContainer {
+	background-color: var(--assistant--color--background--user-bubble);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	color: var(--assistant--color--text--user-bubble);
+	max-width: calc(100% - 40px);
+}
+
+.userContent {
+	&.collapsed {
+		max-height: var(--assistant--text-message--collapsed--max-height);
+		overflow: hidden;
+	}
+}
+
+.showMoreButton {
+	background: none;
+	border: none;
+	padding: 0;
+	margin-top: var(--spacing--2xs);
+	color: var(--assistant--color--text--subtle);
+	font-size: var(--font-size--sm);
+	font-weight: 500;
+	cursor: pointer;
+	text-align: left;
+
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .codeSnippet {
@@ -135,15 +232,26 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	}
 }
 
+// Assistant message - simple text
 .assistantText {
 	display: inline-flex;
 	flex-direction: column;
+	color: var(--assistant--color--text);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+	max-width: calc(100% - 40px);
 }
 
 .renderedContent {
 	p {
 		margin: 0;
-		margin: var(--spacing--4xs) 0;
+	}
+
+	// Add top padding to strong elements only when there's content before them
+	:not(:first-child) > strong:first-child,
+	* + strong {
+		display: inline-block;
+		padding-top: var(--spacing--md);
 	}
 
 	h1,

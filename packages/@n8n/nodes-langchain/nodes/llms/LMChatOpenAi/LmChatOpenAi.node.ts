@@ -10,6 +10,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -19,6 +20,8 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 const INCLUDE_JSON_WARNING: INodeProperties = {
 	displayName:
@@ -184,7 +187,7 @@ export class LmChatOpenAi implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'gpt-4o-mini',
+				default: 'gpt-5-mini',
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.2 } }],
@@ -195,7 +198,7 @@ export class LmChatOpenAi implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: 'gpt-4.1-mini' },
+				default: { mode: 'list', value: 'gpt-5-mini' },
 				required: true,
 				modes: [
 					{
@@ -212,7 +215,7 @@ export class LmChatOpenAi implements INodeType {
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						placeholder: 'gpt-4.1-mini',
+						placeholder: 'gpt-5-mini',
 					},
 				],
 				description: 'The model. Choose from the list, or specify an ID.',
@@ -739,19 +742,26 @@ export class LmChatOpenAi implements INodeType {
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as ModelOptions;
 
-		const configuration: ClientOptions = {};
+		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+
+		const configuration: ClientOptions = {
+			defaultHeaders,
+		};
 
 		if (options.baseURL) {
+			checkDomainRestrictions(this, credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		if (configuration.baseURL) {
-			configuration.fetchOptions = {
-				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
-			};
-		}
+		const timeout = options.timeout;
+		configuration.fetchOptions = {
+			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
+				headersTimeout: timeout,
+				bodyTimeout: timeout,
+			}),
+		};
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
@@ -759,6 +769,7 @@ export class LmChatOpenAi implements INodeType {
 			typeof credentials.headerValue === 'string'
 		) {
 			configuration.defaultHeaders = {
+				...configuration.defaultHeaders,
 				[credentials.headerName]: credentials.headerValue,
 			};
 		}
@@ -788,12 +799,15 @@ export class LmChatOpenAi implements INodeType {
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...includedOptions,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+			// Set to false to ensure compatibility with OpenAI-compatible backends (LM Studio, vLLM, etc.)
+			// that reject strict: null in tool definitions
+			supportsStrictToolCalling: false,
 		};
 
 		// by default ChatOpenAI can switch to responses API automatically, so force it only on 1.3 and above to keep backwards compatibility

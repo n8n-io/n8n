@@ -46,6 +46,7 @@ type ExternalHooksMap = {
 	];
 	'oauth2.authenticate': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.callback': [oAuthOptions: ClientOAuth2Options];
+	'oauth2.dynamicClientRegistration': [registerPayload: { redirect_uris: string[] }];
 
 	'tag.beforeCreate': [tag: TagEntity];
 	'tag.afterCreate': [tag: TagEntity];
@@ -144,6 +145,10 @@ export class ExternalHooks {
 				registered[hookName].push(...operations[operation]);
 			}
 		}
+	}
+
+	hasHook<HookName extends HookNames>(hookName: HookName): boolean {
+		return !!this.registered[hookName]?.length;
 	}
 
 	async run<HookName extends HookNames>(

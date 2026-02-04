@@ -111,6 +111,16 @@ describe('useNodeCommands', () => {
 			value: false,
 		});
 
+		Object.defineProperty(mockWorkflowsStore, 'workflowId', {
+			value: '123',
+			writable: true,
+		});
+
+		Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+			value: { '123': true },
+			writable: true,
+		});
+
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
 
 		mockEditableWorkflow.value.nodes = [];
@@ -125,7 +135,6 @@ describe('useNodeCommands', () => {
 				activeNodeId: ref(null),
 			});
 
-			console.log('commands', commands.value);
 			const addCommand = commands.value.find((cmd) => cmd.id === 'add-node');
 			expect(addCommand).toBeDefined();
 		});
@@ -177,8 +186,9 @@ describe('useNodeCommands', () => {
 				workflow: { update: false, execute: false },
 			});
 
-			Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
-				value: true,
+			Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+				value: {},
+				writable: true,
 			});
 
 			const { commands } = useNodeCommands({
@@ -228,7 +238,7 @@ describe('useNodeCommands', () => {
 
 		it('should populate open node children with workflow nodes', () => {
 			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
+				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
 				{
 					id: 'node-2',
 					name: 'HTTP Request',
@@ -303,7 +313,7 @@ describe('useNodeCommands', () => {
 	describe('root open node items', () => {
 		beforeEach(() => {
 			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
+				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
 			];
 		});
 

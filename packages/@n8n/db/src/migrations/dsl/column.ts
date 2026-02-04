@@ -12,7 +12,8 @@ export class Column {
 		| 'uuid'
 		| 'double'
 		| 'bigint'
-		| 'smallint';
+		| 'smallint'
+		| 'binary';
 
 	private isGenerated = false;
 
@@ -99,6 +100,11 @@ export class Column {
 		return this;
 	}
 
+	get binary() {
+		this.type = 'binary';
+		return this;
+	}
+
 	get primary() {
 		this.isPrimary = true;
 		return this;
@@ -153,7 +159,6 @@ export class Column {
 			length,
 			primaryKeyConstraintName,
 		} = this;
-		const isMysql = 'mysql' in driver;
 		const isPostgres = 'postgres' in driver;
 		const isSqlite = 'sqlite' in driver;
 
@@ -167,8 +172,6 @@ export class Column {
 
 		if (options.type === 'int' && isSqlite) {
 			options.type = 'integer';
-		} else if (type === 'boolean' && isMysql) {
-			options.type = 'tinyint(1)';
 		} else if (type === 'timestamptz') {
 			options.type = isPostgres ? 'timestamptz' : 'datetime';
 		} else if (type === 'timestamp') {
@@ -176,20 +179,22 @@ export class Column {
 		} else if (type === 'json' && isSqlite) {
 			options.type = 'text';
 		} else if (type === 'uuid') {
-			// mysql does not support uuid type
-			if (isMysql) options.type = 'varchar(36)';
 			// we haven't been defining length on "uuid" varchar on sqlite
 			if (isSqlite) options.type = 'varchar';
 		} else if (type === 'double') {
 			if (isPostgres) {
 				options.type = 'double precision';
-			} else if (isMysql) {
-				options.type = 'double';
 			} else if (isSqlite) {
 				options.type = 'real';
 			}
 		} else if (type === 'bigint') {
 			options.type = 'bigint';
+		} else if (type === 'binary') {
+			if (isPostgres) {
+				options.type = 'bytea';
+			} else if (isSqlite) {
+				options.type = 'blob';
+			}
 		}
 
 		if (
@@ -206,7 +211,7 @@ export class Column {
 
 		if (isGenerated2) {
 			options.isGenerated = true;
-			options.generationStrategy = type === 'uuid' ? 'uuid' : isMysql ? 'increment' : 'identity';
+			options.generationStrategy = type === 'uuid' ? 'uuid' : 'identity';
 		}
 
 		if (isPrimary || isGenerated || isGenerated2) {

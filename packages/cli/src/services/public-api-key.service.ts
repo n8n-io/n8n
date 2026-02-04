@@ -1,11 +1,12 @@
 import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, UserRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
+import { randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -71,6 +72,18 @@ export class PublicApiKeyService {
 
 	async deleteApiKeyForUser(user: User, apiKeyId: string) {
 		await this.apiKeyRepository.delete({ userId: user.id, id: apiKeyId });
+	}
+
+	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
+		return await withTransaction(this.apiKeyRepository.manager, tx, async (em) => {
+			const userApiKeys = await em.find(ApiKey, {
+				where: { userId: user.id, audience: API_KEY_AUDIENCE },
+			});
+
+			return await Promise.all(
+				userApiKeys.map(async (apiKey) => await em.delete(ApiKey, { id: apiKey.id })),
+			);
+		});
 	}
 
 	async updateApiKeyForUser(
@@ -159,7 +172,7 @@ export class PublicApiKeyService {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
-			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE },
+			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE, jti: randomUUID() },
 			{ ...(expiresAt && { expiresIn: expiresAt - nowInSeconds }) },
 		);
 	}

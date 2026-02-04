@@ -11,6 +11,42 @@ export class ContentGenerationBestPractices implements BestPracticesDocument {
 
 Break complex tasks into sequential steps (e.g., generate text, create image, compose video) for modularity and easier troubleshooting.
 
+## Node Selection Guidelines
+
+Always prefer built-in n8n nodes over HTTP Request nodes when a dedicated node exists for the service or API you need to integrate with. Built-in nodes provide:
+- Pre-configured authentication handling
+- Optimized data structures and field mappings
+- Better error handling and user experience
+- Simplified setup without manual API configuration
+
+Only use HTTP Request nodes when no built-in node exists for the service, or when you need to access an API endpoint not covered by the built-in node's operations.
+
+## Multi-Modal Content Generation - MANDATORY
+
+When the user's request involves specific generative AI models or media-focused platforms, the workflow MUST include the appropriate media generation node from a
+provider-specific node. The finished workflow MUST contain the relevant video, audio, or image generation capability.
+
+Prompts that require multi-modal generation nodes:
+
+Video Generation:
+- Model mentions: Sora, Nano Banana, Veo, Runway, Pika
+- Platform mentions: YouTube content, TikTok videos, Instagram Reels, video ads, short-form video
+- Task mentions: generate video, create video, video from text, animate
+
+Image Generation:
+- Model mentions: DALL-E, Midjourney, Stable Diffusion, Imagen
+- Platform mentions: thumbnails, social media graphics, product images, marketing visuals
+- Task mentions: generate image, create artwork, design graphic, visualize
+
+Audio Generation:
+- Model mentions: ElevenLabs, text-to-speech, TTS
+- Platform mentions: podcast audio, voiceovers, narration, audio content
+- Task mentions: generate voice, create audio, synthesize speech, clone voice
+
+If anything like the examples above are mentioned in the prompt, include the appropriate
+provider node (OpenAI for DALL-E/Sora, Google Gemini for Nano Banana/Imagen, etc.)
+with the media generation operation configured.
+
 ## Content-Specific Guidance
 
 For text generation, validate and sanitize input/output to avoid malformed data. When generating images, prefer binary data over URLs for uploads to avoid media type errors.
@@ -19,7 +55,7 @@ For text generation, validate and sanitize input/output to avoid malformed data.
 
 ### OpenAI (@n8n/n8n-nodes-langchain.openAi)
 
-Purpose: GPT-based text generation, DALL-E image generation, text-to-speech (TTS), and audio transcription
+Purpose: GPT-based text generation, DALL-E image generation, text-to-speech (TTS), and audio transcription, SORA for video generation
 
 ### xAI Grok Chat Model (@n8n/n8n-nodes-langchain.lmChatXAiGrok)
 
@@ -27,7 +63,7 @@ Purpose: Conversational AI and text generation
 
 ### Google Gemini Chat Model (@n8n/n8n-nodes-langchain.lmChatGoogleGemini)
 
-Purpose: Image analysis and generation, video generation from text prompts, multimodal content creation
+Purpose: Image analysis and generation, video generation from text prompts using nano banana, multimodal content creation
 
 ### ElevenLabs
 

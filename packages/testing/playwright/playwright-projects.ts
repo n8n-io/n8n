@@ -1,81 +1,59 @@
 import type { Project } from '@playwright/test';
-import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
+import type { N8NConfig } from 'n8n-containers/stack';
 
-// Tags that require test containers environment
-// These tests won't be run against local
-const CONTAINER_ONLY_TAGS = [
-	'proxy',
-	'postgres',
-	'queue',
-	'multi-main',
-	'task-runner',
-	'source-control',
-	'email',
-];
-const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
+import {
+	CONTAINER_ONLY_CAPABILITIES,
+	CONTAINER_ONLY_MODES,
+	LICENSED_TAG,
+} from './fixtures/capabilities';
+import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
-// Tags that need serial execution
-// These tests will be run AFTER the first run of the UI tests
-// In local run they are a "dependency" which means they will be skipped if earlier tests fail, not ideal but needed for isolation
-const SERIAL_EXECUTION = /@db:reset/;
-
-// Routes tests to isolated worker without triggering automatic database resets in fixtures
-// Use when tests need worker isolation but have intentional state dependencies (e.g., serial tests sharing data)
-const ISOLATED_ONLY = /@isolated/;
+// Tests that require container environment (won't run against local n8n).
+// Matches:
+// - @capability:X - add-on features (email, proxy, source-control, etc.)
+// - @mode:X - infrastructure modes (postgres, queue, multi-main)
+// - @licensed - enterprise license features (log streaming, SSO, etc.)
+// - @db:reset - tests needing per-test database reset (requires isolated containers)
+const CONTAINER_ONLY = new RegExp(
+	`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})|@mode:(${CONTAINER_ONLY_MODES.join('|')})|@${LICENSED_TAG}|@db:reset`,
+);
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
-	{ name: 'standard', config: {} },
+	{ name: 'sqlite', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
-	{ name: 'queue', config: { queueMode: true } },
-	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
+	{ name: 'queue', config: { workers: 1 } },
+	{
+		name: 'multi-main',
+		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+	},
 ];
 
 export function getProjects(): Project[] {
-	const isLocal = !!process.env.N8N_BASE_URL;
+	const isLocal = !!getBackendUrl();
 	const projects: Project[] = [];
 
 	if (isLocal) {
-		projects.push(
-			{
-				name: 'ui',
-				testDir: './tests/ui',
-				grepInvert: new RegExp(
-					[CONTAINER_ONLY.source, SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|'),
-				),
-				fullyParallel: true,
-				use: { baseURL: process.env.N8N_BASE_URL },
-			},
-			{
-				name: 'ui:isolated',
-				testDir: './tests/ui',
-				grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
-				workers: 1,
-				use: { baseURL: process.env.N8N_BASE_URL },
-			},
-		);
+		projects.push({
+			name: 'e2e',
+			testDir: './tests/e2e',
+			grepInvert: CONTAINER_ONLY,
+			fullyParallel: true,
+			use: { baseURL: getFrontendUrl() },
+		});
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
-			const grepInvertPatterns = [SERIAL_EXECUTION.source, ISOLATED_ONLY.source];
 			projects.push(
 				{
-					name: `${name}:ui`,
-					testDir: './tests/ui',
-					grepInvert: new RegExp(grepInvertPatterns.join('|')),
-					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
+					name: `${name}:e2e`,
+					testDir: './tests/e2e',
+					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
 					use: { containerConfig: config },
 				},
 				{
-					name: `${name}:ui:isolated`,
-					testDir: './tests/ui',
-					grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
-					workers: 1,
-					use: { containerConfig: config },
-				},
-				{
-					name: `${name}:chaos`,
-					testDir: './tests/chaos',
-					grep: new RegExp(`@mode:${name}`),
+					name: `${name}:infrastructure`,
+					testDir: './tests/infrastructure',
+					grep: new RegExp(`@mode:${name}|@capability:${name}`),
 					workers: 1,
 					timeout: 180000,
 					use: { containerConfig: config },

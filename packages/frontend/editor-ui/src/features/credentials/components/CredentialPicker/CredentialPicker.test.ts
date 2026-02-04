@@ -6,6 +6,7 @@ import CredentialPicker from './CredentialPicker.vue';
 import {
 	PERSONAL_OPENAI_CREDENTIAL,
 	PROJECT_OPENAI_CREDENTIAL,
+	GLOBAL_OPENAI_CREDENTIAL,
 	TEST_CREDENTIAL_TYPES,
 	TEST_CREDENTIALS,
 } from './CredentialPicker.test.constants';
@@ -49,7 +50,7 @@ describe('CredentialPicker', () => {
 		).not.toThrowError();
 	});
 
-	it('should only render personal credentials of the specified type', async () => {
+	it('should render all credentials of the specified type', async () => {
 		const TEST_APP_NAME = 'OpenAI';
 		const TEST_CREDENTIAL_TYPE = 'openAiApi';
 		const { getByTestId } = renderComponent({
@@ -70,9 +71,45 @@ describe('CredentialPicker', () => {
 		expect(
 			screen.getByTestId(`node-credentials-select-item-${PERSONAL_OPENAI_CREDENTIAL.id}`),
 		).toBeInTheDocument();
+		// OpenAI credential that belong to other project should be in the dropdown
+		expect(
+			screen.queryByTestId(`node-credentials-select-item-${PROJECT_OPENAI_CREDENTIAL.id}`),
+		).toBeInTheDocument();
+		// Global OpenAI credential should be in the dropdown
+		expect(
+			screen.queryByTestId(`node-credentials-select-item-${GLOBAL_OPENAI_CREDENTIAL.id}`),
+		).toBeInTheDocument();
+	});
+
+	it('should only render personal credentials of the specified type', async () => {
+		const TEST_APP_NAME = 'OpenAI';
+		const TEST_CREDENTIAL_TYPE = 'openAiApi';
+		const { getByTestId } = renderComponent({
+			props: {
+				personalOnly: true,
+				appName: TEST_APP_NAME,
+				credentialType: TEST_CREDENTIAL_TYPE,
+				selectedCredentialId: null,
+			},
+		});
+		expect(getByTestId('credential-dropdown')).toBeInTheDocument();
+		expect(getByTestId('credential-dropdown')).toHaveAttribute(
+			'credential-type',
+			TEST_CREDENTIAL_TYPE,
+		);
+		// Open the dropdown
+		await userEvent.click(getByTestId('credential-dropdown'));
+		// Personal openAI credential should be in the dropdown
+		expect(
+			screen.getByTestId(`node-credentials-select-item-${PERSONAL_OPENAI_CREDENTIAL.id}`),
+		).toBeInTheDocument();
 		// OpenAI credential that belong to other project should not be in the dropdown
 		expect(
 			screen.queryByTestId(`node-credentials-select-item-${PROJECT_OPENAI_CREDENTIAL.id}`),
 		).not.toBeInTheDocument();
+		// Global OpenAI credential should be in the dropdown
+		expect(
+			screen.queryByTestId(`node-credentials-select-item-${GLOBAL_OPENAI_CREDENTIAL.id}`),
+		).toBeInTheDocument();
 	});
 });

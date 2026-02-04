@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { Config, Env } from '../decorators';
+import { getN8nFolder } from '../utils/utils';
 
 @Config
 export class InstanceSettingsConfig {
@@ -10,7 +11,7 @@ export class InstanceSettingsConfig {
 	 * attempt change them to 0600 (only owner has rw access) if they are too wide.
 	 */
 	@Env('N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS')
-	enforceSettingsFilePermissions: boolean = false;
+	enforceSettingsFilePermissions: boolean = true;
 
 	/**
 	 * Encryption key to use for encrypting and decrypting credentials.
@@ -29,9 +30,7 @@ export class InstanceSettingsConfig {
 	readonly n8nFolder: string;
 
 	constructor() {
-		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
-		this.userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
-
-		this.n8nFolder = path.join(this.userHome, '.n8n');
+		this.n8nFolder = getN8nFolder();
+		this.userHome = path.dirname(this.n8nFolder);
 	}
 }

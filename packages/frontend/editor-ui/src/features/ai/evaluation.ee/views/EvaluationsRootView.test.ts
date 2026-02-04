@@ -5,18 +5,34 @@ import { createComponentRenderer } from '@/__tests__/render';
 import EvaluationRootView from './EvaluationsRootView.vue';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useEvaluationStore } from '../evaluation.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import type { TestRunRecord } from '../evaluation.api';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
+
+vi.mock('vue-router', () => ({
+	useRoute: () => ({
+		query: {},
+		params: {},
+	}),
+	useRouter: () => ({}),
+	RouterLink: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useCanvasOperations', () => ({
+	useCanvasOperations: () => ({
+		initializeWorkspace: vi.fn(),
+	}),
+}));
 
 vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -26,6 +42,13 @@ vi.mock('@/app/composables/useTelemetry', () => {
 		}),
 	};
 });
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: vi.fn(),
+		showMessage: vi.fn(),
+	}),
+}));
 
 const getNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -50,6 +73,7 @@ describe('EvaluationsRootView', () => {
 		id: 'different-id',
 		name: 'Test Workflow',
 		active: false,
+		activeVersionId: null,
 		isArchived: false,
 		createdAt: Date.now(),
 		updatedAt: Date.now(),
@@ -87,23 +111,37 @@ describe('EvaluationsRootView', () => {
 
 	it('should initialize workflow on mount if not already initialized', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
-		const uninitializedWorkflow = { ...mockWorkflow, id: PLACEHOLDER_EMPTY_WORKFLOW_ID };
-		workflowsStore.workflow = uninitializedWorkflow;
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		const usageStore = mockedStore(useUsageStore);
+		const evaluationStore = mockedStore(useEvaluationStore);
+
+		// Set workflow id to empty to simulate uninitialized state
+		workflowsStore.workflow = { ...mockWorkflow, id: '' };
 		const newWorkflowId = 'workflow123';
+
+		// Mock the async operations that run before fetchWorkflow
+		usageStore.getLicenseInfo.mockResolvedValue(undefined);
+		evaluationStore.fetchTestRuns.mockResolvedValue([]);
+		workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		workflowsStore.isWorkflowSaved = { workflow123: true };
 
 		renderComponent({ props: { name: newWorkflowId } });
 
 		// Wait for async operation to complete
-		await waitFor(() => expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(newWorkflowId));
+		await flushPromises();
+		await waitFor(() =>
+			expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(newWorkflowId),
+		);
 	});
 
 	it('should not initialize workflow if already loaded', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		workflowsStore.workflow = mockWorkflow;
 
 		renderComponent({ props: { name: mockWorkflow.id } });
 
-		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+		expect(workflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('should load test data', async () => {
@@ -118,8 +156,8 @@ describe('EvaluationsRootView', () => {
 	});
 
 	it('should not render setup wizard when there are test runs', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		const evaluationStore = mockedStore(useEvaluationStore);
 		evaluationStore.testRunsById = { foo: mock<TestRunRecord>({ workflowId: mockWorkflow.id }) };
 
@@ -131,21 +169,39 @@ describe('EvaluationsRootView', () => {
 
 	it('should render the setup wizard when there there are no test runs', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		const usageStore = mockedStore(useUsageStore);
+		const evaluationStore = mockedStore(useEvaluationStore);
+
+		workflowsStore.workflow = mockWorkflow;
+		workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		usageStore.getLicenseInfo.mockResolvedValue(undefined);
+		evaluationStore.fetchTestRuns.mockResolvedValue([]);
+		evaluationStore.testRunsById = {};
 
 		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
 
+		await flushPromises();
 		await waitFor(() => expect(container.querySelector('.setupContent')).toBeTruthy());
 	});
 
 	it('should render read-only callout when in protected environment', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		const usageStore = mockedStore(useUsageStore);
+		const evaluationStore = mockedStore(useEvaluationStore);
 		const sourceControlStore = mockedStore(useSourceControlStore);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+
+		workflowsStore.workflow = mockWorkflow;
+		workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		usageStore.getLicenseInfo.mockResolvedValue(undefined);
+		evaluationStore.fetchTestRuns.mockResolvedValue([]);
+		evaluationStore.testRunsById = {};
 		sourceControlStore.preferences = mock<SourceControlPreferences>({ branchReadOnly: true });
 
 		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
 
+		await flushPromises();
 		await waitFor(() => {
 			const callout = container.querySelector('[role="alert"]');
 			expect(callout).toBeTruthy();

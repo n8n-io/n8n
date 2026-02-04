@@ -201,7 +201,14 @@ describe('useSourceControlStore', () => {
 			};
 
 			const mockPushWorkfolder = vi.mocked(vcApi.pushWorkfolder);
-			mockPushWorkfolder.mockResolvedValue(undefined);
+			mockPushWorkfolder.mockResolvedValue({
+				files: data.fileNames,
+				commit: {
+					hash: 'abc123',
+					message: data.commitMessage,
+					branch: 'main',
+				},
+			});
 
 			await sourceControlStore.pushWorkfolder(data);
 
@@ -237,9 +244,9 @@ describe('useSourceControlStore', () => {
 			const mockPullWorkfolder = vi.mocked(vcApi.pullWorkfolder);
 			mockPullWorkfolder.mockResolvedValue(mockResult);
 
-			const result = await sourceControlStore.pullWorkfolder(force);
+			const result = await sourceControlStore.pullWorkfolder(force, 'none');
 
-			expect(mockPullWorkfolder).toHaveBeenCalledWith({}, { force });
+			expect(mockPullWorkfolder).toHaveBeenCalledWith({}, { force, autoPublish: 'none' });
 			expect(result).toEqual(mockResult);
 		});
 	});
@@ -265,7 +272,7 @@ describe('useSourceControlStore', () => {
 
 			const result = await sourceControlStore.getAggregatedStatus();
 
-			expect(mockGetAggregatedStatus).toHaveBeenCalledWith({});
+			expect(mockGetAggregatedStatus).toHaveBeenCalledWith({}, undefined);
 			expect(result).toEqual(mockStatus);
 		});
 	});

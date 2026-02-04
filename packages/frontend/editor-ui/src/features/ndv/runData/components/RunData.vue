@@ -31,7 +31,6 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
-	NDV_UI_OVERHAUL_EXPERIMENT,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	RUN_DATA_DEFAULT_PAGE_SIZE,
 } from '@/app/constants';
@@ -57,6 +56,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
@@ -73,7 +73,6 @@ import RunDataItemCount from './RunDataItemCount.vue';
 import RunDataDisplayModeSelect from './RunDataDisplayModeSelect.vue';
 import RunDataPaginationBar from './RunDataPaginationBar.vue';
 import { parseAiContent } from '@/app/utils/aiUtils';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from './RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/features/execution/executions/executions.utils';
@@ -95,6 +94,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
 
@@ -227,9 +227,9 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const sourceControlStore = useSourceControlStore();
+const collaborationStore = useCollaborationStore();
 const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
-const posthogStore = usePostHog();
 
 const toast = useToast();
 const route = useRoute();
@@ -294,7 +294,11 @@ const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
 const hasBinaryData = computed(() => binaryData.value?.length > 0);
 const hasNoData = computed(() => !rawInputData.value.length && !pinnedData.hasData.value);
 const isReadOnly = computed(
-	() => isReadOnlyRoute.value || readOnlyEnv.value || isArchivedWorkflow.value,
+	() =>
+		isReadOnlyRoute.value ||
+		readOnlyEnv.value ||
+		isArchivedWorkflow.value ||
+		collaborationStore.shouldBeReadOnly,
 );
 
 const shouldShowSchemaView = computed(() => {
@@ -368,16 +372,6 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
-const subworkflowExecutionError = computed(() => {
-	if (!node.value) return null;
-	return {
-		node: node.value,
-		messages: [workflowsStore.subWorkflowExecutionError?.message ?? ''],
-	} as NodeError;
-});
-
-const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflowExecutionError);
-
 const parentNodeError = computed(() => {
 	const parentNode = props.workflowObject.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
 	return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
@@ -385,10 +379,13 @@ const parentNodeError = computed(() => {
 
 const workflowRunErrorAsNodeError = computed(() => {
 	if (!node.value) return null;
-	if (isSubNodeType.value && isPaneTypeInput.value) {
+
+	const selfTaskData = workflowRunData.value?.[node.value.name]?.[props.runIndex];
+
+	if (!selfTaskData && isSubNodeType.value && isPaneTypeInput.value) {
 		return parentNodeError.value;
 	}
-	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.error as NodeError;
+	return selfTaskData?.error as NodeError;
 });
 
 const hasRunError = computed(() => node.value && !!workflowRunErrorAsNodeError.value);
@@ -636,12 +633,7 @@ const isSchemaPreviewEnabled = computed(
 		!(nodeType.value?.codex?.categories ?? []).some((category) => category === CORE_NODES_CATEGORY),
 );
 
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
+const isNDVV2 = computed(() => true);
 
 const hasPreviewSchema = asyncComputed(async () => {
 	if (!isSchemaPreviewEnabled.value || props.nodes.length === 0) return false;
@@ -807,6 +799,7 @@ function getResolvedNodeOutputs() {
 	}
 	return [];
 }
+
 function shouldHintBeDisplayed(hint: NodeHint): boolean {
 	const { location, whenToDisplay } = hint;
 
@@ -963,6 +956,8 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		is_output_present: hasNodeRun.value || pinnedData.hasData.value,
 		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : props.displayMode,
 		is_data_pinned: pinnedData.hasData.value,
+		workflow_id: workflowsStore.workflowId,
+		node_id: activeNode.value?.id,
 	});
 }
 
@@ -1038,6 +1033,8 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 			push_ref: props.pushRef,
 			run_index: props.runIndex,
 			view: !hasNodeRun.value && !pinnedData.hasData.value ? 'none' : props.displayMode,
+			workflow_id: workflowsStore.workflowId,
+			node_id: activeNode.value?.id,
 		};
 
 		void externalHooks.run('runData.onTogglePinData', telemetryPayload);
@@ -1419,7 +1416,7 @@ function onSearchClear() {
 
 function executeNode(nodeName: string) {
 	void runWorkflow({
-		destinationNode: nodeName,
+		destinationNode: { nodeName, mode: 'inclusive' },
 		source: 'schema-preview',
 	});
 }
@@ -1725,9 +1722,9 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
-				<N8nText v-if="previousExecutionDataUsedInEditMode" class="mb-2xs" size="small">{{
-					i18n.baseText('runData.pinData.insertedExecutionData')
-				}}</N8nText>
+				<N8nText v-if="previousExecutionDataUsedInEditMode" class="mb-2xs" size="small"
+					>{{ i18n.baseText('runData.pinData.insertedExecutionData') }}
+				</N8nText>
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
 						:model-value="editMode.value"
@@ -1743,18 +1740,6 @@ defineExpose({ enterEditMode });
 						</N8nLink>
 					</N8nInfoTip>
 				</div>
-			</div>
-
-			<div
-				v-else-if="isPaneTypeOutput && hasSubworkflowExecutionError && subworkflowExecutionError"
-				:class="$style.stretchVertically"
-			>
-				<NodeErrorView
-					:compact="compact"
-					:error="subworkflowExecutionError"
-					:class="$style.errorDisplay"
-					show-details
-				/>
 			</div>
 
 			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
@@ -1922,6 +1907,7 @@ defineExpose({ enterEditMode });
 					:total-runs="maxRunIndex"
 					:search="search"
 					:compact="props.compact"
+					:execution="workflowExecution"
 				/>
 			</Suspense>
 
@@ -1984,7 +1970,13 @@ defineExpose({ enterEditMode });
 			@update:current-page="onCurrentPageChange"
 			@update:page-size="onPageSizeChange"
 		/>
-		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
+		<N8nBlockUi
+			:show="blockUI"
+			:class="{
+				[$style.uiBlocker]: true,
+				[$style.uiBlockerNdvV2]: isNDVV2,
+			}"
+		/>
 	</div>
 </template>
 
@@ -2243,6 +2235,10 @@ defineExpose({ enterEditMode });
 .uiBlocker {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+}
+
+.uiBlockerNdvV2 {
+	border-radius: 0;
 }
 
 .hintCallout {

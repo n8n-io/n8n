@@ -74,16 +74,16 @@ defineExpose({
 });
 
 const variants: Record<SelectVariants, string> = {
-	default: $style.Default,
-	ghost: $style.Ghost,
+	default: $style.default,
+	ghost: $style.ghost,
 };
 
 const variant = computed(() => variants[props.variant]);
 
 const sizes: Record<SelectSizes, string> = {
-	xsmall: $style.XSmall,
-	small: $style.Small,
-	medium: $style.Medium,
+	xsmall: $style.xsmall,
+	small: $style.small,
+	medium: $style.medium,
 };
 const size = computed(() => sizes[props.size]);
 
@@ -96,9 +96,9 @@ const strokeWidths = {
 const iconStrokeWidth = computed(() => strokeWidths[props.size]);
 
 const labelSizes: Record<SelectSizes, string> = {
-	xsmall: $style.SelectLabelXSmall,
-	small: $style.SelectLabelSmall,
-	medium: $style.SelectLabelMedium,
+	xsmall: $style.selectLabelXsmall,
+	small: $style.selectLabelSmall,
+	medium: $style.selectLabelMedium,
 };
 const labelSize = computed(() => labelSizes[props.size]);
 
@@ -110,13 +110,13 @@ const groups = computed<SelectItemProps[]>(() => {
 					...item,
 					value: get(item, props.valueKey?.toString() ?? 'value'),
 					label: get(item, props.labelKey?.toString() ?? 'label'),
-					class: [$style.SelectItem, item.class, size.value],
+					class: [$style.selectItem, item.class, size.value],
 					strokeWidth: iconStrokeWidth.value,
 				}
 			: {
 					value: item,
 					label: String(item),
-					class: [$style.SelectItem, size.value],
+					class: [$style.selectItem, size.value],
 				};
 	});
 });
@@ -136,32 +136,32 @@ const groups = computed<SelectItemProps[]>(() => {
 			:id="id"
 			ref="trigger"
 			v-bind="$attrs"
-			:class="[$style.SelectTrigger, variant, size]"
+			:class="[$style.selectTrigger, variant, size]"
 			:aria-label="$attrs['aria-label'] ?? placeholder"
 		>
-			<Icon v-if="icon" :icon="icon" :class="$style.SelectedIcon" :stroke-width="iconStrokeWidth" />
-			<RSelectValue :placeholder="placeholder" :class="$style.SelectValue">
+			<Icon v-if="icon" :icon="icon" :class="$style.selectedIcon" :stroke-width="iconStrokeWidth" />
+			<RSelectValue :placeholder="placeholder" :class="$style.selectValue">
 				<slot :model-value="modelValue" :open="open" />
 			</RSelectValue>
-			<Icon icon="chevron-down" :class="$style.TrailingIcon" />
+			<Icon icon="chevron-down" :class="$style.trailingIcon" />
 		</SelectTrigger>
 
 		<SelectPortal>
-			<SelectContent :class="$style.SelectContent">
-				<SelectScrollUpButton :class="$style.SelectScrollButton">
+			<SelectContent :class="$style.selectContent">
+				<SelectScrollUpButton :class="$style.selectScrollButton">
 					<Icon icon="chevron-up" />
 				</SelectScrollUpButton>
 
-				<SelectViewport :class="$style.SelectViewport">
+				<SelectViewport :class="$style.selectViewport">
 					<SelectGroup>
 						<template v-for="(item, index) in groups" :key="`group-${index}`">
-							<SelectLabel v-if="item.type === 'label'" :class="[$style.SelectLabel, labelSize]">
+							<SelectLabel v-if="item.type === 'label'" :class="[$style.selectLabel, labelSize]">
 								{{ item.label }}
 							</SelectLabel>
 
 							<SelectSeparator
 								v-else-if="item.type === 'separator'"
-								:class="$style.SelectSeparator"
+								:class="$style.selectSeparator"
 								role="separator"
 							/>
 
@@ -182,7 +182,7 @@ const groups = computed<SelectItemProps[]>(() => {
 					</SelectGroup>
 				</SelectViewport>
 
-				<SelectScrollDownButton :class="$style.SelectScrollButton">
+				<SelectScrollDownButton :class="$style.selectScrollButton">
 					<Icon icon="chevron-down" />
 				</SelectScrollDownButton>
 			</SelectContent>
@@ -191,7 +191,7 @@ const groups = computed<SelectItemProps[]>(() => {
 </template>
 
 <style module>
-.SelectTrigger {
+.selectTrigger {
 	display: inline-flex;
 	align-items: center;
 	justify-content: flex-start;
@@ -228,44 +228,44 @@ const groups = computed<SelectItemProps[]>(() => {
 	}
 }
 
-.Default {
+.default {
 	border: var(--border);
 }
 
-.Ghost {
+.ghost {
 	/** nothing to see here */
 }
 
-.XSmall {
+.xsmall {
 	min-height: var(--spacing--lg);
 	padding: 0 var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
 }
 
-.Small {
+.small {
 	min-height: 28px;
 	padding: 0 var(--spacing--xs);
 	font-size: var(--font-size--2xs);
 }
 
-.Medium {
+.medium {
 	min-height: 36px;
 	padding: 0 var(--spacing--xs);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--sm);
 }
 
-.SelectedIcon {
+.selectedIcon {
 	flex-shrink: 0;
 }
 
-.TrailingIcon {
+.trailingIcon {
 	margin-left: auto;
 	flex-shrink: 0;
 	color: var(--color--text--shade-1);
 }
 
-.SelectContent {
+.selectContent {
 	overflow: hidden;
 	border-radius: var(--radius);
 	border: var(--border);
@@ -278,17 +278,17 @@ const groups = computed<SelectItemProps[]>(() => {
 	z-index: 999999;
 }
 
-.SelectViewport {
+.selectViewport {
 	padding: var(--spacing--4xs);
 }
 
-.SelectValue {
+.selectValue {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.SelectItem {
+.selectItem {
 	font-size: var(--font-size--xs);
 	line-height: 1;
 	border-radius: var(--radius);
@@ -315,30 +315,30 @@ const groups = computed<SelectItemProps[]>(() => {
 	}
 }
 
-.SelectLabel {
+.selectLabel {
 	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--4xs);
 	color: var(--color--text--tint-1);
 }
 
-.SelectLabelMedium {
+.selectLabelMedium {
 	font-size: var(--font-size--2xs);
 }
 
-.SelectLabelSmall {
+.selectLabelSmall {
 	font-size: var(--font-size--2xs);
 }
 
-.SelectLabelXSmall {
+.selectLabelXsmall {
 	font-size: var(--font-size--2xs);
 }
 
-.SelectSeparator {
+.selectSeparator {
 	height: 1px;
 	background-color: var(--border-color);
 	margin: var(--spacing--3xs);
 }
 
-.SelectItemIndicator {
+.selectItemIndicator {
 	position: absolute;
 	left: 0;
 	width: 25px;
@@ -347,7 +347,7 @@ const groups = computed<SelectItemProps[]>(() => {
 	justify-content: center;
 }
 
-.SelectScrollButton {
+.selectScrollButton {
 	display: flex;
 	align-items: center;
 	justify-content: center;

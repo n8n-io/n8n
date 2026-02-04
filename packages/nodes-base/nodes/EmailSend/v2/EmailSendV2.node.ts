@@ -71,6 +71,11 @@ export const versionDescription: INodeTypeDescription = {
 					action: 'Send message and wait for response',
 				},
 			],
+			displayOptions: {
+				show: {
+					resource: ['email'],
+				},
+			},
 		},
 		...send.description,
 		...sendAndWait.description,

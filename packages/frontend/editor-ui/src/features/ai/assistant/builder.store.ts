@@ -1,12 +1,11 @@
 import type { VIEWS } from '@/app/constants';
-import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
@@ -17,23 +16,87 @@ import {
 	chatWithBuilder,
 	getAiSessions,
 	getBuilderCredits,
-	getSessionsMetadata,
+	truncateBuilderMessages,
 } from '@/features/ai/assistant/assistant.api';
-import { generateMessageId, createBuilderPayload } from './builder.utils';
+import {
+	generateMessageId,
+	createBuilderPayload,
+	extractRevertVersionIds,
+	fetchExistingVersionIds,
+	enrichMessagesWithRevertVersion,
+} from './builder.utils';
+import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
-import { jsonParse } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { type ITelemetryTrackProperties } from 'n8n-workflow';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { dedupe } from 'n8n-workflow';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import type { IWorkflowDb } from '@/Interface';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
+
+/**
+ * Event types for the Workflow builder journey telemetry event
+ */
+export type WorkflowBuilderJourneyEventType =
+	| 'user_clicked_todo'
+	| 'field_focus_placeholder_in_ndv'
+	| 'no_placeholder_values_left'
+	| 'revert_version_from_builder'
+	| 'browser_notification_ask_permission'
+	| 'browser_notification_accept'
+	| 'browser_notification_dismiss'
+	| 'browser_generation_done_notified';
+
+interface WorkflowBuilderJourneyEventProperties {
+	node_type?: string;
+	type?: string;
+	count?: number;
+	source?: string;
+	revert_user_message_id?: string;
+	revert_version_id?: string;
+	no_versions_reverted?: number;
+	completion_type?: 'workflow-ready' | 'input-needed';
+}
+
+interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
+	workflow_id: string;
+	session_id: string;
+	event_type: WorkflowBuilderJourneyEventType;
+	event_properties?: WorkflowBuilderJourneyEventProperties;
+	last_user_message_id?: string;
+}
+
+interface EndOfStreamingTrackingPayload {
+	userMessageId: string;
+	startWorkflowJson: string;
+}
+
+interface UserSubmittedBuilderMessageTrackingPayload
+	extends ITelemetryTrackProperties,
+		TodosTrackingPayload {
+	source: 'chat' | 'canvas' | 'empty-state';
+	message: string;
+	session_id: string;
+	start_workflow_json: string;
+	workflow_id: string;
+	type: 'message' | 'execution';
+	manual_exec_success_count_since_prev_msg: number;
+	manual_exec_error_count_since_prev_msg: number;
+	user_message_id: string;
+	execution_data?: string;
+	execution_status?: string;
+	error_message?: string;
+	error_node_type?: string;
+}
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
@@ -44,19 +107,40 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const initialGeneration = ref<boolean>(false);
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
-	const hasMessages = ref<boolean>(false);
+	const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
+		success: 0,
+		error: 0,
+	});
+
+	// Track whether AI Builder made edits since last save (resets after each save)
+	const aiBuilderMadeEdits = ref(false);
+
+	const currentStreamingMessage = ref<EndOfStreamingTrackingPayload | undefined>();
+
+	// Track the last user message ID for telemetry
+	const lastUserMessageId = ref<string | undefined>();
+
+	// Track whether loadSessions is in progress to prevent duplicate calls
+	const isLoadingSessions = ref(false);
+
+	// Track the workflowId for which sessions have been loaded (or attempted)
+	// to prevent redundant API calls when no session exists
+	const loadedSessionsForWorkflowId = ref<string | undefined>();
+
+	const documentTitle = useDocumentTitle();
 
 	// Store dependencies
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
-	const credentialsStore = useCredentialsStore();
-	const nodeTypesStore = useNodeTypesStore();
 	const ndvStore = useNDVStore();
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
+	const uiStore = useUIStore();
+	const router = useRouter();
+	const workflowSaver = useWorkflowSaving({ router });
 
 	// Composables
 	const {
@@ -69,6 +153,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		clearRatingLogic,
 		getRunningTools,
 	} = useBuilderMessages();
+
+	const { workflowTodos, getTodosToTrack } = useBuilderTodos();
 
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
@@ -112,6 +198,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
 
+	const hasMessages = computed(() => chatMessages.value.length > 0);
+
 	// Chat management functions
 	/**
 	 * Resets the entire chat session to initial state.
@@ -122,6 +210,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages.value = clearMessages();
 		builderThinkingMessage.value = undefined;
 		initialGeneration.value = false;
+		lastUserMessageId.value = undefined;
+		loadedSessionsForWorkflowId.value = undefined;
+	}
+
+	function incrementManualExecutionStats(type: 'success' | 'error') {
+		manualExecStatsInBetweenMessages.value[type]++;
+	}
+
+	function resetManualExecutionStats() {
+		manualExecStatsInBetweenMessages.value = {
+			success: 0,
+			error: 0,
+		};
 	}
 
 	// Message handling functions
@@ -129,12 +230,134 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		builderThinkingMessage.value = message;
 	}
 
-	function stopStreaming() {
+	function getWorkflowModifications({
+		userMessageId,
+		startWorkflowJson,
+	}: EndOfStreamingTrackingPayload) {
+		const newToolMessages = toolMessages.value.filter((toolMsg) =>
+			toolMsg.id?.startsWith(userMessageId),
+		);
+		const endWorkflowJson = getWorkflowSnapshot();
+
+		return {
+			tools_called: dedupe(newToolMessages.map((toolMsg) => toolMsg.toolName)),
+			start_workflow_json: startWorkflowJson,
+			end_workflow_json: endWorkflowJson,
+			workflow_modified: endWorkflowJson !== startWorkflowJson,
+		};
+	}
+
+	type StopStreamingPayload =
+		| {
+				error: string;
+		  }
+		| { aborted: true };
+	function trackEndBuilderResponse(payload?: StopStreamingPayload) {
+		if (!currentStreamingMessage.value) {
+			return;
+		}
+
+		const { userMessageId } = currentStreamingMessage.value;
+
+		telemetry.track('End of response from builder', {
+			user_message_id: userMessageId,
+			workflow_id: workflowsStore.workflowId,
+			session_id: trackingSessionId.value,
+			tab_visible: document.visibilityState === 'visible',
+			...getWorkflowModifications(currentStreamingMessage.value),
+			...payload,
+			...getTodosToTrack(),
+		});
+	}
+
+	type CompletionType = 'workflow-ready' | 'input-needed';
+
+	/**
+	 * Checks if the current streaming response included a workflow update.
+	 * Used to determine whether to show "workflow ready" or "input needed" notification.
+	 */
+	function hasWorkflowUpdateInCurrentBatch(userMessageId: string): boolean {
+		return chatMessages.value.some(
+			(msg) => msg.type === 'workflow-updated' && msg.id?.startsWith(userMessageId),
+		);
+	}
+
+	/**
+	 * Shows a browser notification when the AI builder completes.
+	 * Only shows if browser notifications are enabled.
+	 * Clicking the notification focuses the window and closes it.
+	 */
+	function notifyOnCompletion(completionType: CompletionType) {
+		const { showNotification, isEnabled } = useBrowserNotifications();
+		if (!isEnabled.value) {
+			return;
+		}
+
+		const workflowName = workflowsStore.workflowName;
+
+		const titleKey =
+			completionType === 'workflow-ready'
+				? 'aiAssistant.builder.notification.title'
+				: 'aiAssistant.builder.notification.inputNeeded.title';
+
+		const bodyKey =
+			completionType === 'workflow-ready'
+				? 'aiAssistant.builder.notification.body'
+				: 'aiAssistant.builder.notification.inputNeeded.body';
+
+		const notification = showNotification(locale.baseText(titleKey), {
+			body: locale.baseText(bodyKey, {
+				interpolate: { workflowName },
+			}),
+			icon: '/favicon.ico',
+			tag: `workflow-build-${workflowsStore.workflowId}`,
+			requireInteraction: false,
+		});
+
+		if (notification) {
+			trackWorkflowBuilderJourney('browser_generation_done_notified', {
+				completion_type: completionType,
+			});
+
+			notification.onclick = () => {
+				window.focus();
+				notification.close();
+			};
+		}
+	}
+
+	function stopStreaming(payload?: StopStreamingPayload) {
 		streaming.value = false;
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
 			streamingAbortController.value = null;
 		}
+
+		trackEndBuilderResponse(payload);
+
+		// Capture userMessageId before clearing currentStreamingMessage
+		const userMessageId = currentStreamingMessage.value?.userMessageId;
+		currentStreamingMessage.value = undefined;
+
+		const wasAborted = payload && 'aborted' in payload && payload.aborted;
+
+		// Update page title on completion. We show Done when the user is not on the page
+		// Browser notifications are only shown when the tab is hidden
+		if (document.hidden) {
+			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_DONE');
+			if (!wasAborted && userMessageId) {
+				const completionType = hasWorkflowUpdateInCurrentBatch(userMessageId)
+					? 'workflow-ready'
+					: 'input-needed';
+				notifyOnCompletion(completionType);
+			}
+		} else {
+			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+		}
+	}
+
+	function abortStreaming() {
+		stopStreaming({ aborted: true });
 	}
 
 	// Error handling
@@ -144,11 +367,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * The retry function, if provided, will remove the error message before retrying.
 	 * Tracks error telemetry
 	 */
-	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
+	function handleServiceError(e: unknown, userMessageId: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 
-		stopStreaming();
+		stopStreaming({
+			error: e.message,
+		});
 		builderThinkingMessage.value = undefined;
+
+		// Remove tools that were still running when error occurred
+		const messagesWithoutRunningTools = chatMessages.value.filter(
+			(msg) => !(msg.type === 'tool' && msg.status === 'running'),
+		);
 
 		if (e.name === 'AbortError') {
 			// Handle abort errors as they are expected when stopping streaming
@@ -157,23 +387,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				'aborted-streaming',
 				{ aborted: true },
 			);
-			chatMessages.value = [...chatMessages.value, userMsg];
+			chatMessages.value = [...messagesWithoutRunningTools, userMsg];
 			return;
 		}
 
 		const errorMessage = createErrorMessage(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
-			id,
+			userMessageId,
 			retry,
 		);
 
-		chatMessages.value = [...chatMessages.value, errorMessage];
-
-		telemetry.track('Workflow generation errored', {
-			error: e.message,
-			session_id: trackingSessionId.value,
-			workflow_id: workflowsStore.workflowId,
-		});
+		chatMessages.value = [...messagesWithoutRunningTools, errorMessage];
 	}
 
 	// Helper functions
@@ -183,11 +407,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * and ensures chat is open. Called before initiating API request to minimize
 	 * perceived latency.
 	 */
-	function prepareForStreaming(userMessage: string, messageId: string) {
-		const userMsg = createUserMessage(userMessage, messageId);
+	function prepareForStreaming(
+		userMessage: string,
+		messageId: string,
+		revertVersion?: { id: string; createdAt: string },
+	) {
+		const userMsg = createUserMessage(userMessage, messageId, revertVersion);
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
+
+		// Updates page title to show AI is building
+		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
 	}
 
 	/**
@@ -203,55 +434,43 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 	}
 
-	// Core API functions
+	// Telemetry functions
 	/**
-	 * Sends a message to the AI builder service and handles the streaming response.
-	 * Prevents concurrent requests by checking streaming state.
-	 * Captures workflow state before sending for comparison in telemetry.
-	 * Creates a retry handler that preserves the original message context.
-	 * Note: This function is NOT async - streaming happens via callbacks.
+	 * Tracks when a user submits a message to the builder.
+	 * Captures workflow state, execution data, and todo counts for analytics.
 	 */
-	function sendChatMessage(options: {
+	function trackUserSubmittedBuilderMessage(options: {
 		text: string;
-		source?: 'chat' | 'canvas';
-		quickReplyType?: string;
-		initialGeneration?: boolean;
-		type?: 'message' | 'execution';
+		source: 'chat' | 'canvas' | 'empty-state';
+		type: 'message' | 'execution';
+		userMessageId: string;
+		currentWorkflowJson: string;
 		errorMessage?: string;
 		errorNodeType?: string;
 		executionStatus?: string;
 	}) {
-		if (streaming.value) {
-			return;
-		}
-
-		// Close NDV on new message
-		ndvStore.unsetActiveNodeName();
-
 		const {
 			text,
-			source = 'chat',
-			quickReplyType,
+			source,
+			type,
+			userMessageId,
+			currentWorkflowJson,
 			errorMessage,
-			type = 'message',
 			errorNodeType,
 			executionStatus,
 		} = options;
 
-		// Set initial generation flag if provided
-		if (options.initialGeneration !== undefined) {
-			initialGeneration.value = options.initialGeneration;
-		}
-		const messageId = generateMessageId();
-
-		const currentWorkflowJson = getWorkflowSnapshot();
-		const trackingPayload: Record<string, string> = {
+		const trackingPayload: UserSubmittedBuilderMessageTrackingPayload = {
 			source,
 			message: text,
 			session_id: trackingSessionId.value,
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
 			type,
+			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
+			manual_exec_error_count_since_prev_msg: manualExecStatsInBetweenMessages.value.error,
+			user_message_id: userMessageId,
+			...getTodosToTrack(),
 		};
 
 		if (type === 'execution') {
@@ -275,18 +494,119 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		telemetry.track('User submitted builder message', trackingPayload);
+	}
 
-		prepareForStreaming(text, messageId);
+	/**
+	 * Saves the workflow and returns the version info for message history.
+	 * For new workflows, creates the workflow first.
+	 * For existing workflows, only saves if there are unsaved changes.
+	 * Returns the version ID and timestamp after any save operation.
+	 */
+	async function saveWorkflowAndGetRevertVersion(): Promise<
+		{ id: string; createdAt: string } | undefined
+	> {
+		const isNewWorkflow = workflowsStore.isNewWorkflow;
+		const hasUnsavedChanges = uiStore.stateIsDirty;
+
+		// Save if it's a new workflow or has unsaved changes
+		if (isNewWorkflow || hasUnsavedChanges) {
+			const saved = await workflowSaver.saveCurrentWorkflow();
+			if (!saved) {
+				throw new Error('Could not save changes');
+			}
+		}
+
+		const versionId = workflowsStore.workflowVersionId;
+		if (!versionId) return undefined;
+
+		// Use workflow updatedAt as version timestamp
+		// might not be the same as "version.createdAt" but close enough
+		const updatedAt = workflowsStore.workflow.updatedAt;
+		return {
+			id: versionId,
+			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
+		};
+	}
+
+	// Core API functions
+	/**
+	 * Sends a message to the AI builder service and handles the streaming response.
+	 * Prevents concurrent requests by checking streaming state.
+	 * Saves workflow first to get versionId for restore functionality.
+	 * Captures workflow state before sending for comparison in telemetry.
+	 * Creates a retry handler that preserves the original message context.
+	 */
+	async function sendChatMessage(options: {
+		text: string;
+		source?: 'chat' | 'canvas' | 'empty-state';
+		quickReplyType?: string;
+		initialGeneration?: boolean;
+		type?: 'message' | 'execution';
+		errorMessage?: string;
+		errorNodeType?: string;
+		executionStatus?: string;
+	}) {
+		if (streaming.value) {
+			return;
+		}
+
+		let revertVersion;
+		try {
+			revertVersion = await saveWorkflowAndGetRevertVersion();
+		} catch {
+			return;
+		}
+
+		// Close NDV on new message
+		ndvStore.unsetActiveNodeName();
+
+		const {
+			text,
+			source = 'chat',
+			quickReplyType,
+			errorMessage,
+			type = 'message',
+			errorNodeType,
+			executionStatus,
+		} = options;
+
+		// Set initial generation flag if provided
+		if (options.initialGeneration !== undefined) {
+			initialGeneration.value = options.initialGeneration;
+		}
+		const userMessageId = generateMessageId();
+		lastUserMessageId.value = userMessageId;
+		const currentWorkflowJson = getWorkflowSnapshot();
+
+		currentStreamingMessage.value = {
+			userMessageId,
+			startWorkflowJson: currentWorkflowJson,
+		};
+
+		trackUserSubmittedBuilderMessage({
+			text,
+			source,
+			type,
+			userMessageId,
+			currentWorkflowJson,
+			errorMessage,
+			errorNodeType,
+			executionStatus,
+		});
+
+		resetManualExecutionStats();
+
+		prepareForStreaming(text, userMessageId, revertVersion);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
-		const payload = createBuilderPayload(text, {
+		const payload = await createBuilderPayload(text, userMessageId, {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
 
-		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
+		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
 
 		// Abort previous streaming request if any
 		if (streamingAbortController.value) {
@@ -302,7 +622,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					const result = processAssistantMessages(
 						chatMessages.value,
 						response.messages,
-						generateMessageId(),
+						userMessageId,
 						retry,
 					);
 					chatMessages.value = result.messages;
@@ -315,11 +635,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					}
 				},
 				() => stopStreaming(),
-				(e) => handleServiceError(e, messageId, retry),
+				(e) => handleServiceError(e, userMessageId, retry),
+				revertVersion?.id,
 				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
-			handleServiceError(e, messageId, retry);
+			handleServiceError(e, userMessageId, retry);
 		}
 	}
 
@@ -328,6 +649,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 * Only loads if a workflow ID exists (not for new unsaved workflows).
 	 * Replaces current chat messages entirely - does NOT merge with existing messages.
 	 * Sessions are ordered by recency, so sessions[0] is always the latest.
+	 * Filters out messages with revertVersionId pointing to non-existent versions.
 	 * Silently fails and returns empty array on error to prevent UI disruption.
 	 */
 	async function loadSessions() {
@@ -336,151 +658,104 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return [];
 		}
 
+		// Guard: Don't load if workflow is not saved
+		if (!workflowsStore.isWorkflowSaved[workflowId]) {
+			return [];
+		}
+
+		// Guard: Don't load if already loaded for this workflow (even if empty)
+		if (loadedSessionsForWorkflowId.value === workflowId) {
+			return [];
+		}
+
+		// Guard: Prevent duplicate concurrent calls
+		if (isLoadingSessions.value) {
+			return [];
+		}
+
+		isLoadingSessions.value = true;
 		try {
 			const response = await getAiSessions(rootStore.restApiContext, workflowId);
+			loadedSessionsForWorkflowId.value = workflowId;
 			const sessions = response.sessions || [];
 
 			// Load the most recent session if available
 			if (sessions.length > 0) {
 				const latestSession = sessions[0];
 
-				// Clear existing messages
-				chatMessages.value = clearMessages();
+				// Extract version IDs and check which still exist
+				const versionIds = extractRevertVersionIds(latestSession.messages);
+				const versionMap = await fetchExistingVersionIds(
+					rootStore.restApiContext,
+					workflowId,
+					versionIds,
+				);
 
-				// Convert and add messages from the session
-				const convertedMessages = latestSession.messages
+				// Enrich messages with revertVersion objects and convert to UI messages
+				const enrichedMessages = enrichMessagesWithRevertVersion(
+					latestSession.messages,
+					versionMap,
+				);
+				const convertedMessages = enrichedMessages
 					.map((msg) => {
-						const id = generateMessageId();
+						// Use messageId from backend if available, otherwise generate new one
+						const id = 'id' in msg && typeof msg.id === 'string' ? msg.id : generateMessageId();
 						return mapAssistantMessageToUI(msg, id);
 					})
 					// Do not include wf updated messages from session
 					.filter((msg) => msg.type !== 'workflow-updated');
 
 				chatMessages.value = convertedMessages;
+
+				// Restore lastUserMessageId from the loaded session for telemetry tracking
+				const lastUserMsg = [...convertedMessages]
+					.reverse()
+					.find((msg) => msg.role === 'user' && msg.type === 'text');
+				if (lastUserMsg) {
+					lastUserMessageId.value = lastUserMsg.id;
+				}
 			}
 
 			return sessions;
 		} catch (error) {
 			console.error('Failed to load AI sessions:', error);
 			return [];
+		} finally {
+			isLoadingSessions.value = false;
 		}
 	}
 
-	function captureCurrentWorkflowState() {
-		const nodePositions = new Map<string, [number, number]>();
-		const existingNodeIds = new Set<string>();
-
-		workflowsStore.allNodes.forEach((node) => {
-			nodePositions.set(node.id, [...node.position]);
-			existingNodeIds.add(node.id);
-		});
-
-		return {
-			nodePositions,
-			existingNodeIds,
-			currentWorkflowJson: JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections'])),
-		};
-	}
-
-	function setDefaultNodesCredentials(workflowData: WorkflowDataUpdate) {
-		// Set default credentials for new nodes if available
-		workflowData.nodes?.forEach((node) => {
-			const hasCredentials = node.credentials && Object.keys(node.credentials).length > 0;
-			if (hasCredentials) {
-				return;
-			}
-
-			const nodeType = nodeTypesStore.getNodeType(node.type);
-			if (!nodeType?.credentials) {
-				return;
-			}
-
-			// Try to find and set the first available credential
-			for (const credentialConfig of nodeType.credentials) {
-				const credentials = credentialsStore.getCredentialsByType(credentialConfig.name);
-				// No credentials of this type exist, try the next one
-				if (!credentials || credentials.length === 0) {
-					continue;
-				}
-
-				// Found valid credentials - set them and exit the loop
-				const credential = credentials[0];
-
-				node.credentials = {
-					[credential.type]: {
-						id: credential.id,
-						name: credential.name,
-					},
-				};
-
-				const authField = getMainAuthField(nodeType);
-				const authType = getAuthTypeForNodeCredential(nodeType, credentialConfig);
-				if (authField && authType) {
-					node.parameters[authField.name] = authType.value;
-				}
-
-				break; // Exit loop after setting the first valid credential
-			}
-		});
-	}
-
-	function applyWorkflowUpdate(workflowJson: string) {
-		let workflowData: WorkflowDataUpdate;
-		try {
-			workflowData = jsonParse<WorkflowDataUpdate>(workflowJson);
-		} catch (error) {
-			useToast().showMessage({
-				type: 'error',
-				title: locale.baseText('aiAssistant.builder.workflowParsingError.title'),
-				message: locale.baseText('aiAssistant.builder.workflowParsingError.content'),
-			});
-			return { success: false, error };
-		}
-
-		// Capture current state before clearing
-		const { nodePositions, existingNodeIds } = captureCurrentWorkflowState();
-
-		// Clear existing workflow
+	function clearExistingWorkflow() {
 		workflowState.removeAllConnections({ setStateDirty: false });
 		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
-
-		// For the initial generation, we want to apply auto-generated workflow name
-		// but only if the workflow has default name
-		if (
-			workflowData.name &&
-			initialGeneration.value &&
-			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
-		) {
-			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-		}
-
-		// Restore positions for nodes that still exist and identify new nodes
-		const nodesIdsToTidyUp: string[] = [];
-		if (workflowData.nodes) {
-			workflowData.nodes = workflowData.nodes.map((node) => {
-				const savedPosition = nodePositions.get(node.id);
-				if (savedPosition) {
-					return { ...node, position: savedPosition };
-				} else {
-					// This is a new node, add it to the tidy up list
-					nodesIdsToTidyUp.push(node.id);
-				}
-				return node;
-			});
-		}
-
-		setDefaultNodesCredentials(workflowData);
-
-		return {
-			success: true,
-			workflowData,
-			newNodeIds: nodesIdsToTidyUp,
-			oldNodeIds: Array.from(existingNodeIds),
-		};
 	}
 
 	function getWorkflowSnapshot() {
 		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+	}
+
+	/**
+	 * Returns true if AI Builder made edits since the last save.
+	 * Use resetAiBuilderMadeEdits() after successful save to clear the flag.
+	 */
+	function getAiBuilderMadeEdits(): boolean {
+		return aiBuilderMadeEdits.value;
+	}
+
+	/**
+	 * Resets the AI Builder edits flag.
+	 * Should only be called after a successful workflow save.
+	 */
+	function resetAiBuilderMadeEdits(): void {
+		aiBuilderMadeEdits.value = false;
+	}
+
+	/**
+	 * Sets the AI Builder edits flag.
+	 * Called by the useWorkflowUpdate composable when AI Builder makes changes.
+	 */
+	function setBuilderMadeEdits(value: boolean): void {
+		aiBuilderMadeEdits.value = value;
 	}
 
 	function updateBuilderCredits(quota?: number, claimed?: number) {
@@ -501,38 +776,129 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
-	async function fetchSessionsMetadata() {
-		const workflowId = workflowsStore.workflowId;
-		if (!workflowId) {
-			hasMessages.value = false;
-			return;
-		}
-
-		try {
-			const response = await getSessionsMetadata(rootStore.restApiContext, workflowId);
-			hasMessages.value = response.hasMessages;
-		} catch (error) {
-			console.error('Failed to fetch sessions metadata:', error);
-			hasMessages.value = false;
-		}
-	}
-
-	// Watch workflowId changes to fetch sessions metadata when a valid workflow is loaded
+	// Watch workflowId changes to reset chat and load sessions when workflow changes
 	watch(
 		() => workflowsStore.workflowId,
-		(newWorkflowId) => {
-			// Only fetch if we have a valid workflow ID, and we're in a builder-enabled view
+		(newWorkflowId, oldWorkflowId) => {
+			if (newWorkflowId === oldWorkflowId) {
+				return;
+			}
+
+			if (streaming.value) {
+				abortStreaming();
+			}
+
+			resetBuilderChat();
+
+			// Load sessions if AI builder is enabled and we're in a builder-enabled view
+			// loadSessions has its own guards for workflow saved state and deduplication
 			if (
 				newWorkflowId &&
-				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS)
+				route?.name &&
+				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
+				isAIBuilderEnabled.value
 			) {
-				void fetchSessionsMetadata();
-			} else {
-				hasMessages.value = false;
+				void fetchBuilderCredits();
+				void loadSessions();
 			}
 		},
 	);
+
+	/**
+	 * Tracks workflow builder journey events for telemetry
+	 * @param eventType - The type of event being tracked
+	 * @param eventProperties - Optional event-specific attributes
+	 */
+	function trackWorkflowBuilderJourney(
+		eventType: WorkflowBuilderJourneyEventType,
+		eventProperties?: WorkflowBuilderJourneyEventProperties,
+	) {
+		const payload: WorkflowBuilderJourneyPayload = {
+			workflow_id: workflowsStore.workflowId,
+			session_id: trackingSessionId.value,
+			event_type: eventType,
+		};
+
+		if (eventProperties && Object.keys(eventProperties).length > 0) {
+			payload.event_properties = eventProperties;
+		}
+
+		if (lastUserMessageId.value) {
+			payload.last_user_message_id = lastUserMessageId.value;
+		}
+
+		telemetry.track('Workflow builder journey', payload);
+	}
+
+	// Version management for workflow history
+	const workflowHistoryStore = useWorkflowHistoryStore();
+
+	/**
+	 * Restores the workflow to a previous version and truncates chat messages.
+	 * Finds the user message with the matching messageId and removes it
+	 * along with all messages after it.
+	 *
+	 * @param versionId - The workflow version ID to restore to
+	 * @param messageId - The message ID to truncate from
+	 */
+	async function restoreToVersion(
+		versionId: string,
+		messageId: string,
+	): Promise<IWorkflowDb | undefined> {
+		const workflowId = workflowsStore.workflowId;
+
+		// Save current workflow if there are unsaved changes before restoring
+		if (uiStore.stateIsDirty) {
+			const saved = await workflowSaver.saveCurrentWorkflow();
+			if (!saved) {
+				// saving errored or user opted not to overwrite changes
+				return;
+			}
+		}
+
+		// 1. Restore the workflow using existing workflow history store
+		const updatedWorkflow = await workflowHistoryStore.restoreWorkflow(workflowId, versionId);
+
+		// version id is important to update, because otherwise the next time user saves,
+		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
+		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
+		workflowState.setWorkflowProperty('updatedAt', updatedWorkflow.updatedAt);
+
+		// 2. Truncate messages in backend session (removes message with messageId and all after)
+		await truncateBuilderMessages(rootStore.restApiContext, workflowId, messageId);
+
+		// 3. Truncate local chat messages - find user message with matching messageId
+		// and remove it along with all messages after it
+		const msgIndex = chatMessages.value.findIndex((msg) => msg.id === messageId);
+		const messagesBeingReverted =
+			msgIndex !== -1
+				? chatMessages.value
+						.slice(msgIndex)
+						.filter((msg) => 'revertVersion' in msg && msg.revertVersion).length
+				: 0;
+		if (msgIndex !== -1) {
+			chatMessages.value = chatMessages.value.slice(0, msgIndex);
+		}
+
+		// 4. Track telemetry event for version restore
+		trackWorkflowBuilderJourney('revert_version_from_builder', {
+			revert_user_message_id: messageId,
+			revert_version_id: versionId,
+			no_versions_reverted: messagesBeingReverted,
+		});
+
+		return updatedWorkflow;
+	}
+
+	/**
+	 * Clears the [Done] indicator from the page title and resets to IDLE.
+	 * Should be called from a component that watches document visibility.
+	 */
+	function clearDoneIndicatorTitle() {
+		if (documentTitle.getDocumentState() === 'AI_DONE') {
+			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+		}
+	}
 
 	// Public API
 	return {
@@ -551,18 +917,29 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
-		hasMessages: computed(() => hasMessages.value),
+		hasMessages,
+		workflowTodos,
+		lastUserMessageId,
 
 		// Methods
-		stopStreaming,
+		abortStreaming,
 		resetBuilderChat,
 		sendChatMessage,
 		loadSessions,
-		applyWorkflowUpdate,
 		getWorkflowSnapshot,
 		fetchBuilderCredits,
 		updateBuilderCredits,
 		getRunningTools,
-		fetchSessionsMetadata,
+		trackWorkflowBuilderJourney,
+		getAiBuilderMadeEdits,
+		resetAiBuilderMadeEdits,
+		setBuilderMadeEdits,
+		incrementManualExecutionStats,
+		resetManualExecutionStats,
+		// Version management
+		restoreToVersion,
+		clearExistingWorkflow,
+		// Title management for AI builder
+		clearDoneIndicatorTitle,
 	};
 });

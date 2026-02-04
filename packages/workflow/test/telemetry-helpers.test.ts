@@ -3,9 +3,14 @@ import { mock } from 'vitest-mock-extended';
 
 import { nodeTypes } from './ExpressionExtensions/helpers';
 import type { NodeTypes } from './node-types';
-import { STICKY_NODE_TYPE } from '../src/constants';
+import {
+	MCP_CLIENT_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '../src/constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
 import type {
+	IConnections,
 	INode,
 	INodeTypeDescription,
 	IRun,
@@ -23,6 +28,7 @@ import {
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
+	getNodeRole,
 	resolveAIMetrics,
 	resolveVectorStoreMetrics,
 	userInInstanceRanOutOfFreeAiCredits,
@@ -104,6 +110,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -169,6 +176,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [],
 			connections: {},
@@ -213,6 +221,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -280,6 +289,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -304,7 +314,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 					},
 					id: '03e85c3e-4303-4f93-8d62-e05d457e8f70',
 					name: 'Sticky Note',
@@ -736,6 +746,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -760,7 +771,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 						height: 488,
 						width: 645,
 					},
@@ -1825,6 +1836,162 @@ describe('generateNodesGraph', () => {
 			evaluationTriggerNodeNames: [],
 		});
 	});
+
+	test('should handle MCP Client node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
 });
 
 describe('extractLastExecutedNodeCredentialData', () => {
@@ -2821,6 +2988,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		id: 'test-workflow',
 		name: 'Test Workflow',
 		active: false,
+		activeVersionId: null,
 		isArchived: false,
 		nodes,
 		connections: connections || {},
@@ -2865,6 +3033,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		status: error ? 'error' : 'success',
 		startedAt: new Date(),
 		stoppedAt: new Date(),
+		storedAt: 'db',
 		data: {
 			startData: {},
 			resultData: {
@@ -3297,6 +3466,194 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			position: [300, 100],
 			response_mode: 'lastNode',
 			public_chat: false,
+		});
+	});
+});
+
+describe('getNodeRole', () => {
+	const makeNode = (name: string, type: string, typeVersion = 1): INode => ({
+		id: `${name}-id`,
+		name,
+		type,
+		typeVersion,
+		position: [0, 0],
+		parameters: {},
+	});
+
+	describe('trigger role', () => {
+		it('should return trigger for node with no incoming main connections', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = getNodeRole('Trigger', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
+		});
+
+		it('should return trigger for isolated node with no connections', () => {
+			const nodes = [makeNode('Trigger', 'n8n-nodes-base.manualTrigger')];
+
+			const connections: IConnections = {};
+
+			const result = getNodeRole('Trigger', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
+		});
+	});
+
+	describe('terminal role', () => {
+		it('should return terminal for node with incoming but no outgoing connections', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = getNodeRole('Set', connections, nodeTypes, nodes);
+			expect(result).toBe('terminal');
+		});
+	});
+
+	describe('internal role', () => {
+		it('should return internal for node with both incoming and outgoing connections', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Middle', 'n8n-nodes-base.set'),
+				makeNode('End', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Middle', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Middle: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = getNodeRole('Middle', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should return internal for subnode even without main connections', () => {
+			const nodes = [
+				makeNode('Agent', '@n8n/n8n-nodes-langchain.agent'),
+				makeNode('Wikipedia', '@n8n/n8n-nodes-langchain.toolWikipedia'),
+			];
+
+			const connections: IConnections = {
+				Wikipedia: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			};
+
+			const result = getNodeRole('Wikipedia', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should return internal for calculator tool subnode', () => {
+			const nodes = [
+				makeNode('Agent', '@n8n/n8n-nodes-langchain.agent'),
+				makeNode('Calculator', '@n8n/n8n-nodes-langchain.toolCalculator'),
+			];
+
+			const connections: IConnections = {
+				Calculator: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			};
+
+			const result = getNodeRole('Calculator', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should return internal for PartialExecutionToolExecutor', () => {
+			const nodes: INode[] = [];
+			const connections: IConnections = {};
+
+			const result = getNodeRole('PartialExecutionToolExecutor', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should return trigger for node not in connections', () => {
+			const nodes = [makeNode('Isolated', 'n8n-nodes-base.set')];
+			const connections: IConnections = {};
+
+			const result = getNodeRole('Isolated', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
+		});
+
+		it('should handle node with empty output arrays', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Set: {
+					[NodeConnectionTypes.Main]: [[]],
+				},
+			};
+
+			const result = getNodeRole('Set', connections, nodeTypes, nodes);
+			expect(result).toBe('terminal');
+		});
+
+		it('should handle multiple output branches', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set1', 'n8n-nodes-base.set'),
+				makeNode('TrueBranch', 'n8n-nodes-base.set'),
+				makeNode('FalseBranch', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Set1', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Set1: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'TrueBranch', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'FalseBranch', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+
+			const result = getNodeRole('Set1', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should handle node not found in nodes array', () => {
+			const nodes = [makeNode('Trigger', 'n8n-nodes-base.manualTrigger')];
+			const connections: IConnections = {};
+
+			// Node 'NotInArray' is not in the nodes array
+			const result = getNodeRole('NotInArray', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
 		});
 	});
 });

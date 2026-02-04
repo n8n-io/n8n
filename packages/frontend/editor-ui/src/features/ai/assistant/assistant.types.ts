@@ -11,6 +11,7 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { FrontendSettings } from '@n8n/api-types';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
@@ -58,6 +59,7 @@ export namespace ChatRequest {
 			firstName: string;
 		};
 		authType?: { name: string; value: string };
+		context?: Pick<UserContext, 'aiUsageSettings'>;
 	}
 
 	export interface InitSupportChat {
@@ -93,13 +95,19 @@ export namespace ChatRequest {
 		error?: ErrorContext['error'];
 	}
 
+	export interface BuilderFeatureFlags {
+		templateExamples?: boolean;
+	}
+
 	export interface UserChatMessage {
 		role: 'user';
 		type: 'message';
 		text: string;
+		id: string;
 		quickReplyType?: string;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
+		featureFlags?: BuilderFeatureFlags;
 	}
 
 	export interface UserContext {
@@ -118,6 +126,7 @@ export namespace ChatRequest {
 			name: VIEWS;
 			description?: string;
 		};
+		aiUsageSettings?: FrontendSettings['ai'];
 	}
 
 	export type AssistantContext = UserContext & WorkflowContext;
@@ -155,6 +164,13 @@ export namespace ChatRequest {
 		step?: 'n8n_documentation' | 'n8n_forum';
 		codeSnippet?: string;
 		quickReplies?: ChatUI.QuickReply[];
+		/** Version ID for restore functionality - sent by backend on user messages */
+		revertVersionId?: string;
+		/** Version info enriched by frontend with timestamp from workflow history */
+		revertVersion?: {
+			id: string;
+			createdAt: string;
+		};
 	}
 
 	export interface SummaryMessage {
@@ -228,9 +244,22 @@ export namespace AskAiRequest {
 	}
 }
 
+export type AssistantProcessOptions = {
+	trimParameterValues?: boolean;
+};
+
 // Type guards for ChatRequest messages
 export function isTextMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.TextMessage {
 	return 'type' in msg && msg.type === 'message' && 'text' in msg;
+}
+
+/** TextMessage with revertVersionId that can be transformed */
+export type TextMessageWithRevertVersionId = ChatRequest.TextMessage & { revertVersionId: string };
+
+export function hasRevertVersionId(
+	msg: ChatRequest.MessageResponse,
+): msg is TextMessageWithRevertVersionId {
+	return isTextMessage(msg) && typeof msg.revertVersionId === 'string';
 }
 
 export function isSummaryMessage(

@@ -30,7 +30,7 @@ export class SecurityAuditService {
 		}
 
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'name', 'active', 'nodes', 'connections'],
+			select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'connections'],
 		});
 
 		const promises = categories.map(async (c) => await this.reporters[c].report(workflows));

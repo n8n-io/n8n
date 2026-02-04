@@ -1,4 +1,4 @@
-name: Windows CI
+name: 'Build: Windows'
 
 on:
   workflow_dispatch:
@@ -24,6 +24,7 @@ on:
       - '**/package.json'
       - '**/turbo.json'
       - '.github/workflows/build-windows.yml'
+      - '.github/actions/setup-nodejs/**'
 
 jobs:
   build:
@@ -34,7 +35,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js and Build
-        uses: ./.github/actions/setup-nodejs-github
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm build
 

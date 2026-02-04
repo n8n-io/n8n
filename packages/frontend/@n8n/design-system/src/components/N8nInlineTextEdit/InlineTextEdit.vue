@@ -119,12 +119,15 @@ defineExpose({ forceFocus, forceCancel });
 				:class="$style.inlineRenamePreview"
 				:style="computedInlineStyles"
 			/>
+			<!-- Stop propagation for space key to prevent VueFlow from intercepting it -->
+			<!-- when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999 -->
 			<EditableInput
 				ref="input"
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"
 				:style="computedInlineStyles"
 				@input="onInput($event.target.value)"
+				@keydown.space.stop
 			/>
 		</EditableArea>
 	</EditableRoot>

@@ -1,3 +1,7 @@
+// ============================================================================
+// IMPORTS
+// ============================================================================
+
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
@@ -9,6 +13,10 @@ import type {
 	StreamOutput,
 } from '../types/streaming';
 
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+
 export interface BuilderToolBase {
 	toolName: string;
 	displayTitle: string;
@@ -19,68 +27,19 @@ export interface BuilderTool extends BuilderToolBase {
 	tool: DynamicStructuredTool;
 }
 
-/**
- * Represents a text part in multi-part message content
- */
-interface TextPart {
-	type: string;
-	text: string;
-}
+/** Message content structure from LangGraph updates */
+type MessageContent = { content: string | Array<{ type: string; text: string }> };
 
-/**
- * Message content can be either a simple string or an array of text parts
- */
-type MessageContentValue = string | TextPart[];
+/** Stream event types from LangGraph */
+type SubgraphEvent = [string[], string, unknown];
+type ParentEvent = [string, unknown];
+export type StreamEvent = SubgraphEvent | ParentEvent;
 
-/**
- * Container for messages in different update types
- */
-interface MessagesContainer {
-	messages?: Array<{ content: MessageContentValue }>;
-}
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
 
-/**
- * Workflow operations data
- */
-interface ProcessOperations {
-	workflowJSON?: unknown;
-	workflowOperations?: unknown;
-}
-
-/**
- * Agent update chunk containing different types of updates
- */
-interface AgentUpdateChunk {
-	agent?: MessagesContainer;
-	compact_messages?: MessagesContainer;
-	delete_messages?: MessagesContainer;
-	process_operations?: ProcessOperations;
-}
-
-/**
- * Type guard to check if chunk is an AgentUpdateChunk
- */
-function isAgentUpdateChunk(chunk: unknown): chunk is AgentUpdateChunk {
-	return (
-		typeof chunk === 'object' &&
-		chunk !== null &&
-		('agent' in chunk ||
-			'compact_messages' in chunk ||
-			'delete_messages' in chunk ||
-			'process_operations' in chunk)
-	);
-}
-
-/**
- * Type guard to check if chunk is a ToolProgressChunk
- */
-function isToolProgressChunk(chunk: unknown): chunk is ToolProgressChunk {
-	return typeof chunk === 'object' && chunk !== null && 'type' in chunk && chunk.type === 'tool';
-}
-
-/**
- * Tools which should trigger canvas updates
- */
+/** Tools which should trigger canvas updates */
 export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 	'add_nodes',
 	'connect_nodes',
@@ -88,131 +47,221 @@ export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 	'remove_node',
 ];
 
-/**
- * Safely get the last message from an optional array
- */
-function getLastMessage<T>(messages: T[] | undefined): T | null {
-	if (!messages || messages.length === 0) {
-		return null;
-	}
-	return messages[messages.length - 1];
-}
+/** Parent graph node that emits user-facing messages */
+const EMITTING_NODES = ['responder'];
+
+/** Parent graph nodes to skip entirely (internal coordination) */
+const SKIPPED_NODES = [
+	'supervisor',
+	'tools',
+	'cleanup_dangling_tool_calls',
+	'create_workflow_name',
+	'auto_compact_messages',
+	'builder_subgraph',
+	'discovery_subgraph',
+];
 
 /**
- * Extract text content from message content (handles both string and array formats)
+ * Subgraph namespace prefixes that should not emit message events
+ * Note: Actual namespaces have UUIDs appended like "builder_subgraph:612f4bc3-..."
  */
-function extractTextFromContent(content: MessageContentValue): string {
-	if (Array.isArray(content)) {
-		return content
-			.filter((part): part is TextPart => part.type === 'text')
-			.map((part) => part.text)
+const SKIPPED_SUBGRAPH_PREFIXES = ['discovery_subgraph', 'builder_subgraph'];
+
+// ============================================================================
+// FILTERING LOGIC
+// ============================================================================
+
+/** Check if namespace indicates a skipped subgraph (handles UUID suffixes) */
+function isFromSkippedSubgraph(namespace: string[]): boolean {
+	return namespace.some((ns) => SKIPPED_SUBGRAPH_PREFIXES.some((prefix) => ns.startsWith(prefix)));
+}
+
+/** Check if a node name should be skipped */
+function shouldSkipNode(nodeName: string): boolean {
+	return SKIPPED_NODES.includes(nodeName);
+}
+
+/** Check if a node should emit messages */
+function shouldEmitFromNode(nodeName: string): boolean {
+	return EMITTING_NODES.includes(nodeName);
+}
+
+/** Check if node update contains message data */
+function hasMessageInUpdate(update: unknown): boolean {
+	const typed = update as { messages?: unknown[] };
+	return Array.isArray(typed?.messages) && typed.messages.length > 0;
+}
+
+/** Determine if a subgraph update event should be filtered out */
+function shouldFilterSubgraphUpdate(namespace: string[], data: Record<string, unknown>): boolean {
+	if (!isFromSkippedSubgraph(namespace)) return false;
+
+	return Object.entries(data).some(([nodeName, update]) => {
+		if (shouldSkipNode(nodeName)) return false;
+		return hasMessageInUpdate(update);
+	});
+}
+
+/** Type guard for subgraph events */
+function isSubgraphEvent(event: unknown): event is SubgraphEvent {
+	return Array.isArray(event) && event.length === 3 && Array.isArray(event[0]);
+}
+
+/** Type guard for parent events */
+function isParentEvent(event: unknown): event is ParentEvent {
+	return Array.isArray(event) && event.length === 2 && typeof event[0] === 'string';
+}
+
+// ============================================================================
+// CONTENT EXTRACTION
+// ============================================================================
+
+/** Extract message content from a node update */
+function extractMessageContent(messages: MessageContent[]): string | null {
+	if (messages.length === 0) return null;
+
+	const lastMessage = messages[messages.length - 1];
+	if (!lastMessage.content) return null;
+
+	// Handle array content (multi-part messages)
+	if (Array.isArray(lastMessage.content)) {
+		const textContent = lastMessage.content
+			.filter((c) => c.type === 'text')
+			.map((c) => c.text)
 			.join('\n');
+		return textContent || null;
 	}
-	return content;
+
+	return lastMessage.content;
 }
 
 /**
- * Create a standard agent message chunk
+ * Remove context tags from message content that are used for AI context
+ * but shouldn't be displayed to users.
+ *
+ * This removes the entire context block from <current_workflow_json> through
+ * </current_execution_nodes_schemas>
  */
-function createMessageChunk(text: string): AgentMessageChunk {
-	return {
-		role: 'assistant',
-		type: 'message',
-		text,
-	};
+export function cleanContextTags(text: string): string {
+	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
 }
 
-/**
- * Process delete_messages updates
- */
-function processDeleteMessages(chunk: AgentUpdateChunk): StreamOutput | null {
-	const messages = chunk.delete_messages?.messages;
-	if (!messages || messages.length === 0) {
-		return null;
-	}
+// ============================================================================
+// CHUNK PROCESSORS
+// ============================================================================
 
-	return { messages: [createMessageChunk('Deleted, refresh?')] };
-}
-
-/**
- * Process compact_messages updates
- */
-function processCompactMessages(chunk: AgentUpdateChunk): StreamOutput | null {
-	const lastMessage = getLastMessage(chunk.compact_messages?.messages);
-	if (!lastMessage) {
-		return null;
-	}
-
-	const text = extractTextFromContent(lastMessage.content);
-	return { messages: [createMessageChunk(text)] };
-}
-
-/**
- * Process agent messages updates
- */
-function processAgentMessages(chunk: AgentUpdateChunk): StreamOutput | null {
-	const lastMessage = getLastMessage(chunk.agent?.messages);
-	if (!lastMessage?.content) {
-		return null;
-	}
-
-	const text = extractTextFromContent(lastMessage.content);
-	if (!text) {
-		return null;
-	}
-
-	return { messages: [createMessageChunk(text)] };
-}
-
-/**
- * Process process_operations updates
- */
-function processOperations(chunk: AgentUpdateChunk): StreamOutput | null {
-	const update = chunk.process_operations;
-	if (!update?.workflowJSON || update.workflowOperations === undefined) {
-		return null;
-	}
+/** Handle process_operations node update */
+function processOperationsUpdate(update: unknown): StreamOutput | null {
+	const typed = update as { workflowJSON?: unknown; workflowOperations?: unknown } | undefined;
+	if (!typed?.workflowJSON || typed.workflowOperations === undefined) return null;
 
 	const workflowUpdateChunk: WorkflowUpdateChunk = {
 		role: 'assistant',
 		type: 'workflow-updated',
-		codeSnippet: JSON.stringify(update.workflowJSON, null, 2),
+		codeSnippet: JSON.stringify(typed.workflowJSON, null, 2),
 	};
-
 	return { messages: [workflowUpdateChunk] };
 }
 
-/**
- * Process custom tool updates
- */
-function processCustomToolChunk(chunk: unknown): StreamOutput | null {
-	if (!isToolProgressChunk(chunk)) {
+/** Handle agent node message update */
+function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput | null {
+	if (!shouldEmitFromNode(nodeName)) return null;
+
+	const typed = update as { messages?: MessageContent[] } | undefined;
+	if (!typed?.messages?.length) return null;
+
+	const content = extractMessageContent(typed.messages);
+	// Filter out empty content and workflow context artifacts
+	if (!content?.trim() || content.includes('<current_workflow_json>')) return null;
+
+	const messageChunk: AgentMessageChunk = {
+		role: 'assistant',
+		type: 'message',
+		text: content,
+	};
+	return { messages: [messageChunk] };
+}
+
+/** Handle custom tool progress chunk */
+function processToolChunk(chunk: unknown): StreamOutput | null {
+	const typed = chunk as ToolProgressChunk;
+	if (typed?.type !== 'tool') return null;
+
+	return { messages: [typed] };
+}
+
+// ============================================================================
+// MAIN STREAM PROCESSOR
+// ============================================================================
+
+/** Process a single chunk from updates stream mode */
+function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput | null {
+	if (!nodeUpdate || typeof nodeUpdate !== 'object') return null;
+
+	if (nodeUpdate.delete_messages || nodeUpdate.compact_messages) {
 		return null;
 	}
 
-	return { messages: [chunk] };
+	// Process operations emits workflow updates
+	if (nodeUpdate.process_operations) {
+		return processOperationsUpdate(nodeUpdate.process_operations);
+	}
+
+	// Generic agent node handling
+	for (const [nodeName, update] of Object.entries(nodeUpdate)) {
+		if (shouldSkipNode(nodeName)) continue;
+
+		const result = processAgentNodeUpdate(nodeName, update);
+		if (result) return result;
+	}
+
+	return null;
 }
 
-/**
- * Process a single chunk from the LangGraph stream
- */
+/** Process a single chunk from the LangGraph stream */
 export function processStreamChunk(streamMode: string, chunk: unknown): StreamOutput | null {
 	if (streamMode === 'updates') {
-		if (!isAgentUpdateChunk(chunk)) {
-			return null;
-		}
-
-		// Process different update types in priority order
-		return (
-			processDeleteMessages(chunk) ??
-			processCompactMessages(chunk) ??
-			processAgentMessages(chunk) ??
-			processOperations(chunk)
-		);
+		return processUpdatesChunk(chunk as Record<string, unknown>);
 	}
 
 	if (streamMode === 'custom') {
-		return processCustomToolChunk(chunk);
+		return processToolChunk(chunk);
+	}
+
+	return null;
+}
+
+/** Process a subgraph event */
+function processSubgraphEvent(event: SubgraphEvent): StreamOutput | null {
+	const [namespace, streamMode, data] = event;
+
+	// Filter out message updates from internal subgraphs
+	if (
+		streamMode === 'updates' &&
+		shouldFilterSubgraphUpdate(namespace, data as Record<string, unknown>)
+	) {
+		return null;
+	}
+
+	return processStreamChunk(streamMode, data);
+}
+
+/** Process a parent graph event */
+function processParentEvent(event: ParentEvent): StreamOutput | null {
+	const [streamMode, chunk] = event;
+	if (!streamMode || typeof streamMode !== 'string') return null;
+
+	return processStreamChunk(streamMode, chunk);
+}
+
+/** Process a single event from the stream */
+function processEvent(event: StreamEvent): StreamOutput | null {
+	if (isSubgraphEvent(event)) {
+		return processSubgraphEvent(event);
+	}
+
+	if (isParentEvent(event)) {
+		return processParentEvent(event);
 	}
 
 	return null;
@@ -220,56 +269,72 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 
 /**
  * Create a stream processor that yields formatted chunks
+ *
+ * Handles both regular graph events and subgraph events.
+ * - Parent events: [streamMode, data]
+ * - Subgraph events: [namespace[], streamMode, data]
  */
 export async function* createStreamProcessor(
-	stream: AsyncGenerator<[string, unknown], void, unknown>,
+	stream: AsyncIterable<StreamEvent>,
 ): AsyncGenerator<StreamOutput> {
-	for await (const [streamMode, chunk] of stream) {
-		const output = processStreamChunk(streamMode, chunk);
-
-		if (output) {
-			yield output;
+	for await (const event of stream) {
+		const result = processEvent(event);
+		if (result) {
+			yield result;
 		}
 	}
 }
 
-/**
- * Remove context tags from message content that are used for AI context
- * but shouldn't be displayed to users
- */
-export function cleanContextTags(text: string): string {
-	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
-}
+// ============================================================================
+// MESSAGE FORMATTING
+// ============================================================================
 
-/**
- * Format a HumanMessage into the expected output format
- */
-function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
-	// Handle array content (multi-part messages with text, images, etc.)
-	if (Array.isArray(msg.content)) {
-		const textParts = msg.content.filter(
-			(c): c is { type: string; text: string } =>
-				typeof c === 'object' && c !== null && 'type' in c && c.type === 'text' && 'text' in c,
-		);
-		const text = textParts.map((part) => cleanContextTags(part.text)).join('\n');
-		return {
-			role: 'user',
-			type: 'message',
-			text,
-		};
+/** Extract text from HumanMessage content (handles string and array formats) */
+function extractHumanMessageText(content: HumanMessage['content']): string {
+	if (typeof content === 'string') {
+		return content;
 	}
 
-	// Handle simple string content
-	return {
-		role: 'user',
-		type: 'message',
-		text: cleanContextTags(msg.content),
-	};
+	if (Array.isArray(content)) {
+		return content
+			.filter(
+				(c): c is { type: string; text: string } =>
+					typeof c === 'object' && c !== null && 'type' in c && c.type === 'text' && 'text' in c,
+			)
+			.map((c) => c.text)
+			.join('\n');
+	}
+
+	return '';
 }
 
-/**
- * Process array content from AIMessage and return formatted text messages
- */
+/** Format a HumanMessage into the expected output format */
+function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
+	const rawText = extractHumanMessageText(msg.content);
+	const cleanedText = cleanContextTags(rawText);
+
+	const result: Record<string, unknown> = {
+		role: 'user',
+		type: 'message',
+		text: cleanedText,
+	};
+
+	// Extract versionId from additional_kwargs and expose as revertVersionId
+	const versionId = msg.additional_kwargs?.versionId;
+	if (typeof versionId === 'string') {
+		result.revertVersionId = versionId;
+	}
+
+	// Extract messageId from additional_kwargs
+	const messageId = msg.additional_kwargs?.messageId;
+	if (typeof messageId === 'string') {
+		result.id = messageId;
+	}
+
+	return result;
+}
+
+/** Process array content from AIMessage and return formatted text messages */
 function processArrayContent(content: unknown[]): Array<Record<string, unknown>> {
 	const textMessages = content.filter(
 		(c): c is { type: string; text: string } =>
@@ -283,9 +348,7 @@ function processArrayContent(content: unknown[]): Array<Record<string, unknown>>
 	}));
 }
 
-/**
- * Process AIMessage content and return formatted messages
- */
+/** Process AIMessage content and return formatted messages */
 function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>> {
 	if (!msg.content) {
 		return [];
@@ -304,9 +367,7 @@ function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>>
 	];
 }
 
-/**
- * Create a formatted tool call message
- */
+/** Create a formatted tool call message */
 function createToolCallMessage(
 	toolCall: ToolCall,
 	builderTool?: BuilderToolBase,
@@ -329,9 +390,7 @@ function createToolCallMessage(
 	};
 }
 
-/**
- * Process tool calls from AIMessage and return formatted tool messages
- */
+/** Process tool calls from AIMessage and return formatted tool messages */
 function processToolCalls(
 	toolCalls: ToolCall[],
 	builderTools?: BuilderToolBase[],
@@ -342,9 +401,7 @@ function processToolCalls(
 	});
 }
 
-/**
- * Process a ToolMessage and add its output to the corresponding tool call
- */
+/** Process a ToolMessage and add its output to the corresponding tool call */
 function processToolMessage(
 	msg: ToolMessage,
 	formattedMessages: Array<Record<string, unknown>>,
@@ -366,6 +423,7 @@ function processToolMessage(
 	}
 }
 
+/** Format messages for frontend display */
 export function formatMessages(
 	messages: Array<AIMessage | HumanMessage | ToolMessage>,
 	builderTools?: BuilderToolBase[],

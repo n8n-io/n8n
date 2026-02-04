@@ -591,7 +591,7 @@ describe('addNextOccurrence', () => {
 			{
 				start: { dateTime: '2025-01-01T10:00:00Z', date: '2025-01-01' },
 				end: { dateTime: '2025-01-01T11:00:00Z', date: '2025-01-01' },
-				recurrence: ['RRULE:FREQ=DAILY;UNTIL=20251231T235959Z'],
+				recurrence: ['RRULE:FREQ=DAILY;UNTIL=20501231T235959Z'],
 			},
 		];
 
@@ -609,7 +609,7 @@ describe('addNextOccurrence', () => {
 			{
 				start: { dateTime: '2025-01-01T10:00:00Z', date: '2025-01-01' },
 				end: { dateTime: '2025-01-01T11:00:00Z', date: '2025-01-01' },
-				recurrence: ['RRULE:FREQ=WEEKLY;BYDAY=SU;UNTIL=20251231T235959Z'],
+				recurrence: ['RRULE:FREQ=WEEKLY;BYDAY=SU;UNTIL=20501231T235959Z'],
 			},
 		];
 
@@ -623,7 +623,7 @@ describe('addNextOccurrence', () => {
 			{
 				start: { date: '2025-01-01' },
 				end: { date: '2025-01-02' },
-				recurrence: ['RRULE:FREQ=MONTHLY;BYMONTHDAY=1;UNTIL=20251231T235959Z'],
+				recurrence: ['RRULE:FREQ=MONTHLY;BYMONTHDAY=1;UNTIL=20501231T235959Z'],
 			},
 		];
 
@@ -641,7 +641,7 @@ describe('addNextOccurrence', () => {
 					timeZone: 'America/New_York',
 				},
 				end: { dateTime: '2025-01-01T11:00:00Z', date: '2025-01-01', timeZone: 'America/New_York' },
-				recurrence: ['RRULE:FREQ=DAILY;UNTIL=20251231T235959Z'],
+				recurrence: ['RRULE:FREQ=DAILY;UNTIL=20501231T235959Z'],
 			},
 		];
 

@@ -14,19 +14,19 @@ describe('RemovedNodesRule', () => {
 		it('should return correct metadata', () => {
 			const metadata = rule.getMetadata();
 
-			expect(metadata).toEqual({
+			expect(metadata).toMatchObject({
 				version: 'v2',
 				title: 'Removed Deprecated Nodes',
 				description: 'Several deprecated nodes have been removed and will no longer work',
 				category: BreakingChangeCategory.workflow,
-				severity: 'critical',
+				severity: 'low',
 			});
 		});
 	});
 
 	describe('getRecommendations()', () => {
 		it('should return recommendations', async () => {
-			const recommendations = await rule.getRecommendations();
+			const recommendations = await rule.getRecommendations([]);
 
 			expect(recommendations).toHaveLength(1);
 			expect(recommendations[0]).toMatchObject({

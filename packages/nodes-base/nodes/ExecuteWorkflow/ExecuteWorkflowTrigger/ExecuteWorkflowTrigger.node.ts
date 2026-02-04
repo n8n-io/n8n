@@ -5,6 +5,8 @@ import {
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ITriggerFunctions,
+	type ITriggerResponse,
 } from 'n8n-workflow';
 
 import {
@@ -191,6 +193,12 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			},
 		],
 	};
+
+	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		// ExecuteWorkflowTrigger is triggered by the ExecuteWorkflow node
+		// No setup or teardown is required, as the triggering is handled externally
+		return {};
+	}
 
 	async execute(this: IExecuteFunctions) {
 		const inputData = this.getInputData();

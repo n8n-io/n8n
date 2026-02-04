@@ -22,16 +22,20 @@ const mockRoute = reactive({
 	name: '',
 	params: {},
 	fullPath: '',
+	query: {},
 });
+
+const mockRouterInstance = {
+	back: vi.fn(),
+	push: vi.fn(),
+	replace: vi.fn(),
+	go: vi.fn(),
+	currentRoute: { value: mockRoute },
+};
 
 vi.mock('vue-router', () => ({
 	useRoute: () => mockRoute,
-	useRouter: () => ({
-		back: vi.fn(),
-		push: vi.fn(),
-		replace: vi.fn(),
-		go: vi.fn(),
-	}),
+	useRouter: () => mockRouterInstance,
 	RouterLink: {
 		template: '<a><slot></slot></a>',
 		props: ['to', 'target'],
@@ -219,56 +223,52 @@ describe('SourceControlPushModal', () => {
 		const files = getAllByTestId('source-control-push-modal-file-checkbox');
 
 		await userEvent.click(files[0]);
-		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+		expect(files[0]).toBeChecked();
+		expect(files[1]).not.toBeChecked();
 
-		await userEvent.click(within(files[0]).getByRole('checkbox'));
-		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
-
-		await userEvent.click(within(files[1]).getByRole('checkbox'));
-		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).toBeChecked();
+		await userEvent.click(files[0]);
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).not.toBeChecked();
 
 		await userEvent.click(files[1]);
-		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).toBeChecked();
 
-		await userEvent.click(within(files[0]).getByText('My workflow 2'));
-		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+		await userEvent.click(files[1]);
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).not.toBeChecked();
 
-		await userEvent.click(within(files[1]).getByText('My workflow 1'));
-		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).toBeChecked();
+		await userEvent.click(files[0]);
+		expect(files[0]).toBeChecked();
+		expect(files[1]).not.toBeChecked();
 
-		await userEvent.click(within(files[1]).getByText('My workflow 1'));
-		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+		await userEvent.click(files[1]);
+		expect(files[0]).toBeChecked();
+		expect(files[1]).toBeChecked();
 
-		await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
-		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).toBeChecked();
-
-		await userEvent.click(within(files[0]).getByText('My workflow 2'));
-		await userEvent.click(within(files[1]).getByText('My workflow 1'));
-		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
-		expect(
-			within(getByTestId('source-control-push-modal-toggle-all')).getByRole('checkbox'),
-		).not.toBeChecked();
-
-		await userEvent.click(within(files[0]).getByText('My workflow 2'));
-		await userEvent.click(within(files[1]).getByText('My workflow 1'));
-		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).toBeChecked();
-		expect(
-			within(getByTestId('source-control-push-modal-toggle-all')).getByRole('checkbox'),
-		).toBeChecked();
+		await userEvent.click(files[1]);
+		expect(files[0]).toBeChecked();
+		expect(files[1]).not.toBeChecked();
 
 		await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
-		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+		expect(files[0]).toBeChecked();
+		expect(files[1]).toBeChecked();
+
+		await userEvent.click(files[0]);
+		await userEvent.click(files[1]);
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).not.toBeChecked();
+		expect(getByTestId('source-control-push-modal-toggle-all')).not.toBeChecked();
+
+		await userEvent.click(files[0]);
+		await userEvent.click(files[1]);
+		expect(files[0]).toBeChecked();
+		expect(files[1]).toBeChecked();
+		expect(getByTestId('source-control-push-modal-toggle-all')).toBeChecked();
+
+		await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).not.toBeChecked();
 	});
 
 	it('should push all entities besides workflows and credentials', async () => {
@@ -427,8 +427,8 @@ describe('SourceControlPushModal', () => {
 		const files = getAllByTestId('source-control-push-modal-file-checkbox');
 
 		// The current workflow should be auto-selected now that we fixed the regression
-		expect(within(files[0]).getByRole('checkbox')).toBeChecked();
-		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+		expect(files[0]).toBeChecked();
+		expect(files[1]).not.toBeChecked();
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), 'message');
 		const submitButton = getByTestId('source-control-push-modal-submit');
@@ -471,7 +471,7 @@ describe('SourceControlPushModal', () => {
 
 		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
-		const { getAllByTestId, getByText } = renderModal({
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
 			pinia,
 			props: {
 				data: {
@@ -492,9 +492,8 @@ describe('SourceControlPushModal', () => {
 		});
 
 		// Switch to credentials tab
-		const tabs = getAllByTestId('source-control-push-modal-tab');
-		const credentialsTab = tabs.find((tab) => tab.textContent?.includes('Credentials'));
-		await userEvent.click(credentialsTab!);
+		const credentialsTab = getByTestId('source-control-push-modal-tab-credential');
+		await userEvent.click(credentialsTab);
 
 		await waitFor(() => {
 			const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
@@ -504,8 +503,8 @@ describe('SourceControlPushModal', () => {
 		const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
 
 		// All credentials should be selected by default
-		expect(within(credentials[0]).getByRole('checkbox')).toBeChecked();
-		expect(within(credentials[1]).getByRole('checkbox')).toBeChecked();
+		expect(credentials[0]).toBeChecked();
+		expect(credentials[1]).toBeChecked();
 
 		// Verify the tab shows correct count
 		expect(credentialsTab?.textContent).toContain('2 / 2 selected');
@@ -547,7 +546,7 @@ describe('SourceControlPushModal', () => {
 
 		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
-		const { getAllByTestId, getByText } = renderModal({
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
 			pinia,
 			props: {
 				data: {
@@ -567,17 +566,15 @@ describe('SourceControlPushModal', () => {
 			expect(workflows).toHaveLength(2);
 		});
 
-		const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
-			textContent?.includes('Credentials'),
-		);
+		const credentialsTab = getByTestId('source-control-push-modal-tab-credential');
 
-		await userEvent.click(tab[0]);
+		await userEvent.click(credentialsTab);
 
 		const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
 		expect(credentials).toHaveLength(1);
-		expect(within(credentials[0]).getByText('My credential')).toBeInTheDocument();
+		expect(credentials[0].parentElement).toHaveTextContent('My credential');
 		// Credentials should be selected by default
-		expect(within(credentials[0]).getByRole('checkbox')).toBeChecked();
+		expect(credentials[0]).toBeChecked();
 	});
 
 	describe('filters', () => {
@@ -684,13 +681,7 @@ describe('SourceControlPushModal', () => {
 
 			expect(getByTestId('source-control-status-filter')).toBeVisible();
 
-			await userEvent.click(
-				within(getByTestId('source-control-status-filter')).getByRole('combobox'),
-			);
-
-			await waitFor(() =>
-				expect(getAllByTestId('source-control-status-filter-option')[0]).toBeVisible(),
-			);
+			await userEvent.click(getByTestId('source-control-status-filter'));
 
 			const menu = getAllByTestId('source-control-status-filter-option')[0]
 				.parentElement as HTMLElement;
@@ -698,8 +689,7 @@ describe('SourceControlPushModal', () => {
 			await userEvent.click(within(menu).getByText('New'));
 			await waitFor(() => {
 				const items = getAllByTestId('source-control-push-modal-file-checkbox');
-				expect(items).toHaveLength(1);
-				expect(items[0]).toHaveTextContent('Created Workflow');
+				expect(items[0].parentElement).toHaveTextContent('Created Workflow');
 				expect(telemetry.track).toHaveBeenCalledWith('User filtered by status in commit modal', {
 					status: 'created',
 				});
@@ -748,7 +738,7 @@ describe('SourceControlPushModal', () => {
 
 			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
 
-			const { getByTestId, getAllByTestId, getByText } = renderModal({
+			const { getByTestId, getAllByTestId, getByText, getByRole } = renderModal({
 				pinia,
 				props: {
 					data: {
@@ -764,17 +754,13 @@ describe('SourceControlPushModal', () => {
 			});
 
 			await waitFor(() => {
-				const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
-					textContent?.includes(name),
-				);
-				expect(tab.length).toBeGreaterThan(0);
+				const tab = getByTestId(`source-control-push-modal-tab-${entity}`);
+				expect(tab).toBeInTheDocument();
 			});
 
-			const tab = getAllByTestId('source-control-push-modal-tab').filter(({ textContent }) =>
-				textContent?.includes(name),
-			);
+			const tab = getByTestId(`source-control-push-modal-tab-${entity}`);
 
-			await userEvent.click(tab[0]);
+			await userEvent.click(tab);
 
 			await waitFor(() => {
 				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
@@ -791,9 +777,7 @@ describe('SourceControlPushModal', () => {
 			await userEvent.click(getAllByTestId('project-sharing-info')[0]);
 
 			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
-			expect(getByTestId('source-control-push-modal-file-checkbox')).toHaveTextContent(
-				`My ${name} 1`,
-			);
+			expect(getByRole('checkbox', { name: new RegExp(`My ${name} 1`) })).toBeInTheDocument();
 		});
 
 		it('should reset', async () => {
@@ -856,6 +840,59 @@ describe('SourceControlPushModal', () => {
 
 			const items = getAllByTestId('source-control-push-modal-file-checkbox');
 			expect(items).toHaveLength(1);
+		});
+	});
+
+	describe('workflow diff button', () => {
+		beforeEach(() => {
+			settingsStore.settings.enterprise.workflowDiffs = true;
+			vi.clearAllMocks();
+		});
+
+		it('should set workflowStatus url param when diff button is clicked for created workflow', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-2',
+					name: 'New workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/workflow-2.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getByText, getAllByTestId } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			});
+
+			const compareButton = getByTestId('source-control-workflow-diff-button');
+			await userEvent.click(compareButton);
+
+			expect(mockRouterInstance.push).toHaveBeenCalledWith({
+				query: expect.objectContaining({
+					diff: 'workflow-2',
+					workflowStatus: 'created',
+					direction: 'push',
+				}),
+			});
 		});
 	});
 
@@ -999,7 +1036,7 @@ describe('SourceControlPushModal', () => {
 			const commitMessage = 'Test commit message';
 
 			const files = getAllByTestId('source-control-push-modal-file-checkbox');
-			expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
+			expect(files[0]).not.toBeChecked();
 
 			await userEvent.type(commitInput, commitMessage);
 

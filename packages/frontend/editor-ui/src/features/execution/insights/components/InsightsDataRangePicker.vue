@@ -8,12 +8,9 @@ import type {
 	N8nDateRangePickerRootEmits,
 } from '@n8n/design-system';
 import { N8nButton, N8nDateRangePicker, N8nIcon } from '@n8n/design-system';
-import dateformat from 'dateformat';
 import { computed, ref, shallowRef, watch } from 'vue';
+import { formatDateRange, getAdjustedDateRange } from '../insights.utils';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
-
-const DATE_FORMAT_DAY_MONTH_YEAR = 'd mmm, yyyy';
-const DATE_FORMAT_DAY_MONTH = 'd mmm';
 
 type Props = Pick<N8nDateRangePickerProps, 'maxValue' | 'minValue'>;
 type Value = {
@@ -81,6 +78,8 @@ function syncWithParentValue() {
 	}
 }
 
+let lastSyncedRange: DateRange | null = null;
+
 function syncData(isOpen: boolean) {
 	if (isOpen) {
 		syncWithParentValue();
@@ -98,17 +97,30 @@ function syncData(isOpen: boolean) {
 		return;
 	}
 
+	// Check if this is the same range we just synced (prevent double sync)
+	if (
+		lastSyncedRange &&
+		isEqual(normalizedRange.start, lastSyncedRange.start) &&
+		isEqual(normalizedRange.end, lastSyncedRange.end)
+	) {
+		return;
+	}
+
 	if (
 		isEqual(normalizedRange.start, props.modelValue.start) &&
 		isEqual(normalizedRange.end, props.modelValue.end)
 	) {
 		return;
 	}
+
+	lastSyncedRange = normalizedRange;
 	emit('update:modelValue', normalizedRange);
 
+	const { startDate, endDate } = getAdjustedDateRange(normalizedRange);
+
 	const trackData = {
-		start_date: normalizedRange.start?.toDate(getLocalTimeZone()).toISOString(),
-		end_date: normalizedRange.end?.toDate(getLocalTimeZone()).toISOString(),
+		start_date: startDate.toISOString(),
+		end_date: endDate.toISOString(),
 		range_length_days: getDaysDiff(normalizedRange),
 		type: actionType.value,
 	};
@@ -117,8 +129,10 @@ function syncData(isOpen: boolean) {
 }
 const open = ref(false);
 watch(open, (opened) => {
+	if (opened) {
+		actionType.value = 'custom';
+	}
 	syncData(opened);
-	actionType.value = 'custom';
 });
 
 function setPresetRange(days: number) {
@@ -135,18 +149,7 @@ const formattedRange = computed(() => {
 
 	if (!start) return 'Select range';
 
-	const startStr = start.toString();
-	const endStr = end?.toString();
-
-	if (!end || startStr === endStr) {
-		return dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR);
-	}
-
-	if (start.year === end.year) {
-		return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
-	}
-
-	return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+	return formatDateRange({ start, end });
 });
 
 function isActiveRange(presetValue: number) {
