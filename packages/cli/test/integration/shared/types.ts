@@ -44,6 +44,7 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights'
 	| 'module-settings'
+	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp';

@@ -33,6 +33,11 @@ describe('router', () => {
 	beforeEach(() => {
 		settingsStore = useSettingsStore();
 		const usersStore = useUsersStore();
+		// Enable PERSONAL_SECURITY_SETTINGS so /settings/security route's custom middleware passes
+		settingsStore.settings.envFeatureFlags = {
+			...settingsStore.settings.envFeatureFlags,
+			N8N_ENV_FEAT_PERSONAL_SECURITY_SETTINGS: 'true',
+		};
 		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => {
 			await usersStore.initialize();
 		});
@@ -125,6 +130,8 @@ describe('router', () => {
 		],
 		['/settings/ldap', VIEWS.WORKFLOWS, []],
 		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
+		['/settings/security', VIEWS.WORKFLOWS, []],
+		['/settings/security', VIEWS.SECURITY_SETTINGS, ['securitySettings:manage']],
 	])(
 		'should resolve %s to %s with %s user permissions',
 		async (path, name, scopes) => {
