@@ -15,6 +15,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useNdvLayout } from '../../panel/composables/useNdvLayout';
 import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useStyles } from '@/app/composables/useStyles';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -66,6 +67,7 @@ const props = withDefaults(
 const ndvStore = useNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
+const workflowState = injectWorkflowState();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
@@ -301,7 +303,7 @@ const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWait
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
 const foreignCredentials = computed(() =>
-	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
+	workflowState.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
 );
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);

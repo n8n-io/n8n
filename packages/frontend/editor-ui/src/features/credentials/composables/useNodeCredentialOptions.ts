@@ -1,4 +1,4 @@
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { ICredentialsResponse } from '../credentials.types';
@@ -25,7 +25,7 @@ export function useNodeCredentialOptions(
 	nodeType: ComputedRef<INodeTypeDescription | null>,
 	overrideCredType: MaybeRef<NodeParameterValueType | undefined>,
 ) {
-	const nodeHelpers = useNodeHelpers();
+	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const mainNodeAuthField = computed(() => getMainAuthField(nodeType.value));
 
@@ -73,7 +73,7 @@ export function useNodeCredentialOptions(
 			// If it is not defined no need to do a proper check
 			return true;
 		}
-		return nodeHelpers.displayParameter(
+		return workflowState.displayParameter(
 			node.value.parameters,
 			credentialTypeDescription,
 			'',

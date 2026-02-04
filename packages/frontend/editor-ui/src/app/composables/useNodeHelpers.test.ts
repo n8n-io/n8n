@@ -229,7 +229,8 @@ describe('useNodeHelpers()', () => {
 
 	describe('getForeignCredentialsIfSharingEnabled()', () => {
 		it('should return an empty array when user has the wrong license', () => {
-			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+			const workflowState = useWorkflowState();
+			const { getForeignCredentialsIfSharingEnabled } = workflowState;
 
 			const credentialWithoutAccess: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
@@ -255,7 +256,8 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return an empty array when credentials are undefined', () => {
-			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+			const workflowState = useWorkflowState();
+			const { getForeignCredentialsIfSharingEnabled } = workflowState;
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: true,
@@ -266,7 +268,8 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return an empty array when user has access to all credentials', () => {
-			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+			const workflowState = useWorkflowState();
+			const { getForeignCredentialsIfSharingEnabled } = workflowState;
 
 			const credentialWithAccess1: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
@@ -304,7 +307,8 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return an array of foreign credentials', () => {
-			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+			const workflowState = useWorkflowState();
+			const { getForeignCredentialsIfSharingEnabled } = workflowState;
 
 			const credentialWithAccess: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
@@ -745,7 +749,7 @@ describe('useNodeHelpers()', () => {
 			const getNodeParametersIssuesSpy = vi.spyOn(NodeHelpers, 'getNodeParametersIssues');
 
 			const workflowState = useWorkflowState();
-			const { updateNodeParameterIssues } = useNodeHelpers({ workflowState });
+			const { updateNodeParameterIssues } = workflowState;
 
 			updateNodeParameterIssues(node);
 

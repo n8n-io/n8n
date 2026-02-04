@@ -27,6 +27,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useMessage } from '@/app/composables/useMessage';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { usePinnedData } from '@/app/composables/usePinnedData';
@@ -65,6 +66,7 @@ const props = withDefaults(
 const ndvStore = useNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
+const workflowState = injectWorkflowState();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
@@ -315,7 +317,7 @@ const blockUi = computed(
 );
 
 const foreignCredentials = computed(() =>
-	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
+	workflowState.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
 );
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);

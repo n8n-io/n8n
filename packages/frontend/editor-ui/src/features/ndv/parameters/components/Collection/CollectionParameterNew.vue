@@ -15,7 +15,7 @@ import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-work
 import get from 'lodash/get';
 
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
@@ -53,7 +53,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 const ndvStore = useNDVStore();
 const i18n = useI18n();
-const nodeHelpers = useNodeHelpers();
+const workflowState = injectWorkflowState();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -97,7 +97,12 @@ function displayNodeParameter(parameter: INodeProperties) {
 		// If it is not defined no need to do a proper check
 		return true;
 	}
-	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, ndvStore.activeNode);
+	return workflowState.displayParameter(
+		props.nodeValues,
+		parameter,
+		props.path,
+		ndvStore.activeNode,
+	);
 }
 
 function getOptionProperties(

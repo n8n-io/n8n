@@ -22,7 +22,6 @@ import CredentialSharing from './CredentialSharing.ee.vue';
 import Modal from '@/app/components/Modal.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
 import { useMessage } from '@/app/composables/useMessage';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
@@ -84,7 +83,6 @@ const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 
-const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
@@ -474,7 +472,12 @@ function displayCredentialParameter(parameter: INodeProperties): boolean {
 		return true;
 	}
 
-	return nodeHelpers.displayParameter(credentialData.value as INodeParameters, parameter, '', null);
+	return workflowState.displayParameter(
+		credentialData.value as INodeParameters,
+		parameter,
+		'',
+		null,
+	);
 }
 
 function getCredentialProperties(name: string): INodeProperties[] {
@@ -968,7 +971,7 @@ async function updateCredential(
 
 	// Now that the credentials changed check if any nodes use credentials
 	// which have now a different name
-	nodeHelpers.updateNodesCredentialsIssues();
+	workflowState.updateNodesCredentialsIssues();
 
 	return credential;
 }
@@ -1013,7 +1016,7 @@ async function deleteCredential() {
 
 	isDeleting.value = false;
 	// Now that the credentials were removed check if any nodes used them
-	nodeHelpers.updateNodesCredentialsIssues();
+	workflowState.updateNodesCredentialsIssues();
 	credentialData.value = {};
 
 	toast.showMessage({

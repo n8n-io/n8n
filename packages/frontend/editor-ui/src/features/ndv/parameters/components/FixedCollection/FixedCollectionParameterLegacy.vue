@@ -20,7 +20,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { storeToRefs } from 'pinia';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 import {
 	N8nButton,
@@ -33,7 +33,7 @@ import {
 } from '@n8n/design-system';
 
 const locale = useI18n();
-const nodeHelpers = useNodeHelpers();
+const workflowState = injectWorkflowState();
 
 export type Props = {
 	nodeValues: INodeParameters;
@@ -255,8 +255,8 @@ const getPickerPropertyValues = (
 			return false;
 		}
 
-		// Use the existing displayParameter helper from node-helpers to check visibility
-		return nodeHelpers.displayParameter(props.nodeValues, value, itemPath, activeNode.value);
+		// Use the existing displayParameter helper from workflowState to check visibility
+		return workflowState.displayParameter(props.nodeValues, value, itemPath, activeNode.value);
 	});
 };
 

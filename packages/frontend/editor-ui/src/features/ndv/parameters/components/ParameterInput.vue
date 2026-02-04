@@ -71,7 +71,6 @@ import {
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
@@ -166,7 +165,6 @@ const emit = defineEmits<{
 
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
-const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
 const workflowHelpers = useWorkflowHelpers();
 const nodeSettingsParameters = useNodeSettingsParameters();
@@ -686,7 +684,7 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 
 	if (updateNode) {
 		// Update the issues
-		nodeHelpers.updateNodeCredentialIssues(updateNode);
+		workflowState.updateNodeCredentialIssues(updateNode);
 	}
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });

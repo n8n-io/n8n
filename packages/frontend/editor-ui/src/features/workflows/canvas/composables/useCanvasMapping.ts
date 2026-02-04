@@ -57,6 +57,7 @@ import {
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { nodeIssuesToString } from '@/app/utils/nodeIssueUtils';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
@@ -486,7 +487,7 @@ export function useCanvasMapping({
 			const validationErrors: string[] = [];
 
 			if (node?.issues !== undefined) {
-				validationErrors.push(...nodeHelpers.nodeIssuesToString(node.issues, node));
+				validationErrors.push(...nodeIssuesToString(node.issues, node));
 			}
 
 			acc[node.id] = validationErrors;

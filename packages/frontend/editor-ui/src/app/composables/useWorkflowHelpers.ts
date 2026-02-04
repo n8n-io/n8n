@@ -35,7 +35,7 @@ import type { ICredentialsResponse } from '@/features/credentials/credentials.ty
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { hasProxyAuth } from '@/app/utils/nodeIssueUtils';
 
 import get from 'lodash/get';
 
@@ -527,7 +527,6 @@ export function useWorkflowHelpers() {
 	const workflowState = injectWorkflowState();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
-	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
 	const tagsStore = useTagsStore();
 
@@ -659,17 +658,14 @@ export function useWorkflowHelpers() {
 			if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 				const saveCredentials: INodeCredentials = {};
 				for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-					if (
-						nodeHelpers.hasProxyAuth(node) ||
-						Object.keys(node.parameters).includes('genericAuthType')
-					) {
+					if (hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
 						saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 						continue;
 					}
 
 					const credentialTypeDescription = nodeType.credentials
 						// filter out credentials with same name in different node versions
-						.filter((c) => nodeHelpers.displayParameter(node.parameters, c, '', node))
+						.filter((c) => workflowState.displayParameter(node.parameters, c, '', node))
 						.find((c) => c.name === nodeCredentialTypeName);
 
 					if (credentialTypeDescription === undefined) {
@@ -677,7 +673,9 @@ export function useWorkflowHelpers() {
 						continue;
 					}
 
-					if (!nodeHelpers.displayParameter(node.parameters, credentialTypeDescription, '', node)) {
+					if (
+						!workflowState.displayParameter(node.parameters, credentialTypeDescription, '', node)
+					) {
 						// Credential should not be displayed so do also not save
 						continue;
 					}

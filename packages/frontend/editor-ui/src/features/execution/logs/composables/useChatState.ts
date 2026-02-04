@@ -1,7 +1,6 @@
 import type { RunWorkflowChatPayload } from '@/features/execution/logs/composables/useChatMessaging';
 import { useChatMessaging } from '@/features/execution/logs/composables/useChatMessaging';
 import { useI18n } from '@n8n/i18n';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -46,7 +45,6 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	const rootStore = useRootStore();
 	const logsStore = useLogsStore();
 	const router = useRouter();
-	const nodeHelpers = useNodeHelpers();
 	const { runWorkflow } = useRunWorkflow({ router });
 
 	const ws = ref<WebSocket | null>(null);
@@ -228,7 +226,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 
 	function refreshSession() {
 		workflowState.setWorkflowExecutionData(null);
-		nodeHelpers.updateNodesExecutionIssues();
+		workflowState.updateNodesExecutionIssues();
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();
 

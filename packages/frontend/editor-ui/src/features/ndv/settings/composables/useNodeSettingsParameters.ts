@@ -142,8 +142,8 @@ export function useNodeSettingsParameters() {
 			oldNodeParameters,
 		});
 
-		nodeHelpers.updateNodeParameterIssuesByName(node.name);
-		nodeHelpers.updateNodeCredentialIssuesByName(node.name);
+		workflowState.updateNodeParameterIssuesByName(node.name);
+		workflowState.updateNodeCredentialIssuesByName(node.name);
 		telemetry.trackNodeParametersValuesChange(nodeTypeDescription.name, parameterData);
 	}
 
@@ -240,7 +240,7 @@ export function useNodeSettingsParameters() {
 
 		// Fast path: no keys means nothing to resolve
 		if (keyCount === 0) {
-			return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);
+			return workflowState.displayParameter(nodeParameters, parameter, path, node, displayKey);
 		}
 
 		// Check if we have any expressions to resolve (scan first to avoid unnecessary work)
@@ -255,7 +255,7 @@ export function useNodeSettingsParameters() {
 
 		// Fast path: no expressions means we can use original parameters directly
 		if (!hasExpressions) {
-			return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);
+			return workflowState.displayParameter(nodeParameters, parameter, path, node, displayKey);
 		}
 
 		// Resolve expressions - use index-based iteration for better performance
@@ -366,12 +366,12 @@ export function useNodeSettingsParameters() {
 			if (path) {
 				const resolvedValues = deepCopy(nodeParameters);
 				set(resolvedValues, path, nodeParams);
-				return nodeHelpers.displayParameter(resolvedValues, parameter, path, node, displayKey);
+				return workflowState.displayParameter(resolvedValues, parameter, path, node, displayKey);
 			}
-			return nodeHelpers.displayParameter(nodeParams, parameter, '', node, displayKey);
+			return workflowState.displayParameter(nodeParams, parameter, '', node, displayKey);
 		}
 
-		return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);
+		return workflowState.displayParameter(nodeParameters, parameter, path, node, displayKey);
 	}
 
 	return {

@@ -16,8 +16,6 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
-	type INodeIssueData,
-	type INodeIssueObjectProperty,
 	NodeHelpers,
 	type IDataObject,
 	type INodeParameters,
@@ -41,6 +39,7 @@ import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowMetadata } from '@n8n/rest-api-client';
 import { dataPinningEventBus } from '../event-bus';
+import { useWorkflowNodeIssuesState } from './useWorkflowNodeIssuesState';
 
 export type WorkflowStateBusEvents = {
 	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
@@ -443,37 +442,8 @@ export function useWorkflowState() {
 		workflowStateEventBus.emit('updateNodeProperties', [this, updateInformation]);
 	}
 
-	function setNodeIssue(nodeIssueData: INodeIssueData): void {
-		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
-			return node.name === nodeIssueData.node;
-		});
-		if (nodeIndex === -1) {
-			return;
-		}
-
-		const node = ws.workflow.nodes[nodeIndex];
-
-		if (nodeIssueData.value === null) {
-			// Remove the value if one exists
-			if (node.issues?.[nodeIssueData.type] === undefined) {
-				// No values for type exist so nothing has to get removed
-				return;
-			}
-
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { [nodeIssueData.type]: _removedNodeIssue, ...remainingNodeIssues } = node.issues;
-			updateNodeAtIndex(nodeIndex, {
-				issues: remainingNodeIssues,
-			});
-		} else {
-			updateNodeAtIndex(nodeIndex, {
-				issues: {
-					...node.issues,
-					[nodeIssueData.type]: nodeIssueData.value as INodeIssueObjectProperty,
-				},
-			});
-		}
-	}
+	// Create node issues state
+	const nodeIssuesState = useWorkflowNodeIssuesState({ updateNodeAtIndex });
 
 	return {
 		// Workflow editing state
@@ -505,7 +475,6 @@ export function useWorkflowState() {
 		setLastNodeParameters,
 		setNodeValue,
 		setNodePositionById,
-		setNodeIssue,
 		updateNodeAtIndex,
 		updateNodeById,
 		updateNodeProperties,
@@ -513,6 +482,9 @@ export function useWorkflowState() {
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,
+
+		// Node issues state
+		...nodeIssuesState,
 	};
 }
 

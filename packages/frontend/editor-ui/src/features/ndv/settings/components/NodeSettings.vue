@@ -395,8 +395,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 			workflowState.setNodeParameters(updateInformation);
 
-			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
-			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
+			workflowState.updateNodeParameterIssuesByName(_node.name);
+			workflowState.updateNodeCredentialIssuesByName(_node.name);
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
@@ -489,7 +489,7 @@ const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation)
 
 	if (node) {
 		// Update the issues
-		nodeHelpers.updateNodeCredentialIssues(node);
+		workflowState.updateNodeCredentialIssues(node);
 	}
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
@@ -556,7 +556,7 @@ onMounted(async () => {
 	setNodeValues();
 	props.eventBus?.on('openSettings', openSettings);
 	if (node.value !== null) {
-		nodeHelpers.updateNodeParameterIssues(node.value, nodeType.value);
+		workflowState.updateNodeParameterIssues(node.value, nodeType.value);
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
@@ -576,7 +576,7 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 
 	return (
 		!!node.value &&
-		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
+		workflowState.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
 	);
 }
 

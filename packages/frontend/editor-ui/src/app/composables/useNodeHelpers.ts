@@ -1,20 +1,11 @@
 import { ref, computed } from 'vue';
 import { useHistoryStore } from '@/app/stores/history.store';
-import {
-	CUSTOM_API_CALL_KEY,
-	EnterpriseEditionFeature,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-} from '@/app/constants';
+import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 
 import { NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeProperties,
-	INodeCredentialDescription,
 	INodeTypeDescription,
-	INodeIssues,
-	ICredentialType,
-	INodeIssueObjectProperty,
-	INodeInputConfiguration,
 	Workflow,
 	INodeExecutionData,
 	ITaskDataConnections,
@@ -29,7 +20,6 @@ import type {
 	NodeConnectionType,
 	IRunExecutionData,
 	NodeHint,
-	INodeCredentials,
 } from 'n8n-workflow';
 
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
@@ -41,23 +31,10 @@ import { isObject } from '@/app/utils/objectUtils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/app/models/history';
 import { useTelemetry } from './useTelemetry';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowState, type WorkflowState } from './useWorkflowState';
-
-declare namespace HttpRequestNode {
-	namespace V2 {
-		type AuthParams = {
-			authentication: 'none' | 'genericCredentialType' | 'predefinedCredentialType';
-			genericAuthType: string;
-			nodeCredentialType: string;
-		};
-	}
-}
 
 export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	const credentialsStore = useCredentialsStore();
@@ -65,8 +42,6 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = opts.workflowState ?? injectWorkflowState();
-	const settingsStore = useSettingsStore();
-	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 
 	const isInsertingNodes = ref(false);
@@ -75,10 +50,6 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	const pullConnActiveNodeName = ref<string | null>(null);
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
-
-	function hasProxyAuth(node: INodeUi): boolean {
-		return Object.keys(node.parameters).includes('nodeCredentialType');
-	}
 
 	function isCustomApiCallSelected(nodeValues: INodeParameters): boolean {
 		const { parameters } = nodeValues;
@@ -133,476 +104,6 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		}
 
 		return Boolean(executable || foreignCredentials.length > 0);
-	}
-
-	/**
-	 * Returns a list of credential IDs that the current user does not have access to,
-	 * if the Sharing feature is enabled.
-	 *
-	 * These are considered "foreign" credentials: the user can't view or manage them,
-	 * but can still execute workflows that use them.
-	 */
-	function getForeignCredentialsIfSharingEnabled(
-		credentials: INodeCredentials | undefined,
-	): string[] {
-		if (
-			!credentials ||
-			!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]
-		) {
-			return [];
-		}
-
-		const usedCredentials = workflowsStore.usedCredentials;
-
-		return Object.values(credentials)
-			.map(({ id }) => id)
-			.filter((id) => id !== null)
-			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserHasAccess);
-	}
-
-	// Returns if the given parameter should be displayed or not
-	function displayParameter(
-		nodeValues: INodeParameters,
-		parameter: INodeProperties | INodeCredentialDescription,
-		path: string,
-		node: INodeUi | null,
-		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
-	) {
-		const nodeTypeDescription = node?.type
-			? nodeTypesStore.getNodeType(node.type, node.typeVersion)
-			: null;
-		return NodeHelpers.displayParameterPath(
-			nodeValues,
-			parameter,
-			path,
-			node,
-			nodeTypeDescription,
-			displayKey,
-		);
-	}
-
-	function getNodeIssues(
-		nodeType: INodeTypeDescription | null,
-		node: INodeUi,
-		workflow: Workflow,
-		ignoreIssues?: string[],
-	): INodeIssues | null {
-		const pinDataNodeNames = Object.keys(workflowsStore.pinnedWorkflowData ?? {});
-
-		let nodeIssues: INodeIssues | null = null;
-		ignoreIssues = ignoreIssues ?? [];
-
-		if (node.disabled === true || pinDataNodeNames.includes(node.name)) {
-			// Ignore issues on disabled and pindata nodes
-			return null;
-		}
-
-		if (nodeType === null) {
-			// Node type is not known
-			if (!ignoreIssues.includes('typeUnknown')) {
-				nodeIssues = {
-					typeUnknown: true,
-				};
-			}
-		} else {
-			// Node type is known
-
-			// Add potential parameter issues
-			if (!ignoreIssues.includes('parameters')) {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node, nodeType);
-			}
-
-			if (!ignoreIssues.includes('credentials')) {
-				// Add potential credential issues
-				const nodeCredentialIssues = getNodeCredentialIssues(node, nodeType);
-				if (nodeIssues === null) {
-					nodeIssues = nodeCredentialIssues;
-				} else {
-					NodeHelpers.mergeIssues(nodeIssues, nodeCredentialIssues);
-				}
-			}
-
-			const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
-			if (nodeIssues === null) {
-				nodeIssues = nodeInputIssues;
-			} else {
-				NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
-			}
-		}
-
-		if (hasNodeExecutionIssues(node) && !ignoreIssues.includes('execution')) {
-			if (nodeIssues === null) {
-				nodeIssues = {};
-			}
-			nodeIssues.execution = true;
-		}
-
-		return nodeIssues;
-	}
-
-	// Set the status on all the nodes which produced an error so that it can be
-	// displayed in the node-view
-	function hasNodeExecutionIssues(node: INodeUi): boolean {
-		const workflowResultData = workflowsStore.getWorkflowRunData;
-
-		if (!workflowResultData?.hasOwnProperty(node.name)) {
-			return false;
-		}
-
-		for (const taskData of workflowResultData[node.name]) {
-			if (taskData.error !== undefined) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	function reportUnsetCredential(credentialType: ICredentialType) {
-		return {
-			credentials: {
-				[credentialType.name]: [
-					i18n.baseText('nodeHelpers.credentialsUnset', {
-						interpolate: {
-							credentialType: credentialType.displayName,
-						},
-					}),
-				],
-			},
-		};
-	}
-
-	function updateNodeInputIssues(node: INodeUi): void {
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		if (!nodeType) {
-			return;
-		}
-
-		const nodeInputIssues = getNodeInputIssues(workflowObject.value, node, nodeType);
-
-		workflowState.setNodeIssue({
-			node: node.name,
-			type: 'input',
-			value: nodeInputIssues?.input ? nodeInputIssues.input : null,
-		});
-	}
-
-	function updateNodesInputIssues() {
-		const nodes = workflowsStore.allNodes;
-
-		for (const node of nodes) {
-			updateNodeInputIssues(node);
-		}
-	}
-
-	function updateNodesExecutionIssues() {
-		const nodes = workflowsStore.allNodes;
-
-		for (const node of nodes) {
-			workflowState.setNodeIssue({
-				node: node.name,
-				type: 'execution',
-				value: hasNodeExecutionIssues(node) ? true : null,
-			});
-		}
-	}
-
-	function updateNodesParameterIssues() {
-		const nodes = workflowsStore.allNodes;
-
-		for (const node of nodes) {
-			updateNodeParameterIssues(node);
-		}
-	}
-
-	function updateNodeCredentialIssuesByName(name: string): void {
-		const node = workflowsStore.getNodeByName(name);
-
-		if (node) {
-			updateNodeCredentialIssues(node);
-		}
-	}
-
-	function updateNodeCredentialIssues(node: INodeUi): void {
-		const fullNodeIssues: INodeIssues | null = getNodeCredentialIssues(node);
-
-		let newIssues: INodeIssueObjectProperty | null = null;
-		if (fullNodeIssues !== null) {
-			newIssues = fullNodeIssues.credentials!;
-		}
-
-		workflowState.setNodeIssue({
-			node: node.name,
-			type: 'credentials',
-			value: newIssues,
-		});
-	}
-
-	function updateNodeParameterIssuesByName(name: string): void {
-		const node = workflowsStore.getNodeByName(name);
-
-		if (node) {
-			updateNodeParameterIssues(node);
-		}
-	}
-
-	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription | null): void {
-		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
-
-		if (localNodeType === null) {
-			// Could not find localNodeType so can not update issues
-			return;
-		}
-
-		// All data got updated everywhere so update now the issues
-		const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(
-			localNodeType.properties,
-			node,
-			localNodeType,
-		);
-
-		let newIssues: INodeIssueObjectProperty | null = null;
-		if (fullNodeIssues !== null) {
-			newIssues = fullNodeIssues.parameters!;
-		}
-
-		workflowState.setNodeIssue({
-			node: node.name,
-			type: 'parameters',
-			value: newIssues,
-		});
-	}
-
-	function getNodeInputIssues(
-		workflow: Workflow,
-		node: INodeUi,
-		nodeType?: INodeTypeDescription,
-	): INodeIssues | null {
-		const foundIssues: INodeIssueObjectProperty = {};
-
-		const workflowNode = workflow.getNode(node.name);
-		let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
-		if (nodeType && workflowNode) {
-			inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
-		}
-
-		inputs.forEach((input) => {
-			if (typeof input === 'string' || input.required !== true) {
-				return;
-			}
-
-			const parentNodes = workflow.getParentNodes(node.name, input.type, 1);
-
-			if (parentNodes.length === 0) {
-				foundIssues[input.type] = [
-					i18n.baseText('nodeIssues.input.missing', {
-						interpolate: { inputName: input.displayName || input.type },
-					}),
-				];
-			}
-		});
-
-		if (Object.keys(foundIssues).length) {
-			return {
-				input: foundIssues,
-			};
-		}
-
-		return null;
-	}
-
-	function getNodeCredentialIssues(
-		node: INodeUi,
-		nodeType?: INodeTypeDescription,
-	): INodeIssues | null {
-		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		if (node.disabled) {
-			// Node is disabled
-			return null;
-		}
-		if (!localNodeType?.credentials) {
-			// Node does not need any credentials or nodeType could not be found
-			return null;
-		}
-
-		const foundIssues: INodeIssueObjectProperty = {};
-
-		let userCredentials: ICredentialsResponse[] | null;
-		let credentialType: ICredentialType | undefined;
-		let credentialDisplayName: string;
-		let selectedCredentials: INodeCredentialsDetails;
-
-		const { authentication, genericAuthType, nodeCredentialType } =
-			node.parameters as HttpRequestNode.V2.AuthParams;
-
-		if (
-			authentication === 'genericCredentialType' &&
-			genericAuthType !== '' &&
-			selectedCredsAreUnusable(node, genericAuthType)
-		) {
-			const credential = credentialsStore.getCredentialTypeByName(genericAuthType);
-			return credential ? reportUnsetCredential(credential) : null;
-		}
-
-		if (
-			hasProxyAuth(node) &&
-			authentication === 'predefinedCredentialType' &&
-			nodeCredentialType !== '' &&
-			node.credentials !== undefined
-		) {
-			const stored = credentialsStore.getCredentialsByType(nodeCredentialType);
-			// Prevents HTTP Request node from being unusable if a sharee does not have direct
-			// access to a credential
-			const isCredentialUsedInWorkflow =
-				workflowsStore.usedCredentials?.[node.credentials?.[nodeCredentialType]?.id as string];
-
-			if (
-				selectedCredsDoNotExist(node, nodeCredentialType, stored) &&
-				!isCredentialUsedInWorkflow
-			) {
-				const credential = credentialsStore.getCredentialTypeByName(nodeCredentialType);
-				return credential ? reportUnsetCredential(credential) : null;
-			}
-		}
-
-		if (
-			hasProxyAuth(node) &&
-			authentication === 'predefinedCredentialType' &&
-			nodeCredentialType !== '' &&
-			selectedCredsAreUnusable(node, nodeCredentialType)
-		) {
-			const credential = credentialsStore.getCredentialTypeByName(nodeCredentialType);
-			return credential ? reportUnsetCredential(credential) : null;
-		}
-
-		for (const credentialTypeDescription of localNodeType.credentials) {
-			// Check if credentials should be displayed else ignore
-			if (!displayParameter(node.parameters, credentialTypeDescription, '', node)) {
-				continue;
-			}
-
-			// Get the display name of the credential type
-			credentialType = credentialsStore.getCredentialTypeByName(credentialTypeDescription.name);
-			if (!credentialType) {
-				credentialDisplayName = credentialTypeDescription.name;
-			} else {
-				credentialDisplayName = credentialType.displayName;
-			}
-
-			if (!node.credentials?.[credentialTypeDescription.name]) {
-				// Credentials are not set
-				if (credentialTypeDescription.required) {
-					foundIssues[credentialTypeDescription.name] = [
-						i18n.baseText('nodeIssues.credentials.notSet', {
-							interpolate: { type: localNodeType.displayName },
-						}),
-					];
-				}
-			} else {
-				// If they are set check if the value is valid
-				selectedCredentials = node.credentials[credentialTypeDescription.name];
-				if (typeof selectedCredentials === 'string') {
-					selectedCredentials = {
-						id: null,
-						name: selectedCredentials,
-					};
-				}
-
-				userCredentials = credentialsStore.getCredentialsByType(credentialTypeDescription.name);
-
-				if (userCredentials === null) {
-					userCredentials = [];
-				}
-
-				if (selectedCredentials.id) {
-					const idMatch = userCredentials.find(
-						(credentialData) => credentialData.id === selectedCredentials.id,
-					);
-					if (idMatch) {
-						continue;
-					}
-				}
-
-				const nameMatches = userCredentials.filter(
-					(credentialData) => credentialData.name === selectedCredentials.name,
-				);
-				if (nameMatches.length > 1) {
-					foundIssues[credentialTypeDescription.name] = [
-						i18n.baseText('nodeIssues.credentials.notIdentified', {
-							interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
-						}),
-						i18n.baseText('nodeIssues.credentials.notIdentified.hint'),
-					];
-					continue;
-				}
-
-				if (nameMatches.length === 0) {
-					const isCredentialUsedInWorkflow =
-						workflowsStore.usedCredentials?.[selectedCredentials.id as string];
-
-					if (
-						!isCredentialUsedInWorkflow &&
-						!hasPermission(['rbac'], { rbac: { scope: 'credential:read' } })
-					) {
-						foundIssues[credentialTypeDescription.name] = [
-							i18n.baseText('nodeIssues.credentials.doNotExist', {
-								interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
-							}),
-							i18n.baseText('nodeIssues.credentials.doNotExist.hint'),
-						];
-					}
-				}
-			}
-		}
-
-		// TODO: Could later check also if the node has access to the credentials
-		if (Object.keys(foundIssues).length === 0) {
-			return null;
-		}
-
-		return {
-			credentials: foundIssues,
-		};
-	}
-	/**
-	 * Whether the node has no selected credentials, or none of the node's
-	 * selected credentials are of the specified type.
-	 */
-	function selectedCredsAreUnusable(node: INodeUi, credentialType: string) {
-		return !node.credentials || !Object.keys(node.credentials).includes(credentialType);
-	}
-
-	/**
-	 * Whether the node's selected credentials of the specified type
-	 * can no longer be found in the database.
-	 */
-	function selectedCredsDoNotExist(
-		node: INodeUi,
-		nodeCredentialType: string,
-		storedCredsByType: ICredentialsResponse[] | null,
-	) {
-		if (!node.credentials || !storedCredsByType) return false;
-
-		const selectedCredsByType = node.credentials[nodeCredentialType];
-
-		if (!selectedCredsByType) return false;
-
-		return !storedCredsByType.find((c) => c.id === selectedCredsByType.id);
-	}
-
-	function updateNodesCredentialsIssues() {
-		const nodes = workflowsStore.allNodes;
-		let issues: INodeIssues | null;
-
-		for (const node of nodes) {
-			issues = getNodeCredentialIssues(node);
-
-			workflowState.setNodeIssue({
-				node: node.name,
-				type: 'credentials',
-				value: issues?.credentials ?? null,
-			});
-		}
 	}
 
 	function getNodeTaskData(nodeName: string, runIndex = 0, execution?: IRunExecutionData) {
@@ -731,9 +232,9 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 
 			workflowState.updateNodeProperties(updateInformation);
 			workflowsStore.clearNodeExecutionData(node.name);
-			updateNodeParameterIssues(node);
-			updateNodeCredentialIssues(node);
-			updateNodesInputIssues();
+			workflowState.updateNodeParameterIssues(node);
+			workflowState.updateNodeCredentialIssues(node);
+			workflowState.updateNodesInputIssues();
 			if (trackHistory) {
 				historyStore.pushCommandToUndo(
 					new EnableNodeToggleCommand(
@@ -1013,44 +514,6 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		return hints;
 	}
 
-	/**
-	 * Returns the issues of the node as string
-	 *
-	 * @param {INodeIssues} issues The issues of the node
-	 * @param {INode} node The node
-	 */
-	function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
-		const nodeIssues = [];
-
-		if (issues.execution !== undefined) {
-			nodeIssues.push('Execution Error.');
-		}
-
-		const objectProperties = ['parameters', 'credentials', 'input'];
-
-		let issueText: string;
-		let parameterName: string;
-		for (const propertyName of objectProperties) {
-			if (issues[propertyName] !== undefined) {
-				for (parameterName of Object.keys(issues[propertyName] as object)) {
-					for (issueText of (issues[propertyName] as INodeIssueObjectProperty)[parameterName]) {
-						nodeIssues.push(issueText);
-					}
-				}
-			}
-		}
-
-		if (issues.typeUnknown !== undefined) {
-			if (node !== undefined) {
-				nodeIssues.push(`Node Type "${node.type}" is not known.`);
-			} else {
-				nodeIssues.push('Node Type is not known.');
-			}
-		}
-
-		return nodeIssues;
-	}
-
 	function getDefaultNodeName(node: AddedNode | INode) {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (nodeType === null) return null;
@@ -1067,24 +530,11 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	return {
-		hasProxyAuth,
 		isCustomApiCallSelected,
 		isNodeExecutable,
-		getForeignCredentialsIfSharingEnabled,
-		displayParameter,
-		getNodeIssues,
-		updateNodesInputIssues,
-		updateNodesExecutionIssues,
-		updateNodesParameterIssues,
-		updateNodeInputIssues,
-		updateNodeCredentialIssuesByName,
-		updateNodeCredentialIssues,
-		updateNodeParameterIssuesByName,
-		updateNodeParameterIssues,
 		getBinaryData,
 		disableNodes,
 		getNodeSubtitle,
-		updateNodesCredentialsIssues,
 		getLastRunIndexWithData,
 		hasNodeExecuted,
 		getNodeInputData,
@@ -1099,7 +549,6 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		assignWebhookId,
 		isSingleExecution,
 		getNodeHints,
-		nodeIssuesToString,
 		getDefaultNodeName,
 	};
 }

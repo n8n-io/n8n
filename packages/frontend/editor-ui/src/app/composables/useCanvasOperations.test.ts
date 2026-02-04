@@ -57,11 +57,8 @@ import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
+import type * as useNodeHelpersModule from '@/app/composables/useNodeHelpers';
+import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 
 import { useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -135,11 +132,24 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
+// Use a mutable reference so the mock always returns the current workflowState
+const workflowStateRef: { current: WorkflowState | undefined } = { current: undefined };
+
+vi.mock('@/app/composables/useWorkflowState', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const actual = await importOriginal<typeof import('@/app/composables/useWorkflowState')>();
 	return {
 		...actual,
-		injectWorkflowState: vi.fn(),
+		injectWorkflowState: () => workflowStateRef.current,
+	};
+});
+
+vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
+	const actual = await importOriginal<typeof useNodeHelpersModule>();
+	return {
+		...actual,
+		useNodeHelpers: (opts = {}) =>
+			actual.useNodeHelpers({ ...opts, workflowState: workflowStateRef.current }),
 	};
 });
 
@@ -197,7 +207,7 @@ describe('useCanvasOperations', () => {
 		setActivePinia(pinia);
 
 		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+		workflowStateRef.current = workflowState;
 	});
 
 	describe('requireNodeTypeDescription', () => {
@@ -3063,11 +3073,10 @@ describe('useCanvasOperations', () => {
 			workflowsStore.getNodeById.mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
 
 			const updateNodeInputIssuesSpy = vi.fn();
-			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
-			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
-				...nodeHelpersOriginal,
+			workflowStateRef.current = {
+				...workflowState,
 				updateNodeInputIssues: updateNodeInputIssuesSpy,
-			}));
+			};
 
 			const { deleteConnection } = useCanvasOperations();
 			deleteConnection(connection);

@@ -1,6 +1,5 @@
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -454,7 +453,6 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers({ workflowState });
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 
@@ -476,7 +474,7 @@ export function setRunExecutionData(
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view
-	nodeHelpers.updateNodesExecutionIssues();
+	workflowState.updateNodesExecutionIssues();
 
 	const lastNodeExecuted: string | undefined = runExecutionData.resultData.lastNodeExecuted;
 	let itemsCount = 0;

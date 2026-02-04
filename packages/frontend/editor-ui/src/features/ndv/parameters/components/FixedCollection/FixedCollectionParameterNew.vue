@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectionItemState';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -33,7 +33,7 @@ import FixedCollectionItemList from './FixedCollectionItemList.vue';
 const locale = useI18n();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const nodeHelpers = useNodeHelpers();
+const workflowState = injectWorkflowState();
 const { activeNode } = storeToRefs(ndvStore);
 
 export type Props = {
@@ -271,8 +271,8 @@ const getPickerPropertyValues = (
 			return false;
 		}
 
-		// Use the existing displayParameter helper from node-helpers to check visibility
-		return nodeHelpers.displayParameter(props.nodeValues, value, itemPath, activeNode.value);
+		// Use the existing displayParameter helper from workflowState to check visibility
+		return workflowState.displayParameter(props.nodeValues, value, itemPath, activeNode.value);
 	});
 };
 

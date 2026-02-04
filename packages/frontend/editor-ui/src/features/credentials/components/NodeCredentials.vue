@@ -10,7 +10,7 @@ import type {
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { hasProxyAuth } from '@/app/utils/nodeIssueUtils';
 import { useToast } from '@/app/composables/useToast';
 
 import TitledList from '@/app/components/TitledList.vue';
@@ -89,7 +89,6 @@ const canCreateCredentials = computed(
 		).credential.create,
 );
 
-const nodeHelpers = useNodeHelpers();
 const toast = useToast();
 
 const subscribedToCredentialType = ref('');
@@ -348,7 +347,7 @@ function onCredentialSelected(
 	telemetry.track('User selected credential from node modal', {
 		credential_type: credentialType,
 		node_type: props.node.type,
-		...(nodeHelpers.hasProxyAuth(props.node) ? { is_service_specific: true } : {}),
+		...(hasProxyAuth(props.node) ? { is_service_specific: true } : {}),
 		workflow_id: workflowsStore.workflowId,
 		credential_id: credentialId,
 	});
@@ -374,7 +373,7 @@ function onCredentialSelected(
 			invalid: oldCredentials,
 			type: selectedCredentialsType,
 		});
-		nodeHelpers.updateNodesCredentialsIssues();
+		workflowState.updateNodesCredentialsIssues();
 		toast.showMessage({
 			title: i18n.baseText('nodeCredentials.showMessage.title'),
 			message: i18n.baseText('nodeCredentials.showMessage.message', {
@@ -395,7 +394,7 @@ function onCredentialSelected(
 	});
 
 	if (updatedNodesCount > 0) {
-		nodeHelpers.updateNodesCredentialsIssues();
+		workflowState.updateNodesCredentialsIssues();
 		toast.showMessage({
 			title: i18n.baseText('nodeCredentials.showMessage.title'),
 			message: i18n.baseText('nodeCredentials.autoAssigned.message', {

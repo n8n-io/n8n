@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { type IUpdateInformation } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -24,12 +24,12 @@ const emit = defineEmits<{
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
 const { renameNode } = useCanvasOperations();
-const nodeHelpers = useNodeHelpers();
+const workflowState = injectWorkflowState();
 const ndvStore = useNDVStore();
 
 const activeNode = computed(() => workflowsStore.getNodeById(nodeId));
 const foreignCredentials = computed(() =>
-	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
+	workflowState.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
 );
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);

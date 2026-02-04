@@ -15,6 +15,19 @@ import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import { CHAT_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants';
 
+const displayParameterSpy = vi.fn();
+
+vi.mock('@/app/composables/useWorkflowState', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const actual = await importOriginal<typeof import('@/app/composables/useWorkflowState')>();
+	return {
+		...actual,
+		injectWorkflowState: () => ({
+			displayParameter: displayParameterSpy,
+		}),
+	};
+});
+
 describe('useNodeSettingsParameters', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
@@ -97,7 +110,6 @@ describe('useNodeSettingsParameters', () => {
 	});
 
 	describe('shouldDisplayNodeParameter', () => {
-		const displayParameterSpy = vi.fn();
 		function mockNodeHelpers({ isCustomApiCallSelected = false } = {}) {
 			const originalNodeHelpers = nodeHelpers.useNodeHelpers();
 
@@ -105,7 +117,6 @@ describe('useNodeSettingsParameters', () => {
 				return {
 					...originalNodeHelpers,
 					isCustomApiCallSelected: vi.fn(() => isCustomApiCallSelected),
-					displayParameter: displayParameterSpy,
 				};
 			});
 		}

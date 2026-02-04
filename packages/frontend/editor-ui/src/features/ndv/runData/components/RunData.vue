@@ -1041,7 +1041,7 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 		telemetry.track('User clicked pin data icon', telemetryPayload);
 	}
 
-	nodeHelpers.updateNodeParameterIssues(node.value);
+	workflowState.updateNodeParameterIssues(node.value);
 
 	if (pinnedData.hasData.value) {
 		pinnedData.unsetData(source);

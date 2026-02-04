@@ -1,6 +1,5 @@
 import { computed } from 'vue';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { TemplateCredentialKey } from '../utils/templateTransforms';
@@ -11,7 +10,6 @@ export const useSetupWorkflowCredentialsModalState = () => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
-	const nodeHelpers = useNodeHelpers();
 
 	const workflowNodes = computed(() => {
 		return workflowsStore.allNodes;
@@ -78,7 +76,7 @@ export const useSetupWorkflowCredentialsModalState = () => {
 			// We can't use updateNodeCredentialIssues because the previous
 			// step creates a new instance of the node in the store and
 			// `node` no longer points to the correct node.
-			nodeHelpers.updateNodeCredentialIssuesByName(node.name);
+			workflowState.updateNodeCredentialIssuesByName(node.name);
 		});
 
 		setInitialCredentialSelection();
@@ -109,7 +107,7 @@ export const useSetupWorkflowCredentialsModalState = () => {
 			// We can't use updateNodeCredentialIssues because the previous
 			// step creates a new instance of the node in the store and
 			// `node` no longer points to the correct node.
-			nodeHelpers.updateNodeCredentialIssuesByName(node.name);
+			workflowState.updateNodeCredentialIssuesByName(node.name);
 		});
 
 		setInitialCredentialSelection();
