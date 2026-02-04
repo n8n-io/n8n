@@ -1,3 +1,12 @@
+## [2.7.2](https://github.com/n8n-io/n8n/compare/n8n@2.7.1...n8n@2.7.2) (2026-02-04)
+
+
+### Bug Fixes
+
+* **core:** Wrong pagination argument order for sqlite in copyTables helper ([#25301](https://github.com/n8n-io/n8n/issues/25301)) ([540e899](https://github.com/n8n-io/n8n/commit/540e899c4d2770147ceef52a7bdf2bdc970e0a2a))
+
+
+
 ## [2.7.1](https://github.com/n8n-io/n8n/compare/n8n@2.7.0...n8n@2.7.1) (2026-02-03)
 
 
