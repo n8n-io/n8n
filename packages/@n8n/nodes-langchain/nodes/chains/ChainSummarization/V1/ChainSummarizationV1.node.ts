@@ -12,8 +12,8 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
-import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { N8nBinaryLoader, N8nJsonLoader } from '@n8n/ai-utilities';
+
 import { getTemplateNoticeField } from '@utils/sharedFields';
 
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';

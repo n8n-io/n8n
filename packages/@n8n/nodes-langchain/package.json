@@ -216,6 +216,7 @@
     "@microsoft/agents-hosting": "1.1.0-alpha.85",
     "@modelcontextprotocol/sdk": "1.25.2",
     "@mozilla/readability": "0.6.0",
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",

@@ -1,6 +1,6 @@
-# @n8n/ai-node-sdk
+# @n8n/ai-utilities
 
-SDK for building AI nodes in n8n.
+Utilities for building AI nodes in n8n.
 
 ## Installation
 
