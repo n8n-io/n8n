@@ -1,6 +1,8 @@
 import {
 	CreateSecretsProviderConnectionDto,
 	UpdateSecretsProviderConnectionDto,
+	ReloadSecretProviderConnectionResponse,
+	TestSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -103,48 +105,24 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Post('/:providerKey/test')
-	@GlobalScope('externalSecretsProvider:read')
-	testConnection(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Param('providerKey') _providerKey: string,
-	) {
-		this.logger.debug('Testing provider connnection');
-		//TODO implement
-		return;
-	}
-
-	@Post('/:providerKey/connect')
 	@GlobalScope('externalSecretsProvider:update')
-	toggleConnectionStatus(
+	async testConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('providerKey') _providerKey: string,
-	) {
-		this.logger.debug('Toggling connection status');
-		//TODO implement
-		return;
+		@Param('providerKey') providerKey: string,
+	): Promise<TestSecretProviderConnectionResponse> {
+		this.logger.debug('Testing provider connection', { providerKey });
+		return await this.connectionsService.testConnection(providerKey);
 	}
 
 	@Post('/:providerKey/reload')
 	@GlobalScope('externalSecretsProvider:sync')
-	reloadConnectionSecrets(
+	async reloadConnectionSecrets(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('providerKey') _providerKey: string,
-	) {
-		this.logger.debug('Reloading secrets for secret provider connection');
-		return;
-	}
-
-	@Post('/:providerKey/share')
-	@GlobalScope('externalSecretsProvider:update')
-	shareConnection(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Param('providerKey') _providerKey: string,
-	) {
-		this.logger.debug('Share connection with other projects');
-		return;
+		@Param('providerKey') providerKey: string,
+	): Promise<ReloadSecretProviderConnectionResponse> {
+		this.logger.debug('Reloading secrets for secret provider connection', { providerKey });
+		return await this.connectionsService.reloadConnectionSecrets(providerKey);
 	}
 }

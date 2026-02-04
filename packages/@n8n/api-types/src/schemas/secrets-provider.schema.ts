@@ -109,5 +109,15 @@ export type TestSecretProviderConnectionResponse = z.infer<
 	typeof testSecretProviderConnectionResponseSchema
 >;
 
+/**
+ * Reload connection result
+ */
+export const reloadSecretProviderConnectionResponseSchema = z.object({
+	success: z.boolean(),
+});
+export type ReloadSecretProviderConnectionResponse = z.infer<
+	typeof reloadSecretProviderConnectionResponseSchema
+>;
+
 // ==========
 // #endregion

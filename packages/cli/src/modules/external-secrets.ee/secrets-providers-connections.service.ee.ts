@@ -1,5 +1,11 @@
 import type { SecretCompletionsResponse, SecretsProviderType } from '@n8n/api-types';
-import { CreateSecretsProviderConnectionDto } from '@n8n/api-types/src';
+import {
+	CreateSecretsProviderConnectionDto,
+	TestSecretProviderConnectionResponse,
+	testSecretProviderConnectionResponseSchema,
+	reloadSecretProviderConnectionResponseSchema,
+	ReloadSecretProviderConnectionResponse,
+} from '@n8n/api-types';
 import type { SecretsProviderConnection } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
@@ -9,6 +15,7 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 
+import { jsonParse } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
@@ -40,7 +47,7 @@ export class SecretsProvidersConnectionsService {
 		const connection = this.repository.create({
 			...proposedConnection,
 			encryptedSettings,
-			isEnabled: false,
+			isEnabled: true,
 		});
 
 		const savedConnection = await this.repository.save(connection);
@@ -146,7 +153,6 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
-			isEnabled: connection.isEnabled,
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
@@ -156,7 +162,29 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
+	async testConnection(providerKey: string): Promise<TestSecretProviderConnectionResponse> {
+		const connection = await this.getConnection(providerKey);
+		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
+		const result = await this.externalSecretsManager.testProviderSettings(
+			connection.type,
+			decryptedSettings,
+		);
+		return testSecretProviderConnectionResponseSchema.parse(result);
+	}
+
+	async reloadConnectionSecrets(
+		providerKey: string,
+	): Promise<ReloadSecretProviderConnectionResponse> {
+		await this.getConnection(providerKey);
+		await this.externalSecretsManager.updateProvider(providerKey);
+		return reloadSecretProviderConnectionResponseSchema.parse({ success: true });
+	}
+
 	private encryptConnectionSettings(settings: IDataObject): string {
 		return this.cipher.encrypt(settings);
+	}
+
+	private decryptConnectionSettings(encryptedSettings: string): IDataObject {
+		return jsonParse(this.cipher.decrypt(encryptedSettings));
 	}
 }

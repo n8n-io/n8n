@@ -21,7 +21,6 @@ describe('SecretsProvidersConnectionsService', () => {
 				id: 1,
 				providerKey: 'my-aws',
 				type: 'awsSecretsManager',
-				isEnabled: true,
 				projectAccess: [
 					{ project: { id: 'p1', name: 'Project 1' } },
 					{ project: { id: 'p2', name: 'Project 2' } },
@@ -34,7 +33,6 @@ describe('SecretsProvidersConnectionsService', () => {
 				id: '1',
 				name: 'my-aws',
 				type: 'awsSecretsManager',
-				isEnabled: true,
 				projects: [
 					{ id: 'p1', name: 'Project 1' },
 					{ id: 'p2', name: 'Project 2' },
@@ -49,7 +47,6 @@ describe('SecretsProvidersConnectionsService', () => {
 				id: 2,
 				providerKey: 'my-vault',
 				type: 'vault',
-				isEnabled: false,
 				projectAccess: [],
 				createdAt: new Date('2024-01-01'),
 				updatedAt: new Date('2024-01-02'),
@@ -59,7 +56,6 @@ describe('SecretsProvidersConnectionsService', () => {
 				id: '2',
 				name: 'my-vault',
 				type: 'vault',
-				isEnabled: false,
 				projects: [],
 				createdAt: '2024-01-01T00:00:00.000Z',
 				updatedAt: '2024-01-02T00:00:00.000Z',
