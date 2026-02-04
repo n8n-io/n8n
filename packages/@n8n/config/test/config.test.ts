@@ -285,6 +285,7 @@ describe('GlobalConfig', () => {
 			deploymentName: '',
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
+			eventLoopBlockThreshold: 500,
 		},
 		logging: {
 			level: 'info',
