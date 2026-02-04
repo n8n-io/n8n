@@ -167,6 +167,8 @@ describe('WorkflowDetails', () => {
 			'123': workflow,
 		};
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
+		workflowsStore.workflowId = workflow.id;
+		workflowsStore.workflowChecksum = 'test-checksum';
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 		collaborationStore.shouldBeReadOnly = false;
@@ -474,7 +476,7 @@ describe('WorkflowDetails', () => {
 			expect(toast.showError).toHaveBeenCalledTimes(0);
 			expect(toast.showMessage).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledTimes(1);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
@@ -507,7 +509,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(teamWorkflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: teamProjectId },
@@ -539,7 +541,10 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(
+				personalWorkflow.id,
+				'test-checksum',
+			);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
 			});
@@ -564,7 +569,7 @@ describe('WorkflowDetails', () => {
 			expect(toast.showError).toHaveBeenCalledTimes(0);
 			expect(toast.showMessage).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledTimes(1);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,

@@ -168,7 +168,10 @@ export function useWorkflowActivate() {
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 		try {
-			await workflowsStore.deactivateWorkflow(workflowId);
+			const expectedChecksum =
+				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+
+			await workflowsStore.deactivateWorkflow(workflowId, expectedChecksum);
 
 			void useExternalHooks().run('workflow.unpublished', {
 				workflowId,

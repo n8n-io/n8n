@@ -1,6 +1,8 @@
 import {
 	ActivateWorkflowDto,
+	ArchiveWorkflowDto,
 	CreateWorkflowDto,
+	DeactivateWorkflowDto,
 	ImportWorkflowFromUrlDto,
 	ROLE,
 	TransferWorkflowBodyDto,
@@ -520,10 +522,15 @@ export class WorkflowsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId') workflowId: string,
+		@Body body: ArchiveWorkflowDto,
 	) {
 		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'archive');
 
-		const workflow = await this.workflowService.archive(req.user, workflowId);
+		const { expectedChecksum } = body;
+
+		const workflow = await this.workflowService.archive(req.user, workflowId, {
+			expectedChecksum,
+		});
 		if (!workflow) {
 			this.logger.warn('User attempted to archive a workflow without permissions', {
 				workflowId,
@@ -597,12 +604,19 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/deactivate')
 	@ProjectScope('workflow:publish')
-	async deactivate(req: WorkflowRequest.Deactivate) {
-		const { workflowId } = req.params;
-
+	async deactivate(
+		req: WorkflowRequest.Deactivate,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: DeactivateWorkflowDto,
+	) {
 		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'deactivate');
 
-		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId);
+		const { expectedChecksum } = body;
+
+		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId, {
+			expectedChecksum,
+		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(workflow);

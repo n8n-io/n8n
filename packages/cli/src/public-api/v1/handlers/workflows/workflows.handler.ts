@@ -361,11 +361,9 @@ export = {
 			const { id } = req.params;
 
 			try {
-				const workflow = await Container.get(WorkflowService).deactivateWorkflow(
-					req.user,
-					id,
-					true,
-				);
+				const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
+					publicApi: true,
+				});
 
 				return res.json(workflow);
 			} catch (error) {

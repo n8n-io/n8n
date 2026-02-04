@@ -734,8 +734,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedNodesCount;
 	}
 
-	async function archiveWorkflow(id: string) {
-		const updatedWorkflow = await workflowsListStore.archiveWorkflowInList(id);
+	async function archiveWorkflow(id: string, expectedChecksum?: string) {
+		const updatedWorkflow = await workflowsListStore.archiveWorkflowInList(id, expectedChecksum);
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
@@ -1474,11 +1474,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
-	async function deactivateWorkflow(id: string): Promise<IWorkflowDb> {
+	async function deactivateWorkflow(id: string, expectedChecksum?: string): Promise<IWorkflowDb> {
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
 			'POST',
 			`/workflows/${id}/deactivate`,
+			{ expectedChecksum },
 		);
 		if (!updatedWorkflow.checksum) {
 			throw new Error('Failed to deactivate workflow');
