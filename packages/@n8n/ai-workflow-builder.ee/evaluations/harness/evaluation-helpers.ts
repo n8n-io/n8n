@@ -80,3 +80,85 @@ export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
 		},
 	};
 }
+
+/**
+ * Coordination log entry for subgraph timing extraction.
+ * Matches the CoordinationLogEntry type from src/types/coordination.ts
+ */
+interface CoordinationLogEntry {
+	phase: 'discovery' | 'builder' | 'state_management' | 'responder';
+	status: 'completed' | 'in_progress' | 'error';
+	timestamp: number;
+}
+
+/**
+ * Subgraph metrics extracted from coordination log.
+ */
+export interface ExtractedSubgraphMetrics {
+	discoveryDurationMs?: number;
+	builderDurationMs?: number;
+	responderDurationMs?: number;
+	nodeCount?: number;
+}
+
+/**
+ * Calculate duration for a specific phase from coordination log entries.
+ * Looks for the first 'in_progress' and terminal ('completed' or 'error') status for the phase.
+ */
+function calculatePhaseDuration(
+	coordinationLog: CoordinationLogEntry[],
+	phase: 'discovery' | 'builder' | 'responder',
+): number | undefined {
+	const phaseEntries = coordinationLog.filter((entry) => entry.phase === phase);
+	if (phaseEntries.length === 0) return undefined;
+
+	const inProgress = phaseEntries.find((e) => e.status === 'in_progress');
+	// Accept either 'completed' or 'error' as the terminal status
+	const terminal = phaseEntries.find((e) => e.status === 'completed' || e.status === 'error');
+
+	if (inProgress && terminal) {
+		return terminal.timestamp - inProgress.timestamp;
+	}
+
+	// If no in_progress entry, try to calculate from first to last entry
+	if (phaseEntries.length >= 2) {
+		const sorted = [...phaseEntries].sort((a, b) => a.timestamp - b.timestamp);
+		return sorted[sorted.length - 1].timestamp - sorted[0].timestamp;
+	}
+
+	return undefined;
+}
+
+/**
+ * Extract subgraph metrics from coordination log and workflow.
+ */
+export function extractSubgraphMetrics(
+	coordinationLog: CoordinationLogEntry[] | undefined,
+	nodeCount: number | undefined,
+): ExtractedSubgraphMetrics {
+	const metrics: ExtractedSubgraphMetrics = {};
+
+	// Include node count
+	if (nodeCount !== undefined) {
+		metrics.nodeCount = nodeCount;
+	}
+
+	// Extract timing from coordination log
+	if (coordinationLog && coordinationLog.length > 0) {
+		const discoveryDuration = calculatePhaseDuration(coordinationLog, 'discovery');
+		const builderDuration = calculatePhaseDuration(coordinationLog, 'builder');
+		const responderDuration = calculatePhaseDuration(coordinationLog, 'responder');
+
+		if (discoveryDuration !== undefined) {
+			metrics.discoveryDurationMs = discoveryDuration;
+		}
+		if (builderDuration !== undefined) {
+			metrics.builderDurationMs = builderDuration;
+		}
+		if (responderDuration !== undefined) {
+			metrics.responderDurationMs = responderDuration;
+		}
+	}
+
+	return metrics;
+}

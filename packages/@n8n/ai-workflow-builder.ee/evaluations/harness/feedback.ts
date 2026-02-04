@@ -21,6 +21,7 @@ function isPairwiseV1Metric(metric: string): boolean {
  * - Programmatic: keep evaluator prefix (e.g. `programmatic.trigger`)
  * - LLM-judge: keep metrics unprefixed (e.g. `overallScore`, `connections`, `maintainability.nodeNamingQuality`)
  * - Pairwise: keep v1 metrics unprefixed (e.g. `pairwise_primary`), but namespace non-v1 details.
+ * - Metrics: keep evaluator prefix (e.g. `metrics.discovery_latency_ms`, `metrics.node_count`)
  */
 export function langsmithMetricKey(feedback: Feedback): string {
 	if (feedback.evaluator === 'pairwise') {
@@ -33,6 +34,10 @@ export function langsmithMetricKey(feedback: Feedback): string {
 
 	if (feedback.evaluator === 'llm-judge') {
 		return feedback.metric;
+	}
+
+	if (feedback.evaluator === 'metrics') {
+		return feedbackKey(feedback);
 	}
 
 	// Default: prefix unknown evaluators to avoid collisions with unprefixed `llm-judge` metrics.
