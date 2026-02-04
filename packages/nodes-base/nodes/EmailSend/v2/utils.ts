@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+import ntlmAuthProcessor from '@utils/nodemailer-ntlm-auth';
 
 export type EmailSendOptions = {
 	appendAttribution?: boolean;
@@ -31,11 +32,27 @@ export function configureTransport(credentials: IDataObject, options: EmailSendO
 		connectionOptions.name = credentials.hostName;
 	}
 
-	if (credentials.user || credentials.password) {
-		connectionOptions.auth = {
-			user: credentials.user as string,
-			pass: credentials.password as string,
-		};
+		if (credentials.user || credentials.password) {
+		if(credentials.useNTLM)
+		{
+			connectionOptions.auth = {
+				type: 'custom',
+				method: 'NTLM',
+				user: credentials.user as string,
+				pass: credentials.password as string,
+			};
+
+			connectionOptions.customAuth = {
+				NTLM: ntlmAuthProcessor
+			};
+		}
+		else
+		{
+			connectionOptions.auth = {
+				user: credentials.user as string,
+				pass: credentials.password as string,
+			};
+		}
 	}
 
 	if (options.allowUnauthorizedCerts === true) {

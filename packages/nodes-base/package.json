@@ -912,6 +912,7 @@
     "get-system-fonts": "2.0.2",
     "gm": "1.25.1",
     "html-to-text": "9.0.5",
+    "httpntlm": "1.8.13",
     "iconv-lite": "catalog:",
     "ics": "2.40.0",
     "isbot": "3.6.13",
