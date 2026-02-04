@@ -39,6 +39,10 @@ describe('McpTrigger Node', () => {
 			name: 'McpTrigger',
 			typeVersion: 2,
 		} as INode);
+		// Mock logger.debug for POST request logging
+		mockContext.logger = {
+			debug: jest.fn(),
+		} as unknown as typeof mockContext.logger;
 		mockServerManager.transports = {};
 	});
 
@@ -50,11 +54,12 @@ describe('McpTrigger Node', () => {
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
 
-			// Verify that the connectTransport method was called with correct URL
+			// Verify that the connectTransport method was called with correct URL and connected tools
 			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'McpTrigger',
 				'/custom-path',
 				mockResponse,
+				[mockTool],
 			);
 
 			// Verify the returned result has noWebhookResponse: true
@@ -69,16 +74,19 @@ describe('McpTrigger Node', () => {
 			mockServerManager.getSessionId.mockReturnValue(sessionId);
 			mockServerManager.getTransport.mockReturnValue(mock<FlushingSSEServerTransport>({}));
 
-			// Mock that the server executes a tool and returns true
-			mockServerManager.handlePostMessage.mockResolvedValueOnce(true);
+			// Mock that the server executes a tool and returns wasToolCall: true
+			mockServerManager.handlePostMessage.mockResolvedValueOnce({ wasToolCall: true });
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
 
-			// Verify that handlePostMessage was called with request, response and tools
-			expect(mockServerManager.handlePostMessage).toHaveBeenCalledWith(mockRequest, mockResponse, [
-				mockTool,
-			]);
+			// Verify that handlePostMessage was called with request, response, tools and server name
+			expect(mockServerManager.handlePostMessage).toHaveBeenCalledWith(
+				mockRequest,
+				mockResponse,
+				[mockTool],
+				'McpTrigger',
+			);
 
 			// Verify the returned result when a tool was called
 			expect(result).toEqual({
@@ -95,8 +103,8 @@ describe('McpTrigger Node', () => {
 			mockServerManager.getSessionId.mockReturnValue(sessionId);
 			mockServerManager.getTransport.mockReturnValue(mock<FlushingSSEServerTransport>({}));
 
-			// Mock that the server doesn't execute a tool and returns false
-			mockServerManager.handlePostMessage.mockResolvedValueOnce(false);
+			// Mock that the server doesn't execute a tool and returns wasToolCall: false
+			mockServerManager.handlePostMessage.mockResolvedValueOnce({ wasToolCall: false });
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
@@ -115,11 +123,12 @@ describe('McpTrigger Node', () => {
 			// Call the webhook method
 			await mcpTrigger.webhook(mockContext);
 
-			// Verify that connectTransport was called with the sanitized server name
+			// Verify that connectTransport was called with the sanitized server name and connected tools
 			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'My_custom_MCP_server_',
 				'/custom-path',
 				mockResponse,
+				[mockTool],
 			);
 		});
 
@@ -133,11 +142,12 @@ describe('McpTrigger Node', () => {
 			// Call the webhook method
 			await mcpTrigger.webhook(mockContext);
 
-			// Verify that connectTransport was called with the default server name
+			// Verify that connectTransport was called with the default server name and connected tools
 			expect(mockServerManager.createServerWithSSETransport).toHaveBeenCalledWith(
 				'n8n-mcp-server',
 				'/custom-path',
 				mockResponse,
+				[mockTool],
 			);
 		});
 

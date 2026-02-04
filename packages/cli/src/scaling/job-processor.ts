@@ -3,15 +3,30 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { WorkflowHasIssuesError, InstanceSettings, WorkflowExecute } from 'n8n-core';
+import {
+	WorkflowHasIssuesError,
+	InstanceSettings,
+	WorkflowExecute,
+	SupplyDataContext,
+} from 'n8n-core';
+import type { Tool } from '@langchain/core/tools';
 import type {
 	ExecutionStatus,
+	IExecuteData,
 	IExecuteResponsePromiseData,
+	INodeExecutionData,
 	IRun,
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
+	CloseFunction,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeConnectionTypes,
+	Workflow,
+	UnexpectedError,
+	createRunExecutionData,
+} from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import { EventService } from '@/events/event.service';
@@ -28,6 +43,7 @@ import type {
 	JobId,
 	JobResult,
 	RespondToWebhookMessage,
+	McpResponseMessage,
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
@@ -149,6 +165,23 @@ export class JobProcessor {
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			// Check if this is an MCP execution - broadcast response to all mains
+			if (job.data.isMcpExecution && job.data.mcpSessionId) {
+				const msg: McpResponseMessage = {
+					kind: 'mcp-response',
+					executionId,
+					mcpType: job.data.mcpType ?? 'service',
+					sessionId: job.data.mcpSessionId,
+					messageId: job.data.mcpMessageId ?? '',
+					response,
+					workerId: this.instanceSettings.hostId,
+				};
+
+				await job.progress(msg);
+				return;
+			}
+
+			// Standard webhook response
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
@@ -273,6 +306,59 @@ export class JobProcessor {
 
 		await job.progress(msg);
 
+		// For MCP Trigger executions with tool calls, execute the tool and send result
+		if (
+			job.data.isMcpExecution &&
+			job.data.mcpType === 'trigger' &&
+			job.data.mcpSessionId &&
+			job.data.mcpToolCall?.sourceNodeName
+		) {
+			const { toolName, arguments: toolArgs, sourceNodeName } = job.data.mcpToolCall;
+
+			let toolResult: unknown;
+			try {
+				toolResult = await this.invokeTool(workflow, sourceNodeName, toolArgs, additionalData);
+			} catch (error) {
+				this.logger.error('Tool node execution failed for MCP Trigger', {
+					executionId,
+					toolName,
+					sourceNodeName,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				toolResult = {
+					error:
+						error instanceof Error
+							? { message: error.message, name: error.name }
+							: { message: String(error) },
+				};
+			}
+
+			const mcpMsg: McpResponseMessage = {
+				kind: 'mcp-response',
+				executionId,
+				mcpType: 'trigger',
+				sessionId: job.data.mcpSessionId,
+				messageId: job.data.mcpMessageId ?? '',
+				response: toolResult, // Actual tool result
+				workerId: this.instanceSettings.hostId,
+			};
+
+			await job.progress(mcpMsg);
+		} else if (job.data.isMcpExecution && job.data.mcpSessionId) {
+			// For MCP Service executions or MCP Trigger without tool call, send basic response
+			const mcpMsg: McpResponseMessage = {
+				kind: 'mcp-response',
+				executionId,
+				mcpType: job.data.mcpType ?? 'service',
+				sessionId: job.data.mcpSessionId,
+				messageId: job.data.mcpMessageId ?? '',
+				response: { success: props.success },
+				workerId: this.instanceSettings.hostId,
+			};
+
+			await job.progress(mcpMsg);
+		}
+
 		/**
 		 * @important Do NOT call `workflowExecuteAfter` hook here.
 		 * It is being called from processSuccessExecution() already.
@@ -352,5 +438,95 @@ export class JobProcessor {
 		}
 
 		return response;
+	}
+
+	/**
+	 * Invoke a tool directly for MCP Trigger in queue mode.
+	 * This method creates a SupplyDataContext, calls supplyData to get the Tool,
+	 * and invokes it directly instead of running a full workflow execution.
+	 */
+	private async invokeTool(
+		workflow: Workflow,
+		sourceNodeName: string,
+		toolArgs: Record<string, unknown>,
+		additionalData: ReturnType<typeof WorkflowExecuteAdditionalData.getBase> extends Promise<
+			infer T
+		>
+			? T
+			: never,
+	): Promise<unknown> {
+		const toolNode = workflow.getNode(sourceNodeName);
+		if (!toolNode) {
+			throw new UnexpectedError(`Tool node "${sourceNodeName}" not found in workflow`);
+		}
+
+		// Get the node type
+		const nodeType = this.nodeTypes.getByNameAndVersion(toolNode.type, toolNode.typeVersion);
+		if (!nodeType.supplyData) {
+			throw new UnexpectedError(`Tool node "${sourceNodeName}" does not have supplyData method`);
+		}
+
+		// Validate toolArgs is a proper object (not null/array) before using as input data
+		const validatedToolArgs =
+			typeof toolArgs === 'object' && toolArgs !== null && !Array.isArray(toolArgs) ? toolArgs : {};
+
+		// Create input data for the tool node with the tool arguments
+		const inputData: INodeExecutionData[][] = [
+			[
+				{
+					json: validatedToolArgs as INodeExecutionData['json'],
+				},
+			],
+		];
+
+		// Create minimal run execution data
+		const runExecutionData = createRunExecutionData({});
+
+		// Create execute data for the tool node
+		const executeData: IExecuteData = {
+			node: toolNode,
+			data: {
+				main: inputData,
+			},
+			source: null,
+		};
+
+		const closeFunctions: CloseFunction[] = [];
+
+		// Create SupplyDataContext for the tool node
+		const context = new SupplyDataContext(
+			workflow,
+			toolNode,
+			additionalData,
+			'webhook',
+			runExecutionData,
+			0,
+			inputData[0],
+			{ main: inputData },
+			NodeConnectionTypes.AiTool,
+			executeData,
+			closeFunctions,
+		);
+
+		try {
+			const supplyDataResult = await nodeType.supplyData.call(context, 0);
+			const tool = supplyDataResult.response as Tool;
+
+			if (!tool || typeof tool.invoke !== 'function') {
+				throw new UnexpectedError(`Tool node "${sourceNodeName}" did not return a valid Tool`);
+			}
+
+			const result = await tool.invoke(validatedToolArgs);
+
+			return result;
+		} finally {
+			for (const closeFunction of closeFunctions) {
+				try {
+					await closeFunction();
+				} catch (error) {
+					this.logger.warn(`Error closing tool resource: ${error}`);
+				}
+			}
+		}
 	}
 }

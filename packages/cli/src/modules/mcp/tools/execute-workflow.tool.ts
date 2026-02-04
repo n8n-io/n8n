@@ -28,6 +28,7 @@ import type {
 import { findMcpSupportedTrigger } from '../mcp.utils';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -94,6 +95,7 @@ export const createExecuteWorkflowTool = (
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
 	telemetry: Telemetry,
+	mcpService: McpService,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'execute_workflow',
 	config: {
@@ -122,6 +124,7 @@ export const createExecuteWorkflowTool = (
 				workflowRepository,
 				activeExecutions,
 				workflowRunner,
+				mcpService,
 				workflowId,
 				inputs,
 			);
@@ -197,6 +200,7 @@ export const executeWorkflow = async (
 	workflowRepository: WorkflowRepository,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
+	mcpService: McpService,
 	workflowId: string,
 	inputs?: z.infer<typeof inputSchema>['inputs'],
 ): Promise<ExecuteWorkflowOutput> => {
@@ -250,10 +254,18 @@ export const executeWorkflow = async (
 		);
 	}
 
+	// Generate a unique MCP message ID for this execution (used for queue mode correlation)
+	const mcpMessageId = `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: getExecutionModeForTrigger(triggerNode),
 		workflowData: { ...workflow, nodes, connections },
 		userId: user.id,
+		// MCP metadata for queue mode support
+		isMcpExecution: mcpService.isQueueMode,
+		mcpType: 'service',
+		mcpSessionId: mcpMessageId, // Using messageId as sessionId for MCP Service (no persistent session)
+		mcpMessageId,
 	};
 
 	// Set the trigger node as the start node and pin data for it
@@ -294,11 +306,14 @@ export const executeWorkflow = async (
 		}, WORKFLOW_EXECUTION_TIMEOUT_MS);
 	});
 
+	// In queue mode, use the MCP service's pending response mechanism
+	// In regular mode, use the standard activeExecutions promise
+	const resultPromise = mcpService.isQueueMode
+		? mcpService.createPendingResponse(executionId).promise
+		: activeExecutions.getPostExecutePromise(executionId);
+
 	try {
-		const data = await Promise.race([
-			activeExecutions.getPostExecutePromise(executionId),
-			timeoutPromise,
-		]);
+		const data = await Promise.race([resultPromise, timeoutPromise]);
 
 		// Executed successfully before timeout: clear the timeout
 		clearTimeout(timeoutId);
@@ -307,8 +322,10 @@ export const executeWorkflow = async (
 			throw new UnexpectedError('Workflow did not return any data');
 		}
 
+		const success = data.status !== 'error' && !data.data.resultData?.error;
+
 		return {
-			success: data.status !== 'error' && !data.data.resultData?.error,
+			success,
 			executionId,
 			result: data.data.resultData,
 			error: data.data.resultData?.error,
@@ -316,7 +333,10 @@ export const executeWorkflow = async (
 	} catch (error) {
 		if (timeoutId) clearTimeout(timeoutId);
 
-		// If we hit the timeout, attempt to stop the execution
+		if (mcpService.isQueueMode) {
+			mcpService.removePendingResponse(executionId);
+		}
+
 		if (error instanceof McpExecutionTimeoutError) {
 			try {
 				const cancellationError = new TimeoutExecutionCancelledError(error.executionId!);

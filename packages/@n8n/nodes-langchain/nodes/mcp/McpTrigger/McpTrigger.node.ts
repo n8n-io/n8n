@@ -6,7 +6,7 @@ import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
 import { getConnectedTools } from '@utils/helpers';
 
 import type { CompressionResponse } from './FlushingTransport';
-import { McpServerManager } from './McpServer';
+import { McpServerManager, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -168,7 +168,16 @@ export class McpTrigger extends Node {
 				node.typeVersion < 2
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
 					: req.path;
-			await mcpServerManager.createServerWithSSETransport(serverName, postUrl, resp);
+
+			// Get connected tools and pass them to the transport for multi-main support
+			// This ensures tools are registered even if POST requests are forwarded from other mains
+			const connectedTools = await getConnectedTools(context, true);
+			await mcpServerManager.createServerWithSSETransport(
+				serverName,
+				postUrl,
+				resp,
+				connectedTools,
+			);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
@@ -185,14 +194,47 @@ export class McpTrigger extends Node {
 				// Check if there is a session and a transport is already established
 				const sessionId = mcpServerManager.getSessionId(req);
 
-				if (sessionId && mcpServerManager.getTransport(sessionId)) {
+				context.logger.debug('MCP POST request received for existing session');
+
+				if (sessionId) {
+					// Session exists - either handle locally or recreate transport for StreamableHTTP
+					// For StreamableHTTP, if transport doesn't exist locally, it will be recreated
 					const connectedTools = await getConnectedTools(context, true);
-					const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
-					if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
+						await mcpServerManager.handlePostMessage(req, resp, connectedTools, serverName);
+					if (wasToolCall) {
+						// Include tool call info and messageId in workflowData for queue mode execution
+						// The messageId is the JSONRPC request ID, needed to correlate worker responses
+						// Always include messageId when present for proper correlation, even without toolCallInfo
+						const workflowData = {
+							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
+							...(messageId && { mcpMessageId: messageId }),
+						};
+						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+					}
+					if (needsListToolsRelay && relaySessionId && messageId) {
+						// List tools request in SSE queue mode needs to be relayed to the main with the transport
+						// Return the relay info so CLI can publish mcp-response with the marker
+						const workflowData = {
+							mcpListToolsRelay: {
+								sessionId: relaySessionId,
+								messageId,
+								marker: MCP_LIST_TOOLS_REQUEST_MARKER,
+							},
+						};
+						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+					}
 				} else {
 					// If no session is established, this is a setup request
 					// for the StreamableHTTPServerTransport, so we create a new transport
-					await mcpServerManager.createServerWithStreamableHTTPTransport(serverName, resp, req);
+					// Get connected tools and pass them for multi-main support
+					const connectedTools = await getConnectedTools(context, true);
+					await mcpServerManager.createServerWithStreamableHTTPTransport(
+						serverName,
+						resp,
+						req,
+						connectedTools,
+					);
 				}
 			}
 

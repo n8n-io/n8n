@@ -13,7 +13,7 @@ import {
 	UnexpectedError,
 	ManualExecutionCancelledError,
 } from 'n8n-workflow';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -79,6 +79,39 @@ export class ScalingService {
 		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery(0);
 
 		this.scheduleQueueMetrics();
+
+		// Initialize MCP Server Manager with queue mode enabled
+		// This tells the MCP Trigger to delegate tool executions to workers
+		const { McpServerManager } = await import(
+			'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
+		);
+		const mcpServerManager = McpServerManager.instance(this.logger);
+		mcpServerManager.setQueueMode(true);
+
+		// Configure session validation callbacks using Redis to prevent session fixation attacks
+		// when recreating transports on different main instances
+		const MCP_SESSION_TTL = 86400; // 24 hours in seconds
+		const getMcpSessionKey = (sessionId: string) =>
+			`${this.globalConfig.redis.prefix}:mcp-session:${sessionId}`;
+
+		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+		const publisher = Container.get(Publisher);
+
+		mcpServerManager.setSessionCallbacks(
+			// Register session: store in Redis with TTL
+			async (sessionId: string) => {
+				await publisher.set(getMcpSessionKey(sessionId), '1', MCP_SESSION_TTL);
+			},
+			// Validate session: check if exists in Redis
+			async (sessionId: string) => {
+				const result = await publisher.get(getMcpSessionKey(sessionId));
+				return result !== null;
+			},
+			// Unregister session: remove from Redis
+			async (sessionId: string) => {
+				await publisher.clear(getMcpSessionKey(sessionId));
+			},
+		);
 
 		this.logger.debug('Queue setup completed');
 	}
@@ -386,6 +419,17 @@ export class ScalingService {
 					break;
 				case 'abort-job':
 					break; // only for worker
+				case 'mcp-response':
+					// Route to appropriate MCP handler based on type
+					// All mains receive this; only the one with the session/pending response will handle it
+					void this.handleMcpResponse(
+						msg.executionId,
+						msg.mcpType,
+						msg.sessionId,
+						msg.messageId,
+						msg.response,
+					);
+					break;
 				default:
 					assertNever(msg);
 			}
@@ -400,6 +444,64 @@ export class ScalingService {
 	/** Whether the argument is a message sent via Bull's internal pubsub setup. */
 	private isJobMessage(candidate: unknown): candidate is JobMessage {
 		return typeof candidate === 'object' && candidate !== null && 'kind' in candidate;
+	}
+
+	/**
+	 * Handle MCP response from worker - forward to appropriate MCP handler.
+	 * For MCP Service: fetches execution data from DB and forwards IRun.
+	 * For MCP Trigger: forwards the response directly (tool result from sendResponse hook).
+	 */
+	private async handleMcpResponse(
+		executionId: string,
+		mcpType: 'service' | 'trigger',
+		sessionId: string,
+		messageId: string,
+		response: unknown,
+	): Promise<void> {
+		try {
+			if (mcpType === 'service') {
+				// For MCP Service, fetch execution data from DB
+				const executionData = await this.executionRepository.findSingleExecution(executionId, {
+					includeData: true,
+					unflattenData: true,
+				});
+
+				if (!executionData) {
+					this.logger.error('Execution not found in DB for MCP response', { executionId });
+					return;
+				}
+
+				// Convert to IRun format
+				const runData: IRun = {
+					finished: executionData.finished,
+					mode: executionData.mode,
+					startedAt: executionData.startedAt,
+					stoppedAt: executionData.stoppedAt,
+					status: executionData.status,
+					data: executionData.data,
+					storedAt: executionData.storedAt,
+				};
+
+				const { McpService } = await import('@/modules/mcp/mcp.service');
+				const mcpService = Container.get(McpService);
+				mcpService.handleWorkerResponse(executionId, runData);
+			} else {
+				// For MCP Trigger, forward the response directly (tool result)
+				const { McpServerManager } = await import(
+					'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
+				);
+				// McpServerManager is a singleton that requires a logger for first initialization
+				// At this point it should already be initialized by the MCP Trigger node
+				const mcpServerManager = McpServerManager.instance(this.logger);
+				mcpServerManager.handleWorkerResponse(sessionId, messageId, response);
+			}
+		} catch (error) {
+			this.logger.error('Failed to handle MCP response', {
+				executionId,
+				mcpType,
+				error: ensureError(error).message,
+			});
+		}
 	}
 
 	// #endregion

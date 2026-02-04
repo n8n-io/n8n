@@ -275,6 +275,24 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe(subscriber.getCommandChannel());
 		await subscriber.subscribe(subscriber.getWorkerResponseChannel());
+		await subscriber.subscribe(subscriber.getMcpRelayChannel());
+
+		// Set up MCP relay handler for multi-main queue mode
+		subscriber.setMcpRelayHandler(async (msg) => {
+			try {
+				const { McpServerManager } = await import(
+					'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
+				);
+				const mcpServerManager = McpServerManager.instance(this.logger);
+				mcpServerManager.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
+			} catch (error) {
+				this.logger.error('Failed to handle MCP relay message', {
+					sessionId: msg.sessionId,
+					messageId: msg.messageId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		});
 
 		if (this.instanceSettings.isMultiMain) {
 			await Container.get(MultiMainSetup).init();
