@@ -16,7 +16,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { IConnections, INode } from 'n8n-workflow';
+import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
 
 export interface UpdateWorkflowOptions {
@@ -115,6 +115,21 @@ export function useWorkflowUpdate() {
 				position: existing.position,
 				name: nodeName, // Keep actual name (old if rename failed)
 			});
+
+			// Resolve parameters with defaults to ensure all parameter values are properly initialized
+			// This is necessary because AI builder may send partial parameters without defaults
+			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (nodeTypeDescription) {
+				const resolvedParameters = NodeHelpers.getNodeParameters(
+					nodeTypeDescription.properties ?? [],
+					node.parameters,
+					true, // returnDefaults
+					false,
+					node,
+					nodeTypeDescription,
+				);
+				node.parameters = resolvedParameters ?? {};
+			}
 
 			// Mark node as dirty if parameters changed
 			if (!isEqual(existing.parameters, updated.parameters)) {
