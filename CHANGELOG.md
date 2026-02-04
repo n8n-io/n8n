@@ -1,3 +1,20 @@
+## [1.123.18](https://github.com/n8n-io/n8n/compare/n8n@1.123.17...n8n@1.123.18) (2026-02-04)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Fix toolInput field in intermediateSteps output ([#24925](https://github.com/n8n-io/n8n/issues/24925)) ([6a9eccb](https://github.com/n8n-io/n8n/commit/6a9eccbfb957d5e3196ef85a0129630aee783120))
+* **core:** Use stricter flags when starting python runner (backport 1.x) ([#25157](https://github.com/n8n-io/n8n/issues/25157)) ([c39496e](https://github.com/n8n-io/n8n/commit/c39496eda92ff5c93241af42f21e839fb2abc239))
+* **Eventbrite Trigger Node:** Validate received URL ([#24874](https://github.com/n8n-io/n8n/issues/24874)) ([13ec09b](https://github.com/n8n-io/n8n/commit/13ec09b1597802df19caed362af437dacf7f1182))
+* Update mime-types to fixed version 3.0.2 ([#25148](https://github.com/n8n-io/n8n/issues/25148)) ([dba9864](https://github.com/n8n-io/n8n/commit/dba9864e00ade452a5c09aa93784d42e7383b3ed))
+
+
+### Features
+
+* **Zendesk Trigger Node:** Add webhook signature verification ([#25011](https://github.com/n8n-io/n8n/issues/25011)) ([c6520e4](https://github.com/n8n-io/n8n/commit/c6520e4e87614fa60c9433e93019e211f19f65f9))
+
+
+
 ## [1.123.17](https://github.com/n8n-io/n8n/compare/n8n@1.123.16...n8n@1.123.17) (2026-01-23)
 
 
