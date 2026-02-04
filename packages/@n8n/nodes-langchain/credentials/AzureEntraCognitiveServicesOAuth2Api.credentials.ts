@@ -20,25 +20,12 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			default: 'authorizationCode',
 		},
 		{
-			displayName: 'Resource Name',
-			name: 'resourceName',
-			type: 'string',
-			required: true,
-			default: '',
-		},
-		{
 			displayName: 'API Version',
 			name: 'apiVersion',
 			type: 'string',
 			required: true,
 			default: '2025-03-01-preview',
-		},
-		{
-			displayName: 'Endpoint',
-			name: 'endpoint',
-			type: 'string',
-			default: undefined,
-			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
+			description: 'The Azure OpenAI API version to use',
 		},
 		{
 			displayName: 'Tenant ID',
@@ -46,8 +33,156 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			type: 'string',
 			default: 'common',
 			description:
-				'Enter your Azure Tenant ID (Directory ID) or keep "common" for multi-tenant apps. Using a specific Tenant ID is generally recommended and required for certain authentication flows.',
+				'Enter your Azure Tenant ID (Directory ID) or keep "common" for multi-tenant apps. Required for OAuth2 authentication with Entra ID.',
 			placeholder: 'e.g., xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx or common',
+		},
+		{
+			displayName: 'Use APIM (Azure API Management)',
+			name: 'useApim',
+			type: 'boolean',
+			default: false,
+			description:
+				'Enable if accessing Azure OpenAI through Azure API Management gateway. When enabled, you can configure a custom APIM endpoint with query parameters and headers.',
+		},
+		// APIM fields - shown when useApim is true
+		{
+			displayName: 'APIM Endpoint',
+			name: 'apimBasePath',
+			type: 'string',
+			required: true,
+			displayOptions: {
+				show: {
+					useApim: [true],
+				},
+			},
+			default: '',
+			placeholder: 'https://your-apim.azure-api.net',
+			description:
+				'The APIM gateway base URL (e.g., https://my-apim.azure-api.net). The path /openai/deployments/{model}/chat/completions will be appended automatically.',
+		},
+		{
+			displayName: 'APIM Query Parameters',
+			name: 'apimQueryParams',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			displayOptions: {
+				show: {
+					useApim: [true],
+				},
+			},
+			default: {},
+			placeholder: 'Add Query Parameter',
+			description:
+				'Custom query parameters to include with every LLM API request (e.g., subscription-key)',
+			options: [
+				{
+					name: 'params',
+					displayName: 'Parameters',
+					values: [
+						{
+							displayName: 'Name',
+							name: 'name',
+							type: 'string',
+							default: '',
+							placeholder: 'subscription-key',
+							description: 'Query parameter name',
+						},
+						{
+							displayName: 'Value',
+							name: 'value',
+							type: 'string',
+							default: '',
+							typeOptions: {
+								password: true,
+							},
+							description: 'Query parameter value',
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'APIM Headers',
+			name: 'apimHeaders',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			displayOptions: {
+				show: {
+					useApim: [true],
+				},
+			},
+			default: {},
+			placeholder: 'Add Header',
+			description:
+				'Custom headers to include with every LLM API request (e.g., Ocp-Apim-Subscription-Key)',
+			options: [
+				{
+					name: 'headers',
+					displayName: 'Headers',
+					values: [
+						{
+							displayName: 'Name',
+							name: 'name',
+							type: 'string',
+							default: '',
+							placeholder: 'Ocp-Apim-Subscription-Key',
+							description: 'Header name',
+						},
+						{
+							displayName: 'Value',
+							name: 'value',
+							type: 'string',
+							default: '',
+							typeOptions: {
+								password: true,
+							},
+							description: 'Header value',
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Approved Models',
+			name: 'approvedModels',
+			type: 'string',
+			default: '',
+			description:
+				'Comma-separated list of approved model/deployment names for the dropdown (e.g., "gpt-4o,gpt-4o-mini,o3-mini"). Leave empty to allow manual entry.',
+			placeholder: 'gpt-4o,gpt-4o-mini,o3-mini',
+		},
+		// Direct Azure OpenAI fields - shown when useApim is false
+		{
+			displayName: 'Resource Name',
+			name: 'resourceName',
+			type: 'string',
+			required: true,
+			displayOptions: {
+				show: {
+					useApim: [false],
+				},
+			},
+			default: '',
+			description: 'The name of your Azure OpenAI resource',
+			placeholder: 'my-azure-openai-resource',
+		},
+		{
+			displayName: 'Endpoint',
+			name: 'endpoint',
+			type: 'string',
+			displayOptions: {
+				show: {
+					useApim: [false],
+				},
+			},
+			default: undefined,
+			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
+			description:
+				'Optional custom endpoint URL. If not provided, the standard Azure OpenAI URL is used.',
 		},
 		{
 			displayName: 'Authorization URL',
