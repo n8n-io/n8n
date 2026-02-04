@@ -464,6 +464,79 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
+	describe('workflowExecuteResume hook', () => {
+		const executionMode = 'manual';
+		const executionOrder = 'v1';
+		const nodeTypes = Helpers.NodeTypes();
+
+		test('should call workflowExecuteResume instead of workflowExecuteBefore when restartExecutionId is set', async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			// Set restartExecutionId to simulate a resumed execution
+			additionalData.restartExecutionId = 'previous-execution-id';
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) =>
+					call[0] === 'workflowExecuteBefore' ||
+					call[0] === 'workflowExecuteAfter' ||
+					call[0] === 'workflowExecuteResume',
+			);
+
+			// Should have workflowExecuteResume instead of workflowExecuteBefore
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteResume',
+				'workflowExecuteAfter',
+			]);
+		});
+
+		test('should call workflowExecuteBefore when restartExecutionId is not set', async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			// restartExecutionId is undefined by default
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) =>
+					call[0] === 'workflowExecuteBefore' ||
+					call[0] === 'workflowExecuteAfter' ||
+					call[0] === 'workflowExecuteResume',
+			);
+
+			// Should have workflowExecuteBefore, not workflowExecuteResume
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+		});
+	});
+
 	//run tests on json files from specified directory, default 'workflows'
 	//workflows must have pinned data that would be used to test output after execution
 	describe('run test workflows', () => {
