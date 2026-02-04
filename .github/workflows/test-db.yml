@@ -11,6 +11,7 @@ on:
       - packages/cli/src/modules/**/*.entity.ts
       - packages/cli/src/modules/**/*.repository.ts
       - packages/cli/test/integration/**
+      - packages/cli/test/migration/**
       - packages/cli/test/shared/db/**
       - packages/@n8n/db/**
       - packages/cli/**/__tests__/**
@@ -53,6 +54,10 @@ jobs:
         working-directory: packages/cli
         run: pnpm test:sqlite
 
+      - name: Test SQLite Pooled Migrations
+        working-directory: packages/cli
+        run: pnpm test:sqlite:migrations:tc
+
   postgres:
     name: Postgres
     needs: build
@@ -69,9 +74,13 @@ jobs:
       - name: Pre-pull Test Container Images
         run: npx tsx packages/testing/containers/pull-test-images.ts || true
 
-      - name: Test Postgres
+      - name: Test Postgres Integration
         working-directory: packages/cli
-        run: pnpm test:postgres:tc
+        run: pnpm test:postgres:integration:tc
+
+      - name: Test Postgres Migrations
+        working-directory: packages/cli
+        run: pnpm test:postgres:migrations:tc
 
   notify-on-failure:
     name: Notify Slack on failure
