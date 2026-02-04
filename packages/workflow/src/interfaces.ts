@@ -3032,7 +3032,6 @@ export interface INodeGraphItem {
 	operation?: string;
 	domain?: string; // HTTP Request node v1
 	domain_base?: string; // HTTP Request node v2
-	domain_path?: string; // HTTP Request node v2
 	position: [number, number];
 	mode?: string;
 	credential_type?: string; // HTTP Request node v2
