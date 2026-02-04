@@ -1,3 +1,4 @@
+import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -5,7 +6,6 @@ import type {
 	WorkflowEntity,
 	ListQueryDb,
 	WorkflowFolderUnionFull,
-	WorkflowHistoryUpdate,
 	WorkflowHistory,
 } from '@n8n/db';
 import {
@@ -677,12 +677,12 @@ export class WorkflowService {
 		);
 
 		if (options?.name !== undefined || options?.description !== undefined) {
-			const updateFields: WorkflowHistoryUpdate = {};
+			const updateFields: UpdateWorkflowHistoryVersionDto = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
 			await this.workflowHistoryService.updateVersion(
-				versionIdToActivate,
 				workflowId,
+				versionIdToActivate,
 				updateFields,
 			);
 		}

@@ -36,6 +36,7 @@ export const LICENSE_FEATURES = {
 	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
 	API_KEY_SCOPES: 'feat:apiKeyScopes',
 	WORKFLOW_DIFFS: 'feat:workflowDiffs',
+	NAMED_VERSIONS: 'feat:namedVersions',
 	CUSTOM_ROLES: 'feat:customRoles',
 	AI_BUILDER: 'feat:aiBuilder',
 	DYNAMIC_CREDENTIALS: 'feat:dynamicCredentials',
