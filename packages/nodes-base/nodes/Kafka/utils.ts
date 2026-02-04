@@ -28,6 +28,7 @@ export interface KafkaTriggerOptions {
 	autoCommitThreshold?: number;
 	autoCommitInterval?: number;
 	batchSize?: number;
+	eachBatchAutoResolve?: boolean;
 	errorRetryDelay?: number;
 	fetchMaxBytes?: number;
 	fetchMinBytes?: number;
@@ -395,29 +396,17 @@ export function configureDataEmitter(
 
 /**
  * Determines auto-commit settings based on node version and offset resolution configuration
- * @param ctx - The trigger function context
  * @param options - Kafka trigger options
- * @param nodeVersion - The version of the Kafka trigger node
  * @returns Object with auto-commit configuration
  */
-export function getAutoCommitSettings(
-	ctx: ITriggerFunctions,
-	options: KafkaTriggerOptions,
-	nodeVersion: number,
-) {
-	let shouldAutoCommit = true;
-
-	if (nodeVersion >= 1.3 && ctx.getMode() !== 'manual') {
-		const resolveOffset = ctx.getNodeParameter('resolveOffset', 'immediately') as ResolveOffsetMode;
-		if (['onStatus', 'onSuccess'].includes(resolveOffset)) shouldAutoCommit = false;
-	}
-
+export function getAutoCommitSettings(options: KafkaTriggerOptions) {
+	const eachBatchAutoResolve = options.eachBatchAutoResolve ?? false;
 	const autoCommitInterval = options.autoCommitInterval ?? undefined;
 	const autoCommitThreshold = options.autoCommitThreshold ?? undefined;
 
 	return {
-		autoCommit: shouldAutoCommit,
-		eachBatchAutoResolve: shouldAutoCommit,
+		autoCommit: true,
+		eachBatchAutoResolve,
 		autoCommitInterval,
 		autoCommitThreshold,
 	};

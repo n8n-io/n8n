@@ -188,11 +188,6 @@ export class KafkaTrigger implements INodeType {
 						default: 0,
 						description:
 							'The consumer will commit offsets after resolving a given number of messages',
-						displayOptions: {
-							hide: {
-								'/resolveOffset': ['onStatus', 'onSuccess'],
-							},
-						},
 					},
 					{
 						displayName: 'Auto Commit Interval',
@@ -202,11 +197,6 @@ export class KafkaTrigger implements INodeType {
 						description:
 							'The consumer will commit offsets after a given period, for example, five seconds',
 						hint: 'Value in milliseconds',
-						displayOptions: {
-							hide: {
-								'/resolveOffset': ['onStatus', 'onSuccess'],
-							},
-						},
 					},
 					{
 						displayName: 'Batch Size',
@@ -215,6 +205,18 @@ export class KafkaTrigger implements INodeType {
 						default: 1,
 						description:
 							'Number of messages to process in each batch, when set to 1, message-by-message processing is enabled',
+					},
+					{
+						displayName: 'Each Batch Auto Resolve',
+						name: 'eachBatchAutoResolve',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to auto resolve offsets for each batch',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+							},
+						},
 					},
 					{
 						displayName: 'Fetch Max Bytes',
@@ -412,21 +414,21 @@ export class KafkaTrigger implements INodeType {
 
 				await consumer.run({
 					partitionsConsumedConcurrently,
-					...getAutoCommitSettings(this, options, nodeVersion),
+					...getAutoCommitSettings(options),
 					eachBatch: async ({
 						batch,
 						resolveOffset,
 						heartbeat,
 						isStale,
 						isRunning,
+						commitOffsetsIfNecessary,
 					}: EachBatchPayload) => {
 						// avoid throwing error in the callback, as it leads to consumer stop, disconnect and crash
 						const messages = batch.messages;
 						const messageTopic = batch.topic;
 
 						for (let i = 0; i < messages.length; i += batchSize) {
-							// Check if partition was revoked during rebalance or consumer stopped
-							// If so, abandon the batch to avoid duplicate processing
+							// stop if consumer stopped or partition revoked
 							if (!isRunning() || isStale()) {
 								this.logger.debug('Batch processing interrupted due to rebalance or consumer stop');
 								break;
@@ -434,9 +436,16 @@ export class KafkaTrigger implements INodeType {
 
 							const chunk = messages.slice(i, Math.min(i + batchSize, messages.length));
 
-							const processedData = await Promise.all(
-								chunk.map(async (message) => await processMessage(message, messageTopic)),
-							);
+							let processedData;
+							try {
+								processedData = await Promise.all(
+									chunk.map(async (message) => await processMessage(message, messageTopic)),
+								);
+							} catch (err) {
+								this.logger.error('Chunk processing failed, skipping commit for this chunk', err);
+								await heartbeat();
+								break;
+							}
 
 							const result = await runWithHeartbeat(
 								dataEmitter(processedData),
@@ -445,6 +454,7 @@ export class KafkaTrigger implements INodeType {
 							);
 
 							if (!result.success) {
+								this.logger.warn('runWithHeartbeat failed, skipping commit for this chunk');
 								await heartbeat();
 								break;
 							}
@@ -452,6 +462,7 @@ export class KafkaTrigger implements INodeType {
 							const lastMessage = chunk[chunk.length - 1];
 							if (lastMessage) {
 								resolveOffset(lastMessage.offset);
+								await commitOffsetsIfNecessary();
 							}
 
 							await heartbeat();

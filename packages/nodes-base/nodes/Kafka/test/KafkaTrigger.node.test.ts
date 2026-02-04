@@ -1810,7 +1810,7 @@ describe('KafkaTrigger Node', () => {
 			expect(mockResolveOffset).toHaveBeenCalledWith('0');
 		});
 
-		it('should disable auto commit when resolveOffset is onSuccess', async () => {
+		it('should use default auto commit settings (autoCommit true, eachBatchAutoResolve false)', async () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1832,13 +1832,13 @@ describe('KafkaTrigger Node', () => {
 
 			expect(mockConsumerRun).toHaveBeenCalledWith(
 				expect.objectContaining({
-					autoCommit: false,
+					autoCommit: true,
 					eachBatchAutoResolve: false,
 				}),
 			);
 		});
 
-		it('should enable auto commit when resolveOffset is onCompletion', async () => {
+		it('should enable eachBatchAutoResolve when option is set', async () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1848,6 +1848,9 @@ describe('KafkaTrigger Node', () => {
 						groupId: 'test-group',
 						useSchemaRegistry: false,
 						resolveOffset: 'onCompletion',
+						options: {
+							eachBatchAutoResolve: true,
+						},
 					},
 				},
 				credential: {
@@ -1866,7 +1869,7 @@ describe('KafkaTrigger Node', () => {
 			);
 		});
 
-		it('should disable auto commit when resolveOffset is onStatus', async () => {
+		it('should use default auto commit settings with onStatus resolveOffset', async () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1889,13 +1892,13 @@ describe('KafkaTrigger Node', () => {
 
 			expect(mockConsumerRun).toHaveBeenCalledWith(
 				expect.objectContaining({
-					autoCommit: false,
+					autoCommit: true,
 					eachBatchAutoResolve: false,
 				}),
 			);
 		});
 
-		it('should enable auto commit when resolveOffset is immediately regardless of disableAutoResolveOffset', async () => {
+		it('should use default auto commit settings with immediately resolveOffset', async () => {
 			await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1918,7 +1921,7 @@ describe('KafkaTrigger Node', () => {
 			expect(mockConsumerRun).toHaveBeenCalledWith(
 				expect.objectContaining({
 					autoCommit: true,
-					eachBatchAutoResolve: true,
+					eachBatchAutoResolve: false,
 				}),
 			);
 		});
