@@ -3,7 +3,6 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
-	WorkflowEntity,
 	ListQueryDb,
 	WorkflowFolderUnionFull,
 	WorkflowHistory,
@@ -16,13 +15,15 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowEntity,
+	WorkflowPublishedVersion,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
@@ -91,6 +92,7 @@ export class WorkflowService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
+		private readonly dataSource: DataSource,
 	) {}
 
 	async getMany(
@@ -645,12 +647,34 @@ export class WorkflowService {
 
 		const activationMode = wasActive ? 'update' : 'activate';
 
-		await this.workflowRepository.update(workflowId, {
-			activeVersionId: versionIdToActivate,
-			active: true,
-			// workflow content did not change, so we keep updatedAt as is
-			updatedAt: workflow.updatedAt,
-		});
+		// Feature flag check for workflow publication service
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			// New transactional path: update both workflow_entity and workflow_published_version
+			await this.dataSource.transaction(async (manager) => {
+				await manager.update(WorkflowEntity, workflowId, {
+					activeVersionId: versionIdToActivate,
+					active: true,
+					// workflow content did not change, so we keep updatedAt as is
+					updatedAt: workflow.updatedAt,
+				});
+
+				await manager.getRepository(WorkflowPublishedVersion).upsert(
+					{
+						workflowId,
+						publishedVersionId: versionIdToActivate,
+					},
+					['workflowId'],
+				);
+			});
+		} else {
+			// Existing non-transactional path
+			await this.workflowRepository.update(workflowId, {
+				activeVersionId: versionIdToActivate,
+				active: true,
+				// workflow content did not change, so we keep updatedAt as is
+				updatedAt: workflow.updatedAt,
+			});
+		}
 
 		const workflowForActivation = await this.workflowRepository.findOne({
 			where: { id: workflowId },
@@ -741,12 +765,28 @@ export class WorkflowService {
 		// Remove from active workflow manager
 		await this.activeWorkflowManager.remove(workflowId);
 
-		await this.workflowRepository.update(workflowId, {
-			active: false,
-			activeVersionId: null,
-			// workflow content did not change, so we keep updatedAt as is
-			updatedAt: workflow.updatedAt,
-		});
+		// Feature flag check for workflow publication service
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			// New transactional path: update workflow_entity and delete from workflow_published_version
+			await this.dataSource.transaction(async (manager) => {
+				await manager.update(WorkflowEntity, workflowId, {
+					active: false,
+					activeVersionId: null,
+					// workflow content did not change, so we keep updatedAt as is
+					updatedAt: workflow.updatedAt,
+				});
+
+				await manager.delete(WorkflowPublishedVersion, { workflowId });
+			});
+		} else {
+			// Existing non-transactional path
+			await this.workflowRepository.update(workflowId, {
+				active: false,
+				activeVersionId: null,
+				// workflow content did not change, so we keep updatedAt as is
+				updatedAt: workflow.updatedAt,
+			});
+		}
 
 		await this.workflowPublishHistoryRepository.addRecord({
 			workflowId,

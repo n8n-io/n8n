@@ -11,9 +11,12 @@ import {
 	SharedWorkflowRepository,
 	type WorkflowEntity,
 	WorkflowPublishHistoryRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { DataSource } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -36,6 +39,7 @@ let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
 let workflowService: WorkflowService;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
+let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowHistoryService: WorkflowHistoryService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
@@ -50,6 +54,7 @@ beforeAll(async () => {
 	globalConfig = Container.get(GlobalConfig);
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
+	workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
 		mock(),
@@ -75,6 +80,7 @@ beforeAll(async () => {
 		nodeTypes,
 		webhookServiceMock,
 		mock(), // licenseState
+		Container.get(DataSource),
 	);
 });
 
@@ -91,6 +97,7 @@ afterEach(async () => {
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
+		'WorkflowPublishedVersion',
 		'Project',
 		'User',
 	]);
@@ -447,6 +454,60 @@ describe('activateWorkflow()', () => {
 		expect(workflowAfter?.active).toBe(false);
 		expect(workflowAfter?.activeVersionId).toBeNull();
 	});
+
+	describe('with useWorkflowPublicationService enabled', () => {
+		beforeEach(() => {
+			globalConfig.workflows.useWorkflowPublicationService = true;
+		});
+
+		afterEach(() => {
+			globalConfig.workflows.useWorkflowPublicationService = false;
+		});
+
+		test('should create WorkflowPublishedVersion record when activating', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+
+			expect(publishedVersion).not.toBeNull();
+			expect(publishedVersion?.workflowId).toBe(workflow.id);
+			expect(publishedVersion?.publishedVersionId).toBe(workflow.versionId);
+		});
+
+		test('should update WorkflowPublishedVersion record when activating a different version', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			// Activate the workflow first
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			// Create a new version
+			const newVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+			// Activate the new version
+			await workflowService.activateWorkflow(owner, workflow.id, { versionId: newVersionId });
+
+			const publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+
+			expect(publishedVersion).not.toBeNull();
+			expect(publishedVersion?.workflowId).toBe(workflow.id);
+			expect(publishedVersion?.publishedVersionId).toBe(newVersionId);
+
+			// Verify there's only one record (upsert, not insert)
+			const allRecords = await workflowPublishedVersionRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(allRecords).toHaveLength(1);
+		});
+	});
 });
 
 describe('deactivateWorkflow()', () => {
@@ -474,5 +535,43 @@ describe('deactivateWorkflow()', () => {
 		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
 		expect(workflowAfter?.active).toBe(true);
 		expect(workflowAfter?.activeVersionId).toBe(workflow.activeVersionId);
+	});
+
+	describe('with useWorkflowPublicationService enabled', () => {
+		beforeEach(() => {
+			globalConfig.workflows.useWorkflowPublicationService = true;
+		});
+
+		afterEach(() => {
+			globalConfig.workflows.useWorkflowPublicationService = false;
+		});
+
+		test('should delete WorkflowPublishedVersion record when deactivating', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			// Activate the workflow first (this creates the WorkflowPublishedVersion record)
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			// Verify the record exists
+			let publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion).not.toBeNull();
+
+			// Deactivate the workflow
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+
+			// Verify the record is deleted
+			publishedVersion = await workflowPublishedVersionRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(publishedVersion).toBeNull();
+
+			// Verify the workflow is deactivated
+			const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(workflowAfter?.active).toBe(false);
+			expect(workflowAfter?.activeVersionId).toBeNull();
+		});
 	});
 });
