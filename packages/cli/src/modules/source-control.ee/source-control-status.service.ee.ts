@@ -17,6 +17,7 @@ import {
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
 	isWorkflowModified,
+	areSameCredentials,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
@@ -76,6 +77,7 @@ export class SourceControlStatusService {
 		options: SourceControlGetStatus,
 	): Promise<SourceControlledFile[] | SourceControlGetStatusVerboseResult> {
 		const context = new SourceControlContext(user);
+		const collectVerbose = options?.verbose ?? false;
 
 		if (options.direction === 'pull' && !hasGlobalScope(user, 'sourceControl:pull')) {
 			// A pull is only allowed by global admins or owners
@@ -87,38 +89,46 @@ export class SourceControlStatusService {
 		// fetch and reset hard first
 		await this.resetWorkfolder();
 
-		const {
-			wfRemoteVersionIds,
-			wfLocalVersionIds,
-			wfMissingInLocal,
-			wfMissingInRemote,
-			wfModifiedInEither,
-		} = await this.getStatusWorkflows(options, context, sourceControlledFiles);
+		const workflowsStatus = await this.getStatusWorkflows(
+			options,
+			context,
+			sourceControlledFiles,
+			collectVerbose,
+		);
 
-		const { credMissingInLocal, credMissingInRemote, credModifiedInEither } =
-			await this.getStatusCredentials(options, context, sourceControlledFiles);
+		const credentialsStatus = await this.getStatusCredentials(
+			options,
+			context,
+			sourceControlledFiles,
+			collectVerbose,
+		);
 
-		const { varMissingInLocal, varMissingInRemote, varModifiedInEither } =
-			await this.getStatusVariables(options, sourceControlledFiles);
+		const variablesStatus = await this.getStatusVariables(
+			options,
+			sourceControlledFiles,
+			collectVerbose,
+		);
 
-		const {
-			tagsMissingInLocal,
-			tagsMissingInRemote,
-			tagsModifiedInEither,
-			mappingsMissingInLocal,
-			mappingsMissingInRemote,
-		} = await this.getStatusTagsMappings(options, context, sourceControlledFiles);
+		const tagsMappingsStatus = await this.getStatusTagsMappings(
+			options,
+			context,
+			sourceControlledFiles,
+			collectVerbose,
+		);
 
-		const { foldersMissingInLocal, foldersMissingInRemote, foldersModifiedInEither } =
-			await this.getStatusFoldersMapping(options, context, sourceControlledFiles);
+		const foldersMappingStatus = await this.getStatusFoldersMapping(
+			options,
+			context,
+			sourceControlledFiles,
+			collectVerbose,
+		);
 
-		const {
-			projectsRemote,
-			projectsLocal,
-			projectsMissingInLocal,
-			projectsMissingInRemote,
-			projectsModifiedInEither,
-		} = await this.getStatusProjects(options, context, sourceControlledFiles);
+		const projectsStatus = await this.getStatusProjects(
+			options,
+			context,
+			sourceControlledFiles,
+			collectVerbose,
+		);
 
 		// #region Tracking Information
 		if (options.direction === 'push') {
@@ -134,37 +144,19 @@ export class SourceControlStatusService {
 		}
 		// #endregion
 
-		if (options?.verbose) {
+		if (collectVerbose) {
 			return {
-				wfRemoteVersionIds,
-				wfLocalVersionIds,
-				wfMissingInLocal,
-				wfMissingInRemote,
-				wfModifiedInEither,
-				credMissingInLocal,
-				credMissingInRemote,
-				credModifiedInEither,
-				varMissingInLocal,
-				varMissingInRemote,
-				varModifiedInEither,
-				tagsMissingInLocal,
-				tagsMissingInRemote,
-				tagsModifiedInEither,
-				mappingsMissingInLocal,
-				mappingsMissingInRemote,
-				foldersMissingInLocal,
-				foldersMissingInRemote,
-				foldersModifiedInEither,
-				projectsRemote,
-				projectsLocal,
-				projectsMissingInLocal,
-				projectsMissingInRemote,
-				projectsModifiedInEither,
+				...workflowsStatus,
+				...credentialsStatus,
+				...variablesStatus,
+				...tagsMappingsStatus,
+				...foldersMappingStatus,
+				...projectsStatus,
 				sourceControlledFiles,
 			};
-		} else {
-			return sourceControlledFiles;
 		}
+
+		return sourceControlledFiles;
 	}
 
 	private async resetWorkfolder(): Promise<void> {
@@ -188,6 +180,7 @@ export class SourceControlStatusService {
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
+		collectVerbose: boolean,
 	) {
 		// TODO: We need to check the case where it exists in the DB (out of scope) but is in GIT
 		const wfRemoteVersionIds =
@@ -195,10 +188,12 @@ export class SourceControlStatusService {
 		const wfLocalVersionIds =
 			await this.sourceControlImportService.getLocalVersionIdsFromDb(context);
 
+		const wfRemoteById = new Map(wfRemoteVersionIds.map((w) => [w.id, w]));
+		const wfRemoteIds = new Set(wfRemoteVersionIds.map((w) => w.id));
+		const wfLocalIds = new Set(wfLocalVersionIds.map((w) => w.id));
+
 		// Fetch published status for local workflows to determine isLocalPublished
-		const candidateIds = [
-			...new Set([...wfLocalVersionIds.map((w) => w.id), ...wfRemoteVersionIds.map((w) => w.id)]),
-		];
+		const candidateIds = [...new Set([...wfLocalIds, ...wfRemoteIds])];
 		const localWorkflowsWithStatus = await this.workflowRepository.findByIds(candidateIds, {
 			fields: ['id', 'activeVersionId'],
 		});
@@ -217,109 +212,108 @@ export class SourceControlStatusService {
 			// we need to query for all wf in the DB to hide possible deletions,
 			// when a wf went out of scope locally
 			outOfScopeWF = await this.sourceControlImportService.getAllLocalVersionIdsFromDb();
-			outOfScopeWF = outOfScopeWF.filter(
-				(wf) => !wfLocalVersionIds.some((local) => local.id === wf.id),
-			);
+			outOfScopeWF = outOfScopeWF.filter((wf) => !wfLocalIds.has(wf.id));
 		}
 
-		const wfMissingInLocal = wfRemoteVersionIds
-			.filter((remote) => wfLocalVersionIds.findIndex((local) => local.id === remote.id) === -1)
-			.filter(
-				// If we have out of scope workflows, these are workflows, that are not
-				// visible locally, but exists locally but are available in remote
-				// we skip them and hide them from deletion from the user.
-				(remote) => !outOfScopeWF.some((outOfScope) => outOfScope.id === remote.id),
-			);
+		const outOfScopeIds = new Set(outOfScopeWF.map((wf) => wf.id));
 
-		const wfMissingInRemote = wfLocalVersionIds.filter(
-			(local) => wfRemoteVersionIds.findIndex((remote) => remote.id === local.id) === -1,
-		);
-
+		const wfMissingInLocal: SourceControlWorkflowVersionId[] = [];
+		const wfMissingInRemote: SourceControlWorkflowVersionId[] = [];
 		const wfModifiedInEither: SourceControlWorkflowVersionId[] = [];
 
-		wfLocalVersionIds.forEach((localWorkflow) => {
-			const remoteWorkflowWithSameId = wfRemoteVersionIds.find(
-				(removeWorkflow) => removeWorkflow.id === localWorkflow.id,
-			);
-
-			if (!remoteWorkflowWithSameId) {
-				return;
-			}
-
-			if (isWorkflowModified(localWorkflow, remoteWorkflowWithSameId)) {
-				let name =
-					(options?.preferLocalVersion ? localWorkflow?.name : remoteWorkflowWithSameId?.name) ??
-					'Workflow';
-
-				if (
-					localWorkflow.name &&
-					remoteWorkflowWithSameId?.name &&
-					localWorkflow.name !== remoteWorkflowWithSameId.name
-				) {
-					name = options?.preferLocalVersion
-						? `${localWorkflow.name} (Remote: ${remoteWorkflowWithSameId.name})`
-						: (name = `${remoteWorkflowWithSameId.name} (Local: ${localWorkflow.name})`);
+		// If we have out of scope workflows, these are workflows, that are not
+		// visible locally, but exist locally but are available in remote
+		// we skip them and hide them from deletion from the user.
+		for (const remoteWorkflow of wfRemoteVersionIds) {
+			if (!wfLocalIds.has(remoteWorkflow.id) && !outOfScopeIds.has(remoteWorkflow.id)) {
+				if (collectVerbose) {
+					wfMissingInLocal.push(remoteWorkflow);
 				}
-
-				wfModifiedInEither.push({
-					...localWorkflow,
-					name,
-					versionId: options.preferLocalVersion
-						? localWorkflow.versionId
-						: remoteWorkflowWithSameId.versionId,
-					localId: localWorkflow.versionId,
-					remoteId: remoteWorkflowWithSameId.versionId,
+				sourceControlledFiles.push({
+					id: remoteWorkflow.id,
+					name: remoteWorkflow.name ?? 'Workflow',
+					type: 'workflow',
+					status: options.direction === 'push' ? 'deleted' : 'created',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: false,
+					file: remoteWorkflow.filename,
+					updatedAt: remoteWorkflow.updatedAt ?? new Date().toISOString(),
+					isLocalPublished: false, // New workflow, not published locally
+					isRemoteArchived: archivedWorkflowIds.get(remoteWorkflow.id) ?? false,
+					owner: remoteWorkflow.owner,
 				});
 			}
-		});
+		}
 
-		wfMissingInLocal.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name ?? 'Workflow',
-				type: 'workflow',
-				status: options.direction === 'push' ? 'deleted' : 'created',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
-				file: item.filename,
-				updatedAt: item.updatedAt ?? new Date().toISOString(),
-				isLocalPublished: false, // New workflow, not published locally
-				isRemoteArchived: archivedWorkflowIds.get(item.id) ?? false,
-				owner: item.owner,
-			});
-		});
+		for (const localWorkflow of wfLocalVersionIds) {
+			const remoteWorkflowWithSameId = wfRemoteById.get(localWorkflow.id);
 
-		wfMissingInRemote.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name ?? 'Workflow',
-				type: 'workflow',
-				status: options.direction === 'push' ? 'created' : 'deleted',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: options.direction === 'push' ? false : true,
-				file: item.filename,
-				updatedAt: item.updatedAt ?? new Date().toISOString(),
-				isLocalPublished: publishedWorkflowIds.has(item.id),
-				isRemoteArchived: false, // Workflow deleted from remote, no archived status
-				owner: item.owner,
-			});
-		});
+			if (!remoteWorkflowWithSameId) {
+				if (collectVerbose) {
+					wfMissingInRemote.push(localWorkflow);
+				}
+				sourceControlledFiles.push({
+					id: localWorkflow.id,
+					name: localWorkflow.name ?? 'Workflow',
+					type: 'workflow',
+					status: options.direction === 'push' ? 'created' : 'deleted',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: options.direction === 'push' ? false : true,
+					file: localWorkflow.filename,
+					updatedAt: localWorkflow.updatedAt ?? new Date().toISOString(),
+					isLocalPublished: publishedWorkflowIds.has(localWorkflow.id),
+					isRemoteArchived: false, // Workflow deleted from remote, no archived status
+					owner: localWorkflow.owner,
+				});
+				continue;
+			}
 
-		wfModifiedInEither.forEach((item) => {
+			if (!isWorkflowModified(localWorkflow, remoteWorkflowWithSameId)) {
+				continue;
+			}
+
+			let name =
+				(options?.preferLocalVersion ? localWorkflow?.name : remoteWorkflowWithSameId?.name) ??
+				'Workflow';
+
+			if (
+				localWorkflow.name &&
+				remoteWorkflowWithSameId?.name &&
+				localWorkflow.name !== remoteWorkflowWithSameId.name
+			) {
+				name = options?.preferLocalVersion
+					? `${localWorkflow.name} (Remote: ${remoteWorkflowWithSameId.name})`
+					: (name = `${remoteWorkflowWithSameId.name} (Local: ${localWorkflow.name})`);
+			}
+
+			const wfModified: SourceControlWorkflowVersionId = {
+				...localWorkflow,
+				name,
+				versionId: options.preferLocalVersion
+					? localWorkflow.versionId
+					: remoteWorkflowWithSameId.versionId,
+				localId: localWorkflow.versionId,
+				remoteId: remoteWorkflowWithSameId.versionId,
+			};
+
+			if (collectVerbose) {
+				wfModifiedInEither.push(wfModified);
+			}
+
 			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name ?? 'Workflow',
+				id: wfModified.id,
+				name: wfModified.name ?? 'Workflow',
 				type: 'workflow',
 				status: 'modified',
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: true,
-				file: item.filename,
-				updatedAt: item.updatedAt ?? new Date().toISOString(),
-				isLocalPublished: publishedWorkflowIds.has(item.id),
-				isRemoteArchived: archivedWorkflowIds.get(item.id) ?? false,
-				owner: item.owner,
+				file: wfModified.filename,
+				updatedAt: wfModified.updatedAt ?? new Date().toISOString(),
+				isLocalPublished: publishedWorkflowIds.has(wfModified.id),
+				isRemoteArchived: archivedWorkflowIds.get(wfModified.id) ?? false,
+				owner: wfModified.owner,
 			});
-		});
+		}
 
 		return {
 			wfRemoteVersionIds,
@@ -334,81 +328,81 @@ export class SourceControlStatusService {
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
+		collectVerbose: boolean,
 	) {
 		const credRemoteIds =
 			await this.sourceControlImportService.getRemoteCredentialsFromFiles(context);
 		const credLocalIds = await this.sourceControlImportService.getLocalCredentialsFromDb(context);
 
-		const credMissingInLocal = credRemoteIds.filter(
-			(remote) => credLocalIds.findIndex((local) => local.id === remote.id) === -1,
-		);
+		const credRemoteById = new Map(credRemoteIds.map((cred) => [cred.id, cred]));
+		const credLocalIdsSet = new Set(credLocalIds.map((cred) => cred.id));
 
-		const credMissingInRemote = credLocalIds.filter(
-			(local) => credRemoteIds.findIndex((remote) => remote.id === local.id) === -1,
-		);
-
+		const credMissingInLocal: StatusExportableCredential[] = [];
+		const credMissingInRemote: StatusExportableCredential[] = [];
 		const credModifiedInEither: StatusExportableCredential[] = [];
-		credLocalIds.forEach((local) => {
-			// Compare name, type, owner and isGlobal since those are the synced properties for credentials
-			const mismatchingCreds = credRemoteIds.find((remote) => {
-				return (
-					remote.id === local.id &&
-					(remote.name !== local.name ||
-						remote.type !== local.type ||
-						hasOwnerChanged(remote.ownedBy, local.ownedBy) ||
-						(remote.isGlobal ?? false) !== (local.isGlobal ?? false))
-				);
-			});
 
-			if (mismatchingCreds) {
-				credModifiedInEither.push({
-					...local,
-					name: options?.preferLocalVersion ? local.name : mismatchingCreds.name,
+		for (const remoteCredential of credRemoteIds) {
+			if (!credLocalIdsSet.has(remoteCredential.id)) {
+				if (collectVerbose) {
+					credMissingInLocal.push(remoteCredential);
+				}
+				sourceControlledFiles.push({
+					id: remoteCredential.id,
+					name: remoteCredential.name ?? 'Credential',
+					type: 'credential',
+					status: options.direction === 'push' ? 'deleted' : 'created',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: false,
+					file: remoteCredential.filename,
+					updatedAt: new Date().toISOString(),
+					owner: remoteCredential.ownedBy,
 				});
 			}
-		});
+		}
 
-		credMissingInLocal.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name ?? 'Credential',
-				type: 'credential',
-				status: options.direction === 'push' ? 'deleted' : 'created',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
-				file: item.filename,
-				updatedAt: new Date().toISOString(),
-				owner: item.ownedBy,
-			});
-		});
+		for (const localCredential of credLocalIds) {
+			const credRemote = credRemoteById.get(localCredential.id);
+			if (credRemote) {
+				// Compare name, type, owner and isGlobal since those are the synced properties for credentials
+				if (areSameCredentials(localCredential, credRemote)) {
+					continue;
+				}
 
-		credMissingInRemote.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name ?? 'Credential',
-				type: 'credential',
-				status: options.direction === 'push' ? 'created' : 'deleted',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: options.direction === 'push' ? false : true,
-				file: item.filename,
-				updatedAt: new Date().toISOString(),
-				owner: item.ownedBy,
-			});
-		});
-
-		credModifiedInEither.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name ?? 'Credential',
-				type: 'credential',
-				status: 'modified',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: true,
-				file: item.filename,
-				updatedAt: new Date().toISOString(),
-				owner: item.ownedBy,
-			});
-		});
+				const modifiedCredential = {
+					...localCredential,
+					name: options?.preferLocalVersion ? localCredential.name : credRemote.name,
+				};
+				if (collectVerbose) {
+					credModifiedInEither.push(modifiedCredential);
+				}
+				sourceControlledFiles.push({
+					id: modifiedCredential.id,
+					name: modifiedCredential.name ?? 'Credential',
+					type: 'credential',
+					status: 'modified',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: true,
+					file: modifiedCredential.filename,
+					updatedAt: new Date().toISOString(),
+					owner: modifiedCredential.ownedBy,
+				});
+			} else {
+				if (collectVerbose) {
+					credMissingInRemote.push(localCredential);
+				}
+				sourceControlledFiles.push({
+					id: localCredential.id,
+					name: localCredential.name ?? 'Credential',
+					type: 'credential',
+					status: options.direction === 'push' ? 'created' : 'deleted',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: options.direction === 'push' ? false : true,
+					file: localCredential.filename,
+					updatedAt: new Date().toISOString(),
+					owner: localCredential.ownedBy,
+				});
+			}
+		}
 
 		return {
 			credMissingInLocal,
@@ -420,62 +414,73 @@ export class SourceControlStatusService {
 	private async getStatusVariables(
 		options: SourceControlGetStatus,
 		sourceControlledFiles: SourceControlledFile[],
+		collectVerbose: boolean,
 	) {
 		const varRemoteIds = await this.sourceControlImportService.getRemoteVariablesFromFile();
 		const varLocalIds = await this.sourceControlImportService.getLocalGlobalVariablesFromDb();
 
-		const varMissingInLocal = varRemoteIds.filter(
-			(remote) => varLocalIds.findIndex((local) => local.id === remote.id) === -1,
-		);
+		const varRemoteIdsSet = new Set(varRemoteIds.map((remote) => remote.id));
+		const varLocalIdsSet = new Set(varLocalIds.map((local) => local.id));
 
-		const varMissingInRemote = varLocalIds.filter(
-			(local) => varRemoteIds.findIndex((remote) => remote.id === local.id) === -1,
-		);
-
+		const varMissingInLocal: ExportableVariable[] = [];
+		const varMissingInRemote: ExportableVariable[] = [];
 		const varModifiedInEither: ExportableVariable[] = [];
-		varLocalIds.forEach((local) => {
+
+		for (const remoteVariable of varRemoteIds) {
+			if (!varLocalIdsSet.has(remoteVariable.id)) {
+				if (collectVerbose) {
+					varMissingInLocal.push(remoteVariable);
+				}
+				sourceControlledFiles.push({
+					id: remoteVariable.id,
+					name: remoteVariable.key,
+					type: 'variables',
+					status: options.direction === 'push' ? 'deleted' : 'created',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: false,
+					file: getVariablesPath(this.gitFolder),
+					updatedAt: new Date().toISOString(),
+				});
+			}
+		}
+
+		for (const localVariable of varLocalIds) {
+			if (!varRemoteIdsSet.has(localVariable.id)) {
+				if (collectVerbose) {
+					varMissingInRemote.push(localVariable);
+				}
+				sourceControlledFiles.push({
+					id: localVariable.id,
+					name: localVariable.key,
+					type: 'variables',
+					status: options.direction === 'push' ? 'created' : 'deleted',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					// if the we pull and the file is missing in the remote, we will delete
+					// it locally, which is communicated by marking this as a conflict
+					conflict: options.direction === 'push' ? false : true,
+					file: getVariablesPath(this.gitFolder),
+					updatedAt: new Date().toISOString(),
+				});
+			}
+		}
+
+		for (const localVariable of varLocalIds) {
 			const mismatchingIds = varRemoteIds.find(
 				(remote) =>
-					(remote.id === local.id && remote.key !== local.key) ||
-					(remote.id !== local.id && remote.key === local.key),
+					(remote.id === localVariable.id && remote.key !== localVariable.key) ||
+					(remote.id !== localVariable.id && remote.key === localVariable.key),
 			);
-			if (mismatchingIds) {
-				varModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
+			if (!mismatchingIds) {
+				continue;
 			}
-		});
 
-		varMissingInLocal.forEach((item) => {
+			const modified = options.preferLocalVersion ? localVariable : mismatchingIds;
+			if (collectVerbose) {
+				varModifiedInEither.push(modified);
+			}
 			sourceControlledFiles.push({
-				id: item.id,
-				name: item.key,
-				type: 'variables',
-				status: options.direction === 'push' ? 'deleted' : 'created',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
-				file: getVariablesPath(this.gitFolder),
-				updatedAt: new Date().toISOString(),
-			});
-		});
-
-		varMissingInRemote.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.key,
-				type: 'variables',
-				status: options.direction === 'push' ? 'created' : 'deleted',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				// if the we pull and the file is missing in the remote, we will delete
-				// it locally, which is communicated by marking this as a conflict
-				conflict: options.direction === 'push' ? false : true,
-				file: getVariablesPath(this.gitFolder),
-				updatedAt: new Date().toISOString(),
-			});
-		});
-
-		varModifiedInEither.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.key,
+				id: modified.id,
+				name: modified.key,
 				type: 'variables',
 				status: 'modified',
 				location: options.direction === 'push' ? 'local' : 'remote',
@@ -483,7 +488,7 @@ export class SourceControlStatusService {
 				file: getVariablesPath(this.gitFolder),
 				updatedAt: new Date().toISOString(),
 			});
-		});
+		}
 
 		return {
 			varMissingInLocal,
@@ -496,6 +501,7 @@ export class SourceControlStatusService {
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
+		collectVerbose: boolean,
 	) {
 		const lastUpdatedTag = await this.tagRepository.find({
 			order: { updatedAt: 'DESC' },
@@ -510,68 +516,71 @@ export class SourceControlStatusService {
 		const tagMappingsLocal =
 			await this.sourceControlImportService.getLocalTagsAndMappingsFromDb(context);
 
-		const tagsMissingInLocal = tagMappingsRemote.tags.filter(
-			(remote) => tagMappingsLocal.tags.findIndex((local) => local.id === remote.id) === -1,
-		);
-
-		const tagsMissingInRemote = tagMappingsLocal.tags.filter(
-			(local) => tagMappingsRemote.tags.findIndex((remote) => remote.id === local.id) === -1,
-		);
-
+		const tagsMissingInLocal: ExportableTagEntity[] = [];
+		const tagsMissingInRemote: ExportableTagEntity[] = [];
 		const tagsModifiedInEither: ExportableTagEntity[] = [];
-		tagMappingsLocal.tags.forEach((local) => {
+		const mappingsMissingInLocal: typeof tagMappingsRemote.mappings = [];
+		const mappingsMissingInRemote: typeof tagMappingsLocal.mappings = [];
+
+		let tagsMissingInLocalCount = 0;
+		let tagsMissingInRemoteCount = 0;
+		let tagsModifiedInEitherCount = 0;
+		let mappingsMissingInLocalCount = 0;
+		let mappingsMissingInRemoteCount = 0;
+
+		for (const remote of tagMappingsRemote.tags) {
+			if (tagMappingsLocal.tags.findIndex((local) => local.id === remote.id) === -1) {
+				tagsMissingInLocalCount += 1;
+				if (collectVerbose) {
+					tagsMissingInLocal.push(remote);
+				}
+				sourceControlledFiles.push({
+					id: remote.id,
+					name: remote.name,
+					type: 'tags',
+					status: options.direction === 'push' ? 'deleted' : 'created',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: false,
+					file: getTagsPath(this.gitFolder),
+					updatedAt: lastUpdatedDate.toISOString(),
+				});
+			}
+		}
+
+		for (const localTag of tagMappingsLocal.tags) {
+			if (tagMappingsRemote.tags.findIndex((remote) => remote.id === localTag.id) === -1) {
+				tagsMissingInRemoteCount += 1;
+				if (collectVerbose) {
+					tagsMissingInRemote.push(localTag);
+				}
+				sourceControlledFiles.push({
+					id: localTag.id,
+					name: localTag.name,
+					type: 'tags',
+					status: options.direction === 'push' ? 'created' : 'deleted',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: options.direction === 'push' ? false : true,
+					file: getTagsPath(this.gitFolder),
+					updatedAt: lastUpdatedDate.toISOString(),
+				});
+			}
+		}
+
+		for (const localTag of tagMappingsLocal.tags) {
 			const mismatchingIds = tagMappingsRemote.tags.find(
-				(remote) => remote.id === local.id && remote.name !== local.name,
+				(remote) => remote.id === localTag.id && remote.name !== localTag.name,
 			);
 			if (!mismatchingIds) {
-				return;
+				continue;
 			}
-			tagsModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
-		});
-
-		const mappingsMissingInLocal = tagMappingsRemote.mappings.filter(
-			(remote) =>
-				tagMappingsLocal.mappings.findIndex(
-					(local) => local.tagId === remote.tagId && local.workflowId === remote.workflowId,
-				) === -1,
-		);
-
-		const mappingsMissingInRemote = tagMappingsLocal.mappings.filter(
-			(local) =>
-				tagMappingsRemote.mappings.findIndex(
-					(remote) => remote.tagId === local.tagId && remote.workflowId === local.workflowId,
-				) === -1,
-		);
-
-		tagsMissingInLocal.forEach((item) => {
+			tagsModifiedInEitherCount += 1;
+			const modified = options.preferLocalVersion ? localTag : mismatchingIds;
+			if (collectVerbose) {
+				tagsModifiedInEither.push(modified);
+			}
 			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name,
-				type: 'tags',
-				status: options.direction === 'push' ? 'deleted' : 'created',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
-				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedDate.toISOString(),
-			});
-		});
-		tagsMissingInRemote.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name,
-				type: 'tags',
-				status: options.direction === 'push' ? 'created' : 'deleted',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: options.direction === 'push' ? false : true,
-				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedDate.toISOString(),
-			});
-		});
-
-		tagsModifiedInEither.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name,
+				id: modified.id,
+				name: modified.name,
 				type: 'tags',
 				status: 'modified',
 				location: options.direction === 'push' ? 'local' : 'remote',
@@ -579,19 +588,44 @@ export class SourceControlStatusService {
 				file: getTagsPath(this.gitFolder),
 				updatedAt: lastUpdatedDate.toISOString(),
 			});
-		});
+		}
+
+		for (const remoteTagMapping of tagMappingsRemote.mappings) {
+			const isMissing = tagMappingsLocal.mappings.findIndex(
+				(local) =>
+					local.tagId === remoteTagMapping.tagId &&
+					local.workflowId === remoteTagMapping.workflowId,
+			);
+			if (isMissing === -1) {
+				mappingsMissingInLocalCount += 1;
+				if (collectVerbose) {
+					mappingsMissingInLocal.push(remoteTagMapping);
+				}
+			}
+		}
+
+		for (const localTagMapping of tagMappingsLocal.mappings) {
+			const isMissing = tagMappingsRemote.mappings.findIndex(
+				(remote) =>
+					remote.tagId === localTagMapping.tagId &&
+					remote.workflowId === localTagMapping.workflowId,
+			);
+			if (isMissing === -1) {
+				mappingsMissingInRemoteCount += 1;
+				if (collectVerbose) {
+					mappingsMissingInRemote.push(localTagMapping);
+				}
+			}
+		}
 
 		// If only mappings changed (not tags themselves), we still need to mark the tags file as modified
-		const hasMappingChanges =
-			mappingsMissingInLocal.length > 0 || mappingsMissingInRemote.length > 0;
+		const hasMappingChanges = mappingsMissingInLocalCount > 0 || mappingsMissingInRemoteCount > 0;
 		const hasTagChanges =
-			tagsMissingInLocal.length > 0 ||
-			tagsMissingInRemote.length > 0 ||
-			tagsModifiedInEither.length > 0;
+			tagsMissingInLocalCount > 0 || tagsMissingInRemoteCount > 0 || tagsModifiedInEitherCount > 0;
 
 		if (hasMappingChanges && !hasTagChanges) {
 			// Pulling deletes local mappings that don't exist remotely, so mark as conflict
-			const isConflict = options.direction === 'pull' && mappingsMissingInRemote.length > 0;
+			const isConflict = options.direction === 'pull' && mappingsMissingInRemoteCount > 0;
 
 			sourceControlledFiles.push({
 				id: 'tags',
@@ -618,6 +652,7 @@ export class SourceControlStatusService {
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
+		collectVerbose: boolean,
 	) {
 		const lastUpdatedFolder = await this.folderRepository.find({
 			order: { updatedAt: 'DESC' },
@@ -632,27 +667,57 @@ export class SourceControlStatusService {
 		const foldersMappingsLocal =
 			await this.sourceControlImportService.getLocalFoldersAndMappingsFromDb(context);
 
-		const foldersMissingInLocal = foldersMappingsRemote.folders.filter(
-			(remote) => foldersMappingsLocal.folders.findIndex((local) => local.id === remote.id) === -1,
-		);
-
-		const foldersMissingInRemote = foldersMappingsLocal.folders.filter(
-			(local) => foldersMappingsRemote.folders.findIndex((remote) => remote.id === local.id) === -1,
-		);
+		const foldersMissingInLocal: ExportableFolder[] = [];
+		const foldersMissingInRemote: ExportableFolder[] = [];
 
 		const allTeamProjects = await this.sourceControlImportService.getLocalTeamProjectsFromDb();
 
 		const foldersModifiedInEither: ExportableFolder[] = [];
 
-		foldersMappingsLocal.folders.forEach((local) => {
-			const localHomeProject = allTeamProjects.find(
-				(project) => project.id === local.homeProjectId,
-			);
+		for (const remoteFolder of foldersMappingsRemote.folders) {
+			if (foldersMappingsLocal.folders.findIndex((local) => local.id === remoteFolder.id) === -1) {
+				if (collectVerbose) {
+					foldersMissingInLocal.push(remoteFolder);
+				}
+				sourceControlledFiles.push({
+					id: remoteFolder.id,
+					name: remoteFolder.name,
+					type: 'folders',
+					status: options.direction === 'push' ? 'deleted' : 'created',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: false,
+					file: getFoldersPath(this.gitFolder),
+					updatedAt: lastUpdatedDate.toISOString(),
+				});
+			}
+		}
+
+		for (const localFolder of foldersMappingsLocal.folders) {
+			if (
+				foldersMappingsRemote.folders.findIndex((remote) => remote.id === localFolder.id) === -1
+			) {
+				if (collectVerbose) {
+					foldersMissingInRemote.push(localFolder);
+				}
+				sourceControlledFiles.push({
+					id: localFolder.id,
+					name: localFolder.name,
+					type: 'folders',
+					status: options.direction === 'push' ? 'created' : 'deleted',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: options.direction === 'push' ? false : true,
+					file: getFoldersPath(this.gitFolder),
+					updatedAt: lastUpdatedDate.toISOString(),
+				});
+			}
+		}
+
+		const teamProjectsById = new Map(allTeamProjects.map((project) => [project.id, project]));
+		for (const localFolder of foldersMappingsLocal.folders) {
+			const localHomeProject = teamProjectsById.get(localFolder.homeProjectId);
 
 			const mismatchingIds = foldersMappingsRemote.folders.find((remote) => {
-				const remoteHomeProject = allTeamProjects.find(
-					(project) => project.id === remote.homeProjectId,
-				);
+				const remoteHomeProject = teamProjectsById.get(remote.homeProjectId);
 
 				const localOwner = localHomeProject
 					? {
@@ -673,49 +738,24 @@ export class SourceControlStatusService {
 				const ownerChanged = hasOwnerChanged(localOwner, remoteOwner);
 
 				return (
-					remote.id === local.id &&
-					(remote.name !== local.name ||
-						remote.parentFolderId !== local.parentFolderId ||
+					remote.id === localFolder.id &&
+					(remote.name !== localFolder.name ||
+						remote.parentFolderId !== localFolder.parentFolderId ||
 						ownerChanged)
 				);
 			});
 
 			if (!mismatchingIds) {
-				return;
+				continue;
 			}
 
-			foldersModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
-		});
-
-		foldersMissingInLocal.forEach((item) => {
+			const modified = options.preferLocalVersion ? localFolder : mismatchingIds;
+			if (collectVerbose) {
+				foldersModifiedInEither.push(modified);
+			}
 			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name,
-				type: 'folders',
-				status: options.direction === 'push' ? 'deleted' : 'created',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
-				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedDate.toISOString(),
-			});
-		});
-		foldersMissingInRemote.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name,
-				type: 'folders',
-				status: options.direction === 'push' ? 'created' : 'deleted',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: options.direction === 'push' ? false : true,
-				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedDate.toISOString(),
-			});
-		});
-
-		foldersModifiedInEither.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name,
+				id: modified.id,
+				name: modified.name,
 				type: 'folders',
 				status: 'modified',
 				location: options.direction === 'push' ? 'local' : 'remote',
@@ -723,7 +763,7 @@ export class SourceControlStatusService {
 				file: getFoldersPath(this.gitFolder),
 				updatedAt: lastUpdatedDate.toISOString(),
 			});
-		});
+		}
 
 		return {
 			foldersMissingInLocal,
@@ -736,6 +776,7 @@ export class SourceControlStatusService {
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
+		collectVerbose: boolean,
 	) {
 		const projectsRemote =
 			await this.sourceControlImportService.getRemoteProjectsFromFiles(context);
@@ -752,65 +793,20 @@ export class SourceControlStatusService {
 			);
 		}
 
-		const projectsMissingInLocal = projectsRemote
-			.filter((remote) => !projectsLocal.some((local) => local.id === remote.id))
-			.filter(
-				// If we have out of scope projects, these are projects that are not
-				// visible locally, but exist locally and are available in remote
-				// we skip them and hide them from deletion from the user.
-				(remote) => !outOfScopeProjects.some((outOfScope) => outOfScope.id === remote.id),
-			);
+		const projectsMissingInLocal: ExportableProjectWithFileName[] = [];
 
 		// BACKWARD COMPATIBILITY: When there are no remote projects we can't safely delete local projects
 		// because we don't know if it's the first pull or if all team projects have been removed
 		// As a downside this means that it's not possible to delete all team projects via source control sync
 		const areRemoteProjectsEmpty = projectsRemote.length === 0;
-		let projectsMissingInRemote = projectsLocal.filter(
-			(local) => !projectsRemote.some((remote) => remote.id === local.id),
-		);
-		if (options.direction === 'pull' && areRemoteProjectsEmpty) {
-			projectsMissingInRemote = [];
-		}
+		const projectsMissingInRemote: ExportableProjectWithFileName[] = [];
 
 		const projectsModifiedInEither: ExportableProjectWithFileName[] = [];
-
-		projectsLocal.forEach((localProject) => {
-			const remoteProjectWithSameId = projectsRemote.find(
-				(remoteProject) => remoteProject.id === localProject.id,
-			);
-
-			if (!remoteProjectWithSameId) {
-				return;
-			}
-
-			if (this.isProjectModified(localProject, remoteProjectWithSameId)) {
-				let name =
-					(options?.preferLocalVersion ? localProject?.name : remoteProjectWithSameId?.name) ??
-					'Project';
-
-				if (
-					localProject.name &&
-					remoteProjectWithSameId?.name &&
-					localProject.name !== remoteProjectWithSameId.name
-				) {
-					name = options?.preferLocalVersion
-						? `${localProject.name} (Remote: ${remoteProjectWithSameId.name})`
-						: `${remoteProjectWithSameId.name} (Local: ${localProject.name})`;
-				}
-
-				projectsModifiedInEither.push({
-					...localProject,
-					name,
-					description: options.preferLocalVersion
-						? localProject.description
-						: remoteProjectWithSameId.description,
-					icon: options.preferLocalVersion ? localProject.icon : remoteProjectWithSameId.icon,
-					variableStubs: options.preferLocalVersion
-						? localProject.variableStubs
-						: remoteProjectWithSameId.variableStubs,
-				});
-			}
-		});
+		const projectLocalIds = new Set(projectsLocal.map((localProject) => localProject.id));
+		const projectRemoteById = new Map(
+			projectsRemote.map((remoteProject) => [remoteProject.id, remoteProject]),
+		);
+		const outOfScopeProjectIds = new Set(outOfScopeProjects.map((outOfScope) => outOfScope.id));
 
 		const mapExportableProjectWithFileNameToSourceControlledFile = ({
 			project,
@@ -838,34 +834,82 @@ export class SourceControlStatusService {
 			};
 		};
 
-		projectsMissingInLocal.forEach((item) => {
-			sourceControlledFiles.push(
-				mapExportableProjectWithFileNameToSourceControlledFile({
-					project: item,
-					status: options.direction === 'push' ? 'deleted' : 'created',
-					conflict: false,
-				}),
-			);
-		});
+		for (const remoteProject of projectsRemote) {
+			if (!projectLocalIds.has(remoteProject.id) && !outOfScopeProjectIds.has(remoteProject.id)) {
+				if (collectVerbose) {
+					projectsMissingInLocal.push(remoteProject);
+				}
+				sourceControlledFiles.push(
+					mapExportableProjectWithFileNameToSourceControlledFile({
+						project: remoteProject,
+						status: options.direction === 'push' ? 'deleted' : 'created',
+						conflict: false,
+					}),
+				);
+			}
+		}
 
-		projectsMissingInRemote.forEach((item) => {
-			sourceControlledFiles.push(
-				mapExportableProjectWithFileNameToSourceControlledFile({
-					project: item,
-					status: options.direction === 'push' ? 'created' : 'deleted',
-					conflict: options.direction === 'push' ? false : true,
-				}),
-			);
-		});
+		if (!(options.direction === 'pull' && areRemoteProjectsEmpty)) {
+			for (const localProject of projectsLocal) {
+				if (!projectRemoteById.has(localProject.id)) {
+					if (collectVerbose) {
+						projectsMissingInRemote.push(localProject);
+					}
+					sourceControlledFiles.push(
+						mapExportableProjectWithFileNameToSourceControlledFile({
+							project: localProject,
+							status: options.direction === 'push' ? 'created' : 'deleted',
+							conflict: options.direction === 'push' ? false : true,
+						}),
+					);
+				}
+			}
+		}
 
-		projectsModifiedInEither.forEach((item) => {
-			sourceControlledFiles.push(
-				mapExportableProjectWithFileNameToSourceControlledFile({
-					project: item,
-					status: 'modified',
-					conflict: true,
-				}),
-			);
+		projectsLocal.forEach((localProject) => {
+			const remoteProjectWithSameId = projectRemoteById.get(localProject.id);
+
+			if (!remoteProjectWithSameId) {
+				return;
+			}
+
+			if (this.isProjectModified(localProject, remoteProjectWithSameId)) {
+				let name =
+					(options?.preferLocalVersion ? localProject?.name : remoteProjectWithSameId?.name) ??
+					'Project';
+
+				if (
+					localProject.name &&
+					remoteProjectWithSameId?.name &&
+					localProject.name !== remoteProjectWithSameId.name
+				) {
+					name = options?.preferLocalVersion
+						? `${localProject.name} (Remote: ${remoteProjectWithSameId.name})`
+						: `${remoteProjectWithSameId.name} (Local: ${localProject.name})`;
+				}
+
+				const modified = {
+					...localProject,
+					name,
+					description: options.preferLocalVersion
+						? localProject.description
+						: remoteProjectWithSameId.description,
+					icon: options.preferLocalVersion ? localProject.icon : remoteProjectWithSameId.icon,
+					variableStubs: options.preferLocalVersion
+						? localProject.variableStubs
+						: remoteProjectWithSameId.variableStubs,
+				};
+				if (collectVerbose) {
+					projectsModifiedInEither.push(modified);
+				}
+				sourceControlledFiles.push(
+					mapExportableProjectWithFileNameToSourceControlledFile({
+						project: modified,
+						status: 'modified',
+						conflict: true,
+					}),
+				);
+			}
 		});
 
 		return {
