@@ -92,6 +92,12 @@ export const eventNamesAudit = [
 	'n8n.audit.variable.deleted',
 	'n8n.audit.external-secrets.provider.settings.saved',
 	'n8n.audit.external-secrets.provider.reloaded',
+	'n8n.audit.personal-publishing-restricted.enabled',
+	'n8n.audit.personal-publishing-restricted.disabled',
+	'n8n.audit.personal-sharing-restricted.enabled',
+	'n8n.audit.personal-sharing-restricted.disabled',
+	'n8n.audit.2fa-enforcement.enabled',
+	'n8n.audit.2fa-enforcement.disabled',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

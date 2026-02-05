@@ -674,4 +674,14 @@ export type RelayEventMap = {
 		compactionStartTime: Date;
 	};
 	// #endregion
+
+	// #region Instance Policies
+
+	'instance-policies-updated': {
+		user: UserLike;
+		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+		value: boolean;
+	};
+
+	// #endregion
 } & AiEventMap;
