@@ -6,6 +6,7 @@ import {
 	GenerateCredentialNameRequestQuery,
 	ShareCredentialsBodyDto,
 	TransferCredentialBodyDto,
+	UpdateCredentialDto,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -207,9 +208,12 @@ export class CredentialsController {
 
 	@Patch('/:credentialId')
 	@ProjectScope('credential:update')
-	async updateCredentials(req: CredentialRequest.Update) {
+	async updateCredentials(
+		req: CredentialRequest.Update,
+		_res: unknown,
+		@Body payload: UpdateCredentialDto,
+	) {
 		const {
-			body,
 			user,
 			params: { credentialId },
 		} = req;
@@ -235,11 +239,11 @@ export class CredentialsController {
 		}
 
 		// We never want to allow users to change the oauthTokenData
-		delete body.data?.oauthTokenData;
+		delete payload.data?.oauthTokenData;
 
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.user,
-			req.body,
+			payload,
 			credential,
 		);
 		const newCredentialData = this.credentialsService.createEncryptedData({
@@ -250,7 +254,7 @@ export class CredentialsController {
 		});
 
 		// Update isGlobal if provided in the payload and user has permission
-		const isGlobal = body.isGlobal;
+		const isGlobal = payload.isGlobal;
 		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
 			if (!this.licenseState.isSharingLicensed()) {
 				throw new ForbiddenError('You are not licensed for sharing credentials');
@@ -265,7 +269,7 @@ export class CredentialsController {
 			newCredentialData.isGlobal = isGlobal;
 		}
 
-		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
+		newCredentialData.isResolvable = payload.isResolvable ?? credential.isResolvable;
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === null) {
