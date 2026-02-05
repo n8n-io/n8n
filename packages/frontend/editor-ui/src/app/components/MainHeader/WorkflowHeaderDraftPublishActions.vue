@@ -25,7 +25,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
-	tags: IWorkflowDb['tags'];
+	tags: readonly string[];
 	name: IWorkflowDb['name'];
 	meta: IWorkflowDb['meta'];
 	currentFolder?: FolderShortInfo;

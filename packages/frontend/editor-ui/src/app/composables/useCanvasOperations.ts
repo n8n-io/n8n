@@ -134,6 +134,10 @@ import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -2282,7 +2286,7 @@ export function useCanvasOperations() {
 	}
 
 	async function initializeWorkspace(data: IWorkflowDb) {
-		await workflowHelpers.initState(data, useWorkflowState());
+		const { workflowDocumentStore } = await workflowHelpers.initState(data, useWorkflowState());
 		data.nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isUnknownNode =
@@ -2299,6 +2303,8 @@ export function useCanvasOperations() {
 		workflowsStore.setConnections(data.connections);
 		workflowState.setWorkflowProperty('createdAt', data.createdAt);
 		workflowState.setWorkflowProperty('updatedAt', data.updatedAt);
+
+		return { workflowDocumentStore };
 	}
 
 	const initializeUnknownNodes = (nodes: INode[]) => {
@@ -2696,7 +2702,9 @@ export function useCanvasOperations() {
 			return accu;
 		}, []);
 
-		workflowState.addWorkflowTagIds(tagIds);
+		const workflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId);
+		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+		workflowDocumentStore.addTags(tagIds);
 	}
 
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {

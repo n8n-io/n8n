@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, shallowRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
@@ -25,6 +25,11 @@ import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/ut
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IWorkflowDb } from '@/Interface';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const route = useRoute();
@@ -63,6 +68,22 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 	const isLoading = ref(true);
 	const initializedWorkflowId = ref<string | undefined>();
+
+	// Track the current workflow document store for cleanup and provide to children
+	const currentWorkflowDocumentStore = shallowRef<ReturnType<
+		typeof useWorkflowDocumentStore
+	> | null>(null);
+
+	function disposeCurrentWorkflowDocumentStore() {
+		if (currentWorkflowDocumentStore.value) {
+			const storeId = createWorkflowDocumentId(
+				currentWorkflowDocumentStore.value.workflowId,
+				currentWorkflowDocumentStore.value.workflowVersion,
+			);
+			disposeWorkflowDocumentStore(storeId);
+			currentWorkflowDocumentStore.value = null;
+		}
+	}
 
 	const workflowId = computed(() => {
 		const name = route.params.name;
@@ -106,6 +127,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		const templateId = route.params.id;
 		if (!templateId) return false;
 
+		disposeCurrentWorkflowDocumentStore();
+
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 
 		if (loadWorkflowFromJSON) {
@@ -122,6 +145,14 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			await openWorkflowTemplateFromJSON(workflow);
 		} else {
 			await openWorkflowTemplate(templateId.toString());
+		}
+
+		// Create document store for template workflow (empty tags initially)
+		// The workflow ID was set during the template import
+		const currentWorkflowId = workflowsStore.workflowId;
+		if (currentWorkflowId) {
+			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
+			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
 		}
 
 		return true;
@@ -188,6 +219,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	async function openWorkflow(data: IWorkflowDb) {
+		disposeCurrentWorkflowDocumentStore();
 		resetWorkspace();
 
 		if (builderStore.streaming) {
@@ -196,7 +228,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			documentTitle.setDocumentTitle(data.name, 'IDLE');
 		}
 
-		await initializeWorkspace(data);
+		const { workflowDocumentStore } = await initializeWorkspace(data);
+		currentWorkflowDocumentStore.value = workflowDocumentStore;
 
 		void externalHooks.run('workflow.open', {
 			workflowId: data.id,
@@ -207,6 +240,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	async function initializeWorkspaceForNewWorkflow() {
+		disposeCurrentWorkflowDocumentStore();
 		resetWorkspace();
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
@@ -218,6 +252,10 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		);
 
 		workflowState.setWorkflowId(workflowId.value);
+
+		// Create document store for new workflow (empty tags)
+		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
+		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
 
 		await projectsStore.refreshCurrentProject();
 		await fetchAndSetParentFolder(parentFolderId);
@@ -358,6 +396,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	function cleanup() {
+		disposeCurrentWorkflowDocumentStore();
 		resetWorkspace();
 		uiStore.nodeViewInitialized = false;
 	}
@@ -366,6 +405,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		isLoading,
 		initializedWorkflowId,
 		workflowId,
+		currentWorkflowDocumentStore,
 		isNewWorkflowRoute,
 		isDemoRoute,
 		isTemplateRoute,

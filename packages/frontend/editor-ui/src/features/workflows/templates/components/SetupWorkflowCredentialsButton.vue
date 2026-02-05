@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -76,7 +76,11 @@ onBeforeUnmount(() => {
 	uiStore.closeModal(SETUP_CREDENTIALS_MODAL_KEY);
 });
 
-onMounted(() => {
+onMounted(async () => {
+	// Wait for all reactive updates to settle before checking conditions
+	// This ensures workflow.meta.templateId is available after initialization
+	await nextTick();
+
 	const templateId = workflowsStore.workflow?.meta?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
