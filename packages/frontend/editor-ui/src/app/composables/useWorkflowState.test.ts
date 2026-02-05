@@ -1,9 +1,13 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowState, type WorkflowState } from './useWorkflowState';
 import { createPinia, setActivePinia } from 'pinia';
 import {
 	createTestNode,
 	createTestTaskData,
+	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
@@ -11,11 +15,17 @@ import { createRunExecutionData, type IPinData } from 'n8n-workflow';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
+	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
+	let tagsStore: ReturnType<typeof useTagsStore>;
 	let workflowState: WorkflowState;
 	beforeEach(() => {
 		setActivePinia(createPinia());
 
 		workflowsStore = useWorkflowsStore();
+		workflowsListStore = useWorkflowsListStore();
+		workflowsEEStore = useWorkflowsEEStore();
+		tagsStore = useTagsStore();
 		workflowState = useWorkflowState();
 	});
 
@@ -332,6 +342,70 @@ describe('useWorkflowState', () => {
 			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
 				expect.any(Number),
 			);
+		});
+	});
+
+	describe('initState', () => {
+		it('should initialize workflow state with provided data', () => {
+			const workflowData = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				pinData: { TestNode: [{ json: { test: true } }] },
+				meta: { templateId: '123' },
+				scopes: ['workflow:create'],
+				usedCredentials: [],
+				sharedWithProjects: [],
+				tags: [{ id: 'tag-1', name: 'Tag 1' }],
+			});
+
+			workflowState.initState(workflowData);
+
+			expect(workflowsListStore.workflowsById['1']).toBeDefined();
+			expect(workflowsStore.workflow.active).toBe(true);
+			expect(workflowsStore.workflow.id).toBe('1');
+			expect(workflowsStore.workflow.name).toBe('Test Workflow');
+			expect(workflowsStore.workflow.pinData).toEqual({
+				TestNode: [{ json: { test: true } }],
+			});
+			expect(workflowsStore.workflow.meta).toEqual({ templateId: '123' });
+			expect(workflowsStore.workflow.scopes).toEqual(['workflow:create']);
+			expect(workflowsStore.workflow.tags).toEqual(['tag-1']);
+			expect(tagsStore.tagsById['tag-1']).toBeDefined();
+		});
+
+		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', () => {
+			const workflowData = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				pinData: {},
+				meta: {},
+				scopes: [],
+				tags: [],
+			});
+			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
+			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
+
+			workflowState.initState(workflowData);
+
+			expect(setUsedCredentialsSpy).not.toHaveBeenCalled();
+			expect(setWorkflowSharedWithSpy).not.toHaveBeenCalled();
+		});
+
+		it('should handle missing `tags` gracefully', () => {
+			const workflowData = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				pinData: {},
+				meta: {},
+				scopes: [],
+			});
+
+			workflowState.initState(workflowData);
+
+			expect(workflowsStore.workflow.tags).toEqual([]);
 		});
 	});
 });

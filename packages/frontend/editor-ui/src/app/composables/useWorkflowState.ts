@@ -40,7 +40,11 @@ import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowMetadata } from '@n8n/rest-api-client';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { dataPinningEventBus } from '../event-bus';
+import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
+import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 
 export type WorkflowStateBusEvents = {
 	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
@@ -55,6 +59,8 @@ export function useWorkflowState() {
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const workflowsEEStore = useWorkflowsEEStore();
+	const tagsStore = useTagsStore();
 
 	////
 	// Workflow editing state
@@ -475,6 +481,46 @@ export function useWorkflowState() {
 		}
 	}
 
+	////
+	// Workflow initialization
+	////
+
+	function initState(workflowData: IWorkflowDb) {
+		workflowsListStore.addWorkflow(workflowData);
+		setActive(workflowData.activeVersionId);
+		ws.setIsArchived(workflowData.isArchived);
+		ws.setDescription(workflowData.description);
+		setWorkflowId(workflowData.id);
+		setWorkflowName({
+			newName: workflowData.name,
+			setStateDirty: uiStore.stateIsDirty,
+		});
+		setWorkflowSettings(workflowData.settings ?? {});
+		setWorkflowPinData(workflowData.pinData ?? {});
+		ws.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
+		setWorkflowMetadata(workflowData.meta);
+		setWorkflowScopes(workflowData.scopes);
+
+		if ('activeVersion' in workflowData) {
+			ws.setWorkflowActiveVersion(workflowData.activeVersion ?? null);
+		}
+
+		if (workflowData.usedCredentials) {
+			ws.setUsedCredentials(workflowData.usedCredentials);
+		}
+
+		if (workflowData.sharedWithProjects) {
+			workflowsEEStore.setWorkflowSharedWith({
+				workflowId: workflowData.id,
+				sharedWithProjects: workflowData.sharedWithProjects,
+			});
+		}
+
+		const tags = (workflowData.tags ?? []) as ITag[];
+		setWorkflowTagIds(convertWorkflowTagsToIds(tags));
+		tagsStore.upsertTags(tags);
+	}
+
 	return {
 		// Workflow editing state
 		resetState,
@@ -510,6 +556,9 @@ export function useWorkflowState() {
 		updateNodeById,
 		updateNodeProperties,
 		resetParametersLastUpdatedAt,
+
+		// Workflow initialization
+		initState,
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,
