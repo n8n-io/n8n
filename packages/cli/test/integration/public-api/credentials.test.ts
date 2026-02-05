@@ -177,6 +177,81 @@ describe('POST /credentials', () => {
 	});
 });
 
+describe('GET /credentials', () => {
+	test('should return all credentials for owner with pagination', async () => {
+		const saved1 = await saveCredential(dbCredential(), { user: owner });
+		const saved2 = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('data');
+		expect(response.body).toHaveProperty('nextCursor');
+		expect(Array.isArray(response.body.data)).toBe(true);
+		expect(response.body.data.length).toBe(2);
+
+		response.body.data.forEach((item: Record<string, unknown>) => {
+			expect(item).toHaveProperty('id');
+			expect(item).toHaveProperty('name');
+			expect(item).toHaveProperty('type');
+			expect(item).toHaveProperty('createdAt');
+			expect(item).toHaveProperty('updatedAt');
+			expect(item).not.toHaveProperty('data');
+			expect(item).not.toHaveProperty('shared');
+		});
+		expect(response.body.data).toContainEqual(
+			expect.objectContaining({ id: saved1.id, name: saved1.name }),
+		);
+		expect(response.body.data).toContainEqual(
+			expect.objectContaining({ id: saved2.id, name: saved2.name }),
+		);
+	});
+
+	test('should return empty list when no credentials exist', async () => {
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual([]);
+		expect(response.body.nextCursor).toBeNull();
+	});
+
+	test('should reject for member (missing credential:list scope)', async () => {
+		const response = await authMemberAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message', 'Forbidden');
+	});
+
+	test('should respect limit and return nextCursor when more results exist', async () => {
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get('/credentials').query({ limit: 2 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
+		expect(response.body.nextCursor).not.toBeNull();
+	});
+
+	test('should paginate with cursor', async () => {
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+
+		const first = await authOwnerAgent.get('/credentials').query({ limit: 2 });
+		expect(first.statusCode).toBe(200);
+		expect(first.body.data.length).toBe(2);
+		expect(first.body.nextCursor).not.toBeNull();
+
+		const second = await authOwnerAgent
+			.get('/credentials')
+			.query({ cursor: first.body.nextCursor });
+		expect(second.statusCode).toBe(200);
+		expect(second.body.data.length).toBe(1);
+	});
+});
+
 describe('DELETE /credentials/:id', () => {
 	test('should delete owned cred for owner', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });

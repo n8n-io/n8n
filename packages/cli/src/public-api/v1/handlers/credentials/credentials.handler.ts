@@ -29,9 +29,45 @@ import {
 	updateCredential,
 } from './credentials.service';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
-import { apiKeyHasScope, projectScope } from '../../shared/middlewares/global.middleware';
+import {
+	apiKeyHasScope,
+	apiKeyHasScopeWithGlobalScopeFallback,
+	projectScope,
+	validCursor,
+} from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { CredentialsRepository } from '@n8n/db';
 
 export = {
+	getCredentials: [
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'credential:list' }),
+		validCursor,
+		async (
+			req: CredentialRequest.GetAll,
+			res: express.Response,
+		): Promise<
+			express.Response<{ data: Partial<CredentialsEntity>[]; nextCursor: string | null }>
+		> => {
+			const offset = Number(req.query.offset) || 0;
+			const limit = Math.min(Number(req.query.limit) || 100, 250);
+
+			const [credentials, count] = await Container.get(CredentialsRepository).findManyAndCount({
+				take: limit,
+				skip: offset,
+			});
+
+			const data = sanitizeCredentials(credentials);
+
+			return res.json({
+				data,
+				nextCursor: encodeNextCursor({
+					offset,
+					limit,
+					numberOfTotalRecords: count,
+				}),
+			});
+		},
+	],
 	createCredential: [
 		validCredentialType,
 		validCredentialsProperties,
