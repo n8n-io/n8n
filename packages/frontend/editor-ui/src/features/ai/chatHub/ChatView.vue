@@ -130,6 +130,11 @@ const showWelcomeScreen = computed<boolean | undefined>(() => {
 		return false; // return false early to make UI ready fast
 	}
 
+	// Skip welcome screen if an agent is pre-selected via query params
+	if (route.query.workflowId || route.query.agentId) {
+		return false;
+	}
+
 	if (!chatStore.sessionsReady) {
 		return undefined; // not known yet
 	}
