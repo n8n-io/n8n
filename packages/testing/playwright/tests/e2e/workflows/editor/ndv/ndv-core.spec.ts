@@ -93,7 +93,7 @@ test.describe('NDV', () => {
 		await n8n.ndv.execute();
 
 		await expect(n8n.ndv.getNodeRunErrorMessage()).toHaveText(
-			"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
+			"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output. [item 0]",
 		);
 
 		await expect(n8n.ndv.getNodeRunErrorDescription()).toContainText(

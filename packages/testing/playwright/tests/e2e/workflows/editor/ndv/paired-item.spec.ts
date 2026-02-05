@@ -246,6 +246,15 @@ test.describe('NDV Paired Items', () => {
 		);
 	});
 
+	test('should auto-fix pairedItem when multiple inputs create single output', async ({ n8n }) => {
+		await n8n.start.fromImportedWorkflow('Test_workflow_ndv_paired_item_single_output.json');
+		await n8n.canvas.openNode('Use paired item');
+		await n8n.ndv.execute();
+
+		await expect(n8n.ndv.getNodeRunErrorMessage()).toBeHidden();
+		await expect(n8n.ndv.outputPanel.get()).toContainText('Jay Gatsby');
+	});
+
 	test('can resolve expression with paired item in multi-input node', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('expression_with_paired_item_in_multi_input_node.json');
 
