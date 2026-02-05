@@ -25,16 +25,14 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 
-// Use node execution composable
 const nodeRef = computed(() => props.state.node);
-const { isExecuting, isListening, buttonLabel, buttonIcon, disabledReason, execute } =
-	useNodeExecution(nodeRef);
+const { isExecuting, buttonLabel, buttonIcon, disabledReason, execute } = useNodeExecution(nodeRef);
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
 
-const isLoading = computed(() => isExecuting.value || isListening.value);
+const isLoading = computed(() => isExecuting.value);
 const isButtonDisabled = computed(() => !props.state.isComplete || !!disabledReason.value);
 
 const tooltipText = computed(() => {
