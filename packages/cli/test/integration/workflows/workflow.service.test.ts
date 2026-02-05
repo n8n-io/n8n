@@ -73,6 +73,7 @@ beforeAll(async () => {
 		workflowPublishHistoryRepository,
 		workflowValidationService,
 		nodeTypes,
+		mock(), // nodeGovernanceService
 		webhookServiceMock,
 		mock(), // licenseState
 	);

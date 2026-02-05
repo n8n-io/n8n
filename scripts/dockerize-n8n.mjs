@@ -18,10 +18,15 @@ process.env.FORCE_COLOR = '1';
 // #region ===== Helper Functions =====
 
 /**
- * Get Docker platform string based on host architecture
+ * Get Docker platform string based on host architecture or DOCKER_PLATFORM env var
  * @returns {string} Platform string (e.g., 'linux/amd64')
  */
 function getDockerPlatform() {
+	// Allow override via environment variable (useful for cross-platform builds)
+	if (process.env.DOCKER_PLATFORM) {
+		return process.env.DOCKER_PLATFORM;
+	}
+
 	const arch = os.arch();
 	const dockerArch = {
 		x64: 'amd64',

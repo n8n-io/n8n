@@ -877,6 +877,28 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+			{
+				path: 'node-governance',
+				name: VIEWS.NODE_GOVERNANCE,
+				component: async () =>
+					await import('@/features/settings/nodeGovernance/views/NodeGovernanceView.vue'),
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'nodeGovernance:manage',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'node-governance',
+							};
+						},
+					},
+				},
+			},
 		],
 	},
 	{

@@ -18,6 +18,7 @@ import OfficialIcon from 'virtual:icons/mdi/verified';
 import { useNodeType } from '@/app/composables/useNodeType';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 import { useActions } from '../../composables/useActions';
 import { useViewStacks } from '../../composables/useViewStacks';
@@ -26,6 +27,8 @@ import {
 	removePreviewToken,
 	shouldShowCommunityNodeDetails,
 } from '../../nodeCreator.utils';
+import { NODE_ACCESS_REQUEST_MODAL_KEY } from '@/features/settings/nodeGovernance/nodeGovernance.constants';
+import { useNodeGovernanceStore } from '@/features/settings/nodeGovernance/nodeGovernance.store';
 
 import { N8nIcon, N8nNodeCreatorNode, N8nTooltip } from '@n8n/design-system';
 export interface Props {
@@ -49,8 +52,43 @@ const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,
 });
 const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
+const nodeGovernanceStore = useNodeGovernanceStore();
+
+const emit = defineEmits<{
+	requestAccess: [nodeType: string];
+}>();
 
 const dragging = ref(false);
+
+// Node Governance - check props first, then fallback to store lookup
+const isBlocked = computed(() => {
+	const governanceStatus = props.nodeType.governance?.status;
+	if (governanceStatus !== undefined) {
+		return governanceStatus === 'blocked';
+	}
+	// Fallback to store lookup for category views where governance might not be augmented
+	const storeStatus = nodeGovernanceStore.getGovernanceForNode(props.nodeType.name);
+	return storeStatus?.status === 'blocked';
+});
+const isPendingRequest = computed(() => {
+	const governanceStatus = props.nodeType.governance?.status;
+	if (governanceStatus !== undefined) {
+		return governanceStatus === 'pending_request';
+	}
+	// Fallback to store lookup for category views where governance might not be augmented
+	const storeStatus = nodeGovernanceStore.getGovernanceForNode(props.nodeType.name);
+	return storeStatus?.status === 'pending_request';
+});
+const governanceStatus = computed(() => {
+	const governanceStatus = props.nodeType.governance?.status;
+	if (governanceStatus !== undefined) {
+		return governanceStatus;
+	}
+	// Fallback to store lookup for category views where governance might not be augmented
+	const storeStatus = nodeGovernanceStore.getGovernanceForNode(props.nodeType.name);
+	return storeStatus?.status ?? 'allowed';
+});
 const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
@@ -134,6 +172,13 @@ const author = computed(() => {
 });
 
 const tag = computed(() => {
+	// Show governance status as tag
+	if (isBlocked.value) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.blocked'), type: 'danger' };
+	}
+	if (isPendingRequest.value) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.pendingRequest'), type: 'warning' };
+	}
 	if (props.nodeType.tag) {
 		return props.nodeType.tag;
 	}
@@ -142,6 +187,13 @@ const tag = computed(() => {
 	}
 	return undefined;
 });
+
+function onRequestAccess() {
+	uiStore.openModalWithData({
+		name: NODE_ACCESS_REQUEST_MODAL_KEY,
+		data: { nodeType: props.nodeType.name, displayName: props.nodeType.displayName },
+	});
+}
 
 function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
@@ -172,13 +224,13 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 </script>
 
 <template>
-	<!-- Node Item is draggable only if it doesn't contain actions -->
+	<!-- Node Item is draggable only if it doesn't contain actions and is not blocked -->
 	<N8nNodeCreatorNode
-		:draggable="!showActionArrow"
-		:class="$style.nodeItem"
+		:draggable="!showActionArrow && !isBlocked && !isPendingRequest"
+		:class="[$style.nodeItem, { [$style.blocked]: isBlocked || isPendingRequest }]"
 		:description="description"
 		:title="displayName"
-		:show-action-arrow="showActionArrow"
+		:show-action-arrow="showActionArrow && !isBlocked && !isPendingRequest"
 		:is-trigger="isTrigger"
 		:is-official="isOfficial"
 		:data-test-id="dataTestId"
@@ -188,11 +240,20 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	>
 		<template #icon>
 			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
-			<NodeIcon
-				:class="$style.nodeIcon"
-				:node-type="nodeType"
-				color-default="var(--color--foreground--shade-2)"
-			/>
+			<div :class="{ [$style.iconWrapper]: true, [$style.dimmed]: isBlocked || isPendingRequest }">
+				<NodeIcon
+					:class="$style.nodeIcon"
+					:node-type="nodeType"
+					color-default="var(--color--foreground--shade-2)"
+				/>
+				<N8nIcon v-if="isBlocked" icon="lock" size="small" :class="$style.lockIcon" />
+			</div>
+		</template>
+
+		<template v-if="isBlocked" #afterTitle>
+			<button :class="$style.requestAccessLink" @click.stop="onRequestAccess">
+				{{ i18n.baseText('nodeCreator.nodeItem.requestAccess') }}
+			</button>
 		</template>
 
 		<template v-if="isOfficial" #extraDetails>
@@ -300,6 +361,45 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 
 	&.official {
 		width: 14px;
+	}
+}
+
+.blocked {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.iconWrapper {
+	position: relative;
+	display: inline-flex;
+
+	&.dimmed {
+		opacity: 0.5;
+	}
+}
+
+.lockIcon {
+	position: absolute;
+	bottom: -2px;
+	right: -2px;
+	background: var(--color--background--light-2);
+	border-radius: 50%;
+	padding: 2px;
+	color: var(--color--danger);
+}
+
+.requestAccessLink {
+	background: none;
+	border: none;
+	color: var(--color--primary);
+	cursor: pointer;
+	font-size: var(--font-size--2xs);
+	padding: 0;
+	margin-left: var(--spacing--2xs);
+	text-decoration: underline;
+
+	&:hover {
+		color: var(--color--primary--shade-1);
 	}
 }
 </style>

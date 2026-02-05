@@ -53,21 +53,67 @@ export class ProvisioningService {
 		return this.provisioningConfig;
 	}
 
-	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
+	async provisionInstanceRoleForUser(user: User, roleSlugInput: unknown) {
 		if (!(await this.isInstanceRoleProvisioningEnabled())) {
 			return;
 		}
 
 		const globalOwnerRoleSlug = 'global:owner';
+		const globalMemberRoleSlug = 'global:member';
 
-		if (typeof roleSlug !== 'string') {
+		// Handle both string and array input (Azure AD sends roles as an array)
+		let roleSlug: string | undefined;
+
+		if (typeof roleSlugInput === 'string') {
+			roleSlug = roleSlugInput;
+		} else if (Array.isArray(roleSlugInput)) {
+			// Filter for global roles only (e.g., global:admin, global:member)
+			const globalRoles = roleSlugInput.filter(
+				(r): r is string => typeof r === 'string' && r.startsWith('global:'),
+			);
+
+			if (globalRoles.length === 0) {
+				// No global roles found - user has been removed from all roles in IdP
+				// Downgrade to member role
+				this.logger.debug('No global roles found in roles array, downgrading user to member role', {
+					userId: user.id,
+					roleSlugInput,
+				});
+				roleSlug = globalMemberRoleSlug;
+			} else {
+				// Prioritize: global:owner > global:admin > global:member > others
+				const rolePriority = ['global:owner', 'global:admin', 'global:member'];
+				roleSlug = rolePriority.find((r) => globalRoles.includes(r)) ?? globalRoles[0];
+
+				this.logger.debug('Extracted global role from array', {
+					userId: user.id,
+					selectedRole: roleSlug,
+					availableGlobalRoles: globalRoles,
+				});
+			}
+		} else if (roleSlugInput === undefined || roleSlugInput === null) {
+			// No role claim provided - user has been removed from all roles in IdP
+			// Downgrade to member role
+			this.logger.debug('No instance role claim provided, downgrading user to member role', {
+				userId: user.id,
+			});
+			roleSlug = globalMemberRoleSlug;
+		} else {
 			this.logger.warn(
-				`skipping instance role provisioning. Invalid role type: expected string, received ${typeof roleSlug}`,
+				`skipping instance role provisioning. Invalid role type: expected string or array, received ${typeof roleSlugInput}`,
 				{
 					userId: user.id,
-					roleSlug,
+					roleSlug: roleSlugInput,
 				},
 			);
+			return;
+		}
+
+		if (!roleSlug) {
+			this.logger.warn('No valid role slug found for instance role provisioning', {
+				userId: user.id,
+				roleSlugInput,
+			});
 			return;
 		}
 
@@ -153,6 +199,16 @@ export class ProvisioningService {
 					continue;
 				}
 
+				// Skip global roles - they are instance roles, not project roles
+				// Azure AD and other IdPs may send all roles in a single array
+				if (entry.startsWith('global:')) {
+					this.logger.debug(
+						`Skipping global role "${entry}" in project roles provisioning - global roles should be handled by instance role provisioning.`,
+						{ userId, entry },
+					);
+					continue;
+				}
+
 				const [projectId, roleSlugSuffix] = entry.split(':');
 				if (!projectId || !roleSlugSuffix) {
 					this.logger.warn(
@@ -177,7 +233,37 @@ export class ProvisioningService {
 		const projectIds = Object.keys(projectRoleMap);
 		const roleSlugs = [...new Set(Object.values(projectRoleMap))];
 
+		// Get user's current project access first - we need this to handle removals
+		const currentlyAccessibleProjects = await this.projectRepository.find({
+			where: {
+				type: Not('personal'),
+				projectRelations: {
+					userId,
+				},
+			},
+			relations: ['projectRelations'],
+		});
+
+		// If no new project roles are specified, remove all current project access
 		if (projectIds.length === 0) {
+			if (currentlyAccessibleProjects.length > 0) {
+				this.logger.debug('No project roles specified in IdP claims, removing all project access', {
+					userId,
+					projectsToRemove: currentlyAccessibleProjects.length,
+				});
+
+				await this.projectRepository.manager.transaction(async (tx) => {
+					for (const project of currentlyAccessibleProjects) {
+						await tx.delete(ProjectRelation, { projectId: project.id, userId });
+					}
+				});
+
+				this.eventService.emit('sso-user-project-access-updated', {
+					projectsAdded: 0,
+					projectsRemoved: currentlyAccessibleProjects.length,
+					userId,
+				});
+			}
 			return;
 		}
 
@@ -219,28 +305,25 @@ export class ProvisioningService {
 			validProjectToRoleMappings.push({ projectId, roleSlug: role.slug });
 		}
 
-		if (validProjectToRoleMappings.length === 0) {
-			this.logger.warn(
-				'Skipping project role provisioning altogether. No valid project to role mappings found.',
-				{ userId, projectRoleMap },
-			);
-			return;
-		}
-
-		const currentlyAccessibleProjects = await this.projectRepository.find({
-			where: {
-				type: Not('personal'),
-				projectRelations: {
-					userId,
-				},
-			},
-			relations: ['projectRelations'],
-		});
-
+		// Even if no valid new mappings, we still need to remove access from projects
+		// that are no longer in the IdP claims
 		const validProjectIds = new Set(validProjectToRoleMappings.map((m) => m.projectId));
 		const projectsToRemoveAccessFrom = currentlyAccessibleProjects.filter(
 			(project) => !validProjectIds.has(project.id),
 		);
+
+		// Only skip if there's nothing to add AND nothing to remove
+		if (validProjectToRoleMappings.length === 0 && projectsToRemoveAccessFrom.length === 0) {
+			this.logger.debug('No project role changes needed', { userId, projectRoleMap });
+			return;
+		}
+
+		if (validProjectToRoleMappings.length === 0 && projectsToRemoveAccessFrom.length > 0) {
+			this.logger.debug(
+				'No valid new project roles, but removing access from projects no longer in claims',
+				{ userId, projectsToRemove: projectsToRemoveAccessFrom.length },
+			);
+		}
 
 		await this.projectRepository.manager.transaction(async (tx) => {
 			for (const project of projectsToRemoveAccessFrom) {

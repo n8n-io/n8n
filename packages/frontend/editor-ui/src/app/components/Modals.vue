@@ -66,7 +66,23 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
+import {
+	NODE_ACCESS_REQUEST_MODAL_KEY,
+	POLICY_FORM_MODAL_KEY,
+	CATEGORY_FORM_MODAL_KEY,
+	CATEGORY_NODES_MODAL_KEY,
+	REVIEW_REQUEST_MODAL_KEY,
+	APPROVE_REQUEST_MODAL_KEY,
+	REJECT_REQUEST_MODAL_KEY,
+} from '@/features/settings/nodeGovernance/nodeGovernance.constants';
 import AboutModal from '@/app/components/AboutModal.vue';
+import NodeAccessRequestModal from '@/features/settings/nodeGovernance/components/NodeAccessRequestModal.vue';
+import PolicyFormModal from '@/features/settings/nodeGovernance/components/PolicyFormModal.vue';
+import CategoryFormModal from '@/features/settings/nodeGovernance/components/CategoryFormModal.vue';
+import ApproveRequestModal from '@/features/settings/nodeGovernance/components/ApproveRequestModal.vue';
+import RejectRequestModal from '@/features/settings/nodeGovernance/components/RejectRequestModal.vue';
+import CategoryNodesModal from '@/features/settings/nodeGovernance/components/CategoryNodesModal.vue';
+import ReviewRequestModal from '@/features/settings/nodeGovernance/components/ReviewRequestModal.vue';
 import ActivationModal from '@/app/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
 import NewAssistantSessionModal from '@/features/ai/assistant/components/Chat/NewAssistantSessionModal.vue';
@@ -452,6 +468,48 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 		<ModalRoot :name="CREDENTIAL_RESOLVER_EDIT_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<CredentialResolverEditModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="NODE_ACCESS_REQUEST_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<NodeAccessRequestModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="POLICY_FORM_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<PolicyFormModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="CATEGORY_FORM_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<CategoryFormModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="CATEGORY_NODES_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<CategoryNodesModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="REVIEW_REQUEST_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<ReviewRequestModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="APPROVE_REQUEST_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<ApproveRequestModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="REJECT_REQUEST_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<RejectRequestModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

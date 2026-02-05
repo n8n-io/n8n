@@ -22,6 +22,7 @@ import {
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
+	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
@@ -40,6 +41,7 @@ import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks'
 import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import { NodeGovernanceService } from '@/services/node-governance.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -64,6 +66,7 @@ export class WorkflowRunner {
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly nodeGovernanceService: NodeGovernanceService,
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
 	) {}
@@ -162,6 +165,46 @@ export class WorkflowRunner {
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
 			return executionId;
+		}
+
+		// Check node governance - validate for blocked nodes
+		if (nodes && nodes.length > 0 && data.userId && data.projectId) {
+			try {
+				const validation = await this.nodeGovernanceService.validateWorkflowNodes(
+					nodes,
+					data.projectId,
+					data.userId,
+				);
+
+				if (validation.hasBlockedNodes) {
+					const blockedNodeNames = validation.blockedNodes
+						.map((n) => n.nodeName || n.nodeType)
+						.join(', ');
+					const error = new NodeOperationError(
+						null as any, // node is not available in this context
+						`Cannot execute workflow: The following nodes are blocked by governance policies: ${blockedNodeNames}. Please remove these nodes or request access.`,
+					);
+					// Create a failed execution with the error
+					const runData = this.failedRunFactory.generateFailedExecutionFromError(
+						data.executionMode,
+						error,
+						undefined, // no specific node
+					);
+					const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
+					await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
+					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
+					responsePromise?.reject(error);
+					this.activeExecutions.finalizeExecution(executionId);
+					return executionId;
+				}
+			} catch (error) {
+				// If governance check fails, log but don't block execution (fail open for now)
+				// This prevents breaking existing workflows if governance service is unavailable
+				this.logger.warn('Node governance check failed, continuing execution', {
+					workflowId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 
 		if (responsePromise) {

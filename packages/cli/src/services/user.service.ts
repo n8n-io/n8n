@@ -32,6 +32,7 @@ import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
+import { OwnershipService } from './ownership.service';
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
 
@@ -51,6 +52,7 @@ export class UserService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly jwtService: JwtService,
 		private readonly postHog: PostHogClient,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -426,6 +428,16 @@ export class UserService {
 					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 				);
 			}
+		});
+
+		// Invalidate the user's cached data in the project-owner cache
+		// to ensure the new role/scopes are reflected on next login
+		await this.ownershipService.invalidateUserProjectOwnerCache(user.id);
+
+		this.logger.debug('User role changed successfully', {
+			userId: user.id,
+			oldRole: user.role.slug,
+			newRole: newRole.newRoleName,
 		});
 	}
 

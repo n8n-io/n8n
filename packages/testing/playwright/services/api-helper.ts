@@ -11,6 +11,7 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { NodeGovernanceApiHelper } from './node-governance-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
@@ -52,6 +53,7 @@ export class ApiHelpers {
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
 	sourceControl: SourceControlApiHelper;
+	nodeGovernance: NodeGovernanceApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -66,6 +68,7 @@ export class ApiHelpers {
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
 		this.sourceControl = new SourceControlApiHelper(this);
+		this.nodeGovernance = new NodeGovernanceApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}

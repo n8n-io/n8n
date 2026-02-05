@@ -36,6 +36,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 export function useWorkflowSaving({
 	router,
@@ -59,6 +60,7 @@ export function useWorkflowSaving({
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
 	const builderStore = useBuilderStore();
+	const projectsStore = useProjectsStore();
 
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();

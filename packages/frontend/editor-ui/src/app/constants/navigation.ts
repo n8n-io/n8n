@@ -68,6 +68,7 @@ export const enum VIEWS {
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
+	NODE_GOVERNANCE = 'NodeGovernance',
 	RESOURCE_CENTER = 'ResourceCenter',
 	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
 }

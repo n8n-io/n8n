@@ -234,6 +234,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 
 		localStorage.removeItem(BROWSER_ID_STORAGE_KEY);
+
+		// Reset the initialized flag so that on next login, the store is properly re-initialized
+		// This fixes the bug where role changes require 2 login/logout cycles to take effect
+		initialized.value = false;
 	};
 
 	const createOwner = async (params: {

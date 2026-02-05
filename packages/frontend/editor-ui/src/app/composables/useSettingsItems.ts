@@ -153,6 +153,15 @@ export function useSettingsItems() {
 			route: { to: { name: VIEWS.MIGRATION_REPORT } },
 		});
 
+		menuItems.push({
+			id: 'settings-node-governance',
+			icon: 'shield-check',
+			label: i18n.baseText('settings.nodeGovernance'),
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.NODE_GOVERNANCE),
+			route: { to: { name: VIEWS.NODE_GOVERNANCE } },
+		});
+
 		// Append module-registered settings sidebar items.
 		const moduleItems = uiStore.settingsSidebarItems;
 

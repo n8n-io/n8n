@@ -173,7 +173,7 @@
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.15",
     "@types/mime-types": "catalog:",
-    "@types/pg": "^8.11.6",
+    "@types/pg": "^8.15.6",
     "@types/sanitize-html": "^2.11.0",
     "@types/temp": "^0.9.1",
     "fast-glob": "catalog:",

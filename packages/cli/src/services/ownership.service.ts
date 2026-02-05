@@ -138,6 +138,30 @@ export class OwnershipService {
 		return owner;
 	}
 
+	/**
+	 * Invalidate the cached user data for a user's personal project.
+	 * This should be called when a user's role changes to ensure
+	 * the cached role/scopes data is refreshed.
+	 */
+	async invalidateUserProjectOwnerCache(userId: string): Promise<void> {
+		// Find the user's personal project relation
+		const userProjectRelation = await this.projectRelationRepository.findOne({
+			where: {
+				userId,
+				project: { type: 'personal' },
+			},
+			relations: ['project'],
+		});
+
+		if (userProjectRelation) {
+			await this.cacheService.deleteFromHash('project-owner', userProjectRelation.projectId);
+			this.logger.debug('Invalidated project-owner cache for user', {
+				userId,
+				projectId: userProjectRelation.projectId,
+			});
+		}
+	}
+
 	addOwnedByAndSharedWith(
 		rawWorkflow: ListQueryDb.Workflow.WithSharing,
 	): ListQueryDb.Workflow.WithOwnedByAndSharedWith;

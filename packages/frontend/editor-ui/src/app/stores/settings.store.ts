@@ -326,6 +326,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const reset = () => {
 		settings.value = {} as FrontendSettings;
+		// Reset the initialized flag so settings are re-fetched on next login
+		initialized.value = false;
 	};
 
 	const getModuleSettings = async () => {

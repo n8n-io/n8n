@@ -6,6 +6,7 @@ import {
 	getWorkflowById,
 	shareWorkflowWithUsers,
 	randomCredentialPayload,
+	randomValidPassword,
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
@@ -1711,5 +1712,58 @@ describe('PATCH /users/:id/role', () => {
 		const user = await getUserById(member.id);
 
 		expect(user.role.slug).toBe(customRole);
+	});
+
+	test('should return updated scopes on immediate login after role change from member to admin', async () => {
+		// Create a fresh member user for this test
+		const testMember = await createMember();
+
+		// Verify member has limited scopes initially
+		const loginBeforeChange = await testServer.authAgentFor(testMember).get('/login');
+		expect(loginBeforeChange.statusCode).toBe(200);
+		expect(loginBeforeChange.body.data.role).toBe('global:member');
+		const scopesBefore = loginBeforeChange.body.data.globalScopes;
+		// Members should not have admin scopes like 'user:create'
+		expect(scopesBefore).not.toContain('user:create');
+
+		// Owner changes member's role to admin
+		const changeRoleResponse = await ownerAgent.patch(`/users/${testMember.id}/role`).send({
+			newRoleName: 'global:admin',
+		});
+		expect(changeRoleResponse.statusCode).toBe(200);
+
+		// User logs in immediately after role change - should get admin scopes on FIRST login
+		const loginAfterChange = await testServer.authAgentFor(testMember).get('/login');
+		expect(loginAfterChange.statusCode).toBe(200);
+		expect(loginAfterChange.body.data.role).toBe('global:admin');
+		const scopesAfter = loginAfterChange.body.data.globalScopes;
+		// Admin should have 'user:create' scope
+		expect(scopesAfter).toContain('user:create');
+	});
+
+	test('should return updated scopes on immediate POST login after role change from member to admin', async () => {
+		const testPassword = randomValidPassword();
+		// Create a fresh member user for this test
+		const testMember = await createUser({
+			password: testPassword,
+			role: GLOBAL_MEMBER_ROLE,
+		});
+
+		// Owner changes member's role to admin
+		const changeRoleResponse = await ownerAgent.patch(`/users/${testMember.id}/role`).send({
+			newRoleName: 'global:admin',
+		});
+		expect(changeRoleResponse.statusCode).toBe(200);
+
+		// User logs in with credentials immediately after role change - should get admin scopes on FIRST login
+		const loginResponse = await testServer.authlessAgent.post('/login').send({
+			emailOrLdapLoginId: testMember.email,
+			password: testPassword,
+		});
+		expect(loginResponse.statusCode).toBe(200);
+		expect(loginResponse.body.data.role).toBe('global:admin');
+		const scopesAfter = loginResponse.body.data.globalScopes;
+		// Admin should have 'user:create' scope
+		expect(scopesAfter).toContain('user:create');
 	});
 });
