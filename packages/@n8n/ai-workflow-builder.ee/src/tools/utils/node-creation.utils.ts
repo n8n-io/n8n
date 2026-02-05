@@ -46,11 +46,19 @@ export function getLatestVersion(nodeType: INodeTypeDescription): number {
 	);
 }
 
+// Counter for deterministic ID generation in E2E tests
+let nodeIdCounter = 0;
+let webhookIdCounter = 0;
+
 /**
  * Generate a unique node ID
  * @returns A unique node identifier
  */
 export function generateNodeId(): string {
+	// Use deterministic IDs for E2E tests to enable request/response replay
+	if (process.env.E2E_TESTS === 'true') {
+		return `node-${String(nodeIdCounter++).padStart(8, '0')}`;
+	}
 	return crypto.randomUUID();
 }
 
@@ -59,7 +67,19 @@ export function generateNodeId(): string {
  * @returns A unique webhook identifier
  */
 export function generateWebhookId(): string {
+	// Use deterministic IDs for E2E tests to enable request/response replay
+	if (process.env.E2E_TESTS === 'true') {
+		return `webhook-${String(webhookIdCounter++).padStart(8, '0')}`;
+	}
 	return crypto.randomUUID();
+}
+
+/**
+ * Reset ID counters (for E2E test isolation)
+ */
+export function resetIdCounters(): void {
+	nodeIdCounter = 0;
+	webhookIdCounter = 0;
 }
 
 /**

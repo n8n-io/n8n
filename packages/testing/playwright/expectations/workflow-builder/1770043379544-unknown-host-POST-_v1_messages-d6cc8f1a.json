@@ -1,0 +1,131 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "extract",
+						"description": "The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { \"parameters\": { \"method\": \"POST\", \"url\": \"https://api.example.com\", \"sendHeaders\": true, \"headerParameters\": { \"parameters\": [{ \"name\": \"Content-Type\", \"value\": \"application/json\" }] } } }}",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"parameters": {
+									"type": "object",
+									"properties": {},
+									"additionalProperties": true,
+									"description": "The complete updated parameters object for the node. This should be a JSON object that matches the node's parameter structure. Include ALL existing parameters plus the requested changes."
+								}
+							},
+							"required": ["parameters"],
+							"additionalProperties": false,
+							"description": "The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { \"parameters\": { \"method\": \"POST\", \"url\": \"https://api.example.com\", \"sendHeaders\": true, \"headerParameters\": { \"parameters\": [{ \"name\": \"Content-Type\", \"value\": \"application/json\" }] } } }}",
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"tool_choice": {
+					"type": "tool",
+					"name": "extract"
+				},
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "\nThe node accepts these properties:\n<node_properties_definition>\n[\n  {\n    \"displayName\": \"This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a>\",\n    \"name\": \"notice\",\n    \"type\": \"notice\",\n    \"default\": \"\",\n    \"typeOptions\": {\n      \"containerClass\": \"ndv-connection-hint-notice\"\n    }\n  },\n  {\n    \"displayName\": \"Schema Type\",\n    \"name\": \"schemaType\",\n    \"type\": \"options\",\n    \"noDataExpression\": true,\n    \"options\": [\n      {\n        \"name\": \"Generate From JSON Example\",\n        \"value\": \"fromJson\",\n        \"description\": \"Generate a schema from an example JSON object\"\n      },\n      {\n        \"name\": \"Define using JSON Schema\",\n        \"value\": \"manual\",\n        \"description\": \"Define the JSON schema manually\"\n      }\n    ],\n    \"default\": \"fromJson\",\n    \"description\": \"How to specify the schema for the function\",\n    \"displayOptions\": {\n      \"show\": {\n        \"@version\": [\n          {\n            \"_cnd\": {\n              \"gte\": 1.2\n            }\n          }\n        ]\n      }\n    }\n  },\n  {\n    \"displayName\": \"JSON Example\",\n    \"name\": \"jsonSchemaExample\",\n    \"type\": \"json\",\n    \"default\": \"{\\n\\t\\\"state\\\": \\\"California\\\",\\n\\t\\\"cities\\\": [\\\"Los Angeles\\\", \\\"San Francisco\\\", \\\"San Diego\\\"]\\n}\",\n    \"noDataExpression\": true,\n    \"typeOptions\": {\n      \"rows\": 10\n    },\n    \"displayOptions\": {\n      \"show\": {\n        \"schemaType\": [\n          \"fromJson\"\n        ]\n      }\n    },\n    \"description\": \"Example JSON object to use to generate the schema\"\n  },\n  {\n    \"displayName\": \"All properties will be required. To make them optional, use the 'JSON Schema' schema type instead\",\n    \"name\": \"notice\",\n    \"type\": \"notice\",\n    \"default\": \"\",\n    \"displayOptions\": {\n      \"show\": {\n        \"@version\": [\n          {\n            \"_cnd\": {\n              \"gte\": 1.3\n            }\n          }\n        ],\n        \"schemaType\": [\n          \"fromJson\"\n        ]\n      }\n    }\n  },\n  {\n    \"displayName\": \"Input Schema\",\n    \"name\": \"inputSchema\",\n    \"type\": \"json\",\n    \"default\": \"{\\n\\t\\\"type\\\": \\\"object\\\",\\n\\t\\\"properties\\\": {\\n\\t\\t\\\"state\\\": {\\n\\t\\t\\t\\\"type\\\": \\\"string\\\"\\n\\t\\t},\\n\\t\\t\\\"cities\\\": {\\n\\t\\t\\t\\\"type\\\": \\\"array\\\",\\n\\t\\t\\t\\\"items\\\": {\\n\\t\\t\\t\\t\\\"type\\\": \\\"string\\\"\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\\n}\",\n    \"noDataExpression\": false,\n    \"typeOptions\": {\n      \"rows\": 10\n    },\n    \"displayOptions\": {\n      \"show\": {\n        \"schemaType\": [\n          \"manual\"\n        ]\n      }\n    },\n    \"description\": \"Schema to use for the function\",\n    \"hint\": \"Use <a target=\\\"_blank\\\" href=\\\"https://json-schema.org/\\\">JSON Schema</a> format (<a target=\\\"_blank\\\" href=\\\"https://json-schema.org/learn/miscellaneous-examples.html\\\">examples</a>). $refs syntax is currently not supported.\"\n  },\n  {\n    \"displayName\": \"Auto-Fix Format\",\n    \"description\": \"Whether to automatically fix the output when it is not in the correct format. Will cause another LLM call.\",\n    \"name\": \"autoFix\",\n    \"type\": \"boolean\",\n    \"default\": false\n  },\n  {\n    \"displayName\": \"Customize Retry Prompt\",\n    \"name\": \"customizeRetryPrompt\",\n    \"type\": \"boolean\",\n    \"displayOptions\": {\n      \"show\": {\n        \"autoFix\": [\n          true\n        ]\n      }\n    },\n    \"default\": false,\n    \"description\": \"Whether to customize the prompt used for retrying the output parsing. If disabled, a default prompt will be used.\"\n  },\n  {\n    \"displayName\": \"Custom Prompt\",\n    \"name\": \"prompt\",\n    \"type\": \"string\",\n    \"displayOptions\": {\n      \"show\": {\n        \"autoFix\": [\n          true\n        ],\n        \"customizeRetryPrompt\": [\n          true\n        ]\n      }\n    },\n    \"default\": \"Instructions:\\n--------------\\n{instructions}\\n--------------\\nCompletion:\\n--------------\\n{completion}\\n--------------\\n\\nAbove, the Completion did not satisfy the constraints given in the Instructions.\\nError:\\n--------------\\n{error}\\n--------------\\n\\nPlease try again. Please only respond with an answer that satisfies the constraints laid out in the Instructions:\",\n    \"typeOptions\": {\n      \"rows\": 10\n    },\n    \"hint\": \"Should include \\\"{error}\\\", \\\"{instructions}\\\", and \\\"{completion}\\\" placeholders\",\n    \"description\": \"Prompt template used for fixing the output. Uses placeholders: \\\"{instructions}\\\" for parsing rules, \\\"{completion}\\\" for the failed attempt, and \\\"{error}\\\" for the validation error message.\"\n  }\n]\n</node_properties_definition>",
+								"cache_control": {
+									"type": "ephemeral"
+								}
+							},
+							{
+								"type": "text",
+								"text": "<instance_url>\nThe n8n instance base URL is: http://localhost:TEST_PORT\n\nThis URL is essential for webhook nodes and chat triggers as it provides the base URL for:\n- Webhook URLs that external services need to call\n- Chat trigger URLs for conversational interfaces\n- Any node that requires the full instance URL to generate proper callback URLs\n\nWhen working with webhook or chat trigger nodes, use this URL as the base for constructing proper endpoint URLs.\n</instance_url>"
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "\n<current_workflow_json>\n{\"nodes\":[{\"id\":\"node-00000000\",\"name\":\"Monday Morning Trigger\",\"type\":\"n8n-nodes-base.scheduleTrigger\",\"typeVersion\":1.3,\"position\":[250,450],\"parameters\":{\"rule\":{\"interval\":[{\"field\":\"weeks\",\"weeksInterval\":1,\"triggerAtDay\":[1],\"triggerAtHour\":8,\"triggerAtMinute\":0}]}}},{\"id\":\"node-00000001\",\"name\":\"Get Weekend Emails\",\"type\":\"n8n-nodes-base.gmail\",\"typeVersion\":2.2,\"position\":[250,300],\"parameters\":{\"resource\":\"message\",\"operation\":\"getAll\",\"returnAll\":false,\"limit\":50,\"simple\":false,\"filters\":{\"receivedAfter\":\"={{ $now.minus({ days: 3 }).toISO() }}\"}},\"webhookId\":\"webhook-00000000\"},{\"id\":\"node-00000002\",\"name\":\"Combine All Emails\",\"type\":\"n8n-nodes-base.aggregate\",\"typeVersion\":1,\"position\":[250,300],\"parameters\":{\"aggregate\":\"aggregateAllItemData\",\"destinationFieldName\":\"data\",\"include\":\"allFields\"}},{\"id\":\"node-00000003\",\"name\":\"Analyze Emails for Action Items\",\"type\":\"@n8n/n8n-nodes-langchain.agent\",\"typeVersion\":3.1,\"position\":[530,300],\"parameters\":{\"hasOutputParser\":true}},{\"id\":\"node-00000004\",\"name\":\"GPT-4.1-mini Model\",\"type\":\"@n8n/n8n-nodes-langchain.lmChatOpenAi\",\"typeVersion\":1.3,\"position\":[474,450],\"parameters\":{}},{\"id\":\"node-00000005\",\"name\":\"Structure Output Format\",\"type\":\"@n8n/n8n-nodes-langchain.outputParserStructured\",\"typeVersion\":1.3,\"position\":[474,450],\"parameters\":{\"autoFix\":false}}],\"connections\":{\"Monday Morning Trigger\":{\"main\":[[{\"node\":\"Get Weekend Emails\",\"type\":\"main\",\"index\":0}]]},\"Get Weekend Emails\":{\"main\":[[{\"node\":\"Combine All Emails\",\"type\":\"main\",\"index\":0}]]}},\"name\":\"Monday Morning Email Action Items and Priorities Summary\"}\n</current_workflow_json>\n\n<current_simplified_execution_data>\nNO EXECUTION DATA YET\n</current_simplified_execution_data>\n\n<current_execution_nodes_schemas>\nNO SCHEMA\n</current_execution_nodes_schemas>\n\n<selected_node>\nName: Structure Output Format\nType: @n8n/n8n-nodes-langchain.outputParserStructured\n\nCurrent Parameters: {\n  \"autoFix\": false\n}\n</selected_node>\n\n<requested_changes>\n1. Define the JSON schema with fields for 'actionItems' (array of objects with 'task' and 'priority' fields) and 'summary' (string) to structure the email analysis output\n</requested_changes>\n\nBased on the requested changes and the node's property definitions, return the complete updated parameters object."
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<core_instructions>\nYou are an expert n8n workflow architect who updates node parameters based on natural language instructions.\n\n## Your Task\nUpdate the parameters of an existing n8n node based on the requested changes. Return the COMPLETE parameters object with both modified and unmodified parameters. Only modify the parameters that are explicitly mentioned in the changes, preserving all other existing parameters exactly as they are.\n\n## Reference Information\nYou will receive:\n1. The original user workflow request\n2. The current workflow JSON\n3. The selected node's current configuration (id, name, type, parameters)\n4. The node type's parameter definitions\n5. Natural language changes to apply\n\n## Parameter Update Guidelines\n1. START WITH CURRENT: If current parameters is empty {}, start with an empty object and add the requested parameters\n2. PRESERVE EXISTING VALUES: Only modify parameters mentioned in the requested changes\n3. MAINTAIN STRUCTURE: Keep the exact parameter structure required by the node type\n4. CHECK FOR RESOURCELOCATOR: If a parameter is type 'resourceLocator' in the node definition, it MUST use the ResourceLocator structure with __rl, mode, and value fields\n5. USE PROPER EXPRESSIONS: Follow n8n expression syntax when referencing other nodes\n6. VALIDATE TYPES: Ensure parameter values match their expected types\n7. HANDLE NESTED PARAMETERS: Correctly update nested structures like headers, conditions, etc.\n8. SIMPLE VALUES: For simple parameter updates like \"Set X to Y\", directly set the parameter without unnecessary nesting\n9. GENERATE IDS: When adding new items to arrays (like assignments, headers, etc.), generate unique IDs using a simple pattern like \"id-1\", \"id-2\", etc.\n10. TOOL NODE DETECTION: Check if node type ends with \"Tool\" to determine if $fromAI expressions are available\n11. PLACEHOLDER FORMAT: When changes specify a placeholder, copy it exactly as \"<__PLACEHOLDER_VALUE__VALUE_LABEL__>\" (no extra quotes or expressions) and keep VALUE_LABEL descriptive for the user\n</core_instructions>\n\n<expression_rules>\n\n## CRITICAL: Correctly Formatting n8n Expressions\nWhen using expressions to reference data from other nodes:\n- ALWAYS use the format: `={{ $('Node Name').item.json.field }}`\n- NEVER omit the equals sign before the double curly braces\n- ALWAYS use DOUBLE curly braces, never single\n- NEVER use emojis or special characters inside expressions as they will break the expression\n- INCORRECT: `{ $('Node Name').item.json.field }` (missing =, single braces)\n- INCORRECT: `{{ $('Node Name').item.json.field }}` (missing =)\n- INCORRECT: `={{ $('👍 Node').item.json.field }}` (contains emoji)\n- CORRECT: `={{ $('Previous Node').item.json.field }}`\n</expression_rules>\n\n<guide>\n\n## Text Field Expression Formatting\n\n### PREFERRED METHOD: Embedding expressions directly within text\n```\n\"text\": \"=ALERT: It is currently {{ $('Weather Node').item.json.weather }} in {{ $('Weather Node').item.json.city }}!\"\n```\n\n### Alternative method: Using string concatenation (use only when needed)\n```\n\"text\": \"={{ 'ALERT: It is currently ' + $('Weather Node').item.json.weather + ' in ' + $('Weather Node').item.json.city + '!' }}\"\n```\n\n### Key Points:\n- Use the embedded expression format when mixing static text with dynamic values\n- The entire string must start with = when using expressions\n- Expressions within text use single curly braces {{ }}\n- The outer expression wrapper uses double curly braces ={{ }}\n</guide>\n\n<guide>\n\n### Referencing Output from Special Node Types\n\n#### AI Agent Output Structure\nAI Agent nodes (n8n-nodes-langchain.agent) wrap their response in an \"output\" object:\n- Without Structured Output Parser: Use `$json.output` to access the response string\n- With Structured Output Parser (hasOutputParser: true in node settings): Use `$json.output.fieldName` to access parsed fields\n- Use `$('AI Agent').item.json.output.fieldName` when referencing a node, instead of `$('AI Agent').item.json.fieldName`\n- WRONG: `$json.summary` → CORRECT: `$json.output.summary`\n\n#### Webhook Node Output Structure\nWhen referencing data from a Webhook node (n8n-nodes-base.webhook), the incoming request is structured under `$json`:\n- `$json.headers` - HTTP headers, example: `$json.headers.authorization`\n- `$json.params` - URL path parameters, example route: `/users/:id`, access: `$json.params.id`\n- `$json.query` - Query string parameters, example URL: `?user_id=123`, access: `$json.query.user_id`\n- `$json.body` - Request payload, example JSON: `{ \"userName\": \"sam\" }`, access: `$json.body.userName`\n\nCRITICAL: When referencing data from a Webhook node, do NOT use `$json.fieldName` directly - always specify the container (body, query, params, or headers).\n</guide>\n\n<common_patterns>\n\n## Common Parameter Update Patterns\n\n### HTTP Request Node Updates\n- URL: Set directly or use expressions\n- Method: GET, POST, PUT, DELETE, etc.\n- Headers: Add/update in headerParameters.parameters array\n- Body: Update bodyParameters.parameters for POST/PUT\n- Authentication: Update authentication settings\n</common_patterns>\n\n<examples>\n\n## Examples of Parameter Updates\n\n### Example 1: Update HTTP Request URL\nChange: \"Set the URL to call the weather API for London\"\nCurrent parameters: { \"url\": \"https://api.example.com\", \"method\": \"GET\" }\nUpdated parameters: { \"url\": \"https://api.openweathermap.org/data/2.5/weather?q=London\", \"method\": \"GET\" }\n\n### Example 2: Add a header\nChange: \"Add an ABC key header with value 123\"\nCurrent parameters: { \"url\": \"...\", \"sendHeaders\": false }\nUpdated parameters: {\n  \"url\": \"...\",\n  \"sendHeaders\": true,\n  \"headerParameters\": {\n    \"parameters\": [\n      {\n        \"name\": \"ABC\",\n        \"value\": \"123\"\n      }\n    ]\n  }\n}\n\n### Example 3: Update condition\nChange: \"Check if temperature is above 25 degrees\"\nCurrent parameters: { \"conditions\": { \"conditions\": [] } }\nUpdated parameters: {\n  \"conditions\": {\n    \"options\": {\n      \"caseSensitive\": false,\n      \"leftValue\": \"\",\n      \"typeValidation\": \"loose\"\n    },\n    \"conditions\": [\n      {\n        \"leftValue\": \"={{ $('Weather Node').item.json.main.temp }}\",\n        \"rightValue\": 25,\n        \"operator\": {\n          \"type\": \"number\",\n          \"operation\": \"gt\"\n        }\n      }\n    ],\n    \"combinator\": \"and\"\n  }\n}\n</examples>\n\n<output_format>\n\n## Output Format\nReturn ONLY the complete updated parameters object that matches the node's parameter structure. Include ALL parameters, both modified and unmodified.\n</output_format>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			}
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_011Ej4f1MUR7xzK55GLfVon5",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01LsQxzrnvAqd4rsZZHnWJnB",
+						"name": "extract",
+						"input": {
+							"parameters": {
+								"schemaType": "manual",
+								"inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"actionItems\": {\n\t\t\t\"type\": \"array\",\n\t\t\t\"items\": {\n\t\t\t\t\"type\": \"object\",\n\t\t\t\t\"properties\": {\n\t\t\t\t\t\"task\": {\n\t\t\t\t\t\t\"type\": \"string\"\n\t\t\t\t\t},\n\t\t\t\t\t\"priority\": {\n\t\t\t\t\t\t\"type\": \"string\"\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t},\n\t\t\"summary\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}",
+								"autoFix": false
+							}
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 857,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 4020,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 320,
+					"service_tier": "standard"
+				}
+			}
+		}
+	},
+	"id": "1770043379544-unknown-host-POST-_v1_messages-d6cc8f1a.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

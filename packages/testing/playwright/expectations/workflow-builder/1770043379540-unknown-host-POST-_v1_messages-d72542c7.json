@@ -1,0 +1,244 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "search_nodes",
+						"description": "Search for n8n nodes by name or find sub-nodes that output specific connection types. Use this before adding nodes to find the correct node types.\n\nSearch modes:\n1. Name search (default): Search nodes by name/description\n   Example: { queryType: \"name\", query: \"http\" }\n\n2. Sub-node search: Find sub-nodes that output specific AI connection types\n   Example: { queryType: \"subNodeSearch\", connectionType: NodeConnectionTypes.AiTool }\n   With optional query filter: { queryType: \"subNodeSearch\", connectionType: NodeConnectionTypes.AiTool, query: \"calculator\" }\n   This finds sub-nodes (like \"Calculator Tool\") that can be connected to nodes accepting that connection type\n\nCommon AI connection types for sub-node search:\n- NodeConnectionTypes.AiLanguageModel (finds LLM provider sub-nodes like \"OpenAI Chat Model\")\n- NodeConnectionTypes.AiTool (finds tool sub-nodes like \"Calculator Tool\", \"Code Tool\")\n- NodeConnectionTypes.AiMemory (finds memory sub-nodes like \"Window Buffer Memory\")\n- NodeConnectionTypes.AiEmbedding (finds embedding sub-nodes like \"Embeddings OpenAI\")\n- NodeConnectionTypes.AiVectorStore (finds vector store sub-nodes)\n- NodeConnectionTypes.AiDocument (finds document loader sub-nodes)\n- NodeConnectionTypes.AiTextSplitter (finds text splitter sub-nodes)\n\nYou can search for multiple different criteria at once by providing an array of queries.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"queries": {
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"queryType": {
+												"type": "string",
+												"enum": ["name", "subNodeSearch"],
+												"description": "Type of search to perform"
+											},
+											"query": {
+												"type": "string",
+												"description": "Search term to filter results"
+											},
+											"connectionType": {
+												"type": "string",
+												"enum": [
+													"ai_agent",
+													"ai_chain",
+													"ai_document",
+													"ai_embedding",
+													"ai_languageModel",
+													"ai_memory",
+													"ai_outputParser",
+													"ai_retriever",
+													"ai_reranker",
+													"ai_textSplitter",
+													"ai_tool",
+													"ai_vectorStore",
+													"main"
+												],
+												"description": "For subNodeSearch: connection type like ai_languageModel, ai_tool, etc."
+											}
+										},
+										"required": ["queryType"],
+										"additionalProperties": false
+									},
+									"minItems": 1,
+									"description": "Array of search queries to find different types of nodes"
+								}
+							},
+							"required": ["queries"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "submit_discovery_results",
+						"description": "Submit the final discovery results",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"nodesFound": {
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"nodeName": {
+												"type": "string",
+												"description": "The internal name of the node (e.g., n8n-nodes-base.gmail)"
+											},
+											"version": {
+												"type": "number",
+												"description": "The version number of the node (e.g., 1, 1.1, 2, 3, 3.2, etc.)"
+											},
+											"reasoning": {
+												"type": "string",
+												"description": "Why this node is relevant for the workflow"
+											},
+											"connectionChangingParameters": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"properties": {
+														"name": {
+															"type": "string",
+															"description": "Parameter name (e.g., \"mode\", \"operation\", \"hasOutputParser\")"
+														},
+														"possibleValues": {
+															"type": "array",
+															"items": {
+																"type": ["string", "boolean", "number"]
+															},
+															"description": "Possible values this parameter can take"
+														}
+													},
+													"required": ["name", "possibleValues"],
+													"additionalProperties": false
+												},
+												"description": "Parameters that affect node connections (inputs/outputs). ONLY include if parameter appears in <input> or <output> expressions"
+											}
+										},
+										"required": [
+											"nodeName",
+											"version",
+											"reasoning",
+											"connectionChangingParameters"
+										],
+										"additionalProperties": false
+									},
+									"description": "List of n8n nodes identified as necessary for the workflow"
+								}
+							},
+							"required": ["nodesFound"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Create an automation that runs on Monday mornings. It reads my Gmail inbox from the weekend, analyzes them with `gpt-4.1-mini` to find action items and priorities, and emails me a structured email using Gmail."
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "<user_request>\n\nCreate an automation that runs on Monday mornings. It reads my Gmail inbox from the weekend, analyzes them with `gpt-4.1-mini` to find action items and priorities, and emails me a structured email using Gmail.\n\n</user_request>",
+								"cache_control": {
+									"type": "ephemeral"
+								}
+							}
+						]
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<role>\nYou are a Discovery Agent for n8n AI Workflow Builder.\nIdentify relevant n8n nodes and their connection-changing parameters for the user's request.\n</role>\n\n<available_tools>\n- search_nodes: Find n8n nodes by keyword (returns name, version, inputs, outputs)\n- submit_discovery_results: Submit final results\n</available_tools>\n\n<process>\n1. Search for nodes matching the user's request using search_nodes tool\n2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)\n3. Call submit_discovery_results with your nodesFound array to pass structured data to the next agent\n</process>\n\n<n8n_execution_model>\nn8n executes each node once per input item. Understanding this is essential for correct workflow design.\n\nWhen a trigger or node outputs multiple items (e.g., Gmail returns 10 emails), every downstream node runs 10 times—once for each item. This means:\n- \"Analyze emails\" with AI Agent → AI Agent runs separately for each email\n- \"Send summary\" after analysis → sends one message per email, not one combined summary\n\nTo process multiple items as a group:\n- Aggregate node: Combines multiple items into one before processing (e.g., 10 emails → single item containing all emails → AI Agent analyzes together → one summary)\n- Split Out node: Does the reverse—converts one item with an array field into multiple items for individual processing\n\nCommon patterns requiring Aggregate:\n- \"summarize all [items]\" → Aggregate before the summarization node\n- \"send one notification with all results\" → Aggregate before notification node\n- \"create a report from multiple sources\" → Aggregate to combine data first\n- \"analyze [items] together\" → Aggregate before AI Agent\n</n8n_execution_model>\n\n<trigger_selection>\nTrigger type selection (choose based on how the workflow starts):\n\nWebhook (n8n-nodes-base.webhook): External systems calling your workflow via HTTP POST/GET.\n  Use when: \"receive data from X\", \"when X calls\", \"API endpoint\", \"incoming requests\"\n\nForm Trigger: User-facing forms with optional multi-step support.\n  Use when: \"collect user input\", \"survey\", \"registration form\"\n\nSchedule Trigger: Time-based automation (cron-style), only runs when workflow is activated.\n  Use when: \"run daily at 9am\", \"every hour\", \"weekly report\"\n\nGmail/Slack/Telegram Trigger: Platform-specific event monitoring with built-in authentication.\n  Use when: \"monitor for new emails\", \"when message received\", \"watch channel\"\n\nChat Trigger: n8n-hosted chat interface for conversational AI.\n  Use when: \"build a chatbot\", \"chat interface\", \"conversational assistant\"\n\nManual Trigger: For testing and one-off runs only (requires user to click \"Execute\").\n  Use when: explicitly testing or debugging workflows\n</trigger_selection>\n\n<ai_node_selection>\nAI node selection guidance:\n\nAI Agent: Use for text analysis, summarization, classification, or any AI reasoning tasks.\nOpenAI node: Use only for DALL-E, Whisper, Sora, or embeddings (these are specialized APIs that AI Agent cannot access).\nDefault chat model: OpenAI Chat Model provides the lowest setup friction for new users.\nTool nodes (ending in \"Tool\"): Connect to AI Agent via ai_tool for agent-controlled actions.\nText Classifier vs AI Agent: Text Classifier for simple categorization with fixed categories; AI Agent for complex multi-step classification requiring reasoning.\nMemory nodes: Include with chatbot AI Agents to maintain conversation context across messages.\nStructured Output Parser: Prefer this over manually extracting/parsing AI output with Set or Code nodes. Define the desired schema and the LLM handles parsing automatically. Use for classification, data extraction, or any workflow where AI output feeds into database storage, API calls, or Switch routing.\n</ai_node_selection>\n\n<ai_tool_patterns>\nAI Agent tool connection patterns:\n\nWhen AI Agent needs external capabilities, use TOOL nodes (not regular nodes):\n- Research: SerpAPI Tool, Perplexity Tool → AI Agent [ai_tool]\n- Calendar: Google Calendar Tool → AI Agent [ai_tool]\n- Messaging: Slack Tool, Gmail Tool → AI Agent [ai_tool]\n- HTTP calls: HTTP Request Tool → AI Agent [ai_tool]\n- Calculations: Calculator Tool → AI Agent [ai_tool]\n\nTool nodes: AI Agent decides when/if to use them based on reasoning.\nRegular nodes: Execute at that workflow step regardless of context.\n\nVector Store patterns:\n- Insert documents: Document Loader → Vector Store (mode='insert') [ai_document]\n- RAG with AI Agent: Vector Store (mode='retrieve-as-tool') → AI Agent [ai_tool]\n  The retrieve-as-tool mode makes the Vector Store act as a tool the Agent can call, which is simpler than using a separate Retriever node.\n\nStructured Output Parser: Connect to AI Agent when structured JSON output is required.\n</ai_tool_patterns>\n\n<node_selection_patterns>\nNode selection by use case:\n\nDOCUMENTS:\n- RAG/Vector Store workflows: Document Loader (dataType='binary') handles PDF, CSV, JSON from form uploads automatically\n- Standalone text extraction: Extract From File requires IF/Switch to route each file type to correct operation\n- Scanned documents: AWS Textract (OCR), Mindee (invoices/receipts)\nDATA PROCESSING: Aggregate to combine multiple items before summarization/analysis, Split Out to expand arrays into items, Loop Over Items for 100+ items\nSUMMARIZATION: When summarizing multiple items (emails, messages, records), include Aggregate before the AI/summarization node—otherwise each item processes separately\nSTORAGE: n8n Data Tables (preferred, requires no credentials), Google Sheets (for collaboration), Airtable (for relationships). Note: Set/Merge transform data in memory only—add a storage node to persist data.\nTRIGGERS: Schedule Trigger (only runs when activated), Gmail Trigger (set Simplify=false, Download Attachments=true), Form Trigger (always store raw data)\nSCRAPING: Phantombuster/Apify for social media (LinkedIn/Twitter), HTTP Request + HTML Extract for simple pages\nNOTIFICATIONS: Email, Slack, Telegram, Twilio. For one notification summarizing multiple items, include Aggregate before the notification node.\nRESEARCH: SerpAPI Tool, Perplexity Tool connect to AI Agent for research capabilities.\nCHATBOTS: Use platform-specific nodes (Slack, Telegram, WhatsApp) for platform chatbots, Chat Trigger for n8n-hosted chat.\nMEDIA: OpenAI for DALL-E/Sora, Google Gemini for Imagen, ElevenLabs for voice (via HTTP Request).\n</node_selection_patterns>\n\n<flow_control_nodes>\nFlow control nodes handle item cardinality, branching, and data restructuring. Include these generously—they're commonly needed and the builder can select the most appropriate ones.\n\nITEM AGGREGATION (include when user wants combined/summarized output from multiple items):\n- Aggregate (n8n-nodes-base.aggregate): Combines multiple items into one. Essential when the user wants a single output from multiple inputs.\n  Patterns: \"summarize all emails\", \"create one report\", \"send combined notification\", \"analyze [items] together\"\n  Without Aggregate, each item flows through downstream nodes separately—resulting in multiple outputs instead of one.\n\nCONDITIONAL BRANCHING (include when workflow has different paths or decisions):\n- IF (n8n-nodes-base.if): Binary decisions (true/false paths). Patterns: \"if condition\", \"check whether\", \"when X do Y otherwise Z\"\n- Switch (n8n-nodes-base.switch): Multiple routing paths (3+). Patterns: \"route by category\", \"different actions for each type\", \"triage\"\n  Connection-changing param: mode (expression/rules)\n\nDATA RESTRUCTURING (include when item structure needs to change):\n- Split Out (n8n-nodes-base.splitOut): Converts single item with array field into multiple items for individual processing.\n  Patterns: API returns object with array field and each item needs separate processing\n- Merge (n8n-nodes-base.merge): Combines data from parallel branches that ALL execute together.\n  For 3+ inputs: mode=\"append\" + numberInputs, OR mode=\"combine\" + combineBy=\"combineByPosition\" + numberInputs\n- Set (n8n-nodes-base.set): Use after IF/Switch to continue flow when only one branch executes (Merge would wait forever).\n\nLOOPING & BATCHING (include for large datasets):\n- Split In Batches (n8n-nodes-base.splitInBatches): Process 100+ items in chunks to prevent memory issues.\n  Output 0 = \"done\" (final result), Output 1 = \"loop\" (connect processing here)\n\nBe inclusive with flow control recommendations. When in doubt, include Aggregate, IF, and Split Out—they're frequently needed and the builder can omit any that aren't required.\n</flow_control_nodes>\n\n<native_node_preference>\nPrefer native n8n nodes over Code node because native nodes provide better UX, visual debugging, and are easier for users to modify.\n\nNative node mappings:\n- Remove duplicates → Remove Duplicates (n8n-nodes-base.removeDuplicates): handles nested object comparison\n- Filter items → Filter: visual condition builder with multiple rules\n- Transform/map data → Edit Fields (Set): drag-and-drop field mapping\n- Combine items → Aggregate: groups and summarizes with built-in functions\n- Conditional routing → IF / Switch: visual branching with clear output paths\n- Sort items → Sort: configurable sort keys and directions\n- Regex matching → IF with expression: use { $json.field.match(/pattern/) }\n- Limit items → Limit: simple count-based limiting\n- Compare datasets → Compare Datasets: finds differences between two data sources\n\nReserve Code node for complex multi-step algorithms that require loops, recursion, or logic that expressions cannot handle.\n</native_node_preference>\n\n<explicit_service_mapping>\nWhen user explicitly requests a service, use that service's native node because native nodes provide better error handling, credential management, and UX than HTTP Request.\n\nService mappings:\n- \"use Perplexity\" → Perplexity or PerplexityTool (native nodes have built-in response parsing)\n- \"use SerpAPI\" → SerpAPI Tool (handles pagination and result formatting)\n- \"use Claude/Anthropic\" → lmChatAnthropic (proper streaming and token counting)\n- \"use Gemini\" → lmChatGoogleGemini (handles Google's auth flow)\n- \"use OpenAI\" → lmChatOpenAi for chat, OpenAI node for DALL-E/Whisper/Sora\n\nFall back to HTTP Request only when the requested service has no native n8n node available.\n</explicit_service_mapping>\n\n<connection_parameters>\nA parameter is connection-changing if it appears in <node_inputs> or <node_outputs> expressions.\nLook for patterns like: $parameter.mode, $parameter.hasOutputParser in the search results.\n\nCommon connection-changing parameters:\n- Vector Store: mode (insert/retrieve/retrieve-as-tool)\n- AI Agent: hasOutputParser (true/false)\n- Merge: numberInputs (requires mode=\"append\" OR mode=\"combine\" + combineBy=\"combineByPosition\")\n- Switch: mode (expression/rules)\n\nIf no parameters affect connections, return empty connectionChangingParameters array.\n</connection_parameters>\n\n<key_rules>\nOutput format: nodesFound array with nodeName, version, reasoning, connectionChangingParameters per node.\n\nREASONING CONTENT (what to include):\n- What the node does (its purpose and capabilities)\n- What connection-changing parameters exist and how each value affects inputs/outputs\n- Describe capabilities neutrally—the builder decides how to configure the node for this specific workflow\n\nCRITICAL - Model names:\n- If the user specifies a model name (e.g., \"gpt-5-mini\", \"claude-4\", any custom model), pass it through EXACTLY in your reasoning\n- Do NOT substitute, \"correct\", or replace model names—your training data has a knowledge cutoff and newer models exist\n- Users may also use custom endpoints with model names you've never seen\n\nExample reasoning for Vector Store: \"Stores and retrieves embeddings. Connection-changing param 'mode': insert (accepts ai_document input), retrieve (standalone retrieval), retrieve-as-tool (connects to AI Agent via ai_tool).\"\n\nGuidelines:\n- Extract version from <version> tag in node details (version affects available features)\n- For flow control nodes (Aggregate, IF, Switch, Split Out, Merge), include all that could be useful—the builder selects which to use\n- When workflow involves multiple items being processed together (summarize, combine, report), include Aggregate\n- Prioritize native nodes (especially Edit Fields/Set) because they provide better UX and visual debugging\n- For RAG with AI Agent, recommend Vector Store in retrieve-as-tool mode (simpler architecture than using a separate Retriever node)\n</key_rules>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			}
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01KYxThjSqTKJkfcGtvDYw51",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "I'll help you discover the nodes needed for this automation. Let me search for the relevant nodes."
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01FQuXNYh9n2TSc7jEibexJo",
+						"name": "search_nodes",
+						"input": {
+							"queries": [
+								{
+									"queryType": "name",
+									"query": "schedule trigger"
+								},
+								{
+									"queryType": "name",
+									"query": "gmail"
+								},
+								{
+									"queryType": "name",
+									"query": "ai agent"
+								},
+								{
+									"queryType": "subNodeSearch",
+									"connectionType": "ai_languageModel",
+									"query": "openai"
+								},
+								{
+									"queryType": "name",
+									"query": "aggregate"
+								},
+								{
+									"queryType": "name",
+									"query": "structured output parser"
+								}
+							]
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 3,
+					"cache_creation_input_tokens": 431,
+					"cache_read_input_tokens": 4336,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 431,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 234,
+					"service_tier": "standard"
+				}
+			}
+		}
+	},
+	"id": "1770043379540-unknown-host-POST-_v1_messages-d72542c7.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

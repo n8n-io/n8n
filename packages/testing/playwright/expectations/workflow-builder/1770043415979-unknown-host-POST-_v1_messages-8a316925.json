@@ -1,0 +1,130 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "extract",
+						"description": "The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { \"parameters\": { \"method\": \"POST\", \"url\": \"https://api.example.com\", \"sendHeaders\": true, \"headerParameters\": { \"parameters\": [{ \"name\": \"Content-Type\", \"value\": \"application/json\" }] } } }}",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"parameters": {
+									"type": "object",
+									"properties": {},
+									"additionalProperties": true,
+									"description": "The complete updated parameters object for the node. This should be a JSON object that matches the node's parameter structure. Include ALL existing parameters plus the requested changes."
+								}
+							},
+							"required": ["parameters"],
+							"additionalProperties": false,
+							"description": "The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { \"parameters\": { \"method\": \"POST\", \"url\": \"https://api.example.com\", \"sendHeaders\": true, \"headerParameters\": { \"parameters\": [{ \"name\": \"Content-Type\", \"value\": \"application/json\" }] } } }}",
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"tool_choice": {
+					"type": "tool",
+					"name": "extract"
+				},
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "\nThe node accepts these properties:\n<node_properties_definition>\n[\n  {\n    \"displayName\": \"Max Items\",\n    \"name\": \"maxItems\",\n    \"type\": \"number\",\n    \"typeOptions\": {\n      \"minValue\": 1\n    },\n    \"default\": 1,\n    \"description\": \"If there are more items than this number, some are removed\"\n  },\n  {\n    \"displayName\": \"Keep\",\n    \"name\": \"keep\",\n    \"type\": \"options\",\n    \"options\": [\n      {\n        \"name\": \"First Items\",\n        \"value\": \"firstItems\"\n      },\n      {\n        \"name\": \"Last Items\",\n        \"value\": \"lastItems\"\n      }\n    ],\n    \"default\": \"firstItems\",\n    \"description\": \"When removing items, whether to keep the ones at the start or the ending\"\n  }\n]\n</node_properties_definition>",
+								"cache_control": {
+									"type": "ephemeral"
+								}
+							},
+							{
+								"type": "text",
+								"text": "<instance_url>\nThe n8n instance base URL is: http://localhost:TEST_PORT\n\nThis URL is essential for webhook nodes and chat triggers as it provides the base URL for:\n- Webhook URLs that external services need to call\n- Chat trigger URLs for conversational interfaces\n- Any node that requires the full instance URL to generate proper callback URLs\n\nWhen working with webhook or chat trigger nodes, use this URL as the base for constructing proper endpoint URLs.\n</instance_url>"
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "\n<current_workflow_json>\n{\"nodes\":[{\"id\":\"node-00000000\",\"name\":\"Daily 8pm Trigger\",\"type\":\"n8n-nodes-base.scheduleTrigger\",\"typeVersion\":1.3,\"position\":[250,450],\"parameters\":{}},{\"id\":\"node-00000001\",\"name\":\"Fetch AI News from NewsAPI\",\"type\":\"n8n-nodes-base.httpRequest\",\"typeVersion\":4.4,\"position\":[250,300],\"parameters\":{}},{\"id\":\"node-00000002\",\"name\":\"Top 5 Articles\",\"type\":\"n8n-nodes-base.limit\",\"typeVersion\":1,\"position\":[250,300],\"parameters\":{}},{\"id\":\"node-00000003\",\"name\":\"Extract Top Article\",\"type\":\"n8n-nodes-base.set\",\"typeVersion\":3.4,\"position\":[250,300],\"parameters\":{}}],\"connections\":{},\"name\":\"Daily AI News Digest with Image and Telegram Notification\"}\n</current_workflow_json>\n\n<current_simplified_execution_data>\nNO EXECUTION DATA YET\n</current_simplified_execution_data>\n\n<current_execution_nodes_schemas>\nNO SCHEMA\n</current_execution_nodes_schemas>\n\n<selected_node>\nName: Top 5 Articles\nType: n8n-nodes-base.limit\n\nCurrent Parameters: {}\n</selected_node>\n\n<requested_changes>\n1. Set the max items to 5\n2. Keep only the first 5 items\n</requested_changes>\n\nBased on the requested changes and the node's property definitions, return the complete updated parameters object."
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<core_instructions>\nYou are an expert n8n workflow architect who updates node parameters based on natural language instructions.\n\n## Your Task\nUpdate the parameters of an existing n8n node based on the requested changes. Return the COMPLETE parameters object with both modified and unmodified parameters. Only modify the parameters that are explicitly mentioned in the changes, preserving all other existing parameters exactly as they are.\n\n## Reference Information\nYou will receive:\n1. The original user workflow request\n2. The current workflow JSON\n3. The selected node's current configuration (id, name, type, parameters)\n4. The node type's parameter definitions\n5. Natural language changes to apply\n\n## Parameter Update Guidelines\n1. START WITH CURRENT: If current parameters is empty {}, start with an empty object and add the requested parameters\n2. PRESERVE EXISTING VALUES: Only modify parameters mentioned in the requested changes\n3. MAINTAIN STRUCTURE: Keep the exact parameter structure required by the node type\n4. CHECK FOR RESOURCELOCATOR: If a parameter is type 'resourceLocator' in the node definition, it MUST use the ResourceLocator structure with __rl, mode, and value fields\n5. USE PROPER EXPRESSIONS: Follow n8n expression syntax when referencing other nodes\n6. VALIDATE TYPES: Ensure parameter values match their expected types\n7. HANDLE NESTED PARAMETERS: Correctly update nested structures like headers, conditions, etc.\n8. SIMPLE VALUES: For simple parameter updates like \"Set X to Y\", directly set the parameter without unnecessary nesting\n9. GENERATE IDS: When adding new items to arrays (like assignments, headers, etc.), generate unique IDs using a simple pattern like \"id-1\", \"id-2\", etc.\n10. TOOL NODE DETECTION: Check if node type ends with \"Tool\" to determine if $fromAI expressions are available\n11. PLACEHOLDER FORMAT: When changes specify a placeholder, copy it exactly as \"<__PLACEHOLDER_VALUE__VALUE_LABEL__>\" (no extra quotes or expressions) and keep VALUE_LABEL descriptive for the user\n</core_instructions>\n\n<expression_rules>\n\n## CRITICAL: Correctly Formatting n8n Expressions\nWhen using expressions to reference data from other nodes:\n- ALWAYS use the format: `={{ $('Node Name').item.json.field }}`\n- NEVER omit the equals sign before the double curly braces\n- ALWAYS use DOUBLE curly braces, never single\n- NEVER use emojis or special characters inside expressions as they will break the expression\n- INCORRECT: `{ $('Node Name').item.json.field }` (missing =, single braces)\n- INCORRECT: `{{ $('Node Name').item.json.field }}` (missing =)\n- INCORRECT: `={{ $('👍 Node').item.json.field }}` (contains emoji)\n- CORRECT: `={{ $('Previous Node').item.json.field }}`\n</expression_rules>\n\n<guide>\n\n### Referencing Output from Special Node Types\n\n#### AI Agent Output Structure\nAI Agent nodes (n8n-nodes-langchain.agent) wrap their response in an \"output\" object:\n- Without Structured Output Parser: Use `$json.output` to access the response string\n- With Structured Output Parser (hasOutputParser: true in node settings): Use `$json.output.fieldName` to access parsed fields\n- Use `$('AI Agent').item.json.output.fieldName` when referencing a node, instead of `$('AI Agent').item.json.fieldName`\n- WRONG: `$json.summary` → CORRECT: `$json.output.summary`\n\n#### Webhook Node Output Structure\nWhen referencing data from a Webhook node (n8n-nodes-base.webhook), the incoming request is structured under `$json`:\n- `$json.headers` - HTTP headers, example: `$json.headers.authorization`\n- `$json.params` - URL path parameters, example route: `/users/:id`, access: `$json.params.id`\n- `$json.query` - Query string parameters, example URL: `?user_id=123`, access: `$json.query.user_id`\n- `$json.body` - Request payload, example JSON: `{ \"userName\": \"sam\" }`, access: `$json.body.userName`\n\nCRITICAL: When referencing data from a Webhook node, do NOT use `$json.fieldName` directly - always specify the container (body, query, params, or headers).\n</guide>\n\n<common_patterns>\n\n## Common Parameter Update Patterns\n\n### HTTP Request Node Updates\n- URL: Set directly or use expressions\n- Method: GET, POST, PUT, DELETE, etc.\n- Headers: Add/update in headerParameters.parameters array\n- Body: Update bodyParameters.parameters for POST/PUT\n- Authentication: Update authentication settings\n</common_patterns>\n\n<examples>\n\n## Examples of Parameter Updates\n\n### Example 1: Update HTTP Request URL\nChange: \"Set the URL to call the weather API for London\"\nCurrent parameters: { \"url\": \"https://api.example.com\", \"method\": \"GET\" }\nUpdated parameters: { \"url\": \"https://api.openweathermap.org/data/2.5/weather?q=London\", \"method\": \"GET\" }\n\n### Example 2: Add a header\nChange: \"Add an ABC key header with value 123\"\nCurrent parameters: { \"url\": \"...\", \"sendHeaders\": false }\nUpdated parameters: {\n  \"url\": \"...\",\n  \"sendHeaders\": true,\n  \"headerParameters\": {\n    \"parameters\": [\n      {\n        \"name\": \"ABC\",\n        \"value\": \"123\"\n      }\n    ]\n  }\n}\n\n### Example 3: Update condition\nChange: \"Check if temperature is above 25 degrees\"\nCurrent parameters: { \"conditions\": { \"conditions\": [] } }\nUpdated parameters: {\n  \"conditions\": {\n    \"options\": {\n      \"caseSensitive\": false,\n      \"leftValue\": \"\",\n      \"typeValidation\": \"loose\"\n    },\n    \"conditions\": [\n      {\n        \"leftValue\": \"={{ $('Weather Node').item.json.main.temp }}\",\n        \"rightValue\": 25,\n        \"operator\": {\n          \"type\": \"number\",\n          \"operation\": \"gt\"\n        }\n      }\n    ],\n    \"combinator\": \"and\"\n  }\n}\n</examples>\n\n<output_format>\n\n## Output Format\nReturn ONLY the complete updated parameters object that matches the node's parameter structure. Include ALL parameters, both modified and unmodified.\n</output_format>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			}
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_019QfQEjxqYKq6USn5Apykpc",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01FsNp7AdddPLUz5umihZne7",
+						"name": "extract",
+						"input": {
+							"parameters": {
+								"maxItems": 5,
+								"keep": "firstItems"
+							}
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 504,
+					"cache_creation_input_tokens": 2651,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 2651,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 52,
+					"service_tier": "standard"
+				}
+			}
+		}
+	},
+	"id": "1770043415979-unknown-host-POST-_v1_messages-8a316925.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

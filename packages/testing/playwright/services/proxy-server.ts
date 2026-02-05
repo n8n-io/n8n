@@ -80,7 +80,7 @@ export class ProxyServer {
 		try {
 			const targetDir = join(this.expectationsDir, folderName);
 			const files = await fs.readdir(targetDir);
-			const jsonFiles = files.filter((file) => file.endsWith('.json'));
+			const jsonFiles = files.filter((file) => file.endsWith('.json')).sort();
 			const expectations: Expectation[] = [];
 
 			for (const file of jsonFiles) {

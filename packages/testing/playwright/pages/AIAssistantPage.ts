@@ -136,6 +136,7 @@ export class AIAssistantPage extends BasePage {
 				const sendIcon = sendButton.querySelector('[data-icon="arrow-up"]');
 				return sendIcon !== null;
 			},
+			undefined,
 			{ timeout },
 		);
 	}

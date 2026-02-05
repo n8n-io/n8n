@@ -1,0 +1,6096 @@
+{
+	"httpRequest": {
+		"method": "GET",
+		"path": "/api/community-nodes",
+		"queryStringParameters": {
+			"pagination[page]": ["2"],
+			"pagination[pageSize]": ["25"]
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-powered-by": ["n8n <n8n.io>"],
+			"x-permitted-cross-domain-policies": ["none"],
+			"x-frame-options": ["SAMEORIGIN"],
+			"x-download-options": ["noopen"],
+			"x-dns-prefetch-control": ["off"],
+			"x-content-type-options": ["nosniff"],
+			"x-cache": ["HIT"],
+			"vary": ["Origin, Accept-Encoding"],
+			"strict-transport-security": ["max-age=0; includeSubDomains"],
+			"referrer-policy": ["no-referrer"],
+			"content-security-policy": [
+				"script-src 'self';frame-ancestors https://n8n.io https://*.n8n.io https://*.n8n.cloud;img-src 'self' data: blob: https://market-assets.strapi.io https://n8niostorageaccount.blob.core.windows.net;style-src 'self' 'unsafe-inline';connect-src 'self';font-src 'self';media-src 'self' data: blob:;default-src 'self';base-uri 'self';form-action 'self';object-src 'none';script-src-attr 'none'"
+			],
+			"access-control-expose-headers": ["WWW-Authenticate,Server-Authorization"],
+			"access-control-allow-origin": [""],
+			"access-control-allow-credentials": ["true"],
+			"Server": ["cloudflare"],
+			"Report-To": [
+				"{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=ifX0r3cIPmHJxOSV5QmCV%2FFAmMw%2FSadk3js7MZ4ntXFkftmpbExFGJFBBSAC3Oq1hfQN4lj7SkprQBS2iKJhmz1N2UZQlXIqbVZI0%2FXvkHwc\"}]}"
+			],
+			"Nel": ["{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"],
+			"Content-Type": ["application/json; charset=utf-8"]
+		},
+		"body": {
+			"type": "JSON",
+			"json": {
+				"data": [
+					{
+						"id": 322,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-postfast.postFast",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Post_Fast_Social_Media_Management_8597e94507.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "PostFast - Social Media"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "socialPost",
+										"options": [
+											{
+												"name": "File",
+												"value": "file",
+												"description": "Manage file uploads"
+											},
+											{
+												"name": "Social Account",
+												"value": "socialAccount",
+												"description": "Manage social media accounts"
+											},
+											{
+												"name": "Social Post",
+												"value": "socialPost",
+												"description": "Create and manage social media posts"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getUploadUrl",
+										"options": [
+											{
+												"name": "Get Upload URL",
+												"value": "getUploadUrl",
+												"action": "Get upload URL",
+												"description": "Generate pre-signed URLs for uploading media files"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["file"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getAll",
+										"options": [
+											{
+												"name": "Get All",
+												"value": "getAll",
+												"action": "Get all social accounts",
+												"description": "Get all connected social media accounts"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["socialAccount"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create social posts",
+												"description": "Create and schedule one or more social media posts"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete social post",
+												"description": "Delete a scheduled or failed post"
+											},
+											{
+												"name": "Get Many",
+												"value": "getMany",
+												"action": "Get many social posts",
+												"description": "Query and paginate social posts"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["socialPost"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Schedule and manage social media posts across Facebook, Instagram, TikTok, Twitter/X, LinkedIn, YouTube, and Pinterest",
+								"displayName": "PostFast - Social Media Management",
+								"originalName": "n8n-nodes-postfast.postFast"
+							},
+							"createdAt": "2025-12-02T12:29:08.885Z",
+							"updatedAt": "2026-01-13T16:09:23.148Z",
+							"authorGithubUrl": "https://github.com/peturgeorgievv/",
+							"authorName": "peturgeorgievv",
+							"checksum": "sha512-zCzfnl1PeInNpomSbt1v9h0jKsDDPoSGkTsi7/n5HEUlDwzG6dB3qdQp0et+W5sjuX9Pr4xaMBNmU1dickWDPQ==",
+							"description": "Schedule and manage social media posts across Facebook, Instagram, TikTok, Twitter/X, LinkedIn, YouTube, and Pinterest",
+							"displayName": "PostFast - Social Media Management",
+							"name": "n8n-nodes-postfast",
+							"numberOfStars": 0,
+							"numberOfDownloads": 189,
+							"packageName": "n8n-nodes-postfast",
+							"npmVersion": "0.1.13",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-WSSEEzwu8LVcY5/ZXfDqhAoB0rMQckFYf70IYPHL5utPdzoKNWVWXc2ZfYYR6gArmInc3YXKkYR8WL2QXrDlDQ==",
+									"npmVersion": "0.1.11"
+								},
+								{
+									"checksum": "sha512-zCzfnl1PeInNpomSbt1v9h0jKsDDPoSGkTsi7/n5HEUlDwzG6dB3qdQp0et+W5sjuX9Pr4xaMBNmU1dickWDPQ==",
+									"npmVersion": "0.1.13"
+								}
+							]
+						}
+					},
+					{
+						"id": 164,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-zohoteaminbox.zohoTeamInbox",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Zoho_Team_Inbox_530504c373.png",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Zoho TeamInbox"
+								},
+								"subtitle": "={{$parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "message",
+										"options": [
+											{
+												"name": "Message",
+												"value": "message"
+											},
+											{
+												"name": "Contact",
+												"value": "contact"
+											}
+										],
+										"required": true,
+										"displayName": "Resource"
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "sendemail",
+										"options": [
+											{
+												"name": "Send Email",
+												"value": "sendemail",
+												"action": "Send Email",
+												"description": "Create and send a new email."
+											}
+										],
+										"required": true,
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["message"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createcontact",
+										"options": [
+											{
+												"name": "Create Contact",
+												"value": "createcontact",
+												"action": "Create Contact",
+												"description": "Creates a new contact"
+											}
+										],
+										"required": true,
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["contact"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Consume Zoho TeamInbox API",
+								"displayName": "Zoho TeamInbox",
+								"originalName": "n8n-nodes-zohoteaminbox.zohoTeamInbox",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-08-25T10:19:52.414Z",
+							"updatedAt": "2026-01-30T10:11:33.279Z",
+							"authorGithubUrl": "https://github.com/zohomail/zoho_teaminbox_n8n.git",
+							"authorName": "zohomail",
+							"checksum": "sha512-FzLA1lcYfXo0zUcrHakmQ0BlpMV3k6CT/uYlA47Pwsq3Try7EHNjsxGFtZjT6pzoxq4MGeUuVCxC7I3UwSODdg==",
+							"description": "Consume Zoho TeamInbox API",
+							"displayName": "Zoho TeamInbox",
+							"name": "n8n-nodes-zohoteaminbox",
+							"numberOfStars": 0,
+							"numberOfDownloads": 94,
+							"packageName": "n8n-nodes-zohoteaminbox",
+							"npmVersion": "1.0.4",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": "ZOHO",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-BwgdAXaF9cDwlexIUJ8VQnSsSYkR2wEFKZNcLweh8giN+L0j7ffE+fqjdkIp9mew6/Mfhe8q4pLN3Rwox0KtQg==",
+									"npmVersion": "1.0.2"
+								},
+								{
+									"checksum": "sha512-FzLA1lcYfXo0zUcrHakmQ0BlpMV3k6CT/uYlA47Pwsq3Try7EHNjsxGFtZjT6pzoxq4MGeUuVCxC7I3UwSODdg==",
+									"npmVersion": "1.0.4"
+								}
+							]
+						}
+					},
+					{
+						"id": 413,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-docugenerate.docuGenerate",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Docu_Generate_494de5a00b.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "DocuGenerate"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "template",
+										"options": [
+											{
+												"name": "Document",
+												"value": "document",
+												"description": "Manage documents"
+											},
+											{
+												"name": "Template",
+												"value": "template",
+												"description": "Manage templates"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "generate",
+										"options": [
+											{
+												"name": "Delete Document",
+												"value": "delete",
+												"action": "Delete document",
+												"routing": {
+													"request": {
+														"url": "=/v1/document/{{$parameter.documentId}}",
+														"method": "DELETE"
+													}
+												},
+												"description": "Delete a document by ID"
+											},
+											{
+												"name": "Generate Document",
+												"value": "generate",
+												"action": "Generate document",
+												"routing": {
+													"request": {
+														"url": "/v1/document",
+														"method": "POST"
+													}
+												},
+												"description": "Generate a document from a template"
+											},
+											{
+												"name": "Get Document",
+												"value": "get",
+												"action": "Get document",
+												"routing": {
+													"request": {
+														"url": "=/v1/document/{{$parameter.documentId}}",
+														"method": "GET"
+													}
+												},
+												"description": "Get a document by ID"
+											},
+											{
+												"name": "List Documents",
+												"value": "list",
+												"action": "List documents",
+												"routing": {
+													"request": {
+														"url": "=/v1/document?template_id={{$parameter.templateId}}",
+														"method": "GET"
+													}
+												},
+												"description": "List documents for a template"
+											},
+											{
+												"name": "Update Document",
+												"value": "update",
+												"action": "Update document",
+												"routing": {
+													"request": {
+														"url": "=/v1/document/{{$parameter.documentId}}",
+														"method": "PUT"
+													}
+												},
+												"description": "Update a document by ID"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["document"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "list",
+										"options": [
+											{
+												"name": "Delete Template",
+												"value": "delete",
+												"action": "Delete template",
+												"routing": {
+													"request": {
+														"url": "=/v1/template/{{$parameter.templateId}}",
+														"method": "DELETE"
+													}
+												},
+												"description": "Delete a template by ID"
+											},
+											{
+												"name": "Get Template",
+												"value": "get",
+												"action": "Get template",
+												"routing": {
+													"request": {
+														"url": "=/v1/template/{{$parameter.templateId}}",
+														"method": "GET"
+													}
+												},
+												"description": "Get a template by ID"
+											},
+											{
+												"name": "List Templates",
+												"value": "list",
+												"action": "List templates",
+												"routing": {
+													"request": {
+														"url": "/v1/template",
+														"method": "GET"
+													}
+												},
+												"description": "List all templates"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["template"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Automatically generate high-quality PDF documents from Word templates",
+								"displayName": "DocuGenerate",
+								"originalName": "n8n-nodes-docugenerate.docuGenerate"
+							},
+							"createdAt": "2026-01-24T14:15:22.187Z",
+							"updatedAt": "2026-01-24T14:15:22.187Z",
+							"authorGithubUrl": "https://github.com/docugenerate/",
+							"authorName": "docugenerate",
+							"checksum": "sha512-DxPFKCNl34Xyci03gI6Kma91hM+DvxbmYjQGECS6VdXcXConY6w24t5QZ9PEPj1Yv7VaBqwRtsUH0KCZA3Q42A==",
+							"description": "Automatically generate high-quality PDF documents from Word templates",
+							"displayName": "DocuGenerate",
+							"name": "n8n-nodes-docugenerate.docuGenerate",
+							"numberOfStars": 0,
+							"numberOfDownloads": 109,
+							"packageName": "n8n-nodes-docugenerate",
+							"npmVersion": "1.0.1",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-DxPFKCNl34Xyci03gI6Kma91hM+DvxbmYjQGECS6VdXcXConY6w24t5QZ9PEPj1Yv7VaBqwRtsUH0KCZA3Q42A==",
+									"npmVersion": "1.0.1"
+								}
+							]
+						}
+					},
+					{
+						"id": 306,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-get-transcribe.getTranscribe",
+								"codex": {},
+								"group": ["output"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Get_Transcribe_a996ccf8b4.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "GetTranscribe"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "transcription",
+										"options": [
+											{
+												"name": "Transcription",
+												"value": "transcription"
+											},
+											{
+												"name": "Folder",
+												"value": "folder"
+											},
+											{
+												"name": "User",
+												"value": "user"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a transcription",
+												"description": "Create a new transcription from a video URL"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a transcription",
+												"description": "Get a transcription by ID"
+											},
+											{
+												"name": "List",
+												"value": "list",
+												"action": "List transcriptions",
+												"description": "List all transcriptions"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["transcription"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a folder",
+												"description": "Create a new folder"
+											},
+											{
+												"name": "List",
+												"value": "list",
+												"action": "List folders",
+												"description": "List all folders"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a folder",
+												"description": "Update a folder"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["folder"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "get",
+										"options": [
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get user info",
+												"description": "Get user information"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["user"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with GetTranscribe API to transcribe videos from social media platforms",
+								"displayName": "GetTranscribe",
+								"originalName": "n8n-nodes-get-transcribe.getTranscribe"
+							},
+							"createdAt": "2025-11-27T14:20:41.871Z",
+							"updatedAt": "2026-01-28T12:55:08.194Z",
+							"authorGithubUrl": "https://github.com/get-transcribe/",
+							"authorName": "danielevz",
+							"checksum": "sha512-rTr+1lHr+HfCsaUM98PTG04tbdYJ0rLsIJV7JTRiU3ucA7hN2bnZmt8WUgMDJP9rkBs+yNgCkSVQWNVSjIifJg==",
+							"description": "Interact with GetTranscribe API to transcribe videos from social media platforms",
+							"displayName": "GetTranscribe",
+							"name": "n8n-nodes-get-transcribe",
+							"numberOfStars": 0,
+							"numberOfDownloads": 23,
+							"packageName": "n8n-nodes-get-transcribe",
+							"npmVersion": "0.1.4",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "GetTranscribe",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-rTr+1lHr+HfCsaUM98PTG04tbdYJ0rLsIJV7JTRiU3ucA7hN2bnZmt8WUgMDJP9rkBs+yNgCkSVQWNVSjIifJg==",
+									"npmVersion": "0.1.4"
+								}
+							]
+						}
+					},
+					{
+						"id": 36,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-mallabe-images.mallabeImages",
+								"codex": {
+									"resources": {
+										"primaryDocumentation": [
+											{
+												"url": "https://www.mallabe.com"
+											}
+										],
+										"credentialDocumentation": [
+											{
+												"url": "https://www.mallabe.com"
+											}
+										]
+									},
+									"categories": ["Images", "Utilities"]
+								},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Mallabe_Images_52227ecf60.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Mallabe Images"
+								},
+								"subtitle": "={{ $parameter[\"operation\"] + \": \" + $parameter[\"resource\"] }}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "image",
+										"options": [
+											{
+												"name": "Image",
+												"value": "image"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"required": true,
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "resize",
+										"options": [
+											{
+												"name": "Blur Image",
+												"value": "blur",
+												"action": "Blur image",
+												"description": "Blur images and send the new image to another integration"
+											},
+											{
+												"name": "Compress Image",
+												"value": "compress",
+												"action": "Compress image",
+												"description": "Compress images and drive the new image to another integration.Note: if a given URL isn't an image file (png, jpg/jpeg, etc..) - the file will not convert. Note: some Zapier integrations give URLs that are protected - these can't be used & compressed."
+											},
+											{
+												"name": "Crop Image",
+												"value": "crop",
+												"action": "Crop image",
+												"description": "Crop images and send the new image to another integration. Note: If a given URL isn't an image file (e.g., png, jpg/jpeg, gif), the file will not convert. Also, some Zapier integrations provide protected URLs that cannot be cropped."
+											},
+											{
+												"name": "Extract Image Metadata",
+												"value": "metadata",
+												"action": "Extract image metadata",
+												"description": "Extract image metadata. Note: some integrations give URLs that are protected - these can't be used & resized."
+											},
+											{
+												"name": "Flip Image",
+												"value": "flip",
+												"action": "Flip image",
+												"description": "Flip images and send the new image to another integration"
+											},
+											{
+												"name": "Greyscale Image",
+												"value": "greyscale",
+												"action": "Greyscale image",
+												"description": "Greyscale images and send the new image to another integration"
+											},
+											{
+												"name": "Join/Combine Images",
+												"value": "join",
+												"action": "Join combine images",
+												"description": "Join images into one image and send the new image to another integration"
+											},
+											{
+												"name": "Resize Image",
+												"value": "resize",
+												"action": "Resize image",
+												"description": "Resize or Scale images and drive the new image to another integration. Note: if a given URL isn't an image file (png, jpg/jpeg, gif, etc..) - the file will not convert.Note: some Zapier integrations give URLs that are protected - these can't be used & resized."
+											},
+											{
+												"name": "Rotate Image",
+												"value": "rotate",
+												"action": "Rotate image",
+												"description": "Rotate images and send the new image to another integration"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["image"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Mallabe Images is an automation toolchain that allows you to process images, resize, crop and apply other manipulations on images on the fly.",
+								"displayName": "Mallabe Images",
+								"originalName": "n8n-nodes-mallabe-images.mallabeImages"
+							},
+							"createdAt": "2025-05-22T10:26:55.693Z",
+							"updatedAt": "2026-01-28T12:53:10.730Z",
+							"authorGithubUrl": "https://github.com/mallabe/",
+							"authorName": "dinbrca",
+							"checksum": "sha512-HH6vmuDZ0S1UkyKkp8p2/puloMCgm96adYgqeQRUWyJZCecpabuCq2a3dcWnuwrJquy0nIMHrSZ6QC3BTUsIoA==",
+							"description": "Mallabe Images is an automation toolchain that allows you to process images, resize, crop and apply other manipulations on images on the fly.",
+							"displayName": "Mallabe Images",
+							"name": "n8n-nodes-mallabe-images.mallabeImages",
+							"numberOfStars": 0,
+							"numberOfDownloads": 45,
+							"packageName": "n8n-nodes-mallabe-images",
+							"npmVersion": "0.1.7",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Mallabe",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-HH6vmuDZ0S1UkyKkp8p2/puloMCgm96adYgqeQRUWyJZCecpabuCq2a3dcWnuwrJquy0nIMHrSZ6QC3BTUsIoA==",
+									"npmVersion": "0.1.7"
+								}
+							]
+						}
+					},
+					{
+						"id": 383,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-belakeai.belakeAi",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Belake_ai_5680dc019b.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Belake.ai"
+								},
+								"subtitle": "={{ $parameter[\"operation\"] }}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "chat",
+										"options": [
+											{
+												"name": "Agent",
+												"value": "agent"
+											},
+											{
+												"name": "Chat",
+												"value": "chat"
+											},
+											{
+												"name": "Datasource",
+												"value": "datasource"
+											},
+											{
+												"name": "Department",
+												"value": "department"
+											},
+											{
+												"name": "Language Model",
+												"value": "languageModel"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Get Agents",
+										"options": [
+											{
+												"name": "Get Agent by ID",
+												"value": "Get Agent by ID",
+												"action": "Get agent by id"
+											},
+											{
+												"name": "Get Agents",
+												"value": "Get Agents",
+												"action": "Get agents"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["agent"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Send Message",
+										"options": [
+											{
+												"name": "Get Chat by ID",
+												"value": "Get Chat by ID",
+												"action": "Get chat by id"
+											},
+											{
+												"name": "Get Chats",
+												"value": "Get Chats",
+												"action": "Get chats"
+											},
+											{
+												"name": "Send Message",
+												"value": "Send Message",
+												"action": "Send message"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["chat"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Get Datasources",
+										"options": [
+											{
+												"name": "Get Datasource by ID",
+												"value": "Get Datasource by ID",
+												"action": "Get datasource by id"
+											},
+											{
+												"name": "Get Datasources",
+												"value": "Get Datasources",
+												"action": "Get datasources"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["datasource"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Get Departments",
+										"options": [
+											{
+												"name": "Get Department by ID",
+												"value": "Get Department by ID",
+												"action": "Get department by id"
+											},
+											{
+												"name": "Get Departments",
+												"value": "Get Departments",
+												"action": "Get departments"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["department"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Get Language Models",
+										"options": [
+											{
+												"name": "Get Language Model by ID",
+												"value": "Get Language Model by ID",
+												"action": "Get language model by id"
+											},
+											{
+												"name": "Get Language Models",
+												"value": "Get Language Models",
+												"action": "Get language models"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["languageModel"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Belake.ai API operations",
+								"displayName": "Belake.ai",
+								"originalName": "n8n-nodes-belakeai.belakeAi",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-12-15T11:04:59.135Z",
+							"updatedAt": "2026-01-30T09:42:10.088Z",
+							"authorGithubUrl": "https://github.com/belakeaiservicos/",
+							"authorName": "rique29",
+							"checksum": "sha512-lstEH+WMTml/1IbV5QcuUsIuk6ke7GMnwJhQhwosGNCDX/SixPenfgZwBz98nJczu4ZLq9hmANY8yK4fkJUoHw==",
+							"description": "Belake.ai API operations",
+							"displayName": "Belake.ai",
+							"name": "n8n-nodes-belakeai.belakeAi",
+							"numberOfStars": 0,
+							"numberOfDownloads": 207,
+							"packageName": "n8n-nodes-belakeai",
+							"npmVersion": "1.0.4",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-lstEH+WMTml/1IbV5QcuUsIuk6ke7GMnwJhQhwosGNCDX/SixPenfgZwBz98nJczu4ZLq9hmANY8yK4fkJUoHw==",
+									"npmVersion": "1.0.4"
+								}
+							]
+						}
+					},
+					{
+						"id": 379,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-teamupcalendar.teamup",
+								"codex": {},
+								"group": ["input", "output"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Teamup_1daacfeb80.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Teamup"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "event",
+										"options": [
+											{
+												"name": "Event",
+												"value": "event",
+												"description": "Work with calendar events"
+											},
+											{
+												"name": "Subcalendar",
+												"value": "subcalendar",
+												"description": "Work with subcalendars"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getMany",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create an event",
+												"description": "Create a new event"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete an event",
+												"description": "Delete an event"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get an event",
+												"description": "Retrieve a single event by ID"
+											},
+											{
+												"name": "Get Auxiliary Info",
+												"value": "getAuxiliaryInfo",
+												"action": "Get auxiliary event info",
+												"description": "Get an event's history, comments, and signups"
+											},
+											{
+												"name": "Get Changed Events",
+												"value": "getChanged",
+												"action": "Get changed events",
+												"description": "Get events that changed since a timestamp"
+											},
+											{
+												"name": "Get Many",
+												"value": "getMany",
+												"action": "Get many events",
+												"description": "Retrieve multiple events"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search events",
+												"description": "Search events by keyword"
+											},
+											{
+												"name": "Undo",
+												"value": "undo",
+												"action": "Undo an event action",
+												"description": "Undo the last action on an event"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update an event",
+												"description": "Update an existing event"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["event"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getMany",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create an subcalendar",
+												"description": "Create a new subcalendar"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a subcalendar",
+												"description": "Delete a subcalendar"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a subcalendar",
+												"description": "Retrieve a single subcalendar by ID"
+											},
+											{
+												"name": "Get Many",
+												"value": "getMany",
+												"action": "Get many subcalendars",
+												"description": "Retrieve all subcalendars"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a subcalendar",
+												"description": "Update an existing subcalendar"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["subcalendar"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with the Teamup Calendar API",
+								"displayName": "Teamup",
+								"originalName": "n8n-nodes-teamupcalendar.teamup",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-12-12T16:37:12.780Z",
+							"updatedAt": "2026-01-30T10:11:33.069Z",
+							"authorGithubUrl": "https://github.com/Gr33ndev/",
+							"authorName": "gr33ndev",
+							"checksum": "sha512-WlYxKr4g0kp1KCN4lmkEDd3VTz7lXzfTq82+0vprofsijVBdegpOVk2hKy/ed5FtJiaomVVNjxiX1Jnh/J0AeQ==",
+							"description": "Interact with the Teamup Calendar API",
+							"displayName": "Teamup",
+							"name": "n8n-nodes-teamupcalendar.teamup",
+							"numberOfStars": 0,
+							"numberOfDownloads": 115,
+							"packageName": "n8n-nodes-teamupcalendar",
+							"npmVersion": "0.4.2",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-WlYxKr4g0kp1KCN4lmkEDd3VTz7lXzfTq82+0vprofsijVBdegpOVk2hKy/ed5FtJiaomVVNjxiX1Jnh/J0AeQ==",
+									"npmVersion": "0.4.2"
+								}
+							]
+						}
+					},
+					{
+						"id": 51,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@elevenlabs/n8n-nodes-preview-elevenlabs.elevenLabs",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Eleven_Labs_b01882b718.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "ElevenLabs"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "voice",
+										"options": [
+											{
+												"name": "Voice",
+												"value": "voice"
+											},
+											{
+												"name": "Speech",
+												"value": "speech"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "get",
+										"options": [
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a voice",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "setKeyValue",
+																"enabled": "={{$parameter[\"simplify\"]}}",
+																"properties": {
+																	"name": "={{$responseItem.name}}",
+																	"labels": "={{$responseItem.labels}}",
+																	"category": "={{$responseItem.category}}",
+																	"voice_id": "={{$responseItem.voice_id}}",
+																	"description": "={{$responseItem.description}}",
+																	"preview_url": "={{$responseItem.preview_url}}"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "={{\"/voices/\"  + $parameter[\"voice\"] }}",
+														"method": "GET"
+													}
+												},
+												"description": "Returns metadata about a specific voice"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many voices",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "voices"
+																}
+															},
+															{
+																"type": "setKeyValue",
+																"enabled": "={{$parameter[\"simplify\"]}}",
+																"properties": {
+																	"name": "={{$responseItem.name}}",
+																	"labels": "={{$responseItem.labels}}",
+																	"category": "={{$responseItem.category}}",
+																	"voice_id": "={{$responseItem.voice_id}}",
+																	"description": "={{$responseItem.description}}",
+																	"preview_url": "={{$responseItem.preview_url}}"
+																}
+															}
+														]
+													},
+													"request": {
+														"qs": {
+															"page_size": "={{$parameter[\"limit\"]}}"
+														},
+														"url": "/voices",
+														"method": "GET"
+													}
+												},
+												"description": "Returns metadata about all voices"
+											},
+											{
+												"name": "Create Clone",
+												"value": "createClone",
+												"action": "Create a voice clone",
+												"routing": {
+													"send": {
+														"preSend": [null]
+													},
+													"request": {
+														"url": "/voices/add",
+														"method": "POST",
+														"headers": {
+															"Content-Type": "multipart/form-data"
+														},
+														"returnFullResponse": true
+													}
+												},
+												"description": "Create a voice clone from audio files"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a voice",
+												"routing": {
+													"request": {
+														"url": "={{\"/voices/\" + $parameter[\"voice\"]}}",
+														"method": "DELETE"
+													}
+												},
+												"description": "Delete a specific voice"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["voice"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "textToSpeech",
+										"options": [
+											{
+												"name": "Text to Speech",
+												"value": "textToSpeech",
+												"action": "Convert text to speech",
+												"routing": {
+													"output": {
+														"postReceive": [null]
+													},
+													"request": {
+														"url": "={{\"/text-to-speech/\"+$parameter[\"voice\"]}}",
+														"encoding": "arraybuffer",
+														"returnFullResponse": true
+													}
+												},
+												"description": "Converts text into speech and returns audio"
+											},
+											{
+												"name": "Speech to Text",
+												"value": "speechToText",
+												"action": "Transcribe audio or video",
+												"routing": {
+													"send": {
+														"preSend": [null]
+													},
+													"request": {
+														"url": "/speech-to-text",
+														"method": "POST",
+														"headers": {
+															"Content-Type": "multipart/form-data"
+														}
+													}
+												},
+												"description": "Transcribe an audio or video file"
+											},
+											{
+												"name": "Speech to Speech",
+												"value": "speechToSpeech",
+												"action": "Change a voice",
+												"routing": {
+													"send": {
+														"preSend": [null]
+													},
+													"output": {
+														"postReceive": [null]
+													},
+													"request": {
+														"url": "={{\"/speech-to-speech/\"+$parameter[\"voice\"]}}",
+														"headers": {
+															"Content-Type": "multipart/form-data"
+														},
+														"encoding": "arraybuffer",
+														"returnFullResponse": true
+													}
+												},
+												"description": "Transform audio from one voice to another"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["speech"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with ElevenLabs API",
+								"displayName": "ElevenLabs",
+								"originalName": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-05-27T15:23:14.611Z",
+							"updatedAt": "2026-01-30T09:42:10.099Z",
+							"authorGithubUrl": "https://github.com/elevenlabs/elevenlabs-n8n.git",
+							"authorName": "gmrchk",
+							"checksum": "sha512-8NvWDCr0Xloh8vRn96bGJMNbFbEP13RXox1Ka+wY4qOXxwHzhEi295tmdPyWxwvVroKcBrGH1/qKCRSA26vo9A==",
+							"description": "Interact with ElevenLabs API",
+							"displayName": "ElevenLabs",
+							"name": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+							"numberOfStars": 0,
+							"numberOfDownloads": 0,
+							"packageName": "@elevenlabs/n8n-nodes-elevenlabs",
+							"npmVersion": "0.2.2",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "ElevenLabs",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-8NvWDCr0Xloh8vRn96bGJMNbFbEP13RXox1Ka+wY4qOXxwHzhEi295tmdPyWxwvVroKcBrGH1/qKCRSA26vo9A==",
+									"npmVersion": "0.2.2"
+								}
+							]
+						}
+					},
+					{
+						"id": 9,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-shortio.Shortio",
+								"codex": {},
+								"group": ["output"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Short_io_ecb8434d7e.png",
+								"outputs": ["main"],
+								"defaults": {},
+								"subtitle": "={{ $parameter[\"operation\"] }}",
+								"properties": [],
+								"description": "Short.io Node for shortening and managing links",
+								"displayName": "Short.io",
+								"originalName": "n8n-nodes-shortio.Shortio"
+							},
+							"createdAt": "2025-04-30T12:40:49.611Z",
+							"updatedAt": "2026-01-27T15:43:07.652Z",
+							"authorGithubUrl": "https://github.com/liamdmcgarrigle/",
+							"authorName": "liammcgarrigle",
+							"checksum": "sha512-DopG6TOk5Xwi0lrBmmxRb2wCw1QpsZhAMLPo704eLHe0eF9zhwxbwMZ/YxDy0fXNmc2uBwMEJBt5jKkLkOyM/A==",
+							"description": "Short.io Node for shortening and managing links",
+							"displayName": "Short.io",
+							"name": "n8n-nodes-shortio.Shortio",
+							"numberOfStars": 0,
+							"numberOfDownloads": 278,
+							"packageName": "n8n-nodes-shortio",
+							"npmVersion": "1.0.2",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-CXPgPaUIycc05VWL/eyFRMf3IGAdOBVS0phOpK1IM5YrRXfBC1uYCGC5c44+LsKrCm7g1wBuwVRuE0T2J3Xn2g==",
+									"npmVersion": "0.1.1"
+								},
+								{
+									"checksum": "sha512-DopG6TOk5Xwi0lrBmmxRb2wCw1QpsZhAMLPo704eLHe0eF9zhwxbwMZ/YxDy0fXNmc2uBwMEJBt5jKkLkOyM/A==",
+									"npmVersion": "1.0.2"
+								}
+							]
+						}
+					},
+					{
+						"id": 156,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-telli.telli",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/telli_765d1af098.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "telli"
+								},
+								"subtitle": "={{$parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "add-telli-contact",
+										"options": [
+											{
+												"name": "Add Contact",
+												"value": "add-telli-contact",
+												"action": "Add a new contact to telli",
+												"description": "Add a new contact to telli"
+											},
+											{
+												"name": "Delete Contact",
+												"value": "delete-telli-contact",
+												"action": "Delete a contact from telli",
+												"description": "Permanently delete a contact from telli"
+											},
+											{
+												"name": "Get Contact By External ID",
+												"value": "get-contact-by-external-id",
+												"action": "Get contact by external ID",
+												"description": "Retrieve detailed contact information using external contact ID"
+											},
+											{
+												"name": "Remove From Auto Dialer",
+												"value": "remove-from-auto-dialer",
+												"action": "Remove a contact from auto dialer",
+												"description": "Remove a contact from the auto dialer queue"
+											},
+											{
+												"name": "Schedule Call",
+												"value": "schedule-telli-call",
+												"action": "Schedule a call with telli",
+												"description": "Schedule a call with telli"
+											},
+											{
+												"name": "Update Contact",
+												"value": "update-telli-contact",
+												"action": "Update a contact in telli",
+												"description": "Update an existing contact in telli"
+											}
+										],
+										"displayName": "Operation",
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with the telli API",
+								"displayName": "telli",
+								"originalName": "n8n-nodes-telli.telli"
+							},
+							"createdAt": "2025-08-21T12:20:21.573Z",
+							"updatedAt": "2025-09-30T13:39:46.147Z",
+							"authorGithubUrl": "https://github.com/telli-ai/n8n-telli.git",
+							"authorName": "telli-com",
+							"checksum": "sha512-JrDWnS18UONUPYCX2pauHOuFzhqf0f+vn/I6KvEP/qr4cdA/2Qd+fUg+XpUM4rQa8df0NezfAEPs/80OLaJSTA==",
+							"description": "Interact with the telli API",
+							"displayName": "telli",
+							"name": "n8n-nodes-telli",
+							"numberOfStars": 0,
+							"numberOfDownloads": 155,
+							"packageName": "n8n-nodes-telli",
+							"npmVersion": "1.1.0",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-von/dZNHDEYVVTycl0vEgpvjzwBZWWyRxuXpI4Bg7f8VrHe5pYlI9cX9VJaJMs4bCqm9G+pBaYEtB32QEYpj4A==",
+									"npmVersion": "0.2.0"
+								},
+								{
+									"checksum": "sha512-JrDWnS18UONUPYCX2pauHOuFzhqf0f+vn/I6KvEP/qr4cdA/2Qd+fUg+XpUM4rQa8df0NezfAEPs/80OLaJSTA==",
+									"npmVersion": "1.1.0"
+								}
+							]
+						}
+					},
+					{
+						"id": 89,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@rogerrogerio/n8n-nodes-preview-rogerroger.rogerRoger",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Roger_Roger_b948383d8e.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "RogerRoger"
+								},
+								"subtitle": "={{ $parameter[\"operation\"] + \": \" + $parameter[\"resource\"] }}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "",
+										"options": [
+											{
+												"name": "Person",
+												"value": "person"
+											},
+											{
+												"name": "Organization",
+												"value": "organization"
+											},
+											{
+												"name": "Task",
+												"value": "task"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "",
+										"options": [
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get person",
+												"description": "Get person"
+											},
+											{
+												"name": "Get many",
+												"value": "getMany",
+												"action": "Get many persons",
+												"description": "Get many persons"
+											},
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create person",
+												"description": "Create person"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update person",
+												"description": "Update person"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete person",
+												"description": "Delete person"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["person"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "",
+										"options": [
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get organization",
+												"description": "Get organization"
+											},
+											{
+												"name": "Get many",
+												"value": "getMany",
+												"action": "Get many organizations",
+												"description": "Get many organizations"
+											},
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create organization",
+												"description": "Create organization"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update organization",
+												"description": "Update organization"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete organization",
+												"description": "Delete organization"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["organization"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "",
+										"options": [
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get task",
+												"description": "Get task"
+											},
+											{
+												"name": "Get many",
+												"value": "getMany",
+												"action": "Get many tasks",
+												"description": "Get many tasks"
+											},
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create task",
+												"description": "Create task"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update task",
+												"description": "Update task"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete task",
+												"description": "Delete task"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["task"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "",
+										"options": [
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get tag",
+												"description": "Get tag"
+											},
+											{
+												"name": "Get many",
+												"value": "getMany",
+												"action": "Get many tags",
+												"description": "Get many tags"
+											},
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create tag",
+												"description": "Create tag"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update tag",
+												"description": "Update tag"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete tag",
+												"description": "Delete tag"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["tag"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "",
+										"options": [
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get segment",
+												"description": "Get segment"
+											},
+											{
+												"name": "Get many",
+												"value": "getMany",
+												"action": "Get many segments",
+												"description": "Get many segments"
+											},
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create segment",
+												"description": "Create segment"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update segment",
+												"description": "Update segment"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete segment",
+												"description": "Delete segment"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["segment"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with RogerRoger API for Person, Organization and Task resources",
+								"displayName": "RogerRoger",
+								"originalName": "@rogerrogerio/n8n-nodes-rogerroger.rogerRoger",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-07-14T15:52:01.743Z",
+							"updatedAt": "2026-01-30T10:11:33.475Z",
+							"authorGithubUrl": "https://github.com/RogerRogerHQ/n8n-nodes-rogerroger.git",
+							"authorName": "royrr",
+							"checksum": "sha512-PjgMAP8y1XROsIk2CDlJ3CdkriMqK6e9A2kxYBsI/SUIMxD/FAcijs6gpVNIg5La0p0vFmaDeF/Euro0ZzWKNg==",
+							"description": "Interact with RogerRoger API for Person, Organization and Task resources",
+							"displayName": "RogerRoger",
+							"name": "@rogerrogerio/n8n-nodes-rogerroger",
+							"numberOfStars": 0,
+							"numberOfDownloads": 109,
+							"packageName": "@rogerrogerio/n8n-nodes-rogerroger",
+							"npmVersion": "1.10.0",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "RogerRoger",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-PjgMAP8y1XROsIk2CDlJ3CdkriMqK6e9A2kxYBsI/SUIMxD/FAcijs6gpVNIg5La0p0vFmaDeF/Euro0ZzWKNg==",
+									"npmVersion": "1.10.0"
+								}
+							]
+						}
+					},
+					{
+						"id": 384,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@docuseal/n8n-nodes-preview-docuseal.docuseal",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Docu_Seal_82e58f2037.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "DocuSeal"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createSubmission",
+										"options": [
+											{
+												"name": "Create Submission",
+												"value": "createSubmission",
+												"action": "Create submission",
+												"description": "Create a signature request from template"
+											},
+											{
+												"name": "Create Submission From DOCX",
+												"value": "createSubmissionFromDocx",
+												"action": "Create submission from DOCX",
+												"description": "Create a signature request from DOCX file with dynamic variables"
+											},
+											{
+												"name": "Create Submission From HTML",
+												"value": "createSubmissionFromHtml",
+												"action": "Create submission from HTML",
+												"description": "Create a signature request from HTML content"
+											},
+											{
+												"name": "Create Submission From PDF",
+												"value": "createSubmissionFromPdf",
+												"action": "Create submission from PDF",
+												"description": "Create a signature request from PDF document"
+											}
+										],
+										"displayName": "Operation",
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with DocuSeal API",
+								"displayName": "DocuSeal",
+								"originalName": "@docuseal/n8n-nodes-docuseal.docuseal"
+							},
+							"createdAt": "2025-12-15T13:56:45.145Z",
+							"updatedAt": "2025-12-15T13:56:45.145Z",
+							"authorGithubUrl": "https://github.com/docusealco/n8n-nodes-docuseal.git",
+							"authorName": "petem",
+							"checksum": "sha512-043Ppa479s5djramJ1HuoFra8WbmBxQZfXFF3i67M2ZXWvo0G+zkiC2X2MIvrmcZJ09NBbHPIyheDOuimEqtaw==",
+							"description": "Interact with DocuSeal API",
+							"displayName": "DocuSeal",
+							"name": "@docuseal/n8n-nodes-docuseal.docuseal",
+							"numberOfStars": 0,
+							"numberOfDownloads": 14,
+							"packageName": "@docuseal/n8n-nodes-docuseal",
+							"npmVersion": "1.0.2",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-043Ppa479s5djramJ1HuoFra8WbmBxQZfXFF3i67M2ZXWvo0G+zkiC2X2MIvrmcZJ09NBbHPIyheDOuimEqtaw==",
+									"npmVersion": "1.0.2"
+								}
+							]
+						}
+					},
+					{
+						"id": 191,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-outscraper.outscraper",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Outscraper_8943a51da6.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Outscraper"
+								},
+								"subtitle": "={{$parameter[\"resource\"] + \": \" + $parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "googleMaps",
+										"options": [
+											{
+												"name": "Airbnb",
+												"value": "airbnb"
+											},
+											{
+												"name": "AppStore",
+												"value": "appStore"
+											},
+											{
+												"name": "Booking",
+												"value": "booking"
+											},
+											{
+												"name": "Company Insight",
+												"value": "companyInsights"
+											},
+											{
+												"name": "Company Website Finder",
+												"value": "companyWebsiteFinder"
+											},
+											{
+												"name": "Emails & Contact",
+												"value": "emailsAndContacts"
+											},
+											{
+												"name": "Expedia",
+												"value": "expedia"
+											},
+											{
+												"name": "G2 Review",
+												"value": "g2Reviews"
+											},
+											{
+												"name": "Geocoding",
+												"value": "geocoding"
+											},
+											{
+												"name": "GetApp Review",
+												"value": "getAppReviews"
+											},
+											{
+												"name": "Google Map",
+												"value": "googleMaps"
+											},
+											{
+												"name": "Google Search",
+												"value": "googleSearch"
+											},
+											{
+												"name": "Indeed",
+												"value": "indeed"
+											},
+											{
+												"name": "Phone Identity Finder",
+												"value": "phoneIdentityFinder"
+											},
+											{
+												"name": "Phones Owner",
+												"value": "phonesOwners"
+											},
+											{
+												"name": "Product Hunt",
+												"value": "productHunt"
+											},
+											{
+												"name": "Similarweb",
+												"value": "similarweb"
+											},
+											{
+												"name": "Target Review",
+												"value": "targetReviews"
+											},
+											{
+												"name": "TikTok Profile",
+												"value": "tiktokProfiles"
+											},
+											{
+												"name": "TripAdvisor",
+												"value": "tripadvisor"
+											},
+											{
+												"name": "Trustpilot",
+												"value": "trustpilot"
+											},
+											{
+												"name": "Twitter Profile",
+												"value": "twitterProfiles"
+											},
+											{
+												"name": "Universal AI Scraper",
+												"value": "universalScraper"
+											},
+											{
+												"name": "Walmart Review",
+												"value": "walmartReviews"
+											},
+											{
+												"name": "WebPage Screenshoter",
+												"value": "webPageScreenshoter"
+											},
+											{
+												"name": "Whitepages Addresses Scraper",
+												"value": "whitepagesAddresses"
+											},
+											{
+												"name": "Yellow Pages Search",
+												"value": "yellowPagesSearch"
+											},
+											{
+												"name": "Yelp",
+												"value": "yelp"
+											},
+											{
+												"name": "YouTube",
+												"value": "youtube"
+											},
+											{
+												"name": "Zillow",
+												"value": "zillow"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search for businesses on google maps",
+												"routing": {
+													"send": {
+														"preSend": [null]
+													},
+													"request": {
+														"url": "/maps/search-v3",
+														"method": "GET"
+													}
+												},
+												"description": "Search for businesses on Google Maps"
+											},
+											{
+												"name": "Get Reviews",
+												"value": "reviews",
+												"action": "Get reviews for a place on google maps",
+												"routing": {
+													"request": {
+														"url": "/maps/reviews-v3",
+														"method": "GET"
+													}
+												},
+												"description": "Get reviews for a place on Google Maps"
+											},
+											{
+												"name": "Get Photos",
+												"value": "photos",
+												"action": "Get photos for a place on google maps",
+												"routing": {
+													"request": {
+														"url": "/maps/photos-v3",
+														"method": "GET"
+													}
+												},
+												"description": "Get photos for a place on Google Maps"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["googleMaps"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search on google",
+												"routing": {
+													"request": {
+														"url": "/google-search-v3",
+														"method": "GET"
+													}
+												},
+												"description": "Search on Google"
+											},
+											{
+												"name": "Search Careers",
+												"value": "searchCareers",
+												"action": "Search for career listings on google",
+												"routing": {
+													"request": {
+														"url": "/google-search-careers",
+														"method": "GET"
+													}
+												},
+												"description": "Search for career listings on Google"
+											},
+											{
+												"name": "Search Events",
+												"value": "searchEvents",
+												"action": "Search for events on google",
+												"routing": {
+													"request": {
+														"url": "/google-search-events",
+														"method": "GET"
+													}
+												},
+												"description": "Search for events on Google"
+											},
+											{
+												"name": "Search Images",
+												"value": "searchImages",
+												"action": "Search for images on google",
+												"routing": {
+													"request": {
+														"url": "/google-search-images-v2",
+														"method": "GET"
+													}
+												},
+												"description": "Search for images on Google"
+											},
+											{
+												"name": "Search News",
+												"value": "searchNews",
+												"action": "Search for news on google",
+												"routing": {
+													"request": {
+														"url": "/google-search-news",
+														"method": "GET"
+													}
+												},
+												"description": "Search for news on Google"
+											},
+											{
+												"name": "Search Shopping",
+												"value": "searchShopping",
+												"action": "Search for shopping products on google",
+												"routing": {
+													"request": {
+														"url": "/google-search-shopping",
+														"method": "GET"
+													}
+												},
+												"description": "Search for shopping products on Google"
+											},
+											{
+												"name": "Search Videos",
+												"value": "searchVideos",
+												"action": "Search for videos on google",
+												"routing": {
+													"request": {
+														"url": "/google-search-videos",
+														"method": "GET"
+													}
+												},
+												"description": "Search for videos on Google"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["googleSearch"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "reviews",
+										"options": [
+											{
+												"name": "Get Reviews",
+												"value": "reviews",
+												"action": "Get reviews from G2",
+												"routing": {
+													"request": {
+														"url": "/g2/reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Get reviews from G2"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["g2Reviews"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "business",
+										"options": [
+											{
+												"name": "Get Business Info",
+												"value": "business",
+												"action": "Get business information from trustpilot",
+												"routing": {
+													"request": {
+														"url": "/trustpilot",
+														"method": "GET"
+													}
+												},
+												"description": "Get business information from Trustpilot"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search businesses on trustpilot",
+												"routing": {
+													"request": {
+														"url": "/trustpilot/search",
+														"method": "GET"
+													}
+												},
+												"description": "Search businesses on Trustpilot"
+											},
+											{
+												"name": "Get Reviews",
+												"value": "reviews",
+												"action": "Get reviews from trustpilot",
+												"routing": {
+													"request": {
+														"url": "/trustpilot/reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Get reviews from Trustpilot"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["trustpilot"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "reviews",
+										"options": [
+											{
+												"name": "Get Reviews",
+												"value": "reviews",
+												"action": "Get reviews from trip advisor",
+												"routing": {
+													"request": {
+														"url": "/tripadvisor-reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Get reviews from TripAdvisor"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search on trip advisor",
+												"routing": {
+													"request": {
+														"url": "/tripadvisor-search",
+														"method": "GET"
+													}
+												},
+												"description": "Search on TripAdvisor"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["tripadvisor"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search on expedia",
+												"routing": {
+													"request": {
+														"url": "/expedia/search",
+														"method": "GET"
+													}
+												},
+												"description": "Search on Expedia"
+											},
+											{
+												"name": "Get Reviews",
+												"value": "reviews",
+												"action": "Get reviews from expedia",
+												"routing": {
+													"request": {
+														"url": "/expedia/reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Get reviews from Expedia"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["expedia"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search for videos on you tube",
+												"description": "Search for videos on YouTube"
+											},
+											{
+												"name": "Channel",
+												"value": "channel",
+												"action": "Get you tube channel information",
+												"description": "Get YouTube channel information"
+											},
+											{
+												"name": "Comments",
+												"value": "comments",
+												"action": "Get comments from you tube videos",
+												"description": "Get comments from YouTube videos"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["youtube"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search on yelp",
+												"routing": {
+													"request": {
+														"url": "/yelp-search",
+														"method": "GET"
+													}
+												},
+												"description": "Search on Yelp"
+											},
+											{
+												"name": "Business",
+												"value": "business",
+												"action": "Get business information from yelp",
+												"routing": {
+													"request": {
+														"url": "/yelp-business",
+														"method": "GET"
+													}
+												},
+												"description": "Get business information from Yelp"
+											},
+											{
+												"name": "Reviews",
+												"value": "reviews",
+												"action": "Get reviews from yelp businesses",
+												"routing": {
+													"request": {
+														"url": "/yelp-reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Get reviews from Yelp businesses"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["yelp"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "reviews",
+										"options": [
+											{
+												"name": "Reviews",
+												"value": "reviews",
+												"action": "Get reviews from product hunt",
+												"routing": {
+													"request": {
+														"url": "/producthunt-reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Get reviews from Product Hunt"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["productHunt"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "jobSearch",
+										"options": [
+											{
+												"name": "Job Search",
+												"value": "jobSearch",
+												"action": "Get jobs from indeed",
+												"routing": {
+													"request": {
+														"url": "/indeed-jobs",
+														"method": "GET"
+													}
+												},
+												"description": "Get jobs from Indeed"
+											},
+											{
+												"name": "Reviews",
+												"value": "reviews",
+												"action": "Get reviews from indeed companies",
+												"routing": {
+													"request": {
+														"url": "/indeed-reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Get reviews from Indeed companies"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["indeed"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search on booking",
+												"routing": {
+													"request": {
+														"url": "/booking/search",
+														"method": "GET"
+													}
+												},
+												"description": "Search results from Booking.com"
+											},
+											{
+												"name": "Reviews",
+												"value": "reviews",
+												"action": "Get reviews from booking",
+												"routing": {
+													"request": {
+														"url": "/booking/reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Get reviews from Booking.com hotels"
+											},
+											{
+												"name": "Prices",
+												"value": "prices",
+												"action": "Get prices from booking",
+												"routing": {
+													"request": {
+														"url": "/booking/prices",
+														"method": "GET"
+													}
+												},
+												"description": "Get prices from Booking.com hotels"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["booking"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search on zillow",
+												"routing": {
+													"request": {
+														"url": "/zillow/search",
+														"method": "GET"
+													}
+												},
+												"description": "Returns listings from Zillow"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["zillow"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "reviews",
+										"options": [
+											{
+												"name": "Reviews",
+												"value": "reviews",
+												"action": "Get reviews from appstore",
+												"routing": {
+													"request": {
+														"url": "/appstore/reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Returns reviews from AppStore apps"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["appStore"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "geocode",
+										"options": [
+											{
+												"name": "Geocode",
+												"value": "geocode",
+												"action": "Geocode address",
+												"routing": {
+													"request": {
+														"url": "/geocoding",
+														"method": "GET"
+													}
+												},
+												"description": "Translates human-readable addresses into locations on the map"
+											},
+											{
+												"name": "Reverse Geocode",
+												"value": "reverseGeocode",
+												"action": "Reverse geocode coordinates",
+												"routing": {
+													"request": {
+														"url": "/reverse-geocoding",
+														"method": "GET"
+													}
+												},
+												"description": "Translate locations on the map into human-readable addresses"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["geocoding"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getInsights",
+										"options": [
+											{
+												"name": "Get Insights",
+												"value": "getInsights",
+												"action": "Get company insights",
+												"routing": {
+													"request": {
+														"url": "/company-insights",
+														"method": "GET"
+													}
+												},
+												"description": "Finds company details such as revenue, size, founding year, public status, etc"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["companyInsights"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "scrape",
+										"options": [
+											{
+												"name": "Scrape",
+												"value": "scrape",
+												"action": "Scrape web page",
+												"routing": {
+													"request": {
+														"url": "/universal-scraper",
+														"method": "GET"
+													}
+												},
+												"description": "Extracts the data you need from any web page by using AI"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["universalScraper"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "screenshot",
+										"options": [
+											{
+												"name": "Screenshot",
+												"value": "screenshot",
+												"action": "Screenshot web page",
+												"routing": {
+													"request": {
+														"url": "/screenshoter",
+														"method": "GET"
+													}
+												},
+												"description": "Captures high-quality screenshots of any webpage"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["webPageScreenshoter"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search on airbnb",
+												"routing": {
+													"request": {
+														"url": "/airbnb/search",
+														"method": "GET"
+													}
+												},
+												"description": "Returns search results from Airbnb"
+											},
+											{
+												"name": "Reviews",
+												"value": "reviews",
+												"action": "Get reviews from airbnb",
+												"routing": {
+													"request": {
+														"url": "/airbnb/reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Returns reviews from Airbnb accommodations"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["airbnb"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "reviews",
+										"options": [
+											{
+												"name": "Reviews",
+												"value": "reviews",
+												"action": "Get reviews from walmart",
+												"routing": {
+													"request": {
+														"url": "/walmart/reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Returns reviews from a list of Walmart products"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["walmartReviews"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "reviews",
+										"options": [
+											{
+												"name": "Reviews",
+												"value": "reviews",
+												"action": "Get reviews from target",
+												"routing": {
+													"request": {
+														"url": "/target/reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Returns reviews from a list of Target products"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["targetReviews"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "profiles",
+										"options": [
+											{
+												"name": "Profiles",
+												"value": "profiles",
+												"action": "Get twitter profiles",
+												"routing": {
+													"request": {
+														"url": "/twitter/profiles",
+														"method": "GET"
+													}
+												},
+												"description": "Returns information from the list of Twitter profiles"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["twitterProfiles"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "profiles",
+										"options": [
+											{
+												"name": "Profiles",
+												"value": "profiles",
+												"action": "Get tik tok profiles",
+												"routing": {
+													"request": {
+														"url": "/tiktok/profiles",
+														"method": "GET"
+													}
+												},
+												"description": "Returns information from the list of TikTok profiles"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["tiktokProfiles"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "reviews",
+										"options": [
+											{
+												"name": "Reviews",
+												"value": "reviews",
+												"action": "Get reviews from get app",
+												"routing": {
+													"request": {
+														"url": "/getapp/reviews",
+														"method": "GET"
+													}
+												},
+												"description": "Returns reviews from GetApp apps"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["getAppReviews"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search yellow pages",
+												"routing": {
+													"request": {
+														"url": "/yellowpages-search",
+														"method": "GET"
+													}
+												},
+												"description": "Returns search results from Yellow Pages"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["yellowPagesSearch"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "findIdentity",
+										"options": [
+											{
+												"name": "Find Identity",
+												"value": "findIdentity",
+												"action": "Find phone identity",
+												"routing": {
+													"request": {
+														"url": "/whitepages-phones",
+														"method": "GET"
+													}
+												},
+												"description": "Returns insights about phone number owners (name, address, etc.)"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["phoneIdentityFinder"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "scrapeAddresses",
+										"options": [
+											{
+												"name": "Scrape Addresses",
+												"value": "scrapeAddresses",
+												"action": "Scrape whitepages addresses",
+												"routing": {
+													"request": {
+														"url": "/whitepages-addresses",
+														"method": "GET"
+													}
+												},
+												"description": "Returns insights about addresses and their residents"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["whitepagesAddresses"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getOwners",
+										"options": [
+											{
+												"name": "Get Owners",
+												"value": "getOwners",
+												"action": "Get phone owners",
+												"routing": {
+													"request": {
+														"url": "/phones-owners",
+														"method": "GET"
+													}
+												},
+												"description": "Returns insights about phone number owners (name, address, etc.)"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["phonesOwners"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getData",
+										"options": [
+											{
+												"name": "Get Data",
+												"value": "getData",
+												"action": "Get similarweb data",
+												"routing": {
+													"request": {
+														"url": "/similarweb",
+														"method": "GET"
+													}
+												},
+												"description": "Returns data from Similarweb businesses"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["similarweb"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "findWebsite",
+										"options": [
+											{
+												"name": "Find Website",
+												"value": "findWebsite",
+												"action": "Find company website",
+												"routing": {
+													"request": {
+														"url": "/company-website-finder",
+														"method": "GET"
+													}
+												},
+												"description": "Returns data from Company Website Finder businesses"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["companyWebsiteFinder"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "findEmailsAndContacts",
+										"options": [
+											{
+												"name": "Find Emails & Contacts",
+												"value": "findEmailsAndContacts",
+												"action": "Find emails and contacts",
+												"routing": {
+													"request": {
+														"url": "/emails-and-contacts",
+														"method": "GET"
+													}
+												},
+												"description": "Finds email addresses, social links, and phones from domains"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["emailsAndContacts"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with Outscraper API",
+								"displayName": "Outscraper",
+								"originalName": "n8n-nodes-outscraper.outscraper",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-09-22T16:21:48.908Z",
+							"updatedAt": "2026-01-30T09:42:10.407Z",
+							"authorGithubUrl": "https://github.com/outscraper/",
+							"authorName": "outscraper-api",
+							"checksum": "sha512-LGszy9HLSXmYDmlc3k0J1kspBw3z/ZmdpSKDhP0aJUbzo8dbJklhhyxxA5k+8ZKaT7SaqmlphBG50R93+kX/dA==",
+							"description": "Interact with Outscraper API",
+							"displayName": "Outscraper",
+							"name": "n8n-nodes-outscraper",
+							"numberOfStars": 1,
+							"numberOfDownloads": 205,
+							"packageName": "n8n-nodes-outscraper",
+							"npmVersion": "0.2.0",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Outscraper",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-8NGt7Z9zSxEJN4eXJCaTpgB9+VCSU6OZYDoedr3HWLcVghy2hVRMLOiLIywvTaohlTQe2bFjBBt+Fu+g3W9txw==",
+									"npmVersion": "0.1.7"
+								},
+								{
+									"checksum": "sha512-TroGhAxGoYfMiu0yOChoH8QzQQlLndJy9Ypfzlu5YiH9fUQ/keYzju/Afv3CFxCwtvauGN43bBAys3glCBlkKg==",
+									"npmVersion": "0.1.9"
+								},
+								{
+									"checksum": "sha512-LGszy9HLSXmYDmlc3k0J1kspBw3z/ZmdpSKDhP0aJUbzo8dbJklhhyxxA5k+8ZKaT7SaqmlphBG50R93+kX/dA==",
+									"npmVersion": "0.2.0"
+								}
+							]
+						}
+					},
+					{
+						"id": 403,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@lusha-org/n8n-nodes-preview-lusha.lusha",
+								"codex": {},
+								"group": ["input"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Lusha_3c59a76c4b.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Lusha"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "contact",
+										"options": [
+											{
+												"name": "Contact",
+												"value": "contact"
+											},
+											{
+												"name": "Company",
+												"value": "company"
+											}
+										],
+										"description": "The resource to operate on",
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "enrichSingle",
+										"options": [
+											{
+												"name": "Enrich Single",
+												"value": "enrichSingle",
+												"action": "Enrich a single contact",
+												"description": "Enrich a single contact with additional information"
+											},
+											{
+												"name": "Enrich Bulk",
+												"value": "enrichBulk",
+												"action": "Enrich contacts in bulk",
+												"description": "Enrich multiple contacts with additional information"
+											},
+											{
+												"name": "Search Contacts",
+												"value": "searchContacts",
+												"action": "Search for contacts",
+												"description": "Search and discover new contacts based on criteria"
+											},
+											{
+												"name": "Enrich from Search",
+												"value": "enrichFromSearch",
+												"action": "Enrich contacts from search results",
+												"description": "Enrich contacts found through a previous search"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["contact"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "enrichSingle",
+										"options": [
+											{
+												"name": "Enrich Single",
+												"value": "enrichSingle",
+												"action": "Enrich a single company",
+												"description": "Enrich a single company with additional information"
+											},
+											{
+												"name": "Enrich Bulk",
+												"value": "enrichBulk",
+												"action": "Enrich companies in bulk",
+												"description": "Enrich multiple companies with additional information"
+											},
+											{
+												"name": "Search Companies",
+												"value": "searchCompanies",
+												"action": "Search for companies",
+												"description": "Search and discover new companies based on criteria"
+											},
+											{
+												"name": "Enrich from Search",
+												"value": "enrichFromSearch",
+												"action": "Enrich companies from search results",
+												"description": "Enrich companies found through a previous search"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["company"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Lusha API integration for contact and company enrichment with prospecting",
+								"displayName": "Lusha",
+								"originalName": "@lusha-org/n8n-nodes-lusha.lusha",
+								"usableAsTool": true
+							},
+							"createdAt": "2026-01-14T09:20:31.795Z",
+							"updatedAt": "2026-01-30T09:42:09.697Z",
+							"authorGithubUrl": "https://github.com/lusha-oss/n8n-nodes-lusha.git",
+							"authorName": "lusha-oss",
+							"checksum": "sha512-g6QRSJYnWOUikCRLqJydqCZ0dbSZi1sotWEfVVONqNsJddT59QBQCBzaFWFvYJ6vCfe8iUR+va2xQfVFXoqx/g==",
+							"description": "Lusha API integration for contact and company enrichment with prospecting",
+							"displayName": "Lusha",
+							"name": "@lusha-org/n8n-nodes-lusha.lusha",
+							"numberOfStars": 2,
+							"numberOfDownloads": 9,
+							"packageName": "@lusha-org/n8n-nodes-lusha",
+							"npmVersion": "1.0.10",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Lusha",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-g6QRSJYnWOUikCRLqJydqCZ0dbSZi1sotWEfVVONqNsJddT59QBQCBzaFWFvYJ6vCfe8iUR+va2xQfVFXoqx/g==",
+									"npmVersion": "1.0.10"
+								}
+							]
+						}
+					},
+					{
+						"id": 190,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-dart.dart",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Dart_3829309c22.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Dart"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "Attachment",
+										"options": [
+											{
+												"name": "Attachment",
+												"value": "Attachment"
+											},
+											{
+												"name": "Comment",
+												"value": "Comment"
+											},
+											{
+												"name": "Config",
+												"value": "Config"
+											},
+											{
+												"name": "Dartboard",
+												"value": "Dartboard"
+											},
+											{
+												"name": "Doc",
+												"value": "Doc"
+											},
+											{
+												"name": "Folder",
+												"value": "Folder"
+											},
+											{
+												"name": "Help Center Article",
+												"value": "Help Center Article"
+											},
+											{
+												"name": "Skill",
+												"value": "Skill"
+											},
+											{
+												"name": "Task",
+												"value": "Task"
+											},
+											{
+												"name": "View",
+												"value": "View"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Add Task Comment",
+										"options": [
+											{
+												"name": "Add Task Comment",
+												"value": "Add Task Comment",
+												"action": "Create a new comment",
+												"routing": {
+													"request": {
+														"url": "=/comments",
+														"method": "POST"
+													}
+												},
+												"description": "Record a new comment that the user intends to add to a given task. This will save the comment in Dart for later access, search, etc."
+											},
+											{
+												"name": "List Comments",
+												"value": "List Comments",
+												"action": "List comments",
+												"routing": {
+													"request": {
+														"url": "=/comments/list",
+														"method": "GET"
+													}
+												},
+												"description": "List comments for a task with filtering options. Filter by author, text content, or date range. Sort by date or hierarchical thread order. Task ID required. Supports pagination."
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["Comment"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Get Config",
+										"options": [
+											{
+												"name": "Get Config",
+												"value": "Get Config",
+												"action": "Get user space configuration",
+												"routing": {
+													"request": {
+														"url": "=/config",
+														"method": "GET"
+													}
+												},
+												"description": "Get information about the user's space, including all of the possible values that can be provided to other endpoints"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["Config"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Get Dartboard",
+										"options": [
+											{
+												"name": "Get Dartboard",
+												"value": "Get Dartboard",
+												"action": "Retrieve an existing dartboard",
+												"routing": {
+													"request": {
+														"url": "=/dartboards/{{$parameter[\"id\"]}}",
+														"method": "GET"
+													}
+												},
+												"description": "Retrieve an existing dartboard. This will return the dartboard's information, including the title and description."
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["Dartboard"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Create Doc",
+										"options": [
+											{
+												"name": "Create Doc",
+												"value": "Create Doc",
+												"action": "Create a new doc",
+												"routing": {
+													"request": {
+														"url": "=/docs",
+														"method": "POST"
+													}
+												},
+												"description": "Record a new doc that the user intends to write down. This will save the doc in Dart for later access, search, etc. By default the created doc will be in the Docs folder. More information can be included in the text."
+											},
+											{
+												"name": "Delete Doc",
+												"value": "Delete Doc",
+												"action": "Delete an existing doc",
+												"routing": {
+													"request": {
+														"url": "=/docs/{{$parameter[\"id\"]}}",
+														"method": "DELETE"
+													}
+												},
+												"description": "Move an existing doc to the trash, where it can be recovered if needed. Nothing else about the doc will be changed."
+											},
+											{
+												"name": "Get Doc",
+												"value": "Get Doc",
+												"action": "Retrieve an existing doc",
+												"routing": {
+													"request": {
+														"url": "=/docs/{{$parameter[\"id\"]}}",
+														"method": "GET"
+													}
+												},
+												"description": "Retrieve an existing doc. This will return the doc's information, including the title, folder, text and others."
+											},
+											{
+												"name": "List Docs",
+												"value": "List Docs",
+												"action": "List docs",
+												"routing": {
+													"request": {
+														"url": "=/docs/list",
+														"method": "GET"
+													}
+												},
+												"description": "List docs with filtering and search capabilities. Filter by folder, title, text content, or use full-text search. Sort by creation/update date or title. Supports pagination."
+											},
+											{
+												"name": "Update Doc",
+												"value": "Update Doc",
+												"action": "Update an existing doc",
+												"routing": {
+													"request": {
+														"url": "=/docs/{{$parameter[\"id\"]}}",
+														"method": "PUT"
+													}
+												},
+												"description": "Update certain properties of an existing doc. This will save the doc in Dart for later access, search, etc. Any properties that are not specified will not be changed."
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["Doc"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Get Folder",
+										"options": [
+											{
+												"name": "Get Folder",
+												"value": "Get Folder",
+												"action": "Retrieve an existing folder",
+												"routing": {
+													"request": {
+														"url": "=/folders/{{$parameter[\"id\"]}}",
+														"method": "GET"
+													}
+												},
+												"description": "Retrieve an existing folder. This will return the folder's information, including the title, description, all docs within it, and others."
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["Folder"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "List Help Center Articles",
+										"options": [
+											{
+												"name": "List Help Center Articles",
+												"value": "List Help Center Articles",
+												"action": "List help center articles by query",
+												"routing": {
+													"request": {
+														"url": "=/help-center-articles/list",
+														"method": "GET"
+													}
+												},
+												"description": "Search for up to two help center articles by their semantic similarity to a short (1-5 word) query"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["Help Center Article"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Retrieve Skill By Title",
+										"options": [
+											{
+												"name": "Retrieve Skill By Title",
+												"value": "Retrieve Skill By Title",
+												"action": "Retrieve a skill by title",
+												"routing": {
+													"request": {
+														"url": "=/skills/by-title",
+														"method": "GET"
+													}
+												},
+												"description": "Retrieve a skill by its title. Skills are user-defined instructions or templates for performing specific task types in the workspace. Returns the skill's title and instructions if found."
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["Skill"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Add Task Time Tracking",
+										"options": [
+											{
+												"name": "Add Task Time Tracking",
+												"value": "Add Task Time Tracking",
+												"action": "Add a time tracking entry to a task",
+												"routing": {
+													"request": {
+														"url": "=/tasks/{{$parameter[\"id\"]}}/time-tracking",
+														"method": "POST"
+													}
+												},
+												"description": "Record an additional time tracking entry on a task and return the updated task with refreshed time tracking"
+											},
+											{
+												"name": "Create Task",
+												"value": "Create Task",
+												"action": "Create a new task",
+												"routing": {
+													"request": {
+														"url": "=/tasks",
+														"method": "POST"
+													}
+												},
+												"description": "Record a new task that the user intends to do. By default the task will be assigned to the current user, have an unstarted status, have no parent, and be in the default dartboard. More information can be included in the description."
+											},
+											{
+												"name": "Delete Task",
+												"value": "Delete Task",
+												"action": "Delete an existing task",
+												"routing": {
+													"request": {
+														"url": "=/tasks/{{$parameter[\"id\"]}}",
+														"method": "DELETE"
+													}
+												},
+												"description": "Move an existing task to the trash, where it can be recovered if needed. Nothing else about the task will be changed."
+											},
+											{
+												"name": "Get Task",
+												"value": "Get Task",
+												"action": "Retrieve an existing task",
+												"routing": {
+													"request": {
+														"url": "=/tasks/{{$parameter[\"id\"]}}",
+														"method": "GET"
+													}
+												},
+												"description": "Retrieve an existing task. This will return the task's information, including the title, dartboard, status, description and others."
+											},
+											{
+												"name": "List Tasks",
+												"value": "List Tasks",
+												"action": "List tasks",
+												"routing": {
+													"request": {
+														"url": "=/tasks/list",
+														"method": "GET"
+													}
+												},
+												"description": "List tasks with powerful filtering options. Filter by dartboard, status, assignee, tags, priority, dates, completion state, view, and more. Supports pagination with limit/offset."
+											},
+											{
+												"name": "Move Task",
+												"value": "Move Task",
+												"action": "Move a task within its dartboard",
+												"routing": {
+													"request": {
+														"url": "=/tasks/{{$parameter[\"id\"]}}/move",
+														"method": "POST"
+													}
+												},
+												"description": "Move a task to a specific position within results sorted by the order field. Use afterTaskId to place the task after a specific task, or beforeTaskId to place it before one."
+											},
+											{
+												"name": "Update Task",
+												"value": "Update Task",
+												"action": "Update an existing task",
+												"routing": {
+													"request": {
+														"url": "=/tasks/{{$parameter[\"id\"]}}",
+														"method": "PUT"
+													}
+												},
+												"description": "Update properties of an existing task. For customProperties, use property NAME (not ID) as key. Get property names from workspace config. Example: {\"customTextProperty\": \"Some text\"}. Fields not provided are unchanged."
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["Task"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Add Task Attachment From Url",
+										"options": [
+											{
+												"name": "Add Task Attachment From Url",
+												"value": "Add Task Attachment From Url",
+												"action": "Attach a file from a provided URL to a task",
+												"routing": {
+													"request": {
+														"url": "=/tasks/{{$parameter[\"id\"]}}/attachments/from-url",
+														"method": "POST"
+													}
+												},
+												"description": "Attach a file from a provided URL to a task. The file will be downloaded and attached asynchronously. This operation may take a few moments to complete."
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["Attachment"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "Get View",
+										"options": [
+											{
+												"name": "Get View",
+												"value": "Get View",
+												"action": "Retrieve an existing view",
+												"routing": {
+													"request": {
+														"url": "=/views/{{$parameter[\"id\"]}}",
+														"method": "GET"
+													}
+												},
+												"description": "Retrieve an existing view. This will return the view's information, including the title, description, and others."
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["View"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "POST /comments",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Comment"],
+												"operation": ["Add Task Comment"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /comments/list",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Comment"],
+												"operation": ["List Comments"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /config",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Config"],
+												"operation": ["Get Config"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /dartboards/{ID}",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Dartboard"],
+												"operation": ["Get Dartboard"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "POST /docs",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Doc"],
+												"operation": ["Create Doc"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /docs/{ID}",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Doc"],
+												"operation": ["Get Doc"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "PUT /docs/{ID}",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Doc"],
+												"operation": ["Update Doc"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "DELETE /docs/{ID}",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Doc"],
+												"operation": ["Delete Doc"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /docs/list",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Doc"],
+												"operation": ["List Docs"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /folders/{ID}",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Folder"],
+												"operation": ["Get Folder"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /help-center-articles/list",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Help Center Article"],
+												"operation": ["List Help Center Articles"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /skills/by-title",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Skill"],
+												"operation": ["Retrieve Skill By Title"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "POST /tasks",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Task"],
+												"operation": ["Create Task"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /tasks/{ID}",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Task"],
+												"operation": ["Get Task"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "PUT /tasks/{ID}",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Task"],
+												"operation": ["Update Task"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "DELETE /tasks/{ID}",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Task"],
+												"operation": ["Delete Task"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "POST /tasks/{ID}/attachments/from-url",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Attachment"],
+												"operation": ["Add Task Attachment From Url"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "POST /tasks/{ID}/move",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Task"],
+												"operation": ["Move Task"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "POST /tasks/{ID}/time-tracking",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Task"],
+												"operation": ["Add Task Time Tracking"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /tasks/list",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["Task"],
+												"operation": ["List Tasks"]
+											}
+										}
+									},
+									{
+										"name": "operation",
+										"type": "notice",
+										"default": "",
+										"displayName": "GET /views/{ID}",
+										"typeOptions": {
+											"theme": "info"
+										},
+										"displayOptions": {
+											"show": {
+												"resource": ["View"],
+												"operation": ["Get View"]
+											}
+										}
+									}
+								],
+								"description": "Dart streamlines project management so your team can get back to work that matters.",
+								"displayName": "Dart",
+								"originalName": "n8n-nodes-dart.dart",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-09-22T15:21:31.886Z",
+							"updatedAt": "2026-01-30T09:42:09.715Z",
+							"authorGithubUrl": "https://github.com/its-dart/",
+							"authorName": "dart-software",
+							"checksum": "sha512-hMNAYZBTcztpVZXHV8FaL+13W0LAfq8G++BJ2nbZ5zCinO9BAbCNkkcGCInbfQY6m3XHIhhxPlEr0lRbVg+pWw==",
+							"description": "Dart streamlines project management so your team can get back to work that matters.",
+							"displayName": "Dart",
+							"name": "n8n-nodes-dart",
+							"numberOfStars": 0,
+							"numberOfDownloads": 180,
+							"packageName": "n8n-nodes-dart",
+							"npmVersion": "0.2.4",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Dart",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-KKe91vqdmn+REatptb4nfBs9LVLBDoycjYI07sVEaTYRDPVNpiw2M7EfNU/FOFHsGlHErfIWM//WQ9ZrdY7ktQ==",
+									"npmVersion": "0.2.2"
+								},
+								{
+									"checksum": "sha512-hMNAYZBTcztpVZXHV8FaL+13W0LAfq8G++BJ2nbZ5zCinO9BAbCNkkcGCInbfQY6m3XHIhhxPlEr0lRbVg+pWw==",
+									"npmVersion": "0.2.4"
+								}
+							]
+						}
+					},
+					{
+						"id": 194,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@telnyx/n8n-nodes-preview-telnyx-ai.telnyxAi",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Telnyx_AI_d3ea2a3804.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Telnyx AI"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "chat",
+										"options": [
+											{
+												"name": "Assistant",
+												"value": "assistants"
+											},
+											{
+												"name": "Assistant Event",
+												"value": "assistantEvents"
+											},
+											{
+												"name": "Chat",
+												"value": "chat"
+											},
+											{
+												"name": "Conversation",
+												"value": "conversations"
+											},
+											{
+												"name": "Voice",
+												"value": "voice"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getAll",
+										"options": [
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many chat models",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "data"
+																}
+															},
+															{
+																"type": "setKeyValue",
+																"enabled": "={{$parameter[\"simplify\"]}}",
+																"properties": {
+																	"id": "={{$responseItem.id}}",
+																	"created": "={{$responseItem.created}}",
+																	"owned_by": "={{$responseItem.owned_by}}",
+																	"languages": "={{$responseItem.languages}}",
+																	"parameters": "={{$responseItem.parameters}}",
+																	"context_length": "={{$responseItem.context_length}}"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "/v2/ai/models",
+														"method": "GET"
+													}
+												},
+												"description": "Returns metadata about many chat models"
+											},
+											{
+												"name": "Create Chat Completion",
+												"value": "createChatCompletion",
+												"action": "Create chat completion",
+												"routing": {
+													"send": {
+														"preSend": [null]
+													},
+													"request": {
+														"url": "/v2/ai/chat/completions",
+														"method": "POST"
+													}
+												},
+												"description": "Chat a new chat completion with a language model"
+											},
+											{
+												"name": "Summarize File",
+												"value": "summarizeFile",
+												"action": "Summarize file content",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "data"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "/v2/ai/summarize",
+														"method": "POST"
+													}
+												},
+												"description": "Generate a summary of a file's contents"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["chat"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getAll",
+										"options": [
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many voices",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "voices"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "/v2/text-to-speech/voices",
+														"method": "GET"
+													}
+												},
+												"description": "Returns metadata about many voices"
+											},
+											{
+												"name": "Text to Speech",
+												"value": "textToSpeech",
+												"action": "Convert text to speech",
+												"routing": {
+													"output": {
+														"postReceive": [null]
+													},
+													"request": {
+														"url": "/v2/text-to-speech/speech",
+														"method": "POST",
+														"encoding": "arraybuffer",
+														"returnFullResponse": true
+													}
+												},
+												"description": "Converts text into speech and returns audio"
+											},
+											{
+												"name": "Speech to Text",
+												"value": "speechToText",
+												"action": "Transcribe audio",
+												"routing": {
+													"send": {
+														"preSend": [null]
+													},
+													"request": {
+														"url": "/v2/ai/audio/transcriptions",
+														"method": "POST",
+														"headers": {
+															"Content-Type": "multipart/form-data"
+														}
+													}
+												},
+												"description": "Transcribe an audio file"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["voice"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getAll",
+										"options": [
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many assistants",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "data"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "/v2/ai/assistants",
+														"method": "GET"
+													}
+												},
+												"description": "Returns a list of many AI Assistants configured by the user"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get an assistant",
+												"routing": {
+													"request": {
+														"url": "=/v2/ai/assistants/{{$parameter[\"assistant\"]}}",
+														"method": "GET"
+													}
+												},
+												"description": "Returns a specific AI Assistant by ID"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["assistants"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getAll",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a scheduled event",
+												"routing": {
+													"send": {
+														"preSend": [null]
+													},
+													"request": {
+														"url": "=/v2/ai/assistants/{{$parameter[\"assistant\"]}}/scheduled_events",
+														"method": "POST"
+													}
+												},
+												"description": "Create a new scheduled event for an assistant"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many events",
+												"routing": {
+													"send": {
+														"paginate": "page_number",
+														"property": "page_size"
+													},
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "data"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "=/v2/ai/assistants/{{$parameter[\"assistant\"]}}/scheduled_events",
+														"method": "GET"
+													}
+												},
+												"description": "Get scheduled events for an assistant with pagination and filtering"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get an event",
+												"routing": {
+													"request": {
+														"url": "=/v2/ai/assistants/{{$parameter[\"assistant\"]}}/scheduled_events/{{$parameter[\"eventId\"]}}",
+														"method": "GET"
+													}
+												},
+												"description": "Retrieve a scheduled event by event ID"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete an event",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "set",
+																"properties": {
+																	"value": "={{ { \"deleted\": true } }}"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "=/v2/ai/assistants/{{$parameter[\"assistant\"]}}/scheduled_events/{{$parameter[\"eventId\"]}}",
+														"method": "DELETE",
+														"returnFullResponse": true
+													}
+												},
+												"description": "Delete a scheduled event by event ID"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["assistantEvents"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getAll",
+										"options": [
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many conversations",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "data"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "/v2/ai/conversations",
+														"method": "GET"
+													}
+												},
+												"description": "Returns a list of conversations"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a conversation",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "data"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "=/v2/ai/conversations/{{$parameter[\"conversationId\"]}}",
+														"method": "GET"
+													}
+												},
+												"description": "Returns a specific conversation by ID"
+											},
+											{
+												"name": "Get Messages",
+												"value": "getMessages",
+												"action": "Get conversation messages",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "data"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "=/v2/ai/conversations/{{$parameter[\"conversationId\"]}}/messages",
+														"method": "GET"
+													}
+												},
+												"description": "Retrieve messages for a specific conversation, including tool calls made by the assistant"
+											},
+											{
+												"name": "Get Conversation Insights",
+												"value": "getConversationInsights",
+												"action": "Get insights for a conversation",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "rootProperty",
+																"properties": {
+																	"property": "data"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "=/v2/ai/conversations/{{$parameter[\"conversationId\"]}}/conversations-insights",
+														"method": "GET"
+													}
+												},
+												"description": "Retrieve insights for a specific conversation"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["conversations"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with Telnyx AI API",
+								"displayName": "Telnyx AI",
+								"originalName": "@telnyx/n8n-nodes-telnyx-ai.telnyxAi",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-09-22T16:38:30.323Z",
+							"updatedAt": "2026-01-30T09:42:09.760Z",
+							"authorGithubUrl": "https://github.com/team-telnyx/n8n-nodes-telnyx-ai.git",
+							"authorName": "team-telnyx",
+							"checksum": "sha512-maB61zOtYC8g/LE/Ij7wSYTOB8zBgtnKPRkO2um0a+UkHGoCfWuRTE5nWDduouMdefJfVhTueBP0IHsEJ+YA8w==",
+							"description": "Interact with Telnyx AI API",
+							"displayName": "Telnyx AI",
+							"name": "@telnyx/n8n-nodes-telnyx-ai",
+							"numberOfStars": 1,
+							"numberOfDownloads": 9,
+							"packageName": "@telnyx/n8n-nodes-telnyx-ai",
+							"npmVersion": "1.5.5",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Telnyx",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-maB61zOtYC8g/LE/Ij7wSYTOB8zBgtnKPRkO2um0a+UkHGoCfWuRTE5nWDduouMdefJfVhTueBP0IHsEJ+YA8w==",
+									"npmVersion": "1.5.5"
+								}
+							]
+						}
+					},
+					{
+						"id": 180,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-targetare.targetareRo",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Targetare_ro_13c53f4b59.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Targetare.ro"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "companies",
+										"options": [
+											{
+												"name": "Company",
+												"value": "companies"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getByRegistration",
+										"options": [
+											{
+												"name": "Get By CUI",
+												"value": "getByTaxId",
+												"action": "Get company by cui",
+												"routing": {
+													"request": {
+														"url": "=/companies/{{$parameter.taxId}}",
+														"method": "GET"
+													}
+												},
+												"description": "Get a single company by its CUI"
+											},
+											{
+												"name": "Get By Registration Date",
+												"value": "getByRegistration",
+												"action": "Get companies by registration date",
+												"routing": {
+													"request": {
+														"url": "/companies/",
+														"method": "GET"
+													}
+												},
+												"description": "Get companies registered from a specific date"
+											},
+											{
+												"name": "Get Company Administrators by CUI",
+												"value": "getAdministratorsByTaxId",
+												"action": "Get company administrators by cui",
+												"routing": {
+													"request": {
+														"url": "=/companies/{{$parameter.taxId}}/administrators",
+														"method": "GET"
+													}
+												},
+												"description": "Get company Administrators by its CUI"
+											},
+											{
+												"name": "Get Company Emails by CUI",
+												"value": "getEmailsByTaxId",
+												"action": "Get company emails by cui",
+												"routing": {
+													"request": {
+														"url": "=/companies/{{$parameter.taxId}}/emails",
+														"method": "GET"
+													}
+												},
+												"description": "Get company Emails by its CUI"
+											},
+											{
+												"name": "Get Company Financial by CUI",
+												"value": "getFinancialByTaxId",
+												"action": "Get company financial by cui",
+												"routing": {
+													"request": {
+														"url": "=/companies/{{$parameter.taxId}}/financial",
+														"method": "GET"
+													}
+												},
+												"description": "Get company financial information by its CUI"
+											},
+											{
+												"name": "Get Company Phones by CUI",
+												"value": "getPhonesByTaxId",
+												"action": "Get company phones by cui",
+												"routing": {
+													"request": {
+														"url": "=/companies/{{$parameter.taxId}}/phones",
+														"method": "GET"
+													}
+												},
+												"description": "Get company Phones by its CUI"
+											},
+											{
+												"name": "Get Company Websites by CUI",
+												"value": "getWebsitesByTaxId",
+												"action": "Get company websites by cui",
+												"routing": {
+													"request": {
+														"url": "=/companies/{{$parameter.taxId}}/websites",
+														"method": "GET"
+													}
+												},
+												"description": "Get company Websites by its CUI"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["companies"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Get data from Targetare.ro API",
+								"displayName": "Targetare.ro",
+								"originalName": "n8n-nodes-targetare.targetareRo"
+							},
+							"createdAt": "2025-09-10T14:20:07.426Z",
+							"updatedAt": "2026-01-28T12:53:17.322Z",
+							"authorGithubUrl": "https://github.com/avramandrei85/",
+							"authorName": "apps_makeitfuture",
+							"checksum": "sha512-iUH+vnaDkBFJytawrKTVColBEYRk5jQWHmJBgWWXrLbLGKarmznJ+G8wq3x60j+GPE7+Aj65EHCxrBsapbEhpw==",
+							"description": "Get data from Targetare.ro API",
+							"displayName": "Targetare.ro",
+							"name": "n8n-nodes-targetare",
+							"numberOfStars": 0,
+							"numberOfDownloads": 1,
+							"packageName": "n8n-nodes-targetare",
+							"npmVersion": "1.0.7",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": "Makeitfuture",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-iUH+vnaDkBFJytawrKTVColBEYRk5jQWHmJBgWWXrLbLGKarmznJ+G8wq3x60j+GPE7+Aj65EHCxrBsapbEhpw==",
+									"npmVersion": "1.0.7"
+								}
+							]
+						}
+					},
+					{
+						"id": 385,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-craft.craft",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Craft_b5cb1e00a4.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Craft"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "block",
+										"options": [
+											{
+												"name": "Block",
+												"value": "block"
+											},
+											{
+												"name": "Collection",
+												"value": "collection"
+											},
+											{
+												"name": "Daily Note",
+												"value": "dailyNote"
+											},
+											{
+												"name": "Document",
+												"value": "document"
+											},
+											{
+												"name": "Folder",
+												"value": "folder"
+											},
+											{
+												"name": "Task",
+												"value": "task"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "",
+										"options": [
+											{
+												"name": "Fetch Block",
+												"value": "fetch",
+												"action": "Fetch a block",
+												"description": "Retrieve blocks and attached information"
+											},
+											{
+												"name": "Insert Blocks",
+												"value": "insert",
+												"action": "Insert blocks",
+												"description": "Create new blocks in a document"
+											},
+											{
+												"name": "Upload File",
+												"value": "upload",
+												"action": "Upload a file",
+												"description": "Insert files (binary content) into a document"
+											},
+											{
+												"name": "Delete Blocks",
+												"value": "delete",
+												"action": "Delete blocks",
+												"description": "Remove blocks from a document"
+											},
+											{
+												"name": "Update Blocks",
+												"value": "update",
+												"action": "Update blocks",
+												"description": "Modify blocks"
+											},
+											{
+												"name": "Move Blocks",
+												"value": "move",
+												"action": "Move blocks",
+												"description": "Reorder blocks in a document"
+											},
+											{
+												"name": "Search Blocks",
+												"value": "search",
+												"action": "Search blocks",
+												"description": "Search content"
+											},
+											{
+												"name": "Construct Blocks",
+												"value": "construct",
+												"action": "Construct blocks",
+												"description": "Construct blocks with validation"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["block"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "list",
+										"options": [
+											{
+												"name": "Create Items",
+												"value": "create",
+												"action": "Create collection items",
+												"description": "Insert new items into a collection"
+											},
+											{
+												"name": "Delete Items",
+												"value": "delete",
+												"action": "Delete collection items",
+												"description": "Remove items from a collection"
+											},
+											{
+												"name": "Get Collection Schema",
+												"value": "getSchema",
+												"action": "Get collection schema",
+												"description": "Retrieve a collection schema in the desired format"
+											},
+											{
+												"name": "List Collections",
+												"value": "listCollections",
+												"action": "List collections",
+												"description": "Retrieve available collections and their metadata"
+											},
+											{
+												"name": "List Items",
+												"value": "list",
+												"action": "List collection items",
+												"description": "Retrieve collection items"
+											},
+											{
+												"name": "Update Items",
+												"value": "update",
+												"action": "Update collection items",
+												"description": "Modify existing items in a collection"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["collection"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "list",
+										"options": [
+											{
+												"name": "List Tasks",
+												"value": "list",
+												"action": "List tasks",
+												"description": "Retrieve tasks filtered by scope"
+											},
+											{
+												"name": "Create Task",
+												"value": "create",
+												"action": "Create a task",
+												"description": "Create a new task in inbox or daily notes"
+											},
+											{
+												"name": "Update Task",
+												"value": "update",
+												"action": "Update a task",
+												"description": "Modify an existing task"
+											},
+											{
+												"name": "Delete Tasks",
+												"value": "delete",
+												"action": "Delete tasks",
+												"description": "Delete tasks by their IDs"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["task"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "fetch",
+										"options": [
+											{
+												"name": "List Documents",
+												"value": "fetch",
+												"action": "Fetch documents",
+												"description": "Retrieve available Craft documents"
+											},
+											{
+												"name": "Search Documents",
+												"value": "search",
+												"action": "Search documents",
+												"description": "Search across documents with include terms and optional filters"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["document"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search Daily Notes",
+												"value": "search",
+												"action": "Search daily notes",
+												"description": "Search across daily notes with optional date range filters"
+											},
+											{
+												"name": "Search Within Daily Note",
+												"value": "searchBlocks",
+												"action": "Search blocks in a daily note",
+												"description": "Search for blocks within a specific daily note date"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["dailyNote"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "list",
+										"options": [
+											{
+												"name": "List Folders",
+												"value": "list",
+												"action": "List folders",
+												"description": "Retrieve all folders and locations in the space"
+											},
+											{
+												"name": "Create Folder",
+												"value": "create",
+												"action": "Create a folder",
+												"description": "Create a new folder or location"
+											},
+											{
+												"name": "Delete Folder",
+												"value": "delete",
+												"action": "Delete a folder",
+												"description": "Delete a folder by its ID"
+											},
+											{
+												"name": "Move Folder",
+												"value": "move",
+												"action": "Move a folder",
+												"description": "Move a folder to a different location"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["folder"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with your Craft documents via the API",
+								"displayName": "Craft",
+								"originalName": "n8n-nodes-craft.craft",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-12-15T14:19:05.939Z",
+							"updatedAt": "2026-01-30T09:42:09.779Z",
+							"authorGithubUrl": "https://github.com/ac40/",
+							"authorName": "acrichter",
+							"checksum": "sha512-rbsbdQHuokQFD35jvH5TvmWWYFTxxCO/7ZQptsBcWeE3BV3HWJ+WtbtSdkcMRCh4YP+Nk4IEPrakTHiz0F0KaQ==",
+							"description": "Interact with your Craft documents via the API",
+							"displayName": "Craft",
+							"name": "n8n-nodes-craft.craft",
+							"numberOfStars": 3,
+							"numberOfDownloads": 230,
+							"packageName": "n8n-nodes-craft",
+							"npmVersion": "0.1.8",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-rbsbdQHuokQFD35jvH5TvmWWYFTxxCO/7ZQptsBcWeE3BV3HWJ+WtbtSdkcMRCh4YP+Nk4IEPrakTHiz0F0KaQ==",
+									"npmVersion": "0.1.8"
+								}
+							]
+						}
+					},
+					{
+						"id": 72,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@gotohuman/n8n-nodes-preview-gotohuman.gotoHuman",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/goto_Human_1f2e9c7740.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "gotoHuman"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "reviewRequest",
+										"options": [
+											{
+												"name": "Review Request",
+												"value": "reviewRequest",
+												"description": "Request for Human Review"
+											}
+										],
+										"required": true,
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "sendAndWait",
+										"options": [
+											{
+												"name": "Send and Wait for Response",
+												"value": "sendAndWait",
+												"action": "Send review request and wait for response",
+												"description": "Request a human review and wait for the response"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["reviewRequest"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Request human reviews with gotoHuman",
+								"displayName": "gotoHuman",
+								"originalName": "@gotohuman/n8n-nodes-gotohuman.gotoHuman"
+							},
+							"createdAt": "2025-06-19T16:31:46.187Z",
+							"updatedAt": "2025-08-14T08:24:09.055Z",
+							"authorGithubUrl": "https://github.com/gotohuman/n8n-nodes-gotohuman.git",
+							"authorName": "gotohuman-admin",
+							"checksum": "sha512-A22y5QFPl/OTDxQh/WRzdb/xRr4uSFY+zq5yiW+waqEFjouz/bOI7KFkq7KzvBxwTUoWXqDH2Jxp0cBYvxkcyA==",
+							"description": "Request human reviews with gotoHuman",
+							"displayName": "gotoHuman",
+							"name": "@gotohuman/n8n-nodes-gotohuman",
+							"numberOfStars": 0,
+							"numberOfDownloads": 221,
+							"packageName": "@gotohuman/n8n-nodes-gotohuman",
+							"npmVersion": "0.1.1",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-5mDCqfiqu1XeFcjAbU7/fgzi9rD+LsExqbGuUGKfOX/S+WeF1A8MWsdqsfuAd1cABePvwyDMFWJ881+vds9QJg==",
+									"npmVersion": "0.1.0"
+								},
+								{
+									"checksum": "sha512-A22y5QFPl/OTDxQh/WRzdb/xRr4uSFY+zq5yiW+waqEFjouz/bOI7KFkq7KzvBxwTUoWXqDH2Jxp0cBYvxkcyA==",
+									"npmVersion": "0.1.1"
+								}
+							]
+						}
+					},
+					{
+						"id": 260,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-camino.camino",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Camino_AI_56a1391a06.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Camino AI"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"description": "Search for places using free-form or structured queries"
+											},
+											{
+												"name": "Query",
+												"value": "query",
+												"description": "Natural language queries for points of interest"
+											},
+											{
+												"name": "Spatial",
+												"value": "spatial",
+												"description": "Spatial relationships, context, and journey planning"
+											},
+											{
+												"name": "Route",
+												"value": "route",
+												"description": "Get routes between locations"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "searchPlaces",
+										"options": [
+											{
+												"name": "Search Places",
+												"value": "searchPlaces",
+												"action": "Search for places",
+												"routing": {
+													"request": {
+														"url": "/search",
+														"method": "POST"
+													}
+												},
+												"description": "Search for places using free-form or structured queries"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["search"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "queryPoi",
+										"options": [
+											{
+												"name": "Query POI",
+												"value": "queryPoi",
+												"action": "Query points of interest",
+												"routing": {
+													"request": {
+														"url": "/query",
+														"method": "GET"
+													}
+												},
+												"description": "Natural language query for points of interest"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["query"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "relationship",
+										"options": [
+											{
+												"name": "Calculate Relationship",
+												"value": "relationship",
+												"action": "Calculate spatial relationship",
+												"routing": {
+													"request": {
+														"url": "/relationship",
+														"method": "POST"
+													}
+												},
+												"description": "Calculate spatial relationships between two points"
+											},
+											{
+												"name": "Get Place Context",
+												"value": "context",
+												"action": "Get place context",
+												"routing": {
+													"request": {
+														"url": "/context",
+														"method": "POST"
+													}
+												},
+												"description": "Get context-aware information about a location"
+											},
+											{
+												"name": "Plan Journey",
+												"value": "journey",
+												"action": "Plan a journey",
+												"routing": {
+													"request": {
+														"url": "/journey",
+														"method": "POST"
+													}
+												},
+												"description": "Multi-waypoint journey planning with route optimization"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["spatial"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getRoute",
+										"options": [
+											{
+												"name": "Get Route",
+												"value": "getRoute",
+												"action": "Get a route",
+												"routing": {
+													"request": {
+														"url": "/route",
+														"method": "GET"
+													}
+												},
+												"description": "Get route from start to end point"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["route"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Guide your AI agents through the real world with location intelligence",
+								"displayName": "Camino AI",
+								"originalName": "n8n-nodes-camino.camino",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-10-24T16:20:55.757Z",
+							"updatedAt": "2026-01-30T10:11:33.484Z",
+							"authorGithubUrl": "https://github.com/Barneyjm/",
+							"authorName": "jamesbarney",
+							"checksum": "sha512-UuIzhUUo9i4c/4599eqPZeft9PrBR66S4skQYGQ8EaeS38LNrwetsKIjAF4ZkxuMtnPz4De4edTJ/felOwKQXg==",
+							"description": "Guide your AI agents through the real world with location intelligence",
+							"displayName": "Camino AI",
+							"name": "n8n-nodes-camino",
+							"numberOfStars": 0,
+							"numberOfDownloads": 78,
+							"packageName": "n8n-nodes-camino",
+							"npmVersion": "0.1.1",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Camino AI",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-UuIzhUUo9i4c/4599eqPZeft9PrBR66S4skQYGQ8EaeS38LNrwetsKIjAF4ZkxuMtnPz4De4edTJ/felOwKQXg==",
+									"npmVersion": "0.1.1"
+								}
+							]
+						}
+					},
+					{
+						"id": 49,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-signifycrm.signifyCrm",
+								"codex": {
+									"resources": {
+										"primaryDocumentation": [
+											{
+												"url": "https://docs.n8n.io/integrations/builtin/app-nodes/"
+											}
+										],
+										"credentialDocumentation": [
+											{
+												"url": "https://docs.n8n.io/integrations/builtin/credentials/"
+											}
+										]
+									},
+									"categories": ["Communication", "Sales"]
+								},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Signify_CRM_061f7b8778.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "SignifyCRM"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "contact",
+										"options": [
+											{
+												"name": "Account",
+												"value": "account"
+											},
+											{
+												"name": "Case",
+												"value": "case"
+											},
+											{
+												"name": "Contact",
+												"value": "contact"
+											},
+											{
+												"name": "Lead",
+												"value": "lead"
+											},
+											{
+												"name": "Opportunity",
+												"value": "opportunity"
+											},
+											{
+												"name": "Task",
+												"value": "task"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a contact",
+												"description": "Create a contact"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a contact",
+												"description": "Delete a contact"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a contact",
+												"description": "Get a contact"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many contacts",
+												"description": "Get many contacts"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a contact",
+												"description": "Update a contact"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["contact"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create an account",
+												"description": "Create an account"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete an account",
+												"description": "Delete an account"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get an account",
+												"description": "Get an account"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many accounts",
+												"description": "Get many accounts"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update an account",
+												"description": "Update an account"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["account"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a lead",
+												"description": "Create a lead"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a lead",
+												"description": "Delete a lead"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a lead",
+												"description": "Get a lead"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many leads",
+												"description": "Get many leads"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a lead",
+												"description": "Update a lead"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["lead"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a opportunity",
+												"description": "Create a opportunity"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a opportunity",
+												"description": "Delete a opportunity"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a opportunity",
+												"description": "Get a opportunity"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many opportunities",
+												"description": "Get many opportunities"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a opportunity",
+												"description": "Update a opportunity"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["opportunity"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a case",
+												"description": "Create a case"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a case",
+												"description": "Delete a case"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a case",
+												"description": "Get a case"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many cases",
+												"description": "Get many cases"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a case",
+												"description": "Update a case"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["case"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a task",
+												"description": "Create a task"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a task",
+												"description": "Delete a task"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a task",
+												"description": "Get a task"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many tasks",
+												"description": "Get many tasks"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a task",
+												"description": "Update a task"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["task"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Consume SignifyCRM API",
+								"displayName": "SignifyCRM",
+								"originalName": "n8n-nodes-signifycrm.signifyCrm",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-05-27T13:50:22.665Z",
+							"updatedAt": "2026-01-30T09:42:10.286Z",
+							"authorGithubUrl": "https://github.com/serveradmin-git/",
+							"authorName": "signifycrm",
+							"checksum": "sha512-P44Pj3NsJOBlLGf8zZ7CsQYi/WlXlAB5RKbhL6dUutYz2+NcisxiJZ1oCQQw4ssT9NxrnHlNfcp4vf6QUwvS+g==",
+							"description": "Consume SignifyCRM API",
+							"displayName": "SignifyCRM",
+							"name": "n8n-nodes-signifycrm.signifyCrm",
+							"numberOfStars": 0,
+							"numberOfDownloads": 29,
+							"packageName": "n8n-nodes-signifycrm",
+							"npmVersion": "0.1.3",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Signify",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-P44Pj3NsJOBlLGf8zZ7CsQYi/WlXlAB5RKbhL6dUutYz2+NcisxiJZ1oCQQw4ssT9NxrnHlNfcp4vf6QUwvS+g==",
+									"npmVersion": "0.1.3"
+								}
+							]
+						}
+					},
+					{
+						"id": 192,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-matrix42.matrix42",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Matrix42_b614438e78.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Matrix42"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "ticket",
+										"options": [
+											{
+												"name": "ASQL",
+												"value": "asql"
+											},
+											{
+												"name": "Import",
+												"value": "import"
+											},
+											{
+												"name": "Ticket",
+												"value": "ticket"
+											},
+											{
+												"name": "Storage",
+												"value": "storage"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getFragments",
+										"options": [
+											{
+												"name": "Get Fragments",
+												"value": "getFragments",
+												"action": "Get fragments",
+												"description": "Receives list of fragments with defined list of columns, which match the specified search criteria"
+											},
+											{
+												"name": "Add Fragment",
+												"value": "addFragment",
+												"action": "Add fragment",
+												"description": "Creates a new Data Definition fragment. The operation is required for cases of multi-fragments or optional fragments."
+											},
+											{
+												"name": "Update Fragment",
+												"value": "updateFragment",
+												"action": "Update fragment",
+												"description": "Updates the specified Data Definition fragment, which has been at first retrieved by the Get Fragment operation, and adjusted with the new data. The Server throws the Concurrency exception in case the updated fragment has been updated between Get Fragment operation and Update Fragment."
+											},
+											{
+												"name": "Delete Fragment",
+												"value": "deleteFragment",
+												"action": "Delete fragment",
+												"description": "Deletes the fragment from Database defined by the Data Definition name and the fragment ID. The operation is required for cases of multi-fragments or optional fragments."
+											},
+											{
+												"name": "Add Object",
+												"value": "addObject",
+												"action": "Add object",
+												"description": "Add the Object of the specified Configuration Item"
+											},
+											{
+												"name": "Get Object",
+												"value": "getObject",
+												"action": "Get object",
+												"description": "Reads the whole Object with the specified Configuration Item name and object ID. The Service returns exclusively the data belonged to object (e.g. attributes, N:1 relations) Virtual attributes, like N:M relations are not returned and need to be obtained with the dedicated service request."
+											},
+											{
+												"name": "Update Object",
+												"value": "updateObject",
+												"action": "Update object",
+												"description": "Updates the object of the specified Configuration Item name and object ID. The method works in pair with “Get Object” method, which delivers the original Object with the current Timestamp (market of current state), which is used for concurrency tracking."
+											},
+											{
+												"name": "Delete Object",
+												"value": "deleteObject",
+												"action": "Delete object",
+												"description": "Deletes the object from Database defined by the Configuration Item name and the object ID"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["asql"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "executeImportDefinition",
+										"options": [
+											{
+												"name": "Execute Import Definition",
+												"value": "executeImportDefinition",
+												"action": "Execute import definition",
+												"description": "Execute an Import Definition"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["import"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createTicket",
+										"options": [
+											{
+												"name": "Create Ticket",
+												"value": "createTicket",
+												"action": "Create a ticket",
+												"description": "Create a ticket"
+											},
+											{
+												"name": "Close Ticket",
+												"value": "closeTicket",
+												"action": "Close ticket",
+												"description": "Close a ticket"
+											},
+											{
+												"name": "Transform Ticket",
+												"value": "transformTicket",
+												"action": "Transform a ticket",
+												"description": "Transform a ticket"
+											},
+											{
+												"name": "Add Journal Entry",
+												"value": "addJournalEntry",
+												"action": "Add a journal entry",
+												"description": "Add a journal entry"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["ticket"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "uploadFile",
+										"options": [
+											{
+												"name": "Upload File",
+												"value": "uploadFile",
+												"action": "Upload file",
+												"description": "Upload one or more file"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["storage"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with Matrix42.",
+								"displayName": "Matrix42",
+								"originalName": "n8n-nodes-matrix42.matrix42",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-09-22T16:23:31.662Z",
+							"updatedAt": "2026-01-30T09:42:10.527Z",
+							"authorGithubUrl": "https://github.com/S-S-Technologies-GmbH/",
+							"authorName": "sus-tech",
+							"checksum": "sha512-e2UsVm2jbK1jwQw26csBcV52PD8vgjHKOPhcoZq3LNOavcGI1GHBjQki0nV1gBmV0YXJnMDMZqC5VebS717BbQ==",
+							"description": "Interact with Matrix42.",
+							"displayName": "Matrix42",
+							"name": "n8n-nodes-matrix42",
+							"numberOfStars": 0,
+							"numberOfDownloads": 13,
+							"packageName": "n8n-nodes-matrix42",
+							"npmVersion": "0.1.3",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": "S&S Technologies GmbH",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-yEZXTUBdd4U31wFqXLCsLKNBgjNWBjsv9+GKKXwYyVQ9lVNtcTw+GAS93fYZJLsx3+Q2hW8L3nffDcjEmtiUYw==",
+									"npmVersion": "0.1.1"
+								},
+								{
+									"checksum": "sha512-9mcWYdB/rt0LSH2FnKHQnsacdZ+idfiFUJOPoCATzZX0+Eu3RtDOD8Chj3xtty0qEyV5axiKnUko6lB61y5ezQ==",
+									"npmVersion": "0.1.2"
+								},
+								{
+									"checksum": "sha512-e2UsVm2jbK1jwQw26csBcV52PD8vgjHKOPhcoZq3LNOavcGI1GHBjQki0nV1gBmV0YXJnMDMZqC5VebS717BbQ==",
+									"npmVersion": "0.1.3"
+								}
+							]
+						}
+					},
+					{
+						"id": 147,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-referral-factory.referralFactory",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Referral_Factory_cd5fe49e25.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Referral Factory"
+								},
+								"subtitle": "={{Action: $parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create_user",
+										"options": [
+											{
+												"name": "Add New User",
+												"value": "create_user",
+												"action": "Add new user",
+												"routing": {
+													"request": {
+														"url": "/users",
+														"body": {
+															"email": "={{$parameter[\"email\"]}}",
+															"first_name": "={{$parameter[\"first_name\"]}}",
+															"campaign_id": "={{$parameter[\"campaign_id\"]}}"
+														},
+														"method": "POST"
+													}
+												},
+												"description": "Add new user in Referral Factory"
+											},
+											{
+												"name": "Qualify a User",
+												"value": "qualify_user",
+												"action": "Qualify a user",
+												"description": "Qualify a user in Referral Factory"
+											}
+										],
+										"displayName": "Action",
+										"noDataExpression": true
+									}
+								],
+								"description": "Get data from Referral Factory API",
+								"displayName": "Referral Factory",
+								"originalName": "n8n-nodes-referral-factory.referralFactory"
+							},
+							"createdAt": "2025-08-13T12:02:20.897Z",
+							"updatedAt": "2026-01-28T12:53:18.123Z",
+							"authorGithubUrl": "https://github.com/referralfactory/",
+							"authorName": "referral-factory",
+							"checksum": "sha512-KZmUCkhnVf7ce9/xPextuLZJY9PWeF/JMNjRB2oP5zc3Yd1wWr91EP4ppWb2ZUEHFB6Q5Tq6DcrtnRjLwl3bfQ==",
+							"description": "Get data from Referral Factory API",
+							"displayName": "Referral Factory",
+							"name": "n8n-nodes-referral-factory",
+							"numberOfStars": 0,
+							"numberOfDownloads": 24,
+							"packageName": "n8n-nodes-referral-factory",
+							"npmVersion": "0.2.14",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Referral Factory",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-KZmUCkhnVf7ce9/xPextuLZJY9PWeF/JMNjRB2oP5zc3Yd1wWr91EP4ppWb2ZUEHFB6Q5Tq6DcrtnRjLwl3bfQ==",
+									"npmVersion": "0.2.14"
+								}
+							]
+						}
+					},
+					{
+						"id": 133,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-fillout.filloutTrigger",
+								"codex": {},
+								"group": ["trigger"],
+								"inputs": [],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Fillout_Trigger_4c9e1040cc.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Fillout Trigger"
+								},
+								"subtitle": "",
+								"properties": [],
+								"description": "Handle Fillout submissions via webhooks",
+								"displayName": "Fillout Trigger",
+								"originalName": "n8n-nodes-fillout.filloutTrigger"
+							},
+							"createdAt": "2025-07-30T07:06:20.820Z",
+							"updatedAt": "2025-08-14T08:24:08.982Z",
+							"authorGithubUrl": "https://github.com/fillout/",
+							"authorName": "xkcdstickfigure",
+							"checksum": "sha512-tBQHD0CZg7g5/06ERCwBN7llTw6ApYSSq8wgQvcM/suMt1rKhuoboogiRfg1tZGcU1equ/ZYJQ4niJWFCgXz3g==",
+							"description": "Handle Fillout submissions via webhooks",
+							"displayName": "Fillout Trigger",
+							"name": "n8n-nodes-fillout",
+							"numberOfStars": 0,
+							"numberOfDownloads": 289,
+							"packageName": "n8n-nodes-fillout",
+							"npmVersion": "1.1.4",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-tBQHD0CZg7g5/06ERCwBN7llTw6ApYSSq8wgQvcM/suMt1rKhuoboogiRfg1tZGcU1equ/ZYJQ4niJWFCgXz3g==",
+									"npmVersion": "1.1.4"
+								}
+							]
+						}
+					},
+					{
+						"id": 187,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-pdfmonkey.pdfMonkey",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/PDF_Monkey_7a9c9aa293.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "PDFMonkey"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "generateDocument",
+										"options": [
+											{
+												"name": "Generate Document",
+												"value": "generateDocument",
+												"action": "Create a new PDF using a template",
+												"description": "Create a new PDF using a template"
+											},
+											{
+												"name": "Get Document",
+												"value": "getDocument",
+												"action": "Get document details and status",
+												"description": "Get document details and status"
+											},
+											{
+												"name": "Download File",
+												"value": "downloadFile",
+												"action": "Download a generated PDF or image",
+												"description": "Download a generated PDF or Image"
+											},
+											{
+												"name": "Delete Document",
+												"value": "deleteDocument",
+												"action": "Delete an existing PDF document",
+												"description": "Delete an existing PDF document"
+											}
+										],
+										"description": "Choose what you want to do with PDFMonkey",
+										"displayName": "Actions",
+										"noDataExpression": true
+									}
+								],
+								"description": "Generate PDFs using PDFMonkey API",
+								"displayName": "PDFMonkey",
+								"originalName": "n8n-nodes-pdfmonkey.pdfMonkey"
+							},
+							"createdAt": "2025-09-16T12:15:13.955Z",
+							"updatedAt": "2025-09-30T13:39:19.195Z",
+							"authorGithubUrl": "https://github.com/pdfmonkey/",
+							"authorName": "tiny-monkey",
+							"checksum": "sha512-AwqMO4XdwO20/0AicpMl5XtiIgNGAeIm06V+FdWk8Fq4XoLvhf+DiL7G+mlTAGCMdmsdMXscxo16fwI2BTAktg==",
+							"description": "Generate PDFs using PDFMonkey API",
+							"displayName": "PDFMonkey",
+							"name": "n8n-nodes-pdfmonkey",
+							"numberOfStars": 1,
+							"numberOfDownloads": 3,
+							"packageName": "n8n-nodes-pdfmonkey",
+							"npmVersion": "0.4.0",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-AwqMO4XdwO20/0AicpMl5XtiIgNGAeIm06V+FdWk8Fq4XoLvhf+DiL7G+mlTAGCMdmsdMXscxo16fwI2BTAktg==",
+									"npmVersion": "0.4.0"
+								}
+							]
+						}
+					}
+				],
+				"meta": {
+					"pagination": {
+						"page": 2,
+						"pageSize": 25,
+						"pageCount": 14,
+						"total": 331
+					}
+				}
+			}
+		}
+	},
+	"id": "1770043415965-api-staging.n8n.io-GET-_api_community_nodes-4170e04c.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

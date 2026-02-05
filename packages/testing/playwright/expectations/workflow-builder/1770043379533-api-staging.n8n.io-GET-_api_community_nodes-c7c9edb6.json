@@ -1,0 +1,4139 @@
+{
+	"httpRequest": {
+		"method": "GET",
+		"path": "/api/community-nodes",
+		"queryStringParameters": {
+			"pagination[page]": ["7"],
+			"pagination[pageSize]": ["25"]
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-powered-by": ["n8n <n8n.io>"],
+			"x-permitted-cross-domain-policies": ["none"],
+			"x-frame-options": ["SAMEORIGIN"],
+			"x-download-options": ["noopen"],
+			"x-dns-prefetch-control": ["off"],
+			"x-content-type-options": ["nosniff"],
+			"x-cache": ["HIT"],
+			"vary": ["Origin, Accept-Encoding"],
+			"strict-transport-security": ["max-age=0; includeSubDomains"],
+			"referrer-policy": ["no-referrer"],
+			"content-security-policy": [
+				"script-src 'self';frame-ancestors https://n8n.io https://*.n8n.io https://*.n8n.cloud;img-src 'self' data: blob: https://market-assets.strapi.io https://n8niostorageaccount.blob.core.windows.net;style-src 'self' 'unsafe-inline';connect-src 'self';font-src 'self';media-src 'self' data: blob:;default-src 'self';base-uri 'self';form-action 'self';object-src 'none';script-src-attr 'none'"
+			],
+			"access-control-expose-headers": ["WWW-Authenticate,Server-Authorization"],
+			"access-control-allow-origin": [""],
+			"access-control-allow-credentials": ["true"],
+			"Server": ["cloudflare"],
+			"Report-To": [
+				"{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=GV%2FJo42mo7LkZ%2F6%2BAnvHIhMrcm%2B%2FGuICLLhYYzir16f0g75lgtWUwaGJxuRfodnCfW9QcQtFxDz3CDu2lEJzGdo3C8TZG9HTPe3SanAUZw%3D%3D\"}]}"
+			],
+			"Nel": ["{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"],
+			"Content-Type": ["application/json; charset=utf-8"]
+		},
+		"body": {
+			"type": "JSON",
+			"json": {
+				"data": [
+					{
+						"id": 122,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-zigpoll.zigpollTrigger",
+								"codex": {},
+								"group": ["trigger"],
+								"inputs": [],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Zigpoll_Trigger_aa0cb515ad.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Zigpoll"
+								},
+								"subtitle": "",
+								"properties": [],
+								"description": "Triggers when a specific Zigpoll survey is completed",
+								"displayName": "Zigpoll Trigger",
+								"originalName": "n8n-nodes-zigpoll.zigpollTrigger"
+							},
+							"createdAt": "2025-07-24T22:31:55.729Z",
+							"updatedAt": "2026-01-28T12:53:14.706Z",
+							"authorGithubUrl": "https://github.com/JasonZigelbaum/",
+							"authorName": "zigpoll",
+							"checksum": "sha512-NBIcLDwIqXiLEd4t/rBAC1tHoRzYaTHrDLq6wuOWLvNggyZZ+fV+DUi5ya3vFc62mqUBRP4/nEdbnOrzNJjnWw==",
+							"description": "Triggers when a specific Zigpoll survey is completed",
+							"displayName": "Zigpoll Trigger",
+							"name": "n8n-nodes-zigpoll",
+							"numberOfStars": 0,
+							"numberOfDownloads": 195,
+							"packageName": "n8n-nodes-zigpoll",
+							"npmVersion": "0.1.9",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Zigpoll",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-NBIcLDwIqXiLEd4t/rBAC1tHoRzYaTHrDLq6wuOWLvNggyZZ+fV+DUi5ya3vFc62mqUBRP4/nEdbnOrzNJjnWw==",
+									"npmVersion": "0.1.9"
+								}
+							]
+						}
+					},
+					{
+						"id": 365,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-abyssale.abyssale",
+								"codex": {},
+								"group": ["input"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Abyssale_368ba8b258.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Abyssale"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "banner",
+										"options": [
+											{
+												"name": "Banner",
+												"value": "banner"
+											},
+											{
+												"name": "Design",
+												"value": "design"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "generateSingle",
+										"options": [
+											{
+												"name": "Export Banners",
+												"value": "exportBanners",
+												"action": "Export banners",
+												"description": "Export one or multiple previously generated visuals in .zip format"
+											},
+											{
+												"name": "Generate HTML5 Banner Ads",
+												"value": "generateHTML5BannerAds",
+												"action": "Generate html5 banner ads",
+												"description": "Generate HTML5 banner ads from an animated design"
+											},
+											{
+												"name": "Generate Multi-Format Animated GIFs",
+												"value": "generateMultiFormatGIFs",
+												"action": "Generate multi format animated gifs",
+												"description": "Generate multiple animated GIFs at once from a design created in Abyssale"
+											},
+											{
+												"name": "Generate Multi-Format Images",
+												"value": "generateMultiFormatImages",
+												"action": "Generate multiple images",
+												"description": "Generate a multiple images (JPEG, PNG, PDF,..) from a design"
+											},
+											{
+												"name": "Generate Multi-Format PDFs for Printing",
+												"value": "generateMultiFormatPDFs",
+												"action": "Generate multi format pdfs for printing",
+												"description": "Generate multiple printable PDFs at once from a design created in Abyssale"
+											},
+											{
+												"name": "Generate Multi-Format Videos",
+												"value": "generateMultiFormatVideos",
+												"action": "Generate multi format videos",
+												"description": "Generate multiple videos at once from an animated design created in Abyssale"
+											},
+											{
+												"name": "Generate Single Image",
+												"value": "generateSingle",
+												"action": "Generate a single image",
+												"description": "Generate a single image (JPEG, PNG, PDF) from a design"
+											},
+											{
+												"name": "Get Banner",
+												"value": "getBanner",
+												"action": "Get banner",
+												"description": "Retrieves the details about a previously generated banner"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["banner"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getDesign",
+										"options": [
+											{
+												"name": "Get a Design",
+												"value": "getDesign",
+												"action": "Get a design",
+												"description": "Retrieves the details about a design you created on Abyssale"
+											},
+											{
+												"name": "Get a Design Format",
+												"value": "getDesignFormat",
+												"action": "Get a design format",
+												"description": "Retrieves the details about a format added to a design you created on Abyssale"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["design"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Consume Abyssale API",
+								"displayName": "Abyssale",
+								"originalName": "n8n-nodes-abyssale.abyssale",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-12-11T15:14:39.524Z",
+							"updatedAt": "2026-01-30T09:42:09.872Z",
+							"authorGithubUrl": "https://github.com/getabyssale/",
+							"authorName": "remyabyssale",
+							"checksum": "sha512-nMi+DEoZKQi1zTE9SuFQ0P6FMl3SpCrhGIW9ByQC7yaUUkUxpwatrIm9Ormp7+5Q9VGfJkCo4gnGrHmBF/0vSA==",
+							"description": "Consume Abyssale API",
+							"displayName": "Abyssale",
+							"name": "n8n-nodes-abyssale",
+							"numberOfStars": 1,
+							"numberOfDownloads": 49,
+							"packageName": "n8n-nodes-abyssale",
+							"npmVersion": "1.0.3",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-5A2sUjnlO0iwJ8675LF9cyFJZie0UxLbKyqPbJwDpLGTOIphursN5qsQgFziUKqJLQik38xwMisgwwqkPPLi3Q==",
+									"npmVersion": "1.0.2"
+								},
+								{
+									"checksum": "sha512-nMi+DEoZKQi1zTE9SuFQ0P6FMl3SpCrhGIW9ByQC7yaUUkUxpwatrIm9Ormp7+5Q9VGfJkCo4gnGrHmBF/0vSA==",
+									"npmVersion": "1.0.3"
+								}
+							]
+						}
+					},
+					{
+						"id": 358,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@tehw0lf/n8n-nodes-preview-toon.toon",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/TOON_a82f3a0b05.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "TOON"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "jsonToToon",
+										"options": [
+											{
+												"name": "JSON to TOON",
+												"value": "jsonToToon",
+												"action": "Convert JSON to TOON",
+												"description": "Convert JSON data to TOON format"
+											},
+											{
+												"name": "TOON to JSON",
+												"value": "toonToJson",
+												"action": "Convert TOON to JSON",
+												"description": "Parse TOON format to JSON"
+											}
+										],
+										"displayName": "Operation",
+										"noDataExpression": true
+									}
+								],
+								"description": "Convert between TOON and JSON formats with zero external dependencies",
+								"displayName": "TOON",
+								"originalName": "@tehw0lf/n8n-nodes-toon.toon",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-12-11T11:43:52.763Z",
+							"updatedAt": "2026-01-30T09:42:10.682Z",
+							"authorGithubUrl": "https://github.com/tehw0lf/n8n-nodes-toon.git",
+							"authorName": "tehw0lf",
+							"checksum": "sha512-afnCKHbeyHC62aiKAIdynn2p+9YxboCxjZIOJeaHVnJKRGwZLoaBfegW3FZ+AUzSYXfotqij7hL4U4sAMppitA==",
+							"description": "Convert between TOON and JSON formats with zero external dependencies",
+							"displayName": "TOON",
+							"name": "@tehw0lf/n8n-nodes-toon",
+							"numberOfStars": 10,
+							"numberOfDownloads": 135,
+							"packageName": "@tehw0lf/n8n-nodes-toon",
+							"npmVersion": "1.1.5",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-x9mqH33ihq3SG4ylsPLNc5wf1g0v5+CxnMIPTPVzk8lcArzxs6QH7CaOLERRC5h9W/sbyZgQrOfSC/kecoxzCA==",
+									"npmVersion": "1.1.3"
+								},
+								{
+									"checksum": "sha512-afnCKHbeyHC62aiKAIdynn2p+9YxboCxjZIOJeaHVnJKRGwZLoaBfegW3FZ+AUzSYXfotqij7hL4U4sAMppitA==",
+									"npmVersion": "1.1.5"
+								}
+							]
+						}
+					},
+					{
+						"id": 27,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-chat-data.chatData",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Chat_Data_7338498368.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Chat Data"
+								},
+								"subtitle": "={{$parameter[\"resource\"] + \": \" + $parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "action",
+										"options": [
+											{
+												"name": "Action",
+												"value": "action"
+											},
+											{
+												"name": "Chatbot",
+												"value": "chatbot"
+											}
+										],
+										"description": "Choose a resource",
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "sendMessage",
+										"options": [
+											{
+												"name": "Send a Message",
+												"value": "sendMessage",
+												"action": "Send a message to a chat",
+												"description": "Send a message to a chat"
+											},
+											{
+												"name": "Get Leads",
+												"value": "getLeads",
+												"action": "Get leads",
+												"description": "Retrieve leads/customers from a chatbot"
+											},
+											{
+												"name": "Get Conversations",
+												"value": "getConversations",
+												"action": "Get conversations",
+												"description": "Retrieve conversation history from a chatbot"
+											},
+											{
+												"name": "Append a Message",
+												"value": "appendMessage",
+												"action": "Append a message to an existing conversation",
+												"description": "Append a message to an existing conversation as a human agent or assistant"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["action"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createChatbot",
+										"options": [
+											{
+												"name": "Create Chatbot",
+												"value": "createChatbot",
+												"action": "Create a chatbot",
+												"description": "Create a new chatbot"
+											},
+											{
+												"name": "Retrain Chatbot",
+												"value": "retrainChatbot",
+												"action": "Retrain a chatbot",
+												"description": "Retrain a chatbot with new data"
+											},
+											{
+												"name": "Update Base Prompt",
+												"value": "updateBasePrompt",
+												"action": "Update a base prompt",
+												"description": "Update a chatbot's base prompt"
+											},
+											{
+												"name": "Get Chatbot Training Status",
+												"value": "getChatbotStatus",
+												"action": "Get chatbot training status",
+												"description": "Retrieve the training status of a chatbot"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["chatbot"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Basic Chat Data Node",
+								"displayName": "Chat Data",
+								"originalName": "n8n-nodes-chat-data.chatData"
+							},
+							"createdAt": "2025-05-22T06:27:43.508Z",
+							"updatedAt": "2026-01-28T12:53:11.165Z",
+							"authorGithubUrl": "https://github.com/chat-data-llc/",
+							"authorName": "chatdata",
+							"checksum": "sha512-J6fgUGLguoCj04bDpfWf66nxouEXX1WJ/h+l9qjFvCGE9whXdGZZEbNgyfS9sgYxBZw7JsiLRiXAGswdrK0lug==",
+							"description": "Basic Chat Data Node",
+							"displayName": "Chat Data",
+							"name": "n8n-nodes-chat-data.chatData",
+							"numberOfStars": 2,
+							"numberOfDownloads": 4481,
+							"packageName": "n8n-nodes-chat-data",
+							"npmVersion": "1.2.1",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Chat Data",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-mB6zfrIl7r8SlOaqzB9fvSVdadsnXC55klxU05lpQWQ44hAoWIT9VkubMMfo+LSVajNlebrkEhgFVZjXQOTDwA==",
+									"npmVersion": "1.0.6"
+								},
+								{
+									"checksum": "sha512-Gf+6l0SZuWj8I5klVd3ghwhuOeajGtEpN6Q7ZzA6t57vkHBjPql+FLRxMEiJ86ho0PVZsManRkervgoxt28KuQ==",
+									"npmVersion": "1.1.0"
+								},
+								{
+									"checksum": "sha512-J6fgUGLguoCj04bDpfWf66nxouEXX1WJ/h+l9qjFvCGE9whXdGZZEbNgyfS9sgYxBZw7JsiLRiXAGswdrK0lug==",
+									"npmVersion": "1.2.1"
+								}
+							]
+						}
+					},
+					{
+						"id": 116,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-octagon.octagonAgents",
+								"codex": {},
+								"group": ["input"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Octagon_860db8c7c9.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Octagon"
+								},
+								"subtitle": "={{$parameter[\"agent\"]}}",
+								"properties": [],
+								"description": "Financial AI agents",
+								"displayName": "Octagon",
+								"originalName": "n8n-nodes-octagon.octagonAgents",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-07-23T10:30:56.184Z",
+							"updatedAt": "2026-01-30T09:42:10.877Z",
+							"authorGithubUrl": "https://github.com/OctagonAI/",
+							"authorName": "octagonai",
+							"checksum": "sha512-dJneAKDNeOpMyOo3PwgbnYOH0vdF3SZ1/qkxGd8tqnnRWlv1UspTrIeCAWRnsmtfKpYLQz7xne2VwiX0qH0BsA==",
+							"description": "Financial AI agents",
+							"displayName": "Octagon",
+							"name": "n8n-nodes-octagon",
+							"numberOfStars": 0,
+							"numberOfDownloads": 158,
+							"packageName": "n8n-nodes-octagon",
+							"npmVersion": "1.0.8",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Octagon",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-dJneAKDNeOpMyOo3PwgbnYOH0vdF3SZ1/qkxGd8tqnnRWlv1UspTrIeCAWRnsmtfKpYLQz7xne2VwiX0qH0BsA==",
+									"npmVersion": "1.0.8"
+								}
+							]
+						}
+					},
+					{
+						"id": 99,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-upload-post.uploadPost",
+								"codex": {},
+								"group": ["output"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Upload_Post_ce09ec8861.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Upload Post"
+								},
+								"subtitle": "={{$parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "uploads",
+										"options": [
+											{
+												"name": "Upload",
+												"value": "uploads"
+											},
+											{
+												"name": "Status & History",
+												"value": "monitoring"
+											},
+											{
+												"name": "User",
+												"value": "users"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "uploadPhotos",
+										"options": [
+											{
+												"name": "Upload Document",
+												"value": "uploadDocument",
+												"action": "Upload a document",
+												"description": "Upload a document (PDF, PPT, PPTX, DOC, DOCX) as a native carousel/viewer (Supports: LinkedIn only)"
+											},
+											{
+												"name": "Upload Photo(s)",
+												"value": "uploadPhotos",
+												"action": "Upload photos",
+												"description": "Upload one or more photos (Supports: TikTok, Instagram, LinkedIn, Facebook, X, Threads)"
+											},
+											{
+												"name": "Upload Text",
+												"value": "uploadText",
+												"action": "Upload a text post",
+												"description": "Upload a text-based post (Supports: X, LinkedIn, Facebook, Threads)"
+											},
+											{
+												"name": "Upload Video",
+												"value": "uploadVideo",
+												"action": "Upload a video",
+												"description": "Upload a single video (Supports: TikTok, Instagram, LinkedIn, YouTube, Facebook, X, Threads)"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["uploads"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getStatus",
+										"options": [
+											{
+												"name": "Cancel Scheduled Post",
+												"value": "cancelScheduled",
+												"action": "Cancel scheduled post",
+												"description": "Cancel a scheduled post by its job ID"
+											},
+											{
+												"name": "Edit Scheduled Post",
+												"value": "editScheduled",
+												"action": "Edit scheduled post",
+												"description": "Edit schedule details (like date/time) by job ID"
+											},
+											{
+												"name": "Get Analytics",
+												"value": "getAnalytics",
+												"action": "Get analytics",
+												"description": "Retrieve aggregated analytics for uploads"
+											},
+											{
+												"name": "Get Upload History",
+												"value": "getHistory",
+												"action": "Get upload history",
+												"description": "List past uploads with optional filters"
+											},
+											{
+												"name": "Get Upload Status",
+												"value": "getStatus",
+												"action": "Get upload status",
+												"description": "Check the status of an upload using the request_id"
+											},
+											{
+												"name": "List Scheduled Posts",
+												"value": "listScheduled",
+												"action": "List scheduled posts",
+												"description": "List your scheduled (future) posts"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["monitoring"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "listUsers",
+										"options": [
+											{
+												"name": "Create User",
+												"value": "createUser",
+												"action": "Create user",
+												"description": "Create a new Upload-Post user (profile name)"
+											},
+											{
+												"name": "Delete User",
+												"value": "deleteUser",
+												"action": "Delete user",
+												"description": "Delete an existing Upload-Post user by profile name"
+											},
+											{
+												"name": "Generate JWT (for Platform Integration)",
+												"value": "generateJwt",
+												"action": "Generate jwt for platform integration",
+												"description": "Generate a connection URL (JWT) for a profile. Only needed when integrating Upload-Post into your own platform."
+											},
+											{
+												"name": "List Users",
+												"value": "listUsers",
+												"action": "List users",
+												"description": "List Upload-Post users (profiles)"
+											},
+											{
+												"name": "Validate JWT (for Platform Integration)",
+												"value": "validateJwt",
+												"action": "Validate jwt for platform integration",
+												"description": "Validate a connection token from your backend. Only needed for custom platform integration."
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["users"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Upload content to social media via Upload-Post API",
+								"displayName": "Upload Post",
+								"originalName": "n8n-nodes-upload-post.uploadPost"
+							},
+							"createdAt": "2025-07-15T08:38:31.941Z",
+							"updatedAt": "2026-01-12T14:53:42.409Z",
+							"authorGithubUrl": "https://github.com/Upload-Post/",
+							"authorName": "upload-post",
+							"checksum": "sha512-/+TIol9HBdmu83jUYFB9cYsNxPQCW4cQF/orZO6/g9GnCk2W/EzlYNvVZDnPdZeIWClh38zd00aRnYNWWtvNaA==",
+							"description": "Upload content to social media via Upload-Post API",
+							"displayName": "Upload Post",
+							"name": "n8n-nodes-upload-post",
+							"numberOfStars": 9,
+							"numberOfDownloads": 10018,
+							"packageName": "n8n-nodes-upload-post",
+							"npmVersion": "0.1.36",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-u1wHYMA1v/np4f95nuyzOE969L6SdzFQ6WRB9j12LWhJXsORH6zVp3mBJvMAkk7bXAiJNbMLk3yvRQ2RM4eu5Q==",
+									"npmVersion": "0.1.13"
+								},
+								{
+									"checksum": "sha512-qzvVvfpM5/1KtkdIB9rcU74u2+x2YSg2Rg3GT43qZumYRZhlHiRmUjG+2qGF0yU71JhWjrm6g1gr6QE2iNgjzg==",
+									"npmVersion": "0.1.15"
+								},
+								{
+									"checksum": "sha512-Z6QVF/qY43epdtXqDiGVhEPvzm2pWLEslWP1MJEBajR721yH0fOJ3RxW5hB1Jnz4JKE1Xb9fpLrdOu3NpRcuZg==",
+									"npmVersion": "0.1.18"
+								},
+								{
+									"checksum": "sha512-D+zh/K7DDNHwd2DmiLJFM3o1iEJ7mULgL4fqpj0LYo8kRWMe053QjeWdqXFGSFk97VpouCUvtCh2m4UbxolEqw==",
+									"npmVersion": "0.1.20"
+								},
+								{
+									"checksum": "sha512-fpC7d8ImfwWcyyyBGbMfQEV11SI34VnqfsWB9v0mJlK66O1J4j2pCbaRtQEp7YG0B58K/icFBC5jruGSoKZTJg==",
+									"npmVersion": "0.1.30"
+								},
+								{
+									"checksum": "sha512-lTi6PxnUAMAdrZuRfCCAf1zyYwyqcojrgFMIOWkGszpVFkZGGvXcrFCki7lmJV+L4tS+hKZ6l4sxslS7RukxEQ==",
+									"npmVersion": "0.1.33"
+								},
+								{
+									"checksum": "sha512-/+TIol9HBdmu83jUYFB9cYsNxPQCW4cQF/orZO6/g9GnCk2W/EzlYNvVZDnPdZeIWClh38zd00aRnYNWWtvNaA==",
+									"npmVersion": "0.1.36"
+								}
+							]
+						}
+					},
+					{
+						"id": 146,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@searchapi/n8n-nodes-preview-searchapi.searchApi",
+								"codex": {},
+								"group": ["output"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Search_Api_c711dadb7b.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "SearchApi"
+								},
+								"subtitle": "={{ $parameter[\"engine\"] }}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "google",
+										"options": [
+											{
+												"name": "Google Search",
+												"value": "google"
+											},
+											{
+												"name": "Google Images",
+												"value": "google_images"
+											},
+											{
+												"name": "Google Maps",
+												"value": "google_maps"
+											},
+											{
+												"name": "Google Shopping",
+												"value": "google_shopping"
+											}
+										],
+										"description": "The search engine to use",
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search",
+												"routing": {
+													"request": {
+														"qs": {
+															"engine": "={{ $parameter[\"resource\"] }}"
+														}
+													}
+												},
+												"description": "Search using the engine specified in the resource"
+											}
+										],
+										"displayName": "Operation Name",
+										"noDataExpression": true
+									}
+								],
+								"description": "Access real-time search results from Google, Google Images, Google Maps, Google Shopping and more. Use this when you need current, up-to-date information, product searches, location data, or visual content that may not be available in your training data.",
+								"displayName": "SearchApi",
+								"originalName": "@searchapi/n8n-nodes-searchapi.searchApi",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-08-13T10:20:41.248Z",
+							"updatedAt": "2026-01-30T09:42:09.967Z",
+							"authorGithubUrl": "https://github.com/SearchApi/n8n-nodes-searchapi.git",
+							"authorName": "searchapi_team",
+							"checksum": "sha512-T9JUlP9MXJuZNGRkngfPLhoNvKpf7BtJp+MzO6KC8BZmbR1OLUruB2CN10iDaFNsY80fekkkrasLQLpK4pI99g==",
+							"description": "Access real-time search results from Google, Google Images, Google Maps, Google Shopping and more. Use this when you need current, up-to-date information, product searches, location data, or visual content that may not be available in your training data.",
+							"displayName": "SearchApi",
+							"name": "@searchapi/n8n-nodes-searchapi",
+							"numberOfStars": 1,
+							"numberOfDownloads": 161,
+							"packageName": "@searchapi/n8n-nodes-searchapi",
+							"npmVersion": "2.0.4",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-T9JUlP9MXJuZNGRkngfPLhoNvKpf7BtJp+MzO6KC8BZmbR1OLUruB2CN10iDaFNsY80fekkkrasLQLpK4pI99g==",
+									"npmVersion": "2.0.4"
+								}
+							]
+						}
+					},
+					{
+						"id": 407,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-opnform.opnformTrigger",
+								"codex": {},
+								"group": ["trigger"],
+								"inputs": [],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Opn_Form_Trigger_5f8b307259.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "OpnForm Trigger"
+								},
+								"subtitle": "",
+								"properties": [],
+								"description": "Triggers when a new submission is created in OpnForm",
+								"displayName": "OpnForm Trigger",
+								"originalName": "n8n-nodes-opnform.opnformTrigger",
+								"usableAsTool": true
+							},
+							"createdAt": "2026-01-14T10:29:45.542Z",
+							"updatedAt": "2026-01-30T09:42:10.519Z",
+							"authorGithubUrl": "https://github.com/OpnForm/",
+							"authorName": "jhumanj",
+							"checksum": "sha512-Jy0+l52VXp5n5UEhMPUekpIZi1aLaoMBe3TtTJOHigCMEGVDEFfO8hEcEAuvwWQiq3PWvwDENMiTdH/IfexuvA==",
+							"description": "Triggers when a new submission is created in OpnForm",
+							"displayName": "OpnForm Trigger",
+							"name": "n8n-nodes-opnform.opnformTrigger",
+							"numberOfStars": 2,
+							"numberOfDownloads": 6,
+							"packageName": "n8n-nodes-opnform",
+							"npmVersion": "0.1.7",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-Jy0+l52VXp5n5UEhMPUekpIZi1aLaoMBe3TtTJOHigCMEGVDEFfO8hEcEAuvwWQiq3PWvwDENMiTdH/IfexuvA==",
+									"npmVersion": "0.1.7"
+								}
+							]
+						}
+					},
+					{
+						"id": 327,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-greip.greip",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Greip_a8905d6568.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Greip"
+								},
+								"subtitle": "={{\"Endpoint: \" + $parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "dataLookup",
+										"options": [
+											{
+												"name": "Data Lookup",
+												"value": "dataLookup"
+											},
+											{
+												"name": "Risk Scoring",
+												"value": "riskScoring"
+											}
+										],
+										"displayName": "Resources",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "ipLookup",
+										"options": [
+											{
+												"name": "ASN Lookup",
+												"value": "asnLookup",
+												"action": "ASN Lookup",
+												"description": "Lookup Autonomous System Number (ASN) data"
+											},
+											{
+												"name": "BIN Lookup",
+												"value": "binLookup",
+												"action": "BIN Lookup",
+												"description": "Retrieve comprehensive information associated with a debit or credit card"
+											},
+											{
+												"name": "Country Lookup",
+												"value": "countryLookup",
+												"action": "Country lookup",
+												"description": "Retrieve detailed information about a given country"
+											},
+											{
+												"name": "Domain Lookup",
+												"value": "domainLookup",
+												"action": "Domain lookup",
+												"description": "Lookup any domain name and retrieve associated data and risk evaluation metrics"
+											},
+											{
+												"name": "IBAN Lookup",
+												"value": "ibanLookup",
+												"action": "IBAN Lookup",
+												"description": "Validate a given IBAN and obtain essential information about the issuing country"
+											},
+											{
+												"name": "IP Lookup",
+												"value": "ipLookup",
+												"action": "IP Lookup",
+												"description": "Retrieve comprehensive information about a given IP address"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["dataLookup"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "ipThreats",
+										"options": [
+											{
+												"name": "Email Scoring",
+												"value": "emailScoring",
+												"action": "Email scoring",
+												"description": "Score any email address and retrieve its risk evaluation metrics"
+											},
+											{
+												"name": "IP Scoring",
+												"value": "ipThreats",
+												"action": "IP Scoring",
+												"description": "Get threat intelligence and risk scoring for an IP address"
+											},
+											{
+												"name": "Payment Fraud Detection",
+												"value": "paymentFraudDetection",
+												"action": "Payment fraud detection",
+												"description": "Detect and score payment fraud risk for a transaction",
+												"displayOptions": {
+													"show": {
+														"resource": ["riskScoring"]
+													}
+												}
+											},
+											{
+												"name": "Phone Scoring",
+												"value": "phoneScoring",
+												"action": "Phone number scoring",
+												"description": "Score any phone number and retrieve its risk evaluation metrics"
+											},
+											{
+												"name": "Profanity Detection",
+												"value": "profanityDetection",
+												"action": "Profanity detection",
+												"description": "Detect offensive or inappropriate language in a given text"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["riskScoring"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Get fraud prevention, threat intelligence, and risk scoring data from Greip.",
+								"displayName": "Greip",
+								"originalName": "n8n-nodes-greip.greip",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-12-03T12:20:36.390Z",
+							"updatedAt": "2026-01-30T09:42:10.876Z",
+							"authorGithubUrl": "https://github.com/Greipio/",
+							"authorName": "greip",
+							"checksum": "sha512-Y+0nLlki8c7e9KQ7TEgxKSvZdKfcSoTP/9Qo4nQns6tIZCcgyYqksYLDouy73AktKpjqwGOIkaU1nZVmYNEGEg==",
+							"description": "Get fraud prevention, threat intelligence, and risk scoring data from Greip.",
+							"displayName": "Greip",
+							"name": "n8n-nodes-greip",
+							"numberOfStars": 0,
+							"numberOfDownloads": 0,
+							"packageName": "n8n-nodes-greip",
+							"npmVersion": "1.0.7",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Greip",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-Y+0nLlki8c7e9KQ7TEgxKSvZdKfcSoTP/9Qo4nQns6tIZCcgyYqksYLDouy73AktKpjqwGOIkaU1nZVmYNEGEg==",
+									"npmVersion": "1.0.7"
+								}
+							]
+						}
+					},
+					{
+						"id": 281,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-sourcegeek.sourcegeek",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Source_Geek_for_Linked_In_5a4343b195.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "SourceGeek for LinkedIn"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "linkedin",
+										"options": [
+											{
+												"name": "",
+												"value": "linkedin"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getProfileData",
+										"options": [
+											{
+												"name": "AI People Search",
+												"value": "aiPeopleSearch",
+												"action": "Search for people using AI"
+											},
+											{
+												"name": "Check Connection Status",
+												"value": "checkConnectionStatus",
+												"action": "Check connection status with a profile"
+											},
+											{
+												"name": "Get Company Data",
+												"value": "getCompanyData",
+												"action": "Get data from a linkedin company page"
+											},
+											{
+												"name": "Get Data From A Linkedin Profile",
+												"value": "getProfileData",
+												"action": "Get data from a linkedin profile"
+											},
+											{
+												"name": "Get Recent Accepted Connection Requests",
+												"value": "getRecentAcceptedConnectionRequests",
+												"action": "Get recent accepted connection requests"
+											},
+											{
+												"name": "Get Recent Messages",
+												"value": "getRecentMessages",
+												"action": "Get recent messages"
+											},
+											{
+												"name": "Get Recent Recruiter Messages",
+												"value": "getRecentRecruiterMessages",
+												"action": "Get recent recruiter messages"
+											},
+											{
+												"name": "Import Contacts - Basic Search",
+												"value": "importContactsBasicSearch",
+												"action": "Import contacts from basic search"
+											},
+											{
+												"name": "Import Contacts - Recruiter Search",
+												"value": "importContactsRecruiterSearch",
+												"action": "Import contacts from recruiter search"
+											},
+											{
+												"name": "Import Contacts - Sales Navigator Search",
+												"value": "importContactsSalesNavSearch",
+												"action": "Import contacts from sales navigator search"
+											},
+											{
+												"name": "Send Connection Request",
+												"value": "sendConnectionRequest",
+												"action": "Send connection request"
+											},
+											{
+												"name": "Send Message",
+												"value": "sendMessage",
+												"action": "Send message"
+											},
+											{
+												"name": "Send Recruiter InMail Message",
+												"value": "sendRecruiterInMailMessage",
+												"action": "Send recruiter inmail message"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["linkedin"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Automate LinkedIn tasks and AI workflows with SourceGeek.",
+								"displayName": "SourceGeek for LinkedIn",
+								"originalName": "n8n-nodes-sourcegeek.sourcegeek",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-11-05T12:02:20.969Z",
+							"updatedAt": "2026-01-30T09:42:10.886Z",
+							"authorGithubUrl": "https://github.com/sourcegeekinc/",
+							"authorName": "daraseliya",
+							"checksum": "sha512-rk96bXVp/DMgrS9Qt2gr03qvELeM0ZX2t8rRl1pEEoa0tUkrDFV7FUIitsTAr+cjNQjy9rvfk1IUoi3j1/U1gQ==",
+							"description": "Automate LinkedIn tasks and AI workflows with SourceGeek.",
+							"displayName": "SourceGeek for LinkedIn",
+							"name": "n8n-nodes-sourcegeek",
+							"numberOfStars": 0,
+							"numberOfDownloads": 217,
+							"packageName": "n8n-nodes-sourcegeek",
+							"npmVersion": "0.3.0",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "SourceGeek",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-fp/jPIfaYAQsGNznythbUJnYzgBVHH6YwBeHgFvXKUWalHoxacmTjvyWTGQO7+xP8hHQgb/iywmDPMMC59vjJA==",
+									"npmVersion": "0.1.8"
+								},
+								{
+									"checksum": "sha512-5PU3b8Q2RF87NgbuAeq0HfvEbKxYIV9HsiCEpRAGFgHmMeSQ0IhZuHRQ+Ej6WXxtVKgXKJTaOAIZUYNJ+0cQ8g==",
+									"npmVersion": "0.2.0"
+								},
+								{
+									"checksum": "sha512-sfhZ743pEviFx4IDBB4lq+HmaVE2w/Yz2PKS//S939GoibppY3sZJw5jD+W17cbRVhaNwEW/fqaMg22Ok0z53g==",
+									"npmVersion": "0.2.1"
+								},
+								{
+									"checksum": "sha512-6wiWS+ivKdAk0g1LbxkWm+KHneqGjTKsboiDQtYIlcJ9nyqKNytFn11rVXoarj/pvVWZVdlDHUFVqUkwhG3cOA==",
+									"npmVersion": "0.2.2"
+								},
+								{
+									"checksum": "sha512-uss7dNMWLudnOAX5sqQ2TPHKF2x0Vtk7QfGUe6JjsGAO6LIQUvhchUcThazNW7eaxo/LTJN92HS2cHDA2D8ClA==",
+									"npmVersion": "0.2.3"
+								},
+								{
+									"checksum": "sha512-rk96bXVp/DMgrS9Qt2gr03qvELeM0ZX2t8rRl1pEEoa0tUkrDFV7FUIitsTAr+cjNQjy9rvfk1IUoi3j1/U1gQ==",
+									"npmVersion": "0.3.0"
+								}
+							]
+						}
+					},
+					{
+						"id": 77,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-velatir.velatir",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Velatir_7c89a1aa12.svg",
+								"outputs": ["main", "main", "main"],
+								"version": 1,
+								"defaults": {
+									"name": "Velatir"
+								},
+								"subtitle": "",
+								"properties": [],
+								"description": "Human approval gate with decision routing - routes workflow based on approval decision",
+								"displayName": "Velatir",
+								"originalName": "n8n-nodes-velatir.velatir"
+							},
+							"createdAt": "2025-06-30T14:57:08.263Z",
+							"updatedAt": "2026-01-28T12:53:13.920Z",
+							"authorGithubUrl": "https://github.com/velatir/",
+							"authorName": "velatir",
+							"checksum": "sha512-HVJcES3DbqQq7Q08AYeTPBxtoSZc+qoKyTO+XutF8I0K+2nZhB7kZNY/nIl0qK8wbysPPExVSPR9+ategL+ISA==",
+							"description": "Human approval gate with decision routing - routes workflow based on approval decision",
+							"displayName": "Velatir",
+							"name": "n8n-nodes-velatir",
+							"numberOfStars": 1,
+							"numberOfDownloads": 34,
+							"packageName": "n8n-nodes-velatir",
+							"npmVersion": "2.0.1",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Velatir",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-KQGboQMPLfAB1bRgK/S6LQ6zfjPXkIWz8AjxHTdYEGTOMM/GN0gC4ERITcPjxSRoE39RLXYpJauc0XRhSDNOSg==",
+									"npmVersion": "0.1.0"
+								},
+								{
+									"checksum": "sha512-q9AKMsidG9Xqjr4454nnGIUBFfVVP2bmhUw7EGeMdyRqNKyfs2VNMG1bVpM13GJbQlwdGc8uuQk1BEDyuFENXA==",
+									"npmVersion": "1.0.0"
+								},
+								{
+									"checksum": "sha512-HVJcES3DbqQq7Q08AYeTPBxtoSZc+qoKyTO+XutF8I0K+2nZhB7kZNY/nIl0qK8wbysPPExVSPR9+ategL+ISA==",
+									"npmVersion": "2.0.1"
+								}
+							]
+						}
+					},
+					{
+						"id": 129,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-understandtechchat.understandTechChat",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Understand_Tech_Chat_8ceb18726f.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Understand Tech Chat"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "chat",
+										"options": [
+											{
+												"name": "Chat",
+												"value": "chat"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "sendMessage",
+										"options": [
+											{
+												"name": "Send Message",
+												"value": "sendMessage",
+												"action": "Send message a chat",
+												"description": "Send a message to the chat model"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["chat"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Chat with a model in UnderstandTech",
+								"displayName": "Understand Tech Chat",
+								"originalName": "n8n-nodes-understandtechchat.understandTechChat"
+							},
+							"createdAt": "2025-07-28T16:32:16.122Z",
+							"updatedAt": "2026-01-28T12:53:11.824Z",
+							"authorGithubUrl": "https://github.com/LavaxMaster/n8n-nodes-starter.git",
+							"authorName": "understandtech",
+							"checksum": "sha512-quJVtS/DSmQtdKnUuT9u2qCLhVgGhJpwG/SLhOcRJxjHahkrxo8kiS96mqbUeZ9/6RsJdiABdRUnh/cOWG7z6A==",
+							"description": "Chat with a model in UnderstandTech",
+							"displayName": "Understand Tech Chat",
+							"name": "n8n-nodes-understandtechchat",
+							"numberOfStars": 0,
+							"numberOfDownloads": 2,
+							"packageName": "n8n-nodes-understandtechchat",
+							"npmVersion": "0.1.5",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Understand Tech",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-quJVtS/DSmQtdKnUuT9u2qCLhVgGhJpwG/SLhOcRJxjHahkrxo8kiS96mqbUeZ9/6RsJdiABdRUnh/cOWG7z6A==",
+									"npmVersion": "0.1.5"
+								}
+							]
+						}
+					},
+					{
+						"id": 183,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@pdfgeneratorapi/n8n-nodes-preview-pdf-generator-api.pdfGeneratorApi",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/PDF_Generator_API_db16d39b95.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "PDF Generator API"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "document",
+										"options": [
+											{
+												"name": "Asset",
+												"value": "asset",
+												"description": "Generate QR codes and other assets for use in documents"
+											},
+											{
+												"name": "Conversion",
+												"value": "conversion",
+												"description": "Convert HTML content or URLs directly to PDF without templates"
+											},
+											{
+												"name": "Document",
+												"value": "document",
+												"description": "Generate PDFs from templates with data, manage document storage"
+											},
+											{
+												"name": "PDF Service",
+												"value": "pdfServices",
+												"description": "Process existing PDFs: add watermarks, encrypt, decrypt, optimize, and manage form fields"
+											},
+											{
+												"name": "Template",
+												"value": "template",
+												"description": "Create, update, and manage PDF templates for document generation"
+											},
+											{
+												"name": "Workspace",
+												"value": "workspace",
+												"description": "Manage workspaces for organizing templates and users"
+											}
+										],
+										"description": "Choose the type of PDF operation: generate documents from templates, convert HTML/URLs, process existing PDFs, or manage templates and workspaces",
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "generateQRCode",
+										"options": [
+											{
+												"name": "Generate QR Code",
+												"value": "generateQRCode",
+												"action": "Generate a QR code image",
+												"description": "Generate a QR code image"
+											}
+										],
+										"displayName": "Asset Operations",
+										"displayOptions": {
+											"show": {
+												"resource": ["asset"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "htmlToPdf",
+										"options": [
+											{
+												"name": "HTML to PDF",
+												"value": "htmlToPdf",
+												"action": "Convert HTML content to PDF",
+												"description": "Convert HTML content to PDF"
+											},
+											{
+												"name": "URL to PDF",
+												"value": "urlToPdf",
+												"action": "Convert public URL to PDF",
+												"description": "Convert public URL to PDF"
+											}
+										],
+										"displayName": "Conversion Operations",
+										"displayOptions": {
+											"show": {
+												"resource": ["conversion"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "generate",
+										"options": [
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a document from storage",
+												"description": "Delete a document from storage"
+											},
+											{
+												"name": "Generate",
+												"value": "generate",
+												"action": "Generate a PDF document",
+												"description": "Generate a PDF document"
+											},
+											{
+												"name": "Generate (Async)",
+												"value": "generateAsync",
+												"action": "Generate a PDF document asynchronously",
+												"description": "Generate a PDF document asynchronously"
+											},
+											{
+												"name": "Generate (Batch + Async)",
+												"value": "generateBatchAsync",
+												"action": "Generate multiple PDF documents in batch asynchronously",
+												"description": "Generate multiple PDF documents in batch asynchronously"
+											},
+											{
+												"name": "Generate (Batch)",
+												"value": "generateBatch",
+												"action": "Generate multiple PDF documents in batch",
+												"description": "Generate multiple PDF documents in batch"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a document by public ID",
+												"description": "Get a document by public ID"
+											},
+											{
+												"name": "List",
+												"value": "list",
+												"action": "List generated documents",
+												"description": "List generated documents"
+											}
+										],
+										"displayName": "Document Operations",
+										"displayOptions": {
+											"show": {
+												"resource": ["document"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "addWatermark",
+										"options": [
+											{
+												"name": "Add Watermark",
+												"value": "addWatermark",
+												"action": "Add watermark to PDF document",
+												"description": "Add text or image watermark to PDF document"
+											},
+											{
+												"name": "Decrypt Document",
+												"value": "decrypt",
+												"action": "Decrypt encrypted PDF document",
+												"description": "Decrypt an encrypted PDF document"
+											},
+											{
+												"name": "Encrypt Document",
+												"value": "encrypt",
+												"action": "Encrypt PDF document with password",
+												"description": "Encrypt a PDF document with password protection"
+											},
+											{
+												"name": "Extract Form Fields",
+												"value": "extractFormFields",
+												"action": "Extract form fields from PDF document",
+												"description": "Extract form fields and their metadata from a PDF document"
+											},
+											{
+												"name": "Fill Form Fields",
+												"value": "fillFormFields",
+												"action": "Fill form fields in PDF document",
+												"description": "Fill form fields in a PDF document with provided data"
+											},
+											{
+												"name": "Optimize Document",
+												"value": "optimize",
+												"action": "Optimize PDF document size",
+												"description": "Optimize PDF document size for better performance"
+											}
+										],
+										"displayName": "Services Operations",
+										"displayOptions": {
+											"show": {
+												"resource": ["pdfServices"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "list",
+										"options": [
+											{
+												"name": "Copy",
+												"value": "copy",
+												"action": "Copy a template",
+												"description": "Copy a template"
+											},
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a new template",
+												"description": "Create a new template"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a template",
+												"description": "Delete a template"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a template by ID",
+												"description": "Get a template by ID"
+											},
+											{
+												"name": "Get Data Fields",
+												"value": "getDataFields",
+												"action": "Get template data fields",
+												"description": "Get template data fields"
+											},
+											{
+												"name": "Get Template Schema",
+												"value": "getTemplateSchema",
+												"action": "Get template JSON schema",
+												"description": "Get template JSON schema"
+											},
+											{
+												"name": "List",
+												"value": "list",
+												"action": "Get all templates",
+												"description": "Get all templates"
+											},
+											{
+												"name": "Open Editor",
+												"value": "openEditor",
+												"action": "Get template editor URL",
+												"description": "Get template editor URL"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update an existing template",
+												"description": "Update an existing template"
+											},
+											{
+												"name": "Validate",
+												"value": "validate",
+												"action": "Validate template configuration",
+												"description": "Validate template configuration"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["template"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "list",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a new workspace",
+												"description": "Create a new workspace"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a workspace",
+												"description": "Delete a workspace"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get workspace by identifier",
+												"description": "Get workspace by identifier"
+											},
+											{
+												"name": "List",
+												"value": "list",
+												"action": "Get all workspaces",
+												"description": "Get all workspaces"
+											}
+										],
+										"displayName": "Workspace Operations",
+										"displayOptions": {
+											"show": {
+												"resource": ["workspace"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Generate PDFs, manage templates, convert HTML/URLs to PDF, and perform PDF operations like watermarking, encryption, and optimization",
+								"displayName": "PDF Generator API",
+								"originalName": "@pdfgeneratorapi/n8n-nodes-pdf-generator-api.pdfGeneratorApi",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-09-11T10:20:15.594Z",
+							"updatedAt": "2026-01-30T09:42:10.875Z",
+							"authorGithubUrl": "https://github.com/pdfgeneratorapi/n8n-nodes-pdf-generator-api.git",
+							"authorName": "bruno-farias-ar",
+							"checksum": "sha512-cnJFoK5CFreuHQ9J6SVJCNDvvinvEA7H4AZyJ7DxGvQ8DP+37UqMrYjs36oFuC7HweCPYBcDshp9fqoe1vNiJw==",
+							"description": "Generate PDFs, manage templates, convert HTML/URLs to PDF, and perform PDF operations like watermarking, encryption, and optimization",
+							"displayName": "PDF Generator API",
+							"name": "@pdfgeneratorapi/n8n-nodes-pdf-generator-api",
+							"numberOfStars": 3,
+							"numberOfDownloads": 690,
+							"packageName": "@pdfgeneratorapi/n8n-nodes-pdf-generator-api",
+							"npmVersion": "0.4.0",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "PDF Generator API",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-Se3fEdNCsSKOCfmWN9n3HdQYZG0zrRJkTTQ5bttYiYjwqOEAZb67a9kG4AfKlyjJZx5KbTBPrX2VlSchHgu2lQ==",
+									"npmVersion": "0.2.6"
+								},
+								{
+									"checksum": "sha512-ks4hwsYg8zqNlpKR26HtRqHwYtR1GsLlOwSMJ6KMr+UIgkc2TyW18MqMrsvHlM0U84URFLBUNvqu2B4vptTUjA==",
+									"npmVersion": "0.3.0"
+								},
+								{
+									"checksum": "sha512-cnJFoK5CFreuHQ9J6SVJCNDvvinvEA7H4AZyJ7DxGvQ8DP+37UqMrYjs36oFuC7HweCPYBcDshp9fqoe1vNiJw==",
+									"npmVersion": "0.4.0"
+								}
+							]
+						}
+					},
+					{
+						"id": 312,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-tmpfiles.tmpfiles",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Tmpfiles_5f120fd088.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Tmpfiles"
+								},
+								"subtitle": "={{$parameter[\"resource\"] + \": \" + $parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "tmpfiles",
+										"options": [
+											{
+												"name": "Tmpfile",
+												"value": "tmpfiles"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "upload",
+										"options": [
+											{
+												"name": "Upload",
+												"value": "upload",
+												"action": "Upload file to tmpfiles"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["tmpfiles"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Upload files to Tmpfiles and get a temporary URL",
+								"displayName": "Tmpfiles",
+								"originalName": "n8n-nodes-tmpfiles.tmpfiles",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-11-28T12:05:24.681Z",
+							"updatedAt": "2026-01-30T09:42:10.009Z",
+							"authorGithubUrl": "https://github.com/MookieLian/",
+							"authorName": "mookielian",
+							"checksum": "sha512-dFEu8c5etLQbuqpGQWsJDqZyVFogL6xprBMdTYISWfPNuJwT62nQc3/B5Q4WUDoRY5F3L6e3657MvF/rgtY7GA==",
+							"description": "Upload files to Tmpfiles and get a temporary URL",
+							"displayName": "Tmpfiles",
+							"name": "n8n-nodes-tmpfiles",
+							"numberOfStars": 1,
+							"numberOfDownloads": 97,
+							"packageName": "n8n-nodes-tmpfiles",
+							"npmVersion": "2.0.0",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-A24uEFO2krB7A14WApSCim9edcjuTvmWS8gWha6pEEXm0xr2rNsFREmJlLVoRLOz1ZmqbpDtgTYKCYEZKL9Bhw==",
+									"npmVersion": "1.2.0"
+								},
+								{
+									"checksum": "sha512-dFEu8c5etLQbuqpGQWsJDqZyVFogL6xprBMdTYISWfPNuJwT62nQc3/B5Q4WUDoRY5F3L6e3657MvF/rgtY7GA==",
+									"npmVersion": "2.0.0"
+								}
+							]
+						}
+					},
+					{
+						"id": 39,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-beyondpresence.beyondPresence",
+								"codex": {
+									"resources": {
+										"primaryDocumentation": [
+											{
+												"url": "https://docs.bey.dev/"
+											}
+										],
+										"credentialDocumentation": [
+											{
+												"url": "https://docs.bey.dev/api-key"
+											}
+										]
+									},
+									"categories": ["Marketing & Content", "Sales", "Analytics", "Communication"]
+								},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Beyond_Presence_f06ee7eb02.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Beyond Presence"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "agent",
+										"options": [
+											{
+												"name": "Agent",
+												"value": "agent"
+											},
+											{
+												"name": "Avatar",
+												"value": "avatar"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a new agent",
+												"routing": {
+													"output": {
+														"postReceive": [
+															{
+																"type": "setKeyValue",
+																"properties": {
+																	"id": "={{ $responseItem.id }}",
+																	"call_link": "=https://bey.chat/{{ $responseItem.id }}"
+																}
+															}
+														]
+													},
+													"request": {
+														"url": "/agent",
+														"body": {
+															"name": "={{ $parameter.name }}",
+															"greeting": "={{ $parameter.greeting }}",
+															"language": "={{ $parameter.language }}",
+															"avatar_id": "={{ $parameter.avatarId }}",
+															"capabilities": "={{ $parameter.capabilities }}",
+															"system_prompt": "={{ $parameter.systemPrompt }}",
+															"max_session_length_minutes": "={{ $parameter.maxSessionLengthMinutes }}"
+														},
+														"method": "POST"
+													}
+												},
+												"description": "Deploy a new agent with configuration"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["agent"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "get",
+										"options": [
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get the available avatars",
+												"routing": {
+													"request": {
+														"url": "/avatar",
+														"method": "GET"
+													}
+												},
+												"description": "Get the available Avatars"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["avatar"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Deploy video agents with Beyond Presence",
+								"displayName": "Beyond Presence",
+								"originalName": "n8n-nodes-beyondpresence.beyondPresence"
+							},
+							"createdAt": "2025-05-27T08:25:09.996Z",
+							"updatedAt": "2026-01-28T12:53:11.896Z",
+							"authorGithubUrl": "https://github.com/bey-dev/",
+							"authorName": "nicolabeyondpresence",
+							"checksum": "sha512-3BryaMfTOnMupf/SsZwpD1j0YYfdM6rgpuTbggL6Bj3ApwVXXoXTuBMpsKYfvM18+LcOcvY8Y/GF1IvZ6+XRjw==",
+							"description": "Deploy video agents with Beyond Presence",
+							"displayName": "Beyond Presence",
+							"name": "n8n-nodes-beyondpresence.beyondPresence",
+							"numberOfStars": 0,
+							"numberOfDownloads": 44,
+							"packageName": "n8n-nodes-beyondpresence",
+							"npmVersion": "0.4.0",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Beyond Presence",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-xwggao+omXjop3erbVMvc07iPosquGFh9cji0MKXDk17CXujAjizlL0Wc6xFtnFXw3C+8rH3Sh5muOndB/eCvA==",
+									"npmVersion": "0.3.0"
+								},
+								{
+									"checksum": "sha512-3BryaMfTOnMupf/SsZwpD1j0YYfdM6rgpuTbggL6Bj3ApwVXXoXTuBMpsKYfvM18+LcOcvY8Y/GF1IvZ6+XRjw==",
+									"npmVersion": "0.4.0"
+								}
+							]
+						}
+					},
+					{
+						"id": 150,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-fluentc.fluentCTranslate",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Fluent_C_Translate_d8b21f3458.png",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "FluentC Translate"
+								},
+								"subtitle": "={{$parameter[\"mode\"]}} translation",
+								"properties": [],
+								"description": "Translate text or HTML using FluentC AI",
+								"displayName": "FluentC Translate",
+								"originalName": "n8n-nodes-fluentc.fluentCTranslate"
+							},
+							"createdAt": "2025-08-13T12:05:32.749Z",
+							"updatedAt": "2026-01-28T12:53:12.681Z",
+							"authorGithubUrl": "https://github.com/FluentC/",
+							"authorName": "fluentc",
+							"checksum": "sha512-sNv3Ld0JGzZGx/F8MXIzwjR6XvTKAATumoEpXLs8aRuBviNTfZbDRfFP9fChv+k6tny7I6ZKoAUyszI585tE+g==",
+							"description": "Translate text or HTML using FluentC AI",
+							"displayName": "FluentC Translate",
+							"name": "n8n-nodes-fluentc",
+							"numberOfStars": 0,
+							"numberOfDownloads": 53,
+							"packageName": "n8n-nodes-fluentc",
+							"npmVersion": "1.2.7",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "FluentC",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-ghDFQPpL54W8vThic/MII9/UTPWzrj1Ld6OQvp8rvdMiNCnRvCSFK9myEXyqB8+V7nu3x0n3+WSPTwz34n6ghg==",
+									"npmVersion": "1.2.6"
+								},
+								{
+									"checksum": "sha512-sNv3Ld0JGzZGx/F8MXIzwjR6XvTKAATumoEpXLs8aRuBviNTfZbDRfFP9fChv+k6tny7I6ZKoAUyszI585tE+g==",
+									"npmVersion": "1.2.7"
+								}
+							]
+						}
+					},
+					{
+						"id": 105,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-autobound.autobound",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Autobound_4ca3c47078.svg",
+								"outputs": ["main"],
+								"version": 3.1,
+								"defaults": {
+									"name": "Autobound"
+								},
+								"subtitle": "={{$parameter[\"resource\"] + \": \" + $parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "content",
+										"options": [
+											{
+												"name": "Content",
+												"value": "content",
+												"description": "Generate personalized sales content"
+											},
+											{
+												"name": "Insight",
+												"value": "insights",
+												"description": "Retrieve insights for contacts and companies"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "generateEmail",
+										"options": [
+											{
+												"name": "Generate Email",
+												"value": "generateEmail",
+												"action": "Generate an email",
+												"description": "Generate personalized email content"
+											},
+											{
+												"name": "Generate LinkedIn Message",
+												"value": "generateLinkedIn",
+												"action": "Generate a linkedin message",
+												"description": "Generate personalized LinkedIn message"
+											},
+											{
+												"name": "Generate Cold Call Script",
+												"value": "generateColdCall",
+												"action": "Generate a cold call script",
+												"description": "Generate a cold call script"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["content"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getInsights",
+										"options": [
+											{
+												"name": "Get Insights",
+												"value": "getInsights",
+												"action": "Get insights",
+												"description": "Retrieve insights for a contact or company"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["insights"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Generate AI-powered personalized sales content and retrieve insights using Autobound",
+								"displayName": "Autobound",
+								"originalName": "n8n-nodes-autobound.autobound"
+							},
+							"createdAt": "2025-07-16T11:14:27.929Z",
+							"updatedAt": "2026-01-28T12:53:14.636Z",
+							"authorGithubUrl": "https://github.com/jasonhowie/",
+							"authorName": "autobound",
+							"checksum": "sha512-jjD23NqNPXx2hm63zhuA8NvOfBgqyn24EeDBuWmarzZC6Scjn4DKMH+UQk+QR6EQTXd3hqK0gS21hxCe6arUyg==",
+							"description": "Generate AI-powered personalized sales content and retrieve insights using Autobound",
+							"displayName": "Autobound",
+							"name": "n8n-nodes-autobound",
+							"numberOfStars": 0,
+							"numberOfDownloads": 186,
+							"packageName": "n8n-nodes-autobound",
+							"npmVersion": "2.3.3",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Autobound",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-0dkLAV+9+uOvQIptOW7CxKU/tkY8jmd/xioKQdDL1vjkJLTTKOsa81jik1OO8z4x9cYEHtloIIJkKClLMISK1w==",
+									"npmVersion": "2.3.1"
+								},
+								{
+									"checksum": "sha512-jjD23NqNPXx2hm63zhuA8NvOfBgqyn24EeDBuWmarzZC6Scjn4DKMH+UQk+QR6EQTXd3hqK0gS21hxCe6arUyg==",
+									"npmVersion": "2.3.3"
+								}
+							]
+						}
+					},
+					{
+						"id": 414,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-diviup-connect.diviUpConnect",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Divi_Up_Connect_9a56c8adf6.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "DiviUp Connect"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "run",
+										"options": [
+											{
+												"name": "Run",
+												"value": "run"
+											},
+											{
+												"name": "Agent",
+												"value": "agent"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a new run",
+												"description": "Create a new run container"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a run",
+												"description": "Retrieve a run by ID"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a run",
+												"description": "Update an existing run status"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["run"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "start",
+										"options": [
+											{
+												"name": "Start",
+												"value": "start",
+												"action": "Start an agent",
+												"description": "Execute an agent/module with provided inputs"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["agent"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with DiviUp Connect API to manage runs and execute agents",
+								"displayName": "DiviUp Connect",
+								"originalName": "n8n-nodes-diviup-connect.diviUpConnect",
+								"usableAsTool": true
+							},
+							"createdAt": "2026-01-24T14:15:32.307Z",
+							"updatedAt": "2026-01-30T09:42:10.011Z",
+							"authorGithubUrl": "https://github.com/ParrotLab/",
+							"authorName": "kdowns22",
+							"checksum": "sha512-fpR3KHGmOqcESfVW6fYEJmDJpbuFJeiKtl8KNPSmA5c3aZSZWWDTOqukjkEH3hGW29PRoJxITrrMeMtM0w9jZg==",
+							"description": "Interact with DiviUp Connect API to manage runs and execute agents",
+							"displayName": "DiviUp Connect",
+							"name": "n8n-nodes-diviup-connect.diviUpConnect",
+							"numberOfStars": 0,
+							"numberOfDownloads": 18,
+							"packageName": "n8n-nodes-diviup-connect",
+							"npmVersion": "1.2.2",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-fpR3KHGmOqcESfVW6fYEJmDJpbuFJeiKtl8KNPSmA5c3aZSZWWDTOqukjkEH3hGW29PRoJxITrrMeMtM0w9jZg==",
+									"npmVersion": "1.2.2"
+								}
+							]
+						}
+					},
+					{
+						"id": 276,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-htmlcsstopdf.htmlcsstopdf",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/HTML_to_PDF_fa0cf1b111.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "HTML to PDF"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "pdfCreation",
+										"options": [
+											{
+												"name": "PDF Creation",
+												"value": "pdfCreation",
+												"description": "Create PDF documents from various sources"
+											},
+											{
+												"name": "PDF Manipulation",
+												"value": "pdfManipulation",
+												"description": "Merge, split, or compress PDF documents"
+											},
+											{
+												"name": "PDF Security",
+												"value": "pdfSecurity",
+												"description": "Lock and unlock password-protected PDFs"
+											},
+											{
+												"name": "PDF Extraction & Parsing",
+												"value": "pdfParsing",
+												"description": "Parse PDFs into structured JSON data"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "htmlToPdf",
+										"options": [
+											{
+												"name": "HTML to PDF",
+												"value": "htmlToPdf",
+												"action": "Convert HTML to PDF",
+												"description": "Generate PDF from HTML/CSS"
+											},
+											{
+												"name": "URL to PDF",
+												"value": "urlToPdf",
+												"action": "Capture a screenshot of a website in PDF format",
+												"description": "Capture Website Screenshot to PDF"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["pdfCreation"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "mergePdfs",
+										"options": [
+											{
+												"name": "Merge PDFs",
+												"value": "mergePdfs",
+												"action": "Merge multiple PDFS into one",
+												"description": "Merge multiple PDF files into one"
+											},
+											{
+												"name": "Split PDF",
+												"value": "splitPdf",
+												"action": "Split PDF",
+												"description": "Split or extract pages from a PDF"
+											},
+											{
+												"name": "Compress PDF",
+												"value": "compressPdf",
+												"action": "Compress PDF",
+												"description": "Compress a PDF to reduce file size"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["pdfManipulation"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "lockPdf",
+										"options": [
+											{
+												"name": "Lock PDF",
+												"value": "lockPdf",
+												"action": "Lock PDF with password",
+												"description": "Add password protection to a PDF"
+											},
+											{
+												"name": "Unlock PDF",
+												"value": "unlockPdf",
+												"action": "Unlock password protected PDF",
+												"description": "Remove password protection from a PDF"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["pdfSecurity"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "parsePdf",
+										"options": [
+											{
+												"name": "Parse PDF",
+												"value": "parsePdf",
+												"action": "Parse PDF to JSON",
+												"description": "Extract structured data from PDF"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["pdfParsing"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Convert HTML to PDF or Capture Website Screenshots to PDF",
+								"displayName": "HTML to PDF",
+								"originalName": "n8n-nodes-htmlcsstopdf.htmlcsstopdf",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-11-04T16:20:34.382Z",
+							"updatedAt": "2026-01-30T09:42:10.815Z",
+							"authorGithubUrl": "https://github.com/PdfMunk/n8n-nodes-htmltopdf.git",
+							"authorName": "htmlcsstoimage",
+							"checksum": "sha512-eklMjaLlFbGUIN9gWz8ygiIcvs3wbnh6wiGe2jxUZSdDfuEB027Cxeht5pljg11Vmzg/VS+4xpj6Xi4h1Wo6og==",
+							"description": "Convert HTML to PDF or Capture Website Screenshots to PDF",
+							"displayName": "HTML to PDF",
+							"name": "n8n-nodes-htmlcsstopdf",
+							"numberOfStars": 1,
+							"numberOfDownloads": 2055,
+							"packageName": "n8n-nodes-htmlcsstopdf",
+							"npmVersion": "3.1.2",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "PDFMunk",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-k+yQlN+h8hiHsQgPlEOFzgUV1g3Nv/invvRw508aZzRnncKBGx0LuC3lq0D9g/uKLdqRPqNIDPiAc0UbS37B8A==",
+									"npmVersion": "2.0.4"
+								},
+								{
+									"checksum": "sha512-TBdWZUm4nCW4uYGLiNQzGtfLMczioxUOZNq9Y18kS3Q1XSxY4Y+jj5ir98II0lHc2uxZKKyLTnn3TvZitt1HsA==",
+									"npmVersion": "2.1.2"
+								},
+								{
+									"checksum": "sha512-87gE82GyKJ75yQrWYAHZidyNfG2+Z5un18x1ddPZcv8xk5PA55mG2p/ZznLFcZxFv2nxr5kA4/LK8ru6l3PFPg==",
+									"npmVersion": "2.2.0"
+								},
+								{
+									"checksum": "sha512-QFvt1jVwdXHOaVLVBBmZlHNm1iEIBkOfqdVb/WP0cEpIGp9QOZp405ydCX3FnAyKHh40SWKOXT1CgUuNVJvuIQ==",
+									"npmVersion": "3.0.0"
+								},
+								{
+									"checksum": "sha512-eklMjaLlFbGUIN9gWz8ygiIcvs3wbnh6wiGe2jxUZSdDfuEB027Cxeht5pljg11Vmzg/VS+4xpj6Xi4h1Wo6og==",
+									"npmVersion": "3.1.2"
+								}
+							]
+						}
+					},
+					{
+						"id": 391,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-aimfox.aimfox",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Aimfox_37f7a4bb5c.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Aimfox"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "account",
+										"options": [
+											{
+												"name": "Account",
+												"value": "account"
+											},
+											{
+												"name": "Blacklist",
+												"value": "blacklist"
+											},
+											{
+												"name": "Campaign",
+												"value": "campaign"
+											},
+											{
+												"name": "Conversation",
+												"value": "conversation"
+											},
+											{
+												"name": "Custom Variable",
+												"value": "customVariable"
+											},
+											{
+												"name": "Label",
+												"value": "label"
+											},
+											{
+												"name": "Lead",
+												"value": "lead"
+											},
+											{
+												"name": "Template",
+												"value": "template"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "listAccounts",
+										"options": [
+											{
+												"name": "Get Account Limits",
+												"value": "getAccountLimits",
+												"action": "Get account limits",
+												"routing": {
+													"request": {
+														"url": "=/accounts/{{$parameter[\"accountId\"]}}/limits",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "Get the interaction limits for a specific account"
+											},
+											{
+												"name": "List Accounts",
+												"value": "listAccounts",
+												"action": "List accounts",
+												"routing": {
+													"request": {
+														"url": "/accounts",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "List all accounts in the workspace"
+											},
+											{
+												"name": "Set Account Limits",
+												"value": "setAccountLimits",
+												"action": "Set account limits",
+												"routing": {
+													"request": {
+														"url": "=/accounts/{{$parameter[\"accountId\"]}}/limits",
+														"body": {
+															"inmail": "={{$parameter[\"inmailLimit\"]}}",
+															"connect": "={{$parameter[\"connectLimit\"]}}",
+															"message_request": "={{$parameter[\"messageRequestLimit\"]}}"
+														},
+														"method": "PATCH",
+														"headers": {}
+													}
+												},
+												"description": "Update the weekly interaction limits for an account"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["account"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "listBlacklist",
+										"options": [
+											{
+												"name": "Add Companies to Blacklist",
+												"value": "addCompaniesToBlacklist",
+												"action": "Add companies to blacklist",
+												"routing": {
+													"request": {
+														"url": "/blacklist-companies",
+														"body": {
+															"companies": "={{$parameter[\"companyUrls\"].split(\",\").map(url => url.trim())}}"
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Add multiple LinkedIn companies to the blacklist"
+											},
+											{
+												"name": "Add Profile to Blacklist",
+												"value": "addProfileToBlacklist",
+												"action": "Add profile to blacklist",
+												"routing": {
+													"request": {
+														"url": "=/blacklist/{{$parameter[\"profileUrn\"]}}",
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Add profile to the blacklist using the profile URN"
+											},
+											{
+												"name": "List Blacklisted Companies",
+												"value": "listBlacklistedCompanies",
+												"action": "List blacklisted companies",
+												"routing": {
+													"request": {
+														"url": "/blacklist-companies",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "List all blacklisted LinkedIn companies in the workspace"
+											},
+											{
+												"name": "List Blacklisted Profiles",
+												"value": "listBlacklist",
+												"action": "List blacklisted profiles",
+												"routing": {
+													"request": {
+														"url": "/blacklist",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "List all blacklisted profiles in the workspace"
+											},
+											{
+												"name": "Remove Company From Blacklist",
+												"value": "removeCompanyFromBlacklist",
+												"action": "Remove company from blacklist",
+												"routing": {
+													"request": {
+														"url": "=/blacklist-companies/{{$parameter[\"companyUrn\"]}}",
+														"method": "DELETE",
+														"headers": {}
+													}
+												},
+												"description": "Remove a LinkedIn company from the blacklist using the company URN"
+											},
+											{
+												"name": "Remove Profile From Blacklist",
+												"value": "removeProfileFromBlacklist",
+												"action": "Remove profile from blacklist",
+												"routing": {
+													"request": {
+														"url": "=/blacklist/{{$parameter[\"profileUrn\"]}}",
+														"method": "DELETE",
+														"headers": {}
+													}
+												},
+												"description": "Remove profile from the blacklist using the profile URN"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["blacklist"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "listConversations",
+										"options": [
+											{
+												"name": "Get Conversation",
+												"value": "getConversation",
+												"action": "Get conversation",
+												"routing": {
+													"request": {
+														"url": "=/accounts/{{$parameter[\"accountId\"]}}/conversations/{{$parameter[\"conversationUrn\"]}}",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "Get a specific conversation by URN"
+											},
+											{
+												"name": "Get Lead Conversation",
+												"value": "getLeadConversation",
+												"action": "Get lead conversation",
+												"routing": {
+													"request": {
+														"url": "=/accounts/{{$parameter[\"accountId\"]}}/leads/{{$parameter[\"leadId\"]}}/conversation",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "Get a specific lead conversation URN"
+											},
+											{
+												"name": "List Conversations",
+												"value": "listConversations",
+												"action": "List conversations",
+												"routing": {
+													"request": {
+														"url": "/conversations",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "List all conversations for the selected workspace"
+											},
+											{
+												"name": "Mark Conversation As Read",
+												"value": "markConversationAsRead",
+												"action": "Mark conversation as read",
+												"routing": {
+													"request": {
+														"url": "=/accounts/{{$parameter[\"accountId\"]}}/conversations/{{$parameter[\"conversationUrn\"]}}/mark-as-read",
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Mark an existing conversation as read"
+											},
+											{
+												"name": "Send Message To Conversation",
+												"value": "sendMessageToConversation",
+												"action": "Send message to conversation",
+												"routing": {
+													"request": {
+														"url": "=/accounts/{{$parameter[\"accountId\"]}}/conversations/{{$parameter[\"conversationUrn\"]}}",
+														"body": {
+															"message": "={{$parameter[\"conversationMessage\"]}}"
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Send a message to an existing conversation"
+											},
+											{
+												"name": "Start Conversation",
+												"value": "startConversation",
+												"action": "Start conversation",
+												"routing": {
+													"request": {
+														"url": "=/accounts/{{$parameter[\"accountId\"]}}/conversations",
+														"body": {
+															"message": "={{$parameter[\"conversationMessage\"]}}",
+															"recipients": ["={{$parameter[\"leadId\"]}}"]
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Start a new conversation with the lead"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["conversation"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "listCampaigns",
+										"options": [
+											{
+												"name": "Add Profile to Campaign",
+												"value": "addProfileToCampaign",
+												"action": "Add profile to campaign",
+												"routing": {
+													"request": {
+														"url": "=/campaigns/{{$parameter[\"campaignId\"]}}/audience",
+														"body": {
+															"profile_url": "={{$parameter[\"profileUrl\"]}}"
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Add profile to the selected campaign"
+											},
+											{
+												"name": "Add Profile to Campaign with Custom Variables",
+												"value": "addProfileToCampaignWithCustomVariables",
+												"action": "Add profile to campaign with custom variables",
+												"routing": {
+													"request": {
+														"url": "=/campaigns/{{$parameter[\"campaignId\"]}}/audience/multiple",
+														"body": {
+															"type": "profile_url",
+															"profiles": [
+																{
+																	"profile_url": "={{$parameter[\"profileUrl\"]}}",
+																	"custom_variables": "={{JSON.parse($parameter[\"customVariables\"])}}"
+																}
+															]
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Add profile to the selected campaign with custom variables"
+											},
+											{
+												"name": "Create Campaign",
+												"value": "createCampaign",
+												"action": "Create a campaign",
+												"routing": {
+													"request": {
+														"url": "/campaigns",
+														"body": {
+															"name": "={{$parameter[\"campaignName\"]}}",
+															"type": "={{$parameter[\"campaignType\"]}}",
+															"account_ids": "={{$parameter[\"accountIds\"].split(\",\").map(id => id.trim())}}",
+															"audience_size": "={{$parameter[\"audienceSize\"]}}",
+															"outreach_type": "={{$parameter[\"outreachType\"]}}"
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Create a new Aimfox campaign"
+											},
+											{
+												"name": "Get Campaign",
+												"value": "getCampaign",
+												"action": "Get a campaign",
+												"routing": {
+													"request": {
+														"url": "=/campaigns/{{$parameter[\"campaignId\"]}}",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "Get a specific campaign by ID"
+											},
+											{
+												"name": "List Campaigns",
+												"value": "listCampaigns",
+												"action": "List campaigns",
+												"routing": {
+													"request": {
+														"url": "/campaigns",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "List all campaigns in the workspace"
+											},
+											{
+												"name": "Pause",
+												"value": "pauseCampaign",
+												"action": "Pause a campaign",
+												"routing": {
+													"request": {
+														"url": "=/campaigns/{{$parameter[\"campaignId\"]}}",
+														"body": {
+															"state": "PAUSED"
+														},
+														"method": "PATCH",
+														"headers": {}
+													}
+												},
+												"description": "Pause a running campaign"
+											},
+											{
+												"name": "Remove Profile From Campaign",
+												"value": "removeProfileFromCampaign",
+												"action": "Remove profile from campaign",
+												"routing": {
+													"request": {
+														"url": "=/campaigns/{{$parameter[\"campaignId\"]}}/audience/{{$parameter[\"profileUrnOrIdentifier\"]}}",
+														"method": "DELETE",
+														"headers": {}
+													}
+												},
+												"description": "Remove a profile from the selected campaign using URN or public identifier"
+											},
+											{
+												"name": "Resume",
+												"value": "resumeCampaign",
+												"action": "Resume a campaign",
+												"routing": {
+													"request": {
+														"url": "=/campaigns/{{$parameter[\"campaignId\"]}}",
+														"body": {
+															"state": "ACTIVE"
+														},
+														"method": "PATCH",
+														"headers": {}
+													}
+												},
+												"description": "Resume a paused campaign"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["campaign"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getCampaignCustomVariables",
+										"options": [
+											{
+												"name": "Add Custom Variables to Target",
+												"value": "addCustomVariablesToTarget",
+												"action": "Add custom variables to target",
+												"routing": {
+													"request": {
+														"url": "=/campaigns/{{$parameter[\"campaignId\"]}}/custom-variables",
+														"body": {
+															"custom_variables": "={{[{ target_urn: $parameter[\"targetUrn\"], variables: JSON.parse($parameter[\"variables\"]) }]}}"
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Add custom variables to a specific target in a campaign"
+											},
+											{
+												"name": "Get Campaign Custom Variables",
+												"value": "getCampaignCustomVariables",
+												"action": "Get campaign custom variables",
+												"routing": {
+													"request": {
+														"url": "=/campaigns/{{$parameter[\"campaignId\"]}}/custom-variables",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "Get all custom variables for a specific campaign"
+											},
+											{
+												"name": "Get Target Custom Variables",
+												"value": "getTargetCustomVariables",
+												"action": "Get target custom variables",
+												"routing": {
+													"request": {
+														"url": "=/campaigns/{{$parameter[\"campaignId\"]}}/custom-variables/{{$parameter[\"targetUrn\"]}}",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "Get custom variables for a specific target in a campaign"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["customVariable"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "listLabels",
+										"options": [
+											{
+												"name": "Add Label",
+												"value": "addLabel",
+												"action": "Add label",
+												"routing": {
+													"request": {
+														"url": "/labels",
+														"body": {
+															"name": "={{$parameter[\"labelName\"]}}",
+															"color": "={{$parameter[\"labelColor\"]}}"
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Add a new label to the selected workspace"
+											},
+											{
+												"name": "Delete Label",
+												"value": "deleteLabel",
+												"action": "Delete label",
+												"routing": {
+													"request": {
+														"url": "=/labels/{{$parameter[\"workspaceLabelId\"]}}",
+														"method": "DELETE",
+														"headers": {}
+													}
+												},
+												"description": "Delete a label from the workspace"
+											},
+											{
+												"name": "Edit Label",
+												"value": "editLabel",
+												"action": "Edit label",
+												"routing": {
+													"request": {
+														"url": "=/labels/{{$parameter[\"workspaceLabelId\"]}}",
+														"body": {
+															"name": "={{$parameter[\"labelName\"]}}",
+															"color": "={{$parameter[\"labelColor\"]}}"
+														},
+														"method": "PATCH",
+														"headers": {}
+													}
+												},
+												"description": "Edit an existing label in the workspace"
+											},
+											{
+												"name": "List Labels",
+												"value": "listLabels",
+												"action": "List labels",
+												"routing": {
+													"request": {
+														"url": "/labels",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "List all labels for the selected workspace"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["label"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "listRecentLeads",
+										"options": [
+											{
+												"name": "Add Label To Lead",
+												"value": "addLabelToLead",
+												"action": "Add label to lead",
+												"routing": {
+													"request": {
+														"url": "=/leads/{{$parameter[\"leadId\"]}}/labels/{{$parameter[\"labelId\"]}}",
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Add a new label to the selected lead"
+											},
+											{
+												"name": "Add Note To Lead",
+												"value": "addNoteToLead",
+												"action": "Add note to lead",
+												"routing": {
+													"request": {
+														"url": "=/leads/{{$parameter[\"leadId\"]}}/notes",
+														"body": {
+															"text": "={{$parameter[\"noteText\"]}}"
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Add a new note to the selected lead"
+											},
+											{
+												"name": "Delete Note From Lead",
+												"value": "deleteNoteFromLead",
+												"action": "Delete note from lead",
+												"routing": {
+													"request": {
+														"url": "=/leads/{{$parameter[\"leadId\"]}}/notes/{{$parameter[\"noteId\"]}}",
+														"method": "DELETE",
+														"headers": {}
+													}
+												},
+												"description": "Delete a note from the selected lead"
+											},
+											{
+												"name": "Get Lead",
+												"value": "getLead",
+												"action": "Get lead",
+												"routing": {
+													"request": {
+														"url": "=/leads/{{$parameter[\"leadId\"]}}",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "Get a specific lead by ID"
+											},
+											{
+												"name": "Get Lead Custom Variables",
+												"value": "getLeadCustomVariables",
+												"action": "Get lead custom variables",
+												"routing": {
+													"request": {
+														"url": "=/accounts/{{$parameter[\"accountId\"]}}/leads/{{$parameter[\"leadUrn\"]}}/custom-variables",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "Get custom variables for a specific lead"
+											},
+											{
+												"name": "List Lead Notes",
+												"value": "listLeadNotes",
+												"action": "List lead notes",
+												"routing": {
+													"request": {
+														"url": "=/leads/{{$parameter[\"leadId\"]}}/notes",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "List all notes for the selected lead"
+											},
+											{
+												"name": "List Recent Leads",
+												"value": "listRecentLeads",
+												"action": "List recent leads",
+												"routing": {
+													"request": {
+														"url": "/analytics/recent-leads",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "List recent leads for the selected workspace"
+											},
+											{
+												"name": "Remove Label From Lead",
+												"value": "removeLabelFromLead",
+												"action": "Remove label from lead",
+												"routing": {
+													"request": {
+														"url": "=/leads/{{$parameter[\"leadId\"]}}/labels/{{$parameter[\"labelId\"]}}",
+														"method": "DELETE",
+														"headers": {}
+													}
+												},
+												"description": "Remove a label from the selected lead"
+											},
+											{
+												"name": "Search Leads",
+												"value": "searchLeads",
+												"action": "Search leads",
+												"routing": {
+													"request": {
+														"qs": {
+															"count": "={{$parameter[\"count\"]}}",
+															"start": "={{$parameter[\"start\"]}}"
+														},
+														"url": "/leads:search",
+														"body": {
+															"labels": "={{$parameter[\"additionalFilters\"]?.filterLabels ? $parameter[\"additionalFilters\"].filterLabels.split(\",\").map(l => l.trim()) : []}}",
+															"skills": "={{$parameter[\"additionalFilters\"]?.skills ? $parameter[\"additionalFilters\"].skills.split(\",\").map(s => s.trim()) : []}}",
+															"lead_of": "={{$parameter[\"additionalFilters\"]?.leadOf ? $parameter[\"additionalFilters\"].leadOf.split(\",\").map(l => l.trim()) : []}}",
+															"origins": "={{$parameter[\"additionalFilters\"]?.origins ? $parameter[\"additionalFilters\"].origins.split(\",\").map(o => o.trim()) : []}}",
+															"keywords": "={{$parameter[\"keywords\"] || \"\"}}",
+															"optimize": "={{$parameter[\"optimize\"]}}",
+															"education": "={{$parameter[\"additionalFilters\"]?.education ? $parameter[\"additionalFilters\"].education.split(\",\").map(e => e.trim()) : []}}",
+															"interests": "={{$parameter[\"additionalFilters\"]?.interests ? $parameter[\"additionalFilters\"].interests.split(\",\").map(i => i.trim()) : []}}",
+															"languages": "={{$parameter[\"additionalFilters\"]?.languages ? $parameter[\"additionalFilters\"].languages.split(\",\").map(l => l.trim()) : []}}",
+															"locations": "={{$parameter[\"additionalFilters\"]?.locations ? $parameter[\"additionalFilters\"].locations.split(\",\").map(l => l.trim()) : []}}",
+															"past_companies": "={{$parameter[\"additionalFilters\"]?.pastCompanies ? $parameter[\"additionalFilters\"].pastCompanies.split(\",\").map(c => c.trim()) : []}}",
+															"current_companies": "={{$parameter[\"additionalFilters\"]?.currentCompanies ? $parameter[\"additionalFilters\"].currentCompanies.split(\",\").map(c => c.trim()) : []}}"
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Search through all leads in the workspace"
+											},
+											{
+												"name": "Update Note",
+												"value": "updateNote",
+												"action": "Update note",
+												"routing": {
+													"request": {
+														"url": "=/leads/{{$parameter[\"leadId\"]}}/notes/{{$parameter[\"noteId\"]}}",
+														"body": {
+															"text": "={{$parameter[\"noteText\"]}}"
+														},
+														"method": "PATCH",
+														"headers": {}
+													}
+												},
+												"description": "Update a note for the selected lead"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["lead"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "listTemplates",
+										"options": [
+											{
+												"name": "List Templates",
+												"value": "listTemplates",
+												"action": "List templates",
+												"routing": {
+													"request": {
+														"url": "/templates",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "List all templates in the selected workspace"
+											},
+											{
+												"name": "Get Template",
+												"value": "getTemplate",
+												"action": "Get template",
+												"routing": {
+													"request": {
+														"url": "=/templates/{{$parameter[\"templateId\"]}}",
+														"method": "GET",
+														"headers": {}
+													}
+												},
+												"description": "Get a specific template by ID"
+											},
+											{
+												"name": "Create Template",
+												"value": "createTemplate",
+												"action": "Create template",
+												"routing": {
+													"request": {
+														"url": "/templates",
+														"body": {
+															"ai": "={{$parameter[\"templateAi\"]}}",
+															"name": "={{$parameter[\"templateName\"]}}",
+															"type": "={{$parameter[\"templateType\"]}}",
+															"message": "={{$parameter[\"templateMessage\"]}}",
+															"subject": "={{$parameter[\"templateSubject\"]}}"
+														},
+														"method": "POST",
+														"headers": {}
+													}
+												},
+												"description": "Create a new template in the selected workspace"
+											},
+											{
+												"name": "Remove Template",
+												"value": "removeTemplate",
+												"action": "Remove template",
+												"routing": {
+													"request": {
+														"url": "=/templates/{{$parameter[\"templateId\"]}}",
+														"method": "DELETE",
+														"headers": {}
+													}
+												},
+												"description": "Remove a template from the workspace"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["template"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with Aimfox application",
+								"displayName": "Aimfox",
+								"originalName": "n8n-nodes-aimfox.aimfox"
+							},
+							"createdAt": "2025-12-16T14:20:32.161Z",
+							"updatedAt": "2026-01-28T12:53:53.081Z",
+							"authorGithubUrl": "https://github.com/mihailozepina/",
+							"authorName": "mihailozepina",
+							"checksum": "sha512-WqsmgZ8bT33YG79qRBdWtlE2U1KRRyb2dw6/5tTutPi9L6RUQYLw9kcnl1DGgf/ngI9F41UmTxcTI51SZ2k3OA==",
+							"description": "Interact with Aimfox application",
+							"displayName": "Aimfox",
+							"name": "n8n-nodes-aimfox.aimfox",
+							"numberOfStars": 0,
+							"numberOfDownloads": 121,
+							"packageName": "n8n-nodes-aimfox",
+							"npmVersion": "1.0.14",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Aimfox",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-TqbjYcv+i6SN8gld2ApCDO78Jl5ibsmBAIwa0foFhAeqvif+Hy1wldbzQTlcDoCVkdb0C3c4Zy6nP1QvpBcJ2w==",
+									"npmVersion": "1.0.9"
+								},
+								{
+									"checksum": "sha512-3BRkzVz+KbgWwTSXj2EfVM53ovcMR0Q8+8mHFlVjpYNTKzSR8iinIcfQpAvN8tzkt9Yn0nf3tmyufm1EoDbd2Q==",
+									"npmVersion": "1.0.11"
+								},
+								{
+									"checksum": "sha512-UjXulDQJsdhbbCd5MKU05ELzQJA1rrUziesn0/MkMkC/TRAenHPy/2ZeA/1JBVx7kB0HWgBMZ/4c8KSB+rRhQg==",
+									"npmVersion": "1.0.13"
+								},
+								{
+									"checksum": "sha512-WqsmgZ8bT33YG79qRBdWtlE2U1KRRyb2dw6/5tTutPi9L6RUQYLw9kcnl1DGgf/ngI9F41UmTxcTI51SZ2k3OA==",
+									"npmVersion": "1.0.14"
+								}
+							]
+						}
+					},
+					{
+						"id": 184,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@ekyte/n8n-nodes-preview-ekyte.eKyteAction",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/e_Kyte_0f0262d8ae.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "eKyte"
+								},
+								"subtitle": "={{$parameter[\"resource\"] + \": \" + $parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "task",
+										"options": [
+											{
+												"name": "Board",
+												"value": "board"
+											},
+											{
+												"name": "Note",
+												"value": "note"
+											},
+											{
+												"name": "Notification",
+												"value": "notifications"
+											},
+											{
+												"name": "Project",
+												"value": "project"
+											},
+											{
+												"name": "Task",
+												"value": "task"
+											},
+											{
+												"name": "Ticket",
+												"value": "ticket"
+											},
+											{
+												"name": "Workspace",
+												"value": "workspaces"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createBoard",
+										"options": [
+											{
+												"name": "Create",
+												"value": "createBoard",
+												"action": "Create board",
+												"description": "Create a new board for organizing notes and planning content"
+											},
+											{
+												"name": "Get All",
+												"value": "getBoards",
+												"action": "Get all boards",
+												"description": "Retrieve all boards accessible to the authenticated user"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["board"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createNote",
+										"options": [
+											{
+												"name": "Create",
+												"value": "createNote",
+												"action": "Create note",
+												"description": "Create a new note inside a board with title, content, and category"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["note"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createProject",
+										"options": [
+											{
+												"name": "Create",
+												"value": "createProject",
+												"action": "Create project",
+												"description": "Create a new project to group related tasks and track progress"
+											},
+											{
+												"name": "Get All",
+												"value": "getProjects",
+												"action": "Get all projects",
+												"description": "Retrieve all projects accessible to the authenticated user"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["project"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createTask",
+										"options": [
+											{
+												"name": "Create",
+												"value": "createTask",
+												"action": "Create task",
+												"description": "Create a new task in eKyte with title, dates, priority, and assignment"
+											},
+											{
+												"name": "Get",
+												"value": "getTask",
+												"action": "Get task",
+												"description": "Retrieve a single task by its unique ID"
+											},
+											{
+												"name": "Get Many (with Filters)",
+												"value": "getManyTasks",
+												"action": "Get many tasks with filters",
+												"description": "Search and filter tasks by title, status, workspace, executor, squad, project, or date range"
+											},
+											{
+												"name": "Get Recent",
+												"value": "getTasks",
+												"action": "Get recent tasks",
+												"description": "Get tasks created or updated in the last 15 minutes (basic info)"
+											},
+											{
+												"name": "Get Recent (with Phase)",
+												"value": "getTasksPhase",
+												"action": "Get recent tasks with phase",
+												"description": "Get tasks created or updated in the last 15 minutes including current phase/stage information"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["task"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createTicket",
+										"options": [
+											{
+												"name": "Create",
+												"value": "createTicket",
+												"action": "Create ticket",
+												"description": "Create a new ticket with subject, type, priority, and requester information"
+											},
+											{
+												"name": "Get Concluded",
+												"value": "getTicketsClosed",
+												"action": "Get concluded tickets",
+												"description": "Get tickets that were concluded/closed in the last 15 minutes"
+											},
+											{
+												"name": "Get Updated",
+												"value": "getTicketsChanged",
+												"action": "Get updated tickets",
+												"description": "Get tickets that had any changes/updates in the last 15 minutes"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["ticket"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getNotifications",
+										"options": [
+											{
+												"name": "Get All",
+												"value": "getNotifications",
+												"action": "Get all notifications",
+												"description": "Retrieve all unread notifications for the specified user"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["notifications"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "createWorkspace",
+										"options": [
+											{
+												"name": "Create",
+												"value": "createWorkspace",
+												"action": "Create workspace",
+												"description": "Create a new workspace for a team or department"
+											},
+											{
+												"name": "Get All",
+												"value": "getWorkspaces",
+												"action": "Get all workspaces",
+												"description": "Retrieve all workspaces accessible to the authenticated user"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["workspaces"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Create and retrieve data from eKyte (tasks, projects, tickets, boards, workspaces, notes, notifications)",
+								"displayName": "eKyte",
+								"originalName": "@ekyte/n8n-nodes-ekyte.eKyteAction",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-09-11T10:44:01.558Z",
+							"updatedAt": "2026-01-30T09:42:10.896Z",
+							"authorGithubUrl": "https://github.com/ekyte/n8n-nodes-ekyte.git",
+							"authorName": "lucassebold",
+							"checksum": "sha512-6Swtuvlmx05cI2y1zbNHMZI06C+on3ErD52V8mGzNCXX0d9seyzIgf5qkbhkqiylz79vvSAOQBD/SbBaJTEegQ==",
+							"description": "Create and retrieve data from eKyte (tasks, projects, tickets, boards, workspaces, notes, notifications)",
+							"displayName": "eKyte",
+							"name": "@ekyte/n8n-nodes-ekyte",
+							"numberOfStars": 0,
+							"numberOfDownloads": 304,
+							"packageName": "@ekyte/n8n-nodes-ekyte",
+							"npmVersion": "1.1.0",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "eKyte",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-coLkXGSo2or0Qq84ZgLCVbLvbpSFvsXkj845cr+FSEwnpsPvqsHOqDtbMgntLE9T2WIh6FMUq2PtWRmnbrBTWA==",
+									"npmVersion": "1.0.5"
+								},
+								{
+									"checksum": "sha512-xkbHlGEHqbkQqLdk+Ux3dQVQcuO/QdZR1mlCWPJCCQ2AAu6qhWI4W0+j39mBaMLsFgLBUe+Sfy+obF6B+gw58Q==",
+									"npmVersion": "1.0.6"
+								},
+								{
+									"checksum": "sha512-uHGSbi7Uqod9Z216lPfSCpfSOd49R7eVgJ0CBPYN/KAPYb5q6GiewFYX6vNO/2gru09n90NnmSnavk0yJpqVfw==",
+									"npmVersion": "1.0.7"
+								},
+								{
+									"checksum": "sha512-bChHN6MRJ06T7DFAXtcN2Z2l5E8y5fpkav9z3hbsKH+ZJXLHaoqlsXhWuD4FGgSb5c+lbf8apO3Tz/19PTIiHQ==",
+									"npmVersion": "1.0.9"
+								},
+								{
+									"checksum": "sha512-cgBwDCbBFR+n+B+QIJJn4TASJTNUwLIieE04QjzuPcYj3KEYxPnu82uXXaQpnkWofqB45D4GLrEJ7zzI0AeAoA==",
+									"npmVersion": "1.0.10"
+								},
+								{
+									"checksum": "sha512-6Swtuvlmx05cI2y1zbNHMZI06C+on3ErD52V8mGzNCXX0d9seyzIgf5qkbhkqiylz79vvSAOQBD/SbBaJTEegQ==",
+									"npmVersion": "1.1.0"
+								}
+							]
+						}
+					},
+					{
+						"id": 236,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-deeptagger.deepTagger",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Deep_Tagger_5b0042a3a7.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "DeepTagger"
+								},
+								"subtitle": "={{$parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "extractData",
+										"options": [
+											{
+												"name": "Extract Data",
+												"value": "extractData",
+												"action": "Extract data from document",
+												"description": "Extract structured data from a document"
+											}
+										],
+										"displayName": "Operation",
+										"noDataExpression": true
+									}
+								],
+								"description": "Extract structured data from documents using DeepTagger",
+								"displayName": "DeepTagger",
+								"originalName": "n8n-nodes-deeptagger.deepTagger"
+							},
+							"createdAt": "2025-10-21T11:20:11.373Z",
+							"updatedAt": "2026-01-28T12:58:14.382Z",
+							"authorGithubUrl": "https://github.com/deeptaggerhq/",
+							"authorName": "deeptagger",
+							"checksum": "sha512-G6wxx+cTZ4RahFaVbU8Epp8ZrFcf8Z+KkzYfB9oJnGXt0gVgnPbx/+1njYbc6l8C49n25QMKnHbwWLc+QeC1Vw==",
+							"description": "Extract structured data from documents using DeepTagger",
+							"displayName": "DeepTagger",
+							"name": "n8n-nodes-deeptagger",
+							"numberOfStars": 3,
+							"numberOfDownloads": 17,
+							"packageName": "n8n-nodes-deeptagger",
+							"npmVersion": "0.1.7",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "DeepTagger",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-G6wxx+cTZ4RahFaVbU8Epp8ZrFcf8Z+KkzYfB9oJnGXt0gVgnPbx/+1njYbc6l8C49n25QMKnHbwWLc+QeC1Vw==",
+									"npmVersion": "0.1.7"
+								}
+							]
+						}
+					},
+					{
+						"id": 233,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-dumplingai.dumplingAi",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Dumpling_AI_598f6711e5.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Dumpling AI"
+								},
+								"subtitle": "={{$parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "dataApi",
+										"options": [
+											{
+												"name": "Data API",
+												"value": "dataApi"
+											},
+											{
+												"name": "Web Scraping",
+												"value": "webScraping"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getYouTubeTranscript",
+										"options": [
+											{
+												"name": "Get Google Reviews",
+												"value": "getGoogleReviews",
+												"action": "Get Google Reviews",
+												"routing": {
+													"request": {
+														"url": "/get-google-reviews",
+														"body": {
+															"cid": "={{ $parameter.inputType === \"cid\" ? $parameter.cid : undefined }}",
+															"sortBy": "={{ $parameter.sortBy }}",
+															"keyword": "={{ $parameter.inputType === \"keyword\" ? $parameter.keyword : undefined }}",
+															"placeId": "={{ $parameter.inputType === \"placeId\" ? $parameter.placeId : undefined }}",
+															"reviews": "={{ $parameter.reviews }}",
+															"language": "={{ $parameter.language }}",
+															"location": "={{ $parameter.location || undefined }}"
+														},
+														"method": "POST"
+													}
+												},
+												"description": "Get Google Reviews for a place or business"
+											},
+											{
+												"name": "Get TikTok Transcript",
+												"value": "getTikTokTranscript",
+												"action": "Get TikTok Transcript",
+												"routing": {
+													"request": {
+														"url": "/get-tiktok-transcript",
+														"body": {
+															"videoUrl": "={{ $parameter.videoUrl }}",
+															"preferredLanguage": "={{ $parameter.preferredLanguage }}"
+														},
+														"method": "POST"
+													}
+												},
+												"description": "Retrieve the transcript from a TikTok video"
+											},
+											{
+												"name": "Get YouTube Transcript",
+												"value": "getYouTubeTranscript",
+												"action": "Get YouTube Transcript",
+												"routing": {
+													"request": {
+														"url": "/get-youtube-transcript",
+														"body": {
+															"videoUrl": "={{ $parameter.videoUrl }}",
+															"includeTimestamps": "={{ $parameter.includeTimestamps }}",
+															"preferredLanguage": "={{ $parameter.preferredLanguage }}",
+															"timestampsToCombine": "={{ $parameter.timestampsToCombine }}"
+														},
+														"method": "POST"
+													}
+												},
+												"description": "Extract the transcript from a specified YouTube video URL"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search Google",
+												"routing": {
+													"request": {
+														"url": "/search",
+														"body": {
+															"page": "={{ $parameter.page }}",
+															"query": "={{ $parameter.query }}",
+															"country": "={{ $parameter.country }}",
+															"language": "={{ $parameter.language }}",
+															"location": "={{ $parameter.location }}",
+															"dateRange": "={{ $parameter.dateRange }}",
+															"scrapeOptions": {
+																"format": "={{ $parameter.scrapeFormat }}",
+																"cleaned": "={{ $parameter.scrapeCleaned }}"
+															},
+															"scrapeResults": "={{ $parameter.scrapeResults }}",
+															"numResultsToScrape": "={{ $parameter.numResultsToScrape }}"
+														},
+														"method": "POST"
+													}
+												},
+												"description": "Perform a Google web search with optional content scraping"
+											},
+											{
+												"name": "Search News",
+												"value": "searchNews",
+												"action": "Search News",
+												"routing": {
+													"request": {
+														"url": "/search-news",
+														"body": {
+															"page": "={{ $parameter.page }}",
+															"query": "={{ $parameter.query }}",
+															"country": "={{ $parameter.country }}",
+															"language": "={{ $parameter.language }}",
+															"location": "={{ $parameter.location }}",
+															"dateRange": "={{ $parameter.dateRange }}"
+														},
+														"method": "POST"
+													}
+												},
+												"description": "Search Google News for articles"
+											},
+											{
+												"name": "Search Places",
+												"value": "searchPlaces",
+												"action": "Search Places",
+												"routing": {
+													"request": {
+														"url": "/search-places",
+														"body": {
+															"page": "={{ $parameter.page }}",
+															"query": "={{ $parameter.query }}",
+															"country": "={{ $parameter.country }}",
+															"language": "={{ $parameter.language }}",
+															"location": "={{ $parameter.location }}"
+														},
+														"method": "POST"
+													}
+												},
+												"description": "Search Google Places for businesses and locations"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["dataApi"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "scrapeUrl",
+										"options": [
+											{
+												"name": "Scrape URL",
+												"value": "scrapeUrl",
+												"action": "Scrape URL",
+												"routing": {
+													"request": {
+														"url": "/scrape",
+														"body": {
+															"url": "={{ $parameter.url }}",
+															"format": "={{ $parameter.format }}",
+															"cleaned": "={{ $parameter.cleaned }}",
+															"renderJs": "={{ $parameter.renderJs }}"
+														},
+														"method": "POST"
+													}
+												},
+												"description": "Scrape data from a specified URL with formatting options"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["webScraping"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with Dumpling AI APIs (data, web scraping, document conversion, AI, etc.)",
+								"displayName": "Dumpling AI",
+								"originalName": "n8n-nodes-dumplingai.dumplingAi"
+							},
+							"createdAt": "2025-10-21T07:58:45.753Z",
+							"updatedAt": "2025-10-22T15:50:41.892Z",
+							"authorGithubUrl": "https://github.com/dumplingai/",
+							"authorName": "dumplingai",
+							"checksum": "sha512-4SwKDYFNK8FVgrYbjgWx0ZlayMIWc9RPvwVCMG4nf1qNk99lmnx/F1ZqUXbGYkj2hV067L2JL6JIPSQN4hk/kQ==",
+							"description": "Interact with Dumpling AI APIs (data, web scraping, document conversion, AI, etc.)",
+							"displayName": "Dumpling AI",
+							"name": "n8n-nodes-dumplingai",
+							"numberOfStars": 1,
+							"numberOfDownloads": 5,
+							"packageName": "n8n-nodes-dumplingai",
+							"npmVersion": "0.1.1",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-4SwKDYFNK8FVgrYbjgWx0ZlayMIWc9RPvwVCMG4nf1qNk99lmnx/F1ZqUXbGYkj2hV067L2JL6JIPSQN4hk/kQ==",
+									"npmVersion": "0.1.1"
+								}
+							]
+						}
+					},
+					{
+						"id": 354,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@itechnotion/n8n-nodes-preview-inboxplus.inboxPlus",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Inbox_Plus_476a16875c.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "InboxPlus"
+								},
+								"subtitle": "={{$parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "hidden",
+										"default": "email",
+										"options": [
+											{
+												"name": "Email",
+												"value": "email"
+											}
+										],
+										"displayName": "Resource"
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "prepareEmail",
+										"options": [
+											{
+												"name": "Select Template",
+												"value": "prepareEmail",
+												"action": "Select a template",
+												"description": "Load template and generate tracking for Gmail"
+											},
+											{
+												"name": "Attach Sequence",
+												"value": "startSequence",
+												"action": "Attach a sequence",
+												"description": "Record sent email and start automated follow-up sequence"
+											}
+										],
+										"displayName": "Operation",
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with InboxPlus API - send emails and manage sequences",
+								"displayName": "InboxPlus",
+								"originalName": "@itechnotion/n8n-nodes-inboxplus.inboxPlus",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-12-10T14:43:55.503Z",
+							"updatedAt": "2026-01-30T09:42:10.411Z",
+							"authorGithubUrl": "https://github.com/itechnotion/n8n-nodes-inboxplus.git",
+							"authorName": "itechnotion",
+							"checksum": "sha512-S7ti/6cDdP4kX2BU44iQSvghrzl9HEtZMA1ppoVbsDv4dW3KCtZp98nk7BUV7TqdA6Bfcqovy2e9QNIagoK1JA==",
+							"description": "Interact with InboxPlus API - send emails and manage sequences",
+							"displayName": "InboxPlus",
+							"name": "@itechnotion/n8n-nodes-inboxplus",
+							"numberOfStars": 0,
+							"numberOfDownloads": 24,
+							"packageName": "@itechnotion/n8n-nodes-inboxplus",
+							"npmVersion": "1.2.0",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-EiFkgzw8LPrkZIpOx4GTolT2X0dA10OHqwN/A3AGWzva+zvciA5HjKLgKJfMuk8jabu3AdCCGj5nSs0kc4sfuA==",
+									"npmVersion": "1.1.1"
+								},
+								{
+									"checksum": "sha512-S7ti/6cDdP4kX2BU44iQSvghrzl9HEtZMA1ppoVbsDv4dW3KCtZp98nk7BUV7TqdA6Bfcqovy2e9QNIagoK1JA==",
+									"npmVersion": "1.2.0"
+								}
+							]
+						}
+					},
+					{
+						"id": 153,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-apex.apex",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Apex_dfeda8e74f.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Apex Node"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "getTweet",
+										"options": [
+											{
+												"name": "Generate Reply",
+												"value": "generateReply"
+											},
+											{
+												"name": "Get Tweet",
+												"value": "getTweet"
+											},
+											{
+												"name": "Post Reply",
+												"value": "postReply"
+											},
+											{
+												"name": "Post Tweet",
+												"value": "postTweet"
+											},
+											{
+												"name": "Search Tweet",
+												"value": "searchTweets"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getTweetById",
+										"options": [
+											{
+												"name": "Get Tweet by ID",
+												"value": "getTweetById",
+												"action": "Get tweet by id",
+												"routing": {
+													"request": {
+														"url": "=/apex/tweet/{{$parameter[\"tweetId\"]}}/details",
+														"method": "GET"
+													}
+												},
+												"description": "Get tweet by ID (found in the URL)"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["getTweet"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "postTweet",
+										"options": [
+											{
+												"name": "Tweet",
+												"value": "postTweet",
+												"action": "Post tweet",
+												"routing": {
+													"request": {
+														"url": "=/apex/tweet",
+														"method": "POST"
+													}
+												},
+												"description": "Post tweet to your profile"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["postTweet"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "postReply",
+										"options": [
+											{
+												"name": "Post Reply",
+												"value": "postReply",
+												"action": "Post reply to tweet",
+												"routing": {
+													"request": {
+														"url": "=/apex/tweet/{{$parameter[\"tweetId\"]}}/reply",
+														"method": "POST"
+													}
+												},
+												"description": "Post reply to tweet (by ID)"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["postReply"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "generateReplyToTweetId",
+										"options": [
+											{
+												"name": "Generate Reply to Tweet",
+												"value": "generateReplyToTweetId",
+												"action": "Generate reply to tweet id",
+												"routing": {
+													"request": {
+														"url": "=/apex/tweet/{{$parameter[\"tweetId\"]}}/reply",
+														"method": "GET"
+													}
+												},
+												"description": "Generate reply to tweet ID"
+											},
+											{
+												"name": "Generate Reply to Text",
+												"value": "generateReplyToText",
+												"action": "Generate reply to text string",
+												"routing": {
+													"request": {
+														"url": "=/apex/reply",
+														"method": "GET"
+													}
+												},
+												"description": "Generate reply to text string"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["generateReply"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "searchTweets",
+										"options": [
+											{
+												"name": "Search Tweets",
+												"value": "searchTweets",
+												"action": "Search tweets",
+												"routing": {
+													"request": {
+														"url": "=/apex/tweet/search",
+														"method": "GET"
+													}
+												},
+												"description": "Search tweet based keywords (& filters)"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["searchTweets"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Manage your social media via Apex.",
+								"displayName": "Apex",
+								"originalName": "n8n-nodes-apex.apex"
+							},
+							"createdAt": "2025-08-20T15:09:36.025Z",
+							"updatedAt": "2026-01-28T12:53:14.759Z",
+							"authorGithubUrl": "https://github.com/xonack/",
+							"authorName": "xonack",
+							"checksum": "sha512-C/x7/MTBJrDNF67z9iYAmSFYZ95WVyQUgloEFgak/m6XfnVspwGOCD7DG/XDKjZCxmifHJKp8tUmss/gmPGwUg==",
+							"description": "Manage your social media via Apex.",
+							"displayName": "Apex",
+							"name": "n8n-nodes-apex",
+							"numberOfStars": 0,
+							"numberOfDownloads": 2,
+							"packageName": "n8n-nodes-apex",
+							"npmVersion": "0.1.6",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": "Apex",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-C/x7/MTBJrDNF67z9iYAmSFYZ95WVyQUgloEFgak/m6XfnVspwGOCD7DG/XDKjZCxmifHJKp8tUmss/gmPGwUg==",
+									"npmVersion": "0.1.6"
+								}
+							]
+						}
+					}
+				],
+				"meta": {
+					"pagination": {
+						"page": 7,
+						"pageSize": 25,
+						"pageCount": 14,
+						"total": 331
+					}
+				}
+			}
+		}
+	},
+	"id": "1770043379533-api-staging.n8n.io-GET-_api_community_nodes-c7c9edb6.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

@@ -1,0 +1,101 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "extract",
+						"description": "A function available to call.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"name": {
+									"type": "string",
+									"minLength": 10,
+									"maxLength": 128,
+									"description": "Name of the workflow based on the prompt"
+								}
+							},
+							"required": ["name"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"tool_choice": {
+					"type": "tool",
+					"name": "extract"
+				},
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "<role>\nBased on the initial user prompt, please generate a name for the workflow that captures its essence and purpose\n</role>\n\n<initial_prompt>\nBuild an automation that runs every night 8pm. Use the NewsAPI \"/everything\" endpoint to search for AI-related news from the day. Pick the top 5 articles and use OpenAI `gpt-4.1-mini` to summarize each in two sentences. Generate an image using OpenAI based on the top article's summary. Send a structured Telegram message.\n</initial_prompt>\n\n<output_rules>\nThis name should be concise, descriptive, and suitable for a workflow that automates tasks related to the given prompt. The name should be in a format that is easy to read and understand. Do not include the word \"workflow\" in the name.\n</output_rules>"
+					}
+				]
+			}
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_013aCaBAmzYtd5yfk8hjCwFV",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01CuDPLER2aoAtjy4vNKLqEs",
+						"name": "extract",
+						"input": {
+							"name": "Daily AI News Digest with Image and Telegram Notification"
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 891,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 44,
+					"service_tier": "standard"
+				}
+			}
+		}
+	},
+	"id": "1770043415968-unknown-host-POST-_v1_messages-9e38dbe2.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

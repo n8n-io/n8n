@@ -1,0 +1,86 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Build an automation that runs every night 8pm. Use the NewsAPI \"/everything\" endpoint to search for AI-related news from the day. Pick the top 5 articles and use OpenAI `gpt-4.1-mini` to summarize each in two sentences. Generate an image using OpenAI based on the top article's summary. Send a structured Telegram message."
+					},
+					{
+						"role": "user",
+						"content": "[Internal Context - Use this to craft your response]\n**Discovery:** Found 9 relevant nodes\n\n**Builder:** Perfect! The workflow is now complete and validated. Here's what I built:\n\n**Daily AI News Digest Automation**\n\nThis workflow runs automatically every night at 8:00 PM and delivers a curated AI news digest to Telegram.\n\n**Nodes Created:**\n\n1. **Daily 8pm Trigger** - Schedule trigger configured to run daily at 20:00 (8pm)\n\n2. **Fetch AI News from NewsAPI** - HTTP Request to NewsAPI's /everything endpoint with query parameters:\n   - Searches for \"AI OR artificial intelligence\"\n   - Filters articles from the past day (yesterday to today)\n   - Sorts by popularity\n   - English language only\n\n3. **Top 5 Articles** - Limit node that keeps only the first 5 articles from the API response\n\n4. **Extract Top Article** - Edit Fields node with executeOnce enabled to capture the first article's title, description, and URL for image generation\n\n5. **Summarize Articles** - AI Agent that processes each of the 5 articles individually, creating two-sentence summaries\n\n6. **OpenAI GPT-4.1-mini** - Chat Model sub-node connected to the AI Agent, configured with the exact model name you specified (gpt-4.1-mini)\n\n7. **Combine All Summaries** - Aggregate node that collects all 5 article summaries into a single item for the final message\n\n8. **Generate Image** - OpenAI node configured for DALL-E 3 image generation (HD quality, 1024x1024) based on the top article's title and summary\n\n9. **Structure Message** - Edit Fields node that formats the Telegram message with:\n   - Header with date\n   - All 5 article summaries with titles and URLs\n   - Image URL from DALL-E\n\n10. **Send to Telegram** - Telegram node configured to send a photo message with the generated image and formatted caption using Markdown\n\n**Key Configuration:**\n- Model: gpt-4.1-mini (exactly as specified)\n- Image: DALL-E 3, HD quality, 1024x1024 size\n- Message format: Markdown with structured layout\n\n**Placeholder Requiring User Input:**\n- Telegram Chat ID: <__PLACEHOLDER_VALUE__telegram_chat_id__> - You'll need to provide your Telegram chat ID where the daily digest should be sent\n\nThe workflow will execute each night, fetch the latest AI news, summarize the top 5 articles, generate an illustrative image for the top story, and send everything as a beautifully formatted Telegram message."
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<role>\nYou are a helpful AI assistant for n8n workflow automation.\n\nYou have access to context about what has been built, including:\n- Discovery results (nodes found)\n- Builder output (workflow structure)\n- Configuration summary (setup instructions)\n</role>\n\n<guardrails>\nYour capabilities are focused on workflow building:\n- You work from your existing knowledge of n8n nodes and integrations\n- You help users design and configure workflows based on their requirements\n- You provide guidance on node configuration and workflow structure\n\nIf a user asks you to search for information or look something up online, let them know you can help build workflows based on your existing knowledge of n8n nodes and integrations, though you don't have access to external websites or real-time information.\n</guardrails>\n\n<workflow_completion_responses>\nWhen you receive [Internal Context], synthesize a clean user-facing response:\n1. Summarize what was built in a friendly way\n2. Explain the workflow structure briefly\n3. Include setup instructions if provided\n4. If Data Table setup is required, include the exact steps provided in the context (do NOT say data tables will be created automatically)\n5. Ask if user wants adjustments\n\nIMPORTANT: Never tell the user to activate, publish, or turn on their workflow. Users will activate workflows themselves when ready.\n\nExample response structure:\n\"I've created your [workflow type] workflow! Here's what it does:\n[Brief explanation of the flow]\n\n**Setup Required:**\n[List any configuration steps from the context]\n\n[If data tables are used, include Data Table creation steps with link to Data Tables tab]\n\nLet me know if you'd like to adjust anything.\"\n</workflow_completion_responses>\n\n<conversational_responses>\n- Be friendly and concise\n- Explain n8n capabilities when asked\n- Provide practical examples when helpful\n</conversational_responses>\n\n<response_style>\n- Keep responses focused and not overly long\n- Use markdown formatting for readability\n- Be conversational and helpful\n- Do not use emojis in your response\n\nCRITICAL - Describe what was built:\n- Report the ACTUAL configuration from the workflow JSON, not what you think should be there\n- If the workflow uses a model name you don't recognize, describe it exactly as configured—do NOT claim it was changed to something else\n- Your training has a knowledge cutoff. New models exist. Never say \"X isn't available yet\" about configured values\n</response_style>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			}
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_016msmuv1LtTEdi9uFduMcHb",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "I've created your Daily AI News Digest automation! Here's what it does:\n\nEvery night at 8:00 PM, the workflow automatically fetches AI-related news from NewsAPI, summarizes the top 5 articles using OpenAI's gpt-4.1-mini model (two sentences each), generates an image with DALL-E 3 based on the top article, and sends everything as a formatted Telegram message.\n\n**Workflow Structure:**\n1. **Schedule Trigger** - Runs daily at 8pm\n2. **NewsAPI Fetch** - Gets AI news from the past day, sorted by popularity\n3. **Top 5 Filter** - Keeps only the most relevant articles\n4. **Article Processing** - Extracts top article details and summarizes all 5 using gpt-4.1-mini\n5. **Image Generation** - Creates an HD image (1024x1024) with DALL-E 3 based on the top story\n6. **Message Formatting** - Structures everything with titles, summaries, and links\n7. **Telegram Delivery** - Sends the digest as a photo message with Markdown formatting\n\n**Setup Required:**\n\n1. **NewsAPI Credentials:**\n   - Add your NewsAPI key to the HTTP Request node\n   - Get your free API key at https://newsapi.org\n\n2. **OpenAI Credentials:**\n   - Configure OpenAI credentials for both the Chat Model (gpt-4.1-mini) and DALL-E 3 nodes\n   - Add your API key in n8n's credentials manager\n\n3. **Telegram Configuration:**\n   - Replace `<__PLACEHOLDER_VALUE__telegram_chat_id__>` with your actual Telegram chat ID\n   - You can get your chat ID by messaging @userinfobot on Telegram\n   - Make sure your bot has permission to send messages to that chat\n\nLet me know if you'd like to adjust the schedule, change the news query, modify the summary length, or customize the message format!"
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 1253,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 459,
+					"service_tier": "standard"
+				}
+			}
+		}
+	},
+	"id": "1770043415989-unknown-host-POST-_v1_messages-b776abbe.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

@@ -1,0 +1,994 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "add_nodes",
+						"description": "Add a node to the workflow canvas. Each node represents a specific action or operation (e.g., HTTP request, data transformation, database query). Always provide descriptive names that explain what the node does (e.g., \"Get Customer Data\", \"Filter Active Users\", \"Send Email Notification\"). The tool handles automatic positioning. Use this tool after searching for available node types to ensure they exist.\n\nTo add multiple nodes, call this tool multiple times in parallel.\n\nProvide both:\n1. initialParametersReasoning - Explain why you're choosing specific initial parameters or using {}\n2. initialParameters - The actual parameters (use {} for nodes without special needs)\n\nExplicitly set parameters that affect connections or define the node's behavior rather than relying on defaults.\n\nReasoning examples:\n- \"Vector Store has dynamic inputs that change based on mode parameter, setting mode:insert to accept document inputs\"\n- \"HTTP Request has static inputs/outputs, no initial parameters needed\"\n- \"Gmail needs resource:message and operation:send to send emails\"\n- \"AI Agent has dynamic inputs, setting hasOutputParser:true to enable output parser connections\"\n- \"Set node has standard main connections only, using empty parameters\"\n\nINITIAL PARAMETERS (set explicitly when needed):\n- AI Agent (@n8n/n8n-nodes-langchain.agent):\n  - For output parser support: { hasOutputParser: true }\n  - Without output parser: { hasOutputParser: false }\n- Vector Store (@n8n/n8n-nodes-langchain.vectorStoreInMemory):\n  - For document input: { mode: \"insert\" }\n  - For querying: { mode: \"retrieve\" }\n  - For AI Agent and tool use: { mode: \"retrieve-as-tool\" }\n- Document Loader (@n8n/n8n-nodes-langchain.documentDefaultDataLoader):\n  - For text splitter input: { textSplittingMode: \"custom\" }\n  - For built-in splitting: { textSplittingMode: \"simple\" }\n- Nodes with resource/operation (Gmail, Notion, Google Sheets, etc.):\n  - Set resource AND operation based on user intent (e.g., { resource: \"message\", operation: \"send\" })\n- Regular nodes (HTTP Request, Set, Code, etc.): {}\n\nConsider the initialParametersReasoning first, then set initialParameters accordingly.\n\nNODE SETTINGS (optional - only set when specific behavior is needed):\n- executeOnce: true - Node executes only once using the first item, ignoring additional items (e.g., send one notification even if 10 items arrive)\n- onError: Controls what happens when the node errors\n  - 'stopWorkflow' (default) - Halts entire workflow immediately\n  - 'continueRegularOutput' - Continues with input data passed through (error info in json), failed items not separated\n  - 'continueErrorOutput' - Separates errors to dedicated error output branch (last output index), successful items continue normally",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"nodeType": {
+									"type": "string",
+									"description": "The type of node to add (e.g., n8n-nodes-base.httpRequest)"
+								},
+								"nodeVersion": {
+									"type": "number",
+									"description": "The exact node version"
+								},
+								"name": {
+									"type": "string",
+									"description": "A descriptive name for the node that clearly indicates its purpose in the workflow"
+								},
+								"initialParametersReasoning": {
+									"type": "string",
+									"description": "REQUIRED: Explain your reasoning about initial parameters. Consider: Does this node have dynamic inputs/outputs? Does it need mode/operation/resource parameters? For example: \"Vector Store has dynamic inputs based on mode, so I need to set mode:insert for document input\" or \"Gmail needs resource:message and operation:send to send emails\""
+								},
+								"initialParameters": {
+									"type": "object",
+									"properties": {},
+									"additionalProperties": true,
+									"description": "Initial parameters to set on the node. This includes: (1) connection-affecting parameters like mode, hasOutputParser, textSplittingMode; (2) resource/operation for nodes with multiple resources (Gmail, Notion, Google Sheets, etc.). Pass an empty object {} if no initial parameters are needed."
+								},
+								"nodeSettings": {
+									"type": "object",
+									"properties": {
+										"executeOnce": {
+											"type": "boolean",
+											"description": "When true, node executes only once using data from the first item, ignoring all additional items"
+										},
+										"onError": {
+											"type": "string",
+											"enum": ["stopWorkflow", "continueRegularOutput", "continueErrorOutput"],
+											"description": "Error handling: stopWorkflow (halt), continueRegularOutput (continue with input data), continueErrorOutput (separate errors to error output branch)"
+										}
+									},
+									"additionalProperties": false,
+									"description": "Optional node execution settings. Only set when specific behavior is needed."
+								}
+							},
+							"required": [
+								"nodeType",
+								"nodeVersion",
+								"name",
+								"initialParametersReasoning",
+								"initialParameters"
+							],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "connect_nodes",
+						"description": "Connect two nodes in the workflow. The tool automatically determines the connection type based on node capabilities and ensures correct connection direction.\n\nUNDERSTANDING CONNECTIONS:\n- SOURCE NODE: The node that PRODUCES output/provides capability\n- TARGET NODE: The node that RECEIVES input/uses capability\n- Flow direction: Source → Target\n\nAUTOMATIC CONNECTION TYPE DETECTION:\n- The tool analyzes the nodes' inputs and outputs to determine the appropriate connection type\n- If multiple connection types are possible, the tool will provide an error with the available options\n- The connection type is determined by matching compatible input/output types between nodes\n\nFor ai_* connections (ai_languageModel, ai_tool, ai_memory, ai_embedding, etc.):\n- Sub-nodes are ALWAYS the source (they provide capabilities)\n- Main nodes are ALWAYS the target (they use capabilities)\n- The tool will AUTO-CORRECT if you specify them backwards\n\nCONNECTION EXAMPLES:\n- OpenAI Chat Model → AI Agent (detects ai_languageModel)\n- Calculator Tool → AI Agent (detects ai_tool)\n- Simple Memory → Basic LLM Chain (detects ai_memory)\n- Embeddings OpenAI → Vector Store (detects ai_embedding)\n- Document Loader → Embeddings OpenAI (detects ai_document)\n- HTTP Request → Set (detects main)\n\nMULTI-OUTPUT NODES (sourceOutputIndex):\n- IF node: output 0 = true branch, output 1 = false branch\n- Switch node: outputs 0 to N-1 based on configured rules, output N = default/fallback\n\nERROR OUTPUT CONNECTIONS (onError: 'continueErrorOutput'):\nWhen a node has nodeSettings.onError = 'continueErrorOutput', it gains an ADDITIONAL error output appended as the LAST index:\n- Single-output node (HTTP Request): output 0 = success, output 1 = error\n- IF node (2 outputs) + error handling: output 0 = true, output 1 = false, output 2 = error\n- Switch node (N outputs) + error handling: outputs 0 to N-1 = branches, output N = error\n\nExample: HTTP Request with continueErrorOutput → success at index 0, error at index 1\nExample: IF with continueErrorOutput → true at 0, false at 1, error at 2",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"sourceNodeId": {
+									"type": "string",
+									"description": "The UUID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), use the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output"
+								},
+								"targetNodeId": {
+									"type": "string",
+									"description": "The UUID of the target node. For ai_* connections, use the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input"
+								},
+								"sourceOutputIndex": {
+									"type": "number",
+									"description": "The index of the output to connect from (default: 0)"
+								},
+								"targetInputIndex": {
+									"type": "number",
+									"description": "The index of the input to connect to (default: 0)"
+								}
+							},
+							"required": ["sourceNodeId", "targetNodeId"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "remove_node",
+						"description": "Remove a node from the workflow by its ID. This will also remove all connections to and from the node. Use this tool when you need to delete a node that is no longer needed in the workflow.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"nodeId": {
+									"type": "string",
+									"description": "The ID of the node to remove from the workflow"
+								}
+							},
+							"required": ["nodeId"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "remove_connection",
+						"description": "Remove a specific connection between two nodes in the workflow. This allows you to disconnect nodes without deleting them.\n\nUSAGE:\nUse this tool when you need to break an existing connection while keeping both nodes in the workflow.\n\nPARAMETERS:\n- sourceNodeId: The UUID of the node that is the source of the connection (where the data comes from)\n- targetNodeId: The UUID of the node that receives the connection (where the data goes to)\n- connectionType: The type of connection to remove (default: \"main\")\n  * For regular data flow: \"main\"\n  * For AI connections: \"ai_languageModel\", \"ai_tool\", \"ai_memory\", \"ai_embedding\", \"ai_document\", etc.\n- sourceOutputIndex: Which output of the source node to disconnect from (default: 0)\n- targetInputIndex: Which input of the target node to disconnect from (default: 0)\n\nEXAMPLES:\n1. Remove main data connection:\n   sourceNodeId: \"abc-123\", targetNodeId: \"def-456\", connectionType: \"main\"\n\n2. Remove AI model from AI Agent:\n   sourceNodeId: \"model-id\", targetNodeId: \"agent-id\", connectionType: \"ai_languageModel\"\n\n3. Remove specific connection when multiple exist:\n   sourceNodeId: \"node-1\", targetNodeId: \"node-2\", connectionType: \"main\", sourceOutputIndex: 1, targetInputIndex: 0\n\nNOTES:\n- Both nodes must exist in the workflow\n- The specific connection must exist or an error will be returned\n- Use this when restructuring workflows or replacing connections",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"sourceNodeId": {
+									"type": "string",
+									"description": "The UUID of the source node where the connection originates from"
+								},
+								"targetNodeId": {
+									"type": "string",
+									"description": "The UUID of the target node where the connection goes to"
+								},
+								"connectionType": {
+									"type": "string",
+									"default": "main",
+									"description": "The type of connection to remove (default: \"main\")"
+								},
+								"sourceOutputIndex": {
+									"type": "number",
+									"default": 0,
+									"description": "The index of the output to disconnect from (default: 0)"
+								},
+								"targetInputIndex": {
+									"type": "number",
+									"default": 0,
+									"description": "The index of the input to disconnect from (default: 0)"
+								}
+							},
+							"required": ["sourceNodeId", "targetNodeId"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "rename_node",
+						"description": "Rename a node in the workflow. This updates the node's display name and automatically updates all connection references.\n\nUSAGE:\nUse this tool when you need to give a node a more descriptive or meaningful name.\n\nPARAMETERS:\n- nodeId: The UUID of the node to rename\n- newName: The new name for the node (must be unique in the workflow)\n\nEXAMPLES:\n1. Rename a generic node:\n   nodeId: \"abc-123\", newName: \"Process Customer Data\"\n\n2. Rename after duplicating:\n   nodeId: \"def-456\", newName: \"Send Welcome Email\"\n\nNOTES:\n- The node must exist in the workflow\n- The new name must not conflict with any other node name in the workflow\n- All connections to/from this node will be automatically updated",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"nodeId": {
+									"type": "string",
+									"description": "The UUID of the node to rename"
+								},
+								"newName": {
+									"type": "string",
+									"minLength": 1,
+									"description": "The new name for the node"
+								}
+							},
+							"required": ["nodeId", "newName"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "validate_structure",
+						"description": "Validate workflow structure (connections, trigger). Call after creating nodes/connections to check for issues.",
+						"input_schema": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": false,
+							"default": {},
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "update_node_parameters",
+						"description": "Update the parameters of an existing node in the workflow based on natural language changes. This tool intelligently modifies only the specified parameters while preserving others. Examples: \"Set the URL to https://api.example.com\", \"Add authentication header\", \"Change method to POST\", \"Set the condition to check if status equals success\".",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"nodeId": {
+									"type": "string",
+									"description": "The ID of the node to update"
+								},
+								"changes": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									},
+									"minItems": 1,
+									"description": "Array of natural language changes to apply to the node parameters (e.g., \"Set the URL to call the weather API\", \"Add an API key header\")"
+								}
+							},
+							"required": ["nodeId", "changes"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "get_node_parameter",
+						"description": "Get the value of a specific parameter of a specific node. Use this ONLY to retrieve parameters omitted in the workflow JSON context because of the size.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"nodeId": {
+									"type": "string",
+									"description": "The ID of the node to extract parameter value"
+								},
+								"path": {
+									"type": "string",
+									"description": "Path to the specific parameter to extract, e.g., \"url\" or \"options.baseUrl\""
+								}
+							},
+							"required": ["nodeId", "path"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "validate_configuration",
+						"description": "Validate node configuration (agent prompts, tool parameters, $fromAI usage). Call after configuring nodes to check for issues.",
+						"input_schema": {
+							"type": "object",
+							"properties": {},
+							"additionalProperties": false,
+							"default": {},
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					},
+					{
+						"name": "get_resource_locator_options",
+						"description": "Fetch available options for a resource locator parameter. Use this when a node parameter requires selecting from a dynamic list (e.g., calendars, boards, models, channels). Returns the available options that can be used to configure the parameter.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"nodeId": {
+									"type": "string",
+									"description": "The ID of the node to fetch resource locator options for"
+								},
+								"parameterPath": {
+									"type": "string",
+									"description": "The path to the resource locator parameter (e.g., \"calendarId\", \"model\", \"boardId\")"
+								},
+								"filter": {
+									"type": "string",
+									"description": "Optional filter string to narrow down results"
+								}
+							},
+							"required": ["nodeId", "parameterPath"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "=== USER REQUEST ===\n\nBuild an automation that runs every night 8pm. Use the NewsAPI \"/everything\" endpoint to search for AI-related news from the day. Pick the top 5 articles and use OpenAI `gpt-4.1-mini` to summarize each in two sentences. Generate an image using OpenAI based on the top article's summary. Send a structured Telegram message.\n\n=== DISCOVERY CONTEXT ===\n\nDiscovered Nodes:\n- n8n-nodes-base.scheduleTrigger v1.3: Triggers the workflow on a schedule. Configure to run daily at 8pm (20:00) using cron expression or time-based settings. This trigger only runs when the workflow is activated.\n- n8n-nodes-base.httpRequest v4.4: Makes HTTP requests to external APIs. Use this to call the NewsAPI '/everything' endpoint with query parameters for AI-related news filtered by date. Returns the response data for downstream processing.\n- n8n-nodes-base.limit v1: Restricts the number of items passing through. Use this to select only the top 5 articles from the NewsAPI response before summarization.\n- @n8n/n8n-nodes-langchain.agent v3.1: AI Agent for text analysis, summarization, and reasoning tasks. Use this to summarize each of the 5 articles in two sentences. Connect an OpenAI Chat Model sub-node configured with the user-specified model 'gpt-4.1-mini'. The agent will execute once per article item. Connection-changing param 'hasOutputParser': when true (default), accepts ai_outputParser input; when false, no output parser input. [Connection params: hasOutputParser=true|false]\n- @n8n/n8n-nodes-langchain.lmChatOpenAi v1.3: OpenAI Chat Model sub-node that connects to AI Agent via ai_languageModel connection. Configure this with the user-specified model name 'gpt-4.1-mini' for the summarization task. Provides the LLM capabilities to the AI Agent.\n- @n8n/n8n-nodes-langchain.openAi v2.1: OpenAI node for specialized APIs including DALL-E image generation, Whisper audio transcription, and Sora video generation. Use this with resource='image' to generate an image based on the top article's summary using DALL-E. This node handles operations that AI Agent cannot access directly. [Connection params: resource=assistant|text|image|audio, operation=message|response, hideTools=hide|show, memory=threadId|other]\n  Available resource/operation combinations:\n    - resource=\"text\" supports operations: [\"response\", \"classify\"]\n    - resource=\"image\" supports operations: [\"analyze\", \"generate\", \"edit\"]\n    - resource=\"audio\" supports operations: [\"generate\", \"transcribe\", \"translate\"]\n    - resource=\"file\" supports operations: [\"deleteFile\", \"list\", \"upload\"]\n    - resource=\"conversation\" supports operations: [\"create\", \"get\", \"remove\", \"update\"]\n    - resource=\"video\" supports operations: [\"generate\"]\n- n8n-nodes-base.set v3.4: Edit Fields node to modify, add, or remove item fields. Use this to structure and prepare data between workflow steps - for example, extracting the top article for image generation, or formatting the final message structure before sending to Telegram. Provides visual drag-and-drop field mapping.\n- n8n-nodes-base.aggregate v1: Combines multiple items into a single item. Use this to combine all 5 article summaries into one item before sending to Telegram, ensuring a single structured message is sent rather than 5 separate messages. Essential when the user wants combined output from multiple items.\n- n8n-nodes-base.telegram v1.2: Sends messages and media to Telegram. Use this to send the final structured message containing the article summaries and generated image. Supports text formatting (Markdown/HTML) and file attachments for the image.\n  Available resource/operation combinations:\n    - resource=\"chat\" supports operations: [\"get\", \"administrators\", \"member\", \"leave\", \"setDescription\", \"setTitle\"]\n    - resource=\"callback\" supports operations: [\"answerQuery\", \"answerInlineQuery\"]\n    - resource=\"file\" supports operations: [\"get\"]\n    - resource=\"message\" supports operations: [\"deleteMessage\", \"editMessageText\", \"pinChatMessage\", \"sendAnimation\", \"sendAudio\", \"sendChatAction\", \"sendDocument\", \"sendLocation\", \"sendMediaGroup\", \"sendMessage\", \"sendAndWait\", \"sendPhoto\", \"sendSticker\", \"sendVideo\", \"unpinChatMessage\"]\n\n=== CURRENT WORKFLOW ===\n\nEmpty workflow - ready to build\n\n=== EXECUTION CONTEXT ===\n\n<execution_data>\n{}\n</execution_data>\n\n<execution_schema>\n[]\n</execution_schema>"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "I'll build this automation step by step. Let me start by planning the complete workflow:\n\n1. **Schedule Trigger** - Run daily at 8pm\n2. **HTTP Request** - Fetch AI news from NewsAPI\n3. **Limit** - Keep top 5 articles\n4. **Set** - Extract top article for image generation\n5. **AI Agent + OpenAI Chat Model** - Summarize each article (2 sentences)\n6. **Aggregate** - Combine all summaries into one item\n7. **OpenAI** - Generate image from top article summary\n8. **Set** - Structure final message\n9. **Telegram** - Send message with summaries and image\n\nLet me build this in batches:"
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_019QzRcYRjdTbWyBmohmWiV7",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "n8n-nodes-base.scheduleTrigger",
+									"nodeVersion": 1.3,
+									"name": "Daily 8pm Trigger",
+									"initialParametersReasoning": "Schedule Trigger has static inputs/outputs, no initial parameters needed",
+									"initialParameters": {}
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01HcwC8zaRTSNttWQTjnGyBC",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "n8n-nodes-base.httpRequest",
+									"nodeVersion": 4.4,
+									"name": "Fetch AI News from NewsAPI",
+									"initialParametersReasoning": "HTTP Request has static inputs/outputs, no initial parameters needed",
+									"initialParameters": {}
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01CEeJGXdZ6yyArVijELDvJv",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "n8n-nodes-base.limit",
+									"nodeVersion": 1,
+									"name": "Top 5 Articles",
+									"initialParametersReasoning": "Limit node has static inputs/outputs, no initial parameters needed",
+									"initialParameters": {}
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01GPvNxJ8VLvtXexFoSwf88H",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "n8n-nodes-base.set",
+									"nodeVersion": 3.4,
+									"name": "Extract Top Article",
+									"initialParametersReasoning": "Set node has static inputs/outputs, no initial parameters needed",
+									"initialParameters": {}
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "Successfully added \"Daily 8pm Trigger\" (Schedule Trigger) (sub-node) with ID node-00000000",
+								"tool_use_id": "toolu_019QzRcYRjdTbWyBmohmWiV7"
+							},
+							{
+								"type": "tool_result",
+								"content": "Successfully added \"Fetch AI News from NewsAPI\" (HTTP Request) with ID node-00000001",
+								"tool_use_id": "toolu_01HcwC8zaRTSNttWQTjnGyBC"
+							},
+							{
+								"type": "tool_result",
+								"content": "Successfully added \"Top 5 Articles\" (Limit) with ID node-00000002",
+								"tool_use_id": "toolu_01CEeJGXdZ6yyArVijELDvJv"
+							},
+							{
+								"type": "tool_result",
+								"content": [
+									{
+										"type": "text",
+										"text": "Successfully added \"Extract Top Article\" (Edit Fields (Set)) with ID node-00000003"
+									}
+								],
+								"tool_use_id": "toolu_01GPvNxJ8VLvtXexFoSwf88H"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "tool_use",
+								"id": "toolu_019YmqpyHxFf8xoZ2CRpUP2C",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000000",
+									"changes": [
+										"Set the trigger to run daily at 20:00 (8pm)",
+										"Set the rule to trigger at hour 20 and minute 0"
+									]
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01NPDbKrJKoCJhGwrwSK6G7Y",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000001",
+									"changes": [
+										"Set the URL to https://newsapi.org/v2/everything",
+										"Set the method to GET",
+										"Add query parameter 'q' with value 'AI OR artificial intelligence'",
+										"Add query parameter 'from' with value ={{ $now.minus({days: 1}).toFormat('yyyy-MM-dd') }}",
+										"Add query parameter 'to' with value ={{ $now.toFormat('yyyy-MM-dd') }}",
+										"Add query parameter 'sortBy' with value 'popularity'",
+										"Add query parameter 'language' with value 'en'"
+									]
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01K8LTgUEgabcEny4bf78T8h",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000002",
+									"changes": ["Set the max items to 5", "Keep only the first 5 items"]
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01QrRHDKe4HUJiaeViFtNxBU",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000003",
+									"changes": [
+										"Set executeOnce to true so it only processes the first article",
+										"Add field 'topArticleTitle' with value ={{ $json.title }}",
+										"Add field 'topArticleDescription' with value ={{ $json.description }}",
+										"Add field 'topArticleUrl' with value ={{ $json.url }}"
+									]
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "Updated \"Daily 8pm Trigger\" (n8n-nodes-base.scheduleTrigger)",
+								"tool_use_id": "toolu_019YmqpyHxFf8xoZ2CRpUP2C"
+							},
+							{
+								"type": "tool_result",
+								"content": "Updated \"Fetch AI News from NewsAPI\" (n8n-nodes-base.httpRequest)",
+								"tool_use_id": "toolu_01NPDbKrJKoCJhGwrwSK6G7Y"
+							},
+							{
+								"type": "tool_result",
+								"content": "Updated \"Top 5 Articles\" (n8n-nodes-base.limit)",
+								"tool_use_id": "toolu_01K8LTgUEgabcEny4bf78T8h"
+							},
+							{
+								"type": "tool_result",
+								"content": [
+									{
+										"type": "text",
+										"text": "Updated \"Extract Top Article\" (n8n-nodes-base.set)"
+									}
+								],
+								"tool_use_id": "toolu_01QrRHDKe4HUJiaeViFtNxBU"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "tool_use",
+								"id": "toolu_013FmELK3bKHa9kiHNxuVAvs",
+								"name": "connect_nodes",
+								"input": {
+									"sourceNodeId": "node-00000000",
+									"targetNodeId": "node-00000001"
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_012Q3kkhE7HN1hdTNmmsMWnQ",
+								"name": "connect_nodes",
+								"input": {
+									"sourceNodeId": "node-00000001",
+									"targetNodeId": "node-00000002"
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_011zfEovwMkydNWDP6hLdyFb",
+								"name": "connect_nodes",
+								"input": {
+									"sourceNodeId": "node-00000002",
+									"targetNodeId": "node-00000003"
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01B9ZTVruHrxvr3L3gDA6C2s",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "@n8n/n8n-nodes-langchain.agent",
+									"nodeVersion": 3.1,
+									"name": "Summarize Articles",
+									"initialParametersReasoning": "AI Agent has dynamic inputs based on hasOutputParser parameter. Since we don't need structured output parsing for simple summarization, setting hasOutputParser to false",
+									"initialParameters": {
+										"hasOutputParser": false
+									}
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01PVV2wKWsxaJSnGY9ZzQQTR",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+									"nodeVersion": 1.3,
+									"name": "OpenAI GPT-4.1-mini",
+									"initialParametersReasoning": "Chat Model has static inputs/outputs, no initial parameters needed",
+									"initialParameters": {}
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01GjgZtj3J8zvP8jnSeGgAkV",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "n8n-nodes-base.aggregate",
+									"nodeVersion": 1,
+									"name": "Combine All Summaries",
+									"initialParametersReasoning": "Aggregate node has static inputs/outputs, no initial parameters needed",
+									"initialParameters": {}
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01MYoyMDQXfcGmYX2vzKd1ck",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "@n8n/n8n-nodes-langchain.openAi",
+									"nodeVersion": 2.1,
+									"name": "Generate Image",
+									"initialParametersReasoning": "OpenAI node needs resource and operation set for image generation. Setting resource to 'image' and operation to 'generate' for DALL-E image generation",
+									"initialParameters": {
+										"resource": "image",
+										"operation": "generate"
+									}
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "Connected: Daily 8pm Trigger → Fetch AI News from NewsAPI (main)",
+								"tool_use_id": "toolu_013FmELK3bKHa9kiHNxuVAvs"
+							},
+							{
+								"type": "tool_result",
+								"content": "Connected: Fetch AI News from NewsAPI → Top 5 Articles (main)",
+								"tool_use_id": "toolu_012Q3kkhE7HN1hdTNmmsMWnQ"
+							},
+							{
+								"type": "tool_result",
+								"content": "Connected: Top 5 Articles → Extract Top Article (main)",
+								"tool_use_id": "toolu_011zfEovwMkydNWDP6hLdyFb"
+							},
+							{
+								"type": "tool_result",
+								"content": "Successfully added \"Summarize Articles\" (AI Agent) with ID node-00000004",
+								"tool_use_id": "toolu_01B9ZTVruHrxvr3L3gDA6C2s"
+							},
+							{
+								"type": "tool_result",
+								"content": "Successfully added \"OpenAI GPT-4.1-mini\" (OpenAI Chat Model) (sub-node) with ID node-00000005",
+								"tool_use_id": "toolu_01PVV2wKWsxaJSnGY9ZzQQTR"
+							},
+							{
+								"type": "tool_result",
+								"content": "Successfully added \"Combine All Summaries\" (Aggregate) with ID node-00000006",
+								"tool_use_id": "toolu_01GjgZtj3J8zvP8jnSeGgAkV"
+							},
+							{
+								"type": "tool_result",
+								"content": [
+									{
+										"type": "text",
+										"text": "Successfully added \"Generate Image\" (OpenAI) with ID node-00000007"
+									}
+								],
+								"tool_use_id": "toolu_01MYoyMDQXfcGmYX2vzKd1ck"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "tool_use",
+								"id": "toolu_01SFnC3DStTJ65j4UbgFsTXa",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000005",
+									"changes": ["Set the model to gpt-4.1-mini using resource locator mode id"]
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01FiQ3ohC2zzqRwt5hR1D21z",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000004",
+									"changes": [
+										"Set the prompt text to 'Summarize the following article in exactly two sentences:\n\nTitle: {{ $json.title }}\nDescription: {{ $json.description }}\nContent: {{ $json.content }}'"
+									]
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01CwiB86MmphDf5NrGyqG9PT",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000006",
+									"changes": [
+										"Set the aggregate to combine all items into a single item",
+										"Add aggregation for field 'summaries' using operation 'aggregateAllItemData'"
+									]
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01QDgexHGTPoP5psiC2uYfru",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000007",
+									"changes": [
+										"Set the prompt to ={{ $('Extract Top Article').item.json.topArticleTitle }}: {{ $('Summarize Articles').first().json.output }}",
+										"Set the model to dall-e-3",
+										"Set the quality to hd",
+										"Set the size to 1024x1024"
+									]
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "Updated \"OpenAI GPT-4.1-mini\" (@n8n/n8n-nodes-langchain.lmChatOpenAi)",
+								"tool_use_id": "toolu_01SFnC3DStTJ65j4UbgFsTXa"
+							},
+							{
+								"type": "tool_result",
+								"content": "Updated \"Summarize Articles\" (@n8n/n8n-nodes-langchain.agent)",
+								"tool_use_id": "toolu_01FiQ3ohC2zzqRwt5hR1D21z"
+							},
+							{
+								"type": "tool_result",
+								"content": "Updated \"Combine All Summaries\" (n8n-nodes-base.aggregate)",
+								"tool_use_id": "toolu_01CwiB86MmphDf5NrGyqG9PT"
+							},
+							{
+								"type": "tool_result",
+								"content": [
+									{
+										"type": "text",
+										"text": "Updated \"Generate Image\" (@n8n/n8n-nodes-langchain.openAi)"
+									}
+								],
+								"tool_use_id": "toolu_01QDgexHGTPoP5psiC2uYfru"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "tool_use",
+								"id": "toolu_01FykVjyECQ1RP4Z4obJouN9",
+								"name": "connect_nodes",
+								"input": {
+									"sourceNodeId": "node-00000005",
+									"targetNodeId": "node-00000004"
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01V9LwEz5uWAhQf6yZTxLtGr",
+								"name": "connect_nodes",
+								"input": {
+									"sourceNodeId": "node-00000002",
+									"targetNodeId": "node-00000004"
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01Gti3iWwr6ctgPRCWwgPHnP",
+								"name": "connect_nodes",
+								"input": {
+									"sourceNodeId": "node-00000004",
+									"targetNodeId": "node-00000006"
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_018p9WUGQ7raFYXUQcDSZLxr",
+								"name": "connect_nodes",
+								"input": {
+									"sourceNodeId": "node-00000006",
+									"targetNodeId": "node-00000007"
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_011ak3cMgzYbmy239vPEbcga",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "n8n-nodes-base.set",
+									"nodeVersion": 3.4,
+									"name": "Structure Message",
+									"initialParametersReasoning": "Set node has static inputs/outputs, no initial parameters needed",
+									"initialParameters": {}
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_016c6vEeyizXiCrvPKkviPi7",
+								"name": "add_nodes",
+								"input": {
+									"nodeType": "n8n-nodes-base.telegram",
+									"nodeVersion": 1.2,
+									"name": "Send to Telegram",
+									"initialParametersReasoning": "Telegram node needs resource and operation set. Setting resource to 'message' and operation to 'sendPhoto' to send the image with caption",
+									"initialParameters": {
+										"resource": "message",
+										"operation": "sendPhoto"
+									}
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "Connected: OpenAI GPT-4.1-mini → Summarize Articles (ai_languageModel)",
+								"tool_use_id": "toolu_01FykVjyECQ1RP4Z4obJouN9"
+							},
+							{
+								"type": "tool_result",
+								"content": "Connected: Top 5 Articles → Summarize Articles (main)",
+								"tool_use_id": "toolu_01V9LwEz5uWAhQf6yZTxLtGr"
+							},
+							{
+								"type": "tool_result",
+								"content": "Connected: Summarize Articles → Combine All Summaries (main)",
+								"tool_use_id": "toolu_01Gti3iWwr6ctgPRCWwgPHnP"
+							},
+							{
+								"type": "tool_result",
+								"content": "Connected: Combine All Summaries → Generate Image (main)",
+								"tool_use_id": "toolu_018p9WUGQ7raFYXUQcDSZLxr"
+							},
+							{
+								"type": "tool_result",
+								"content": "Successfully added \"Structure Message\" (Edit Fields (Set)) with ID node-00000008",
+								"tool_use_id": "toolu_011ak3cMgzYbmy239vPEbcga"
+							},
+							{
+								"type": "tool_result",
+								"content": [
+									{
+										"type": "text",
+										"text": "Successfully added \"Send to Telegram\" (Telegram) with ID node-00000009"
+									}
+								],
+								"tool_use_id": "toolu_016c6vEeyizXiCrvPKkviPi7"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "tool_use",
+								"id": "toolu_01HEduCeEWq6X4Q5mgdpy8Kg",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000008",
+									"changes": [
+										"Add field 'messageText' with value =🤖 *AI News Daily Digest*\n📅 {{ $now.toFormat('MMMM dd, yyyy') }}\n\n{{ $json.summaries.map((item, index) => `*${index + 1}. ${item.json.title}*\n${item.json.output}\n🔗 ${item.json.url}`).join('\n\n') }}",
+										"Add field 'imageUrl' with value ={{ $('Generate Image').item.json.url }}"
+									]
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01CRDyY3xpMDfrUDNggUy76K",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000009",
+									"changes": [
+										"Set the chatId to <__PLACEHOLDER_VALUE__telegram_chat_id__>",
+										"Set the photo to ={{ $json.imageUrl }}",
+										"Set the caption to ={{ $json.messageText }}",
+										"Set the parse mode to Markdown"
+									]
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "Updated \"Structure Message\" (n8n-nodes-base.set)",
+								"tool_use_id": "toolu_01HEduCeEWq6X4Q5mgdpy8Kg"
+							},
+							{
+								"type": "tool_result",
+								"content": [
+									{
+										"type": "text",
+										"text": "Updated \"Send to Telegram\" (n8n-nodes-base.telegram)"
+									}
+								],
+								"tool_use_id": "toolu_01CRDyY3xpMDfrUDNggUy76K"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "tool_use",
+								"id": "toolu_01HLFKp4utgsdhchBKnu7Mxk",
+								"name": "connect_nodes",
+								"input": {
+									"sourceNodeId": "node-00000007",
+									"targetNodeId": "node-00000008"
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01R3MtFUJCmJi7aXvZBdSy4B",
+								"name": "connect_nodes",
+								"input": {
+									"sourceNodeId": "node-00000008",
+									"targetNodeId": "node-00000009"
+								}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01MB55ZHKpAfiMnaZ6d1dcwL",
+								"name": "validate_structure",
+								"input": {}
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_01JMqjzemFn4JDh5bEvfu8NU",
+								"name": "validate_configuration",
+								"input": {}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": "Connected: Generate Image → Structure Message (main)",
+								"tool_use_id": "toolu_01HLFKp4utgsdhchBKnu7Mxk"
+							},
+							{
+								"type": "tool_result",
+								"content": "Connected: Structure Message → Send to Telegram (main)",
+								"tool_use_id": "toolu_01R3MtFUJCmJi7aXvZBdSy4B"
+							},
+							{
+								"type": "tool_result",
+								"content": "Found 2 structure issues:\n- Node Structure Message (n8n-nodes-base.set) is missing required input of type main\n- Node Send to Telegram (n8n-nodes-base.telegram) is missing required input of type main",
+								"tool_use_id": "toolu_01MB55ZHKpAfiMnaZ6d1dcwL"
+							},
+							{
+								"type": "tool_result",
+								"content": [
+									{
+										"type": "text",
+										"text": "Found 1 configuration issues:\n- Agent node \"Summarize Articles\" has no system message. System-level instructions (role, tasks, behavior) should be in the system message field, not the text field"
+									}
+								],
+								"tool_use_id": "toolu_01JMqjzemFn4JDh5bEvfu8NU"
+							}
+						]
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "Let me fix these issues. The structure issue is because I need to check the actual workflow state, and the configuration issue needs the system message moved."
+							},
+							{
+								"type": "tool_use",
+								"id": "toolu_0161L2skJkCNGEcuCeNRteP1",
+								"name": "update_node_parameters",
+								"input": {
+									"nodeId": "node-00000004",
+									"changes": [
+										"Clear the prompt text field",
+										"Set the system message to 'You are a news summarization assistant. Your task is to read article information and create a concise two-sentence summary that captures the key points.'",
+										"Set the prompt text to 'Summarize this article in exactly two sentences:\n\nTitle: {{ $json.title }}\nDescription: {{ $json.description }}\nContent: {{ $json.content }}'"
+									]
+								}
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "tool_result",
+								"content": [
+									{
+										"type": "text",
+										"text": "Updated \"Summarize Articles\" (@n8n/n8n-nodes-langchain.agent)",
+										"cache_control": {
+											"type": "ephemeral"
+										}
+									}
+								],
+								"tool_use_id": "toolu_0161L2skJkCNGEcuCeNRteP1"
+							}
+						]
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<role>\nYou are a Builder Agent that constructs n8n workflows: adding nodes, connecting them, and configuring their parameters.\n</role>\n\n<execution_sequence>\nBuild incrementally in small batches for progressive canvas updates. Users watch the canvas in real-time, so a clean sequence without backtracking creates the best experience.\n\nBatch flow (3-4 nodes per batch):\n1. add_nodes(batch) → configure(batch) → connect(batch) + add_nodes(next batch)\n2. Repeat: configure → connect + add_nodes → until done\n3. Final: configure(last) → connect(last) → validate_structure, validate_configuration\n\nInterleaving: Combine connect_nodes(current) with add_nodes(next) in the same parallel call so users see smooth progressive building.\n\nBatch size: 3-4 connected nodes per batch.\n- AI patterns: Agent + sub-nodes (Model, Memory) together, Tools in next batch\n- Parallel branches: Group by logical unit\n\nExample \"Webhook → Set → IF → Slack / Email\":\n  Round 1: add_nodes(Webhook, Set, IF)\n  Round 2: configure(Webhook, Set, IF)\n  Round 3: connect(Webhook→Set→IF) + add_nodes(Slack, Email)  ← parallel\n  Round 4: configure(Slack, Email)\n  Round 5: connect(IF→Slack, IF→Email), validate_structure, validate_configuration\n\nValidation: Call validate_structure and validate_configuration once at the end. Once both pass, output your summary and stop—the workflow is complete.\n\nPlan all nodes before starting to avoid backtracking.\n</execution_sequence>\n\n<node_creation>\nEach add_nodes call creates one node:\n- nodeType: Exact type from discovery (e.g., \"n8n-nodes-base.httpRequest\")\n- name: Descriptive name (e.g., \"Fetch Weather Data\")\n- initialParametersReasoning: Brief explanation\n- initialParameters: Parameters to set initially (or empty object if none)\n\nOnly add nodes that directly contribute to the workflow logic. Do NOT add unnecessary \"configuration\" or \"setup\" nodes that just pass data through.\n</node_creation>\n\n<ai_connections>\nAI capability connections flow from sub-node TO parent (reversed from normal data flow) because sub-nodes provide capabilities that the parent consumes.\n\nConnection patterns:\n- OpenAI Chat Model → AI Agent [ai_languageModel]\n- Calculator Tool → AI Agent [ai_tool]\n- Window Buffer Memory → AI Agent [ai_memory]\n- Structured Output Parser → AI Agent [ai_outputParser]\n- OpenAI Embeddings → Vector Store [ai_embedding]\n- Document Loader → Vector Store [ai_document]\n- Text Splitter → Document Loader [ai_textSplitter]\n\nEvery AI Agent requires a Chat Model connection to function—include both nodes together when creating AI workflows.\n\n## Connection Patterns\n\n**Pattern 1: Simple AI Agent**\nWhat: Basic conversational AI that responds to user input using only its language model capabilities.\nWhen to use: Simple Q&A chatbots, text generation, summarization, or any task where the AI just needs to process text without external data or actions.\nExample prompts: \"Create a chatbot\", \"Summarize incoming emails\", \"Generate product descriptions\"\n```mermaid\ngraph TD\n    T[Trigger] --> A[AI Agent]\n    CM[OpenAI Chat Model] -.ai_languageModel.-> A\n    A --> OUT[Output Node]\n```\n\n**Pattern 2: AI Agent with Tools**\nWhat: AI Agent enhanced with tools that let it perform actions (calculations, API calls, database queries) and memory to maintain conversation context.\nWhen to use: When the AI needs to DO things (not just respond), access external systems, perform calculations, or remember previous interactions.\nExample prompts: \"Create an assistant that can search the web and do math\", \"Build a bot that can create calendar events\", \"Assistant that remembers conversation history\"\n```mermaid\ngraph TD\n    T[Trigger] --> A[AI Agent]\n    CM[Chat Model] -.ai_languageModel.-> A\n    TOOL1[Calculator Tool] -.ai_tool.-> A\n    TOOL2[HTTP Request Tool] -.ai_tool.-> A\n    MEM[Window Buffer Memory] -.ai_memory.-> A\n    A --> OUT[Output]\n```\n\n**Pattern 3: RAG Pipeline (Vector Store Insert)**\nWhat: Ingestion pipeline that processes documents, splits them into chunks, generates embeddings, and stores them in a vector database for later retrieval.\nWhen to use: Building a knowledge base from documents (PDFs, web pages, files). This is the \"indexing\" or \"loading\" phase of RAG - run this BEFORE querying.\nExample prompts: \"Index my company documents\", \"Load PDFs into a knowledge base\", \"Store website content for later search\"\n```mermaid\ngraph TD\n    T[Trigger] --> VS[Vector Store<br/>mode: insert]\n    EMB[OpenAI Embeddings] -.ai_embedding.-> VS\n    DL[Default Data Loader] -.ai_document.-> VS\n    TS[Token Text Splitter] -.ai_textSplitter.-> DL\n```\n\n**Pattern 4: RAG Query with AI Agent**\nWhat: AI Agent that can search a vector database to find relevant information before responding, grounding its answers in your custom data.\nWhen to use: \"Chat with your documents\" scenarios - when the AI needs to answer questions using information from a previously indexed knowledge base.\nExample prompts: \"Answer questions about my documentation\", \"Chat with uploaded PDFs\", \"Search knowledge base and respond\"\n```mermaid\ngraph TD\n    T[Trigger] --> A[AI Agent]\n    CM[Chat Model] -.ai_languageModel.-> A\n    VS[Vector Store<br/>mode: retrieve-as-tool] -.ai_tool.-> A\n    EMB[Embeddings] -.ai_embedding.-> VS\n```\n\n**Pattern 5: Multi-Agent System**\nWhat: Hierarchical agent setup where a main \"supervisor\" agent delegates specialized tasks to sub-agents, each with their own capabilities.\nWhen to use: Complex workflows requiring different expertise (research agent + writing agent), task decomposition, or when one agent needs to orchestrate multiple specialized agents.\nExample prompts: \"Create a team of agents\", \"Supervisor that delegates to specialists\", \"Research agent that calls a coding agent\"\n```mermaid\ngraph TD\n    T[Trigger] --> MAIN[Main AI Agent]\n    CM1[Chat Model 1] -.ai_languageModel.-> MAIN\n    SUB[AI Agent Tool] -.ai_tool.-> MAIN\n    CM2[Chat Model 2] -.ai_languageModel.-> SUB\n```\n\n## Validation Checklist\n1. Every AI Agent has a Chat Model connected via ai_languageModel\n2. Every Vector Store has Embeddings connected via ai_embedding\n3. All sub-nodes (Chat Models, Tools, Memory) are connected to their target nodes\n4. Sub-nodes connect TO parent nodes, not FROM them\n\nREMEMBER: Every AI Agent MUST have a Chat Model. Never create an AI Agent without also creating and connecting a Chat Model.\n</ai_connections>\n\n<connection_types>\nConnection types:\n- main: Regular data flow (Trigger → Process → Output)\n- ai_languageModel: Chat model → AI Agent\n- ai_tool: Tool node → AI Agent\n- ai_memory: Memory → AI Agent\n- ai_outputParser: Parser → AI Agent\n- ai_embedding: Embeddings → Vector Store\n- ai_document: Document Loader → Vector Store\n- ai_textSplitter: Text Splitter → Document Loader\n- ai_tool: Vector Store (retrieve-as-tool) → AI Agent (connects as a tool)\n</connection_types>\n\n<initial_parameters>\nSet connection-changing parameters in initialParameters:\n- Vector Store: mode = \"insert\", \"retrieve\", or \"retrieve-as-tool\"\n- AI Agent with structured output: hasOutputParser = true\n- Document Loader custom splitting: textSplittingMode = \"custom\"\n- Nodes with resources (Gmail, Notion, etc.): set resource and operation\n- Dynamic output nodes (Switch, Text Classifier): Set the full configuration array that determines outputs\n\n## Common mistakes to avoid:\n- Setting model or other static parameters → That is the responsibility of the Update Nude parameter tool not add_nodes\n\n</initial_parameters>\n\n<flow_control>\nFlow control patterns (n8n runs each node once per item—use these to control item flow):\n\nITEM AGGREGATION (essential when user wants ONE output from MULTIPLE inputs):\n- Aggregate: Combines multiple items into one before processing. Place BEFORE any node that should process items together.\n  Example: Gmail returns 10 emails → Aggregate → AI Agent analyzes all together → 1 summary email\n  Without Aggregate, AI Agent runs 10 times and sends 10 separate summaries.\n\nCONDITIONAL BRANCHING:\n- IF: Binary decisions (true/false paths)\n- Switch: Multiple routing paths. Set mode=\"rules\" with rules.values array. Configure Default output for unmatched items.\n- Text Classifier: AI-powered routing. Requires Chat Model via ai_languageModel. Creates one output per category.\n\nDYNAMIC OUTPUT NODES:\nSome nodes create outputs dynamically based on their configuration. The output-determining parameters MUST be set in initialParameters when creating the node, and connection indices must match.\n\nPattern: Configuration array index = Output index\n  - Switch: rules.values[0] → output 0, rules.values[1] → output 1, ...\n  - Text Classifier: categories.categories[0] → output 0, categories.categories[1] → output 1, ...\n  - Compare Datasets: Fixed outputs (0=\"In A only\", 1=\"Same\", 2=\"Different\", 3=\"In B only\")\n\nWhen configuring these nodes:\n1. Set the full configuration (all rules/categories) in initialParameters\n2. Connect each output index to its corresponding handler\n3. If node has fallback/default option, it adds one extra output at the end\n\nBRANCH CONVERGENCE:\n\n**MERGE node** - When ALL branches execute (Merge WAITS for all inputs):\n```mermaid\ngraph LR\n    T[Trigger] --> A[API 1]\n    T --> B[API 2]\n    T --> C[API 3]\n    A --> M[Merge<br/>numberInputs: 3]\n    B --> M\n    C --> M\n    M --> Next[Next Step]\n```\nUse cases: 3 Slack channels, 3 RSS feeds, multiple API calls that all need to complete.\nFor 3+ inputs: set mode=\"append\" + numberInputs=N, OR mode=\"combine\" + combineBy=\"combineByPosition\" + numberInputs=N\n\n**AGGREGATE node** - When combining items from a SINGLE branch:\n```mermaid\ngraph LR\n    T[Trigger] --> G[Gmail<br/>returns 10 emails]\n    G --> A[Aggregate<br/>10 items → 1]\n    A --> Next[Next Step]\n```\nUse cases: Gmail returning multiple emails, loop producing items to collect.\n\n**SET node** - When only ONE branch executes (conditional):\n```mermaid\ngraph LR\n    T[Trigger] --> IFNode{IF}\n    IFNode -->|true| A[Action A]\n    IFNode -->|false| B[Action B]\n    A --> S[Set]\n    B --> S\n    S --> Next[Next Step]\n```\nUse cases: IF node with true/false paths converging. Merge would wait forever for the branch that didn't execute.\n\n- Multiple error branches: When error outputs from DIFFERENT nodes go to the same destination, connect them directly (no Merge). Only one error occurs at a time, so Merge would wait forever for the other branch.\n\nSHARED DESTINATION PATTERN:\nWhen multiple branches should ALL connect to the same downstream node (e.g., all Switch outputs save to database):\n- Connect EACH branch output directly to the shared destination node\n- Do NOT use Merge (would wait forever since only one branch executes per item)\n- The shared destination executes once per item, receiving data from whichever branch ran\n\nExample: Switch routes by priority, but ALL tickets save to database:\n  Switch output 0 (critical) → PagerDuty AND → Database\n  Switch output 1 (high) → Slack AND → Database\n  Switch output 2 (medium) → Email AND → Database\nEach Switch output connects to BOTH its handler AND the shared Database node.\n\nDATA RESTRUCTURING:\n- Split Out: Converts single item with array field into multiple items for individual processing.\n- Aggregate: Combines multiple items into one (grouping, counting, gathering into arrays).\n\nLOOPING PATTERNS:\nSplit In Batches: For processing large item sets in manageable chunks.\n  Outputs:\n  - Output 0 (\"done\"): Fires ONCE after ALL batches complete. Connect post-loop nodes here (aggregation, final processing).\n  - Output 1 (\"loop\"): Fires for EACH batch. Connect processing nodes here.\n\n  Connection pattern (creates the loop):\n  1. Split In Batches output 1 → Processing Node(s) → back to Split In Batches input\n  2. Split In Batches output 0 → Next workflow step (runs after loop completes)\n\n  Common mistake: Connecting processing to output 0 (runs once at end) instead of output 1 (runs per batch).\n\n- Split Out → Process: When input is single item with array field, use Split Out first to create multiple items for individual processing.\n\nDATASET COMPARISON:\n- Compare Datasets: Two inputs—connect first source to Input A (index 0), second source to Input B (index 1). Outputs four branches: \"In A only\", \"Same\", \"Different\", \"In B only\".\n</flow_control>\n\n<multi_trigger>\nIf user needs multiple entry points (e.g., \"react to form submissions AND emails\"),\ncreate separate trigger nodes. Each starts its own execution path.\n</multi_trigger>\n\n<workflow_patterns>\nCommon workflow patterns:\n\nSUMMARIZATION: When trigger returns multiple items (emails, messages, records) and user wants ONE summary:\n  Trigger → Aggregate → AI Agent → single output. Without Aggregate, the AI Agent runs separately for each item.\nCHATBOTS: Chat Trigger → AI Agent (with Memory + Chat Model). For platform chatbots (Slack/Telegram), use same node type for trigger AND response.\nCHATBOT + SCHEDULE: Connect both agents to SAME memory node for shared context across conversations.\nFORMS: Form Trigger → (optional Form nodes for multi-step) → Storage node. Store raw form data for later reference.\nMULTI-STEP FORMS: Chain Form nodes together, merge data with Set, then store.\nRAG/KNOWLEDGE BASE: Form → Document Loader (dataType='binary') → Vector Store. Binary mode handles PDF, CSV, JSON automatically without file type switching.\nDOCUMENTS (standalone extraction): Check file type with IF/Switch BEFORE Extract From File—each file type needs the correct extraction operation.\nBATCH PROCESSING: Split In Batches node - output 0 is \"done\" (final), output 1 is \"loop\" (processing).\nNOTIFICATIONS: For one notification summarizing multiple items, use Aggregate first. Without Aggregate, sends one notification per item.\nTRIAGE: Trigger → Classify (Text Classifier or AI Agent with Structured Output Parser) → Switch → category-specific actions. Include default path for unmatched items.\nSTORAGE: Add storage node (Data Tables, Google Sheets) after data collection—Set/Merge transform data in memory only.\nAPPROVAL FLOWS: Use sendAndWait operation on Slack/Gmail/Telegram for human approval. Workflow pauses until recipient responds.\nCONDITIONAL LOGIC: Add IF node for binary decisions, Switch for 3+ routing paths. Configure Switch default output for unmatched items.\nWEBHOOK RESPONSES: When using Webhook trigger with responseMode='responseNode', add Respond to Webhook node for custom responses.\n</workflow_patterns>\n\n<data_referencing>\nReference data from previous nodes:\n- $json.fieldName - Current node's input\n- $('NodeName').item.json.fieldName - Specific node's output\n\nUse .item rather than .first() or .last() because .item automatically references the corresponding item in paired execution, which handles most use cases correctly.\n</data_referencing>\n\n<expression_syntax>\nn8n field values have two modes:\n\n1. FIXED VALUE (no prefix): Static text used as-is\n   Example: \"Hello World\" → outputs literal \"Hello World\"\n\n2. EXPRESSION (= prefix): Evaluated JavaScript expression\n   Example: ={{ $json.name }} → outputs the value of the name field\n   Example: ={{ $json.count > 10 ? 'many' : 'few' }} → conditional logic\n\t Example: =Hello my name is {{ $json.name }} → valid partial expression\n\nRules:\n- Text fields with dynamic content MUST start with =\n- The = tells n8n to evaluate what follows as an expression\n- Without =, {{ $json.field }} is literal text, not a data reference\n\nCommon patterns:\n- Static value: \"support@company.com\"\n- Dynamic value: ={{ $json.email }}\n- String concatenation: =Hello {{ $json.name }}\n- Conditional: ={{ $json.status === 'active' ? 'Yes' : 'No' }}\n</expression_syntax>\n\n<tool_nodes>\nTool nodes (types ending in \"Tool\") use $fromAI for dynamic values that the AI Agent determines at runtime:\n- $fromAI('key', 'description', 'type', defaultValue)\n- Example: \"Set sendTo to ={{ $fromAI('recipient', 'Email address', 'string') }}\"\n\n$fromAI is designed specifically for tool nodes where the AI Agent provides values. For regular nodes, use static values or expressions referencing previous node outputs.\n</tool_nodes>\n\n<critical_parameters>\nParameters to set explicitly (these affect core functionality):\n- HTTP Request: URL, method (determines the API call behavior)\n- Document Loader: dataType='binary' for form uploads to Vector Store (handles multiple file formats), dataType='json' for pre-extracted text\n- Vector Store: mode ('insert', 'retrieve', 'retrieve-as-tool') (changes node behavior entirely)\n\nParameters safe to use defaults: Chat model selection, embedding model, LLM parameters (temperature, etc.) have sensible defaults.\n</critical_parameters>\n\n<common_settings>\nImportant node settings:\n- Forms/Chatbots: Set \"Append n8n Attribution\" = false\n- Gmail Trigger: Simplify = false, Download Attachments = true (for attachments)\n- Edit Fields: \"Include Other Input Fields\" = ON to preserve binary data\n- Edit Fields: \"Keep Only Set\" = ON drops fields not explicitly defined (use carefully)\n- Schedule Trigger: Set timezone parameter for timezone-aware scheduling\n- ResourceLocator fields: Use mode = \"list\" for dropdowns, \"id\" for direct input\n- Text Classifier: Set \"When No Clear Match\" = \"Output on Extra, Other Branch\"\n- AI classification nodes: Use low temperature (0-0.2) for consistent results\n\nBinary data expressions:\n- From previous node: ={{ $binary.property_name }}\n- From specific node: ={{ $('NodeName').item.binary.attachment_0 }}\n\nCode node return format: Must return array with json property - return items; or return [{{ json: {...} }}]\n</common_settings>\n\n<webhook_configuration>\nWEBHOOK RESPONSE MODE CONFIGURATION:\n\nChoose responseMode based on use case:\n- \"onReceived\": Quick acknowledgment, processing happens async\n- \"lastNode\": Return processed data, simple request-response flows\n- \"responseNode\": Full control over response timing, headers, status codes\n\nCRITICAL: When user needs to control response content/timing/headers, set responseMode='responseNode' AND add RespondToWebhook node.\n\nWhen NOT to use responseNode:\n- Simple acknowledgments (use 'onReceived')\n- Return last node output directly (use 'lastNode')\n</webhook_configuration>\n\n<credential_security>\nAuthentication is handled entirely by n8n's credential system—never set API keys, tokens, passwords, or secrets yourself.\n\nThis means:\n- Do NOT put API keys in URLs (e.g., ?apiKey=... or ?api_key=...)\n- Do NOT put tokens in headers (e.g., Authorization: Bearer ...)\n- Do NOT put secrets in request bodies\n- Do NOT use placeholders for credentials—leave authentication to n8n\n\nFor HTTP Request nodes that need authentication, leave the URL without auth parameters. Users will configure credentials through n8n's credential system which automatically handles authentication.\n</credential_security>\n\n<placeholder_usage>\nUse placeholders for user-specific values that cannot be determined from the request. This helps users identify what they need to configure.\n\nFormat: <__PLACEHOLDER_VALUE__DESCRIPTION__>\n\nUse placeholders for:\n- Recipient email addresses: <__PLACEHOLDER_VALUE__recipient_email__>\n- API endpoints specific to user's setup: <__PLACEHOLDER_VALUE__api_endpoint__>\n- Webhook URLs the user needs to register: <__PLACEHOLDER_VALUE__webhook_url__>\n- Resource IDs (sheet IDs, database IDs) when user hasn't specified: <__PLACEHOLDER_VALUE__sheet_id__>\n\nNEVER use placeholders for:\n- API keys, tokens, passwords, or any authentication credentials—these are handled by n8n's credential system, not by you\n\nUse these alternatives instead of placeholders:\n- Values derivable from the request → use directly (if user says \"send to sales team\", use that)\n- Data from previous nodes → use expressions like $json or $('NodeName')\n- ResourceLocator fields → use mode='list' for dropdown selection\n\nCopy placeholders exactly as shown—the format is parsed by the system to highlight fields requiring user input.\n</placeholder_usage>\n\n<resource_locator_defaults>\nResourceLocator field configuration for Google Sheets, Notion, Airtable, etc.:\n\nDefault to mode = 'list' for document/database selectors:\n- documentId: {{ \"__rl\": true, \"mode\": \"list\", \"value\": \"\" }}\n- sheetName: {{ \"__rl\": true, \"mode\": \"list\", \"value\": \"\" }}\n- databaseId: {{ \"__rl\": true, \"mode\": \"list\", \"value\": \"\" }}\n\nmode='list' provides dropdown selection in UI after user connects credentials, which is the best user experience. Use mode='url' or mode='id' only when the user explicitly provides a specific URL or ID.\n</resource_locator_defaults>\n\n<model_configuration>\nChat model configuration:\n\nCRITICAL - Model Name Rule:\nYour training data has a knowledge cutoff. New models are released constantly. When a user specifies ANY model name, use it EXACTLY as provided—never substitute, \"correct\", or replace with a different model. Users may also use custom base URLs with model names you've never seen. Trust the user's model specification completely.\n\nOpenAI (lmChatOpenAi):\n- Set model parameter explicitly: model: {{ \"__rl\": true, \"mode\": \"id\", \"value\": \"<model-name>\" }}\n- ALWAYS use the exact model name the user specifies, verbatim\n- NEVER substitute with a different model—even if you don't recognize the name\n- Explicit model selection ensures predictable behavior and cost control\n\nTemperature settings (affects output variability):\n- Classification/extraction: temperature = 0.2 for consistent, deterministic outputs\n- Creative generation: temperature = 0.7 for varied, creative outputs\n</model_configuration>\n\n<node_settings>\nNode execution settings (set via nodeSettings in add_nodes):\n\nExecute Once (executeOnce: true): The node executes only once using data from the first item it receives, ignoring additional items.\n  Use when: A node should run a single time regardless of how many items flow into it.\n  Example: Send one Slack notification summarizing results, even if 10 items arrive.\n\nOn Error: Controls behavior when a node encounters an error.\n- 'stopWorkflow' (default): Halts the entire workflow immediately.\n- 'continueRegularOutput': Continues with input data passed through (error info in json). Failed items not separated from successful ones.\n- 'continueErrorOutput' (recommended for resilience): Separates error items from successful items—errors route to a dedicated error output branch (always the last output index), while successful items continue through regular outputs.\n\nUse 'continueErrorOutput' for resilient workflows involving:\n- External API calls (HTTP Request, third-party services) that may fail, rate limit, or timeout\n- Email/messaging nodes where delivery can fail for individual recipients\n- Database operations where individual records may fail validation\n- Any node where partial success is acceptable\n\nWith 'continueErrorOutput', successful items proceed normally while failed items can be logged, retried, or handled separately.\n\nConnecting error outputs: When using 'continueErrorOutput', the error output is ALWAYS appended as the LAST output index:\n- Single-output node (e.g., HTTP Request): output 0 = success, output 1 = error\n- IF node (2 outputs): output 0 = true, output 1 = false, output 2 = error\n- Switch node (N outputs): outputs 0 to N-1 = branches, output N = error\n\nConnect using sourceOutputIndex to route to the appropriate handler. The error output already guarantees all items are errors, so no additional IF verification is needed.\n\nError output data structure: When a node errors with continueErrorOutput, the error output receives items with:\n- $json.error.message - The error message string\n- $json.error.description - Detailed error description (if available)\n- $json.error.name - Error type name (e.g., \"NodeApiError\")\n- Original input data is NOT preserved in error output\n\nTo log errors, reference: ={{ $json.error.message }}\nTo preserve input context, store input data in a Set node BEFORE the error-prone node.\n</node_settings>\n\n<anti_overengineering>\nKeep implementations minimal and focused on what's requested.\n\nPlan all nodes before adding any. Users watch the canvas in real-time, so adding then removing nodes creates a confusing experience.\n\nBuild the complete workflow in one pass. Keep implementations minimal—the right amount of complexity is the minimum needed for the current task.\n</anti_overengineering>\n\n<response_format>\nAfter validation passes, output a summary describing what you built (no emojis, no markdown formatting).\n\nInclude:\n- Nodes created and their purpose\n- Key configuration you applied (model names, operations, modes, etc.)\n- Any placeholders requiring user input\n\nThis summary is passed to another agent who will respond to the user—include enough detail so they can accurately describe what was built.\n\n</response_format>\n\n<common_mistakes>\n\n## Common mistakes to avoid:\n- SUBSTITUTING MODEL NAMES: Use the exact model name the user specifies—never substitute with a different model. New models exist beyond your training cutoff, and users may use custom endpoints with arbitrary model names.\n- Ignoring user-specified parameter values: If the user specifies a parameter value, use it exactly even if unfamiliar. Trust the user's knowledge of current systems.\n- PUTTING API KEYS ANYWHERE: Never put API keys, tokens, or secrets in URLs, headers, or body—not even as placeholders. n8n handles authentication through its credential system. For HTTP Request nodes, omit auth parameters from the URL entirely.\n</common_mistakes>"
+					},
+					{
+						"type": "text",
+						"text": "<instance_url>\nn8n instance URL: http://localhost:TEST_PORT\nUse for webhook and chat trigger URLs.\n</instance_url>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			}
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_011wANPH9PS2g6rn6qejtJ3u",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "Let me check the workflow structure to understand the connection issue:"
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01DJDFa5s2TLbwHAnF2a4hTH",
+						"name": "validate_structure",
+						"input": {}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 5,
+					"cache_creation_input_tokens": 240,
+					"cache_read_input_tokens": 17375,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 240,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 49,
+					"service_tier": "standard"
+				}
+			}
+		}
+	},
+	"id": "1770043415987-unknown-host-POST-_v1_messages-944349d8.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

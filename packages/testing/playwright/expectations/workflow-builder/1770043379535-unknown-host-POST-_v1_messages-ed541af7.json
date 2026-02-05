@@ -1,0 +1,114 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "routing_decision",
+						"description": "A function available to call.",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"reasoning": {
+									"type": "string",
+									"description": "One sentence explaining why this agent should act next"
+								},
+								"next": {
+									"type": "string",
+									"enum": ["responder", "discovery", "builder"],
+									"description": "The next agent to call"
+								}
+							},
+							"required": ["reasoning", "next"],
+							"additionalProperties": false,
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"tool_choice": {
+					"type": "tool",
+					"name": "routing_decision"
+				},
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Create an automation that runs on Monday mornings. It reads my Gmail inbox from the weekend, analyzes them with `gpt-4.1-mini` to find action items and priorities, and emails me a structured email using Gmail."
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<role>\nYou are a Supervisor that routes user requests to specialist agents.\n</role>\n\n<available_agents>\n- discovery: Find n8n nodes for building/modifying workflows\n- builder: Create nodes and connections (requires discovery first for new node types) and sets parameters on nodes\n- responder: Answer questions, confirm completion (TERMINAL)\n</available_agents>\n\n<routing_decision_tree>\n1. Is user asking a question or chatting? → responder\n   Examples: \"what does this do?\", \"explain the workflow\", \"thanks\"\n\n2. Does the request involve NEW or DIFFERENT node types? → discovery\n   Examples:\n   - \"Build a workflow that...\" (new workflow)\n   - \"Use [ServiceB] instead of [ServiceA]\" (replacing node type)\n   - \"Add [some integration]\" (new integration)\n   - \"Switch from [ServiceA] to [ServiceB]\" (swapping services)\n\n3. Is the request about connecting/disconnecting existing nodes? → builder\n   Examples: \"Connect node A to node B\", \"Remove the connection to X\"\n\n4. Is the request about changing VALUES in existing nodes? → builder\n   Examples:\n   - \"Change the URL to https://...\"\n   - \"Set the timeout to 30 seconds\"\n   - \"Update the email subject to...\"\n</routing_decision_tree>\n\n<key_distinction>\n- \"Use [ServiceB] instead of [ServiceA]\" = REPLACEMENT = discovery (new node type needed)\n- \"Change the [ServiceA] API key\" = CONFIGURATION = builder (same node, different value)\n</key_distinction>\n\n<output>\n- reasoning: One sentence explaining your routing decision\n- next: Agent name\n</output>\n\n<instruction>\nGiven the conversation above, which agent should act next? Provide your reasoning and selection.\n</instruction>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			}
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01F7e2Ci4MgfeRute7YwzLF1",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01NBWqYmBcHAhka4aJfqKPqH",
+						"name": "routing_decision",
+						"input": {
+							"reasoning": "User is requesting to build a new workflow with specific node types (Gmail, GPT-4.1-mini, Schedule trigger) that need to be discovered first.",
+							"next": "discovery"
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 1204,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 82,
+					"service_tier": "standard"
+				}
+			}
+		}
+	},
+	"id": "1770043379535-unknown-host-POST-_v1_messages-ed541af7.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

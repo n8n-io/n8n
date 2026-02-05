@@ -20,6 +20,7 @@ import { MAX_AI_BUILDER_PROMPT_LENGTH, MAX_MULTI_AGENT_STREAM_ITERATIONS } from 
 import { ValidationError } from './errors';
 import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
+import { resetIdCounters } from './tools/utils/node-creation.utils';
 import type { ResourceLocatorCallback } from './types/callbacks';
 import type { SimpleWorkflow } from './types/workflow';
 import { createStreamProcessor, type StreamEvent } from './utils/stream-processor';
@@ -113,6 +114,11 @@ export class WorkflowBuilderAgent {
 		this.runMetadata = config.runMetadata;
 		this.onGenerationSuccess = config.onGenerationSuccess;
 		this.resourceLocatorCallback = config.resourceLocatorCallback;
+
+		// Reset ID counters for E2E test isolation
+		if (process.env.E2E_TESTS === 'true') {
+			resetIdCounters();
+		}
 	}
 
 	/**

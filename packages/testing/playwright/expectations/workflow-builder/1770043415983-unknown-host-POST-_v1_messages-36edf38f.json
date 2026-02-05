@@ -1,0 +1,131 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"tools": [
+					{
+						"name": "extract",
+						"description": "The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { \"parameters\": { \"method\": \"POST\", \"url\": \"https://api.example.com\", \"sendHeaders\": true, \"headerParameters\": { \"parameters\": [{ \"name\": \"Content-Type\", \"value\": \"application/json\" }] } } }}",
+						"input_schema": {
+							"type": "object",
+							"properties": {
+								"parameters": {
+									"type": "object",
+									"properties": {},
+									"additionalProperties": true,
+									"description": "The complete updated parameters object for the node. This should be a JSON object that matches the node's parameter structure. Include ALL existing parameters plus the requested changes."
+								}
+							},
+							"required": ["parameters"],
+							"additionalProperties": false,
+							"description": "The complete updated parameters object for the node. Must include only parameters from <node_properties_definition>, for example For example: { \"parameters\": { \"method\": \"POST\", \"url\": \"https://api.example.com\", \"sendHeaders\": true, \"headerParameters\": { \"parameters\": [{ \"name\": \"Content-Type\", \"value\": \"application/json\" }] } } }}",
+							"$schema": "http://json-schema.org/draft-07/schema#"
+						}
+					}
+				],
+				"tool_choice": {
+					"type": "tool",
+					"name": "extract"
+				},
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": [
+							{
+								"type": "text",
+								"text": "\nThe node accepts these properties:\n<node_properties_definition>\n[\n  {\n    \"displayName\": \"Tip: Get a feel for agents with our quick <a href=\\\"https://docs.n8n.io/advanced-ai/intro-tutorial/\\\" target=\\\"_blank\\\">tutorial</a> or see an <a href=\\\"/workflows/templates/1954\\\" target=\\\"_blank\\\">example</a> of how this node works\",\n    \"name\": \"aiAgentStarterCallout\",\n    \"type\": \"callout\",\n    \"default\": \"\"\n  },\n  {\n    \"displayName\": \"Source for Prompt (User Message)\",\n    \"name\": \"promptType\",\n    \"type\": \"options\",\n    \"options\": [\n      {\n        \"name\": \"Connected Chat Trigger Node\",\n        \"value\": \"auto\",\n        \"description\": \"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger\"\n      },\n      {\n        \"name\": \"Define below\",\n        \"value\": \"define\",\n        \"description\": \"Use an expression to reference data in previous nodes or enter static text\"\n      }\n    ],\n    \"default\": \"auto\",\n    \"displayOptions\": {\n      \"show\": {\n        \"@version\": [\n          {\n            \"_cnd\": {\n              \"gte\": 3.1\n            }\n          }\n        ]\n      }\n    }\n  },\n  {\n    \"displayName\": \"Prompt (User Message)\",\n    \"name\": \"text\",\n    \"type\": \"string\",\n    \"required\": true,\n    \"default\": \"={{ $json.guardrailsInput }}\",\n    \"typeOptions\": {\n      \"rows\": 2\n    },\n    \"disabledOptions\": {\n      \"show\": {\n        \"promptType\": [\n          \"guardrails\"\n        ]\n      }\n    },\n    \"displayOptions\": {\n      \"show\": {\n        \"promptType\": [\n          \"guardrails\"\n        ]\n      }\n    }\n  },\n  {\n    \"displayName\": \"Prompt (User Message)\",\n    \"name\": \"text\",\n    \"type\": \"string\",\n    \"required\": true,\n    \"default\": \"={{ $json.chatInput }}\",\n    \"typeOptions\": {\n      \"rows\": 2\n    },\n    \"disabledOptions\": {\n      \"show\": {\n        \"promptType\": [\n          \"auto\"\n        ]\n      }\n    },\n    \"displayOptions\": {\n      \"show\": {\n        \"promptType\": [\n          \"auto\"\n        ]\n      }\n    }\n  },\n  {\n    \"displayName\": \"Prompt (User Message)\",\n    \"name\": \"text\",\n    \"type\": \"string\",\n    \"required\": true,\n    \"default\": \"\",\n    \"placeholder\": \"e.g. Hello, how can you help me?\",\n    \"typeOptions\": {\n      \"rows\": 2\n    },\n    \"displayOptions\": {\n      \"show\": {\n        \"promptType\": [\n          \"define\"\n        ]\n      }\n    }\n  },\n  {\n    \"displayName\": \"Require Specific Output Format\",\n    \"name\": \"hasOutputParser\",\n    \"type\": \"boolean\",\n    \"default\": false,\n    \"noDataExpression\": true\n  },\n  {\n    \"displayName\": \"Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>output parser</a> on the canvas to specify the output format you require\",\n    \"name\": \"notice\",\n    \"type\": \"notice\",\n    \"default\": \"\",\n    \"displayOptions\": {\n      \"show\": {\n        \"hasOutputParser\": [\n          true\n        ]\n      }\n    }\n  },\n  {\n    \"displayName\": \"Enable Fallback Model\",\n    \"name\": \"needsFallback\",\n    \"type\": \"boolean\",\n    \"default\": false,\n    \"noDataExpression\": true\n  },\n  {\n    \"displayName\": \"Connect an additional language model on the canvas to use it as a fallback if the main model fails\",\n    \"name\": \"fallbackNotice\",\n    \"type\": \"notice\",\n    \"default\": \"\",\n    \"displayOptions\": {\n      \"show\": {\n        \"needsFallback\": [\n          true\n        ]\n      }\n    }\n  },\n  {\n    \"displayName\": \"Options\",\n    \"name\": \"options\",\n    \"type\": \"collection\",\n    \"default\": {},\n    \"placeholder\": \"Add Option\",\n    \"options\": [\n      {\n        \"displayName\": \"System Message\",\n        \"name\": \"systemMessage\",\n        \"type\": \"string\",\n        \"default\": \"You are a helpful assistant\",\n        \"description\": \"The message that will be sent to the agent before the conversation starts\",\n        \"typeOptions\": {\n          \"rows\": 6\n        }\n      },\n      {\n        \"displayName\": \"Max Iterations\",\n        \"name\": \"maxIterations\",\n        \"type\": \"number\",\n        \"default\": 10,\n        \"description\": \"The maximum number of iterations the agent will run before stopping\"\n      },\n      {\n        \"displayName\": \"Return Intermediate Steps\",\n        \"name\": \"returnIntermediateSteps\",\n        \"type\": \"boolean\",\n        \"default\": false,\n        \"description\": \"Whether or not the output should include intermediate steps the agent took\"\n      },\n      {\n        \"displayName\": \"Automatically Passthrough Binary Images\",\n        \"name\": \"passthroughBinaryImages\",\n        \"type\": \"boolean\",\n        \"default\": true,\n        \"description\": \"Whether or not binary images should be automatically passed through to the agent as image type messages\"\n      },\n      {\n        \"displayName\": \"Enable Streaming\",\n        \"name\": \"enableStreaming\",\n        \"type\": \"boolean\",\n        \"default\": true,\n        \"description\": \"Whether this agent will stream the response in real-time as it generates text\"\n      },\n      {\n        \"displayName\": \"Batch Processing\",\n        \"name\": \"batching\",\n        \"type\": \"collection\",\n        \"placeholder\": \"Add Batch Processing Option\",\n        \"description\": \"Batch processing options for rate limiting\",\n        \"default\": {},\n        \"options\": [\n          {\n            \"displayName\": \"Batch Size\",\n            \"name\": \"batchSize\",\n            \"default\": 1,\n            \"type\": \"number\",\n            \"description\": \"How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering.\"\n          },\n          {\n            \"displayName\": \"Delay Between Batches\",\n            \"name\": \"delayBetweenBatches\",\n            \"default\": 0,\n            \"type\": \"number\",\n            \"description\": \"Delay in milliseconds between batches. This is useful for rate limiting.\"\n          }\n        ]\n      },\n      {\n        \"displayName\": \"Max Tokens To Read From Memory\",\n        \"name\": \"maxTokensFromMemory\",\n        \"type\": \"hidden\",\n        \"default\": 0,\n        \"description\": \"The maximum number of tokens to read from the chat memory history. Set to 0 to read all history.\"\n      }\n    ]\n  }\n]\n</node_properties_definition>",
+								"cache_control": {
+									"type": "ephemeral"
+								}
+							},
+							{
+								"type": "text",
+								"text": "<instance_url>\nThe n8n instance base URL is: http://localhost:TEST_PORT\n\nThis URL is essential for webhook nodes and chat triggers as it provides the base URL for:\n- Webhook URLs that external services need to call\n- Chat trigger URLs for conversational interfaces\n- Any node that requires the full instance URL to generate proper callback URLs\n\nWhen working with webhook or chat trigger nodes, use this URL as the base for constructing proper endpoint URLs.\n</instance_url>"
+							}
+						]
+					},
+					{
+						"role": "user",
+						"content": "\n<current_workflow_json>\n{\"nodes\":[{\"id\":\"node-00000000\",\"name\":\"Daily 8pm Trigger\",\"type\":\"n8n-nodes-base.scheduleTrigger\",\"typeVersion\":1.3,\"position\":[250,450],\"parameters\":{\"rule\":{\"interval\":[{\"field\":\"days\",\"daysInterval\":1,\"triggerAtHour\":20,\"triggerAtMinute\":0}]}}},{\"id\":\"node-00000001\",\"name\":\"Fetch AI News from NewsAPI\",\"type\":\"n8n-nodes-base.httpRequest\",\"typeVersion\":4.4,\"position\":[250,300],\"parameters\":{\"method\":\"GET\",\"url\":\"https://newsapi.org/v2/everything\",\"sendQuery\":true,\"specifyQuery\":\"keypair\",\"queryParameters\":{\"parameters\":[{\"name\":\"q\",\"value\":\"AI OR artificial intelligence\"},{\"name\":\"from\",\"value\":\"={{ $now.minus({days: 1}).toFormat('yyyy-MM-dd') }}\"},{\"name\":\"to\",\"value\":\"={{ $now.toFormat('yyyy-MM-dd') }}\"},{\"name\":\"sortBy\",\"value\":\"popularity\"},{\"name\":\"language\",\"value\":\"en\"}]},\"authentication\":\"none\",\"sendHeaders\":false,\"sendBody\":false,\"options\":{}}},{\"id\":\"node-00000002\",\"name\":\"Top 5 Articles\",\"type\":\"n8n-nodes-base.limit\",\"typeVersion\":1,\"position\":[250,300],\"parameters\":{\"maxItems\":5,\"keep\":\"firstItems\"}},{\"id\":\"node-00000003\",\"name\":\"Extract Top Article\",\"type\":\"n8n-nodes-base.set\",\"typeVersion\":3.4,\"position\":[250,300],\"parameters\":{\"mode\":\"manual\",\"assignments\":{\"assignments\":[{\"id\":\"id-1\",\"name\":\"topArticleTitle\",\"value\":\"={{ $json.title }}\",\"type\":\"string\"},{\"id\":\"id-2\",\"name\":\"topArticleDescription\",\"value\":\"={{ $json.description }}\",\"type\":\"string\"},{\"id\":\"id-3\",\"name\":\"topArticleUrl\",\"value\":\"={{ $json.url }}\",\"type\":\"string\"}]},\"includeOtherFields\":false,\"options\":{}}},{\"id\":\"node-00000004\",\"name\":\"Summarize Articles\",\"type\":\"@n8n/n8n-nodes-langchain.agent\",\"typeVersion\":3.1,\"position\":[530,300],\"parameters\":{\"hasOutputParser\":false}},{\"id\":\"node-00000005\",\"name\":\"OpenAI GPT-4.1-mini\",\"type\":\"@n8n/n8n-nodes-langchain.lmChatOpenAi\",\"typeVersion\":1.3,\"position\":[474,450],\"parameters\":{}},{\"id\":\"node-00000006\",\"name\":\"Combine All Summaries\",\"type\":\"n8n-nodes-base.aggregate\",\"typeVersion\":1,\"position\":[530,300],\"parameters\":{}},{\"id\":\"node-00000007\",\"name\":\"Generate Image\",\"type\":\"@n8n/n8n-nodes-langchain.openAi\",\"typeVersion\":2.1,\"position\":[530,300],\"parameters\":{\"resource\":\"image\",\"operation\":\"generate\"}}],\"connections\":{\"Daily 8pm Trigger\":{\"main\":[[{\"node\":\"Fetch AI News from NewsAPI\",\"type\":\"main\",\"index\":0}]]},\"Fetch AI News from NewsAPI\":{\"main\":[[{\"node\":\"Top 5 Articles\",\"type\":\"main\",\"index\":0}]]},\"Top 5 Articles\":{\"main\":[[{\"node\":\"Extract Top Article\",\"type\":\"main\",\"index\":0}]]}},\"name\":\"Daily AI News Digest with Image and Telegram Notification\"}\n</current_workflow_json>\n\n<current_simplified_execution_data>\nNO EXECUTION DATA YET\n</current_simplified_execution_data>\n\n<current_execution_nodes_schemas>\nNO SCHEMA\n</current_execution_nodes_schemas>\n\n<selected_node>\nName: Summarize Articles\nType: @n8n/n8n-nodes-langchain.agent\n\nCurrent Parameters: {\n  \"hasOutputParser\": false\n}\n</selected_node>\n\n<requested_changes>\n1. Set the prompt text to 'Summarize the following article in exactly two sentences:\n\nTitle: {{ $json.title }}\nDescription: {{ $json.description }}\nContent: {{ $json.content }}'\n</requested_changes>\n\nBased on the requested changes and the node's property definitions, return the complete updated parameters object."
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<core_instructions>\nYou are an expert n8n workflow architect who updates node parameters based on natural language instructions.\n\n## Your Task\nUpdate the parameters of an existing n8n node based on the requested changes. Return the COMPLETE parameters object with both modified and unmodified parameters. Only modify the parameters that are explicitly mentioned in the changes, preserving all other existing parameters exactly as they are.\n\n## Reference Information\nYou will receive:\n1. The original user workflow request\n2. The current workflow JSON\n3. The selected node's current configuration (id, name, type, parameters)\n4. The node type's parameter definitions\n5. Natural language changes to apply\n\n## Parameter Update Guidelines\n1. START WITH CURRENT: If current parameters is empty {}, start with an empty object and add the requested parameters\n2. PRESERVE EXISTING VALUES: Only modify parameters mentioned in the requested changes\n3. MAINTAIN STRUCTURE: Keep the exact parameter structure required by the node type\n4. CHECK FOR RESOURCELOCATOR: If a parameter is type 'resourceLocator' in the node definition, it MUST use the ResourceLocator structure with __rl, mode, and value fields\n5. USE PROPER EXPRESSIONS: Follow n8n expression syntax when referencing other nodes\n6. VALIDATE TYPES: Ensure parameter values match their expected types\n7. HANDLE NESTED PARAMETERS: Correctly update nested structures like headers, conditions, etc.\n8. SIMPLE VALUES: For simple parameter updates like \"Set X to Y\", directly set the parameter without unnecessary nesting\n9. GENERATE IDS: When adding new items to arrays (like assignments, headers, etc.), generate unique IDs using a simple pattern like \"id-1\", \"id-2\", etc.\n10. TOOL NODE DETECTION: Check if node type ends with \"Tool\" to determine if $fromAI expressions are available\n11. PLACEHOLDER FORMAT: When changes specify a placeholder, copy it exactly as \"<__PLACEHOLDER_VALUE__VALUE_LABEL__>\" (no extra quotes or expressions) and keep VALUE_LABEL descriptive for the user\n</core_instructions>\n\n<expression_rules>\n\n## CRITICAL: Correctly Formatting n8n Expressions\nWhen using expressions to reference data from other nodes:\n- ALWAYS use the format: `={{ $('Node Name').item.json.field }}`\n- NEVER omit the equals sign before the double curly braces\n- ALWAYS use DOUBLE curly braces, never single\n- NEVER use emojis or special characters inside expressions as they will break the expression\n- INCORRECT: `{ $('Node Name').item.json.field }` (missing =, single braces)\n- INCORRECT: `{{ $('Node Name').item.json.field }}` (missing =)\n- INCORRECT: `={{ $('👍 Node').item.json.field }}` (contains emoji)\n- CORRECT: `={{ $('Previous Node').item.json.field }}`\n</expression_rules>\n\n<guide>\n\n## CRITICAL: System Message vs User Prompt Separation\n\nAI nodes (AI Agent, LLM Chain, Anthropic, OpenAI, etc.) have TWO distinct prompt fields that MUST be used correctly:\n\n### Field Separation\n1. **System Message** - Model's persistent identity, role, and instructions\n2. **User Message/Text** - Dynamic user context and data references per execution\n\n**Node-specific field names:**\n- AI Agent: `options.systemMessage` and `text`\n- LLM Chain: `messages.messageValues[]` with system role and `text`\n- Anthropic: `options.system` and `messages.values[]`\n- OpenAI: `messages.values[]` with role \"system\" vs \"user\"\n\n### System Message\nUse for STATIC, ROLE-DEFINING content:\n- Agent identity: \"You are a [role] agent...\"\n- Task description: \"Your task is to...\"\n- Step-by-step instructions: \"1. Do X, 2. Do Y, 3. Do Z\"\n- Behavioral guidelines: \"Always...\", \"Never...\"\n- Tool coordination: \"Call the Research Tool to..., then call...\"\n\n### Text Parameter\nUse for DYNAMIC, EXECUTION-SPECIFIC content:\n- User input: \"={{ $json.chatInput }}\"\n- Workflow context: \"=The research topic is: {{ $json.topic }}\"\n- Data from previous nodes: \"=Process this data: {{ $json.data }}\"\n- Variable context: \"=Analyze for user: {{ $json.userId }}\"\n\n### Common Mistakes to Avoid\n\n**WRONG - Everything in text field:**\n{\n  \"text\": \"=You are an orchestrator agent that coordinates specialized agents. Your task is to: 1) Call Research Agent Tool, 2) Call Fact-Check Agent Tool, 3) Generate report. Research topic: {{ $json.researchTopic }}\"\n}\n\n**CORRECT - Properly separated:**\n{\n  \"text\": \"=The research topic is: {{ $json.researchTopic }}\",\n  \"options\": {\n    \"systemMessage\": \"You are an orchestrator agent that coordinates specialized agents.\\n\\nYour task is to:\\n1. Call the Research Agent Tool to gather information\\n2. Call the Fact-Check Agent Tool to verify findings\\n3. Generate a comprehensive report\\n\\nReturn ONLY the final report.\"\n  }\n}\n\n### Update Pattern Examples\n\nExample 1 - AI Agent with orchestration:\nInstructions: [\n  \"Set text to '=Research topic: {{ $json.researchTopic }}'\",\n  \"Set system message to 'You are an orchestrator coordinating research tasks.\\n\\nSteps:\\n1. Call Research Agent Tool\\n2. Call Fact-Check Agent Tool\\n3. Call Report Writer Agent Tool\\n4. Return final HTML report'\"\n]\n\nExample 2 - Chat-based AI node:\nInstructions: [\n  \"Set text to '=User question: {{ $json.chatInput }}'\",\n  \"Set system message to 'You are a helpful customer support assistant. Answer questions clearly and professionally. Escalate to human if needed.'\"\n]\n\nExample 3 - Data processing with AI:\nInstructions: [\n  \"Set text to '=Process this data: {{ $json.inputData }}'\",\n  \"Set system message to 'You are a data analysis assistant.\\n\\nTasks:\\n1. Validate data structure\\n2. Calculate statistics\\n3. Identify anomalies\\n4. Return JSON with findings'\"\n]\n\n### Why This Matters\n- **Consistency**: System message stays the same across executions\n- **Maintainability**: Easy to update AI behavior without touching data flow\n- **Best Practice**: Follows standard AI prompt engineering patterns\n- **Clarity**: Separates \"what the AI model is\" from \"what data to process\"\n\n</guide>\n\n<guide>\n\n## Text Field Expression Formatting\n\n### PREFERRED METHOD: Embedding expressions directly within text\n```\n\"text\": \"=ALERT: It is currently {{ $('Weather Node').item.json.weather }} in {{ $('Weather Node').item.json.city }}!\"\n```\n\n### Alternative method: Using string concatenation (use only when needed)\n```\n\"text\": \"={{ 'ALERT: It is currently ' + $('Weather Node').item.json.weather + ' in ' + $('Weather Node').item.json.city + '!' }}\"\n```\n\n### Key Points:\n- Use the embedded expression format when mixing static text with dynamic values\n- The entire string must start with = when using expressions\n- Expressions within text use single curly braces {{ }}\n- The outer expression wrapper uses double curly braces ={{ }}\n</guide>\n\n<guide>\n\n### Referencing Output from Special Node Types\n\n#### AI Agent Output Structure\nAI Agent nodes (n8n-nodes-langchain.agent) wrap their response in an \"output\" object:\n- Without Structured Output Parser: Use `$json.output` to access the response string\n- With Structured Output Parser (hasOutputParser: true in node settings): Use `$json.output.fieldName` to access parsed fields\n- Use `$('AI Agent').item.json.output.fieldName` when referencing a node, instead of `$('AI Agent').item.json.fieldName`\n- WRONG: `$json.summary` → CORRECT: `$json.output.summary`\n\n#### Webhook Node Output Structure\nWhen referencing data from a Webhook node (n8n-nodes-base.webhook), the incoming request is structured under `$json`:\n- `$json.headers` - HTTP headers, example: `$json.headers.authorization`\n- `$json.params` - URL path parameters, example route: `/users/:id`, access: `$json.params.id`\n- `$json.query` - Query string parameters, example URL: `?user_id=123`, access: `$json.query.user_id`\n- `$json.body` - Request payload, example JSON: `{ \"userName\": \"sam\" }`, access: `$json.body.userName`\n\nCRITICAL: When referencing data from a Webhook node, do NOT use `$json.fieldName` directly - always specify the container (body, query, params, or headers).\n</guide>\n\n<common_patterns>\n\n## Common Parameter Update Patterns\n\n### HTTP Request Node Updates\n- URL: Set directly or use expressions\n- Method: GET, POST, PUT, DELETE, etc.\n- Headers: Add/update in headerParameters.parameters array\n- Body: Update bodyParameters.parameters for POST/PUT\n- Authentication: Update authentication settings\n</common_patterns>\n\n<examples>\n\n## Examples of Parameter Updates\n\n### Example 1: Update HTTP Request URL\nChange: \"Set the URL to call the weather API for London\"\nCurrent parameters: { \"url\": \"https://api.example.com\", \"method\": \"GET\" }\nUpdated parameters: { \"url\": \"https://api.openweathermap.org/data/2.5/weather?q=London\", \"method\": \"GET\" }\n\n### Example 2: Add a header\nChange: \"Add an ABC key header with value 123\"\nCurrent parameters: { \"url\": \"...\", \"sendHeaders\": false }\nUpdated parameters: {\n  \"url\": \"...\",\n  \"sendHeaders\": true,\n  \"headerParameters\": {\n    \"parameters\": [\n      {\n        \"name\": \"ABC\",\n        \"value\": \"123\"\n      }\n    ]\n  }\n}\n\n### Example 3: Update condition\nChange: \"Check if temperature is above 25 degrees\"\nCurrent parameters: { \"conditions\": { \"conditions\": [] } }\nUpdated parameters: {\n  \"conditions\": {\n    \"options\": {\n      \"caseSensitive\": false,\n      \"leftValue\": \"\",\n      \"typeValidation\": \"loose\"\n    },\n    \"conditions\": [\n      {\n        \"leftValue\": \"={{ $('Weather Node').item.json.main.temp }}\",\n        \"rightValue\": 25,\n        \"operator\": {\n          \"type\": \"number\",\n          \"operation\": \"gt\"\n        }\n      }\n    ],\n    \"combinator\": \"and\"\n  }\n}\n</examples>\n\n<output_format>\n\n## Output Format\nReturn ONLY the complete updated parameters object that matches the node's parameter structure. Include ALL parameters, both modified and unmodified.\n</output_format>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			}
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01F1PfytrWGoDzqPid76VMAt",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_016kagfqucq9qaPPLVA1WxFs",
+						"name": "extract",
+						"input": {
+							"parameters": {
+								"hasOutputParser": false,
+								"promptType": "define",
+								"text": "=Summarize the following article in exactly two sentences:\n\nTitle: {{ $json.title }}\nDescription: {{ $json.description }}\nContent: {{ $json.content }}"
+							}
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 1162,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 5305,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 102,
+					"service_tier": "standard"
+				}
+			}
+		}
+	},
+	"id": "1770043415983-unknown-host-POST-_v1_messages-36edf38f.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

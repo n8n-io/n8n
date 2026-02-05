@@ -24,6 +24,13 @@ import { Telemetry } from '@/telemetry';
 import { getBase } from '@/workflow-execute-additional-data';
 
 /**
+ * Deterministic instance URL used for E2E tests.
+ * This ensures API request bodies are identical across test runs,
+ * enabling reliable request/response replay with strict body matching.
+ */
+const E2E_DETERMINISTIC_INSTANCE_URL = 'http://localhost:TEST_PORT';
+
+/**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.
  * Instead of extending, we're delegating to the real service which is created on-demand.
  */
@@ -145,12 +152,18 @@ export class WorkflowBuilderService {
 		const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
 		this.loadNodesAndCredentials.releaseTypes();
 
+		// Use deterministic instance URL for E2E tests to enable strict body matching replay
+		const instanceUrl =
+			process.env.E2E_TESTS === 'true'
+				? E2E_DETERMINISTIC_INSTANCE_URL
+				: this.urlService.getInstanceBaseUrl();
+
 		this.service = new AiWorkflowBuilderService(
 			nodeTypeDescriptions,
 			this.client,
 			this.logger,
 			this.instanceSettings.instanceId,
-			this.urlService.getInstanceBaseUrl(),
+			instanceUrl,
 			N8N_VERSION,
 			onCreditsUpdated,
 			onTelemetryEvent,

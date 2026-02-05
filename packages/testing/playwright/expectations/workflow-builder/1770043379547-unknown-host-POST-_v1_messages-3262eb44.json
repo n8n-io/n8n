@@ -1,0 +1,86 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"temperature": 0,
+				"stream": false,
+				"max_tokens": 16000,
+				"thinking": {
+					"type": "disabled"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Create an automation that runs on Monday mornings. It reads my Gmail inbox from the weekend, analyzes them with `gpt-4.1-mini` to find action items and priorities, and emails me a structured email using Gmail."
+					},
+					{
+						"role": "user",
+						"content": "[Internal Context - Use this to craft your response]\n**Discovery:** Found 6 relevant nodes\n\n**Builder:** Perfect! I've successfully created your Monday morning email automation workflow. Here's what was built:\n\n**Workflow Overview:**\nA complete automation that triggers every Monday at 8:00 AM, retrieves weekend emails from Gmail, analyzes them with GPT-4.1-mini to extract action items and priorities, and sends you a structured summary email.\n\n**Nodes Created:**\n\n1. **Monday Morning Trigger** (Schedule Trigger) - Configured to run every Monday at 8:00 AM with timezone support\n\n2. **Get Weekend Emails** (Gmail) - Retrieves up to 50 emails from the last 3 days to capture weekend messages, with Simplify set to false for full email data\n\n3. **Combine All Emails** (Aggregate) - Combines all weekend emails into a single item so the AI analyzes them together rather than individually\n\n4. **Analyze Emails for Action Items** (AI Agent) - Uses GPT-4.1-mini to analyze the aggregated emails and extract action items with priorities, configured with a prompt to identify tasks requiring follow-up and categorize by urgency\n\n5. **GPT-4.1-mini Model** (OpenAI Chat Model) - Provides the exact model you specified (gpt-4.1-mini) to power the AI analysis\n\n6. **Structure Output Format** (Structured Output Parser) - Ensures the AI returns structured JSON with fields for actionItems (array of tasks with priority levels) and summary (overview text)\n\n7. **Send Summary Email** (Gmail) - Sends you a formatted email with subject \"Weekend Email Summary - Action Items & Priorities\" containing the structured analysis\n\n**Configuration Required:**\n- The recipient email address in the Send Summary Email node is set to a placeholder - you'll need to configure this with your email address\n- Gmail credentials need to be connected to both Gmail nodes through n8n's credential system\n\nThe workflow is ready to activate. Once enabled, it will automatically run every Monday morning to keep you organized with weekend email action items."
+					}
+				],
+				"system": [
+					{
+						"type": "text",
+						"text": "<role>\nYou are a helpful AI assistant for n8n workflow automation.\n\nYou have access to context about what has been built, including:\n- Discovery results (nodes found)\n- Builder output (workflow structure)\n- Configuration summary (setup instructions)\n</role>\n\n<guardrails>\nYour capabilities are focused on workflow building:\n- You work from your existing knowledge of n8n nodes and integrations\n- You help users design and configure workflows based on their requirements\n- You provide guidance on node configuration and workflow structure\n\nIf a user asks you to search for information or look something up online, let them know you can help build workflows based on your existing knowledge of n8n nodes and integrations, though you don't have access to external websites or real-time information.\n</guardrails>\n\n<workflow_completion_responses>\nWhen you receive [Internal Context], synthesize a clean user-facing response:\n1. Summarize what was built in a friendly way\n2. Explain the workflow structure briefly\n3. Include setup instructions if provided\n4. If Data Table setup is required, include the exact steps provided in the context (do NOT say data tables will be created automatically)\n5. Ask if user wants adjustments\n\nIMPORTANT: Never tell the user to activate, publish, or turn on their workflow. Users will activate workflows themselves when ready.\n\nExample response structure:\n\"I've created your [workflow type] workflow! Here's what it does:\n[Brief explanation of the flow]\n\n**Setup Required:**\n[List any configuration steps from the context]\n\n[If data tables are used, include Data Table creation steps with link to Data Tables tab]\n\nLet me know if you'd like to adjust anything.\"\n</workflow_completion_responses>\n\n<conversational_responses>\n- Be friendly and concise\n- Explain n8n capabilities when asked\n- Provide practical examples when helpful\n</conversational_responses>\n\n<response_style>\n- Keep responses focused and not overly long\n- Use markdown formatting for readability\n- Be conversational and helpful\n- Do not use emojis in your response\n\nCRITICAL - Describe what was built:\n- Report the ACTUAL configuration from the workflow JSON, not what you think should be there\n- If the workflow uses a model name you don't recognize, describe it exactly as configured—do NOT claim it was changed to something else\n- Your training has a knowledge cutoff. New models exist. Never say \"X isn't available yet\" about configured values\n</response_style>",
+						"cache_control": {
+							"type": "ephemeral"
+						}
+					}
+				]
+			}
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_011ySVT8jDeY4HssWkHtkRyW",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "I've created your Monday morning email automation workflow! Here's what it does:\n\nEvery Monday at 8:00 AM, the workflow automatically:\n1. Retrieves emails from your Gmail inbox from the last 3 days (capturing weekend messages)\n2. Combines all emails together for comprehensive analysis\n3. Uses GPT-4.1-mini to analyze them and extract action items with priority levels\n4. Sends you a structured summary email with the subject \"Weekend Email Summary - Action Items & Priorities\"\n\n**Setup Required:**\n\n1. **Gmail Credentials**: Connect your Gmail account to both Gmail nodes (Get Weekend Emails and Send Summary Email) through n8n's credential system\n\n2. **Recipient Email**: Update the \"Send Summary Email\" node with your email address (currently set to a placeholder)\n\n3. **OpenAI Credentials**: Connect your OpenAI API credentials to the GPT-4.1-mini Model node\n\nThe workflow is configured to run at 8:00 AM every Monday. The AI will analyze your weekend emails and provide a structured breakdown of action items categorized by urgency, along with an overview summary.\n\nLet me know if you'd like to adjust the schedule, change the number of days to look back, or modify how the summary is formatted."
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 1079,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 282,
+					"service_tier": "standard"
+				}
+			}
+		}
+	},
+	"id": "1770043379547-unknown-host-POST-_v1_messages-3262eb44.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}
