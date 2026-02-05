@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Note: This DTO uses a different pattern than others (manual class + static safeParse)
+// because Z.class doesn't support .refine() validation. The refine ensures at least
+// one of workflowId or projectId is provided.
 const credentialsForWorkflowQuerySchema = z
 	.object({
 		workflowId: z.string().optional(),

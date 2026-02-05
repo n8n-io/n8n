@@ -94,7 +94,8 @@ export class CredentialsController {
 		_res: unknown,
 		@Query query: CredentialsForWorkflowQueryDto,
 	) {
-		// The DTO's refine validation ensures at least one is present
+		// Type cast required because DTO properties are optional at the type level,
+		// but the DTO's .refine() validation ensures at least one is present at runtime
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			req.user,
 			query as { workflowId: string } | { projectId: string },
