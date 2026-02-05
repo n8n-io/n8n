@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 import {
 	validCredentialsProperties,
@@ -17,9 +18,7 @@ import {
 	validCredentialsPropertiesForUpdate,
 } from './credentials.middleware';
 import {
-	createCredential,
 	CredentialsIsNotUpdatableError,
-	encryptCredential,
 	getCredentials,
 	getSharedCredentials,
 	removeCredential,
@@ -77,13 +76,7 @@ export = {
 			res: express.Response,
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
 			try {
-				const newCredential = await createCredential(req.body);
-
-				const encryptedData = await encryptCredential(newCredential);
-
-				Object.assign(newCredential, encryptedData);
-
-				const savedCredential = await saveCredential(newCredential, req.user, encryptedData);
+				const savedCredential = await saveCredential(req.body, req.user);
 
 				return res.json(sanitizeCredentials(savedCredential));
 			} catch ({ message, httpStatusCode }) {
@@ -117,7 +110,7 @@ export = {
 			}
 
 			try {
-				const updatedCredential = await updateCredential(credentialId, req.body);
+				const updatedCredential = await updateCredential(credentialId, req.user, req.body);
 
 				if (!updatedCredential) {
 					return res.status(404).json({ message: 'Credential not found' });
@@ -128,6 +121,11 @@ export = {
 				if (error instanceof CredentialsIsNotUpdatableError) {
 					return res.status(400).json({ message: error.message });
 				}
+
+				if (error instanceof ResponseError) {
+					return res.status(error.httpStatusCode).json({ message: error.message });
+				}
+
 				const message = error instanceof Error ? error.message : 'Unknown error';
 				return res.status(500).json({ message });
 			}

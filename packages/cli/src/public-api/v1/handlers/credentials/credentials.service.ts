@@ -18,6 +18,7 @@ import {
 } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { validateExternalSecretsPermissions } from '@/credentials/validation';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { CredentialRequest } from '@/requests';
@@ -54,10 +55,16 @@ export async function createCredential(
 }
 
 export async function saveCredential(
-	credential: CredentialsEntity,
+	payload: { type: string; name: string; data: ICredentialDataDecryptedObject },
 	user: User,
-	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
+	const credential = await createCredential(payload);
+
+	validateExternalSecretsPermissions(user, payload.data);
+
+	const encryptedData = await encryptCredential(credential);
+	Object.assign(credential, encryptedData);
+
 	const projectRepository = Container.get(ProjectRepository);
 	const { manager: dbManager } = projectRepository;
 	const result = await dbManager.transaction(async (transactionManager) => {
@@ -104,6 +111,7 @@ export async function saveCredential(
 
 export async function updateCredential(
 	credentialId: string,
+	user: User,
 	updateData: {
 		type?: string;
 		name?: string;
@@ -139,6 +147,8 @@ export async function updateCredential(
 
 		// Decrypt existing data to access oauthTokenData
 		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
+
+		validateExternalSecretsPermissions(user, updateData.data, decryptedData);
 
 		let dataToEncrypt: ICredentialDataDecryptedObject;
 
