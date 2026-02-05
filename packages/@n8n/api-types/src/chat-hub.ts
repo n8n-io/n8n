@@ -406,6 +406,12 @@ export type ChatMessageContentChunk =
 			content: string;
 			command: ChatArtifactEditCommand;
 			isIncomplete: boolean;
+	  }
+	| {
+			type: 'with-buttons';
+			content: string;
+			buttons: ChatHubMessageButton[];
+			blockUserInput: boolean;
 	  };
 
 export interface ChatHubMessageDto {
@@ -583,3 +589,27 @@ export interface ChatArtifactEditCommand {
 	newString: string;
 	replaceAll: boolean;
 }
+
+/**
+ * Button shown in a chat message
+ */
+export const chatHubMessageButtonSchema = z.object({
+	text: z.string(),
+	link: z.string(),
+	type: z.enum(['primary', 'secondary']),
+});
+
+export type ChatHubMessageButton = z.infer<typeof chatHubMessageButtonSchema>;
+
+/**
+ * Structured message with buttons, sent from
+ * Chat node in "Send and Wait for Response" mode for HITL approvals
+ */
+export const chatHubMessageWithButtonsSchema = z.object({
+	type: z.literal('with-buttons'),
+	text: z.string(),
+	blockUserInput: z.boolean(),
+	buttons: z.array(chatHubMessageButtonSchema).min(1),
+});
+
+export type ChatHubMessageWithButtons = z.infer<typeof chatHubMessageWithButtonsSchema>;

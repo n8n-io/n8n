@@ -567,3 +567,16 @@ export function splitMarkdownIntoChunks(content: string): string[] {
 
 	return chunks;
 }
+
+/**
+ * Checks if a message represents a waiting-for-approval state.
+ * This occurs when the message has 'waiting' status and contains
+ * a with-buttons chunk that blocks user input.
+ */
+export function isWaitingForApproval(message: ChatMessage | null | undefined): boolean {
+	if (!message || message.status !== 'waiting') {
+		return false;
+	}
+
+	return message.content.some((c) => c.type === 'with-buttons' && c.blockUserInput);
+}

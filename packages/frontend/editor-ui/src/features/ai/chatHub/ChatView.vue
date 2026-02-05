@@ -11,6 +11,7 @@ import {
 	isLlmProvider,
 	unflattenModel,
 	createMimeTypes,
+	isWaitingForApproval,
 } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -309,6 +310,11 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 const messagingState = computed<MessagingState>(() => {
 	if (chatStore.streaming?.sessionId === sessionId.value) {
 		return chatStore.streaming.messageId ? 'receiving' : 'waitingFirstChunk';
+	}
+
+	// Check if waiting for approval (button click)
+	if (isWaitingForApproval(chatStore.lastMessage(sessionId.value))) {
+		return 'waitingForApproval';
 	}
 
 	if (chatStore.agentsReady && !selectedModel.value) {
