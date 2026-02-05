@@ -33,10 +33,22 @@ const nodeType = computed(() =>
 );
 
 const isLoading = computed(() => isExecuting.value);
-const isButtonDisabled = computed(() => !props.state.isComplete || !!disabledReason.value);
+
+const hasNodeIssues = computed(() => {
+	const node = props.state.node;
+	return Boolean(
+		node.issues &&
+			(Object.keys(node.issues.credentials ?? {}).length > 0 ||
+				Object.keys(node.issues.parameters ?? {}).length > 0),
+	);
+});
+
+// For triggers: button is disabled if node has issues or there's a disabledReason
+// The button should be enabled once issues are resolved, even before execution completes
+const isButtonDisabled = computed(() => hasNodeIssues.value || !!disabledReason.value);
 
 const tooltipText = computed(() => {
-	if (!props.state.isComplete) {
+	if (hasNodeIssues.value) {
 		return i18n.baseText('ndv.execute.requiredFieldsMissing');
 	}
 	return disabledReason.value;
@@ -97,7 +109,7 @@ onMounted(() => {
 		</header>
 
 		<template v-if="expanded">
-			<div :class="$style.content">
+			<div v-if="state.credentialRequirements.length" :class="$style.content">
 				<div
 					v-for="requirement in state.credentialRequirements"
 					:key="requirement.credentialType"
@@ -120,14 +132,14 @@ onMounted(() => {
 				</div>
 			</div>
 
-			<footer :class="$style.footer">
+			<footer v-if="state.isTrigger || state.isComplete" :class="$style.footer">
 				<div v-if="state.isComplete" :class="$style['footer-complete-check']">
 					<N8nIcon icon="check" :class="$style['complete-icon']" size="large" />
 					<N8nText size="medium" color="success">
 						{{ i18n.baseText('generic.complete') }}
 					</N8nText>
 				</div>
-				<N8nTooltip :disabled="!tooltipText" placement="top">
+				<N8nTooltip v-if="state.isTrigger" :disabled="!tooltipText" placement="top">
 					<template #content>{{ tooltipText }}</template>
 					<N8nButton
 						:label="buttonLabel"

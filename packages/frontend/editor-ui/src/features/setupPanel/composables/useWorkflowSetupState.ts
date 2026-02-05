@@ -1,5 +1,4 @@
 import { computed, type Ref } from 'vue';
-import sortBy from 'lodash/sortBy';
 
 import type { INodeUi } from '@/Interface';
 import type { NodeSetupState } from '../setupPanel.types';
@@ -12,7 +11,11 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
-import { getNodeCredentialTypes, buildNodeSetupState } from '../setupPanel.utils';
+import {
+	getNodeCredentialTypes,
+	buildCredentialRequirement,
+	isNodeSetupComplete,
+} from '../setupPanel.utils';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -36,19 +39,36 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		return credentialTypeInfo?.displayName ?? credentialType;
 	};
 
+	const isTriggerNode = (node: INodeUi): boolean => {
+		return nodeTypesStore.isTriggerNode(node.type);
+	};
+
+	const hasTriggerExecutedSuccessfully = (nodeName: string): boolean => {
+		const runData = workflowsStore.getWorkflowResultDataByNodeName(nodeName);
+		return runData !== null && runData.length > 0;
+	};
+
 	/**
-	 * Get nodes that require credentials, sorted by X position (left to right).
+	 * Get nodes that require setup:
+	 * - Nodes with credential requirements
+	 * - Trigger nodes (regardless of credentials)
+	 * Sorted with triggers first, then by X position.
 	 */
-	const nodesRequiringCredentials = computed(() => {
-		const nodesWithCredentials = sourceNodes.value
+	const nodesRequiringSetup = computed(() => {
+		const nodesForSetup = sourceNodes.value
 			.filter((node) => !node.disabled)
 			.map((node) => ({
 				node,
 				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
+				isTrigger: isTriggerNode(node),
 			}))
-			.filter(({ credentialTypes }) => credentialTypes.length > 0);
+			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
 
-		return sortBy(nodesWithCredentials, ({ node }) => node.position[0]);
+		return nodesForSetup.sort((a, b) => {
+			if (a.isTrigger && !b.isTrigger) return -1;
+			if (!a.isTrigger && b.isTrigger) return 1;
+			return a.node.position[0] - b.node.position[0];
+		});
 	});
 
 	/**
@@ -56,7 +76,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 */
 	const credentialTypeToNodeNames = computed(() => {
 		const map = new Map<string, string[]>();
-		for (const { node, credentialTypes } of nodesRequiringCredentials.value) {
+		for (const { node, credentialTypes } of nodesRequiringSetup.value) {
 			for (const credType of credentialTypes) {
 				const existing = map.get(credType) ?? [];
 				existing.push(node.name);
@@ -67,19 +87,36 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	/**
-	 * Node setup states - one entry per node that requires credentials.
+	 * Node setup states - one entry per node that requires setup.
 	 * This data is used by cards component.
 	 */
-	const nodeSetupStates = computed<NodeSetupState[]>(() =>
-		nodesRequiringCredentials.value.map(({ node, credentialTypes }) =>
-			buildNodeSetupState(
+	const nodeSetupStates = computed<NodeSetupState[]>(() => {
+		return nodesRequiringSetup.value.map(({ node, credentialTypes, isTrigger }) => {
+			const credentialRequirements = credentialTypes.map((credType) =>
+				buildCredentialRequirement(
+					node,
+					credType,
+					getCredentialDisplayName,
+					credentialTypeToNodeNames.value,
+				),
+			);
+
+			const credentialsConfigured = isNodeSetupComplete(credentialRequirements);
+
+			// For triggers: complete only after successful execution
+			// For regular nodes: complete when credentials are configured
+			const isComplete = isTrigger
+				? credentialsConfigured && hasTriggerExecutedSuccessfully(node.name)
+				: credentialsConfigured;
+
+			return {
 				node,
-				credentialTypes,
-				getCredentialDisplayName,
-				credentialTypeToNodeNames.value,
-			),
-		),
-	);
+				credentialRequirements,
+				isComplete,
+				isTrigger,
+			};
+		});
+	});
 
 	const totalCredentialsMissing = computed(() => {
 		return nodeSetupStates.value.reduce((total, state) => {
