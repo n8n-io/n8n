@@ -11,11 +11,47 @@ import type { CredentialsService } from '../credentials.service';
 import type { CredentialsFinderService } from '../credentials-finder.service';
 import type { CredentialRequest } from '@/requests';
 
+import type { CredentialsFinderService } from '../credentials-finder.service';
+import { CredentialsController } from '../credentials.controller';
+import { CredentialsService } from '../credentials.service';
+import * as validation from '../validation';
+import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
+
 describe('CredentialsController', () => {
 	const eventService = mock<EventService>();
-	const credentialsService = mock<CredentialsService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+
+	// Mock the credentialsRepository with a working create method
+	const credentialsRepository = mock<CredentialsRepository>();
+
+	// real CredentialsService instance with mocked dependencies
+	const credentialsService = new CredentialsService(
+		credentialsRepository,
+		mock(), // sharedCredentialsRepository
+		mock(), // ownershipService
+		mock(), // logger
+		mock(), // errorReporter
+		mock(), // credentialsTester
+		mock(), // externalHooks
+		mock(), // credentialTypes
+		mock(), // projectRepository
+		mock(), // projectService
+		mock(), // roleService
+		mock(), // userRepository
+		mock(), // credentialsFinderService
+		mock(), // credentialsHelper
+	);
+
+	// Spy on methods that need to be mocked in tests
+	// This allows us to mock specific behavior while keeping real implementations
+	// for isChangingExternalSecretExpression and validateExternalSecretsPermissions
+	jest.spyOn(credentialsService, 'decrypt');
+	jest.spyOn(credentialsService, 'prepareUpdateData');
+	jest.spyOn(credentialsService, 'createEncryptedData');
+	jest.spyOn(credentialsService, 'getCredentialScopes');
+	jest.spyOn(credentialsService, 'update');
+	jest.spyOn(credentialsService, 'createUnmanagedCredential');
 
 	const credentialsController = new CredentialsController(
 		mock(),
@@ -39,12 +75,12 @@ describe('CredentialsController', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		// Set up credentialsRepository.create to return the input data
+		credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
 	});
 
 	describe('createCredentials', () => {
 		it('should create new credentials and emit "credentials-created"', async () => {
-			// Arrange
-
 			const newCredentialsPayload = createNewCredentialsPayload();
 
 			req.body = newCredentialsPayload;
@@ -57,8 +93,9 @@ describe('CredentialsController', () => {
 				id: newCredentialsPayload.projectId,
 			});
 
-			// @ts-ignore
-			credentialsService.createUnmanagedCredential.mockResolvedValue(createdCredentials);
+			jest
+				.mocked(credentialsService.createUnmanagedCredential)
+				.mockResolvedValue(createdCredentials);
 
 			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
 				projectOwningCredentialData,
@@ -106,13 +143,8 @@ describe('CredentialsController', () => {
 		});
 
 		beforeEach(() => {
-			credentialsService.decrypt.mockReturnValue({ apiKey: 'test-key' });
-			credentialsService.prepareUpdateData.mockResolvedValue({
-				name: 'Updated Credential',
-				type: 'apiKey',
-				data: { apiKey: 'updated-key' },
-			} as any);
-			credentialsService.createEncryptedData.mockReturnValue({
+			jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'test-key' });
+			jest.mocked(credentialsService.createEncryptedData).mockReturnValue({
 				name: 'Updated Credential',
 				type: 'apiKey',
 				data: 'encrypted-data',
@@ -120,10 +152,9 @@ describe('CredentialsController', () => {
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			} as any);
-			credentialsService.getCredentialScopes.mockResolvedValue([
-				'credential:read',
-				'credential:update',
-			] as any);
+			jest
+				.mocked(credentialsService.getCredentialScopes)
+				.mockResolvedValue(['credential:read', 'credential:update'] as any);
 		});
 
 		it('should allow owner to set isGlobal to true', async () => {
@@ -140,7 +171,7 @@ describe('CredentialsController', () => {
 			} as unknown as CredentialRequest.Update;
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			credentialsService.update.mockResolvedValue({
+			jest.mocked(credentialsService.update).mockResolvedValue({
 				...existingCredential,
 				name: 'Updated Credential',
 				isGlobal: true,
@@ -181,7 +212,7 @@ describe('CredentialsController', () => {
 			} as unknown as CredentialRequest.Update;
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(globalCredential);
-			credentialsService.update.mockResolvedValue({
+			jest.mocked(credentialsService.update).mockResolvedValue({
 				...globalCredential,
 				isGlobal: false,
 			});
@@ -263,7 +294,7 @@ describe('CredentialsController', () => {
 			} as unknown as CredentialRequest.Update;
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			credentialsService.update.mockResolvedValue({
+			jest.mocked(credentialsService.update).mockResolvedValue({
 				...existingCredential,
 				name: 'Updated Credential',
 			});
