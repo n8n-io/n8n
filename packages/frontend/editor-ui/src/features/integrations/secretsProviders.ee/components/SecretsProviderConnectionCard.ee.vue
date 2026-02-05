@@ -15,7 +15,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	edit: [connectionId: string];
+	edit: [providerKey: string];
+	share: [providerKey: string];
 }>();
 
 const provider = toRef(props, 'provider');
@@ -40,13 +41,16 @@ const actionDropdownOptions = computed(() => {
 			label: i18n.baseText('generic.edit'),
 			value: 'edit',
 		},
+		{
+			label: i18n.baseText('settings.secretsProviderConnections.actions.share'),
+			value: 'share',
+		},
 	];
 });
 
 function onAction(action: string) {
-	if (action === 'edit') {
-		emit('edit', provider.value.name);
-	}
+	if (action !== 'edit' && action !== 'share') return;
+	emit(action as keyof typeof emit, provider.value.name);
 }
 </script>
 

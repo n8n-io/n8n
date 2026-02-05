@@ -58,11 +58,11 @@ export const updateSecretProviderConnection = async (
 
 export const testSecretProviderConnection = async (
 	context: IRestApiContext,
-	connectionId: string,
+	providerKey: string,
 ): Promise<TestSecretProviderConnectionResponse> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
-		`/secret-providers/connections/${connectionId}/test`,
+		`/secret-providers/connections/${providerKey}/test`,
 	);
 };
