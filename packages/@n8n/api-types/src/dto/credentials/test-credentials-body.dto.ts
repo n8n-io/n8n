@@ -19,7 +19,7 @@ const projectSharingDataSchema = z.object({
 
 const credentialsDecryptedSchema = z.object({
 	id: z.string(),
-	name: z.string(),
+	name: z.string().optional(),
 	type: z.string(),
 	data: z.record(z.string(), z.any()).optional(),
 	homeProject: projectSharingDataSchema.optional(),

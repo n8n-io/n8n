@@ -14,6 +14,15 @@ describe('TestCredentialsBodyDto', () => {
 				},
 			},
 			{
+				name: 'with minimal credentials without name',
+				request: {
+					credentials: {
+						id: 'cred-123',
+						type: 'apiKey',
+					},
+				},
+			},
+			{
 				name: 'with data',
 				request: {
 					credentials: {
@@ -145,16 +154,6 @@ describe('TestCredentialsBodyDto', () => {
 					},
 				},
 				expectedErrorPath: ['credentials', 'id'],
-			},
-			{
-				name: 'credentials missing name',
-				request: {
-					credentials: {
-						id: 'cred-123',
-						type: 'apiKey',
-					},
-				},
-				expectedErrorPath: ['credentials', 'name'],
 			},
 			{
 				name: 'credentials missing type',
