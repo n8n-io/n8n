@@ -132,6 +132,22 @@ export type RelayEventMap = {
 		userIdList: string[];
 	};
 
+	'workflow-transfer-started': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowBase;
+		sourceProjectId: string;
+		destinationProjectId: string;
+	};
+
+	'workflow-transfer-completed': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowBase;
+		sourceProjectId: string;
+		destinationProjectId: string;
+	};
+
 	'workflow-executed': {
 		user?: UserLike;
 		workflowId: string;

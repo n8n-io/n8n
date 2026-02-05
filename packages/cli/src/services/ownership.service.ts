@@ -106,6 +106,15 @@ export class OwnershipService {
 		return sharedWorkflow.project;
 	}
 
+	/**
+	 * Invalidates the cached workflow project relationship.
+	 * Should be called when a workflow's project ownership changes (e.g., transfer).
+	 * This ensures subsequent calls to getWorkflowProjectCached() will fetch fresh data.
+	 */
+	async invalidateWorkflowProjectCache(workflowId: string): Promise<void> {
+		await this.cacheService.deleteFromHash('workflow-project', workflowId);
+	}
+
 	async setWorkflowProjectCacheEntry(workflowId: string, project: Project): Promise<Project> {
 		void this.cacheService.setHash('workflow-project', {
 			[workflowId]: this.copyProject(project),

@@ -37,6 +37,7 @@ import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflo
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { WorkflowTransferLifecycleService } from './workflow-transfer-lifecycle.service';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -55,6 +56,7 @@ export class EnterpriseWorkflowService {
 		private readonly folderService: FolderService,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly workflowTransferLifecycleService: WorkflowTransferLifecycleService,
 	) {}
 
 	async shareWithProjects(
@@ -407,13 +409,24 @@ export class EnterpriseWorkflowService {
 		// 7. transfer the workflow
 		await this.transferWorkflowOwnership([workflow], destinationProject);
 
-		// 8. share credentials into the destination project
+		// 8. Handle all transfer lifecycle side effects
+		// This clears activation errors, invalidates validation state, invalidates caches,
+		// and ensures data table relations will be re-resolved in the new project context
+		await this.workflowTransferLifecycleService.handleWorkflowTransfer(
+			workflowId,
+			sourceProject.id,
+			destinationProject.id,
+			workflow,
+			user,
+		);
+
+		// 9. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
 
-		// 9. Move workflow to the right folder if any
+		// 10. Move workflow to the right folder if any
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 10. try to activate it again if it was active
+		// 11. try to activate it again if it was active
 		if (wasActive) {
 			return await this.attemptWorkflowReactivation(workflowId, workflow.activeVersionId, user.id);
 		}
