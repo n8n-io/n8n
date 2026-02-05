@@ -1,0 +1,103 @@
+{
+	"name": "MCP Trigger Multi-Tool Test",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"authentication": "none",
+				"path": "mcp-multi"
+			},
+			"id": "mcp-trigger-node",
+			"name": "MCP Server Trigger",
+			"type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+			"typeVersion": 2,
+			"position": [300, 300]
+		},
+		{
+			"parameters": {
+				"name": "echo",
+				"description": "Echoes the input message back to the caller",
+				"specifyInputSchema": true,
+				"jsonSchemaExample": "{\n\t\"message\": \"Hello, world!\"\n}",
+				"jsCode": "return `Echo: ${query.message}`;"
+			},
+			"id": "echo-tool-node",
+			"name": "Echo Tool",
+			"type": "@n8n/n8n-nodes-langchain.toolCode",
+			"typeVersion": 1.1,
+			"position": [500, 200]
+		},
+		{
+			"parameters": {
+				"name": "add",
+				"description": "Adds two numbers together",
+				"specifyInputSchema": true,
+				"jsonSchemaExample": "{\n\t\"a\": 1,\n\t\"b\": 2\n}",
+				"jsCode": "return `Sum: ${query.a + query.b}`;"
+			},
+			"id": "add-tool-node",
+			"name": "Add Tool",
+			"type": "@n8n/n8n-nodes-langchain.toolCode",
+			"typeVersion": 1.1,
+			"position": [500, 400]
+		},
+		{
+			"parameters": {
+				"name": "multiply",
+				"description": "Multiplies two numbers together",
+				"specifyInputSchema": true,
+				"jsonSchemaExample": "{\n\t\"a\": 2,\n\t\"b\": 3\n}",
+				"jsCode": "return `Product: ${query.a * query.b}`;"
+			},
+			"id": "multiply-tool-node",
+			"name": "Multiply Tool",
+			"type": "@n8n/n8n-nodes-langchain.toolCode",
+			"typeVersion": 1.1,
+			"position": [500, 600]
+		}
+	],
+	"connections": {
+		"Echo Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "MCP Server Trigger",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "MCP Server Trigger",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Multiply Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "MCP Server Trigger",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

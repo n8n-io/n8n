@@ -22,6 +22,18 @@ type TestFixtures = {
 	baseURL: string;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
 	proxyServer: ProxyServer;
+	/**
+	 * Direct URLs to each main instance (bypasses load balancer).
+	 * Only available in container mode with multi-main setup.
+	 * Index 0 = main-1, Index 1 = main-2, etc.
+	 */
+	mainUrls: string[];
+	/**
+	 * Create an API helper for a specific main instance (bypasses load balancer).
+	 * Useful for multi-main testing scenarios.
+	 * @param mainIndex - 0-based index of the main (0 = main-1, 1 = main-2, etc.)
+	 */
+	createApiForMain: (mainIndex: number) => Promise<ApiHelpers>;
 };
 
 type WorkerFixtures = {
@@ -216,6 +228,48 @@ export const test = base.extend<
 
 		await use(api);
 		await context.dispose();
+	},
+
+	mainUrls: async ({ n8nContainer }, use) => {
+		const urls = n8nContainer?.mainUrls ?? [];
+		await use(urls);
+	},
+
+	createApiForMain: async ({ n8nContainer }, use, testInfo) => {
+		const contexts: Array<{ dispose: () => Promise<void> }> = [];
+
+		const createApi = async (mainIndex: number): Promise<ApiHelpers> => {
+			const mainUrls = n8nContainer?.mainUrls ?? [];
+			if (mainIndex < 0 || mainIndex >= mainUrls.length) {
+				throw new TestError(
+					`Invalid main index ${mainIndex}. Available mains: ${mainUrls.length}. ` +
+						'Ensure you are running in multi-main container mode.',
+				);
+			}
+
+			const context = await request.newContext({ baseURL: mainUrls[mainIndex] });
+			contexts.push(context);
+
+			const api = new ApiHelpers(context);
+			await api.setupFromTags(testInfo.tags.filter((tag) => tag.toLowerCase() !== '@db:reset'));
+
+			const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
+			const apiCookies = await context.storageState();
+			const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
+
+			if (!hasAuthTag && !authCookie) {
+				await api.signin('owner');
+			}
+
+			return api;
+		};
+
+		await use(createApi);
+
+		// Cleanup all created contexts
+		for (const ctx of contexts) {
+			await ctx.dispose();
+		}
 	},
 
 	setupRequirements: async ({ n8n, context }, use) => {

@@ -1787,6 +1787,9 @@ importers:
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)
+      '@modelcontextprotocol/sdk':
+        specifier: 1.25.2
+        version: 1.25.2(hono@4.11.3)(zod@3.25.67)
       '@n8n/ai-workflow-builder':
         specifier: workspace:*
         version: link:../@n8n/ai-workflow-builder.ee

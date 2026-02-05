@@ -11,6 +11,7 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { McpApiHelper } from './mcp-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
@@ -45,6 +46,7 @@ export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
+	mcp: McpApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
 	variables: VariablesApiHelper;
@@ -59,6 +61,7 @@ export class ApiHelpers {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
+		this.mcp = new McpApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
@@ -262,6 +265,19 @@ export class ApiHelpers {
 		const userApi = new ApiHelpers(userContext);
 		await userApi.login({ email: user.email, password: user.password });
 		return userApi;
+	}
+
+	/**
+	 * Create an API helper for a specific base URL.
+	 * Useful for multi-main testing where you want to send requests
+	 * directly to a specific main instance (bypassing the load balancer).
+	 *
+	 * @param baseUrl - The base URL to use (e.g., from n8nContainer.mainUrls[0])
+	 * @returns A new ApiHelpers instance configured for the specified URL
+	 */
+	static async createForUrl(baseUrl: string): Promise<ApiHelpers> {
+		const context = await request.newContext({ baseURL: baseUrl });
+		return new ApiHelpers(context);
 	}
 
 	async get(path: string, params?: URLSearchParams) {

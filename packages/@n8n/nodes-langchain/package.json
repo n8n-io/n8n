@@ -3,6 +3,23 @@
   "version": "2.7.0",
   "description": "",
   "main": "index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./mcp/core": {
+      "types": "./dist/nodes/mcp/McpTrigger/index.d.ts",
+      "import": "./dist/nodes/mcp/McpTrigger/index.js",
+      "require": "./dist/nodes/mcp/McpTrigger/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "mcp/core": ["./dist/nodes/mcp/McpTrigger/index.d.ts"]
+    }
+  },
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm run watch",
