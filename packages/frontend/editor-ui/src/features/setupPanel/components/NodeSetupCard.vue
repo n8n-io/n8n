@@ -9,6 +9,7 @@ import SetupCredentialLabel from './SetupCredentialLabel.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import type { NodeSetupState } from '../setupPanel.types';
+import { useNodeExecution } from '../composables/useNodeExecution';
 
 const props = defineProps<{
 	state: NodeSetupState;
@@ -19,15 +20,29 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 const emit = defineEmits<{
 	credentialSelected: [payload: { credentialType: string; credentialId: string }];
 	credentialDeselected: [credentialType: string];
-	testNode: [];
 }>();
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 
+// Use node execution composable
+const nodeRef = computed(() => props.state.node);
+const { isExecuting, isListening, buttonLabel, buttonIcon, disabledReason, execute } =
+	useNodeExecution(nodeRef);
+
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
+
+const isLoading = computed(() => isExecuting.value || isListening.value);
+const isButtonDisabled = computed(() => !props.state.isComplete || !!disabledReason.value);
+
+const tooltipText = computed(() => {
+	if (!props.state.isComplete) {
+		return i18n.baseText('ndv.execute.requiredFieldsMissing');
+	}
+	return disabledReason.value;
+});
 
 const onHeaderClick = () => {
 	expanded.value = !expanded.value;
@@ -41,8 +56,8 @@ const onCredentialDeselected = (credentialType: string) => {
 	emit('credentialDeselected', credentialType);
 };
 
-const onTestClick = () => {
-	emit('testNode');
+const onTestClick = async () => {
+	await execute();
 };
 
 watch(
@@ -114,14 +129,17 @@ onMounted(() => {
 						{{ i18n.baseText('generic.complete') }}
 					</N8nText>
 				</div>
-				<N8nButton
-					data-test-id="node-setup-card-test-button"
-					:label="i18n.baseText('node.testStep')"
-					:disabled="!state.isComplete"
-					icon="flask-conical"
-					size="small"
-					@click="onTestClick"
-				/>
+				<N8nTooltip :disabled="!tooltipText" placement="top">
+					<template #content>{{ tooltipText }}</template>
+					<N8nButton
+						:label="buttonLabel"
+						:disabled="isButtonDisabled"
+						:loading="isLoading"
+						:icon="buttonIcon"
+						size="small"
+						@click="onTestClick"
+					/>
+				</N8nTooltip>
 			</footer>
 		</template>
 	</div>
