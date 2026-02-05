@@ -51,7 +51,8 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+
+import { validateExternalSecretsPermissions } from './validation';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -445,9 +446,12 @@ export class CredentialsService {
 	}
 
 	async prepareUpdateData(
+		user: User,
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
 	): Promise<CredentialsEntity> {
+		validateExternalSecretsPermissions(user, data.data, decryptedData);
+
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
 			mergedData.data = this.unredact(mergedData.data, decryptedData);
@@ -865,7 +869,12 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: false }, user);
 	}
 
-	private checkCredentialData(type: string, data: ICredentialDataDecryptedObject) {
+	/**
+	 * Used to check credential data for creating a new credential.
+	 * TODO: consider refactoring enable using this for both creating and updating, right now only used for creation
+	 * (likely only affects the validateExternalSecretsPermissions call)
+	 */
+	checkCredentialData(type: string, data: ICredentialDataDecryptedObject, user: User) {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
@@ -882,6 +891,7 @@ export class CredentialsService {
 			}
 		}
 
+		validateExternalSecretsPermissions(user, data);
 		// TODO: add further validation if needed
 	}
 
@@ -894,7 +904,7 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
-		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject);
+		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject, user);
 		const encryptedCredential = this.createEncryptedData({
 			id: null,
 			name: opts.name,
