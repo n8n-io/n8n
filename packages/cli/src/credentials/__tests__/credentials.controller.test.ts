@@ -483,9 +483,9 @@ describe('CredentialsController', () => {
 			// Mock setup: existing credential already has a secret expression
 			jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: '$secrets.oldKey' });
 
-			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
-				'Lacking permissions to reference external secrets in credentials',
-			);
+			await expect(
+				credentialsController.updateCredentials(memberReq, undefined, memberReq.body),
+			).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
 			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith({
 				user: memberReq.user,
 				projectId: existingCredential.shared[0].projectId,
@@ -513,9 +513,9 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
 			jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-key' });
 
-			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
-				'Lacking permissions to reference external secrets in credentials',
-			);
+			await expect(
+				credentialsController.updateCredentials(memberReq, undefined, memberReq.body),
+			).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
 			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith({
 				user: memberReq.user,
 				projectId: existingCredential.shared[0].projectId,

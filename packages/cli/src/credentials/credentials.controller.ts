@@ -96,12 +96,19 @@ export class CredentialsController {
 		_res: unknown,
 		@Query query: CredentialsForWorkflowQueryDto,
 	) {
-		// Type cast required because DTO properties are optional at the type level,
-		// but the DTO's .refine() validation ensures at least one is present at runtime
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
-			req.user,
-			query as { workflowId: string } | { projectId: string },
-		);
+		// Use type guards to narrow the union type safely
+		if (query.workflowId !== undefined) {
+			return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
+				workflowId: query.workflowId,
+			});
+		}
+		if (query.projectId !== undefined) {
+			return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
+				projectId: query.projectId,
+			});
+		}
+		// Should never reach here due to DTO validation
+		throw new BadRequestError('Either workflowId or projectId must be provided');
 	}
 
 	@Get('/new')
