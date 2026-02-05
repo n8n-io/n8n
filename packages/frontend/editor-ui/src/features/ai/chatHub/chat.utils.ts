@@ -453,7 +453,7 @@ export function createFakeAgent(
 }
 
 export const isEditable = (message: ChatMessage): boolean => {
-	return message.status === 'success' && !(message.provider === 'n8n' && message.type === 'ai');
+	return message.status === 'success' && message.type !== 'ai';
 };
 
 export const isRegenerable = (message: ChatMessage): boolean => {
