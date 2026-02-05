@@ -120,6 +120,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
+	workflowsAutosaveDisabled: false,
 	variables: {
 		limit: -1,
 	},

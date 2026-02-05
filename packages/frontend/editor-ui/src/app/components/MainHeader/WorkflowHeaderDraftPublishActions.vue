@@ -10,6 +10,7 @@ import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
@@ -39,6 +40,7 @@ const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>(
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const collaborationStore = useCollaborationStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const router = useRouter();
 
@@ -46,6 +48,18 @@ const autosaveStore = useWorkflowAutosaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 
 const autoSaveForPublish = ref(false);
+const isSaving = ref(false);
+
+const showSaveButton = computed(() => !settingsStore.isAutosaveEnabled);
+
+const onSaveButtonClick = async () => {
+	isSaving.value = true;
+	try {
+		await saveCurrentWorkflow({});
+	} finally {
+		isSaving.value = false;
+	}
+};
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
@@ -287,6 +301,18 @@ defineExpose({
 <template>
 	<div :class="$style.container">
 		<CollaborationPane v-if="!isNewWorkflow" />
+		<N8nButton
+			v-if="showSaveButton && !isArchived && workflowPermissions.update"
+			:loading="isSaving"
+			:disabled="!uiStore.stateIsDirty || collaborationReadOnly"
+			type="secondary"
+			data-test-id="workflow-save-button"
+			@click="onSaveButtonClick"
+		>
+			{{
+				uiStore.stateIsDirty ? i18n.baseText('saveButton.save') : i18n.baseText('saveButton.saved')
+			}}
+		</N8nButton>
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
 			<N8nTooltip
 				:disabled="

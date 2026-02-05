@@ -125,6 +125,7 @@ const emit = defineEmits<{
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
+	'save:workflow': [];
 }>();
 
 const props = withDefaults(
@@ -363,7 +364,8 @@ const keyMap = computed(() => {
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		// override the default cmd+s which saves the page html as file
-		ctrl_s: () => {},
+		// also triggers manual save when autosave is disabled
+		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),

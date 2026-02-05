@@ -181,6 +181,7 @@ describe('GlobalConfig', () => {
 			activationBatchSize: 1,
 			indexingEnabled: false,
 			useWorkflowPublicationService: false,
+			autosaveDisabled: false,
 		},
 		endpoints: {
 			metrics: {

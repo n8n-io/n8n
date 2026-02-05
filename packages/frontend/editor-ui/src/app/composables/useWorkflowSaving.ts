@@ -36,6 +36,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export function useWorkflowSaving({
 	router,
@@ -65,6 +66,7 @@ export function useWorkflowSaving({
 
 	const autosaveStore = useWorkflowAutosaveStore();
 	const backendConnectionStore = useBackendConnectionStore();
+	const settingsStore = useSettingsStore();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -536,6 +538,11 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
+		// Don't schedule if autosave is disabled via environment variable
+		if (!settingsStore.isAutosaveEnabled) {
+			return;
+		}
+
 		// Don't schedule if a save is already in progress - the finally block
 		// will reschedule if there are pending changes
 		if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
