@@ -82,6 +82,11 @@ const homeProject = computed<ProjectSharingData | undefined>(
 	() => props.credential?.homeProject ?? credentialDataHomeProject.value,
 );
 const isHomeTeamProject = computed(() => homeProject.value?.type === ProjectTypes.Team);
+const isPersonalSpaceRestricted = computed(
+	() =>
+		projectsStore.currentProject?.type === ProjectTypes.Personal &&
+		!props.credentialPermissions.share,
+);
 const credentialRoleTranslations = computed<Record<string, string>>(() => {
 	return {
 		'credential:user': i18n.baseText('credentialEdit.credentialSharing.role.user'),
@@ -156,11 +161,16 @@ function goToUpgrade() {
 				{{ i18n.baseText('credentialEdit.credentialSharing.info.sharee.team') }}
 			</N8nInfoTip>
 			<N8nInfoTip v-else :bold="false" class="mb-s">
-				{{
-					i18n.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
-						interpolate: { credentialOwnerName },
-					})
-				}}
+				<template v-if="isPersonalSpaceRestricted">
+					{{ i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted') }}
+				</template>
+				<template v-else>
+					{{
+						i18n.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
+							interpolate: { credentialOwnerName },
+						})
+					}}
+				</template>
 			</N8nInfoTip>
 			<ProjectSharing
 				v-model="sharedWithProjects"

@@ -6,9 +6,12 @@ import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/Workf
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { INodeUi } from '@/Interface';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -102,6 +105,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let uiStore: MockedStore<typeof useUIStore>;
 	let collaborationStore: MockedStore<typeof useCollaborationStore>;
+	let projectsStore: MockedStore<typeof useProjectsStore>;
 
 	const setupEnabledPublishButton = (overrides = {}) => {
 		workflowsStore.workflowTriggerNodes = [triggerNode];
@@ -113,6 +117,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		uiStore = mockedStore(useUIStore);
 		collaborationStore = mockedStore(useCollaborationStore);
+		projectsStore = mockedStore(useProjectsStore);
 
 		// Default workflow state
 		workflowsStore.workflow = {
@@ -471,6 +476,52 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 
 			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Personal space restriction tooltip', () => {
+		it('should show personal space restriction tooltip when in personal space and lacking publish permission', () => {
+			// Set current project as personal project
+			projectsStore.currentProject = createTestProject({
+				id: 'personal-project-id',
+				type: ProjectTypes.Personal,
+			});
+
+			const { getByText } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						publish: false,
+						update: true,
+					},
+				},
+			});
+
+			expect(
+				getByText("You don't have permission to publish personal workflows"),
+			).toBeInTheDocument();
+		});
+
+		it('should show generic permission denied tooltip when not in personal space and lacking publish permission', () => {
+			// Set current project as team project (not personal)
+			projectsStore.currentProject = createTestProject({
+				id: 'team-project-id',
+				type: ProjectTypes.Team,
+			});
+
+			const { getByText } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						publish: false,
+						update: true,
+					},
+				},
+			});
+
+			expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
 		});
 	});
 });
