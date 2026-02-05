@@ -1,0 +1,659 @@
+import type { JSONSchema7 } from 'json-schema';
+
+import {
+	BaseChatModel,
+	getParametersJsonSchema,
+	type ChatModelConfig,
+	type GenerateResult,
+	type Message,
+	type StreamChunk,
+	type Tool,
+	type ToolCall,
+} from '../../src';
+import { parseSSEStream } from '../../src/utils/sse';
+
+// =============================================================================
+// OpenAI API Types
+// =============================================================================
+
+/**
+ * OpenAI API tool definition
+ */
+export type OpenAITool =
+	| {
+			type: 'function';
+			name: string;
+			description?: string;
+			parameters: JSONSchema7;
+			strict?: boolean;
+	  }
+	| {
+			type: 'web_search';
+	  };
+
+/**
+ * OpenAI API tool choice
+ */
+export type OpenAIToolChoice = 'auto' | 'required' | 'none' | { type: 'function'; name: string };
+
+/**
+ * OpenAI Responses API request body
+ */
+export interface OpenAIResponsesRequest {
+	model: string;
+	input: string | ResponsesInputItem[];
+	instructions?: string;
+	max_output_tokens?: number;
+	temperature?: number;
+	top_p?: number;
+	tools?: OpenAITool[];
+	tool_choice?: OpenAIToolChoice;
+	parallel_tool_calls?: boolean;
+	store?: boolean;
+	stream?: boolean;
+	metadata?: Record<string, unknown>;
+}
+
+/**
+ * OpenAI Responses API response
+ */
+export interface OpenAIResponsesResponse {
+	id: string;
+	object: string;
+	created_at: string;
+	model: string;
+	output: ResponsesOutputItem[];
+	status: string;
+	usage?: {
+		input_tokens: number;
+		output_tokens: number;
+		total_tokens: number;
+		input_tokens_details?: {
+			cached_tokens?: number;
+		};
+		output_tokens_details?: {
+			reasoning_tokens?: number;
+		};
+	};
+	incomplete_details?: Record<string, unknown>;
+	metadata?: Record<string, unknown>;
+	user?: string;
+	service_tier?: string;
+}
+
+/**
+ * OpenAI Responses API output item
+ */
+export type ResponsesOutputItem =
+	| {
+			type: 'message';
+			role: 'assistant';
+			id?: string;
+			content: Array<{
+				type: 'output_text';
+				text: string;
+			}>;
+	  }
+	| {
+			type: 'function_call';
+			id?: string;
+			call_id: string;
+			name: string;
+			arguments: string;
+	  }
+	| {
+			type: 'reasoning';
+			id?: string;
+			summary: Array<{
+				type: string;
+				text: string;
+			}>;
+	  };
+
+/**
+ * OpenAI streaming event types
+ */
+export interface OpenAIStreamEvent {
+	type: string;
+	delta?: string;
+	output_index?: number;
+	item?: Record<string, unknown>;
+	response?: Record<string, unknown>;
+}
+
+/**
+ * OpenAI API error response
+ */
+export interface OpenAIErrorResponse {
+	error: {
+		message: string;
+		type: string;
+		code?: string;
+		param?: string;
+	};
+}
+
+// =============================================================================
+// HTTP Helper Functions
+// =============================================================================
+
+/**
+ * Make a POST request to OpenAI API
+ */
+async function openAIFetch(
+	url: string,
+	apiKey: string,
+	body: OpenAIResponsesRequest,
+): Promise<OpenAIResponsesResponse> {
+	// Remove undefined values from request body
+	const cleanedBody = Object.fromEntries(
+		Object.entries(body).filter(([_, value]) => value !== undefined),
+	);
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers: {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			'Content-Type': 'application/json',
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Authorization: `Bearer ${apiKey}`,
+		},
+		body: JSON.stringify(cleanedBody),
+	});
+
+	if (!response.ok) {
+		const errorData = (await response.json().catch(() => null)) as OpenAIErrorResponse | null;
+		const errorMessage = errorData?.error?.message ?? (await response.text());
+		throw new Error(
+			`OpenAI API request failed: ${response.status} ${response.statusText}\n${errorMessage}`,
+		);
+	}
+
+	return (await response.json()) as OpenAIResponsesResponse;
+}
+
+/**
+ * Make a streaming POST request to OpenAI API
+ */
+async function openAIFetchStream(
+	url: string,
+	apiKey: string,
+	body: OpenAIResponsesRequest,
+): Promise<ReadableStream<Uint8Array>> {
+	// Remove undefined values from request body
+	const cleanedBody = Object.fromEntries(
+		Object.entries(body).filter(([_, value]) => value !== undefined),
+	);
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers: {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			'Content-Type': 'application/json',
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Authorization: `Bearer ${apiKey}`,
+		},
+		body: JSON.stringify(cleanedBody),
+	});
+
+	if (!response.ok) {
+		const errorData = (await response.json().catch(() => null)) as OpenAIErrorResponse | null;
+		const errorMessage = errorData?.error?.message ?? (await response.text());
+		throw new Error(
+			`OpenAI API request failed: ${response.status} ${response.statusText}\n${errorMessage}`,
+		);
+	}
+
+	if (!response.body) {
+		throw new Error('Response body is null');
+	}
+
+	return response.body;
+}
+
+/**
+ * Parse OpenAI streaming events from SSE stream
+ * Uses the robust SSE parser and extracts OpenAI-specific event data
+ */
+async function* parseOpenAIStreamEvents(
+	body: ReadableStream<Uint8Array>,
+): AsyncIterable<OpenAIStreamEvent> {
+	for await (const message of parseSSEStream(body)) {
+		// OpenAI sends events in the data field
+		if (!message.data) continue;
+
+		// Skip [DONE] marker
+		if (message.data === '[DONE]') continue;
+
+		try {
+			const event = JSON.parse(message.data);
+			yield event as OpenAIStreamEvent;
+		} catch (e) {
+			// Skip invalid JSON - log warning in development
+			if (process.env.NODE_ENV !== 'production') {
+				console.warn('Failed to parse OpenAI SSE event:', message.data);
+			}
+		}
+	}
+}
+
+// =============================================================================
+// OpenAI Responses API – input/output conversion
+// =============================================================================
+
+type ResponsesInputItem =
+	| { role: 'user'; content: string }
+	| { role: 'user'; content: Array<{ type: 'input_text'; text: string }> }
+	| {
+			type: 'message';
+			role: 'assistant';
+			content: Array<{ type: 'output_text'; text: string }>;
+	  }
+	| {
+			type: 'function_call';
+			call_id: string;
+			name: string;
+			arguments: string;
+	  }
+	| { type: 'function_call_output'; call_id: string; output: string };
+
+/**
+ * Convert N8nMessage[] to OpenAI Responses API input and instructions.
+ * @see https://platform.openai.com/docs/api-reference/responses/create
+ */
+function genericMessagesToResponsesInput(messages: Message[]): {
+	instructions?: string;
+	input: string | ResponsesInputItem[];
+} {
+	const instructionsParts: string[] = [];
+	const inputItems: ResponsesInputItem[] = [];
+
+	for (const msg of messages) {
+		if (msg.role === 'system') {
+			for (const contentPart of msg.content) {
+				if (contentPart.type === 'text') {
+					instructionsParts.push(contentPart.text);
+				}
+			}
+		}
+
+		if (msg.role === 'human') {
+			for (const contentPart of msg.content) {
+				if (contentPart.type === 'text') {
+					inputItems.push({
+						role: 'user',
+						content: contentPart.text,
+					});
+				}
+			}
+			continue;
+		}
+
+		if (msg.role === 'ai') {
+			for (const contentPart of msg.content) {
+				// Otherwise reconstruct from message content
+				if (contentPart.type === 'text') {
+					inputItems.push({
+						type: 'message',
+						role: 'assistant',
+						content: [
+							{
+								type: 'output_text',
+								text: contentPart.text,
+							},
+						],
+					});
+				} else if (contentPart.type === 'tool-call') {
+					if (!contentPart.toolCallId) {
+						throw new Error('Tool call ID is required');
+					}
+					inputItems.push({
+						type: 'function_call',
+						call_id: contentPart.toolCallId,
+						name: contentPart.toolName,
+						arguments: contentPart.input,
+					});
+				} else if (contentPart.type === 'reasoning') {
+					inputItems.push({
+						type: 'message',
+						role: 'assistant',
+						content: [
+							{
+								type: 'output_text',
+								text: contentPart.text,
+							},
+						],
+					});
+				}
+			}
+		}
+
+		if (msg.role === 'tool') {
+			for (const contentPart of msg.content) {
+				if (contentPart.type === 'tool-result') {
+					const output =
+						typeof contentPart.result === 'string'
+							? contentPart.result
+							: JSON.stringify(contentPart.result);
+					inputItems.push({
+						type: 'function_call_output',
+						call_id: contentPart.toolCallId,
+						output,
+					});
+				}
+			}
+		}
+	}
+
+	const instructions = instructionsParts.length > 0 ? instructionsParts.join('\n\n') : undefined;
+
+	const single = inputItems[0];
+	if (
+		inputItems.length === 1 &&
+		single &&
+		'role' in single &&
+		single.role === 'user' &&
+		typeof single.content === 'string'
+	) {
+		return { instructions, input: single.content };
+	}
+	return { instructions, input: inputItems };
+}
+
+/**
+ * Convert N8nTool to OpenAI Responses API function tool format.
+ */
+function genericToolToResponsesTool(tool: Tool): OpenAITool {
+	if (tool.type === 'provider') {
+		if (tool.name === 'web_search') {
+			return {
+				type: 'web_search',
+				...tool.args,
+			};
+		}
+		throw new Error(`Unsupported provider tool: ${tool.name}`);
+	}
+	const parameters = getParametersJsonSchema(tool);
+	return {
+		type: 'function',
+		name: tool.name,
+		description: tool.description,
+		parameters,
+		strict: tool.strict,
+	};
+}
+
+/**
+ * Parse Responses API output array into text and tool calls.
+ */
+function parseResponsesOutput(output: unknown[]): {
+	text: string;
+	toolCalls: ToolCall[];
+} {
+	let text = '';
+	const toolCalls: ToolCall[] = [];
+
+	for (const item of output) {
+		const o = item as Record<string, unknown>;
+		if (o.type === 'message' && o.role === 'assistant') {
+			const content = (o.content as Array<Record<string, unknown>>) ?? [];
+			for (const block of content) {
+				if (block.type === 'output_text' && typeof block.text === 'string') {
+					text += block.text;
+				}
+			}
+		}
+		if (o.type === 'function_call') {
+			try {
+				toolCalls.push({
+					id: (o.call_id as string) ?? (o.id as string),
+					name: (o.name as string) ?? '',
+					arguments: JSON.parse((o.arguments as string) ?? '{}') as Record<string, unknown>,
+					argumentsRaw: (o.arguments as string) ?? undefined,
+				});
+			} catch (e) {
+				const argumentsMsg = typeof o.arguments === 'string' ? o.arguments : typeof o.arguments;
+				throw new Error(`Failed to parse function call arguments: ${argumentsMsg}`);
+			}
+		}
+	}
+
+	return { text, toolCalls };
+}
+
+// =============================================================================
+// OpenAI Chat Model (Responses API)
+// =============================================================================
+
+export interface OpenAIChatModelConfig extends ChatModelConfig {
+	/**
+	 * OpenAI API key (defaults to process.env.OPENAI_API_KEY)
+	 */
+	apiKey?: string;
+
+	/**
+	 * Base URL for the API (optional, for proxies)
+	 */
+	baseURL?: string;
+}
+
+/**
+ * N8n chat model implementation using the OpenAI Responses API.
+ * Supports text, tools (function calling), and streaming.
+ *
+ * Note: This model does NOT execute tools automatically. When tool calls are
+ * returned by the model, they are passed to the framework (e.g., LangChain)
+ * which handles tool execution via its agent loop.
+ *
+ * @see https://platform.openai.com/docs/api-reference/responses/create
+ */
+export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
+	private apiKey: string;
+	private baseURL: string;
+
+	constructor(modelId: string = 'gpt-4o', config?: OpenAIChatModelConfig) {
+		super('openai', modelId, config);
+		const apiKey = config?.apiKey ?? process.env.OPENAI_API_KEY;
+		if (!apiKey) {
+			throw new Error('OpenAI API key is required. Set OPENAI_API_KEY or pass apiKey in config.');
+		}
+		this.apiKey = apiKey;
+		this.baseURL = config?.baseURL ?? 'https://api.openai.com/v1';
+	}
+
+	async generate(messages: Message[], config?: OpenAIChatModelConfig): Promise<GenerateResult> {
+		const merged = this.mergeConfig(config);
+		const { instructions, input } = genericMessagesToResponsesInput(messages);
+		const tools = this.tools.length ? this.tools.map(genericToolToResponsesTool) : undefined;
+		const requestBody: OpenAIResponsesRequest = {
+			model: this.modelId,
+			input,
+			instructions,
+			max_output_tokens: merged.maxTokens,
+			temperature: merged.temperature,
+			top_p: merged.topP,
+			tools,
+			parallel_tool_calls: true,
+			store: false,
+			stream: false,
+		};
+
+		const response = await openAIFetch(`${this.baseURL}/responses`, this.apiKey, requestBody);
+
+		const { text, toolCalls } = parseResponsesOutput(response.output as unknown[]);
+
+		const usage = response.usage
+			? {
+					promptTokens: response.usage.input_tokens ?? 0,
+					completionTokens: response.usage.output_tokens ?? 0,
+					totalTokens: response.usage.total_tokens ?? 0,
+					input_token_details: {
+						...(!!response.usage.input_tokens_details?.cached_tokens && {
+							cache_read: response.usage.input_tokens_details.cached_tokens,
+						}),
+					},
+					output_token_details: {
+						...(!!response.usage.output_tokens_details?.reasoning_tokens && {
+							reasoning: response.usage.output_tokens_details.reasoning_tokens,
+						}),
+					},
+				}
+			: undefined;
+
+		// Build response metadata
+		const responseMetadata: Record<string, unknown> = {
+			model_provider: 'openai',
+			model: response.model,
+			created_at: response.created_at,
+			id: response.id,
+			incomplete_details: response.incomplete_details,
+			metadata: response.metadata,
+			object: response.object,
+			status: response.status,
+			user: response.user,
+			service_tier: response.service_tier,
+			model_name: response.model,
+			// Store raw output for reconstructing messages later
+			output: response.output,
+		};
+
+		// Parse output for reasoning and other content
+		for (const item of response.output as unknown[]) {
+			const o = item as Record<string, unknown>;
+			if (o.type === 'reasoning') {
+				responseMetadata.reasoning = o;
+			}
+		}
+
+		// Create the message object
+		const message: Message = {
+			role: 'ai',
+			content: [{ type: 'text', text }],
+			id: response.id,
+		};
+
+		return {
+			id: response.id,
+			text,
+			finishReason: response.status === 'completed' ? 'stop' : 'other',
+			usage,
+			toolCalls,
+			message,
+			rawResponse: response,
+			providerMetadata: responseMetadata,
+		};
+	}
+
+	async *stream(messages: Message[], config?: OpenAIChatModelConfig): AsyncIterable<StreamChunk> {
+		const merged = this.mergeConfig(config) as OpenAIChatModelConfig;
+		const { instructions, input } = genericMessagesToResponsesInput(messages);
+
+		const tools = this.tools.length ? this.tools.map(genericToolToResponsesTool) : undefined;
+
+		const requestBody: OpenAIResponsesRequest = {
+			model: this.modelId,
+			input,
+			instructions,
+			max_output_tokens: merged.maxTokens,
+			temperature: merged.temperature,
+			top_p: merged.topP,
+			tools,
+			parallel_tool_calls: true,
+			store: false,
+			stream: true,
+		};
+
+		const streamBody = await openAIFetchStream(
+			`${this.baseURL}/responses`,
+			this.apiKey,
+			requestBody,
+		);
+
+		const toolCallBuffers: Record<number, { name: string; arguments: string }> = {};
+
+		// Parse SSE stream
+		for await (const event of parseOpenAIStreamEvents(streamBody)) {
+			const type = event.type;
+
+			if (type === 'response.output_text.delta') {
+				const delta = event.delta;
+				if (delta) {
+					yield { type: 'text-delta', textDelta: delta };
+				}
+			}
+
+			if (type === 'response.output_item.added') {
+				const item = event.item;
+				if (item?.type === 'function_call') {
+					const idx = event.output_index ?? 0;
+					toolCallBuffers[idx] = {
+						name: (item.name as string) ?? '',
+						arguments: (item.arguments as string) ?? '',
+					};
+				}
+				// Handle reasoning items
+				if (item?.type === 'reasoning') {
+					const summary = (item.summary as Array<Record<string, unknown>>) ?? [];
+					const reasoningText = summary
+						.map((s) => s.text)
+						.filter(Boolean)
+						.join('');
+					if (reasoningText) {
+						yield { type: 'text-delta', textDelta: reasoningText };
+					}
+				}
+			}
+
+			if (type === 'response.reasoning_summary_text.delta') {
+				const delta = event.delta;
+				if (delta) {
+					yield { type: 'text-delta', textDelta: delta };
+				}
+			}
+
+			if (type === 'response.function_call_arguments.delta') {
+				const idx = event.output_index ?? 0;
+				const delta = event.delta;
+				if (toolCallBuffers[idx] && delta) {
+					toolCallBuffers[idx].arguments += delta;
+				}
+			}
+
+			if (type === 'response.output_item.done') {
+				const item = event.item;
+				if (item?.type === 'function_call') {
+					const idx = event.output_index ?? 0;
+					const buf = toolCallBuffers[idx];
+					if (buf) {
+						yield {
+							type: 'tool-call-delta',
+							toolCallDelta: {
+								id: (item.call_id as string) ?? (item.id as string),
+								name: buf.name,
+								argumentsDelta: buf.arguments,
+							},
+						};
+					}
+				}
+			}
+
+			if (type === 'response.done' || type === 'response.completed') {
+				const responseData =
+					(event.response as unknown as OpenAIResponsesResponse) ??
+					(event as unknown as OpenAIResponsesResponse);
+				const usage = responseData.usage;
+				yield {
+					type: 'finish',
+					finishReason: 'stop',
+					usage: usage
+						? {
+								promptTokens: usage.input_tokens ?? 0,
+								completionTokens: usage.output_tokens ?? 0,
+								totalTokens: usage.total_tokens ?? 0,
+							}
+						: undefined,
+				};
+			}
+		}
+	}
+}
