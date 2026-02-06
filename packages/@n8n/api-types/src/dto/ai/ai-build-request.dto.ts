@@ -1,6 +1,7 @@
 import type { IRunExecutionData, IWorkflowBase, NodeExecutionSchema } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 export interface ExpressionValue {
 	expression: string;

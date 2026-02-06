@@ -1,6 +1,5 @@
-import { Z } from 'zod-class';
-
 import { booleanFromString } from '../../schemas/boolean-from-string';
+import { Z } from '../../zod-class';
 
 export class CredentialsGetManyRequestQuery extends Z.class({
 	/**

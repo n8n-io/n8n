@@ -40,7 +40,7 @@ export class ChatHubModelsService {
 
 	async getModels(
 		user: User,
-		credentialIds: Record<ChatHubLLMProvider, string | null>,
+		credentialIds: Partial<Record<ChatHubProvider, string | null>>,
 	): Promise<ChatModelsResponse> {
 		const additionalData = await getBase({ userId: user.id });
 		const providers = chatHubProviderSchema.options;

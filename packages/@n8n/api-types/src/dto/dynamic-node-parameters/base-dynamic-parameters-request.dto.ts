@@ -1,8 +1,8 @@
 import type { INodeCredentials, INodeParameters, INodeTypeNameVersion } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { nodeVersionSchema } from '../../schemas/node-version.schema';
+import { Z } from '../../zod-class';
 
 export class BaseDynamicParametersRequestDto extends Z.class({
 	path: z.string(),
