@@ -10,8 +10,7 @@
 			"Bash(pnpm test:*)",
 			"Bash(pnpm typecheck:*)",
 			"Bash(popd)",
-			"Bash(pushd:*)",
-			"Bash(tee:*.log)"
+			"Bash(pushd:*)"
 		]
 	}
 }
