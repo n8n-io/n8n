@@ -9,13 +9,79 @@ import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IDependency } from '@/public-api/types';
 
-import { toJsonSchema, updateCredential } from '../credentials.service';
+import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
 
 // Set up real Cipher with mocked InstanceSettings for encryption
 const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }));
 Container.set(Cipher, cipher);
 
 describe('CredentialsService', () => {
+	describe('buildSharedForCredential', () => {
+		it('returns one shared entry when credential is shared with one project', () => {
+			const createdAt = new Date('2024-01-01T00:00:00.000Z');
+			const updatedAt = new Date('2024-01-02T00:00:00.000Z');
+			const credential = {
+				shared: [
+					{
+						role: 'credential:owner',
+						createdAt,
+						updatedAt,
+						project: { id: 'proj-1', name: 'My Project' },
+					},
+				],
+			} as unknown as CredentialsEntity;
+			expect(buildSharedForCredential(credential)).toEqual([
+				{
+					id: 'proj-1',
+					name: 'My Project',
+					role: 'credential:owner',
+					createdAt,
+					updatedAt,
+				},
+			]);
+		});
+
+		it('returns multiple shared entries and skips shared entries without project', () => {
+			const createdAt1 = new Date('2024-01-01T00:00:00.000Z');
+			const updatedAt1 = new Date('2024-01-02T00:00:00.000Z');
+			const createdAt2 = new Date('2024-02-01T00:00:00.000Z');
+			const updatedAt2 = new Date('2024-02-02T00:00:00.000Z');
+			const credential = {
+				shared: [
+					{
+						role: 'credential:owner',
+						createdAt: createdAt1,
+						updatedAt: updatedAt1,
+						project: { id: 'proj-1', name: 'Project One' },
+					},
+					{ role: 'credential:user', createdAt: createdAt2, updatedAt: updatedAt2, project: null },
+					{
+						role: 'credential:user',
+						createdAt: createdAt2,
+						updatedAt: updatedAt2,
+						project: { id: 'proj-2', name: 'Project Two' },
+					},
+				],
+			} as unknown as CredentialsEntity;
+			expect(buildSharedForCredential(credential)).toEqual([
+				{
+					id: 'proj-1',
+					name: 'Project One',
+					role: 'credential:owner',
+					createdAt: createdAt1,
+					updatedAt: updatedAt1,
+				},
+				{
+					id: 'proj-2',
+					name: 'Project Two',
+					role: 'credential:user',
+					createdAt: createdAt2,
+					updatedAt: updatedAt2,
+				},
+			]);
+		});
+	});
+
 	describe('toJsonSchema', () => {
 		it('should create separate conditionals for different values of the same dependant field', () => {
 			// This test simulates the JWT auth credential scenario where
