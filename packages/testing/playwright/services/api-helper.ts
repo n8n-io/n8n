@@ -11,6 +11,7 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { McpApiHelper } from './mcp-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
@@ -45,6 +46,7 @@ export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
+	mcp: McpApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
 	variables: VariablesApiHelper;
@@ -59,6 +61,7 @@ export class ApiHelpers {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
+		this.mcp = new McpApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
@@ -264,6 +267,19 @@ export class ApiHelpers {
 		return userApi;
 	}
 
+	/**
+	 * Create an API helper for a specific base URL.
+	 * Useful for multi-main testing where you want to send requests
+	 * directly to a specific main instance (bypassing the load balancer).
+	 *
+	 * @param baseUrl - The base URL to use (e.g., from n8nContainer.mainUrls[0])
+	 * @returns A new ApiHelpers instance configured for the specified URL
+	 */
+	static async createForUrl(baseUrl: string): Promise<ApiHelpers> {
+		const context = await request.newContext({ baseURL: baseUrl });
+		return new ApiHelpers(context);
+	}
+
 	async get(path: string, params?: URLSearchParams) {
 		const response = await this.request.get(path, { params });
 		const { data } = await response.json();
@@ -414,6 +430,65 @@ export class ApiHelpers {
 		const destinations = await this.getLogStreamingDestinations();
 		for (const destination of destinations) {
 			await this.deleteLogStreamingDestination(destination.id);
+		}
+	}
+
+	// ===== MCP API KEY METHODS =====
+
+	/**
+	 * Get or create MCP API key for the authenticated user.
+	 * If the user already has an API key, returns the existing one (redacted).
+	 * If not, creates a new one and returns the full key.
+	 *
+	 * @returns The MCP API key data including the key itself
+	 */
+	async getMcpApiKey(): Promise<{ id: string; apiKey: string; userId: string }> {
+		const response = await this.request.get('/rest/mcp/api-key');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to get MCP API key: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Rotate the MCP API key for the authenticated user.
+	 * Creates a new API key and invalidates the old one.
+	 *
+	 * @returns The new MCP API key data
+	 */
+	async rotateMcpApiKey(): Promise<{ id: string; apiKey: string; userId: string }> {
+		const response = await this.request.post('/rest/mcp/api-key/rotate');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to rotate MCP API key: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Enable or disable MCP access for the instance.
+	 * Uses the MCP settings endpoint to toggle access.
+	 *
+	 * @param enabled - Whether MCP access should be enabled
+	 */
+	async setMcpAccess(enabled: boolean): Promise<void> {
+		const response = await this.request.patch('/rest/mcp/settings', {
+			data: { mcpAccessEnabled: enabled },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to set MCP access: ${response.status()} ${await response.text()}`,
+			);
 		}
 	}
 

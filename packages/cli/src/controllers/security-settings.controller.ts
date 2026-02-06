@@ -7,11 +7,15 @@ import {
 } from '@n8n/permissions';
 import type { Response } from 'express';
 
+import { EventService } from '@/events/event.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 
 @RestController('/settings/security')
 export class SecuritySettingsController {
-	constructor(private readonly securitySettingsService: SecuritySettingsService) {}
+	constructor(
+		private readonly securitySettingsService: SecuritySettingsService,
+		private readonly eventService: EventService,
+	) {}
 
 	@GlobalScope('securitySettings:manage')
 	@Get('/')
@@ -22,7 +26,7 @@ export class SecuritySettingsController {
 	@GlobalScope('securitySettings:manage')
 	@Post('/')
 	async updateSecuritySettings(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: UpdateSecuritySettingsDto,
 	) {
@@ -33,6 +37,18 @@ export class SecuritySettingsController {
 				dto.personalSpacePublishing,
 			);
 			updatedSettings.personalSpacePublishing = dto.personalSpacePublishing;
+
+			this.eventService.emit('instance-policies-updated', {
+				user: {
+					id: req.user.id,
+					email: req.user.email,
+					firstName: req.user.firstName,
+					lastName: req.user.lastName,
+					role: req.user.role,
+				},
+				settingName: 'workflow_publishing',
+				value: dto.personalSpacePublishing,
+			});
 		}
 		if (dto.personalSpaceSharing !== undefined) {
 			await this.securitySettingsService.setPersonalSpaceSetting(
@@ -40,6 +56,18 @@ export class SecuritySettingsController {
 				dto.personalSpaceSharing,
 			);
 			updatedSettings.personalSpaceSharing = dto.personalSpaceSharing;
+
+			this.eventService.emit('instance-policies-updated', {
+				user: {
+					id: req.user.id,
+					email: req.user.email,
+					firstName: req.user.firstName,
+					lastName: req.user.lastName,
+					role: req.user.role,
+				},
+				settingName: 'workflow_sharing',
+				value: dto.personalSpaceSharing,
+			});
 		}
 
 		return updatedSettings;

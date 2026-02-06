@@ -832,21 +832,57 @@ describe('getStatus', () => {
 	});
 
 	describe('workflows', () => {
-		describe('owner changes', () => {
-			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
 
-			const createWorkflow = (
-				overrides: Partial<SourceControlWorkflowVersionId> = {},
-			): SourceControlWorkflowVersionId => ({
-				id: 'wf1',
-				name: 'Test Workflow',
-				versionId: 'version1',
-				filename: 'workflows/wf1.json',
-				parentFolderId: 'folder1',
-				updatedAt: '2023-07-10T10:10:59.000Z',
-				...overrides,
+		const createWorkflow = (
+			overrides: Partial<SourceControlWorkflowVersionId> = {},
+		): SourceControlWorkflowVersionId => ({
+			id: 'wf1',
+			name: 'Test Workflow',
+			versionId: 'version1',
+			filename: 'workflows/wf1.json',
+			parentFolderId: 'folder1',
+			updatedAt: '2023-07-10T10:10:59.000Z',
+			...overrides,
+		});
+
+		describe('missing workflows (verbose)', () => {
+			it('should include workflows missing in local', async () => {
+				const remote = createWorkflow({ id: 'wf-remote', filename: 'workflows/wf-remote.json' });
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remote]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				expect(result.wfMissingInLocal).toMatchObject([remote]);
+				expect(result.sourceControlledFiles).toHaveLength(1);
 			});
 
+			it('should include workflows missing in remote', async () => {
+				const local = createWorkflow({ id: 'wf-local', filename: 'workflows/wf-local.json' });
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([local]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				expect(result.wfMissingInRemote).toMatchObject([local]);
+				expect(result.sourceControlledFiles).toHaveLength(1);
+			});
+		});
+
+		describe('owner changes', () => {
 			describe('team project ownership changes (detected)', () => {
 				it('should detect when team project changes', async () => {
 					const local = createWorkflow({

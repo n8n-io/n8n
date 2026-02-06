@@ -25,7 +25,7 @@ jobs:
               - 'packages/frontend/@n8n/design-system/**'
               - 'packages/frontend/@n8n/chat/**'
               - 'packages/frontend/@n8n/storybook/**'
-              - '.github/workflows/test-visual-storybook.yml'
+              - '.github/workflows/test-visual-chromatic.yml'
     outputs:
       has_changes: ${{ steps.changed.outputs.design_system || 'false' }}
 
@@ -55,9 +55,9 @@ jobs:
       - name: Publish to Chromatic
         uses: chromaui/action@1cfa065cbdab28f6ca3afaeb3d761383076a35aa # v11
         id: chromatic_tests
-        continue-on-error: true
         with:
           workingDir: packages/frontend/@n8n/storybook
+          buildScriptName: build
           autoAcceptChanges: 'master'
           skip: 'release/**'
           onlyChanged: true
@@ -65,7 +65,7 @@ jobs:
           exitZeroOnChanges: false
 
       - name: Success comment
-        if: steps.chromatic_tests.outcome == 'success' && github.ref != 'refs/heads/master'
+        if: always() && steps.chromatic_tests.outcome == 'success' && github.ref != 'refs/heads/master'
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -75,7 +75,7 @@ jobs:
             :white_check_mark: No visual regressions found.
 
       - name: Fail comment
-        if: steps.chromatic_tests.outcome != 'success' && github.ref != 'refs/heads/master'
+        if: always() && steps.chromatic_tests.outcome == 'failure' && github.ref != 'refs/heads/master'
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}

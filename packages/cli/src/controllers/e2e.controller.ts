@@ -264,6 +264,24 @@ export class E2EController {
 		};
 	}
 
+	/**
+	 * Trigger garbage collection for memory profiling in performance tests.
+	 * Requires Node.js to be started with --expose-gc flag.
+	 */
+	@Post('/gc', { skipAuth: true })
+	triggerGarbageCollection() {
+		if (typeof global.gc === 'function') {
+			// Call GC twice to allow for more reclaimation
+			global.gc();
+			global.gc();
+			return { success: true, message: 'Garbage collection triggered' };
+		}
+		return {
+			success: false,
+			message: 'Garbage collection not available. Ensure Node.js is started with --expose-gc flag.',
+		};
+	}
+
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;

@@ -16,8 +16,9 @@ import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execAsync = promisify(exec);
-const ORG = 'n8n-io';
-const PACKAGES = ['n8n', 'runners'];
+const ORG = process.env.GHCR_ORG || 'n8n-io';
+const REPO = process.env.GHCR_REPO || 'n8n';
+const PACKAGES = [REPO, 'runners'];
 const [mode, rawValue] = process.argv.slice(2);
 
 if (!['--tag', '--pr', '--stale'].includes(mode) || !rawValue) {

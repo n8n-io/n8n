@@ -36,6 +36,10 @@ import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export function useWorkflowSaving({
 	router,
@@ -233,7 +237,10 @@ export function useWorkflowSaving({
 			}
 
 			if (tags) {
-				workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
+				const tagIds = convertWorkflowTagsToIds(workflowData.tags);
+				const workflowDocumentId = createWorkflowDocumentId(currentWorkflow);
+				const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+				workflowDocumentStore.setTags(tagIds);
 			}
 
 			// Only mark state clean if no new changes were made during the save
@@ -463,7 +470,10 @@ export function useWorkflowSaving({
 				workflowState.setNodeValue(changes);
 			});
 
-			workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
+			const tagIds = convertWorkflowTagsToIds(workflowData.tags);
+			const workflowDocumentId = createWorkflowDocumentId(workflowData.id);
+			const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+			workflowDocumentStore.setTags(tagIds);
 
 			const route = router.currentRoute.value;
 			const templateId = route.query.templateId;

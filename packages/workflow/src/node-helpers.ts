@@ -1134,6 +1134,10 @@ export function getNodeOutputs(
 ): Array<NodeConnectionType | INodeOutputConfiguration> {
 	let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 
+	if (!nodeTypeData) {
+		return [];
+	}
+
 	if (Array.isArray(nodeTypeData.outputs)) {
 		outputs = nodeTypeData.outputs;
 	} else {
@@ -1659,6 +1663,9 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 }
 
 export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+	if (!nodeTypeData) {
+		return false;
+	}
 	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
 	const outputNames = getConnectionTypes(outputs);
 	return (

@@ -370,7 +370,7 @@ export function isPlanModeMessage(msg: ChatUI.AssistantMessage): msg is PlanMode
 }
 
 export type AssistantProcessOptions = {
-	trimParameterValues?: boolean;
+	excludeParameterValues?: boolean;
 };
 
 // Type guards for ChatRequest messages

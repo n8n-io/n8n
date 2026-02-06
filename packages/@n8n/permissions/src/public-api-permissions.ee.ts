@@ -46,6 +46,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'credential:update',
 	'credential:move',
 	'credential:delete',
+	'credential:list',
 	'dataTable:create',
 	'dataTable:read',
 	'dataTable:update',

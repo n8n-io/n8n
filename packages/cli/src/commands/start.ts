@@ -4,6 +4,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -278,13 +279,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await subscriber.subscribe(subscriber.getMcpRelayChannel());
 
 		// Set up MCP relay handler for multi-main queue mode
-		subscriber.setMcpRelayHandler(async (msg) => {
+		subscriber.setMcpRelayHandler((msg) => {
 			try {
-				const { McpServerManager } = await import(
-					'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
-				);
-				const mcpServerManager = McpServerManager.instance(this.logger);
-				mcpServerManager.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
+				const mcpServer = McpServer.instance(this.logger);
+				mcpServer.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
 			} catch (error) {
 				this.logger.error('Failed to handle MCP relay message', {
 					sessionId: msg.sessionId,

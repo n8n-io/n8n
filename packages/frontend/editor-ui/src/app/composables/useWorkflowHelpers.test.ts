@@ -251,7 +251,6 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowScopesSpy = vi.spyOn(workflowState, 'setWorkflowScopes');
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
-			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
 			await initState(workflowData);
@@ -276,7 +275,7 @@ describe('useWorkflowHelpers', () => {
 				workflowId: '1',
 				sharedWithProjects: [],
 			});
-			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
+			// Tags are now managed by workflowDocumentStore
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
 
@@ -312,12 +311,11 @@ describe('useWorkflowHelpers', () => {
 				meta: {},
 				scopes: [],
 			});
-			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
 			await initState(workflowData);
 
-			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
+			// Tags are now managed by workflowDocumentStore
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
 	});

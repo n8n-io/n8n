@@ -2,7 +2,6 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { actionFields, actionOperations } from './descriptions/ActionDescription';
-import { listSearch } from './methods';
 import { instanceFields, instanceOperations } from './descriptions/InstanceDescription';
 import { projectFields, projectOperations } from './descriptions/ProjectDescription';
 import { runFields, runOperations } from './descriptions/RunDescription';
@@ -10,6 +9,7 @@ import { signatureFields, signatureOperations } from './descriptions/SignatureDe
 import { specFileFields, specFileOperations } from './descriptions/SpecFileDescription';
 import { testFields, testOperations } from './descriptions/TestDescription';
 import { testResultFields, testResultOperations } from './descriptions/TestResultDescription';
+import { listSearch } from './methods';
 
 export class Currents implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,6 +38,7 @@ export class Currents implements INodeType {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
 			},
+			arrayFormat: 'brackets',
 		},
 		properties: [
 			{

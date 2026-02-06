@@ -1,119 +1,56 @@
 import { mock } from 'jest-mock-extended';
+import type { IDataObject } from 'n8n-workflow';
 import type { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import { ExternalSecretsService } from '../external-secrets.service.ee';
+import type { RedactionService } from '../redaction.service.ee';
 import type { SecretsProvider } from '../types';
 
 describe('ExternalSecretsService', () => {
 	let service: ExternalSecretsService;
 	let provider: SecretsProvider;
+	let mockRedactionService: RedactionService;
 
 	beforeEach(() => {
-		service = new ExternalSecretsService(mock<ExternalSecretsManager>());
+		mockRedactionService = mock<RedactionService>();
+		service = new ExternalSecretsService(mock<ExternalSecretsManager>(), mockRedactionService);
 		provider = mock<SecretsProvider>();
 	});
 
 	describe('redact', () => {
-		it('should redact oauthTokenData', () => {
-			const data = { oauthTokenData: 'password' };
-			const result = service.redact(data, provider);
-			expect(result.oauthTokenData).toContain('__n8n_BLANK_VALUE_');
-		});
-
-		it('should do nothing if the prop is not found', () => {
-			provider.properties = [];
-			const data = { secret: 'password' };
-			const result = service.redact(data, provider);
-			expect(result.secret).toBe('password');
-		});
-
-		it('should do nothing if the prop is not a password', () => {
-			provider.properties = [
-				{
-					name: 'notASecret',
-					type: 'string',
-					displayName: 'Secret',
-					default: 'safe-value',
-					typeOptions: {
-						password: false,
-					},
-				},
-			];
-			const data = { notASecret: 'safe-value' };
-			const result = service.redact(data, provider);
-			expect(result.notASecret).toBe('safe-value');
-		});
-
-		it('should do nothing if the data value starts with =', () => {
+		it('should delegate to RedactionService with provider properties', () => {
+			const data: IDataObject = { secret: 'password' };
+			const redactedData: IDataObject = { secret: '__n8n_BLANK_VALUE_' };
 			provider.properties = [
 				{
 					name: 'secret',
 					type: 'string',
 					displayName: 'Secret',
-					default: 'password',
-					typeOptions: {
-						password: true,
-					},
+					default: '',
+					typeOptions: { password: true },
 				},
 			];
-			const data = { secret: '=password' };
+
+			mockRedactionService.redact = jest.fn().mockReturnValue(redactedData);
+
 			const result = service.redact(data, provider);
-			expect(result.secret).toBe('=password');
+
+			expect(mockRedactionService.redact).toHaveBeenCalledWith(data, provider.properties);
+			expect(result).toBe(redactedData);
 		});
+	});
 
-		it('should redact secrets if the data value does not start with = and the prop is a password', () => {
-			provider.properties = [
-				{
-					name: 'secret',
-					type: 'string',
-					required: true,
-					displayName: 'Secret',
-					default: 'password',
-					typeOptions: {
-						password: true,
-					},
-				},
-			];
+	describe('unredact', () => {
+		it('should delegate to RedactionService', () => {
+			const redactedData: IDataObject = { secret: '__n8n_BLANK_VALUE_' };
+			const savedData: IDataObject = { secret: 'password' };
+			const unredactedData: IDataObject = { secret: 'password' };
 
-			const data = { secret: 'password' };
-			const result = service.redact(data, provider);
-			expect(result.secret).toContain('__n8n_BLANK_VALUE_');
-		});
+			mockRedactionService.unredact = jest.fn().mockReturnValue(unredactedData);
 
-		it('should redact secrets if the data value starts with =, but the noDataExpression is true', () => {
-			provider.properties = [
-				{
-					name: 'secret',
-					type: 'string',
-					required: true,
-					displayName: 'Secret',
-					default: 'password',
-					noDataExpression: true,
-					typeOptions: {
-						password: true,
-					},
-				},
-			];
-			const data = { secret: '=password' };
-			const result = service.redact(data, provider);
-			expect(result.secret).toContain('__n8n_BLANK_VALUE_');
-		});
+			const result = service.unredact(redactedData, savedData);
 
-		it('should do nothing if the data value is not a string', () => {
-			provider.properties = [
-				{
-					name: 'secret',
-					type: 'string',
-					required: true,
-					displayName: 'Secret',
-					default: 'password',
-					typeOptions: {
-						password: true,
-					},
-				},
-			];
-			const data = { secret: 123 };
-			const result = service.redact(data, provider);
-			expect(result.secret).toBe(123);
+			expect(mockRedactionService.unredact).toHaveBeenCalledWith(redactedData, savedData);
+			expect(result).toBe(unredactedData);
 		});
 	});
 });

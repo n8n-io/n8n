@@ -56,6 +56,10 @@ import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -982,8 +986,15 @@ export function useWorkflowHelpers() {
 		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
-		ws.setWorkflowTagIds(convertWorkflowTagsToIds(tags));
+		const tagIds = convertWorkflowTagsToIds(tags);
+
+		// Initialize workflowDocumentStore with tags (single source of truth)
+		const workflowDocumentId = createWorkflowDocumentId(workflowData.id);
+		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+		workflowDocumentStore.setTags(tagIds);
 		tagsStore.upsertTags(tags);
+
+		return { workflowDocumentStore };
 	}
 
 	/**

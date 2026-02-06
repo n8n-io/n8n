@@ -18,6 +18,45 @@ describe(parseMessage, () => {
 		]);
 	});
 
+	it('should parse AI message containing with-buttons JSON', () => {
+		const json = JSON.stringify({
+			type: 'with-buttons',
+			text: 'Do you want to proceed?',
+			blockUserInput: true,
+			buttons: [
+				{ text: 'Yes', link: 'https://example.com/yes', type: 'primary' },
+				{ text: 'No', link: 'https://example.com/no', type: 'secondary' },
+			],
+		});
+
+		const result = parseMessage({ type: 'ai', content: json });
+
+		expect(result).toEqual([
+			{
+				type: 'with-buttons',
+				content: 'Do you want to proceed?',
+				blockUserInput: true,
+				buttons: [
+					{ text: 'Yes', link: 'https://example.com/yes', type: 'primary' },
+					{ text: 'No', link: 'https://example.com/no', type: 'secondary' },
+				],
+			},
+		]);
+	});
+
+	it('should return human message content as text even if it looks like with-buttons JSON', () => {
+		const json = JSON.stringify({
+			type: 'with-buttons',
+			text: 'User sent this',
+			blockUserInput: true,
+			buttons: [],
+		});
+
+		const result = parseMessage({ type: 'human', content: json });
+
+		expect(result).toEqual([{ type: 'text', content: json }]);
+	});
+
 	it('should parse artifact-create command', () => {
 		const content = `Here is a document:
 
@@ -91,6 +130,132 @@ describe(appendChunkToParsedMessageItems, () => {
 		const items: ChatMessageContentChunk[] = [{ type: 'text', content: 'hello' }];
 		const result = appendChunkToParsedMessageItems(items, ' world');
 		expect(result).toEqual([{ type: 'text', content: 'hello world' }]);
+	});
+
+	describe('with-buttons JSON parsing', () => {
+		it('should parse valid with-buttons JSON', () => {
+			const json = JSON.stringify({
+				type: 'with-buttons',
+				text: 'Please approve this action',
+				blockUserInput: true,
+				buttons: [
+					{ text: 'Approve', link: 'https://example.com/approve', type: 'primary' },
+					{ text: 'Reject', link: 'https://example.com/reject', type: 'secondary' },
+				],
+			});
+
+			const result = appendChunkToParsedMessageItems([], json);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				type: 'with-buttons',
+				content: 'Please approve this action',
+				blockUserInput: true,
+				buttons: [
+					{ text: 'Approve', link: 'https://example.com/approve', type: 'primary' },
+					{ text: 'Reject', link: 'https://example.com/reject', type: 'secondary' },
+				],
+			});
+		});
+
+		it('should not parse with-buttons JSON with empty buttons array', () => {
+			const json = JSON.stringify({
+				type: 'with-buttons',
+				text: 'No buttons here',
+				blockUserInput: false,
+				buttons: [],
+			});
+
+			const result = appendChunkToParsedMessageItems([], json);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('text');
+		});
+
+		it('should parse with-buttons JSON with blockUserInput false', () => {
+			const json = JSON.stringify({
+				type: 'with-buttons',
+				text: 'You can still type',
+				blockUserInput: false,
+				buttons: [{ text: 'Click me', link: 'https://example.com', type: 'primary' }],
+			});
+
+			const result = appendChunkToParsedMessageItems([], json);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				type: 'with-buttons',
+				content: 'You can still type',
+				blockUserInput: false,
+				buttons: [{ text: 'Click me', link: 'https://example.com', type: 'primary' }],
+			});
+		});
+
+		it('should not parse invalid JSON as with-buttons', () => {
+			const invalidJson = '{ invalid json }';
+
+			const result = appendChunkToParsedMessageItems([], invalidJson);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('text');
+		});
+
+		it('should not parse JSON with wrong type field', () => {
+			const json = JSON.stringify({
+				type: 'something-else',
+				text: 'Not buttons',
+				blockUserInput: true,
+				buttons: [],
+			});
+
+			const result = appendChunkToParsedMessageItems([], json);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('text');
+		});
+
+		it('should not parse JSON missing required fields', () => {
+			const json = JSON.stringify({
+				type: 'with-buttons',
+				text: 'Missing blockUserInput and buttons',
+			});
+
+			const result = appendChunkToParsedMessageItems([], json);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('text');
+		});
+
+		it('should not parse text that starts with { but is not valid JSON', () => {
+			const text = '{this is not json}';
+
+			const result = appendChunkToParsedMessageItems([], text);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('text');
+		});
+
+		it('should not try to parse text that does not start with {', () => {
+			const text = 'Regular text message';
+
+			const result = appendChunkToParsedMessageItems([], text);
+
+			expect(result).toEqual([{ type: 'text', content: 'Regular text message' }]);
+		});
+
+		it('should not parse JSON with invalid button type', () => {
+			const json = JSON.stringify({
+				type: 'with-buttons',
+				text: 'Invalid button type',
+				blockUserInput: true,
+				buttons: [{ text: 'Bad', link: 'https://example.com', type: 'invalid' }],
+			});
+
+			const result = appendChunkToParsedMessageItems([], json);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('text');
+		});
 	});
 
 	it('should ignore potential prefix of command', () => {

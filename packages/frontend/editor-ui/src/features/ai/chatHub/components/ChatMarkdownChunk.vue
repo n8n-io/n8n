@@ -3,10 +3,16 @@ import VueMarkdown from 'vue-markdown-render';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import { ref, useCssModule } from 'vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
+import ChatButtons from './ChatButtons.vue';
 
-const { source, singlePre = false } = defineProps<{
+const {
+	source,
+	singlePre = false,
+	isButtonsDisabled = false,
+} = defineProps<{
 	source: ChatMessageContentChunk;
 	singlePre?: boolean;
+	isButtonsDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{ openArtifact: [title: string] }>();
@@ -50,6 +56,18 @@ defineExpose({
 		@mousemove="handleMouseMove"
 		@mouseleave="handleMouseLeave"
 	/>
+	<div v-else-if="source.type === 'with-buttons'" :class="$style.container">
+		<VueMarkdown
+			:key="markdown.forceReRenderKey.value"
+			:source="source.content"
+			:class="$style.chatMessageMarkdown"
+			:options="markdown.options"
+			:plugins="markdown.plugins.value"
+			@mousemove="handleMouseMove"
+			@mouseleave="handleMouseLeave"
+		/>
+		<ChatButtons :buttons="source.buttons" :is-disabled="isButtonsDisabled" />
+	</div>
 	<div v-else-if="source.type === 'hidden'" />
 	<button
 		v-else-if="source.type === 'artifact-edit' && !source.isIncomplete"
@@ -59,7 +77,7 @@ defineExpose({
 		Updated <b>{{ source.command.title }}</b>
 	</button>
 	<button
-		v-else-if="!source.isIncomplete"
+		v-else-if="source.type === 'artifact-create' && !source.isIncomplete"
 		:class="$style.command"
 		@click="emit('openArtifact', source.command.title)"
 	>
@@ -68,6 +86,15 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+.container {
+	display: flex;
+	flex-direction: column;
+
+	> *:first-child > *:first-child {
+		margin-top: 0;
+	}
+}
+
 .chatMessageMarkdown {
 	--markdown--spacing: var(--spacing--2xs);
 

@@ -716,6 +716,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 			mode: modeForPayload,
 			isPlanModeEnabled: isPlanModeAvailable.value,
+			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
 		});
 		if (resumeData !== undefined) {
 			payload.resumeData = resumeData;

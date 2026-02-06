@@ -10,7 +10,11 @@ import AppHeader from '@/app/components/app/AppHeader.vue';
 import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { WorkflowIdKey, WorkflowStateKey } from '@/app/constants/injectionKeys';
+import {
+	WorkflowIdKey,
+	WorkflowStateKey,
+	WorkflowDocumentStoreKey,
+} from '@/app/constants/injectionKeys';
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
@@ -21,6 +25,7 @@ provide(WorkflowStateKey, workflowState);
 const {
 	isLoading,
 	workflowId,
+	currentWorkflowDocumentStore,
 	isDebugRoute,
 	initializeData,
 	initializeWorkflow,
@@ -29,6 +34,7 @@ const {
 } = useWorkflowInitialization(workflowState);
 
 provide(WorkflowIdKey, workflowId);
+provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
 
 onMounted(async () => {
 	await initializeData();

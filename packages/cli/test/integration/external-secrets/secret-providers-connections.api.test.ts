@@ -13,12 +13,55 @@ import { Cipher } from 'n8n-core';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 
-import { MockProviders } from '../../shared/external-secrets/utils';
+import { MockProviders, createDummyProvider } from '../../shared/external-secrets/utils';
 import { createAdmin, createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
 
 const mockProvidersInstance = new MockProviders();
+// Register mock providers for types used in tests
+mockProvidersInstance.setProviders({
+	awsSecretsManager: createDummyProvider({
+		name: 'awsSecretsManager',
+		properties: [
+			{
+				name: 'region',
+				displayName: 'Region',
+				type: 'string',
+				default: '',
+			},
+			{
+				name: 'accessKeyId',
+				displayName: 'Access Key ID',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					password: true,
+				},
+			},
+			{
+				name: 'secretAccessKey',
+				displayName: 'Secret Access Key',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					password: true,
+				},
+			},
+			{
+				name: 'sessionToken',
+				displayName: 'Session Token',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					password: true,
+				},
+			},
+		],
+	}),
+	gcpSecretsManager: createDummyProvider({ name: 'gcpSecretsManager' }),
+	vault: createDummyProvider({ name: 'vault' }),
+});
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 
 const licenseMock = mock<LicenseState>();
@@ -90,6 +133,7 @@ describe('Secret Providers Connections API', () => {
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
 				projects: [],
+				settings: expect.any(Object),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
@@ -379,6 +423,8 @@ describe('Secret Providers Connections API', () => {
 					createdAt: expect.any(String),
 					updatedAt: expect.any(String),
 				});
+				// LIST endpoint should NOT include settings (lightweight response)
+				expect(connection).not.toHaveProperty('settings');
 			}
 
 			const connection1 = response.body.data.find(
@@ -436,7 +482,7 @@ describe('Secret Providers Connections API', () => {
 	});
 
 	describe('Security', () => {
-		test('should never return settings in any endpoint', async () => {
+		test('should return redacted settings without exposing sensitive data', async () => {
 			const sensitiveSettings = {
 				region: 'us-east-1',
 				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
@@ -444,7 +490,7 @@ describe('Secret Providers Connections API', () => {
 				sessionToken: 'very-secret-session-token',
 			};
 
-			// Create
+			// Create connection with sensitive settings
 			const createResponse = await ownerAgent
 				.post('/secret-providers/connections')
 				.send({
@@ -455,44 +501,55 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			expect(createResponse.body.data).not.toHaveProperty('settings');
-			expect(JSON.stringify(createResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
-			expect(JSON.stringify(createResponse.body.data)).not.toContain('very-secret-session-token');
+			// Detail endpoint (POST) should include settings field
+			expect(createResponse.body.data).toHaveProperty('settings');
+			expect(createResponse.body.data.settings).toEqual(expect.any(Object));
 
-			// GET
+			// Password fields should be redacted (contain BLANK_VALUE marker)
+			const responseSettings = createResponse.body.data.settings;
+			const responseString = JSON.stringify(responseSettings);
+			expect(responseString).toContain('__n8n_BLANK_VALUE_');
+
+			// Actual secret values should NOT appear in response
+			expect(responseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(responseString).not.toContain('wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY');
+			expect(responseString).not.toContain('very-secret-session-token');
+
+			// GET detail endpoint should also include redacted settings
 			const getResponse = await ownerAgent
 				.get('/secret-providers/connections/security-test')
 				.expect(200);
 
-			expect(getResponse.body.data).not.toHaveProperty('settings');
-			expect(JSON.stringify(getResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(getResponse.body.data).toHaveProperty('settings');
+			const getResponseString = JSON.stringify(getResponse.body.data.settings);
+			expect(getResponseString).toContain('__n8n_BLANK_VALUE_');
+			expect(getResponseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(getResponseString).not.toContain('very-secret-session-token');
 
-			// LIST
+			// LIST endpoint should NOT include settings
 			const listResponse = await ownerAgent.get('/secret-providers/connections').expect(200);
 
-			const securityConnection = listResponse.body.data.find(
-				(c: { name: string }) => c.name === 'security-test',
+			const securityTestConnection = listResponse.body.data.find(
+				(conn: { name: string }) => conn.name === 'security-test',
 			);
-			expect(securityConnection).not.toHaveProperty('settings');
-			expect(JSON.stringify(listResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(securityTestConnection).toBeDefined();
+			expect(securityTestConnection).not.toHaveProperty('settings');
 
-			// UPDATE
-			const updateResponse = await ownerAgent
-				.patch('/secret-providers/connections/security-test')
-				.send({
-					type: 'awsSecretsManager',
-					settings: { region: 'eu-west-1' },
-				})
-				.expect(200);
+			// Verify entire list response doesn't contain secrets
+			const listResponseString = JSON.stringify(listResponse.body.data);
+			expect(listResponseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(listResponseString).not.toContain('very-secret-session-token');
 
-			expect(updateResponse.body.data).not.toHaveProperty('settings');
-
-			// DELETE
+			// DELETE endpoint should include redacted settings in response
 			const deleteResponse = await ownerAgent
 				.delete('/secret-providers/connections/security-test')
 				.expect(200);
 
-			expect(deleteResponse.body.data).not.toHaveProperty('settings');
+			expect(deleteResponse.body.data).toHaveProperty('settings');
+			const deleteResponseString = JSON.stringify(deleteResponse.body.data.settings);
+			expect(deleteResponseString).toContain('__n8n_BLANK_VALUE_');
+			expect(deleteResponseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(deleteResponseString).not.toContain('very-secret-session-token');
 		});
 	});
 

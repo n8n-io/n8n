@@ -22,10 +22,12 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 import TimeAgo from '../TimeAgo.vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
-	tags: IWorkflowDb['tags'];
+	tags: readonly string[];
 	name: IWorkflowDb['name'];
 	meta: IWorkflowDb['meta'];
 	currentFolder?: FolderShortInfo;
@@ -39,6 +41,7 @@ const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>(
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const collaborationStore = useCollaborationStore();
+const projectStore = useProjectsStore();
 const i18n = useI18n();
 const router = useRouter();
 
@@ -92,6 +95,8 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
 const hasUpdatePermission = computed(() => props.workflowPermissions.update);
 const hasPublishPermission = computed(() => props.workflowPermissions.publish);
+
+const isPersonalSpace = computed(() => projectStore.currentProject?.type === ProjectTypes.Personal);
 
 const shouldHidePublishButton = computed(() => {
 	if (props.isNewWorkflow) return false;
@@ -156,7 +161,9 @@ const publishButtonConfig = computed(() => {
 			enabled: false,
 			showIndicator: false,
 			indicatorClass: '',
-			tooltip: i18n.baseText('workflows.publish.permissionDenied'),
+			tooltip: isPersonalSpace.value
+				? i18n.baseText('workflows.publish.personalSpaceRestricted')
+				: i18n.baseText('workflows.publish.permissionDenied'),
 			showVersionInfo: false,
 		};
 		const isWorkflowPublished = !!workflowsStore.workflow.activeVersion;

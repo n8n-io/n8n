@@ -13,27 +13,39 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		return await this.find();
 	}
 
-	/**
-	 * Find all global connections (connections with no project access entries)
-	 */
 	async findGlobalConnections(): Promise<SecretsProviderConnection[]> {
-		return await this.manager
-			.createQueryBuilder(SecretsProviderConnection, 'connection')
+		return await this.createQueryBuilder('connection')
 			.leftJoin('connection.projectAccess', 'access')
 			.where('access.secretsProviderConnectionId IS NULL')
-			.andWhere('connection.isEnabled = :isEnabled', { isEnabled: true })
+			.getMany();
+	}
+
+	async findByProjectId(projectId: string): Promise<SecretsProviderConnection[]> {
+		return await this.createQueryBuilder('connection')
+			.innerJoin('connection.projectAccess', 'projectAccess')
+			.where('projectAccess.projectId = :projectId', { projectId })
 			.getMany();
 	}
 
 	/**
-	 * Find all enabled connections that have access to a specific project
+	 * Find all connections accessible to a project:
+	 * - Connections specifically shared with this project
+	 * - Global connections (those with no project assignments)
 	 */
-	async findByProjectId(projectId: string): Promise<SecretsProviderConnection[]> {
-		return await this.manager
-			.createQueryBuilder(SecretsProviderConnection, 'connection')
-			.innerJoin('connection.projectAccess', 'access')
-			.where('access.projectId = :projectId', { projectId })
-			.andWhere('connection.isEnabled = :isEnabled', { isEnabled: true })
+	async findAllAccessibleByProjectWithProjectAccess(
+		projectId: string,
+	): Promise<SecretsProviderConnection[]> {
+		const projectConnections = await this.createQueryBuilder('connection')
+			.leftJoinAndSelect('connection.projectAccess', 'projectAccess')
+			.leftJoinAndSelect('projectAccess.project', 'project')
+			.where('projectAccess.projectId = :projectId', { projectId })
 			.getMany();
+
+		const globalConnections = await this.createQueryBuilder('connection')
+			.leftJoinAndSelect('connection.projectAccess', 'access')
+			.where('access.secretsProviderConnectionId IS NULL')
+			.getMany();
+
+		return projectConnections.concat(globalConnections);
 	}
 }

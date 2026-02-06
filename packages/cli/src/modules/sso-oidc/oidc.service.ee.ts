@@ -526,7 +526,6 @@ export class OidcService {
 		clientSecret: string,
 	): Promise<openidClientTypes.Configuration> {
 		await this.loadOpenIdClient();
-		const configuration = await this.openidClient.discovery(discoveryUrl, clientId, clientSecret);
 
 		// Check if proxy environment variables are set
 		const hasProxyConfig =
@@ -542,19 +541,32 @@ export class OidcService {
 
 			// Create a proxy agent that automatically reads from environment variables
 			const proxyAgent = new EnvHttpProxyAgent();
-
-			// Configure customFetch to use the proxy agent
-			configuration[this.openidClient.customFetch] = async (...args) => {
-				const [url, options] = args;
+			const proxyFetch: openidClientTypes.CustomFetch = async (url, options) => {
 				return await fetch(url, {
 					...options,
 					// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
 					dispatcher: proxyAgent,
 				});
 			};
+
+			// discovery call with custom fetch client using proxy agent
+			const configuration = await this.openidClient.discovery(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+				undefined,
+				{
+					[this.openidClient.customFetch]: proxyFetch,
+				},
+			);
+
+			// Configure customFetch to use the proxy agent
+			configuration[this.openidClient.customFetch] = proxyFetch;
+
+			return configuration;
 		}
 
-		return configuration;
+		return await this.openidClient.discovery(discoveryUrl, clientId, clientSecret);
 	}
 
 	private async getOidcConfiguration(): Promise<openidClientTypes.Configuration> {
