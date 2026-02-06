@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
@@ -27,6 +27,7 @@ export class WorkflowIndexService {
 		private readonly eventService: EventService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
+		private readonly tracing: Tracing,
 		private readonly batchSize = 100,
 	) {}
 
@@ -42,7 +43,7 @@ export class WorkflowIndexService {
 			await this.updateIndexForDraft(workflow);
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
-			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+			await this.removeDependenciesForWorkflow(workflowId);
 		});
 		this.eventService.on('workflow-activated', async ({ workflow }) => {
 			if (workflow.activeVersionId === null) {
@@ -56,19 +57,26 @@ export class WorkflowIndexService {
 	}
 
 	async buildIndex() {
-		const draftCount = await this.buildIndexInternal(
-			async (batchSize) => await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
-			'draft',
-		);
+		return await this.tracing.startSpan(
+			{ name: 'WorkflowIndex build', op: 'workflow-index.build' },
+			async (span) => {
+				const draftCount = await this.buildIndexInternal(
+					async (batchSize) =>
+						await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
+					'draft',
+				);
 
-		const publishedCount = await this.buildIndexInternal(
-			async (batchSize) =>
-				await this.workflowRepository.findWorkflowsNeedingPublishedVersionIndexing(batchSize),
-			'published',
-		);
+				const publishedCount = await this.buildIndexInternal(
+					async (batchSize) =>
+						await this.workflowRepository.findWorkflowsNeedingPublishedVersionIndexing(batchSize),
+					'published',
+				);
 
-		this.logger.info(
-			`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows.`,
+				this.logger.info(
+					`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows.`,
+				);
+				span.setStatus({ code: SpanStatus.ok });
+			},
 		);
 	}
 
@@ -132,6 +140,21 @@ export class WorkflowIndexService {
 		);
 		return await this.updateIndexInternal(workflow, dependencyUpdates);
 	}
+
+	async removeDependenciesForWorkflow(workflowId: string) {
+		return await this.tracing.startSpan(
+			{
+				name: 'WorkflowIndex remove',
+				op: 'workflow-index.remove',
+				attributes: this.tracing.pickWorkflowAttributes({ id: workflowId }),
+			},
+			async (span) => {
+				await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+				span.setStatus({ code: SpanStatus.ok });
+			},
+		);
+	}
+
 	/**
 	 * Update the dependency index for a given workflow.
 	 *
@@ -143,38 +166,54 @@ export class WorkflowIndexService {
 		workflow: IWorkflowBase,
 		dependencyUpdates: WorkflowDependencies,
 	) {
-		workflow.nodes.forEach((node) => {
-			this.addNodeTypeDependencies(node, dependencyUpdates);
-			this.addCredentialDependencies(node, dependencyUpdates);
-			this.addWorkflowCallDependencies(node, dependencyUpdates);
-			this.addWebhookPathDependencies(node, dependencyUpdates);
-		});
+		const indexType = dependencyUpdates.publishedVersionId ? 'published' : 'draft';
 
-		// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
-		if (dependencyUpdates.dependencies.length === 0) {
-			dependencyUpdates.add({
-				dependencyType: 'workflowIndexed',
-				dependencyKey: WORKFLOW_INDEXED_PLACEHOLDER_KEY,
-				dependencyInfo: null,
-			});
-		}
+		return await this.tracing.startSpan(
+			{
+				name: 'WorkflowIndex update',
+				op: 'workflow-index.update',
+				attributes: {
+					...this.tracing.pickWorkflowAttributes(workflow),
+					'n8n.workflow-index.type': indexType,
+				},
+			},
+			async (span) => {
+				workflow.nodes.forEach((node) => {
+					this.addNodeTypeDependencies(node, dependencyUpdates);
+					this.addCredentialDependencies(node, dependencyUpdates);
+					this.addWorkflowCallDependencies(node, dependencyUpdates);
+					this.addWebhookPathDependencies(node, dependencyUpdates);
+				});
 
-		let updated: boolean;
-		try {
-			updated = await this.dependencyRepository.updateDependenciesForWorkflow(
-				workflow.id,
-				dependencyUpdates,
-			);
-		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error(
-				`Failed to update workflow ${dependencyUpdates.publishedVersionId ? 'published' : 'draft'} dependency index for workflow ${workflow.id}: ${error.message}`,
-			);
-			this.errorReporter.error(error);
-			return;
-		}
-		this.logger.debug(
-			`Workflow ${dependencyUpdates.publishedVersionId ? 'published' : 'draft'} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
+				// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
+				if (dependencyUpdates.dependencies.length === 0) {
+					dependencyUpdates.add({
+						dependencyType: 'workflowIndexed',
+						dependencyKey: WORKFLOW_INDEXED_PLACEHOLDER_KEY,
+						dependencyInfo: null,
+					});
+				}
+
+				let updated: boolean;
+				try {
+					updated = await this.dependencyRepository.updateDependenciesForWorkflow(
+						workflow.id,
+						dependencyUpdates,
+					);
+				} catch (e) {
+					const error = ensureError(e);
+					this.logger.error(
+						`Failed to update workflow ${indexType} dependency index for workflow ${workflow.id}: ${error.message}`,
+					);
+					this.errorReporter.error(error);
+					span.setStatus({ code: SpanStatus.error });
+					return;
+				}
+				this.logger.debug(
+					`Workflow ${indexType} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
+				);
+				span.setStatus({ code: SpanStatus.ok });
+			},
 		);
 	}
 
