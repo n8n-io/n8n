@@ -81,6 +81,7 @@ beforeEach(() => {
 
 	vi.mocked(communityNodesStore.installPackage).mockResolvedValue(undefined);
 	vi.mocked(nodeTypesStore.getNodeTypes).mockResolvedValue(undefined);
+	vi.mocked(nodeTypesStore.fetchCommunityNodePreviews).mockResolvedValue(undefined);
 	vi.mocked(credentialsStore.fetchCredentialTypes).mockResolvedValue(undefined);
 	vi.mocked(nodeTypesStore.getCommunityNodeAttributes).mockResolvedValue({
 		npmVersion: '1.0.0',
@@ -157,6 +158,7 @@ describe('useInstallNode', () => {
 				'1.0.0',
 			);
 			expect(nodeTypesStore.getNodeTypes).toHaveBeenCalled();
+			expect(nodeTypesStore.fetchCommunityNodePreviews).toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(true);
 			expect(showMessage).toHaveBeenCalledWith({
 				title: 'settings.communityNodes.messages.install.success',
@@ -175,6 +177,7 @@ describe('useInstallNode', () => {
 			expect(result.success).toBe(true);
 			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package');
 			expect(nodeTypesStore.getNodeTypes).toHaveBeenCalled();
+			expect(nodeTypesStore.fetchCommunityNodePreviews).toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(true);
 		});
 

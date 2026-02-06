@@ -132,6 +132,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
 import {
@@ -1092,7 +1093,7 @@ export function useCanvasOperations() {
 			node.name ??
 			nodeHelpers.getDefaultNodeName(node) ??
 			(nodeTypeDescription.defaults.name as string);
-		const type = nodeTypeDescription.name;
+		const type = node.type ?? nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
 		const position =
 			options.forcePosition && node.position
@@ -1115,8 +1116,11 @@ export function useCanvasOperations() {
 		};
 
 		resolveNodeName(nodeData);
-		resolveNodeParameters(nodeData, nodeTypeDescription);
-		resolveNodeWebhook(nodeData, nodeTypeDescription);
+
+		if (nodeTypesStore.getIsNodeInstalled(nodeData.type)) {
+			resolveNodeParameters(nodeData, nodeTypeDescription);
+			resolveNodeWebhook(nodeData, nodeTypeDescription);
+		}
 
 		return nodeData;
 	}
@@ -2289,12 +2293,10 @@ export function useCanvasOperations() {
 		const { workflowDocumentStore } = await workflowHelpers.initState(data, useWorkflowState());
 		data.nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
-			const isUnknownNode =
-				!nodeTypesStore.getNodeType(node.type, node.typeVersion) &&
-				!nodeTypesStore.communityNodeType(node.type)?.nodeDescription;
+			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
 			nodeHelpers.matchCredentials(node);
 			// skip this step because nodeTypeDescription is missing for unknown nodes
-			if (!isUnknownNode) {
+			if (isInstalledNode) {
 				resolveNodeParameters(node, nodeTypeDescription);
 				resolveNodeWebhook(node, nodeTypeDescription);
 			}
@@ -2309,14 +2311,19 @@ export function useCanvasOperations() {
 
 	const initializeUnknownNodes = (nodes: INode[]) => {
 		nodes.forEach((node) => {
-			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
+			// we need to fetch installed node, so remove preview token
+			const nodeTypeDescription = requireNodeTypeDescription(
+				removePreviewToken(node.type),
+				node.typeVersion,
+			);
 			nodeHelpers.matchCredentials(node);
 			resolveNodeParameters(node, nodeTypeDescription);
 			resolveNodeWebhook(node, nodeTypeDescription);
 			const nodeIndex = workflowsStore.workflow.nodes.findIndex((n) => {
 				return n.name === node.name;
 			});
-			workflowState.updateNodeAtIndex(nodeIndex, node);
+			// make sure that preview node type is always removed
+			workflowState.updateNodeAtIndex(nodeIndex, { ...node, type: removePreviewToken(node.type) });
 		});
 	};
 
@@ -2454,8 +2461,21 @@ export function useCanvasOperations() {
 
 		// Create a workflow with the new nodes and connections that we can use
 		// the rename method
-		const tempWorkflow: Workflow = workflowsStore.createWorkflowObject(createNodes, newConnections);
+		const tempWorkflow: Workflow = workflowsStore.createWorkflowObject(
+			createNodes,
+			newConnections,
+			true,
+		);
 
+		// createWorkflowObject strips out unknown parameters, bring them back for not installed nodes
+		for (const nodeName of Object.keys(tempWorkflow.nodes)) {
+			const node = tempWorkflow.nodes[nodeName];
+			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
+			if (!isInstalledNode) {
+				const originalParameters = createNodes.find((n) => n.name === nodeName)?.parameters;
+				node.parameters = originalParameters ?? node.parameters;
+			}
+		}
 		// Rename all the nodes of which the name changed
 		for (oldName in nodeNameTable) {
 			const nameToChangeTo = nodeNameTable[oldName];
