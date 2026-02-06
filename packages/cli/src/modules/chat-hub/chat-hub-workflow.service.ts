@@ -483,19 +483,24 @@ export class ChatHubWorkflowService {
 	}
 
 	getSystemMessageMetadata(timeZone: string) {
-		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
+		if (inE2ETests) {
+			return '__e2e_system_prompt_placeholder__';
+		}
+
+		const now = DateTime.now();
 		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
 		return `
-## Current Date and Time
+# Current Date and Time
 
 The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
 When you need to reference "now", use this date and time.
 
-## Content Capabilities
+# Output Capabilities
 
-You can only produce text responses.
-You cannot create, generate, edit, or display images, videos, or other non-text content.
+## Multimedia Generation
+
+You are allowed to describe, explain and analyze provided multimedia data if you're capable of, but not allowed to create, generate, edit, or display images, videos, or other non-text content.
 If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
 
 ## Document Generation
