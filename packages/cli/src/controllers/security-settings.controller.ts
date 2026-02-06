@@ -20,7 +20,23 @@ export class SecuritySettingsController {
 	@GlobalScope('securitySettings:manage')
 	@Get('/')
 	async getSecuritySettings(_req: AuthenticatedRequest, _res: Response) {
-		return await this.securitySettingsService.arePersonalSpaceSettingsEnabled();
+		const [
+			settings,
+			publishedPersonalWorkflowsCount,
+			sharedPersonalWorkflowsCount,
+			sharedPersonalCredentialsCount,
+		] = await Promise.all([
+			this.securitySettingsService.arePersonalSpaceSettingsEnabled(),
+			this.securitySettingsService.getPublishedPersonalWorkflowsCount(),
+			this.securitySettingsService.getSharedPersonalWorkflowsCount(),
+			this.securitySettingsService.getSharedPersonalCredentialsCount(),
+		]);
+		return {
+			...settings,
+			publishedPersonalWorkflowsCount,
+			sharedPersonalWorkflowsCount,
+			sharedPersonalCredentialsCount,
+		};
 	}
 
 	@GlobalScope('securitySettings:manage')

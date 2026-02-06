@@ -531,4 +531,40 @@ describe('WorkflowRepository', () => {
 			expect(findSpy).toHaveBeenCalledWith({ where: { id: In(workflowIds) } });
 		});
 	});
+
+	describe('getPublishedPersonalWorkflowsCount', () => {
+		it('should return count from query builder with correct joins and filters', async () => {
+			queryBuilder.getCount.mockResolvedValue(5);
+
+			const result = await workflowRepository.getPublishedPersonalWorkflowsCount();
+
+			expect(result).toBe(5);
+			expect(queryBuilder.innerJoin).toHaveBeenCalledWith('workflow.shared', 'shared');
+			expect(queryBuilder.innerJoin).toHaveBeenCalledWith('shared.project', 'project');
+			expect(queryBuilder.where).toHaveBeenCalledWith('workflow.activeVersionId IS NOT NULL');
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('project.type = :type', {
+				type: 'personal',
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('shared.role = :role', {
+				role: 'workflow:owner',
+			});
+			expect(queryBuilder.getCount).toHaveBeenCalled();
+		});
+
+		it('should return 0 when no workflows exist', async () => {
+			queryBuilder.getCount.mockResolvedValue(0);
+
+			const result = await workflowRepository.getPublishedPersonalWorkflowsCount();
+
+			expect(result).toBe(0);
+		});
+
+		it('should return correct count for multiple published personal workflows', async () => {
+			queryBuilder.getCount.mockResolvedValue(3);
+
+			const result = await workflowRepository.getPublishedPersonalWorkflowsCount();
+
+			expect(result).toBe(3);
+		});
+	});
 });
