@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     timeout-minutes: 20
+    environment: npm
     permissions:
       id-token: write
     env:
@@ -64,7 +65,6 @@ jobs:
 
       - name: Pre publishing changes
         run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           node .github/scripts/trim-fe-packageJson.js
           node .github/scripts/ensure-provenance-fields.mjs
           cp README.md packages/cli/README.md
