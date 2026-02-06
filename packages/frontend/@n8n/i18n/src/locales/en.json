@@ -2241,7 +2241,9 @@
 	"projectRoles.workflow:delete": "Delete",
 	"projectRoles.workflow:delete.tooltip": "Delete workflows",
 	"projectRoles.workflow:publish": "Publish",
-	"projectRoles.workflow:publish.tooltip": "Publish and unpublish workflows",
+	"projectRoles.workflow:publish.tooltip": "Publish workflows",
+	"projectRoles.workflow:unpublish": "Unpublish",
+	"projectRoles.workflow:unpublish.tooltip": "Unpublish workflows",
 
 	"projectRoles.credential:read": "View",
 	"projectRoles.credential:read.tooltip": "View credentials details (secret masked) and use them in workflows",
