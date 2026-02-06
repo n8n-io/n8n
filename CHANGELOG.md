@@ -1,3 +1,17 @@
+## [1.123.20](https://github.com/n8n-io/n8n/compare/n8n@1.123.19...n8n@1.123.20) (2026-02-06)
+
+
+### Bug Fixes
+
+* Fix status overwrite for donePromise (backport 1.x) ([#25416](https://github.com/n8n-io/n8n/issues/25416)) ([9e417b9](https://github.com/n8n-io/n8n/commit/9e417b9eaabc1bf2d04eb293da1cc35a7a007da7))
+
+
+### Features
+
+* **Kafka Trigger Node:** Refactoring and fixes (backport 1.x) ([#25424](https://github.com/n8n-io/n8n/issues/25424)) ([20c4ba9](https://github.com/n8n-io/n8n/commit/20c4ba9c1a4725903b7a83d53a9fb4dc9582290d))
+
+
+
 ## [1.123.19](https://github.com/n8n-io/n8n/compare/n8n@1.123.18...n8n@1.123.19) (2026-02-06)
 
 
