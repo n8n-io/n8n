@@ -27,15 +27,21 @@ export async function createBuilderPayload(
 		executionData?: IRunExecutionData['resultData'];
 		workflow?: IWorkflowDb;
 		nodesForSchema?: string[];
+		allowSendingParameterValues?: boolean;
 	} = {},
 ): Promise<ChatRequest.UserChatMessage> {
 	const assistantHelpers = useAIAssistantHelpers();
 	const posthogStore = usePostHog();
 	const workflowContext: ChatRequest.WorkflowContext = {};
 
+	// When privacy is OFF (allowSendingParameterValues=false), exclude parameter values from workflow
+	const shouldExcludeParameterValues = options.allowSendingParameterValues === false;
+
 	if (options.workflow) {
 		workflowContext.currentWorkflow = {
-			...(await assistantHelpers.simplifyWorkflowForAssistant(options.workflow)),
+			...(await assistantHelpers.simplifyWorkflowForAssistant(options.workflow, {
+				excludeParameterValues: shouldExcludeParameterValues,
+			})),
 			id: options.workflow.id,
 		};
 	}
@@ -43,9 +49,10 @@ export async function createBuilderPayload(
 	if (options.executionData) {
 		workflowContext.executionData = assistantHelpers.simplifyResultData(options.executionData, {
 			compact: true,
+			removeParameterValues: shouldExcludeParameterValues,
 		});
 
-		if (options.workflow) {
+		if (options.workflow && !shouldExcludeParameterValues) {
 			// Extract and include expression values with their resolved values
 			// Pass execution data to only extract from nodes that have executed
 			workflowContext.expressionValues = await assistantHelpers.extractExpressionsFromWorkflow(
@@ -55,10 +62,11 @@ export async function createBuilderPayload(
 		}
 	}
 
+	// Schema is always sent - include values only when privacy is ON (allowSendingParameterValues=true)
 	if (options.nodesForSchema?.length) {
 		workflowContext.executionSchema = assistantHelpers.getNodesSchemas(
 			options.nodesForSchema,
-			true,
+			shouldExcludeParameterValues, // excludeValues: true when privacy OFF, false when privacy ON
 		);
 	}
 

@@ -542,11 +542,7 @@ export class McpApiHelper {
 			arguments: args,
 		});
 
-		return await this.sseSendAndWaitCrossMain<McpToolCallResponse>(
-			session,
-			targetPath,
-			message,
-		);
+		return await this.sseSendAndWaitCrossMain<McpToolCallResponse>(session, targetPath, message);
 	}
 
 	/**
@@ -560,10 +556,7 @@ export class McpApiHelper {
 	 * @param targetPath - The target path to POST to
 	 * @returns Array of tool definitions
 	 */
-	async listToolsCrossMain(
-		session: McpSession,
-		targetPath: string,
-	): Promise<McpToolDefinition[]> {
+	async listToolsCrossMain(session: McpSession, targetPath: string): Promise<McpToolDefinition[]> {
 		const message = this.createMessage('tools/list');
 
 		const result = await this.sseSendAndWaitCrossMain<{ tools: McpToolDefinition[] }>(

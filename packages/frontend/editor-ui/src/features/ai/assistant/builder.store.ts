@@ -604,6 +604,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
 		});
 
 		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));

@@ -245,7 +245,7 @@ export namespace AskAiRequest {
 }
 
 export type AssistantProcessOptions = {
-	trimParameterValues?: boolean;
+	excludeParameterValues?: boolean;
 };
 
 // Type guards for ChatRequest messages

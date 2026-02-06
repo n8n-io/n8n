@@ -209,7 +209,7 @@ export const useAIAssistantHelpers = () => {
 		propsToRemove.forEach((key) => {
 			delete nodeForLLM[key as keyof INode];
 		});
-		if (options?.trimParameterValues) {
+		if (options?.excludeParameterValues) {
 			nodeForLLM.parameters = removeParameterValues(nodeForLLM.parameters);
 		} else {
 			nodeForLLM.parameters = await workflowHelpers.getNodeParametersWithResolvedExpressions(
@@ -228,7 +228,7 @@ export const useAIAssistantHelpers = () => {
 		}
 		// Get all referenced nodes and their schemas
 		const referencedNodeNames = getReferencedNodes(node);
-		const schemas = getNodesSchemas(referencedNodeNames, options?.trimParameterValues);
+		const schemas = getNodesSchemas(referencedNodeNames, options?.excludeParameterValues);
 
 		const nodeType = nodeTypesStore.getNodeType(node.type);
 
@@ -242,7 +242,7 @@ export const useAIAssistantHelpers = () => {
 		}
 		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = {};
 		// Only include input data if the node references it and we are allowed to send it
-		if (!options?.trimParameterValues) {
+		if (!options?.excludeParameterValues) {
 			const ndvInput = ndvStore.ndvInputData;
 			if (isNodeReferencingInputData(node) && ndvInput?.length) {
 				const inputData = ndvStore.ndvInputData[0].json;
@@ -337,6 +337,7 @@ export const useAIAssistantHelpers = () => {
 	 * @param data The execution result data to simplify
 	 * @param options Options for simplification
 	 * @param options.compact If true, removes large inputOverride fields (> 2000 bytes)
+	 * @param options.removeParameterValues If true, removes parameter values but keeps errors and metadata
 	 **/
 	function simplifyResultData(
 		data: IRunExecutionData['resultData'],
@@ -347,9 +348,9 @@ export const useAIAssistantHelpers = () => {
 			runData: {},
 		};
 
-		// Handle optional error (can contain node parameter values, so we omit it if removeParameterValues is true)
+		// Handle optional error - always pass through the full error for debugging context
 		if (data.error) {
-			simplifiedResultData.error = removeParameterValues ? undefined : data.error;
+			simplifiedResultData.error = data.error;
 		}
 
 		// Early return if runData is not present
@@ -363,8 +364,12 @@ export const useAIAssistantHelpers = () => {
 			simplifiedResultData.runData[key] = taskDataArray.map((taskData) => {
 				const { data: _taskDataContent, ...taskDataWithoutData } = taskData;
 
-				// If compact mode is enabled, remove large inputOverride fields
-				if (compact && taskDataWithoutData.inputOverride) {
+				// When privacy is OFF (removeParameterValues), always remove inputOverride
+				// as it can contain parameter values
+				if (removeParameterValues) {
+					delete taskDataWithoutData.inputOverride;
+				} else if (compact && taskDataWithoutData.inputOverride) {
+					// If compact mode is enabled, remove large inputOverride fields
 					try {
 						const inputOverrideStr = JSON.stringify(taskDataWithoutData.inputOverride);
 						const sizeInBytes = new Blob([inputOverrideStr]).size;
@@ -402,10 +407,10 @@ export const useAIAssistantHelpers = () => {
 		options?: AssistantProcessOptions,
 	): Promise<Partial<IWorkflowDb>> => {
 		let nodes: INode[] = workflow.nodes;
-		if (options?.trimParameterValues) {
+		if (options?.excludeParameterValues) {
 			nodes = await Promise.all(
 				workflow.nodes.map(
-					async (node) => await processNodeForAssistant(node, [], { trimParameterValues: true }),
+					async (node) => await processNodeForAssistant(node, [], { excludeParameterValues: true }),
 				),
 			);
 		}

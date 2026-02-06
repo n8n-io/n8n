@@ -4,11 +4,36 @@ import {
 	extractRevertVersionIds,
 	fetchExistingVersionIds,
 	enrichMessagesWithRevertVersion,
+	createBuilderPayload,
 } from './builder.utils';
+import type { IWorkflowDb } from '@/Interface';
+import type { IRunExecutionData } from 'n8n-workflow';
 
 // Mock workflowHistory API
 vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 	getWorkflowVersionsByIds: vi.fn(),
+}));
+
+// Mock useAIAssistantHelpers
+const mockSimplifyWorkflowForAssistant = vi.fn();
+const mockSimplifyResultData = vi.fn();
+const mockExtractExpressionsFromWorkflow = vi.fn();
+const mockGetNodesSchemas = vi.fn();
+
+vi.mock('./composables/useAIAssistantHelpers', () => ({
+	useAIAssistantHelpers: () => ({
+		simplifyWorkflowForAssistant: mockSimplifyWorkflowForAssistant,
+		simplifyResultData: mockSimplifyResultData,
+		extractExpressionsFromWorkflow: mockExtractExpressionsFromWorkflow,
+		getNodesSchemas: mockGetNodesSchemas,
+	}),
+}));
+
+// Mock usePostHog
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		getVariant: vi.fn().mockReturnValue('control'),
+	}),
 }));
 
 describe('builder.utils', () => {
@@ -292,6 +317,137 @@ describe('builder.utils', () => {
 			const result = enrichMessagesWithRevertVersion([], new Map());
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('createBuilderPayload', () => {
+		const mockWorkflow = {
+			id: 'workflow-1',
+			name: 'Test Workflow',
+			active: false,
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Node 1',
+					type: 'test',
+					position: [0, 0],
+					parameters: {},
+					typeVersion: 1,
+				},
+			],
+			connections: {},
+			createdAt: '2024-01-01T00:00:00Z',
+			updatedAt: '2024-01-01T00:00:00Z',
+		} as IWorkflowDb;
+
+		const mockExecutionData = {
+			runData: {
+				'Node 1': [{ startTime: 123, executionTime: 100, executionIndex: 0, source: [] }],
+			},
+		} as IRunExecutionData['resultData'];
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+
+			// Setup default mock implementations
+			mockSimplifyWorkflowForAssistant.mockResolvedValue({
+				name: mockWorkflow.name,
+				active: mockWorkflow.active,
+				nodes: mockWorkflow.nodes,
+				connections: mockWorkflow.connections,
+			});
+			mockSimplifyResultData.mockReturnValue({ runData: {} });
+			mockExtractExpressionsFromWorkflow.mockResolvedValue({});
+			mockGetNodesSchemas.mockReturnValue([{ nodeName: 'Node 1', schema: {} }]);
+		});
+
+		it('should include executionData and expressionValues when allowSendingParameterValues is true', async () => {
+			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflow: mockWorkflow,
+				executionData: mockExecutionData,
+				nodesForSchema: ['Node 1'],
+				allowSendingParameterValues: true,
+			});
+
+			expect(mockSimplifyWorkflowForAssistant).toHaveBeenCalledWith(mockWorkflow, {
+				excludeParameterValues: false,
+			});
+			expect(mockSimplifyResultData).toHaveBeenCalledWith(mockExecutionData, {
+				compact: true,
+				removeParameterValues: false,
+			});
+			expect(mockExtractExpressionsFromWorkflow).toHaveBeenCalledWith(
+				mockWorkflow,
+				mockExecutionData,
+			);
+			expect(result.workflowContext?.executionData).toBeDefined();
+		});
+
+		it('should include executionData and expressionValues when allowSendingParameterValues is undefined (default)', async () => {
+			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflow: mockWorkflow,
+				executionData: mockExecutionData,
+				nodesForSchema: ['Node 1'],
+			});
+
+			expect(mockSimplifyWorkflowForAssistant).toHaveBeenCalledWith(mockWorkflow, {
+				excludeParameterValues: false,
+			});
+			expect(mockSimplifyResultData).toHaveBeenCalledWith(mockExecutionData, {
+				compact: true,
+				removeParameterValues: false,
+			});
+			expect(mockExtractExpressionsFromWorkflow).toHaveBeenCalledWith(
+				mockWorkflow,
+				mockExecutionData,
+			);
+			expect(result.workflowContext?.executionData).toBeDefined();
+		});
+
+		it('should include executionData but NOT expressionValues when allowSendingParameterValues is false', async () => {
+			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflow: mockWorkflow,
+				executionData: mockExecutionData,
+				nodesForSchema: ['Node 1'],
+				allowSendingParameterValues: false,
+			});
+
+			expect(mockSimplifyWorkflowForAssistant).toHaveBeenCalledWith(mockWorkflow, {
+				excludeParameterValues: true,
+			});
+			// executionData is sent but with removeParameterValues flag
+			expect(mockSimplifyResultData).toHaveBeenCalledWith(mockExecutionData, {
+				compact: true,
+				removeParameterValues: true,
+			});
+			// expressionValues are NOT sent when privacy is OFF
+			expect(mockExtractExpressionsFromWorkflow).not.toHaveBeenCalled();
+			expect(result.workflowContext?.executionData).toBeDefined();
+			expect(result.workflowContext?.expressionValues).toBeUndefined();
+		});
+
+		it('should always include executionSchema regardless of privacy setting', async () => {
+			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflow: mockWorkflow,
+				executionData: mockExecutionData,
+				nodesForSchema: ['Node 1'],
+				allowSendingParameterValues: false,
+			});
+
+			expect(mockGetNodesSchemas).toHaveBeenCalledWith(['Node 1'], true);
+			expect(result.workflowContext?.executionSchema).toBeDefined();
+		});
+
+		it('should include workflow in payload when privacy is OFF but with trimmed parameter values', async () => {
+			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflow: mockWorkflow,
+				allowSendingParameterValues: false,
+			});
+
+			expect(mockSimplifyWorkflowForAssistant).toHaveBeenCalledWith(mockWorkflow, {
+				excludeParameterValues: true,
+			});
+			expect(result.workflowContext?.currentWorkflow).toBeDefined();
 		});
 	});
 });

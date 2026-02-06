@@ -29,6 +29,7 @@ import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
 import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 
@@ -42,6 +43,7 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowAutosaveStore();
+const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
@@ -82,6 +84,10 @@ watch(
 const showSettingsButton = computed(() => {
 	return assistantStore.canManageAISettings;
 });
+
+const allowSendingParameterValues = computed(
+	() => settingsStore.settings.ai.allowSendingParameterValues,
+);
 
 const shouldShowNotificationBanner = computed(() => {
 	return notificationsPermissionsBannerTriggered.value && canPrompt.value;
@@ -422,7 +428,7 @@ defineExpose({
 					<slot name="header" />
 					<AISettingsButton
 						v-if="showSettingsButton"
-						:show-usability-notice="false"
+						:show-usability-notice="!allowSendingParameterValues"
 						:disabled="builderStore.streaming"
 					/>
 				</div>
