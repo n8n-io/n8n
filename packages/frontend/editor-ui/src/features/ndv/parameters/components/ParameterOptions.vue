@@ -237,12 +237,11 @@ const onViewSelected = (selected: string) => {
 </template>
 
 <style lang="scss" module>
-$container-height: 22px;
-
 .container {
 	display: flex;
-	min-height: $container-height;
-	max-height: $container-height;
+	min-height: var(--parameter-input-options--height, 22px);
+	max-height: var(--parameter-input-options--height, 22px);
+	overflow: hidden;
 }
 
 .loader {
