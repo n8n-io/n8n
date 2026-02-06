@@ -125,7 +125,7 @@ onMounted(() => {
 			</N8nTooltip>
 			<N8nIcon
 				:class="[$style['header-icon'], $style['chevron']]"
-				icon="chevrons-down-up"
+				:icon="expanded ? 'chevrons-down-up' : 'chevrons-up-down'"
 				size="medium"
 				color="text-light"
 			/>
