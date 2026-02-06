@@ -97,6 +97,7 @@ catalogs:
     highlight.js: 11.8.0
     pinia: ^2.2.4
     unplugin-icons: ^0.19.0
+    vite-svg-loader: 5.1.0
     vue: ^3.5.13
     vue-i18n: ^11.1.2
     vue-markdown-render: ^2.2.1
