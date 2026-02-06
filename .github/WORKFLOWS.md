@@ -479,7 +479,6 @@ Team ownership mappings in `CODEOWNERS`:
 | Path Pattern                                                 | Team                       |
 |--------------------------------------------------------------|----------------------------|
 | `packages/@n8n/db/src/migrations/`                           | @n8n-io/migrations-review  |
-| `packages/frontend/editor-ui/data/node-popularity.json`      | @n8n-io/catalysts          |
 
 ---
 
