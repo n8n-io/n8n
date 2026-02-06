@@ -368,6 +368,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		if (unloadTimeout.value) {
 			clearTimeout(unloadTimeout.value);
 		}
+		currentWriterId.value = null;
+		collaborators.value = [];
 	}
 
 	return {
