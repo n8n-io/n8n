@@ -103,11 +103,12 @@ onMounted(() => {
 			/>
 			<NodeIcon v-else :node-type="nodeType" :size="16" />
 			<span :class="$style['node-name']">{{ props.state.node.name }}</span>
-			<N8nIcon
-				:class="$style.chevron"
-				:icon="expanded ? 'chevron-up' : 'chevron-down'"
-				size="small"
-			/>
+			<N8nTooltip v-if="state.isTrigger">
+				<template #content>
+					{{ i18n.baseText('nodeCreator.nodeItem.triggerIconTitle') }}
+				</template>
+				<N8nIcon :class="$style.chevron" icon="zap" size="small" />
+			</N8nTooltip>
 		</header>
 
 		<template v-if="expanded">
