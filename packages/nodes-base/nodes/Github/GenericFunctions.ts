@@ -146,9 +146,9 @@ export async function encryptSecret(secretValue: string, publicKey: string): Pro
 	return await new Promise((resolve, reject) => {
 		nacl_factory.instantiate((nacl: ReturnType<typeof nacl_factory.instantiate>) => {
 			try {
-				const secretBytes = nacl.encode_utf8(secretValue) as Uint8Array;
+				const secretBytes: Uint8Array = nacl.encode_utf8(secretValue);
 				const keyBytes = Buffer.from(publicKey, 'base64');
-				const encryptedBytes = nacl.crypto_box_seal(secretBytes, keyBytes) as Uint8Array;
+				const encryptedBytes: Uint8Array = nacl.crypto_box_seal(secretBytes, keyBytes);
 				const encryptedBase64 = Buffer.from(encryptedBytes).toString('base64');
 				resolve(encryptedBase64);
 			} catch (error) {
