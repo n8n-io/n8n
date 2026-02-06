@@ -104,7 +104,9 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 			expect(result[0].length).toBeGreaterThan(0);
 		});
 
-		it('should handle special characters in secret name by URL encoding', async () => {
+		it('should handle secret names that require URL encoding', async () => {
+			// Secret name with characters that need URL encoding (e.g., spaces become %20)
+			const secretNameWithSpecialChars = 'SECRET WITH SPACES';
 			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
@@ -112,7 +114,7 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 						operation: 'createOrUpdate',
 						owner: 'test-owner',
 						repository: 'test-repo',
-						secretName: 'SECRET_WITH_SPECIAL',
+						secretName: secretNameWithSpecialChars,
 						secretValue: 'value',
 					};
 					return params[paramName] ?? fallback;
@@ -129,9 +131,10 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 
 			await github.execute.call(mockExecuteFunctions);
 
+			// Verify the secret name is URL encoded in the API path
 			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
 				'PUT',
-				'/repos/test-owner/test-repo/actions/secrets/SECRET_WITH_SPECIAL',
+				'/repos/test-owner/test-repo/actions/secrets/SECRET%20WITH%20SPACES',
 				expect.any(Object),
 				{},
 			);
