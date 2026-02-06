@@ -43,9 +43,10 @@ const onCredentialDeselected = (nodeName: string, credentialType: string) => {
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
 			<NodeSetupCard
-				v-for="state in nodeSetupStates"
+				v-for="(state, index) in nodeSetupStates"
 				:key="state.node.id"
 				:state="state"
+				:expanded="index === 0"
 				@credential-selected="onCredentialSelected(state.node.name, $event)"
 				@credential-deselected="onCredentialDeselected(state.node.name, $event)"
 			/>
