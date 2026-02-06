@@ -16,4 +16,5 @@ export class BaseDynamicParametersRequestDto extends Z.class({
 		INodeCredentials | undefined
 	>,
 	projectId: z.string().optional(),
+	workflowId: z.string().optional(),
 }) {}
