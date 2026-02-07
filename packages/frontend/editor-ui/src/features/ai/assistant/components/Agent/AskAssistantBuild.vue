@@ -127,25 +127,32 @@ const loadingMessage = computed(() => {
 });
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
-	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
+	const messages = builderStore.chatMessages;
+	const builderUpdatedWorkflowMessageIndex = messages.findLastIndex(
 		(msg) =>
 			msg.type === 'workflow-updated' ||
 			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
 
 	// Check if there's an error message or task aborted message after the last workflow update
-	const messagesAfterUpdate = builderStore.chatMessages.slice(
-		builderUpdatedWorkflowMessageIndex + 1,
-	);
+	const messagesAfterUpdate = messages.slice(builderUpdatedWorkflowMessageIndex + 1);
 	const hasErrorAfterUpdate = messagesAfterUpdate.some((msg) => msg.type === 'error');
 	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some((msg) => isTaskAbortedMessage(msg));
+
+	// Hide when the last assistant message is a question or plan awaiting user action
+	const lastAssistantMessage = messages.findLast((msg) => msg.role === 'assistant');
+	const hasPendingInteraction =
+		lastAssistantMessage &&
+		(isPlanModeQuestionsMessage(lastAssistantMessage) ||
+			isPlanModePlanMessage(lastAssistantMessage));
 
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
 		!hasErrorAfterUpdate &&
-		!hasTaskAbortedAfterUpdate
+		!hasTaskAbortedAfterUpdate &&
+		!hasPendingInteraction
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
