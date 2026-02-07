@@ -59,6 +59,12 @@ describe('n8nDefaultFailedAttemptHandler', () => {
 		expect(() => n8nDefaultFailedAttemptHandler(error)).not.toThrow();
 	});
 
+	it('should not throw error for 429 rate limit (should be retried)', () => {
+		const error = new MockHttpError('Rate limited', 429);
+
+		expect(() => n8nDefaultFailedAttemptHandler(error)).not.toThrow();
+	});
+
 	it('should not throw error if no conditions are met', () => {
 		const error = new Error('Some random error');
 		expect(() => n8nDefaultFailedAttemptHandler(error)).not.toThrow();

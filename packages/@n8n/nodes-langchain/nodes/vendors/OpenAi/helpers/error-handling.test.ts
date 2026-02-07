@@ -6,15 +6,18 @@ import { openAiFailedAttemptHandler, getCustomErrorMessage, isOpenAiError } from
 
 describe('error-handling', () => {
 	describe('getCustomErrorMessage', () => {
-		it('should return the correct custom error message for known error codes', () => {
+		it('should return the correct custom error message for insufficient_quota', () => {
 			expect(getCustomErrorMessage('insufficient_quota')).toBe(
 				'Insufficient quota detected. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/common-issues/#insufficient-quota" target="_blank">Learn more</a> about resolving this issue',
 			);
-			expect(getCustomErrorMessage('rate_limit_exceeded')).toBe('OpenAI: Rate limit reached');
 		});
 
 		it('should return undefined for unknown error codes', () => {
 			expect(getCustomErrorMessage('unknown_error_code')).toBeUndefined();
+		});
+
+		it('should return undefined for rate_limit_exceeded (retryable, no custom message needed)', () => {
+			expect(getCustomErrorMessage('rate_limit_exceeded')).toBeUndefined();
 		});
 	});
 
@@ -31,25 +34,48 @@ describe('error-handling', () => {
 	});
 
 	describe('openAiFailedAttemptHandler', () => {
-		it('should handle RateLimitError and modify the error message', () => {
-			const error = new RateLimitError(
-				429,
-				{ code: 'rate_limit_exceeded' },
-				'Rate limit exceeded',
-				new Headers(),
-			);
+		describe('rate limit handling', () => {
+			it('should NOT throw for rate_limit_exceeded to allow retries', () => {
+				const error = new RateLimitError(
+					429,
+					{ code: 'rate_limit_exceeded' },
+					'Rate limit exceeded',
+					new Headers(),
+				);
 
-			try {
-				openAiFailedAttemptHandler(error);
-			} catch (e) {
-				expect(e).toBeInstanceOf(OperationalError);
-				expect(e.level).toBe('warning');
-				expect(e.cause).toBe(error);
-				expect(e.message).toBe('OpenAI: Rate limit reached');
-			}
+				// Should not throw - allows LangChain's retry mechanism to handle the error
+				expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
+			});
+
+			it('should throw OperationalError for insufficient_quota (non-retryable)', () => {
+				const error = new RateLimitError(
+					429,
+					{ code: 'insufficient_quota' },
+					'Insufficient quota',
+					new Headers(),
+				);
+
+				expect(() => openAiFailedAttemptHandler(error)).toThrow(OperationalError);
+
+				try {
+					openAiFailedAttemptHandler(error);
+				} catch (e) {
+					expect(e).toBeInstanceOf(OperationalError);
+					expect((e as OperationalError).level).toBe('warning');
+					expect((e as OperationalError).cause).toBe(error);
+					expect((e as OperationalError).message).toContain('Insufficient quota detected');
+				}
+			});
+
+			it('should NOT throw for RateLimitError without a code to allow retries', () => {
+				const error = new RateLimitError(429, {}, 'Rate limit exceeded', new Headers());
+
+				// Should not throw - allows retry mechanism to work
+				expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
+			});
 		});
 
-		it('should throw the error if it is not a RateLimitError', () => {
+		it('should not throw for errors that are not RateLimitError', () => {
 			const error = new Error('Test error');
 
 			expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
