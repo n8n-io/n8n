@@ -348,28 +348,33 @@ export class BuilderSubgraph extends BaseSubgraph<
 		// Build context parts
 		const contextParts: string[] = [];
 
-		// 1. Conversation context (history, original request, previous actions)
-		// Supports UNDERSTANDING_CONTEXT prompt section for investigating issues
-		const conversationContext = buildConversationContext(
-			parentState.messages,
-			parentState.coordinationLog,
-			parentState.previousSummary,
-		);
-		if (conversationContext) {
-			contextParts.push('=== CONVERSATION CONTEXT ===');
-			contextParts.push(conversationContext);
-		}
-
-		// 2. User request (primary)
-		if (userRequest) {
-			contextParts.push('=== USER REQUEST ===');
-			contextParts.push(userRequest);
-		}
-
-		// 2.1 Approved plan (Plan Mode)
+		// When a plan exists it is the single authoritative source of truth.
+		// The plan may differ from the original request (e.g. user edited the
+		// model from gpt-4.1-mini to gpt-5.2-mini). Including conversation
+		// context or the raw user request alongside the plan creates conflicting
+		// signals that cause the builder to follow the stale original request.
+		// The plan is cleared after building (transformOutput), so follow-up
+		// messages still get full conversation context.
 		if (parentState.planOutput) {
 			contextParts.push('=== APPROVED PLAN (FOLLOW THIS) ===');
 			contextParts.push(formatPlanAsText(parentState.planOutput));
+		} else {
+			// Conversation context (history, original request, previous actions)
+			// Supports UNDERSTANDING_CONTEXT prompt section for investigating issues
+			const conversationContext = buildConversationContext(
+				parentState.messages,
+				parentState.coordinationLog,
+				parentState.previousSummary,
+			);
+			if (conversationContext) {
+				contextParts.push('=== CONVERSATION CONTEXT ===');
+				contextParts.push(conversationContext);
+			}
+
+			if (userRequest) {
+				contextParts.push('=== USER REQUEST ===');
+				contextParts.push(userRequest);
+			}
 		}
 
 		// 3. Discovery context (what nodes to use)
@@ -400,25 +405,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 			const { nodeCount, nodeNames } = builderErrorEntry.metadata.partialBuilderData;
 			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
 		}
-
-		// 5. Current workflow JSON (to add nodes to / configure)
-		contextParts.push('=== CURRENT WORKFLOW ===');
-		if (parentState.workflowJSON.nodes.length > 0) {
-			contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
-		} else {
-			contextParts.push('Empty workflow - ready to build');
-		}
-
-		// 6. Execution schema (data types available for parameter values)
-		const schemaBlock = buildExecutionSchemaBlock(parentState.workflowContext);
-		if (schemaBlock) {
-			contextParts.push('=== AVAILABLE DATA SCHEMA ===');
-			contextParts.push(schemaBlock);
-		}
-
-		// 7. Full execution context (data + schema for parameter values)
-		contextParts.push('=== EXECUTION CONTEXT ===');
-		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);
