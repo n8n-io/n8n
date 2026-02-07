@@ -264,10 +264,10 @@ function appendQAPairs(
 	parts.push('Clarification Q&A:');
 	for (const answer of qaAnswers) {
 		if (answer.skipped) continue;
-		const response =
-			answer.selectedOptions.length > 0
-				? answer.selectedOptions.join(', ')
-				: (answer.customText ?? '(no answer)');
+		const responseParts: string[] = [];
+		if (answer.selectedOptions.length > 0) responseParts.push(answer.selectedOptions.join(', '));
+		if (answer.customText?.trim()) responseParts.push(answer.customText.trim());
+		const response = responseParts.length > 0 ? responseParts.join(', ') : '(no answer)';
 		parts.push(`- Q: ${answer.question}`);
 		parts.push(`  A: ${response}`);
 	}

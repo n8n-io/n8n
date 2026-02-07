@@ -696,6 +696,14 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			}),
 		};
 
+		// If the modify-loop cap was reached, the subgraph exited with the
+		// last plan but planDecision is still 'modify'. Clear it so the
+		// parent router doesn't send the flow back to discovery again,
+		// which would reset the subgraph-local counter and bypass the cap.
+		const cappedModify =
+			subgraphOutput.planDecision === 'modify' &&
+			subgraphOutput.planModifyCount >= DiscoverySubgraph.MAX_PLAN_MODIFY_ITERATIONS;
+
 		return {
 			discoveryContext,
 			coordinationLog: [logEntry],
@@ -704,7 +712,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			// Propagate cached templates back to parent
 			cachedTemplates: subgraphOutput.cachedTemplates,
 			planOutput: subgraphOutput.planOutput,
-			planDecision: subgraphOutput.planDecision,
+			planDecision: cappedModify ? null : subgraphOutput.planDecision,
 			planFeedback: subgraphOutput.planFeedback,
 			planPrevious: subgraphOutput.planPrevious,
 			...(subgraphOutput.mode ? { mode: subgraphOutput.mode } : {}),

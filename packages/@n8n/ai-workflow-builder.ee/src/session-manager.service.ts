@@ -118,6 +118,31 @@ export class SessionManagerService {
 	}
 
 	/**
+	 * Remove HITL history entries whose afterMessageId references a message
+	 * that no longer exists in the surviving checkpoint messages.
+	 */
+	private truncateHitlHistory(threadId: string, survivingMessages: LangchainMessage[]) {
+		const history = this.hitlHistoryByThreadId.get(threadId);
+		if (!history || history.length === 0) return;
+
+		const survivingIds = new Set(
+			survivingMessages
+				.map((m) => m.additional_kwargs?.messageId as string | undefined)
+				.filter(Boolean),
+		);
+
+		const filtered = history.filter(
+			(entry) => !entry.afterMessageId || survivingIds.has(entry.afterMessageId),
+		);
+
+		if (filtered.length === 0) {
+			this.hitlHistoryByThreadId.delete(threadId);
+		} else {
+			this.hitlHistoryByThreadId.set(threadId, filtered);
+		}
+	}
+
+	/**
 	 * Inject HITL history entries into the formatted messages array at the
 	 * correct positions. Entries with the same afterMessageId are grouped
 	 * together in chronological order.
@@ -156,7 +181,7 @@ export class SessionManagerService {
 				{
 					role: 'user',
 					type: 'user_answers',
-					answers: entry.answers,
+					answers: Array.isArray(entry.answers) ? entry.answers : [],
 				},
 			];
 		}
@@ -348,6 +373,14 @@ export class SessionManagerService {
 			};
 
 			await this.checkpointer.put(threadConfig, updatedCheckpoint, metadata);
+
+			// Also prune HITL history entries that reference removed messages.
+			// Entries whose afterMessageId no longer exists in the surviving
+			// messages would fall back near the start and reappear as stale.
+			this.truncateHitlHistory(threadId, truncatedMessages);
+
+			// Clear any pending HITL interrupt that belongs to the truncated portion
+			this.clearPendingHitl(threadId);
 
 			this.logger?.debug('Messages truncated successfully', {
 				threadId,
