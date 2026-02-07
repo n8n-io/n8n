@@ -357,7 +357,7 @@ export = {
 	],
 	deactivateWorkflow: [
 		apiKeyHasScope('workflow:deactivate'),
-		projectScope('workflow:publish', 'workflow'),
+		projectScope('workflow:unpublish', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 

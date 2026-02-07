@@ -95,6 +95,16 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
+	async getPublishedPersonalWorkflowsCount(): Promise<number> {
+		return await this.createQueryBuilder('workflow')
+			.innerJoin('workflow.shared', 'shared')
+			.innerJoin('shared.project', 'project')
+			.where('workflow.activeVersionId IS NOT NULL')
+			.andWhere('project.type = :type', { type: 'personal' })
+			.andWhere('shared.role = :role', { role: 'workflow:owner' })
+			.getCount();
+	}
+
 	async hasAnyWorkflowsWithErrorWorkflow(): Promise<boolean> {
 		const qb = this.createQueryBuilder('workflow');
 

@@ -263,6 +263,53 @@ export function useWorkflowSaving({
 
 			uiStore.removeActiveAction('workflowSaving');
 
+			if (error.errorCode === 100) {
+				telemetry.track('User attempted to save locked workflow', {
+					workflowId: currentWorkflow,
+					sharing_role: getWorkflowProjectRole(currentWorkflow),
+				});
+
+				// Hide modal if we already showed it
+				// So that user could explore the workflow
+				if (!autosaveStore.conflictModalShown) {
+					if (autosaved) {
+						autosaveStore.setConflictModalShown(true);
+					}
+
+					const url = router.resolve({
+						name: VIEWS.WORKFLOW,
+						params: { name: currentWorkflow },
+					}).href;
+
+					const overwrite = await message.confirm(
+						i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
+							interpolate: {
+								url,
+							},
+						}),
+						i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
+						{
+							confirmButtonText: i18n.baseText(
+								'workflows.concurrentChanges.confirmMessage.confirmButtonText',
+							),
+							cancelButtonText: i18n.baseText(
+								'workflows.concurrentChanges.confirmMessage.cancelButtonText',
+							),
+						},
+					);
+
+					if (overwrite === MODAL_CONFIRM) {
+						return await saveCurrentWorkflow({ id, name, tags }, redirect, true);
+					}
+				}
+
+				// For autosaves, fall through to retry logic below
+				// As we want to still communicate autosave stopped working
+				if (!autosaved) {
+					return false;
+				}
+			}
+
 			// Handle autosave failures with exponential backoff
 			if (autosaved) {
 				autosaveStore.incrementRetry();
@@ -291,41 +338,6 @@ export function useWorkflowSaving({
 					type: 'error',
 					duration: retryDelay,
 				});
-
-				return false;
-			}
-
-			if (error.errorCode === 100) {
-				telemetry.track('User attempted to save locked workflow', {
-					workflowId: currentWorkflow,
-					sharing_role: getWorkflowProjectRole(currentWorkflow),
-				});
-
-				const url = router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { name: currentWorkflow },
-				}).href;
-
-				const overwrite = await message.confirm(
-					i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
-						interpolate: {
-							url,
-						},
-					}),
-					i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
-					{
-						confirmButtonText: i18n.baseText(
-							'workflows.concurrentChanges.confirmMessage.confirmButtonText',
-						),
-						cancelButtonText: i18n.baseText(
-							'workflows.concurrentChanges.confirmMessage.cancelButtonText',
-						),
-					},
-				);
-
-				if (overwrite === MODAL_CONFIRM) {
-					return await saveCurrentWorkflow({ id, name, tags }, redirect, true);
-				}
 
 				return false;
 			}

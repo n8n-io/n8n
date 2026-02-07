@@ -16,6 +16,7 @@ export const useWorkflowAutosaveStore = defineStore('workflowAutosave', () => {
 	const retryDelay = ref(RETRY_START_DELAY);
 	const isRetrying = ref(false);
 	const lastError = ref<string | null>(null);
+	const conflictModalShown = ref(false);
 
 	function setAutoSaveState(state: AutoSaveState) {
 		autoSaveState.value = state;
@@ -42,11 +43,16 @@ export const useWorkflowAutosaveStore = defineStore('workflowAutosave', () => {
 		lastError.value = error;
 	}
 
+	function setConflictModalShown(value: boolean) {
+		conflictModalShown.value = value;
+	}
+
 	function resetRetry() {
 		retryCount.value = 0;
 		retryDelay.value = RETRY_START_DELAY;
 		isRetrying.value = false;
 		lastError.value = null;
+		conflictModalShown.value = false;
 	}
 
 	function reset() {
@@ -62,12 +68,14 @@ export const useWorkflowAutosaveStore = defineStore('workflowAutosave', () => {
 		retryDelay,
 		isRetrying,
 		lastError,
+		conflictModalShown,
 		setAutoSaveState,
 		setPendingAutoSave,
 		incrementRetry,
 		getRetryDelay,
 		setRetrying,
 		setLastError,
+		setConflictModalShown,
 		resetRetry,
 		reset,
 	};
