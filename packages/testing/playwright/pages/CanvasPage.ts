@@ -118,10 +118,15 @@ export class CanvasPage extends BasePage {
 			closeNDV?: boolean;
 			action?: string;
 			trigger?: string;
+			fromNode?: string;
 		},
 	): Promise<void> {
-		// Always start with canvas plus button
-		await this.clickNodeCreatorPlusButton();
+		if (options?.fromNode) {
+			await this.clickNodePlusEndpoint(options.fromNode);
+		} else {
+			// Always start with canvas plus button
+			await this.clickNodeCreatorPlusButton();
+		}
 
 		// Search for and select the node, works on exact name match only
 		await this.fillNodeCreatorSearchBar(nodeName);
@@ -441,7 +446,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getPublishedIndicator(): Locator {
-		return this.page.getByTestId('workflow-active-version-indicator');
+		return this.page.getByRole('button', { name: 'Published' });
 	}
 
 	getLoadingMask(): Locator {
@@ -858,9 +863,17 @@ export class CanvasPage extends BasePage {
 			| 'ai_vectorRetriever'
 			| 'ai_vectorStore',
 		parentNodeName: string,
-		{ closeNDV = false, exactMatch = false }: { closeNDV?: boolean; exactMatch?: boolean } = {},
+		{
+			closeNDV = false,
+			exactMatch = false,
+			subcategory,
+		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
+
+		if (subcategory) {
+			await this.nodeCreator.navigateToSubcategory(subcategory);
+		}
 
 		if (exactMatch) {
 			await this.nodeCreatorNodeItems().getByText(childNodeName, { exact: true }).click();

@@ -9,18 +9,21 @@ import {
 	buildRecursionErrorWithWorkflowGuidance,
 	buildRecursionErrorNoWorkflowGuidance,
 	buildGeneralErrorGuidance,
-} from '@/prompts/agents/responder.prompt';
+	buildDataTableCreationGuidance,
+} from '@/prompts';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isAIMessage } from '../types/langchain';
 import type { SimpleWorkflow } from '../types/workflow';
+import { buildSimplifiedExecutionContext, buildWorkflowOverview } from '../utils/context-builders';
 import {
 	getErrorEntry,
 	getBuilderOutput,
-	getConfiguratorOutput,
 	hasRecursionErrorsCleared,
 } from '../utils/coordination-log';
+import { extractDataTableInfo } from '../utils/data-table-helpers';
+import type { ChatPayload } from '../workflow-builder-agent';
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -54,6 +57,8 @@ export interface ResponderContext {
 	workflowJSON: SimpleWorkflow;
 	/** Summary of previous conversation (from compaction) */
 	previousSummary?: string;
+	/** Workflow context with execution data */
+	workflowContext?: ChatPayload['workflowContext'];
 }
 
 /**
@@ -127,18 +132,30 @@ export class ResponderAgent {
 			);
 		}
 
-		// Builder output
+		// Builder output (handles both node creation and parameter configuration)
 		const builderOutput = getBuilderOutput(context.coordinationLog);
 		if (builderOutput) {
 			contextParts.push(`**Builder:** ${builderOutput}`);
 		} else if (context.workflowJSON.nodes.length) {
-			contextParts.push(`**Workflow:** ${context.workflowJSON.nodes.length} nodes created`);
+			// Provide workflow overview with Mermaid diagram and parameters
+			contextParts.push(`**Workflow:**\n${buildWorkflowOverview(context.workflowJSON)}`);
 		}
 
-		// Configurator output
-		const configuratorOutput = getConfiguratorOutput(context.coordinationLog);
-		if (configuratorOutput) {
-			contextParts.push(`**Configuration:**\n${configuratorOutput}`);
+		// Data Table creation guidance
+		// If the workflow contains Data Table nodes, inform user they need to create tables manually
+		const dataTableInfo = extractDataTableInfo(context.workflowJSON);
+		if (dataTableInfo.length > 0) {
+			const dataTableGuidance = buildDataTableCreationGuidance(dataTableInfo);
+			contextParts.push(dataTableGuidance);
+		}
+
+		// Execution status (simplified error info for user explanations)
+		if (context.workflowContext) {
+			const executionStatus = buildSimplifiedExecutionContext(
+				context.workflowContext,
+				context.workflowJSON.nodes,
+			);
+			contextParts.push(`**Execution Status:**\n${executionStatus}`);
 		}
 
 		if (contextParts.length === 0) {

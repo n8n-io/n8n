@@ -94,8 +94,8 @@ export class SamlService {
 		try {
 			// load preferences first but do not apply so as to not load samlify unnecessarily
 			await this.loadFromDbAndApplySamlPreferences(false);
-			await this.validator.init();
 			if (isSamlLicensedAndEnabled()) {
+				await this.validator.init();
 				await this.loadSamlify();
 				await this.loadFromDbAndApplySamlPreferences(true);
 			}
@@ -120,6 +120,7 @@ export class SamlService {
 	async loadSamlify() {
 		if (this.samlify === undefined) {
 			this.logger.debug('Loading samlify library into memory');
+			await this.validator.init();
 			this.samlify = await import('samlify');
 		}
 

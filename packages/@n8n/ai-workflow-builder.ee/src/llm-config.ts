@@ -52,6 +52,31 @@ export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 
 	return model;
 };
+export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) => {
+	const { ChatAnthropic } = await import('@langchain/anthropic');
+	const model = new ChatAnthropic({
+		model: 'claude-sonnet-4-5-20250929',
+		apiKey: config.apiKey,
+		maxTokens: MAX_OUTPUT_TOKENS,
+		anthropicApiUrl: config.baseUrl,
+		thinking: {
+			budget_tokens: 2056,
+			type: 'enabled',
+		},
+		clientOptions: {
+			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(config.baseUrl),
+			},
+		},
+	});
+
+	// Remove Langchain default topP parameter since Sonnet 4.5 doesn't allow setting both temperature and topP
+	delete model.topP;
+	delete model.temperature;
+
+	return model;
+};
 
 export const anthropicHaiku45 = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await import('@langchain/anthropic');
@@ -146,7 +171,7 @@ export const devstral = createOpenRouterModel('mistralai/devstral-small');
  *
  * Non-Anthropic models (OpenAI, OpenRouter) are available for evaluation/judging
  * purposes only. Using them for generation stages (supervisor, discovery, builder,
- * configurator, responder, parameterUpdater) will likely fail due to:
+ * responder, parameterUpdater) will likely fail due to:
  *
  * 1. Prompt caching: Our prompts use Anthropic's cache_control for efficiency
  * 2. Tool schemas: add_nodes and update_parameters tools use passthrough() schemas
@@ -163,6 +188,7 @@ export type ModelId =
 	// Native models
 	| 'claude-opus-4.5'
 	| 'claude-sonnet-4.5'
+	| 'claude-sonnet-4.5-think'
 	| 'claude-haiku-4.5'
 	| 'gpt-5.2'
 	// OpenRouter models
@@ -182,6 +208,7 @@ export const MODEL_FACTORIES: Record<
 	// Native models
 	'claude-opus-4.5': anthropicClaudeOpus45,
 	'claude-sonnet-4.5': anthropicClaudeSonnet45,
+	'claude-sonnet-4.5-think': anthropicClaudeSonnet45Think,
 	'claude-haiku-4.5': anthropicHaiku45,
 	'gpt-5.2': gpt52,
 	// OpenRouter models

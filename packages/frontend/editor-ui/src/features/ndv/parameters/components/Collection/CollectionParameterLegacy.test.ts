@@ -6,6 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 
 describe('CollectionParameterLegacy.vue', () => {
 	const pinia = createTestingPinia({
@@ -177,7 +178,7 @@ describe('CollectionParameterLegacy.vue', () => {
 			expect(select).toBeInTheDocument();
 		});
 
-		it('filters out already added options from dropdown', () => {
+		it('filters out already added options from dropdown', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...baseProps,
@@ -193,6 +194,7 @@ describe('CollectionParameterLegacy.vue', () => {
 					},
 				},
 			});
+			await flushPromises();
 
 			// When only one option remains, it shows as a button instead of dropdown
 			const addButton = getByTestId('collection-parameter-add');
@@ -201,13 +203,14 @@ describe('CollectionParameterLegacy.vue', () => {
 	});
 
 	describe('Read-only mode', () => {
-		it('does not render add controls when isReadOnly is true', () => {
+		it('does not render add controls when isReadOnly is true', async () => {
 			const { queryByTestId, queryByRole } = renderComponent({
 				props: {
 					...baseProps,
 					isReadOnly: true,
 				},
 			});
+			await flushPromises();
 
 			expect(queryByTestId('collection-parameter-add')).not.toBeInTheDocument();
 			expect(queryByRole('combobox')).not.toBeInTheDocument();
@@ -215,7 +218,7 @@ describe('CollectionParameterLegacy.vue', () => {
 	});
 
 	describe('Disabled state', () => {
-		it('disables dropdown when all options are added (multiple options)', () => {
+		it('disables dropdown when all options are added (multiple options)', async () => {
 			const { getByRole } = renderComponent({
 				props: {
 					...baseProps,
@@ -233,13 +236,14 @@ describe('CollectionParameterLegacy.vue', () => {
 					},
 				},
 			});
+			await flushPromises();
 
 			// When all options from multiple are added, it shows a dropdown (not a button)
 			const select = getByRole('combobox');
 			expect(select).toBeDisabled();
 		});
 
-		it('disables button when all options are added (single option)', () => {
+		it('disables button when all options are added (single option)', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...baseProps,
@@ -266,6 +270,7 @@ describe('CollectionParameterLegacy.vue', () => {
 					},
 				},
 			});
+			await flushPromises();
 
 			const addButton = getByTestId('collection-parameter-add');
 			expect(addButton).toBeDisabled();
@@ -273,7 +278,7 @@ describe('CollectionParameterLegacy.vue', () => {
 	});
 
 	describe('Collection values', () => {
-		it('handles INodePropertyCollection options', () => {
+		it('handles INodePropertyCollection options', async () => {
 			const collectionProps: Props = {
 				...baseProps,
 				parameter: {
@@ -298,11 +303,12 @@ describe('CollectionParameterLegacy.vue', () => {
 			const { container } = renderComponent({
 				props: collectionProps,
 			});
+			await flushPromises();
 
 			expect(container).toBeInTheDocument();
 		});
 
-		it('handles mixed INodeProperties and INodePropertyCollection options', () => {
+		it('handles mixed INodeProperties and INodePropertyCollection options', async () => {
 			const mixedProps: Props = {
 				...baseProps,
 				parameter: {
@@ -333,6 +339,7 @@ describe('CollectionParameterLegacy.vue', () => {
 			const { container } = renderComponent({
 				props: mixedProps,
 			});
+			await flushPromises();
 
 			expect(container).toBeInTheDocument();
 		});
@@ -358,9 +365,11 @@ describe('CollectionParameterLegacy.vue', () => {
 			const { getByTestId, emitted } = renderComponent({
 				props: singleOptionProps,
 			});
+			await flushPromises();
 
 			const addButton = getByTestId('collection-parameter-add');
 			await userEvent.click(addButton);
+			await flushPromises();
 
 			// Verify event was emitted
 			expect(emitted('valueChanged')).toBeDefined();
@@ -385,11 +394,13 @@ describe('CollectionParameterLegacy.vue', () => {
 			const { getByTestId } = renderComponent({
 				props: singleOptionProps,
 			});
+			await flushPromises();
 
 			const addButton = getByTestId('collection-parameter-add');
 			await userEvent.click(addButton);
 
 			await nextTick();
+			await flushPromises();
 
 			// Button should still be present (selection cleared internally)
 			expect(addButton).toBeInTheDocument();
@@ -397,7 +408,7 @@ describe('CollectionParameterLegacy.vue', () => {
 	});
 
 	describe('Placeholder text', () => {
-		it('uses parameter placeholder when available', () => {
+		it('uses parameter placeholder when available', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...baseProps,
@@ -414,6 +425,7 @@ describe('CollectionParameterLegacy.vue', () => {
 					},
 				},
 			});
+			await flushPromises();
 
 			const addButton = getByTestId('collection-parameter-add');
 			expect(addButton).toHaveTextContent('Add Field');
@@ -421,7 +433,7 @@ describe('CollectionParameterLegacy.vue', () => {
 	});
 
 	describe('Nested collections', () => {
-		it('renders correctly when isNested is true', () => {
+		it('renders correctly when isNested is true', async () => {
 			const { container } = renderComponent({
 				props: {
 					...baseProps,
@@ -438,13 +450,14 @@ describe('CollectionParameterLegacy.vue', () => {
 					},
 				},
 			});
+			await flushPromises();
 
 			expect(container).toBeInTheDocument();
 		});
 	});
 
 	describe('hideDelete prop', () => {
-		it('passes hideDelete to ParameterInputList', () => {
+		it('passes hideDelete to ParameterInputList', async () => {
 			const { container } = renderComponent({
 				props: {
 					...baseProps,
@@ -461,6 +474,7 @@ describe('CollectionParameterLegacy.vue', () => {
 					},
 				},
 			});
+			await flushPromises();
 
 			expect(container).toBeInTheDocument();
 		});

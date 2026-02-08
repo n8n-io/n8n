@@ -1,18 +1,18 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
 import type { ICredentialResolver } from '@n8n/decorators';
-import { Cipher } from 'n8n-core';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import { Cipher } from 'n8n-core';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { OauthService } from '@/oauth/oauth.service';
 import * as utils from '@test-integration/utils';
 
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
 import { DynamicCredentialResolverRegistry } from '../services';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 
 // Enable dynamic credentials feature flag
 process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
@@ -26,7 +26,7 @@ Container.set(LicenseState, licenseMock);
 mockInstance(DynamicCredentialsConfig, {
 	corsOrigin: 'https://app.example.com',
 	corsAllowCredentials: false,
-	endpointAuthToken: '',
+	endpointAuthToken: 'test-static-token',
 });
 
 const testServer = utils.setupTestServer({
@@ -135,6 +135,7 @@ describe('POST /credentials/:id/authorize - CORS Integration', () => {
 			.post(`/credentials/${credentialId}/authorize?resolverId=${resolverId}`)
 			.set('Origin', 'https://app.example.com')
 			.set('Authorization', 'Bearer test-token')
+			.set('X-Authorization', 'Bearer test-static-token')
 			.send();
 
 		// Note: The test doesn't verify the full OAuth2 flow, just CORS headers
@@ -149,6 +150,7 @@ describe('POST /credentials/:id/authorize - CORS Integration', () => {
 		const response = await testServer.authlessAgent
 			.post(`/credentials/${credentialId}/authorize?resolverId=${resolverId}`)
 			.set('Authorization', 'Bearer test-token')
+			.set('X-Authorization', 'Bearer test-static-token')
 			.send();
 		// Explicitly NOT setting Origin header
 
@@ -181,6 +183,7 @@ describe('POST /credentials/:id/authorize - CORS Integration', () => {
 			.post(`/credentials/${credentialId}/authorize?resolverId=${resolverId}`)
 			.set('Origin', 'https://evil.com')
 			.set('Authorization', 'Bearer test-token')
+			.set('X-Authorization', 'Bearer test-static-token')
 			.send();
 
 		// With disallowed origin, request may succeed but CORS headers should not be set
@@ -250,7 +253,8 @@ describe('DELETE /credentials/:id/revoke - CORS Integration', () => {
 		const response = await testServer.authlessAgent
 			.delete(`/credentials/${credentialId}/revoke?resolverId=${resolverId}`)
 			.set('Origin', 'https://app.example.com')
-			.set('Authorization', 'Bearer test-token');
+			.set('Authorization', 'Bearer test-token')
+			.set('X-Authorization', 'Bearer test-static-token');
 
 		// Note: The test doesn't verify the full deletion flow, just CORS headers
 		// A 400 may occur if validation fails, but we still check CORS headers
@@ -316,7 +320,8 @@ describe('GET /workflows/:workflowId/execution-status - CORS Integration', () =>
 		const response = await testServer.authlessAgent
 			.get(`/workflows/${workflowId}/execution-status`)
 			.set('Origin', 'https://app.example.com')
-			.set('Authorization', 'Bearer test-token');
+			.set('Authorization', 'Bearer test-token')
+			.set('X-Authorization', 'Bearer test-static-token');
 
 		expect(response.status).toBe(200);
 		expect(response.headers['access-control-allow-origin']).toBe('https://app.example.com');

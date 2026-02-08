@@ -123,7 +123,6 @@ export class CreateTable extends TableOperation {
 				...(uniqueConstraints.size ? { uniques: [...uniqueConstraints] } : {}),
 				...(foreignKeys.size ? { foreignKeys: [...foreignKeys] } : {}),
 				...(checks.size ? { checks: [...checks] } : {}),
-				...('mysql' in driver ? { engine: 'InnoDB' } : {}),
 			}),
 			true,
 		);

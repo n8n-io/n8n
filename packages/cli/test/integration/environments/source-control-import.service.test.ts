@@ -88,7 +88,6 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(),
-			mock(),
 			credentialsRepository,
 			projectRepository,
 			mock(),
@@ -105,7 +104,6 @@ describe('SourceControlImportService', () => {
 			folderRepository,
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
 			sourceControlScopedService,
-			mock(),
 			workflowHistoryService,
 		);
 	});
@@ -1102,6 +1100,128 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
+	describe('importTagsFromWorkFolder()', () => {
+		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
+		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const mockTagsFile = '/mock/tags.json';
+
+		const standardTags = [
+			{ id: 'tag-1', name: 'Tag 1' },
+			{ id: 'tag-2', name: 'Tag 2' },
+		];
+
+		function setupTagsFileMock(mappings: Array<{ tagId: string; workflowId: string }>): void {
+			globMock.mockResolvedValue([mockTagsFile]);
+			fsReadFile.mockResolvedValue(JSON.stringify({ tags: standardTags, mappings }));
+		}
+
+		function createTagsCandidate(): ReturnType<typeof mock<SourceControlledFile>> {
+			return mock<SourceControlledFile>({ id: 'tags', file: mockTagsFile, type: 'tags' });
+		}
+
+		async function getMappingsForWorkflow(workflowId: string) {
+			return await workflowTagMappingRepository.findBy({ workflowId });
+		}
+
+		it('should remove tags from workflows when they are removed in source control', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const workflow1 = await createWorkflowWithHistory(
+				{ id: 'workflow-1', name: 'Workflow 1' },
+				teamProject,
+			);
+			const [tag1, tag2] = await Promise.all([
+				createTag({ id: 'tag-1', name: 'Tag 1' }),
+				createTag({ id: 'tag-2', name: 'Tag 2' }),
+			]);
+
+			await assignTagToWorkflow(tag1, workflow1);
+			await assignTagToWorkflow(tag2, workflow1);
+			expect(await getMappingsForWorkflow(workflow1.id)).toHaveLength(2);
+
+			setupTagsFileMock([{ tagId: 'tag-1', workflowId: 'workflow-1' }]);
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			const finalMappings = await getMappingsForWorkflow(workflow1.id);
+			expect(finalMappings).toHaveLength(1);
+			expect(finalMappings[0].tagId).toBe('tag-1');
+
+			const tagsInDb = await tagRepository.find();
+			expect(tagsInDb).toHaveLength(2);
+		});
+
+		it('should only delete mappings for workflows present in the imported data', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const [workflow1, workflow2] = await Promise.all([
+				createWorkflowWithHistory({ id: 'workflow-1', name: 'Workflow 1' }, teamProject),
+				createWorkflowWithHistory({ id: 'workflow-2', name: 'Workflow 2' }, teamProject),
+			]);
+			const [tag1, tag2] = await Promise.all([
+				createTag({ id: 'tag-1', name: 'Tag 1' }),
+				createTag({ id: 'tag-2', name: 'Tag 2' }),
+			]);
+
+			await assignTagToWorkflow(tag1, workflow1);
+			await assignTagToWorkflow(tag2, workflow1);
+			await assignTagToWorkflow(tag1, workflow2);
+
+			setupTagsFileMock([{ tagId: 'tag-1', workflowId: 'workflow-1' }]);
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			const workflow1Mappings = await getMappingsForWorkflow(workflow1.id);
+			expect(workflow1Mappings).toHaveLength(1);
+			expect(workflow1Mappings[0].tagId).toBe('tag-1');
+
+			const workflow2Mappings = await getMappingsForWorkflow(workflow2.id);
+			expect(workflow2Mappings).toHaveLength(1);
+			expect(workflow2Mappings[0].tagId).toBe('tag-1');
+		});
+
+		it('should remove all tags from a workflow when it ends up with zero tags', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const workflow1 = await createWorkflowWithHistory(
+				{ id: 'workflow-1', name: 'Workflow 1' },
+				teamProject,
+			);
+			const [tag1, tag2] = await Promise.all([
+				createTag({ id: 'tag-1', name: 'Tag 1' }),
+				createTag({ id: 'tag-2', name: 'Tag 2' }),
+			]);
+
+			await assignTagToWorkflow(tag1, workflow1);
+			await assignTagToWorkflow(tag2, workflow1);
+			expect(await getMappingsForWorkflow(workflow1.id)).toHaveLength(2);
+
+			// First, the tags file is read
+			fsReadFile.mockResolvedValueOnce(JSON.stringify({ tags: standardTags, mappings: [] }));
+
+			// Then workflow files are read via getRemoteVersionIdsFromFiles
+			const mockWorkflowFile = '/mock/workflows/workflow-1.json';
+			globMock.mockResolvedValueOnce([mockWorkflowFile]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					id: 'workflow-1',
+					name: 'Workflow 1',
+					nodes: [],
+					connections: {},
+					versionId: '1',
+				}),
+			);
+
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			// All mappings should be removed
+			const finalMappings = await getMappingsForWorkflow(workflow1.id);
+			expect(finalMappings).toHaveLength(0);
+
+			// Tags themselves should still exist
+			const tagsInDb = await tagRepository.find();
+			expect(tagsInDb).toHaveLength(2);
+		});
+	});
+
 	describe('importCredentialsFromWorkFolder()', () => {
 		describe('if user email specified by `ownedBy` exists at target instance', () => {
 			it('should assign credential ownership to original user', async () => {
@@ -1556,7 +1676,9 @@ describe('SourceControlImportService', () => {
 				expect(historyRecord).toBeTruthy();
 				expect(historyRecord?.nodes).toEqual(workflow.nodes);
 				expect(historyRecord?.connections).toEqual(workflow.connections);
-				expect(historyRecord?.authors).toBe(`${importingUser.firstName} ${importingUser.lastName}`);
+				expect(historyRecord?.authors).toBe(
+					`import by ${importingUser.firstName} ${importingUser.lastName}`,
+				);
 			});
 
 			it('should update workflow history when versionId exists but nodes changed', async () => {
@@ -1615,7 +1737,9 @@ describe('SourceControlImportService', () => {
 
 				expect(historyRecord).toBeTruthy();
 				expect(historyRecord?.nodes).toEqual(updatedNodes);
-				expect(historyRecord?.authors).toBe(`${importingUser.firstName} ${importingUser.lastName}`);
+				expect(historyRecord?.authors).toBe(
+					`import by ${importingUser.firstName} ${importingUser.lastName}`,
+				);
 			});
 
 			it('should not update workflow history when versionId exists and content unchanged', async () => {
@@ -1666,6 +1790,63 @@ describe('SourceControlImportService', () => {
 				expect(historyAfter).toBeTruthy();
 				expect(historyAfter?.authors).toBe(historyBefore?.authors); // Should not have changed
 				expect(historyAfter?.updatedAt?.getTime()).toBe(historyBefore?.updatedAt?.getTime());
+			});
+
+			it('should skip workflow when missing versionId', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport();
+				delete workflow.versionId;
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(result).toEqual([]);
+
+				// Verify workflow was not created in database
+				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
+				expect(workflowInDb).toBeNull();
+			});
+
+			it('should skip workflow when missing nodes', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport();
+				const { nodes, ...workflowWithoutNodes } = workflow;
+				const file = putWorkflowFile(workflow.id, workflowWithoutNodes as IWorkflowToImport);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(result).toEqual([]);
+
+				// Verify workflow was not created in database
+				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
+				expect(workflowInDb).toBeNull();
+			});
+
+			it('should skip workflow when missing connections', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport();
+				const { connections, ...workflowWithoutConnections } = workflow;
+				const file = putWorkflowFile(workflow.id, workflowWithoutConnections as IWorkflowToImport);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(result).toEqual([]);
+
+				// Verify workflow was not created in database
+				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
+				expect(workflowInDb).toBeNull();
 			});
 		});
 	});

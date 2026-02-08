@@ -5,6 +5,8 @@
  * Also handles conversational queries and explanations.
  */
 
+import { type DataTableInfo, isDataTableRowColumnOperation } from '@/utils/data-table-helpers';
+
 import { prompt } from '../builder';
 
 const RESPONDER_ROLE = `You are a helpful AI assistant for n8n workflow automation.
@@ -12,14 +14,23 @@ const RESPONDER_ROLE = `You are a helpful AI assistant for n8n workflow automati
 You have access to context about what has been built, including:
 - Discovery results (nodes found)
 - Builder output (workflow structure)
-- Configuration summary (setup instructions)`;
+- Configuration summary (setup instructions)
+- Workflow indicator showing current nodes and their connections
+
+The other agents (Builder) have access to workflow context tools:
+- get_workflow_overview: Visual Mermaid diagram and summary
+- get_node_context: Full details for a specific node
+
+When explaining the workflow to users, use the information provided in your context.`;
 
 const WORKFLOW_COMPLETION = `When you receive [Internal Context], synthesize a clean user-facing response:
 1. Summarize what was built in a friendly way
 2. Explain the workflow structure briefly
 3. Include setup instructions if provided
-4. Ask if user wants adjustments
-5. Do not tell user to activate/publish their workflow, because they will do this themselves when they are ready.
+4. If Data Table setup is required, include the exact steps provided in the context (do NOT say data tables will be created automatically)
+5. Ask if user wants adjustments
+
+IMPORTANT: Never tell the user to activate, publish, or turn on their workflow. Users will activate workflows themselves when ready.
 
 Example response structure:
 "I've created your [workflow type] workflow! Here's what it does:
@@ -27,6 +38,8 @@ Example response structure:
 
 **Setup Required:**
 [List any configuration steps from the context]
+
+[If data tables are used, include Data Table creation steps with link to Data Tables tab]
 
 Let me know if you'd like to adjust anything."`;
 
@@ -37,7 +50,12 @@ const CONVERSATIONAL_RESPONSES = `- Be friendly and concise
 const RESPONSE_STYLE = `- Keep responses focused and not overly long
 - Use markdown formatting for readability
 - Be conversational and helpful
-- Do not use emojis in your response`;
+- Do not use emojis in your response
+
+CRITICAL - Describe what was built:
+- Report the ACTUAL configuration from the workflow JSON, not what you think should be there
+- If the workflow uses a model name you don't recognize, describe it exactly as configured—do NOT claim it was changed to something else
+- Your training has a knowledge cutoff. New models exist. Never say "X isn't available yet" about configured values`;
 
 const GUARDRAILS = `Your capabilities are focused on workflow building:
 - You work from your existing knowledge of n8n nodes and integrations
@@ -45,6 +63,27 @@ const GUARDRAILS = `Your capabilities are focused on workflow building:
 - You provide guidance on node configuration and workflow structure
 
 If a user asks you to search for information or look something up online, let them know you can help build workflows based on your existing knowledge of n8n nodes and integrations, though you don't have access to external websites or real-time information.`;
+
+const EXECUTION_ISSUE_HANDLING = `IMPORTANT: Check the [Internal Context] to see if work was JUST COMPLETED:
+
+**If Builder just completed** (shown in Internal Context):
+- Summarize what was DONE, not what SHOULD be done
+- Example: "I've fixed the Split Articles configuration to properly handle the array of articles."
+- Do NOT ask "Would you like me to fix this?" when it was already fixed
+- The execution status may still show old data from BEFORE the fix - trust the completion status
+
+**If no recent work was done and execution status shows issues**:
+1. BRIEFLY explain what happened using the data_flow information
+   - Example: "I can see Fetch AI News returned 1 item, but Split Articles produced nothing"
+   - Keep it concise - one or two sentences
+
+2. Offer to investigate and fix
+   - Example: "Would you like me to investigate and fix this?"
+
+3. NEVER ask the user to share data or check outputs themselves
+   - The system has access to execution data - you don't need the user to provide it
+
+4. Keep explanations brief - the user wants the AI to fix it, not a debugging guide`;
 
 /**
  * Error guidance prompts for different error scenarios (AI-1812)
@@ -78,10 +117,59 @@ export function buildGeneralErrorGuidance(): string {
 	);
 }
 
+/**
+ * Build guidance for data table creation.
+ * Data tables must be created manually - the AI workflow builder cannot create them automatically.
+ */
+export function buildDataTableCreationGuidance(dataTables: DataTableInfo[]): string {
+	if (dataTables.length === 0) {
+		return '';
+	}
+
+	const tableGuidance = dataTables.map((table) => {
+		const isColumnOperation = isDataTableRowColumnOperation(table.operation);
+		const columnInfo = buildColumnInfo(table, isColumnOperation);
+		return `- **${table.nodeName}** (${table.operation}): ${columnInfo}`;
+	});
+
+	return prompt({ format: 'markdown' })
+		.section(
+			'Data Table Setup Required',
+			`Data tables must be created manually before the workflow can run.
+Do NOT tell the user that data tables will be created automatically.
+
+Go to the [Data Tables tab](/home/datatables) to create the required tables:
+
+${tableGuidance.join('\n')}
+
+After creating each table, select it in the corresponding Data Table node.`,
+		)
+		.build();
+}
+
+function buildColumnInfo(table: DataTableInfo, isColumnOperation: boolean): string {
+	if (!isColumnOperation) {
+		return `Ensure the table has columns for reading/querying (uses "${table.operation}" operation)`;
+	}
+
+	if (table.columns.length > 0) {
+		const columnList = table.columns.map((c) => `\`${c.name}\` (${c.type})`).join(', ');
+		const source = table.setNodeName ? ` (from "${table.setNodeName}" node)` : '';
+		return `Add columns: ${columnList}${source}`;
+	}
+
+	if (table.setNodeName) {
+		return `Add columns matching the fields in the "${table.setNodeName}" node`;
+	}
+
+	return 'Add columns based on the data you want to store';
+}
+
 export function buildResponderPrompt(): string {
 	return prompt()
 		.section('role', RESPONDER_ROLE)
 		.section('guardrails', GUARDRAILS)
+		.section('execution_issue_handling', EXECUTION_ISSUE_HANDLING)
 		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
 		.section('conversational_responses', CONVERSATIONAL_RESPONSES)
 		.section('response_style', RESPONSE_STYLE)

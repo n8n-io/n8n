@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 
 import { STORES } from '@n8n/stores';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/app/push-connection/useWebSocketClient';
@@ -25,6 +26,9 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	/** Whether the connection has been requested */
 	const isConnectionRequested = ref(false);
+
+	/** Whether the connection is currently being established */
+	const isConnecting = ref(false);
 
 	const onMessageReceivedHandlers = ref<OnPushMessageHandler[]>([]);
 
@@ -96,7 +100,8 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	 * Debounce window in ms for disconnect. If pushConnect is called within this
 	 * window (before or after pushDisconnect), the connection is kept.
 	 */
-	const DISCONNECT_DEBOUNCE_MS = 500;
+	const getDisconnectDebounceMs = () =>
+		getDebounceTime(DEBOUNCE_TIME.CONNECTION.WEBSOCKET_DISCONNECT);
 
 	/**
 	 * Tracks whether a connect was recently requested. Used to handle race conditions
@@ -125,7 +130,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		connectIntentTimeout = setTimeout(() => {
 			recentConnectIntent = false;
 			connectIntentTimeout = null;
-		}, DISCONNECT_DEBOUNCE_MS);
+		}, getDisconnectDebounceMs());
 
 		// Cancel any pending disconnect timeout
 		if (disconnectTimeout) {
@@ -134,6 +139,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		}
 
 		isConnectionRequested.value = true;
+		isConnecting.value = true;
 		client.value.connect();
 	};
 
@@ -156,14 +162,19 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 				return;
 			}
 			isConnectionRequested.value = false;
+			isConnecting.value = false;
 			client.value.disconnect();
 			disconnectTimeout = null;
-		}, DISCONNECT_DEBOUNCE_MS);
+		}, getDisconnectDebounceMs());
 	};
 
 	watch(
 		() => client.value.isConnected.value,
 		(didConnect) => {
+			if (didConnect) {
+				isConnecting.value = false;
+			}
+
 			if (!didConnect) {
 				return;
 			}
@@ -187,6 +198,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	return {
 		isConnected,
+		isConnecting,
 		isConnectionRequested,
 		onMessageReceivedHandlers,
 		addEventListener,

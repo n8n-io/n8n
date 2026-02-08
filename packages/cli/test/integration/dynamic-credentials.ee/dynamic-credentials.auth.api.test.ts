@@ -1,9 +1,10 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import nock from 'nock';
 
 import * as utils from '../shared/utils';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
@@ -44,8 +45,13 @@ const setupWorkflow = async () => {
 
 	const resolver = await resolverService.create({
 		name: 'Test Resolver',
-		type: 'credential-resolver.stub-1.0',
-		config: { prefix: 'test-' },
+		type: 'credential-resolver.oauth2-1.0',
+		config: {
+			metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			validation: 'oauth2-introspection',
+		},
 		user: owner,
 	});
 
@@ -69,20 +75,46 @@ const setupWorkflow = async () => {
 			role: 'credential:owner',
 		},
 	);
-	return { savedCredential, resolver };
+	return { savedCredential, resolver, owner };
 };
 
 describe('Dynamic Credentials API', () => {
 	let savedCredential: CredentialsEntity;
 	let resolver: DynamicCredentialResolver;
+	let owner: User;
 
 	beforeAll(async () => {
+		// Mock OAuth metadata endpoint for resolver validation
+		nock.cleanAll();
+		nock('https://auth.example.com')
+			.persist()
+			.get('/.well-known/openid-configuration')
+			.reply(200, {
+				issuer: 'https://auth.example.com',
+				introspection_endpoint: 'https://auth.example.com/oauth/introspect',
+				introspection_endpoint_auth_methods_supported: [
+					'client_secret_basic',
+					'client_secret_post',
+				],
+			});
+
+		// Mock OAuth introspection endpoint for identity validation
+		nock('https://auth.example.com')
+			.persist()
+			.post('/oauth/introspect')
+			.reply(200, {
+				active: true,
+				sub: 'user-123',
+				exp: Math.floor(Date.now() / 1000) + 3600,
+			});
+
 		await testDb.truncate(['User', 'CredentialsEntity', 'DynamicCredentialResolver']);
 
-		({ savedCredential, resolver } = await setupWorkflow());
+		({ savedCredential, resolver, owner } = await setupWorkflow());
 	});
 
 	afterAll(async () => {
+		nock.cleanAll();
 		await testDb.terminate();
 		testServer.httpServer.close();
 	});
@@ -173,6 +205,64 @@ describe('Dynamic Credentials API', () => {
 					.set('Authorization', 'Bearer test-token')
 					.set('X-Authorization', 'Bearer ')
 					.expect(401);
+			});
+		});
+	});
+
+	describe('Cookie Authentication Bypass', () => {
+		describe('POST /credentials/:id/authorize', () => {
+			describe('when a user is authenticated via cookie', () => {
+				it('should allow access without static auth token', async () => {
+					const response = await testServer
+						.authAgentFor(owner)
+						.post(`/credentials/${savedCredential.id}/authorize`)
+						.query({ resolverId: resolver.id })
+						.set('Authorization', 'Bearer test-token')
+						// Note: NO X-Authorization header provided
+						.expect(200);
+
+					expect(response.body.data).toBeDefined();
+					expect(typeof response.body.data).toBe('string');
+					expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+				});
+
+				it('should allow access even with invalid static token if cookie auth succeeds', async () => {
+					const response = await testServer
+						.authAgentFor(owner)
+						.post(`/credentials/${savedCredential.id}/authorize`)
+						.query({ resolverId: resolver.id })
+						.set('Authorization', 'Bearer test-token')
+						.set('X-Authorization', 'Bearer invalid-static-token') // Invalid token
+						.expect(200);
+
+					expect(response.body.data).toBeDefined();
+					expect(typeof response.body.data).toBe('string');
+					expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+				});
+			});
+		});
+
+		describe('DELETE /credentials/:id/revoke', () => {
+			describe('when a user is authenticated via cookie', () => {
+				it('should allow access without static auth token', async () => {
+					await testServer
+						.authAgentFor(owner)
+						.delete(`/credentials/${savedCredential.id}/revoke`)
+						.query({ resolverId: resolver.id })
+						.set('Authorization', 'Bearer test-token')
+						// Note: NO X-Authorization header provided
+						.expect(204);
+				});
+
+				it('should allow access even with invalid static token if cookie auth succeeds', async () => {
+					await testServer
+						.authAgentFor(owner)
+						.delete(`/credentials/${savedCredential.id}/revoke`)
+						.query({ resolverId: resolver.id })
+						.set('Authorization', 'Bearer test-token')
+						.set('X-Authorization', 'Bearer invalid-static-token') // Invalid token
+						.expect(204);
+				});
 			});
 		});
 	});

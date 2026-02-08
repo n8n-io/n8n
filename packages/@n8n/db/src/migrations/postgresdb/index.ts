@@ -136,6 +136,11 @@ import { AddChatMessageIndices1766068346315 } from '../common/1766068346315-AddC
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
+import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
+import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
+import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769698710000-CreateWorkflowPublishedVersionTable';
+import { ExpandSubjectIDColumnLength1769784356000 } from '../common/1769784356000-ExpandSubjectIDColumnLength';
+import { AddWorkflowUnpublishScopeToCustomRoles1769900001000 } from '../common/1769900001000-AddWorkflowUnpublishScopeToCustomRoles';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -277,4 +282,9 @@ export const postgresMigrations: Migration[] = [
 	ExpandModelColumnLength1768402473068,
 	AddStoredAtToExecutionEntity1768557000000,
 	AddDynamicCredentialUserEntryTable1768901721000,
+	AddPublishedVersionIdToWorkflowDependency1769000000000,
+	CreateSecretsProviderConnectionTables1769433700000,
+	CreateWorkflowPublishedVersionTable1769698710000,
+	ExpandSubjectIDColumnLength1769784356000,
+	AddWorkflowUnpublishScopeToCustomRoles1769900001000,
 ];

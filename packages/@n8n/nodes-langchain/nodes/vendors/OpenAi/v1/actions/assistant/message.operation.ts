@@ -27,6 +27,7 @@ import { assistantRLC } from '../descriptions';
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
+import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
@@ -179,6 +180,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		timeout: number;
 		preserveOriginalTools?: boolean;
 	};
+
+	if (options.baseURL) {
+		checkDomainRestrictions(this, credentials, options.baseURL);
+	}
 
 	const baseURL = (options.baseURL ?? credentials.url) as string;
 	const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);

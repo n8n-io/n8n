@@ -14,7 +14,6 @@ import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { rmSync } from 'fs';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
@@ -28,6 +27,7 @@ import {
 	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
+	SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE,
 } from './constants';
 import {
 	getCredentialExportPath,
@@ -49,6 +49,7 @@ import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import { ExportableVariable } from './types/exportable-variable';
+import chunk from 'lodash/chunk';
 
 @Service()
 export class SourceControlExportService {
@@ -98,9 +99,9 @@ export class SourceControlExportService {
 		}
 	}
 
-	rmFilesFromExportFolder(filesToBeDeleted: Set<string>): Set<string> {
+	async rmFilesFromExportFolder(filesToBeDeleted: Set<string>): Promise<Set<string>> {
 		try {
-			filesToBeDeleted.forEach((e) => rmSync(e));
+			await Promise.all([...filesToBeDeleted].map(async (e) => await fsRm(e)));
 		} catch (error) {
 			this.logger.error(`Failed to delete workflows from work folder: ${(error as Error).message}`);
 		}
@@ -111,25 +112,28 @@ export class SourceControlExportService {
 		workflowsToBeExported: IWorkflowDb[],
 		owners: Record<string, RemoteResourceOwner>,
 	) {
-		await Promise.all(
-			workflowsToBeExported.map(async (e) => {
-				const fileName = this.getWorkflowPath(e.id);
-				const sanitizedWorkflow: ExportableWorkflow = {
-					id: e.id,
-					name: e.name,
-					nodes: e.nodes,
-					connections: e.connections,
-					settings: e.settings,
-					triggerCount: e.triggerCount,
-					versionId: e.versionId,
-					owner: owners[e.id],
-					parentFolderId: e.parentFolder?.id ?? null,
-					isArchived: e.isArchived,
-				};
-				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
-				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
-			}),
-		);
+		const workflowChunks = chunk(workflowsToBeExported, SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE);
+		for (const workflowChunk of workflowChunks) {
+			await Promise.all(
+				workflowChunk.map(async (workflow) => {
+					const fileName = this.getWorkflowPath(workflow.id);
+					const sanitizedWorkflow: ExportableWorkflow = {
+						id: workflow.id,
+						name: workflow.name,
+						nodes: workflow.nodes,
+						connections: workflow.connections,
+						settings: workflow.settings,
+						triggerCount: workflow.triggerCount,
+						versionId: workflow.versionId,
+						owner: owners[workflow.id],
+						parentFolderId: workflow.parentFolder?.id ?? null,
+						isArchived: workflow.isArchived,
+					};
+					this.logger.debug(`Writing workflow ${workflow.id} to ${fileName}`);
+					return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
+				}),
+			);
+		}
 	}
 
 	async exportWorkflowsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {

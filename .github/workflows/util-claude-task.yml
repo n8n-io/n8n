@@ -35,7 +35,7 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: 'echo "Skipping build - Claude will build if needed"'
+          build-command: ''
 
       - name: Create working branch
         run: |

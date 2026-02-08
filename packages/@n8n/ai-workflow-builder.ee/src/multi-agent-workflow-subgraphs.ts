@@ -9,16 +9,19 @@ import { SupervisorAgent } from './agents/supervisor.agent';
 import {
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_BUILDER_ITERATIONS,
-	MAX_CONFIGURATOR_ITERATIONS,
 	MAX_DISCOVERY_ITERATIONS,
 } from './constants';
 import { ParentGraphState } from './parent-graph-state';
 import { BuilderSubgraph } from './subgraphs/builder.subgraph';
-import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
+import type { ResourceLocatorCallback } from './types/callbacks';
 import type { SubgraphPhase } from './types/coordination';
-import { createErrorMetadata } from './types/coordination';
+import {
+	createErrorMetadata,
+	createResponderMetadata,
+	isSubgraphPhase,
+} from './types/coordination';
 import { getNextPhaseFromLog, hasErrorInLog } from './utils/coordination-log';
 import { processOperations } from './utils/operations-processor';
 import {
@@ -32,6 +35,23 @@ import {
 import type { BuilderFeatureFlags, StageLLMs } from './workflow-builder-agent';
 
 /**
+ * Type guard to check if a value is a coordination log entry-like object.
+ * Validates the required fields without requiring the full CoordinationLogEntry type.
+ */
+function isCoordinationLogEntry(
+	value: unknown,
+): value is { phase: SubgraphPhase; status: string; timestamp: number; summary: string } {
+	if (typeof value !== 'object' || value === null) return false;
+	const obj = value as Record<string, unknown>;
+	return (
+		typeof obj.phase === 'string' &&
+		typeof obj.status === 'string' &&
+		typeof obj.timestamp === 'number' &&
+		typeof obj.summary === 'string'
+	);
+}
+
+/**
  * Maps routing decisions to graph node names.
  * Used by both supervisor (LLM-based) and process_operations (deterministic) routing.
  */
@@ -40,7 +60,6 @@ function routeToNode(next: string): string {
 		responder: 'responder',
 		discovery: 'discovery_subgraph',
 		builder: 'builder_subgraph',
-		configurator: 'configurator_subgraph',
 	};
 	return nodeMapping[next] ?? 'responder';
 }
@@ -57,11 +76,14 @@ export interface MultiAgentSubgraphConfig {
 	featureFlags?: BuilderFeatureFlags;
 	/** Callback invoked when a successful generation completes (e.g., for credit deduction) */
 	onGenerationSuccess?: () => Promise<void>;
+	/** Callback for fetching resource locator options */
+	resourceLocatorCallback?: ResourceLocatorCallback;
 }
 
 /**
  * Creates a subgraph node handler with standardized error handling.
  * Accepts RunnableConfig as second parameter to propagate callbacks for tracing.
+ * Logs in_progress entry at start and completed entry at end for timing metrics.
  */
 function createSubgraphNodeHandler<
 	TSubgraph extends BaseSubgraph<unknown, Record<string, unknown>, Record<string, unknown>>,
@@ -73,6 +95,16 @@ function createSubgraphNodeHandler<
 	recursionLimit?: number,
 ) {
 	return async (state: typeof ParentGraphState.State, config?: RunnableConfig) => {
+		// Extract phase from subgraph name (e.g., 'discovery_subgraph' → 'discovery')
+		const extractedPhase = name.replace('_subgraph', '');
+		if (!isSubgraphPhase(extractedPhase)) {
+			throw new Error(`Invalid subgraph phase extracted from name "${name}": "${extractedPhase}"`);
+		}
+		const phase: SubgraphPhase = extractedPhase;
+
+		// Record start time for timing metrics
+		const startTimestamp = Date.now();
+
 		try {
 			const input = subgraph.transformInput(state);
 			// Merge parent config (callbacks, metadata) with recursionLimit
@@ -83,16 +115,31 @@ function createSubgraphNodeHandler<
 			const result = await compiledGraph.invoke(input, invokeConfig);
 			const output = subgraph.transformOutput(result, state);
 
-			return output;
+			// Prepend in_progress entry to coordination log for timing calculation
+			const inProgressEntry = {
+				phase,
+				status: 'in_progress' as const,
+				timestamp: startTimestamp,
+				summary: `Starting ${phase}`,
+				metadata: { phase } as { phase: 'discovery' } | { phase: 'builder' },
+			};
+
+			// Extract coordination log from output, filtering to valid entries using type guard
+			const outputLogRaw = Array.isArray(output.coordinationLog) ? output.coordinationLog : [];
+			const outputCoordinationLog = outputLogRaw.filter(isCoordinationLogEntry);
+
+			return {
+				...output,
+				// Prepend in_progress entry before completed entry from transformOutput
+				coordinationLog: [inProgressEntry, ...outputCoordinationLog],
+			};
 		} catch (error) {
 			logger?.error(`[${name}] ERROR:`, { error });
 			const errorMessage =
 				error instanceof Error ? error.message : `An error occurred in ${name}: ${String(error)}`;
 
-			// Extract phase from subgraph name (e.g., 'discovery_subgraph' → 'discovery')
-			const phase = name.replace('_subgraph', '') as SubgraphPhase;
-
 			// Route to responder to report error (terminal)
+			// Include in_progress entry for timing even on errors
 			// Add error entry to coordination log so getNextPhaseFromLog routes to responder
 			return {
 				nextPhase: 'responder',
@@ -103,6 +150,13 @@ function createSubgraphNodeHandler<
 					}),
 				],
 				coordinationLog: [
+					{
+						phase,
+						status: 'in_progress' as const,
+						timestamp: startTimestamp,
+						summary: `Starting ${phase}`,
+						metadata: { phase } as { phase: 'discovery' } | { phase: 'builder' },
+					},
 					{
 						phase,
 						status: 'error' as const,
@@ -135,6 +189,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 		featureFlags,
 		onGenerationSuccess,
+		resourceLocatorCallback,
 	} = config;
 
 	const supervisorAgent = new SupervisorAgent({ llm: stageLLMs.supervisor });
@@ -143,7 +198,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	// Create subgraph instances
 	const discoverySubgraph = new DiscoverySubgraph();
 	const builderSubgraph = new BuilderSubgraph();
-	const configuratorSubgraph = new ConfiguratorSubgraph();
 
 	// Compile subgraphs with per-stage LLMs
 	const compiledDiscovery = discoverySubgraph.create({
@@ -155,16 +209,11 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const compiledBuilder = builderSubgraph.create({
 		parsedNodeTypes,
 		llm: stageLLMs.builder,
-		logger,
-		featureFlags,
-	});
-	const compiledConfigurator = configuratorSubgraph.create({
-		parsedNodeTypes,
-		llm: stageLLMs.configurator,
 		llmParameterUpdater: stageLLMs.parameterUpdater,
 		logger,
 		instanceUrl,
 		featureFlags,
+		resourceLocatorCallback,
 	});
 
 	// Build graph using method chaining for proper TypeScript inference
@@ -179,6 +228,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 						workflowJSON: state.workflowJSON,
 						coordinationLog: state.coordinationLog,
 						previousSummary: state.previousSummary,
+						workflowContext: state.workflowContext,
 					},
 					config,
 				);
@@ -190,6 +240,9 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Add Responder Node (synthesizes final user-facing response)
 			// Accepts config as second param to propagate callbacks for tracing
 			.addNode('responder', async (state, config) => {
+				// Record start time for timing metrics
+				const startTimestamp = Date.now();
+
 				const response = await responderAgent.invoke(
 					{
 						messages: state.messages,
@@ -197,6 +250,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 						discoveryContext: state.discoveryContext,
 						workflowJSON: state.workflowJSON,
 						previousSummary: state.previousSummary,
+						workflowContext: state.workflowContext,
 					},
 					config,
 				);
@@ -208,8 +262,30 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					});
 				}
 
+				// Calculate response length for metadata
+				const responseContent =
+					typeof response.content === 'string'
+						? response.content
+						: JSON.stringify(response.content);
+
 				return {
 					messages: [response], // Only responder adds to user messages
+					coordinationLog: [
+						{
+							phase: 'responder' as const,
+							status: 'in_progress' as const,
+							timestamp: startTimestamp,
+							summary: 'Starting responder',
+							metadata: createResponderMetadata({ responseLength: 0 }),
+						},
+						{
+							phase: 'responder' as const,
+							status: 'completed' as const,
+							timestamp: Date.now(),
+							summary: `Generated response (${responseContent.length} chars)`,
+							metadata: createResponderMetadata({ responseLength: responseContent.length }),
+						},
+					],
 				};
 			})
 			// Add process_operations node for hybrid operations approach
@@ -271,20 +347,9 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					MAX_BUILDER_ITERATIONS,
 				),
 			)
-			.addNode(
-				'configurator_subgraph',
-				createSubgraphNodeHandler(
-					configuratorSubgraph,
-					compiledConfigurator,
-					'configurator_subgraph',
-					logger,
-					MAX_CONFIGURATOR_ITERATIONS,
-				),
-			)
 			// Connect all subgraphs to process_operations
 			.addEdge('discovery_subgraph', 'process_operations')
 			.addEdge('builder_subgraph', 'process_operations')
-			.addEdge('configurator_subgraph', 'process_operations')
 			// Start flows to check_state (preprocessing)
 			.addEdge(START, 'check_state')
 			// Conditional routing from check_state

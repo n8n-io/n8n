@@ -5,9 +5,13 @@ import userEvent from '@testing-library/user-event';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { INodeUi } from '@/Interface';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -70,6 +74,9 @@ const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishAction
 			WorkflowHistoryButton: {
 				template: '<div data-test-id="workflow-history-button-stub"></div>',
 			},
+			N8nTooltip: {
+				template: '<div><slot name="content" /><slot /></div>',
+			},
 		},
 	},
 });
@@ -97,6 +104,8 @@ const triggerNode: INodeUi = {
 describe('WorkflowHeaderDraftPublishActions', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let uiStore: MockedStore<typeof useUIStore>;
+	let collaborationStore: MockedStore<typeof useCollaborationStore>;
+	let projectsStore: MockedStore<typeof useProjectsStore>;
 
 	const setupEnabledPublishButton = (overrides = {}) => {
 		workflowsStore.workflowTriggerNodes = [triggerNode];
@@ -107,6 +116,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		uiStore = mockedStore(useUIStore);
+		collaborationStore = mockedStore(useCollaborationStore);
+		projectsStore = mockedStore(useProjectsStore);
 
 		// Default workflow state
 		workflowsStore.workflow = {
@@ -125,6 +136,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		workflowsStore.workflowTriggerNodes = [];
 		uiStore.markStateClean();
 		uiStore.isActionActive = { workflowSaving: false };
+		collaborationStore.shouldBeReadOnly = false;
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
@@ -210,7 +222,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
-					readOnly: false,
 					workflowPermissions: {
 						...defaultWorkflowProps.workflowPermissions,
 						update: true,
@@ -229,7 +240,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
-					readOnly: false,
 					workflowPermissions: {
 						...defaultWorkflowProps.workflowPermissions,
 						publish: false,
@@ -245,7 +255,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
-					readOnly: false,
 					workflowPermissions: {
 						...defaultWorkflowProps.workflowPermissions,
 						update: true,
@@ -258,11 +267,11 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
 		});
 
-		it('should be hidden when user has only workflow:publish permission', () => {
-			const { queryByTestId } = renderComponent({
+		it('should be visible when user has only workflow:publish permission', () => {
+			setupEnabledPublishButton();
+			const { getByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
-					readOnly: false,
 					workflowPermissions: {
 						...defaultWorkflowProps.workflowPermissions,
 						update: false,
@@ -271,14 +280,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
 		});
 
 		it('should be visible when user has both workflow:update and workflow:publish permissions', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
-					readOnly: false,
 					workflowPermissions: {
 						...defaultWorkflowProps.workflowPermissions,
 						update: true,
@@ -330,8 +339,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 		});
 
-		it('should save workflow first when isNewWorkflow is true then open publish modal', async () => {
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+		it('should have publish button disabled when isNewWorkflow is true', async () => {
 			uiStore.markStateClean();
 			setupEnabledPublishButton();
 
@@ -342,13 +350,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
-
-			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
-			expect(openModalSpy).toHaveBeenCalledWith({
-				name: WORKFLOW_PUBLISH_MODAL_KEY,
-				data: {},
-			});
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toBeDisabled();
 		});
 
 		it('should not open publish modal if save fails', async () => {
@@ -450,17 +453,16 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
-	describe('Read-only mode', () => {
-		it('should not render publish button when read-only', () => {
-			const { queryByTestId } = renderComponent({
-				props: {
-					...defaultWorkflowProps,
-					readOnly: true,
-				},
-			});
+	describe('Collaboration read-only mode', () => {
+		it('should disable publish button when collaboration is read-only', () => {
+			collaborationStore.shouldBeReadOnly = true;
+			setupEnabledPublishButton();
 
-			const publishButton = queryByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).not.toBeInTheDocument();
+			const { getByTestId } = renderComponent();
+
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toBeInTheDocument();
+			expect(publishButton).toBeDisabled();
 		});
 	});
 
@@ -469,12 +471,57 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
-					readOnly: false,
 					isArchived: true,
 				},
 			});
 
 			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Personal space restriction tooltip', () => {
+		it('should show personal space restriction tooltip when in personal space and lacking publish permission', () => {
+			// Set current project as personal project
+			projectsStore.currentProject = createTestProject({
+				id: 'personal-project-id',
+				type: ProjectTypes.Personal,
+			});
+
+			const { getByText } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						publish: false,
+						update: true,
+					},
+				},
+			});
+
+			expect(
+				getByText("You don't have permission to publish personal workflows"),
+			).toBeInTheDocument();
+		});
+
+		it('should show generic permission denied tooltip when not in personal space and lacking publish permission', () => {
+			// Set current project as team project (not personal)
+			projectsStore.currentProject = createTestProject({
+				id: 'team-project-id',
+				type: ProjectTypes.Team,
+			});
+
+			const { getByText } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						publish: false,
+						update: true,
+					},
+				},
+			});
+
+			expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
 		});
 	});
 });

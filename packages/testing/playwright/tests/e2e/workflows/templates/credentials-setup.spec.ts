@@ -4,6 +4,8 @@ import { test, expect } from '../../../../fixtures/base';
 import type { TestRequirements } from '../../../../Types';
 import { resolveFromRoot } from '../../../../utils/path-helper';
 
+test.use({ capability: { env: { TEST_ISOLATION: 'template-credentials-setup' } } });
+
 const TEMPLATE_HOST = 'https://api.n8n.io/api/';
 const TEMPLATE_ID = 1205;
 const TEMPLATE_WITHOUT_CREDS_ID = 1344;

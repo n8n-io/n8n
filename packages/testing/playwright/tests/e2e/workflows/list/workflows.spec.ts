@@ -3,10 +3,10 @@ import { nanoid } from 'nanoid';
 import { test, expect } from '../../../../fixtures/base';
 
 const NOTIFICATIONS = {
-	CREATED: 'Workflow successfully created',
 	ARCHIVED: 'archived',
 	UNARCHIVED: 'unarchived',
 	DELETED: 'deleted',
+	UNPUBLISHED: 'unpublished',
 };
 
 test.describe('Workflows', () => {
@@ -14,10 +14,10 @@ test.describe('Workflows', () => {
 		await n8n.goHome();
 	});
 
-	test('should create a new workflow using empty state card', async ({ n8n }) => {
+	test('should create a new workflow using empty state button', async ({ n8n }) => {
 		const { projectId } = await n8n.projectComposer.createProject();
 		await n8n.page.goto(`projects/${projectId}/workflows`);
-		await n8n.workflows.clickNewWorkflowCard();
+		await n8n.workflows.clickNewWorkflowButtonFromProject();
 		// New workflows redirect to /workflow/<id>?new=true
 		await expect(n8n.page).toHaveURL(/workflow\/[a-zA-Z0-9_-]+\?.*new=true/);
 	});
@@ -34,8 +34,6 @@ test.describe('Workflows', () => {
 		await n8n.canvas.setWorkflowName(workflowName);
 		await n8n.page.keyboard.press('Enter');
 		await n8n.canvas.waitForSaveWorkflowCompleted();
-
-		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.CREATED)).toBeVisible();
 	});
 
 	test('should search for workflows', async ({ n8n }) => {
@@ -104,6 +102,45 @@ test.describe('Workflows', () => {
 		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.DELETED)).toBeVisible();
 
 		await expect(workflow).toBeHidden();
+	});
+
+	test('should unpublish a published workflow from workflow list', async ({ n8n }) => {
+		const uniqueIdForUnpublish = nanoid(8);
+		const workflowName = `Unpublish Test ${uniqueIdForUnpublish}`;
+
+		// Create and publish a workflow
+		await n8n.workflowComposer.createWorkflow(workflowName);
+
+		// Add a webhook trigger to make workflow publishable
+		await n8n.canvas.clickCanvasPlusButton();
+		await n8n.canvas.nodeCreator.searchFor('webhook');
+		await n8n.canvas.nodeCreator.selectItem('Webhook');
+		await n8n.page.keyboard.press('Escape');
+
+		// Publish the workflow
+		await n8n.canvas.publishWorkflow();
+		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
+
+		// Go back to workflows list
+		await n8n.goHome();
+
+		// Find the published workflow and unpublish it
+		const workflow = n8n.workflows.cards.getWorkflow(workflowName);
+		await expect(workflow).toBeVisible();
+
+		// Unpublish the workflow from the workflow card actions menu
+		await n8n.workflows.unpublishWorkflow(workflow);
+
+		// Verify unpublish notification appears
+		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.UNPUBLISHED)).toBeVisible();
+
+		// Verify workflow still exists but is no longer published
+		await expect(workflow).toBeVisible();
+
+		// Open workflow to verify it's no longer published
+		await workflow.click();
+		await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
+		await expect(n8n.canvas.getOpenPublishModalButton()).toBeVisible();
 	});
 
 	test('should filter workflows by tag', async ({ n8n }) => {

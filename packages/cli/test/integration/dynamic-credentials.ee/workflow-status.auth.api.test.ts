@@ -1,6 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	WorkflowRepository,
@@ -9,6 +9,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
@@ -46,8 +47,13 @@ const setupWorkflow = async () => {
 
 	const resolver = await resolverService.create({
 		name: 'Test Resolver',
-		type: 'credential-resolver.stub-1.0',
-		config: { prefix: 'test-' },
+		type: 'credential-resolver.oauth2-1.0',
+		config: {
+			metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			validation: 'oauth2-introspection',
+		},
 		user: owner,
 	});
 
@@ -96,14 +102,39 @@ const setupWorkflow = async () => {
 		role: 'workflow:owner',
 	});
 
-	return { savedWorkflow, savedCredential };
+	return { savedWorkflow, savedCredential, owner };
 };
 
 describe('Workflow Status API', () => {
 	let savedWorkflow: WorkflowEntity;
 	let savedCredential: CredentialsEntity;
+	let owner: User;
 
 	beforeAll(async () => {
+		// Mock OAuth metadata endpoint for resolver validation
+		nock.cleanAll();
+		nock('https://auth.example.com')
+			.persist()
+			.get('/.well-known/openid-configuration')
+			.reply(200, {
+				issuer: 'https://auth.example.com',
+				introspection_endpoint: 'https://auth.example.com/oauth/introspect',
+				introspection_endpoint_auth_methods_supported: [
+					'client_secret_basic',
+					'client_secret_post',
+				],
+			});
+
+		// Mock OAuth introspection endpoint for identity validation
+		nock('https://auth.example.com')
+			.persist()
+			.post('/oauth/introspect')
+			.reply(200, {
+				active: true,
+				sub: 'user-123',
+				exp: Math.floor(Date.now() / 1000) + 3600,
+			});
+
 		await testDb.truncate([
 			'User',
 			'SharedWorkflow',
@@ -112,10 +143,11 @@ describe('Workflow Status API', () => {
 			'DynamicCredentialResolver',
 		]);
 
-		({ savedWorkflow, savedCredential } = await setupWorkflow());
+		({ savedWorkflow, savedCredential, owner } = await setupWorkflow());
 	});
 
 	afterAll(async () => {
+		nock.cleanAll();
 		await testDb.terminate();
 		testServer.httpServer.close();
 	});
@@ -172,6 +204,52 @@ describe('Workflow Status API', () => {
 				.get(`/workflows/${savedWorkflow.id}/execution-status`)
 				.set('X-Authorization', 'Bearer static-test-token')
 				.expect(401);
+		});
+
+		describe('when a user is authenticated via cookie', () => {
+			it('should allow access without static auth token', async () => {
+				const response = await testServer
+					.authAgentFor(owner)
+					.get(`/workflows/${savedWorkflow.id}/execution-status`)
+					.set('Authorization', 'Bearer test-token')
+					// Note: NO X-Authorization header provided
+					.expect(200);
+
+				expect(response.body.data).toMatchObject({
+					workflowId: savedWorkflow.id,
+					readyToExecute: expect.any(Boolean),
+					credentials: expect.arrayContaining([
+						expect.objectContaining({
+							credentialId: savedCredential.id,
+							credentialName: savedCredential.name,
+							credentialType: savedCredential.type,
+							credentialStatus: expect.any(String),
+						}),
+					]),
+				});
+			});
+
+			it('should allow access even with invalid static token if cookie auth succeeds', async () => {
+				const response = await testServer
+					.authAgentFor(owner)
+					.get(`/workflows/${savedWorkflow.id}/execution-status`)
+					.set('Authorization', 'Bearer test-token')
+					.set('X-Authorization', 'Bearer invalid-static-token') // Invalid token
+					.expect(200);
+
+				expect(response.body.data).toMatchObject({
+					workflowId: savedWorkflow.id,
+					readyToExecute: expect.any(Boolean),
+					credentials: expect.arrayContaining([
+						expect.objectContaining({
+							credentialId: savedCredential.id,
+							credentialName: savedCredential.name,
+							credentialType: savedCredential.type,
+							credentialStatus: expect.any(String),
+						}),
+					]),
+				});
+			});
 		});
 	});
 });

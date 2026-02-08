@@ -144,10 +144,12 @@ export async function activateWorkflow(
 export async function deactivateWorkflow(
 	context: IRestApiContext,
 	workflowId: string,
+	expectedChecksum?: string,
 ): Promise<IWorkflowDb> {
 	return await makeRestApiRequest<IWorkflowDb>(
 		context,
 		'POST',
 		`/workflows/${workflowId}/deactivate`,
+		{ expectedChecksum },
 	);
 }

@@ -4,7 +4,6 @@ import { useToast } from '@/app/composables/useToast';
 import Modal from '@/app/components/Modal.vue';
 import type { FormFieldValueUpdate, IFormInputs } from '@/Interface';
 import type { IInviteResponse, InvitableRoleName } from '../users.types';
-import type { IUser } from '@n8n/rest-api-client/api/users';
 import { EnterpriseEditionFeature, VALID_EMAIL_REGEX } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import { ROLE } from '@n8n/api-types';
@@ -32,6 +31,7 @@ const props = defineProps<{
 	modalName: string;
 	data: {
 		afterInvite?: () => Promise<void>;
+		initialRole?: InvitableRoleName;
 	};
 }>();
 
@@ -50,7 +50,7 @@ const formBus = createFormEventBus();
 const modalBus = createEventBus();
 const config = ref<IFormInputs | null>();
 const emails = ref('');
-const role = ref<InvitableRoleName>(ROLE.Member);
+const role = ref<InvitableRoleName>(props.data.initialRole ?? ROLE.Member);
 const showInviteUrls = ref<IInviteResponse[] | null>(null);
 const loading = ref(false);
 
@@ -75,14 +75,6 @@ const enabledButton = computed((): boolean => {
 	return emailsCount.value >= 1;
 });
 
-const invitedUsers = computed((): IUser[] => {
-	return showInviteUrls.value
-		? usersStore.allUsers.filter((user) =>
-				showInviteUrls.value?.find((invite) => invite.user.id === user.id),
-			)
-		: [];
-});
-
 const isAdvancedPermissionsEnabled = computed((): boolean => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
 });
@@ -101,6 +93,11 @@ const isChatUsersEnabled = computed((): boolean => {
 const isTamperProofInviteLinksEnabled = computed(() =>
 	postHog.isVariantEnabled(TAMPER_PROOF_INVITE_LINKS.name, TAMPER_PROOF_INVITE_LINKS.variant),
 );
+
+const invitedUsers = computed(() => {
+	if (!showInviteUrls.value) return [];
+	return showInviteUrls.value.map((invite) => ({ ...invite.user, isPendingUser: true }));
+});
 
 const validateEmails = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
@@ -263,7 +260,7 @@ function onSubmitClick() {
 	formBus.emit('submit');
 }
 
-async function onCopyInviteLink(user: IUser) {
+async function onCopyInviteLink(user: IInviteResponse['user']) {
 	if (!showInviteUrls.value) {
 		return;
 	}
@@ -319,7 +316,7 @@ onMounted(() => {
 		},
 		{
 			name: 'role',
-			initialValue: ROLE.Member,
+			initialValue: props.data.initialRole ?? ROLE.Member,
 			properties: {
 				label: i18n.baseText('auth.role'),
 				required: true,
@@ -377,7 +374,7 @@ onMounted(() => {
 			<div v-if="showInviteUrls">
 				<N8nUsersList :users="invitedUsers">
 					<template #actions="{ user }">
-						<N8nTooltip v-if="isTamperProofInviteLinksEnabled && !user.firstName">
+						<N8nTooltip v-if="isTamperProofInviteLinksEnabled">
 							<template #content>
 								{{ i18n.baseText('settings.users.actions.generateInviteLink') }}
 							</template>
@@ -388,7 +385,7 @@ onMounted(() => {
 								@click="onCopyInviteLink(user)"
 							></N8nIconButton>
 						</N8nTooltip>
-						<N8nTooltip v-else-if="user.inviteAcceptUrl && !user.firstName">
+						<N8nTooltip v-else-if="user.inviteAcceptUrl">
 							<template #content>
 								{{ i18n.baseText('settings.users.inviteLink.copy') }}
 							</template>

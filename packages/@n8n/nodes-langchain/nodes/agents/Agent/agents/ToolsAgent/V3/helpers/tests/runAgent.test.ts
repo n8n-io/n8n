@@ -1,3 +1,4 @@
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
@@ -7,17 +8,20 @@ import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 import * as agentExecution from '@utils/agent-execution';
 import * as tracing from '@utils/tracing';
 
-import type { RequestResponseMetadata } from '../../types';
 import type { ItemContext } from '../prepareItemContext';
 import { runAgent } from '../runAgent';
 
-jest.mock('@utils/agent-execution', () => ({
-	loadMemory: jest.fn(),
-	processEventStream: jest.fn(),
-	buildSteps: jest.fn(),
-	createEngineRequests: jest.fn(),
-	saveToMemory: jest.fn(),
-}));
+jest.mock('@utils/agent-execution', () => {
+	const originalModule = jest.requireActual('@utils/agent-execution');
+	return {
+		...originalModule,
+		loadMemory: jest.fn(),
+		processEventStream: jest.fn(),
+		buildSteps: jest.fn(),
+		createEngineRequests: jest.fn(),
+		saveToMemory: jest.fn(),
+	};
+});
 
 jest.mock('@utils/tracing', () => ({
 	getTracingConfig: jest.fn(),
@@ -69,7 +73,7 @@ describe('runAgent - iteration count tracking', () => {
 
 		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		jest.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
-		jest.spyOn(agentExecution, 'createEngineRequests').mockResolvedValue([
+		jest.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
 			{
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName: 'Test Tool',
@@ -130,7 +134,7 @@ describe('runAgent - iteration count tracking', () => {
 
 		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		jest.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
-		jest.spyOn(agentExecution, 'createEngineRequests').mockResolvedValue([
+		jest.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
 			{
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName: 'Test Tool',
@@ -203,7 +207,7 @@ describe('runAgent - iteration count tracking', () => {
 			],
 		});
 		jest.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
-		jest.spyOn(agentExecution, 'createEngineRequests').mockResolvedValue([
+		jest.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
 			{
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName: 'Test Tool',

@@ -107,8 +107,9 @@ const handlePopoverOpenChange = async (open: boolean) => {
 		return;
 	}
 	popoverOpen.value = open;
-	// Focus name input when opening popover
+	// Reset error state and focus name input when opening popover
 	if (open) {
+		error.value = null;
 		await nextTick(() => {
 			nameInputRef.value?.focus();
 		});

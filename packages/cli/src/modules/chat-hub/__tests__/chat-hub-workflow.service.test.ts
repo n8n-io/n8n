@@ -1,13 +1,19 @@
-import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
+import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { BinaryDataService } from 'n8n-core';
+import type { Cipher, BinaryDataService } from 'n8n-core';
 import type { IBinaryData } from 'n8n-workflow';
 
-import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import type { ChatHubAgentService } from '../chat-hub-agent.service';
+import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
+import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
 import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
+import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
 
 describe('ChatHubWorkflowService', () => {
@@ -16,12 +22,30 @@ describe('ChatHubWorkflowService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const binaryDataService = mock<BinaryDataService>();
 	const messageRepository = mock<ChatHubMessageRepository>();
+	const chatHubAgentService = mock<ChatHubAgentService>();
+	const chatHubSettingsService = mock<ChatHubSettingsService>();
+	const chatHubCredentialsService = mock<ChatHubCredentialsService>();
+	const workflowFinderService = mock<WorkflowFinderService>();
+
+	const mockCipher = mock<Cipher>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
 
+	const defaultExecutionMetadata: ChatHubAuthenticationMetadata = {
+		authToken: 'test-token-123',
+		browserId: 'browser-456',
+		method: 'POST',
+		endpoint: '/api/chat/message',
+	};
+
 	beforeEach(() => {
 		jest.resetAllMocks();
+
+		logger.scoped.mockReturnValue(logger);
+
+		// Mock cipher encrypt to return a simple string
+		mockCipher.encrypt.mockReturnValue('encrypted-metadata');
 
 		// Create real ChatHubAttachmentService with mocked dependencies
 		chatHubAttachmentService = new ChatHubAttachmentService(binaryDataService, messageRepository);
@@ -31,6 +55,11 @@ describe('ChatHubWorkflowService', () => {
 			workflowRepository,
 			sharedWorkflowRepository,
 			chatHubAttachmentService,
+			chatHubAgentService,
+			chatHubSettingsService,
+			chatHubCredentialsService,
+			workflowFinderService,
+			mockCipher,
 		);
 
 		// Mock repository methods
@@ -68,6 +97,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -121,6 +151,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -185,6 +216,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachment);
@@ -230,6 +262,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -284,6 +317,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(1);
@@ -342,6 +376,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -423,6 +458,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -499,6 +535,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -556,6 +593,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachment);
@@ -602,6 +640,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					defaultExecutionMetadata,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -615,6 +654,116 @@ describe('ChatHubWorkflowService', () => {
 					{ type: 'text', text: 'File: audio.mp3\n(Unsupported file type)' },
 				]);
 			});
+		});
+	});
+
+	describe('prepareExecutionData', () => {
+		it('should encrypt executionMetadata before adding to trigger item', () => {
+			const triggerNode = {
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-base.chatTrigger',
+				parameters: {},
+			} as any;
+			const executionMetadata: ChatHubAuthenticationMetadata = {
+				authToken: 'token-123',
+				browserId: 'browser-456',
+				method: 'POST',
+				endpoint: '/api/chat/message',
+			};
+
+			const result = service.prepareExecutionData(
+				triggerNode,
+				'session-123',
+				'Hello',
+				[],
+				executionMetadata,
+			);
+
+			expect(mockCipher.encrypt).toHaveBeenCalledWith(executionMetadata);
+			expect(result[0].data.main[0]![0]).toMatchObject({
+				encryptedMetadata: 'encrypted-metadata',
+				json: {
+					sessionId: 'session-123',
+					action: 'sendMessage',
+					chatInput: 'Hello',
+				},
+			});
+		});
+
+		it('should configure context establishment hook', () => {
+			const triggerNode = { name: 'Chat Trigger', parameters: {} } as any;
+			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
+				authToken: 'token',
+				browserId: undefined,
+				method: 'POST',
+				endpoint: '/api/chat/message',
+			});
+
+			expect(result[0].node.parameters).toMatchObject({
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: {
+					hooks: [
+						{
+							hookName: 'ChatHubExtractor',
+							isAllowedToFail: true,
+						},
+					],
+				},
+			});
+		});
+
+		it('should preserve existing node parameters', () => {
+			const triggerNode = {
+				name: 'Chat Trigger',
+				parameters: {
+					existingParam: 'value',
+					nestedParam: { foo: 'bar' },
+				},
+			} as any;
+
+			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
+				authToken: 'token',
+				browserId: 'browser',
+				method: 'POST',
+				endpoint: '/api/chat/message',
+			});
+
+			expect(result[0].node.parameters).toMatchObject({
+				existingParam: 'value',
+				nestedParam: { foo: 'bar' },
+				executionsHooksVersion: 1,
+			});
+		});
+
+		it('should handle attachments correctly', () => {
+			const triggerNode = { name: 'Chat Trigger', parameters: {} } as any;
+			const attachments = [
+				{
+					id: 'attachment-1',
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					fileSize: '1024',
+					data: 'test',
+				},
+			];
+
+			const result = service.prepareExecutionData(
+				triggerNode,
+				'session-123',
+				'Hello',
+				attachments,
+				defaultExecutionMetadata,
+			);
+
+			expect(result[0].data.main[0]![0].json.files).toEqual([
+				{
+					id: 'attachment-1',
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					fileSize: '1024',
+				},
+			]);
+			expect(result[0].data.main[0]![0].binary).toHaveProperty('data0');
 		});
 	});
 });

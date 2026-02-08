@@ -1,5 +1,11 @@
 import { AuthenticatedRequest, UserRepository } from '@n8n/db';
-import { Get, GlobalScope, Post, RestController } from '@n8n/decorators';
+import {
+	createUserKeyedRateLimiter,
+	Get,
+	GlobalScope,
+	Post,
+	RestController,
+} from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -31,6 +37,19 @@ export class MFAController {
 			);
 		}
 		await this.mfaService.enforceMFA(req.body.enforce);
+
+		this.eventService.emit('instance-policies-updated', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			settingName: '2fa_enforcement',
+			value: req.body.enforce,
+		});
+
 		return;
 	}
 
@@ -84,7 +103,10 @@ export class MFAController {
 		};
 	}
 
-	@Post('/enable', { rateLimit: true, allowSkipMFA: true })
+	@Post('/enable', {
+		allowSkipMFA: true,
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async activateMFA(req: MFA.Activate, res: Response) {
 		const { mfaCode = null } = req.body;
 		const { id, mfaEnabled } = req.user;
@@ -122,7 +144,10 @@ export class MFAController {
 		this.authService.issueCookie(res, updatedUser, verified, req.browserId);
 	}
 
-	@Post('/disable', { rateLimit: true })
+	@Post('/disable', {
+		ipRateLimit: true,
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async disableMFA(req: MFA.Disable, res: Response) {
 		const { id: userId } = req.user;
 
@@ -163,7 +188,10 @@ export class MFAController {
 		this.authService.issueCookie(res, updatedUser, false, req.browserId);
 	}
 
-	@Post('/verify', { rateLimit: true, allowSkipMFA: true })
+	@Post('/verify', {
+		allowSkipMFA: true,
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
 		const { mfaCode } = req.body;

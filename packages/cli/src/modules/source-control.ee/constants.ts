@@ -17,3 +17,4 @@ export const SOURCE_CONTROL_README = `
 `;
 export const SOURCE_CONTROL_DEFAULT_NAME = 'n8n user';
 export const SOURCE_CONTROL_DEFAULT_EMAIL = 'n8n@example.com';
+export const SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE = 20;

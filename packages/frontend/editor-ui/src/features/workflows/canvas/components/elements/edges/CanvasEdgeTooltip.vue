@@ -16,7 +16,7 @@ const $style = useCssModule();
 			placement="top"
 			:teleported="false"
 			:offset="8"
-			popper-class="canvas-edge-toolbar-popper"
+			:content-class="$style.content"
 		>
 			<slot />
 		</N8nTooltip>
@@ -27,15 +27,8 @@ const $style = useCssModule();
 .tooltipContainer {
 	position: relative;
 }
-</style>
 
-<style lang="scss">
-.canvas-edge-toolbar-popper {
+.content {
 	white-space: nowrap;
-
-	.el-popper__arrow {
-		// override default margin as it moves the arrow off the center
-		margin: 0 !important;
-	}
 }
 </style>

@@ -8,6 +8,7 @@ export const LOG_SCOPES = [
 	'concurrency',
 	'external-secrets',
 	'license',
+	'mcp',
 	'multi-main-setup',
 	'pruning',
 	'pubsub',

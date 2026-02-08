@@ -4,10 +4,11 @@ import { Request, Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
 import { WorkflowExecutionStatus } from '@n8n/api-types';
-import { getBearerToken, getDynamicCredentialMiddlewares } from './utils';
+import { getDynamicCredentialMiddlewares } from './utils';
 import { UrlService } from '@/services/url.service';
 import { GlobalConfig } from '@n8n/config';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
+import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
 
 @RestController('/workflows')
 export class WorkflowStatusController {
@@ -16,6 +17,7 @@ export class WorkflowStatusController {
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly dynamicCredentialCorsService: DynamicCredentialCorsService,
+		private readonly dynamicCredentialWebService: DynamicCredentialWebService,
 	) {}
 
 	/**
@@ -38,13 +40,13 @@ export class WorkflowStatusController {
 	 * @throws {BadRequestError} When authorization header is missing or malformed
 	 */
 	@Get('/:workflowId/execution-status', {
-		skipAuth: true,
+		allowUnauthenticated: true,
 		middlewares: getDynamicCredentialMiddlewares(),
 	})
 	async checkWorkflowForExecution(req: Request, res: Response): Promise<WorkflowExecutionStatus> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['get', 'options']);
 		const workflowId = req.params['workflowId'];
-		const token = getBearerToken(req);
+		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
 
 		if (!workflowId) {
 			throw new BadRequestError('Workflow ID is missing');
@@ -52,7 +54,7 @@ export class WorkflowStatusController {
 
 		const status = await this.credentialResolverWorkflowService.getWorkflowStatus(
 			workflowId,
-			token,
+			credentialContext,
 		);
 
 		const isReady = status.every((s) => s.status === 'configured');

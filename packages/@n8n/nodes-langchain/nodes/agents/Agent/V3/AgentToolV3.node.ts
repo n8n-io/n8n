@@ -10,11 +10,11 @@ import type {
 	EngineRequest,
 } from 'n8n-workflow';
 
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 import { textInput, toolDescription } from '@utils/descriptions';
 
 import { getInputs } from '../utils';
 import { toolsAgentProperties } from '../agents/ToolsAgent/V3/description';
-import type { RequestResponseMetadata } from '../agents/ToolsAgent/V3/execute';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V3/execute';
 
 export class AgentToolV3 implements INodeType {

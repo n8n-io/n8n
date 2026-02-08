@@ -5,12 +5,13 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
-import { buildSupervisorPrompt } from '@/prompts/agents/supervisor.prompt';
+import { buildSupervisorPrompt } from '@/prompts';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { SimpleWorkflow } from '../types/workflow';
-import { buildWorkflowSummary } from '../utils/context-builders';
+import { buildWorkflowSummary, buildSimplifiedExecutionContext } from '../utils/context-builders';
 import { summarizeCoordinationLog } from '../utils/coordination-log';
+import type { ChatPayload } from '../workflow-builder-agent';
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -31,9 +32,7 @@ const systemPrompt = ChatPromptTemplate.fromMessages([
  */
 export const supervisorRoutingSchema = z.object({
 	reasoning: z.string().describe('One sentence explaining why this agent should act next'),
-	next: z
-		.enum(['responder', 'discovery', 'builder', 'configurator'])
-		.describe('The next agent to call'),
+	next: z.enum(['responder', 'discovery', 'builder']).describe('The next agent to call'),
 });
 
 export type SupervisorRouting = z.infer<typeof supervisorRoutingSchema>;
@@ -54,13 +53,15 @@ export interface SupervisorContext {
 	coordinationLog: CoordinationLogEntry[];
 	/** Summary of previous conversation (from compaction) */
 	previousSummary?: string;
+	/** Workflow context with execution data */
+	workflowContext?: ChatPayload['workflowContext'];
 }
 
 /**
  * Supervisor Agent
  *
  * Coordinates the multi-agent workflow building process.
- * Routes to Discovery, Builder, or Configurator agents based on current state.
+ * Routes to Discovery or Builder agents based on current state.
  */
 export class SupervisorAgent {
 	private llm: BaseChatModel;
@@ -94,6 +95,13 @@ export class SupervisorAgent {
 			contextParts.push('<completed_phases>');
 			contextParts.push(summarizeCoordinationLog(context.coordinationLog));
 			contextParts.push('</completed_phases>');
+		}
+
+		// 4. Execution status (simplified error info for routing decisions)
+		if (context.workflowContext) {
+			contextParts.push(
+				buildSimplifiedExecutionContext(context.workflowContext, context.workflowJSON.nodes),
+			);
 		}
 
 		if (contextParts.length === 0) {

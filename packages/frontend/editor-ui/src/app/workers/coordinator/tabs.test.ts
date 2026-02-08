@@ -38,6 +38,7 @@ describe('Coordinator Tab Operations', () => {
 			tabs: new Map(),
 			activeTabId: null,
 			initialized: false,
+			version: null,
 			...overrides,
 		};
 	}
@@ -164,7 +165,7 @@ describe('Coordinator Tab Operations', () => {
 			const tabWithWorker = createMockTabConnection({
 				id: 'tab-with-worker',
 			});
-			const state = createMockState();
+			const state = createMockState({ version: '1.0.0' }); // Version required for initialization
 			state.tabs.set('tab-no-worker', tabWithoutWorker);
 			state.tabs.set('tab-with-worker', tabWithWorker);
 
@@ -180,19 +181,19 @@ describe('Coordinator Tab Operations', () => {
 				id: 'tab-1',
 				dataWorker: mockDataWorker,
 			});
-			const state = createMockState();
+			const state = createMockState({ version: '1.0.0' }); // Version required for initialization
 			state.tabs.set('tab-1', tabConnection);
 
 			await selectNewActiveTab(state);
 
 			expect(state.activeTabId).toBe('tab-1');
 			expect(tabConnection.isActive).toBe(true);
-			expect(mockDataWorker.initialize).toHaveBeenCalled();
+			expect(mockDataWorker.initialize).toHaveBeenCalledWith({ version: '1.0.0' });
 		});
 
 		it('should set initialized to true after successful initialization', async () => {
 			const tabConnection = createMockTabConnection({ id: 'tab-1' });
-			const state = createMockState({ initialized: false });
+			const state = createMockState({ initialized: false, version: '1.0.0' }); // Version required for initialization
 			state.tabs.set('tab-1', tabConnection);
 
 			await selectNewActiveTab(state);
@@ -215,7 +216,7 @@ describe('Coordinator Tab Operations', () => {
 				dataWorker: successWorker,
 			});
 
-			const state = createMockState();
+			const state = createMockState({ version: '1.0.0' }); // Version required for initialization
 			state.tabs.set('tab-failing', failingTab);
 			state.tabs.set('tab-success', successTab);
 
@@ -236,7 +237,7 @@ describe('Coordinator Tab Operations', () => {
 				dataWorker: failingWorker,
 			});
 
-			const state = createMockState({ initialized: true });
+			const state = createMockState({ initialized: true, version: '1.0.0' }); // Version required for initialization
 			state.tabs.set('tab-failing', failingTab);
 
 			await selectNewActiveTab(state);
@@ -297,6 +298,7 @@ describe('Coordinator Tab Operations', () => {
 			const state = createMockState({
 				activeTabId: 'tab-1',
 				initialized: true,
+				version: '1.0.0', // Version required for initialization
 			});
 			state.tabs.set('tab-1', tab1);
 			state.tabs.set('tab-2', tab2);

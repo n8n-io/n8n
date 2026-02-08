@@ -19,6 +19,7 @@ test.describe('Workflow agent @capability:proxy', () => {
 
 		// STEP: Click agent card to start conversation
 		await agentsPage.getAgentCards().nth(0).click();
+		await chatPage.dismissWelcomeScreen();
 		await expect(chatPage.getModelSelectorButton()).toContainText(agentWorkflow.name);
 
 		await chatPage.getChatInput().fill('Hello');
@@ -100,6 +101,7 @@ test.describe('Workflow agent @capability:proxy', () => {
 		await memberWorkflowAgentsPage.getAgentCards().nth(0).click();
 
 		const memberChatPage = new ChatHubChatPage(memberN8n.page);
+		await memberChatPage.dismissWelcomeScreen();
 		await memberChatPage.getChatInput().fill('Hello');
 		await memberChatPage.getSendButton().click();
 		await expect(memberChatPage.getChatMessages().last()).toContainText(/Bonjour/i);

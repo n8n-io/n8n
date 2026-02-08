@@ -10,14 +10,25 @@ vi.mock('@n8n/rest-api-client/api/nodeTypes', () => ({
 	getNodeTypesByIdentifier: vi.fn(),
 }));
 
-const { execWithParamsMock, queryMock } = vi.hoisted(() => ({
+const {
+	execWithParamsMock,
+	queryMock,
+	queryWithParamsMock,
+	getStoredVersionMock,
+	storeVersionMock,
+} = vi.hoisted(() => ({
 	execWithParamsMock: vi.fn(),
 	queryMock: vi.fn(),
+	queryWithParamsMock: vi.fn(),
+	getStoredVersionMock: vi.fn(),
+	storeVersionMock: vi.fn(),
 }));
 
 vi.mock('./query', () => ({
+	exec: vi.fn(),
 	execWithParams: execWithParamsMock,
 	query: queryMock,
+	queryWithParams: queryWithParamsMock,
 	withTrx: async <T>(_state: unknown, fn: () => Promise<T>): Promise<T> => {
 		await execWithParamsMock(_state, 'BEGIN TRANSACTION', []);
 		try {
@@ -31,12 +42,18 @@ vi.mock('./query', () => ({
 	},
 }));
 
+vi.mock('./storeVersion', () => ({
+	getStoredVersion: getStoredVersionMock,
+	storeVersion: storeVersionMock,
+}));
+
 import {
 	getNodeTypes,
 	getNodeTypeVersions,
 	getNodeTypesByIdentifier,
 } from '@n8n/rest-api-client/api/nodeTypes';
-import { execWithParams, query } from './query';
+import { execWithParams, query, queryWithParams } from './query';
+import { getStoredVersion, storeVersion } from './storeVersion';
 
 describe('Data Worker loadNodeTypes Operations', () => {
 	let consoleSpy: {
@@ -49,6 +66,10 @@ describe('Data Worker loadNodeTypes Operations', () => {
 			log: vi.spyOn(console, 'log').mockImplementation(() => {}),
 			error: vi.spyOn(console, 'error').mockImplementation(() => {}),
 		};
+
+		// Default mock behavior: version matches, no clearing needed
+		vi.mocked(getStoredVersion).mockResolvedValue('1.0.0');
+		vi.mocked(storeVersion).mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -62,6 +83,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 			db: 1,
 			vfs: null,
 			initPromise: null,
+			version: '1.0.0',
 			...overrides,
 		};
 	}
@@ -157,18 +179,18 @@ describe('Data Worker loadNodeTypes Operations', () => {
 				// Should insert for each version with parameterized queries
 				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-					['n8n-nodes-base.multiVersion@1', expect.any(String), 'now'],
+					"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+					['n8n-nodes-base.multiVersion@1', expect.any(String)],
 				);
 				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-					['n8n-nodes-base.multiVersion@2', expect.any(String), 'now'],
+					"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+					['n8n-nodes-base.multiVersion@2', expect.any(String)],
 				);
 				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-					['n8n-nodes-base.multiVersion@3', expect.any(String), 'now'],
+					"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+					['n8n-nodes-base.multiVersion@3', expect.any(String)],
 				);
 			});
 
@@ -191,8 +213,8 @@ describe('Data Worker loadNodeTypes Operations', () => {
 				// With parameterized queries, single quotes are handled by the database driver
 				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-					['n8n-nodes-base.test@1', expect.stringContaining("It's a test node"), 'now'],
+					"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+					['n8n-nodes-base.test@1', expect.stringContaining("It's a test node")],
 				);
 			});
 		});
@@ -318,7 +340,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 	describe('getNodeType', () => {
 		it('should return null when node type is not found', async () => {
 			const state = createMockState();
-			vi.mocked(query).mockResolvedValueOnce(createQueryResult([]));
+			vi.mocked(queryWithParams).mockResolvedValueOnce(createQueryResult([]));
 
 			const result = await getNodeType(state, 'nonexistent', 1);
 
@@ -329,7 +351,9 @@ describe('Data Worker loadNodeTypes Operations', () => {
 			const state = createMockState();
 			const mockNodeType = createMockNodeType({ name: 'n8n-nodes-base.test', version: 1 });
 
-			vi.mocked(query).mockResolvedValueOnce(createQueryResult([[JSON.stringify(mockNodeType)]]));
+			vi.mocked(queryWithParams).mockResolvedValueOnce(
+				createQueryResult([[JSON.stringify(mockNodeType)]]),
+			);
 
 			const result = await getNodeType(state, 'n8n-nodes-base.test', 1);
 
@@ -338,13 +362,14 @@ describe('Data Worker loadNodeTypes Operations', () => {
 
 		it('should query with correct node type ID format', async () => {
 			const state = createMockState();
-			vi.mocked(query).mockResolvedValueOnce(createQueryResult([]));
+			vi.mocked(queryWithParams).mockResolvedValueOnce(createQueryResult([]));
 
 			await getNodeType(state, 'n8n-nodes-base.myNode', 2);
 
-			expect(query).toHaveBeenCalledWith(
+			expect(queryWithParams).toHaveBeenCalledWith(
 				state,
-				"SELECT data FROM nodeTypes WHERE id = 'n8n-nodes-base.myNode@2'",
+				'SELECT data FROM nodeTypes WHERE id = ?',
+				['n8n-nodes-base.myNode@2'],
 			);
 		});
 	});

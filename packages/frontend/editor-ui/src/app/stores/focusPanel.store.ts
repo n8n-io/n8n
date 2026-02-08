@@ -1,6 +1,6 @@
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import get from 'lodash/get';
 
 import {
@@ -14,6 +14,7 @@ import { LOCAL_STORAGE_FOCUS_PANEL } from '@/app/constants';
 import { useStorage } from '@/app/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
 import { isFromAIOverrideValue } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
+import type { FocusSidebarTabs } from '@/features/setupPanel/types';
 
 // matches NodeCreator to ensure they fully overlap by default when both are open
 const DEFAULT_PANEL_WIDTH = 500;
@@ -59,6 +60,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	);
 
 	const lastFocusTimestamp = ref(0);
+	const selectedTab = ref<FocusSidebarTabs>('setup');
 
 	const focusPanelActive = computed(() => currentFocusPanelData.value.isActive);
 	const focusPanelWidth = computed(() => currentFocusPanelData.value.width ?? DEFAULT_PANEL_WIDTH);
@@ -174,6 +176,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		return 'value' in p && 'node' in p;
 	}
 
+	function setSelectedTab(tab: FocusSidebarTabs) {
+		selectedTab.value = tab;
+	}
+
 	const focusedNodeParametersInTelemetryFormat = computed<
 		Array<{ parameterPath: string; nodeType: string; nodeId: string }>
 	>(() =>
@@ -194,6 +200,16 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		},
 	);
 
+	// Auto-switch to 'focus' tab when a parameter is focused
+	watch(
+		() => resolvedParameter.value,
+		(newValue, oldValue) => {
+			if (newValue && newValue !== oldValue) {
+				selectedTab.value = 'focus';
+			}
+		},
+	);
+
 	return {
 		focusPanelActive,
 		focusedNodeParameters,
@@ -201,6 +217,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		lastFocusTimestamp,
 		focusPanelWidth,
 		resolvedParameter,
+		selectedTab,
 		openWithFocusedNodeParameter,
 		isRichParameter,
 		closeFocusPanel,
@@ -208,5 +225,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		onNewWorkflowSave,
 		updateWidth,
 		unsetParameters,
+		setSelectedTab,
 	};
 });

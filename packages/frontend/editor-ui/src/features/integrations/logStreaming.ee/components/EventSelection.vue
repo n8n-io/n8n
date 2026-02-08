@@ -77,7 +77,7 @@ function groupLabelInfo(t: string): string | undefined {
 					<N8nTooltip
 						v-if="groupLabelInfo(group.name) !== undefined"
 						placement="top"
-						:popper-class="$style.tooltipPopper"
+						:content-class="$style.tooltipPopper"
 						class="ml-xs"
 					>
 						<N8nIcon icon="circle-help" size="small" class="ml-4xs" />
@@ -100,7 +100,7 @@ function groupLabelInfo(t: string): string | undefined {
 			>
 				<template #label>
 					{{ i18n.baseText('settings.log-streaming.tab.events.anonymize') }}
-					<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+					<N8nTooltip placement="top" :content-class="$style.tooltipPopper">
 						<N8nIcon icon="circle-help" size="small" class="ml-4xs" />
 						<template #content>
 							{{ i18n.baseText('settings.log-streaming.tab.events.anonymize.info') }}
@@ -124,7 +124,7 @@ function groupLabelInfo(t: string): string | undefined {
 					>
 						<template #label>
 							{{ event.label }}
-							<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+							<N8nTooltip placement="top" :content-class="$style.tooltipPopper">
 								<template #content>
 									{{ event.name }}
 								</template>

@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22.21.1
+ARG NODE_VERSION=22.22.0
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -73,6 +73,9 @@ RUN uv sync \
 			--no-dev \
 			--all-extras \
       --no-editable
+
+# Install the python runner package itself into site packages. We can remove the src directory then
+RUN uv pip install . && rm -rf /app/task-runner-python/src
 
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download

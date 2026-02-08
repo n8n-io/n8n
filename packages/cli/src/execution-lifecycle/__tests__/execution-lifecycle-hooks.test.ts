@@ -24,6 +24,7 @@ import type {
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
@@ -45,6 +46,7 @@ describe('Execution Lifecycle Hooks', () => {
 	const errorReporter = mockInstance(ErrorReporter);
 	const eventService = mockInstance(EventService);
 	const executionRepository = mockInstance(ExecutionRepository);
+	const executionPersistence = mockInstance(ExecutionPersistence);
 	const executionMetadataService = mockInstance(ExecutionMetadataService);
 	const externalHooks = mockInstance(ExternalHooks);
 	const push = mockInstance(Push);
@@ -91,26 +93,31 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		storedAt: 'db',
 	});
 	const successfulRun = mock<IRun>({
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		storedAt: 'db',
 	});
 	const failedRun = mock<IRun>({
 		status: 'error',
 		finished: true,
 		waitTill: undefined,
+		storedAt: 'db',
 	});
 	const waitingRun = mock<IRun>({
 		finished: true,
 		status: 'waiting',
 		waitTill: new Date(),
+		storedAt: 'db',
 	});
 	const successfulRunWithMetadata = mock<IRun>({
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		storedAt: 'db',
 		data: {
 			resultData: {
 				metadata: {
@@ -319,6 +326,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteAfter).toHaveLength(2);
 			expect(handlers.workflowExecuteBefore).toHaveLength(3);
 			expect(handlers.workflowExecuteAfter).toHaveLength(5);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
@@ -410,10 +418,12 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 
-				expect(executionRepository.findSingleExecution).toHaveBeenCalledWith(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
+				expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					{ data: runExecutionData, status: 'running' },
+					{ requireNotFinished: true, requireNotCanceled: true },
+				);
 			});
 
 			it('should not save execution progress when disabled', async () => {
@@ -532,13 +542,13 @@ describe('Execution Lifecycle Hooks', () => {
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [unfinishedRun, {}]);
 
-					expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 
 				it('should not delete waiting executions', async () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
-					expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 
 				it('should soft delete manual executions when manual saving is disabled', async () => {
@@ -588,7 +598,7 @@ describe('Execution Lifecycle Hooks', () => {
 						testKey1: 'testValue1',
 						testKey2: 'testValue2',
 					});
-					expect(executionRepository.hardDelete).not.toHaveBeenCalled();
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 			});
 
@@ -724,6 +734,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteAfter).toHaveLength(0);
 			expect(handlers.workflowExecuteBefore).toHaveLength(2);
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(0);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
@@ -755,9 +766,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
+				expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
+					storedAt: 'db',
 				});
 			});
 
@@ -778,9 +790,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
-				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
+				expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
+					storedAt: 'db',
 				});
 			});
 
@@ -815,9 +828,10 @@ describe('Execution Lifecycle Hooks', () => {
 					// Metadata should not be saved before deletion
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
 					// Execution should be deleted
-					expect(executionRepository.hardDelete).toHaveBeenCalledWith({
+					expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
 						workflowId,
 						executionId,
+						storedAt: 'db',
 					});
 				});
 
@@ -856,6 +870,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteAfter).toHaveLength(2);
 			expect(handlers.workflowExecuteBefore).toHaveLength(2);
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
@@ -980,6 +995,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteAfter).toHaveLength(1);
 			expect(handlers.workflowExecuteBefore).toHaveLength(2);
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
