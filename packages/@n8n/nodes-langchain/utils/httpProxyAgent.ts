@@ -69,22 +69,134 @@ export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutO
 }
 
 /**
+ * Validates that a URL string is valid and can be parsed.
+ * This enforces strict validation to prevent silent failures or delayed crashes.
+ *
+ * @param url - The URL string to validate
+ * @param source - Optional source description for better error messages
+ * @throws {TypeError} If the URL is invalid
+ */
+function validateUrlString(url: string, source?: string): void {
+	if (!url || typeof url !== 'string') {
+		throw new TypeError(
+			`Invalid URL input: expected a non-empty string, got ${typeof url}${source ? ` (from ${source})` : ''}.`,
+		);
+	}
+
+	// Check for the specific "[object Request]" error pattern
+	if (url === '[object Request]') {
+		throw new TypeError(
+			'Failed to parse URL from Request object. This indicates a bug where Request.toString() was called instead of extracting Request.url. ' +
+				`${source ? `Source: ${source}` : 'Please report this issue.'}`,
+		);
+	}
+
+	try {
+		// eslint-disable-next-line no-new
+		new URL(url);
+	} catch (error) {
+		const errorMessage =
+			error instanceof TypeError && error.message
+				? error.message
+				: 'Invalid URL format';
+		throw new TypeError(
+			`Failed to parse URL from "${url}". ${errorMessage}${source ? ` Source: ${source}` : ''}`,
+		);
+	}
+}
+
+/**
+ * Normalizes RequestInfo | URL to string | URL for internal use.
+ * This is the single source of truth for request input normalization.
+ * All HTTP requests pass through this function to enforce the global invariant:
+ * no internal fetch/proxy layer may ever receive an invalid URL input.
+ *
+ * @param input - RequestInfo (Request | string) or URL object
+ * @returns string (URL string) or URL object
+ * @throws {TypeError} If the input cannot be normalized to a valid URL
+ */
+function normalizeRequestInput(input: RequestInfo | URL): string | URL {
+	if (input instanceof Request) {
+		// Request objects need their URL property extracted (not toString())
+		const url = input.url;
+		if (!url || typeof url !== 'string') {
+			throw new TypeError(
+				`Request object has invalid URL property: expected string, got ${typeof url}. ` +
+					'This may indicate a corrupted Request object.',
+			);
+		}
+		validateUrlString(url, 'Request.url');
+		return url;
+	}
+
+	if (typeof input === 'string') {
+		validateUrlString(input, 'string input');
+		return input;
+	}
+
+	if (input instanceof URL) {
+		// URL objects are already validated by the constructor
+		// Double-check by converting to string to ensure it's valid
+		try {
+			input.toString();
+		} catch (error) {
+			throw new TypeError(
+				`Invalid URL object: ${error instanceof Error ? error.message : 'unknown error'}`,
+			);
+		}
+		return input;
+	}
+
+	// This should never happen with proper TypeScript types, but provides a safety net
+	// Helps catch runtime type issues or future API changes
+	throw new TypeError(
+		`Unsupported fetch input type: ${typeof input}${input?.constructor?.name ? ` (${input.constructor.name})` : ''}. ` +
+			'Expected Request, string, or URL object. This may indicate a compatibility issue with the fetch API.',
+	);
+}
+
+/**
+ * Extracts a URL string from normalized input for proxy agent configuration.
+ * This is used internally to determine proxy settings based on the target URL.
+ *
+ * @param input - Normalized input (string | URL)
+ * @returns URL string
+ */
+function extractUrlString(input: string | URL): string {
+	if (input instanceof URL) {
+		return input.toString();
+	}
+	return input;
+}
+
+/**
  * Make a fetch() request with an Agent/ProxyAgent that has configured timeouts.
  * If proxy environment variables are set, uses ProxyAgent; otherwise uses Agent.
  *
- * @param input - The URL to fetch
+ * This function enforces a global invariant: no internal fetch/proxy layer may ever
+ * receive an invalid URL input. All RequestInfo types (Request | string | URL) are
+ * normalized and validated at this boundary.
+ *
+ * @param input - The URL to fetch (RequestInfo: Request | string | URL)
  * @param init - Standard fetch RequestInit options
  * @param timeoutOptions - Optional timeout configuration to override defaults
+ * @returns Promise resolving to Response
+ * @throws {TypeError} If the input cannot be normalized to a valid URL
  */
 export async function proxyFetch(
-	input: string | URL,
+	input: RequestInfo | URL,
 	init?: RequestInit,
 	timeoutOptions?: AgentTimeoutOptions,
 ): Promise<Response> {
-	return await fetch(input, {
+	// Normalize and validate input at the HTTP boundary
+	const normalizedInput = normalizeRequestInput(input);
+	const urlString = extractUrlString(normalizedInput);
+
+	// Use normalized input for fetch and proxy agent configuration
+	return await fetch(normalizedInput, {
 		...init,
 		// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
-		dispatcher: getProxyAgent(input.toString(), timeoutOptions),
+		dispatcher: getProxyAgent(urlString, timeoutOptions),
 	});
 }
 

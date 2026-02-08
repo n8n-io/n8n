@@ -2,6 +2,22 @@ import { Agent, ProxyAgent } from 'undici';
 
 import { getProxyAgent, proxyFetch } from '../httpProxyAgent';
 
+// Verify normalizeRequestInput is NOT exported (it should be internal only)
+// This ensures nodes don't re-implement normalization logic
+describe('API surface verification', () => {
+	it('should not export normalizeRequestInput (normalization is internal)', () => {
+		const httpProxyAgentModule = require('../httpProxyAgent');
+		expect(httpProxyAgentModule.normalizeRequestInput).toBeUndefined();
+		expect(httpProxyAgentModule.proxyFetch).toBeDefined();
+		expect(httpProxyAgentModule.getProxyAgent).toBeDefined();
+		expect(httpProxyAgentModule.getNodeProxyAgent).toBeDefined();
+	});
+
+	it('should export proxyFetch as the public API', () => {
+		expect(typeof proxyFetch).toBe('function');
+	});
+});
+
 // Mock the dependencies
 jest.mock('undici', () => ({
 	Agent: jest.fn().mockImplementation((options) => ({ type: 'Agent', options })),
@@ -283,6 +299,20 @@ describe('proxyFetch', () => {
 			});
 		});
 
+		it('should maintain backward compatibility with string URLs', async () => {
+			const url = 'https://api.example.com/v1/endpoint';
+			await proxyFetch(url);
+
+			expect(mockFetch).toHaveBeenCalledWith(url, expect.any(Object));
+		});
+
+		it('should maintain backward compatibility with URL objects', async () => {
+			const url = new URL('https://api.example.com/v1/endpoint');
+			await proxyFetch(url);
+
+			expect(mockFetch).toHaveBeenCalledWith(url, expect.any(Object));
+		});
+
 		it('should call fetch with Agent dispatcher when timeout options are provided', async () => {
 			const url = 'https://api.openai.com/v1';
 			await proxyFetch(url, undefined, { headersTimeout: 60000 });
@@ -429,6 +459,252 @@ describe('proxyFetch', () => {
 
 			expect(result).toBe(errorResponse);
 			expect(result.status).toBe(404);
+		});
+	});
+
+	describe('RequestInfo normalization and validation', () => {
+		it('should handle Request objects', async () => {
+			const url = 'https://api.mistral.ai/v1/chat/completions';
+			const request = new Request(url);
+
+			await proxyFetch(request);
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				url,
+				expect.objectContaining({
+					dispatcher: undefined,
+				}),
+			);
+		});
+
+		it('should handle Request objects with query parameters', async () => {
+			const url = 'https://api.mistral.ai/v1/chat/completions?model=mistral-small&temperature=0.7';
+			const request = new Request(url);
+
+			await proxyFetch(request);
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				url,
+				expect.objectContaining({
+					dispatcher: undefined,
+				}),
+			);
+		});
+
+		it('should handle Request objects with custom headers', async () => {
+			const url = 'https://api.mistral.ai/v1/chat/completions';
+			const request = new Request(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+			});
+
+			await proxyFetch(request, { method: 'POST' });
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				url,
+				expect.objectContaining({
+					method: 'POST',
+					dispatcher: undefined,
+				}),
+			);
+		});
+
+		it('should reject invalid URL strings with clear error', async () => {
+			const invalidUrl = 'not-a-valid-url';
+
+			await expect(proxyFetch(invalidUrl)).rejects.toThrow(
+				/Failed to parse URL from "not-a-valid-url"/,
+			);
+			expect(mockFetch).not.toHaveBeenCalled();
+		});
+
+		it('should reject Request objects with invalid URLs', async () => {
+			// Create a Request with an invalid URL by using a relative path
+			// Note: Request constructor will accept this, but URL parsing will fail
+			const invalidRequest = new Request('relative/path');
+
+			await expect(proxyFetch(invalidRequest)).rejects.toThrow(
+				/Failed to parse URL/,
+			);
+			expect(mockFetch).not.toHaveBeenCalled();
+		});
+
+		it('should handle URL objects', async () => {
+			const url = new URL('https://api.mistral.ai/v1/chat/completions');
+
+			await proxyFetch(url);
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				url,
+				expect.objectContaining({
+					dispatcher: undefined,
+				}),
+			);
+		});
+
+		it('should preserve RequestInit options when using Request objects', async () => {
+			const url = 'https://api.mistral.ai/v1/chat/completions';
+			const request = new Request(url);
+			const init: RequestInit = {
+				method: 'POST',
+				headers: { Authorization: 'Bearer token123' },
+				body: JSON.stringify({ test: 'data' }),
+			};
+
+			await proxyFetch(request, init);
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				url,
+				expect.objectContaining({
+					...init,
+					dispatcher: undefined,
+				}),
+			);
+		});
+
+		it('should work with proxy configuration and Request objects', async () => {
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+
+			const url = 'https://api.mistral.ai/v1/chat/completions';
+			const request = new Request(url);
+
+			await proxyFetch(request);
+
+			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
+			expect(mockFetch).toHaveBeenCalledWith(
+				url,
+				expect.objectContaining({
+					dispatcher: expect.objectContaining({ type: 'ProxyAgent' }),
+				}),
+			);
+		});
+
+		it('should reject "[object Request]" string with clear error message', async () => {
+			// This simulates the bug where Request.toString() was called
+			const invalidUrl = '[object Request]';
+
+			await expect(proxyFetch(invalidUrl)).rejects.toThrow(
+				/Failed to parse URL from Request object/,
+			);
+			await expect(proxyFetch(invalidUrl)).rejects.toThrow(
+				/Request.toString\(\) was called instead of extracting Request.url/,
+			);
+			expect(mockFetch).not.toHaveBeenCalled();
+		});
+
+		it('should handle empty string URLs with clear error', async () => {
+			await expect(proxyFetch('')).rejects.toThrow(/Invalid URL input/);
+			expect(mockFetch).not.toHaveBeenCalled();
+		});
+
+		it('should handle null/undefined-like inputs gracefully', async () => {
+			// @ts-expect-error - Testing invalid input
+			await expect(proxyFetch(null)).rejects.toThrow(/Unsupported fetch input type/);
+			// @ts-expect-error - Testing invalid input
+			await expect(proxyFetch(undefined)).rejects.toThrow(/Unsupported fetch input type/);
+			expect(mockFetch).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Regression: AI Agent with Mistral - multiple Request calls', () => {
+		/**
+		 * Regression test for issue #25318
+		 * Simulates the scenario where an AI Agent with Mistral makes multiple HTTP calls.
+		 * The HTTPClient from @mistralai/mistralai passes Request objects to the fetcher,
+		 * and we must ensure they are properly normalized without throwing "Failed to parse URL from [object Request]"
+		 */
+		it('should handle multiple sequential Request objects from HTTPClient (simulating agent loop)', async () => {
+			const baseUrl = 'https://api.mistral.ai/v1';
+			const requests = [
+				new Request(`${baseUrl}/chat/completions`),
+				new Request(`${baseUrl}/chat/completions`),
+				new Request(`${baseUrl}/chat/completions`),
+			];
+
+			// Simulate multiple agent calls (agent may retry or make follow-up requests)
+			for (const request of requests) {
+				await proxyFetch(request, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
+
+			expect(mockFetch).toHaveBeenCalledTimes(requests.length);
+			requests.forEach((request, index) => {
+				expect(mockFetch).toHaveBeenNthCalledWith(
+					index + 1,
+					request.url,
+					expect.objectContaining({
+						method: 'POST',
+						headers: expect.objectContaining({
+							'Content-Type': 'application/json',
+						}),
+					}),
+				);
+			});
+		});
+
+		it('should handle Request objects with different methods and headers (simulating agent tool calls)', async () => {
+			const requests = [
+				{
+					request: new Request('https://api.mistral.ai/v1/chat/completions', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+					}),
+					init: { method: 'POST' as const },
+				},
+				{
+					request: new Request('https://api.mistral.ai/v1/models', {
+						method: 'GET',
+					}),
+					init: { method: 'GET' as const },
+				},
+			];
+
+			for (const { request, init } of requests) {
+				await proxyFetch(request, init);
+			}
+
+			expect(mockFetch).toHaveBeenCalledTimes(requests.length);
+			expect(mockFetch).toHaveBeenNthCalledWith(
+				1,
+				requests[0].request.url,
+				expect.objectContaining({
+					method: 'POST',
+				}),
+			);
+			expect(mockFetch).toHaveBeenNthCalledWith(
+				2,
+				requests[1].request.url,
+				expect.objectContaining({
+					method: 'GET',
+				}),
+			);
+		});
+
+		it('should handle Request objects with query parameters (simulating agent with filters)', async () => {
+			const urlWithQuery = 'https://api.mistral.ai/v1/chat/completions?model=mistral-small&temperature=0.7';
+			const request = new Request(urlWithQuery);
+
+			await proxyFetch(request);
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				urlWithQuery,
+				expect.objectContaining({
+					dispatcher: undefined,
+				}),
+			);
+		});
+
+		it('should not throw "Failed to parse URL from [object Request]" error', async () => {
+			// This is the exact error from the bug report
+			const request = new Request('https://api.mistral.ai/v1/chat/completions');
+
+			await expect(proxyFetch(request)).resolves.toBeInstanceOf(Response);
+			await expect(proxyFetch(request)).resolves.not.toThrow(
+				/Failed to parse URL from \[object Request\]/,
+			);
 		});
 	});
 });
