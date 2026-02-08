@@ -111,6 +111,9 @@ describe('LmChatAnthropic', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders: {
+							'User-Agent': expect.stringMatching(/^n8n\//),
+						},
 					},
 				}),
 			);
@@ -145,6 +148,9 @@ describe('LmChatAnthropic', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders: {
+							'User-Agent': expect.stringMatching(/^n8n\//),
+						},
 					},
 				}),
 			);
@@ -178,6 +184,9 @@ describe('LmChatAnthropic', () => {
 					clientOptions: {
 						fetchOptions: {
 							dispatcher: {},
+						},
+						defaultHeaders: {
+							'User-Agent': expect.stringMatching(/^n8n\//),
 						},
 					},
 				}),
@@ -215,6 +224,7 @@ describe('LmChatAnthropic', () => {
 							dispatcher: {},
 						},
 						defaultHeaders: {
+							'User-Agent': expect.stringMatching(/^n8n\//),
 							'X-Custom-Header': 'custom-value',
 						},
 					},
@@ -254,6 +264,9 @@ describe('LmChatAnthropic', () => {
 					clientOptions: {
 						fetchOptions: {
 							dispatcher: {},
+						},
+						defaultHeaders: {
+							'User-Agent': expect.stringMatching(/^n8n\//),
 						},
 					},
 				}),
@@ -298,6 +311,9 @@ describe('LmChatAnthropic', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders: {
+							'User-Agent': expect.stringMatching(/^n8n\//),
+						},
 					},
 				}),
 			);
@@ -333,7 +349,7 @@ describe('LmChatAnthropic', () => {
 			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockContext, undefined);
 		});
 
-		it('should not add custom headers when header toggle is disabled', async () => {
+		it('should not add custom credential headers when header toggle is disabled', async () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getCredentials.mockResolvedValue({
@@ -351,19 +367,12 @@ describe('LmChatAnthropic', () => {
 
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
 
-			expect(MockedChatAnthropic).toHaveBeenCalledWith(
-				expect.objectContaining({
-					clientOptions: {
-						fetchOptions: {
-							dispatcher: {},
-						},
-					},
-				}),
-			);
-
-			// Verify that defaultHeaders is not set
 			const callArgs = MockedChatAnthropic.mock.calls[0]?.[0];
-			expect(callArgs?.clientOptions?.defaultHeaders).toBeUndefined();
+			const headers = callArgs?.clientOptions?.defaultHeaders as Record<string, string> | undefined;
+			// User-Agent should still be present
+			expect(headers?.['User-Agent']).toMatch(/^n8n\//);
+			// Custom credential header should not be present
+			expect(headers?.['X-Custom-Header']).toBeUndefined();
 		});
 
 		it('should handle custom headers and custom URL together', async () => {
@@ -399,6 +408,7 @@ describe('LmChatAnthropic', () => {
 							dispatcher: {},
 						},
 						defaultHeaders: {
+							'User-Agent': expect.stringMatching(/^n8n\//),
 							'X-Custom-Header': 'custom-value',
 						},
 					},

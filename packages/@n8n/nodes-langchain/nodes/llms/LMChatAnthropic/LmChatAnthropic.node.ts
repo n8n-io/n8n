@@ -19,6 +19,11 @@ import {
 
 import { searchModels } from './methods/searchModels';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { version: N8N_VERSION } = require('@n8n/n8n-nodes-langchain/package.json') as {
+	version: string;
+};
+
 const modelField: INodeProperties = {
 	displayName: 'Model',
 	name: 'model',
@@ -339,6 +344,9 @@ export class LmChatAnthropic implements INodeType {
 			fetchOptions: {
 				dispatcher: getProxyAgent(baseURL),
 			},
+			defaultHeaders: {
+				'User-Agent': `n8n/${N8N_VERSION}`,
+			},
 		};
 
 		if (
@@ -348,6 +356,7 @@ export class LmChatAnthropic implements INodeType {
 			typeof credentials.headerValue === 'string'
 		) {
 			clientOptions.defaultHeaders = {
+				...clientOptions.defaultHeaders,
 				[credentials.headerName]: credentials.headerValue,
 			};
 		}

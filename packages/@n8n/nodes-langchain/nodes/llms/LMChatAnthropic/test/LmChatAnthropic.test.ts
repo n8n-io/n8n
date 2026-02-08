@@ -130,6 +130,9 @@ describe('LmChatAnthropic', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders: {
+							'User-Agent': expect.stringMatching(/^n8n\//),
+						},
 					},
 				}),
 			);
@@ -568,6 +571,52 @@ describe('LmChatAnthropic', () => {
 				value: 'claude-sonnet-4-5-20250929',
 				cachedResultName: 'Claude Sonnet 4.5',
 			});
+		});
+	});
+
+	describe('defaultHeaders', () => {
+		it('should include User-Agent header with n8n version', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatAnthropic.mock.calls[0][0];
+			const headers = callArgs?.clientOptions?.defaultHeaders as Record<string, string> | undefined;
+			expect(headers).toBeDefined();
+			expect(headers?.['User-Agent']).toMatch(/^n8n\/\d+\.\d+\.\d+/);
+		});
+
+		it('should preserve User-Agent when credential headers are also set', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-api-key',
+				header: true,
+				headerName: 'X-Custom-Header',
+				headerValue: 'custom-value',
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatAnthropic.mock.calls[0][0];
+			expect(callArgs?.clientOptions?.defaultHeaders).toEqual(
+				expect.objectContaining({
+					'User-Agent': expect.stringMatching(/^n8n\//),
+					'X-Custom-Header': 'custom-value',
+				}),
+			);
 		});
 	});
 
