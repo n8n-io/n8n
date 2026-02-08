@@ -75,6 +75,12 @@ export const SETUP_PANEL = createExperiment('069_setup_panel', {
 	variant: 'variant',
 });
 
+export const QUICK_CONNECT_EXPERIMENT = {
+	name: '073_quick_connect',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,

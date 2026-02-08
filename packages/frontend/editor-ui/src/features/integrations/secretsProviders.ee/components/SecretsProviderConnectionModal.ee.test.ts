@@ -11,6 +11,7 @@ import { nextTick } from 'vue';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
 import type { ConnectionProjectSummary } from '../composables/useConnectionModal.ee';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import orderBy from 'lodash/orderBy';
 
 // Factory function for creating mock connection data
@@ -49,6 +50,7 @@ const mockConnectionModal = {
 	hasUnsavedChanges: { value: false },
 	isSaving: { value: false },
 	didSave: { value: false },
+	providerSecretsCount: { value: 0 },
 	connection: {
 		isLoading: { value: false },
 		connectionState: { value: 'initializing' },
@@ -60,8 +62,9 @@ const mockConnectionModal = {
 	connectionProjects: { value: [] as ConnectionProjectSummary[] },
 	isSharedGlobally: { value: false },
 	canUpdate: { value: true },
-	canRemoveProjectScope: { value: false },
-	projectIds: { value: [] },
+	canShareGlobally: { value: true },
+	projectIds: { value: [] as string[] },
+	sharedWithProjects: { value: [] as ProjectSharingData[] },
 	hyphenateConnectionName: vi.fn((name) => name),
 	selectProviderType: vi.fn(),
 	updateSettings: vi.fn(),
@@ -364,21 +367,27 @@ describe('SecretsProviderConnectionModal', () => {
 			expect(mockProjectsStore.fetchProject).not.toHaveBeenCalled();
 		});
 
-		it('should fetch missing project from store', async () => {
-			const missingProjectId = 'project-999';
-			mockConnectionModal.connectionProjects.value = [
-				{ id: missingProjectId, name: 'Missing Project' },
+		it('should display shared projects from composable', async () => {
+			const projectId = 'project-999';
+			mockConnectionModal.connectionProjects.value = [{ id: projectId, name: 'Test Project' }];
+			mockConnectionModal.projectIds.value = [projectId];
+			mockConnectionModal.sharedWithProjects.value = [
+				{
+					id: projectId,
+					name: 'Test Project',
+					type: 'team',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					icon: null,
+				},
 			];
-			mockProjectsStore.fetchProject.mockResolvedValue({
-				id: missingProjectId,
-				name: 'Missing Project',
-				type: 'team',
-			});
+			mockConnectionModal.isEditMode.value = true;
 
 			renderComponent({
 				props: {
 					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 					data: {
+						activeTab: 'sharing',
 						providerKey: 'test-123',
 						providerTypes: mockProviderTypes,
 					},
@@ -387,7 +396,8 @@ describe('SecretsProviderConnectionModal', () => {
 
 			await nextTick();
 
-			expect(mockProjectsStore.fetchProject).toHaveBeenCalledWith(missingProjectId);
+			expect(mockConnectionModal.sharedWithProjects.value).toHaveLength(1);
+			expect(mockConnectionModal.sharedWithProjects.value[0].id).toBe(projectId);
 		});
 
 		it('should update scope state when sharing with project', async () => {

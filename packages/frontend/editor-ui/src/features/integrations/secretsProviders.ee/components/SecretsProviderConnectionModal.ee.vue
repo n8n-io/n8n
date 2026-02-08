@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -11,7 +11,6 @@ import Modal from '@/app/components/Modal.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
 import SecretsProviderImage from './SecretsProviderImage.ee.vue';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
-import type { ConnectionProjectSummary } from '@/features/integrations/secretsProviders.ee/composables/useConnectionModal.ee';
 import { useConnectionModal } from '@/features/integrations/secretsProviders.ee/composables/useConnectionModal.ee';
 import {
 	N8nCallout,
@@ -61,9 +60,6 @@ const projectsStore = useProjectsStore();
 const LABEL_SIZE: IParameterLabel = { size: 'medium' };
 const ACTIVE_TAB = ref(props.data?.activeTab ?? 'connection');
 
-// TODO: Get actual secrets count from backend API after connection test
-const SECRETS_COUNT = 0;
-
 // Modal state
 const providerTypes = computed(() => props.data.providerTypes ?? []);
 const providerKey = computed(() => props.data.providerKey ?? '');
@@ -74,8 +70,6 @@ const modal = useConnectionModal({
 	providerKey,
 	existingProviderNames,
 });
-
-const sharedWithProjects = ref<ProjectSharingData[]>([]);
 
 const sidebarItems = computed(() => {
 	const menuItems: IMenuItem[] = [
@@ -95,48 +89,21 @@ const sidebarItems = computed(() => {
 });
 
 const scopeProjects = computed(() =>
-	modal.canUpdate.value
+	modal.canShareGlobally.value
 		? projectsStore.teamProjects.filter(
 				(p: ProjectSharingData) => !modal.projectIds.value.includes(p.id),
 			)
 		: [],
 );
 
-const scopeReadonly = computed(() => !modal.canUpdate.value && !modal.canRemoveProjectScope.value);
-
-// Sync scope from composable when connection loads (max 1 project)
-watch(
-	() => modal.connectionProjects.value,
-	async (projects: ConnectionProjectSummary[]) => {
-		if (projects.length === 0) {
-			sharedWithProjects.value = [];
-			return;
-		}
-
-		// Fetch project if not in store
-		if (!projectsStore.projects.find((p: ProjectSharingData) => p.id === projects[0].id)) {
-			await projectsStore.fetchProject(projects[0].id);
-		}
-
-		sharedWithProjects.value = projectsStore.projects.filter(
-			(p: ProjectSharingData) => p.id === projects[0].id,
-		);
-	},
-	{ immediate: true, deep: true },
-);
-
 // Sync scope changes to composable (max 1 project)
 function handleScopeUpdate(value: ProjectSharingData[] | ProjectSharingData | null) {
 	const project = Array.isArray(value) ? value.at(-1) : value;
-	sharedWithProjects.value = project ? [project] : [];
 	modal.setScopeState(project ? [project.id] : [], false);
 }
 
 function handleShareGlobally(value: boolean) {
 	modal.setScopeState([], value);
-	if (value) {
-		sharedWithProjects.value = [];
-	}
 }
 
 // Handlers
@@ -277,7 +244,7 @@ const { width } = useElementSize(nameRef);
 													'settings.secretsProviderConnections.modal.testConnection.success.serviceEnabled',
 													{
 														interpolate: {
-															count: SECRETS_COUNT,
+															count: modal.providerSecretsCount.value,
 															providerName: modal.connectionName.value,
 														},
 													},
@@ -406,10 +373,10 @@ const { width } = useElementSize(nameRef);
 									{{ i18n.baseText('settings.secretsProviderConnections.modal.scope.info') }}
 								</N8nInfoTip>
 								<ProjectSharing
-									v-model="sharedWithProjects"
+									:model-value="modal.sharedWithProjects.value"
 									:projects="scopeProjects"
-									:readonly="scopeReadonly"
-									:static="scopeReadonly"
+									:readonly="!modal.canUpdate.value"
+									:static="!modal.canUpdate.value"
 									:placeholder="
 										i18n.baseText(
 											'settings.secretsProviderConnections.modal.scope.placeholder.project',
@@ -423,7 +390,7 @@ const { width } = useElementSize(nameRef);
 											'settings.secretsProviderConnections.modal.scope.emptyOptionsText',
 										)
 									"
-									:can-share-globally="modal.canUpdate.value"
+									:can-share-globally="modal.canShareGlobally.value"
 									:is-shared-globally="modal.isSharedGlobally.value"
 									@update:share-with-all-users="handleShareGlobally"
 									@update:model-value="handleScopeUpdate"

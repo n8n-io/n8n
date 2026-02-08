@@ -731,7 +731,7 @@ export class WorkflowService {
 		options?: { expectedChecksum?: string; publicApi?: boolean },
 	): Promise<WorkflowEntity> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:publish',
+			'workflow:unpublish',
 		]);
 
 		if (!workflow) {
