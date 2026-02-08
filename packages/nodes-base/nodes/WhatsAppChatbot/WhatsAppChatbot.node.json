@@ -1,0 +1,16 @@
+{
+	"classProperties": ["integrated"],
+	"displayName": "WhatsApp Chatbot",
+	"name": "whatsAppChatbot",
+	"group": ["transform"],
+	"version": 1,
+	"description": "Automatiza respuestas en WhatsApp",
+	"defaults": {
+		"name": "WhatsApp Chatbot",
+		"color": "#25D366"
+	},
+	"inputs": ["main"],
+	"outputs": ["main"],
+	"credentials": [],
+	"properties": []
+}

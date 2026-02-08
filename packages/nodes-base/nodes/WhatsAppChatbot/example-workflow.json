@@ -1,0 +1,203 @@
+{
+	"name": "WhatsApp Chatbot - Ejemplo Completo",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "whatsapp-webhook",
+				"responseMode": "onReceived",
+				"options": {}
+			},
+			"id": "1",
+			"name": "Webhook - Recibe Mensaje",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1,
+			"position": [250, 300]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "2",
+			"name": "Log - Ver Datos Recibidos",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"operation": "processMessage",
+				"apiToken": "={{ $env.WHATSAPP_API_TOKEN }}",
+				"phoneNumberId": "={{ $env.WHATSAPP_PHONE_ID }}",
+				"recipientNumber": "=+599xxxxxxx",
+				"message": "¡Hola! Gracias por contactarnos. Un agente te responderá en breve.",
+				"useAI": false,
+				"saveToDb": true
+			},
+			"id": "3",
+			"name": "WhatsApp Chatbot - Procesar Mensaje",
+			"type": "n8n-nodes-base.whatsAppChatbot",
+			"typeVersion": 1,
+			"position": [650, 300]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $json.status }}",
+							"operation": "equals",
+							"value2": "enviado"
+						}
+					]
+				}
+			},
+			"id": "4",
+			"name": "Condicional - ¿Fue Exitoso?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [850, 300]
+		},
+		{
+			"parameters": {
+				"table": "whatsapp_conversations",
+				"mode": "Insert",
+				"columns": "phone_number,message,status,timestamp",
+				"data": "=phone_number,{{ $json.sender }};message,{{ $json.message }};status,{{ $json.status }};timestamp,{{ $json.timestamp }}"
+			},
+			"id": "5",
+			"name": "BD - Guardar Conversación",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 1,
+			"position": [1050, 250],
+			"credentials": {
+				"postgres": {
+					"id": "your_postgres_credential_id",
+					"name": "Postgres Connection"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"chatbotType": "openai",
+				"options": {}
+			},
+			"id": "6",
+			"name": "OpenAI - Respuesta Inteligente",
+			"type": "n8n-nodes-base.openai",
+			"typeVersion": 1,
+			"position": [1050, 350],
+			"credentials": {
+				"openaiApi": {
+					"id": "your_openai_credential_id",
+					"name": "OpenAI API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"channel": "#notifications",
+				"text": "=Nueva respuesta generad: {{ $json.message }}"
+			},
+			"id": "7",
+			"name": "Slack - Notificar al Equipo",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1250, 300],
+			"credentials": {
+				"slackApi": {
+					"id": "your_slack_credential_id",
+					"name": "Slack Connection"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook - Recibe Mensaje": {
+			"main": [
+				[
+					{
+						"node": "Log - Ver Datos Recibidos",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Log - Ver Datos Recibidos": {
+			"main": [
+				[
+					{
+						"node": "WhatsApp Chatbot - Procesar Mensaje",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"WhatsApp Chatbot - Procesar Mensaje": {
+			"main": [
+				[
+					{
+						"node": "Condicional - ¿Fue Exitoso?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Condicional - ¿Fue Exitoso?": {
+			"main": [
+				[
+					{
+						"node": "BD - Guardar Conversación",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "OpenAI - Respuesta Inteligente",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Slack - Notificar al Equipo",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"BD - Guardar Conversación": {
+			"main": [
+				[
+					{
+						"node": "Slack - Notificar al Equipo",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI - Respuesta Inteligente": {
+			"main": [
+				[
+					{
+						"node": "Slack - Notificar al Equipo",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v0"
+	},
+	"staticData": null,
+	"pinData": {}
+}
