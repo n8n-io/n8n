@@ -84,7 +84,7 @@ function isInvalidToolCallBlock(
 function isToolResultBlock(
 	block: LangchainMessages.ContentBlock,
 ): block is LangchainMessages.ContentBlock.Tools.ServerToolCallResult {
-	return block.type === 'tool-result';
+	return block.type === 'server_tool_call_result';
 }
 function isCitationBlock(block: unknown): block is LangchainMessages.ContentBlock.Citation {
 	return (
@@ -125,7 +125,7 @@ function fromLcContent(
 					text: block.reasoning,
 				};
 			}
-			if (isFileBlock(block)) {
+			if (isFileBlock(block) && block.data) {
 				let metadata: Record<string, unknown> = {};
 				if (block.metadata) {
 					metadata = block.metadata;
@@ -138,8 +138,8 @@ function fromLcContent(
 				}
 				content = {
 					type: 'file',
-					mediaType: block.mimeType!,
-					data: block.data!,
+					mediaType: block.mimeType,
+					data: block.data,
 					providerMetadata: Object.keys(metadata).length > 0 ? metadata : undefined,
 				};
 			}

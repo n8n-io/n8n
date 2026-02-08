@@ -8,21 +8,17 @@ export interface WindowedChatMemoryConfig {
 
 /** Keeps only the last N message pairs in context. */
 export class WindowedChatMemory extends BaseChatMemory {
-	private readonly _chatHistory: ChatHistory;
+	readonly chatHistory: ChatHistory;
 	private readonly windowSize: number;
 
 	constructor(chatHistory: ChatHistory, config?: WindowedChatMemoryConfig) {
 		super();
-		this._chatHistory = chatHistory;
+		this.chatHistory = chatHistory;
 		this.windowSize = config?.windowSize ?? 10;
 	}
 
-	get chatHistory(): ChatHistory {
-		return this._chatHistory;
-	}
-
 	async loadMessages(): Promise<Message[]> {
-		const allMessages = await this._chatHistory.getMessages();
+		const allMessages = await this.chatHistory.getMessages();
 
 		if (allMessages.length === 0) {
 			return [];
@@ -48,10 +44,10 @@ export class WindowedChatMemory extends BaseChatMemory {
 			content: [{ type: 'text', text: output }],
 		};
 
-		await this._chatHistory.addMessages([humanMessage, aiMessage]);
+		await this.chatHistory.addMessages([humanMessage, aiMessage]);
 	}
 
 	async clear(): Promise<void> {
-		await this._chatHistory.clear();
+		await this.chatHistory.clear();
 	}
 }

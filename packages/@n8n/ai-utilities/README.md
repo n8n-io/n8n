@@ -295,29 +295,28 @@ import {
 } from '@n8n/ai-utilities';
 
 class MyCustomChatMemory extends BaseChatMemory {
-  constructor(private _chatHistory: ChatHistory) {
-    super();
-  }
+  readonly chatHistory: ChatHistory;
 
-  get chatHistory(): ChatHistory {
-    return this._chatHistory;
+  constructor(chatHistory: ChatHistory) {
+    super();
+    this.chatHistory = chatHistory;
   }
 
   async loadMessages(): Promise<Message[]> {
-    const messages = await this._chatHistory.getMessages();
+    const messages = await this.chatHistory.getMessages();
     // Apply your custom logic here...
     return messages;
   }
 
   async saveTurn(input: string, output: string): Promise<void> {
-    await this._chatHistory.addMessages([
+    await this.chatHistory.addMessages([
       { role: 'human', content: [{ type: 'text', text: input }] },
       { role: 'ai', content: [{ type: 'text', text: output }] },
     ]);
   }
 
   async clear(): Promise<void> {
-    await this._chatHistory.clear();
+    await this.chatHistory.clear();
   }
 }
 
