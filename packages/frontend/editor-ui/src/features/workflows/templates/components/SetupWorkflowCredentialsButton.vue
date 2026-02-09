@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -11,6 +11,7 @@ import { N8nButton } from '@n8n/design-system';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { useRoute } from 'vue-router';
 
 const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
@@ -19,6 +20,11 @@ const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();
 const uiStore = useUIStore();
 const i18n = useI18n();
+const route = useRoute();
+
+const isTemplateImportRoute = computed(() => {
+	return route.query.templateId !== undefined;
+});
 
 const isTemplateSetupCompleted = computed(() => {
 	return !!workflowsStore.workflow?.meta?.templateCredsSetupCompleted;
@@ -70,11 +76,20 @@ onBeforeUnmount(() => {
 	uiStore.closeModal(SETUP_CREDENTIALS_MODAL_KEY);
 });
 
-onMounted(() => {
+onMounted(async () => {
+	// Wait for all reactive updates to settle before checking conditions
+	// This ensures workflow.meta.templateId is available after initialization
+	await nextTick();
+
 	const templateId = workflowsStore.workflow?.meta?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
-	if (isNewTemplatesSetupEnabled.value && showButton.value && !isReadyToRunWorkflow) {
+	if (
+		isNewTemplatesSetupEnabled.value &&
+		showButton.value &&
+		!isReadyToRunWorkflow &&
+		isTemplateImportRoute.value
+	) {
 		openSetupModal();
 	}
 });

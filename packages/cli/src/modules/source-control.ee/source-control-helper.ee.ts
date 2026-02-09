@@ -22,6 +22,7 @@ import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import type { StatusResourceOwner } from './types/resource-owner';
+import type { StatusExportableCredential } from './types/exportable-credential';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -274,4 +275,16 @@ export function isWorkflowModified(
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
 	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
+}
+
+export function areSameCredentials(
+	credA: StatusExportableCredential,
+	credB: StatusExportableCredential,
+): boolean {
+	return (
+		credA.name === credB.name &&
+		credA.type === credB.type &&
+		!hasOwnerChanged(credA.ownedBy, credB.ownedBy) &&
+		Boolean(credA.isGlobal) === Boolean(credB.isGlobal)
+	);
 }

@@ -6,7 +6,7 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
-import { getLocalTimeZone, now, toCalendarDateTime, today } from '@internationalized/date';
+import { getLocalTimeZone, today } from '@internationalized/date';
 import type { InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -20,7 +20,7 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES } from '../insights.constants';
-import { getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
+import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
@@ -122,17 +122,10 @@ const range = shallowRef<{
 });
 
 /**
- * Converts the range to a UTC date range with the current time
+ * Converts the range to adjusted Date objects for API calls
  */
 const getFilteredRange = () => {
-	const timezone = getLocalTimeZone();
-	const startDate = toCalendarDateTime(range.value.start, now(timezone)).toDate(timezone);
-	const endDate = toCalendarDateTime(range.value.end, now(timezone)).toDate(timezone);
-
-	return {
-		startDate,
-		endDate,
-	};
+	return getAdjustedDateRange(range.value);
 };
 
 const fetchPaginatedTableData = ({

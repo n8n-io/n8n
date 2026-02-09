@@ -6,7 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
-import { nanoid } from 'nanoid';
+import { generateNanoId } from '@n8n/utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -74,8 +74,19 @@ const SignoutView = async () => await import('@/features/core/auth/views/Signout
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
 	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
-const SettingsExternalSecrets = async () =>
-	await import('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue');
+const SettingsExternalSecrets = async () => {
+	const { check } = useEnvFeatureFlag();
+
+	if (check.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+		return await import(
+			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue'
+		);
+	}
+
+	return await import(
+		'@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue'
+	);
+};
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
@@ -87,6 +98,13 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
+const ResourceCenterView = async () =>
+	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
+const ResourceCenterSectionView = async () =>
+	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
+const SecuritySettingsView = async () =>
+	await import('@/features/settings/security/SecuritySettings.vue');
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -220,6 +238,22 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/resource-center',
+		name: VIEWS.RESOURCE_CENTER,
+		component: ResourceCenterView,
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/resource-center/section/:sectionId',
+		name: VIEWS.RESOURCE_CENTER_SECTION,
+		component: ResourceCenterSectionView,
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
 		path: '/workflow/:name/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
 		component: NodeView,
@@ -339,9 +373,9 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 		beforeEnter: (to) => {
-			// Generate a unique workflow ID using nanoid and redirect to it
+			// Generate a unique workflow ID using 16-character nanoid and redirect to it
 			// Preserve existing query params (e.g., templateId, projectId) and add new=true
-			const newWorkflowId = nanoid();
+			const newWorkflowId = generateNanoId();
 			return {
 				name: VIEWS.WORKFLOW,
 				params: { name: newWorkflowId },
@@ -353,6 +387,23 @@ export const routes: RouteRecordRaw[] = [
 		path: '/workflows/demo',
 		name: VIEWS.DEMO,
 		component: NodeView,
+		meta: {
+			layout: 'demo',
+			middleware: ['authenticated'],
+			middlewareOptions: {
+				authenticated: {
+					bypass: () => {
+						const settingsStore = useSettingsStore();
+						return settingsStore.isPreviewMode;
+					},
+				},
+			},
+		},
+	},
+	{
+		path: '/workflows/demo/diff',
+		name: VIEWS.DEMO_DIFF,
+		component: async () => await import('@/app/views/DemoDiffView.vue'),
 		meta: {
 			layout: 'demo',
 			middleware: ['authenticated'],
@@ -550,6 +601,31 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'security',
+				name: VIEWS.SECURITY_SETTINGS,
+				component: SecuritySettingsView,
+				meta: {
+					middleware: ['authenticated', 'custom', 'rbac'],
+					middlewareOptions: {
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('PERSONAL_SECURITY_SETTINGS');
+						},
+						rbac: {
+							scope: ['securitySettings:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'users',
 				name: VIEWS.USERS_SETTINGS,
 				component: SettingsUsersView,
@@ -565,6 +641,31 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'users',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'ai',
+				name: VIEWS.AI_SETTINGS,
+				component: SettingsAIView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'aiAssistant:manage',
+						},
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isAiAssistantEnabled || settingsStore.isAskAiEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'assistant',
 							};
 						},
 					},
@@ -735,7 +836,12 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.WORKER_VIEW,
 				component: WorkerView,
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'workersView:manage',
+						},
+					},
 				},
 			},
 			{

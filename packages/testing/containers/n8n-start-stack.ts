@@ -1,16 +1,19 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
-import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
+import type { CloudflaredResult } from './services/cloudflared';
 import type { KeycloakResult } from './services/keycloak';
+import type { MailpitResult } from './services/mailpit';
+import type { NgrokResult } from './services/ngrok';
 import type { TracingResult } from './services/tracing';
 import type { ServiceName } from './services/types';
 import type { VictoriaLogsResult } from './services/victoria-logs';
 import type { VictoriaMetricsResult } from './services/victoria-metrics';
 import type { N8NConfig, N8NStack } from './stack';
 import { createN8NStack } from './stack';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // ANSI colors for terminal output
 const colors = {
@@ -47,6 +50,10 @@ ${colors.yellow}Options:${colors.reset}
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
   --tracing         Enable tracing stack (n8n-tracer + Jaeger) for workflow visualization
+  --kafka           Enable Kafka broker for message queue trigger testing
+  --tunnel          Enable Cloudflare Tunnel for public URL (via trycloudflare.com)
+  --ngrok           Enable ngrok tunnel for public URL (requires NGROK_AUTHTOKEN env var)
+  --mailpit         Enable Mailpit for email testing
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -63,7 +70,7 @@ ${Object.entries(BASE_PERFORMANCE_PLANS)
 	.join('\n')}
 
 ${colors.yellow}Environment Variables:${colors.reset}
-  • N8N_DOCKER_IMAGE=<image>  Use a custom Docker image (default: n8nio/n8n:local)
+  • TEST_IMAGE_N8N=<image>  Use a custom Docker image (default: n8nio/n8n:local)
 
 ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# Simple SQLite instance${colors.reset}
@@ -86,6 +93,9 @@ ${colors.yellow}Examples:${colors.reset}
 
   ${colors.bright}# With tracing stack (Jaeger UI for workflow execution visualization)${colors.reset}
   npm run stack --queue --tracing
+
+  ${colors.bright}# With public tunnel (webhooks accessible from internet)${colors.reset}
+  npm run stack --tunnel
 
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
@@ -123,6 +133,10 @@ async function main() {
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
 			tracing: { type: 'boolean' },
+			kafka: { type: 'boolean' },
+			tunnel: { type: 'boolean' },
+			ngrok: { type: 'boolean' },
+			mailpit: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -144,6 +158,10 @@ async function main() {
 	if (values.oidc) services.push('keycloak');
 	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
 	if (values.tracing) services.push('tracing');
+	if (values.kafka) services.push('kafka');
+	if (values.tunnel) services.push('cloudflared');
+	if (values.ngrok) services.push('ngrok');
+	if (values.mailpit) services.push('mailpit');
 
 	// Build configuration
 	const config: N8NConfig = {
@@ -164,10 +182,6 @@ async function main() {
 
 		config.mains = mains;
 		config.workers = workers;
-
-		if (!values.queue && (values.mains ?? values.workers)) {
-			log.warn('--mains and --workers imply queue mode');
-		}
 	}
 
 	if (values.plan) {
@@ -230,7 +244,6 @@ async function main() {
 			throw error;
 		}
 
-		log.success('All containers started successfully!');
 		console.log('');
 		log.info(`n8n URL: ${colors.bright}${colors.green}${stack.baseUrl}${colors.reset}`);
 
@@ -276,9 +289,34 @@ async function main() {
 			log.info(`Jaeger UI: ${colors.cyan}${tracingResult.meta.jaeger.uiUrl}${colors.reset}`);
 		}
 
+		const cloudflaredResult = stack.serviceResults.cloudflared as CloudflaredResult | undefined;
+		if (cloudflaredResult) {
+			console.log('');
+			log.header('Cloudflare Tunnel');
+			log.info(`Public URL: ${colors.cyan}${cloudflaredResult.meta.publicUrl}${colors.reset}`);
+			log.info('Webhooks are accessible from the internet via this URL');
+		}
+
+		const ngrokResult = stack.serviceResults.ngrok as NgrokResult | undefined;
+		if (ngrokResult) {
+			console.log('');
+			log.header('ngrok Tunnel');
+			log.info(`Public URL: ${colors.cyan}${ngrokResult.meta.publicUrl}${colors.reset}`);
+			log.info('Webhooks are accessible from the internet via this URL');
+		}
+
+		const mailpitResult = stack.serviceResults.mailpit as MailpitResult | undefined;
+		if (mailpitResult) {
+			console.log('');
+			log.header('Email Testing (Mailpit)');
+			log.info(`Mailpit UI: ${colors.cyan}${mailpitResult.meta.apiBaseUrl}${colors.reset}`);
+		}
+
 		console.log('');
 		log.info('Containers are running in the background');
-		log.info('Cleanup with: pnpm stack:clean:all (stops containers and removes networks)');
+		log.info(
+			'Cleanup with: pnpm --filter n8n-containers stack:clean:all (stops containers and removes networks)',
+		);
 		console.log('');
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
@@ -287,50 +325,36 @@ async function main() {
 }
 
 function displayConfig(config: N8NConfig) {
-	const dockerImage = getDockerImageFromEnv();
-	log.info(`Docker image: ${dockerImage}`);
-
+	const dockerImage = TEST_CONTAINER_IMAGES.n8n;
 	const mains = config.mains ?? 1;
 	const workers = config.workers ?? 0;
 	const isQueueMode = mains > 1 || workers > 0;
 	const services = config.services ?? [];
 
-	// Determine actual database
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	const usePostgres = config.postgres || isQueueMode || services.includes('keycloak');
-	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 
+	let modeStr: string;
 	if (isQueueMode) {
-		log.info(`Queue mode: ${mains} main(s), ${workers} worker(s)`);
-		if (!config.postgres) {
-			log.info('(PostgreSQL automatically enabled for queue mode)');
-		}
-		if (mains > 1) {
-			log.info('(load balancer will be configured)');
-		}
+		const parts = [`${mains}M/${workers}W`, usePostgres ? 'PostgreSQL' : 'SQLite'];
+		if (mains > 1) parts.push('load-balanced');
+		modeStr = parts.join(', ');
 	} else {
-		log.info('Queue mode: disabled');
+		modeStr = usePostgres ? 'single, PostgreSQL' : 'single, SQLite';
 	}
 
-	log.info('Task runner: enabled');
+	log.info(`Image: ${dockerImage}`);
+	log.info(`Mode: ${modeStr}`);
 
-	// Display source control status
-	if (services.includes('gitea')) {
-		log.info('Source Control: enabled (Git server - Gitea 1.24.6)');
-		log.info('  Admin: giteaadmin / giteapassword');
-		log.info('  Repository: n8n-test-repo');
-	} else {
-		log.info('Source Control: disabled');
-	}
+	const enabledFeatures: string[] = [];
+	if (services.includes('gitea')) enabledFeatures.push('Source Control (Gitea)');
+	if (services.includes('keycloak')) enabledFeatures.push('OIDC (Keycloak)');
+	if (services.includes('victoriaLogs')) enabledFeatures.push('Observability');
+	if (services.includes('tracing')) enabledFeatures.push('Tracing (Jaeger)');
+	if (services.includes('mailpit')) enabledFeatures.push('Email (Mailpit)');
 
-	// Display OIDC status
-	if (services.includes('keycloak')) {
-		log.info('OIDC: enabled (Keycloak)');
-		if (!config.postgres && !isQueueMode) {
-			log.info('(PostgreSQL automatically enabled for OIDC)');
-		}
-	} else {
-		log.info('OIDC: disabled');
+	if (enabledFeatures.length > 0) {
+		log.info(`Services: ${enabledFeatures.join(', ')}`);
 	}
 
 	// Display observability status
@@ -347,24 +371,20 @@ function displayConfig(config: N8NConfig) {
 		log.info('Tracing: disabled');
 	}
 
+	// Display tunnel status
+	if (services.includes('cloudflared')) {
+		log.info('Tunnel: enabled (Cloudflare Quick Tunnel)');
+	} else if (services.includes('ngrok')) {
+		log.info('Tunnel: enabled (ngrok)');
+	} else {
+		log.info('Tunnel: disabled');
+	}
 	if (config.resourceQuota) {
-		log.info(
-			`Resource limits: ${config.resourceQuota.memory}GB RAM, ${config.resourceQuota.cpu} CPU cores`,
-		);
+		log.info(`Resources: ${config.resourceQuota.memory}GB RAM, ${config.resourceQuota.cpu} CPU`);
 	}
 
-	if (config.env) {
-		const envCount = Object.keys(config.env).length;
-		if (envCount > 0) {
-			log.info(`Environment variables: ${envCount} custom variable(s)`);
-			Object.entries(config.env).forEach(([key, value]) => {
-				console.log(`  ${key}=${value}`);
-			});
-		}
-	}
-
-	if (process.env.TESTCONTAINERS_REUSE_ENABLE === 'true') {
-		log.info('Container reuse: enabled (containers will persist)');
+	if (config.env && Object.keys(config.env).length > 0) {
+		log.info(`Custom env: ${Object.keys(config.env).join(', ')}`);
 	}
 }
 

@@ -10,7 +10,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import type { N8nJsonLoader } from '@n8n/ai-utilities';
 
 import { pineconeIndexSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { pineconeIndexRLC } from '../shared/descriptions';

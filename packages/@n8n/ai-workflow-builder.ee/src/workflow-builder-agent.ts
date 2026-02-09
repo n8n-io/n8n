@@ -20,6 +20,7 @@ import { MAX_AI_BUILDER_PROMPT_LENGTH, MAX_MULTI_AGENT_STREAM_ITERATIONS } from 
 import { ValidationError } from './errors';
 import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
+import type { ResourceLocatorCallback } from './types/callbacks';
 import type { SimpleWorkflow } from './types/workflow';
 import { createStreamProcessor, type StreamEvent } from './utils/stream-processor';
 import type { WorkflowState } from './workflow-state';
@@ -46,7 +47,6 @@ export interface StageLLMs {
 	responder: BaseChatModel;
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
-	configurator: BaseChatModel;
 	parameterUpdater: BaseChatModel;
 }
 
@@ -64,6 +64,8 @@ export interface WorkflowBuilderAgentConfig {
 	featureFlags?: BuilderFeatureFlags;
 	/** Callback when generation completes successfully (not aborted) */
 	onGenerationSuccess?: () => Promise<void>;
+	/** Callback for fetching resource locator options */
+	resourceLocatorCallback?: ResourceLocatorCallback;
 }
 
 export interface ExpressionValue {
@@ -99,6 +101,7 @@ export class WorkflowBuilderAgent {
 	private instanceUrl?: string;
 	private runMetadata?: Record<string, unknown>;
 	private onGenerationSuccess?: () => Promise<void>;
+	private resourceLocatorCallback?: ResourceLocatorCallback;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -109,6 +112,7 @@ export class WorkflowBuilderAgent {
 		this.instanceUrl = config.instanceUrl;
 		this.runMetadata = config.runMetadata;
 		this.onGenerationSuccess = config.onGenerationSuccess;
+		this.resourceLocatorCallback = config.resourceLocatorCallback;
 	}
 
 	/**
@@ -124,6 +128,7 @@ export class WorkflowBuilderAgent {
 			checkpointer: this.checkpointer,
 			featureFlags,
 			onGenerationSuccess: this.onGenerationSuccess,
+			resourceLocatorCallback: this.resourceLocatorCallback,
 		});
 	}
 

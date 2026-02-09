@@ -1,13 +1,10 @@
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
-import { attachMetric, waitForMemoryStabilization } from '../../utils/performance-helper';
+import { attachMetric, getStableHeap } from '../../utils/performance-helper';
 
 test.use({
 	capability: {
-		resourceQuota: {
-			memory: 0.75,
-			cpu: 0.5,
-		},
+		resourceQuota: { memory: 0.75, cpu: 0.5 },
 		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	},
 });
@@ -21,28 +18,26 @@ test.describe('Memory Leak Detection @capability:observability', () => {
 	test('Memory should be released after actions', async ({ n8nContainer, n8n }, testInfo) => {
 		const obs = n8nContainer.services.observability;
 
-		// Wait for memory to stabilize before measuring baseline
-		const { heapUsedMB: baselineMemoryMB } = await waitForMemoryStabilization(obs.metrics);
-
+		const baseline = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 		await performMemoryAction(n8n);
 		await n8n.page.goto('/home/workflows');
+		const final = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 
-		// Wait for memory to stabilize after actions
-		const { heapUsedMB: finalMemoryMB } = await waitForMemoryStabilization(obs.metrics);
-
-		const memoryRetainedMB = finalMemoryMB - baselineMemoryMB;
-		const retentionPercent = (memoryRetainedMB / baselineMemoryMB) * 100;
+		const retainedMB = final.heapUsedMB - baseline.heapUsedMB;
+		const retentionPercent = (retainedMB / baseline.heapUsedMB) * 100;
 
 		await attachMetric(testInfo, 'memory-heap-retention-percent', retentionPercent, '%');
-		await attachMetric(testInfo, 'memory-heap-used-pre-action', baselineMemoryMB, 'MB');
-		await attachMetric(testInfo, 'memory-heap-used-post-action', finalMemoryMB, 'MB');
-		await attachMetric(testInfo, 'memory-heap-retained', memoryRetainedMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-used-pre-action', baseline.heapUsedMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-used-post-action', final.heapUsedMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-retained', retainedMB, 'MB');
 
-		expect(baselineMemoryMB).toBeGreaterThan(0);
-		expect(finalMemoryMB).toBeGreaterThan(0);
+		expect(baseline.heapUsedMB).toBeGreaterThan(0);
+		expect(final.heapUsedMB).toBeGreaterThan(0);
+
 		console.log(
-			`[MEMORY RETENTION] Baseline: ${baselineMemoryMB.toFixed(1)} MB | Final: ${finalMemoryMB.toFixed(1)} MB | ` +
-				`Retained: ${memoryRetainedMB.toFixed(1)} MB (${retentionPercent.toFixed(1)}%)`,
+			`[MEMORY RETENTION] Baseline: ${baseline.heapUsedMB.toFixed(1)} MB | ` +
+				`Final: ${final.heapUsedMB.toFixed(1)} MB | ` +
+				`Retained: ${retainedMB.toFixed(1)} MB (${retentionPercent.toFixed(1)}%)`,
 		);
 	});
 });

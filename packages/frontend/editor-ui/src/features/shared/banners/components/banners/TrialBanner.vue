@@ -5,8 +5,8 @@ import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { computed } from 'vue';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-
 import { N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
+
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
 const cloudPlanStore = useCloudPlanStore();
@@ -16,11 +16,13 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const shouldShowTrialBanner = computed(() => cloudPlanStore.shouldShowDynamicTrialBanner);
 const trialBannerText = computed(() => cloudPlanStore.dynamicTrialBannerText);
 
-const trialDaysLeft = computed(() => -1 * cloudPlanStore.trialDaysLeft);
+const trialTimeLeft = computed(() => cloudPlanStore.trialTimeLeft);
+
 const messageText = computed(() => {
-	return locale.baseText('banners.trial.message', {
-		adjustToNumber: trialDaysLeft.value,
-		interpolate: { count: String(trialDaysLeft.value) },
+	const { count, unit } = trialTimeLeft.value;
+	return locale.baseText(`banners.trial.message.${unit}`, {
+		adjustToNumber: count,
+		interpolate: { count: String(count) },
 	});
 });
 const cloudPlanData = computed<CloudPlanAndUsageData | null>(() => {

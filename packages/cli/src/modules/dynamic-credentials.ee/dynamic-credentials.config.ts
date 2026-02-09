@@ -17,4 +17,10 @@ export class DynamicCredentialsConfig {
 	 */
 	@Env('N8N_DYNAMIC_CREDENTIALS_CORS_ALLOW_CREDENTIALS')
 	corsAllowCredentials: boolean = false;
+
+	/**
+	 * Authentication token for the dynamic credentials endpoints.
+	 */
+	@Env('N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN')
+	endpointAuthToken: string = '';
 }

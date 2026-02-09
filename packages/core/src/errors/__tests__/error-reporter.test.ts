@@ -17,7 +17,7 @@ jest.mock('@sentry/node', () => ({
 jest.spyOn(process, 'on');
 
 describe('ErrorReporter', () => {
-	const errorReporter = new ErrorReporter(mock());
+	const errorReporter = new ErrorReporter(mock(), mock());
 	const event = {} as ErrorEvent;
 
 	describe('beforeSend', () => {
@@ -104,7 +104,7 @@ describe('ErrorReporter', () => {
 
 		describe('beforeSendFilter', () => {
 			const newErrorReportedWithBeforeSendFilter = (beforeSendFilter: jest.Mock) => {
-				const errorReporter = new ErrorReporter(mock());
+				const errorReporter = new ErrorReporter(mock(), mock());
 				// @ts-expect-error - beforeSendFilter is private
 				errorReporter.beforeSendFilter = beforeSendFilter;
 				return errorReporter;
@@ -180,7 +180,7 @@ describe('ErrorReporter', () => {
 		beforeEach(() => {
 			error = new ApplicationError('Test error');
 			logger = mock<Logger>();
-			errorReporter = new ErrorReporter(logger);
+			errorReporter = new ErrorReporter(logger, mock());
 		});
 
 		it('should include stack trace for error-level `ApplicationError`', () => {

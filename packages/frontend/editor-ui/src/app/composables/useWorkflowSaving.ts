@@ -1,11 +1,21 @@
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
+import { watch } from 'vue';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS, AutoSaveState } from '@/app/constants';
+import {
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRM,
+	VIEWS,
+	AutoSaveState,
+	DEBOUNCE_TIME,
+	getDebounceTime,
+} from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
@@ -25,6 +35,11 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export function useWorkflowSaving({
 	router,
@@ -40,6 +55,7 @@ export function useWorkflowSaving({
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const toast = useToast();
@@ -52,6 +68,7 @@ export function useWorkflowSaving({
 		useWorkflowHelpers();
 
 	const autosaveStore = useWorkflowAutosaveStore();
+	const backendConnectionStore = useBackendConnectionStore();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -88,7 +105,7 @@ export function useWorkflowSaving({
 				const saved = await saveCurrentWorkflow({}, false);
 
 				if (saved) {
-					await npsSurveyStore.fetchPromptsData();
+					await npsSurveyStore.showNpsSurveyIfPossible();
 					uiStore.markStateClean();
 					const goToNext = await confirm();
 					next(goToNext);
@@ -162,7 +179,9 @@ export function useWorkflowSaving({
 		}
 
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
-		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
+		const existingWorkflow = currentWorkflow
+			? workflowsListStore.getWorkflowById(currentWorkflow)
+			: null;
 		if (!currentWorkflow || !existingWorkflow?.id) {
 			const workflowId = await saveAsNewWorkflow(
 				{ name, tags, parentFolderId, uiContext, autosaved },
@@ -218,7 +237,10 @@ export function useWorkflowSaving({
 			}
 
 			if (tags) {
-				workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
+				const tagIds = convertWorkflowTagsToIds(workflowData.tags);
+				const workflowDocumentId = createWorkflowDocumentId(currentWorkflow);
+				const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+				workflowDocumentStore.setTags(tagIds);
 			}
 
 			// Only mark state clean if no new changes were made during the save
@@ -240,6 +262,53 @@ export function useWorkflowSaving({
 			console.error(error);
 
 			uiStore.removeActiveAction('workflowSaving');
+
+			if (error.errorCode === 100) {
+				telemetry.track('User attempted to save locked workflow', {
+					workflowId: currentWorkflow,
+					sharing_role: getWorkflowProjectRole(currentWorkflow),
+				});
+
+				// Hide modal if we already showed it
+				// So that user could explore the workflow
+				if (!autosaveStore.conflictModalShown) {
+					if (autosaved) {
+						autosaveStore.setConflictModalShown(true);
+					}
+
+					const url = router.resolve({
+						name: VIEWS.WORKFLOW,
+						params: { name: currentWorkflow },
+					}).href;
+
+					const overwrite = await message.confirm(
+						i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
+							interpolate: {
+								url,
+							},
+						}),
+						i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
+						{
+							confirmButtonText: i18n.baseText(
+								'workflows.concurrentChanges.confirmMessage.confirmButtonText',
+							),
+							cancelButtonText: i18n.baseText(
+								'workflows.concurrentChanges.confirmMessage.cancelButtonText',
+							),
+						},
+					);
+
+					if (overwrite === MODAL_CONFIRM) {
+						return await saveCurrentWorkflow({ id, name, tags }, redirect, true);
+					}
+				}
+
+				// For autosaves, fall through to retry logic below
+				// As we want to still communicate autosave stopped working
+				if (!autosaved) {
+					return false;
+				}
+			}
 
 			// Handle autosave failures with exponential backoff
 			if (autosaved) {
@@ -269,41 +338,6 @@ export function useWorkflowSaving({
 					type: 'error',
 					duration: retryDelay,
 				});
-
-				return false;
-			}
-
-			if (error.errorCode === 100) {
-				telemetry.track('User attempted to save locked workflow', {
-					workflowId: currentWorkflow,
-					sharing_role: getWorkflowProjectRole(currentWorkflow),
-				});
-
-				const url = router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { name: currentWorkflow },
-				}).href;
-
-				const overwrite = await message.confirm(
-					i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
-						interpolate: {
-							url,
-						},
-					}),
-					i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
-					{
-						confirmButtonText: i18n.baseText(
-							'workflows.concurrentChanges.confirmMessage.confirmButtonText',
-						),
-						cancelButtonText: i18n.baseText(
-							'workflows.concurrentChanges.confirmMessage.cancelButtonText',
-						),
-					},
-				);
-
-				if (overwrite === MODAL_CONFIRM) {
-					return await saveCurrentWorkflow({ id, name, tags }, redirect, true);
-				}
 
 				return false;
 			}
@@ -402,7 +436,7 @@ export function useWorkflowSaving({
 
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
-			workflowsStore.addWorkflow(workflowData);
+			workflowsListStore.addWorkflow(workflowData);
 
 			focusPanelStore.onNewWorkflowSave(workflowData.id);
 
@@ -448,7 +482,10 @@ export function useWorkflowSaving({
 				workflowState.setNodeValue(changes);
 			});
 
-			workflowState.setWorkflowTagIds(convertWorkflowTagsToIds(workflowData.tags));
+			const tagIds = convertWorkflowTagsToIds(workflowData.tags);
+			const workflowDocumentId = createWorkflowDocumentId(workflowData.id);
+			const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+			workflowDocumentStore.setTags(tagIds);
 
 			const route = router.currentRoute.value;
 			const templateId = route.query.templateId;
@@ -516,8 +553,8 @@ export function useWorkflowSaving({
 
 			autosaveStore.setPendingAutoSave(savePromise);
 		},
-		1500,
-		{ maxWait: 5000 },
+		getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE),
+		{ maxWait: getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) },
 	);
 
 	const scheduleAutoSave = () => {
@@ -532,6 +569,11 @@ export function useWorkflowSaving({
 			return;
 		}
 
+		// Don't schedule if we're offline
+		if (!backendConnectionStore.isOnline) {
+			return;
+		}
+
 		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 		void autoSaveWorkflowDebounced();
 	};
@@ -542,6 +584,18 @@ export function useWorkflowSaving({
 		}
 		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
+
+	// Watch for network coming back online
+	watch(
+		() => backendConnectionStore.isOnline,
+		(isOnline, wasOnline) => {
+			if (isOnline && !wasOnline) {
+				if (uiStore.stateIsDirty) {
+					scheduleAutoSave();
+				}
+			}
+		},
+	);
 
 	return {
 		promptSaveUnsavedWorkflowChanges,

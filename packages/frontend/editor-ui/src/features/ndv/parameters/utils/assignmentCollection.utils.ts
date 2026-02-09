@@ -14,9 +14,9 @@ export function inferAssignmentType(value: unknown): string {
 	return 'string';
 }
 
-export function typeFromExpression(expression: string): string {
+export async function typeFromExpression(expression: string): Promise<string> {
 	try {
-		const resolved = resolveParameter(`=${expression}`);
+		const resolved = await resolveParameter(`=${expression}`);
 		return inferAssignmentType(resolved);
 	} catch {
 		return 'string';

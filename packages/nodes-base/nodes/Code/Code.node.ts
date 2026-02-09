@@ -118,7 +118,7 @@ export class Code implements INodeType {
 				: 'javaScript';
 
 		const isJsLang = language === 'javaScript';
-		const isPyLang = language === 'pythonNative';
+		const isPyLang = language === 'python' || language === 'pythonNative'; // keep legacy `python` for backwards compatibility
 		const runnersConfig = Container.get(TaskRunnersConfig);
 		const isJsRunner = runnersConfig.enabled;
 
@@ -128,16 +128,16 @@ export class Code implements INodeType {
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
-		const codeParameterName = language === 'pythonNative' ? 'pythonCode' : 'jsCode';
+		const codeParameterName = isPyLang ? 'pythonCode' : 'jsCode';
 
 		if (isJsLang && isJsRunner) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
-			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+			const sandbox = new JsTaskRunnerSandbox(workflowMode, this);
 			const numInputItems = this.getInputData().length;
 
 			return nodeMode === 'runOnceForAllItems'
-				? [await sandbox.runCodeAllItems()]
-				: [await sandbox.runCodeForEachItem(numInputItems)];
+				? [await sandbox.runCodeAllItems(code)]
+				: [await sandbox.runCodeForEachItem(code, numInputItems)];
 		}
 
 		if (isPyLang) {

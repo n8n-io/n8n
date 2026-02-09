@@ -1,7 +1,7 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { PublicUser } from '@n8n/db';
+import type { AuthIdentity, PublicUser } from '@n8n/db';
 import {
 	ProjectRelation,
 	User,
@@ -31,9 +31,9 @@ import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
+import { JwtService } from './jwt.service';
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
-import { JwtService } from './jwt.service';
 
 const TAMPER_PROOF_INVITE_LINKS_EXPERIMENT = '061_tamper_proof_invite_links';
 
@@ -77,6 +77,28 @@ export class UserService {
 		}
 
 		await this.userRepository.save(user);
+	}
+
+	async findUserWithAuthIdentities(userId: string): Promise<User> {
+		return await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role', 'authIdentities'],
+		});
+	}
+
+	/**
+	 * Check if a user is authenticated via LDAP or OIDC.
+	 * These users should not be able to change their profile information.
+	 */
+	async findSsoIdentity(userId: string): Promise<AuthIdentity | undefined> {
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['authIdentities'],
+		});
+
+		const ssoIdentity = user?.authIdentities?.find((identity) => identity.providerType !== 'email');
+
+		return ssoIdentity;
 	}
 
 	async toPublic(

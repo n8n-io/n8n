@@ -2,7 +2,14 @@ import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-type
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
+import {
+	Post,
+	GlobalScope,
+	RestController,
+	Body,
+	Param,
+	createBodyKeyedRateLimiter,
+} from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -18,6 +25,7 @@ import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { Time } from '@n8n/constants';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -38,7 +46,7 @@ export class InvitationController {
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 
-	@Post('/', { rateLimit: { limit: 10 } })
+	@Post('/', { ipRateLimit: { limit: 10 } })
 	@GlobalScope('user:create')
 	async inviteUser(
 		req: AuthenticatedRequest,
@@ -154,7 +162,12 @@ export class InvitationController {
 	/**
 	 * Fill out user shell with first name, last name, and password using JWT token.
 	 */
-	@Post('/accept', { skipAuth: true })
+	@Post('/accept', {
+		skipAuth: true,
+		// Two layered rate limit to ensure multiple users can accept an invitation from
+		// the same IP address but aggressive per inviteeId limit.
+		ipRateLimit: { limit: 100, windowMs: 1 * Time.minutes.toMilliseconds },
+	})
 	async acceptInvitationWithToken(
 		req: AuthlessRequest,
 		res: Response,
@@ -195,7 +208,17 @@ export class InvitationController {
 	/**
 	 * Fill out user shell with first name, last name, and password (legacy format with inviterId/inviteeId).
 	 */
-	@Post('/:id/accept', { skipAuth: true })
+	@Post('/:id/accept', {
+		skipAuth: true,
+		// Two layered rate limit to ensure multiple users can accept an invitation from
+		// the same IP address but aggressive per inviteeId limit.
+		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		keyedRateLimit: createBodyKeyedRateLimiter<AcceptInvitationRequestDto>({
+			limit: 10,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+			field: 'inviterId',
+		}),
+	})
 	async acceptInvitation(
 		req: AuthlessRequest,
 		res: Response,

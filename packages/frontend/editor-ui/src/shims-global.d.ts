@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-comlink/client" />
+/// <reference types="wa-sqlite/src/types" />
 
 import 'vue-router';
 import type { VNode, ComponentPublicInstance } from 'vue';

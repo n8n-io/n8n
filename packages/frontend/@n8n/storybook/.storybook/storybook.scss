@@ -1,6 +1,7 @@
 @use '../../design-system/src/css/base.scss';
 @use '../../design-system/src/css/reset.scss';
 @use '../../design-system/src/css/index.scss';
+@use '../../design-system/src/css/_tokens.new.scss';
 
 .multi-container > * {
 	margin-bottom: 10px;

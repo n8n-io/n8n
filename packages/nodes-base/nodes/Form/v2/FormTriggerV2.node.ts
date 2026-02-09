@@ -17,6 +17,7 @@ import {
 	formRespondMode,
 	formTitle,
 	formTriggerPanel,
+	ipAllowlist,
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
@@ -138,6 +139,7 @@ const descriptionV2: INodeTypeDescription = {
 			default: {},
 			options: [
 				appendAttributionToForm,
+				ipAllowlist,
 				{
 					displayName: 'Button Label',
 					description: 'The label of the submit button in the form',

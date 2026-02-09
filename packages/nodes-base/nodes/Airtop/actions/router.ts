@@ -63,7 +63,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				itemData: { item: i },
 			});
 
-			operationResult.push(...executionData);
+			operationResult.push.apply(operationResult, executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				operationResult.push({

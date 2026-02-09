@@ -24,6 +24,7 @@ on:
       - '**/package.json'
       - '**/turbo.json'
       - '.github/workflows/build-windows.yml'
+      - '.github/actions/setup-nodejs/**'
 
 jobs:
   build:
@@ -37,6 +38,20 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm build
+
+      - name: Smoke test pnpm start -- -- --version
+        shell: pwsh
+        run: |
+          Write-Host "Running smoke test: pnpm start -- -- --version"
+
+          pnpm start -- -- --version
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "`n❌ Smoke test failed (exit code: $LASTEXITCODE)"
+            exit $LASTEXITCODE
+          }
+
+          Write-Host "`n✓ Smoke test passed"
 
       - name: Send Slack notification on failure
         if: failure() && inputs.notify_on_failure == true

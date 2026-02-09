@@ -1,45 +1,61 @@
+import { EventService } from '@/events/event.service';
+import { RelayEventMap } from '@/events/maps/relay.event-map';
 import { Logger } from '@n8n/backend-common';
-import { WorkflowHistoryCompactionConfig } from '@n8n/config';
+import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { DiffRule, ensureError, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
+import { DiffMetaData, DiffRule, ensureError, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
  *
- * Every hour (`compactingTimeWindowHours` / 2):
+ * Every hour (`optimizingTimeWindowHours` / 2):
  *
  * 1. Find workflows with new versions in the time window determined
- *    by `compactingMinimumAgeHours` and `compactingTimeWindowHours`
+ *    by `optimizingMinimumAgeHours` and `optimizingTimeWindowHours`
  *
  * 2. For each workflow, fetch all versions in that window and remove
- *    versions based on workflowHistoryRepo.pruneHistory.
+ *    redundant versions i.e. versions which hold no meaningful data compared
+ *    to the next iteration, e.g. only change is node parameter { a: 'the quick' }
+ *    to { a: 'the quick brown fox' }
  *
- * This currently removes any *redundant* versions, i.e. versions
- * which hold no meaningful data compared to the next iteration
- * e.g. only change is node parameter { a: 'the quick' } to { a: 'the quick brown fox' }
+ * Every day:
  *
- * We may introduce more stricter rules in the future, likely with
- * a mechanism to run this pruning on demand.
+ * 1. Find workflows with new versions in the time window determined
+ *    by `trimmingMinimumAgeDays` and `trimmingTimeWindowDays`
+ *
+ * 2. For each workflow, fetch all versions in that window and leave behind
+ *    only one version every minute to four hours, depending on the size of the
+ *    workflow.
+ *
+ * Neither of these operations will remove active or named versions, and a version
+ * followed by a version from a different author.
+ *
+ * This compaction happens in addition to workflow history pruning.
+ *
  */
 @Service()
 export class WorkflowHistoryCompactionService {
-	private compactingInterval: NodeJS.Timeout | undefined;
+	private optimizingInterval: NodeJS.Timeout | undefined;
+	private trimmingInterval: NodeJS.Timeout | undefined;
 
 	private isShuttingDown = false;
 
-	private isCompactingRecentHistories = false;
+	private isOptimizingHistories = false;
+	private isTrimmingHistories = false;
 
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbConnection: DbConnection,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-history-compaction');
 	}
@@ -59,36 +75,65 @@ export class WorkflowHistoryCompactionService {
 		const { connectionState } = this.dbConnection;
 		if (!this.isEnabled || !connectionState.migrated || this.isShuttingDown) return;
 
-		this.logger.debug('Started workflow histories compaction', { ...this.config });
+		this.logger.debug('Started workflow histories optimization and trimming', { ...this.config });
 
-		this.scheduleRollingCompacting();
-
-		if (this.config.compactOnStartUp) {
-			this.logger.debug('Compacting on start up');
-			void this.compactRecentHistories();
-		}
+		this.scheduleOptimization();
+		this.scheduleTrimming();
 	}
 
 	@OnLeaderStepdown()
 	stopCompacting() {
-		if (!this.compactingInterval) return;
+		if (!this.optimizingInterval && !this.trimmingInterval) return;
 
-		clearInterval(this.compactingInterval);
+		clearInterval(this.optimizingInterval);
+		clearInterval(this.trimmingInterval);
 
-		this.logger.debug('Stopped workflow histories compaction');
+		this.logger.debug('Stopped workflow histories compaction and trimming');
 	}
 
-	private scheduleRollingCompacting() {
-		// We run compaction twice as often as the window for which we compact workflows
+	private scheduleTrimming() {
+		if (
+			this.globalConfig.workflowHistory.pruneTime !== -1 &&
+			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds <
+				this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds
+		) {
+			this.logger.debug('Skipping workflow history trimming as pruneAge < trimmingMinimumAge');
+			return;
+		}
+
+		// This is written this way as it needs to account for leader changes and in particular
+		// the same instance being re-elected leader, so just starting a 1 day interval is unlikely
+		// to ever trigger in queue mode/multi-main
+		const trimOnceADay = async () => {
+			if (new Date().getHours() === 3) {
+				await this.trimLongRunningHistories();
+			}
+		};
+
+		this.trimmingInterval = setInterval(trimOnceADay, 1 * Time.hours.toMilliseconds);
+
+		if (this.config.trimOnStartUp) {
+			void this.trimLongRunningHistories();
+		} else {
+			void trimOnceADay();
+		}
+
+		this.logger.debug('Trimming histories once a day at 3am server time');
+	}
+
+	private scheduleOptimization() {
+		// We run optimization twice as often as the window for which we optimize workflows
 		// This allows redundancy for covering first and last versions in the window, accounts
 		// for restarts and other small gaps, e.g. caused by the next internal needing to wait
 		// for computing resources if the instance is busy
-		const rateMs = (this.config.compactingTimeWindowHours / 2) * Time.hours.toMilliseconds;
-		this.compactingInterval = setInterval(async () => await this.compactRecentHistories(), rateMs);
+		const rateMs = (this.config.optimizingTimeWindowHours / 2) * Time.hours.toMilliseconds;
+		this.optimizingInterval = setInterval(async () => await this.optimizeHistories(), rateMs);
 
 		this.logger.debug(
-			`Compacting histories every ${this.config.compactingTimeWindowHours / 2.0} hour(s)`,
+			`Optimizing histories every ${this.config.optimizingTimeWindowHours / 2.0} hour(s)`,
 		);
+
+		void this.optimizeHistories();
 	}
 
 	@OnShutdown()
@@ -97,27 +142,62 @@ export class WorkflowHistoryCompactionService {
 		this.stopCompacting();
 	}
 
-	private async compactRecentHistories(): Promise<void> {
-		if (this.isCompactingRecentHistories) {
-			this.logger.warn('Skipping recent compaction as there is already a running iteration');
+	private async trimLongRunningHistories(): Promise<void> {
+		if (this.isTrimmingHistories) {
+			this.logger.debug('Skipping trimming as there is already a running iteration');
 			return;
 		}
-		this.isCompactingRecentHistories = true;
+		this.isTrimmingHistories = true;
 
 		const startDelta =
-			(this.config.compactingMinimumAgeHours + this.config.compactingTimeWindowHours) *
+			(this.config.trimmingMinimumAgeDays + this.config.trimmingTimeWindowDays) *
+			Time.days.toMilliseconds;
+		const endDelta = this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds;
+
+		try {
+			await this.compactHistories(
+				startDelta,
+				endDelta,
+				[
+					RULES.makeMergeDependingOnSizeRule(
+						new Map([
+							[0, 60 * 1_000],
+							[100, 5 * 60 * 1_000],
+							[1000, 30 * 60 * 1_000],
+							[5000, 60 * 60 * 1_000],
+							[10000, 4 * 60 * 60 * 1_000],
+						]),
+					),
+				],
+				[],
+				{ workflowSizeScore: true },
+			);
+		} finally {
+			this.isTrimmingHistories = false;
+		}
+	}
+
+	private async optimizeHistories(): Promise<void> {
+		if (this.isOptimizingHistories) {
+			this.logger.debug('Skipping recent optimization as there is already a running iteration');
+			return;
+		}
+		this.isOptimizingHistories = true;
+
+		const startDelta =
+			(this.config.optimizingMinimumAgeHours + this.config.optimizingTimeWindowHours) *
 			Time.hours.toMilliseconds;
-		const endDelta = this.config.compactingMinimumAgeHours * Time.hours.toMilliseconds;
+		const endDelta = this.config.optimizingMinimumAgeHours * Time.hours.toMilliseconds;
 
 		try {
 			await this.compactHistories(
 				startDelta,
 				endDelta,
 				[RULES.mergeAdditiveChanges],
-				[SKIP_RULES.makeSkipTimeDifference(this.config.minimumTimeBetweenSessionsMs)],
+				[SKIP_RULES.makeSkipTimeDifference(20 * 60 * 1000)],
 			);
 		} finally {
-			this.isCompactingRecentHistories = false;
+			this.isOptimizingHistories = false;
 		}
 	}
 
@@ -126,6 +206,7 @@ export class WorkflowHistoryCompactionService {
 		endDeltaMs: number,
 		rules: DiffRule[],
 		skipRules: DiffRule[],
+		metaData: Partial<Record<keyof DiffMetaData, boolean>> = {},
 	): Promise<void> {
 		const compactionStartTime = Date.now();
 
@@ -135,7 +216,7 @@ export class WorkflowHistoryCompactionService {
 		const startIso = startDate.toISOString();
 		const endIso = endDate.toISOString();
 
-		this.logger.info('Starting workflow history compaction', {
+		this.logger.debug('Starting workflow history compaction', {
 			dateRange: { start: startIso, end: endIso },
 			config: this.config,
 		});
@@ -161,6 +242,7 @@ export class WorkflowHistoryCompactionService {
 					endDate,
 					rules,
 					skipRules,
+					metaData,
 				);
 				batchSum += seen;
 				totalVersionsSeen += seen;
@@ -192,13 +274,17 @@ export class WorkflowHistoryCompactionService {
 		}
 
 		const durationMs = Date.now() - compactionStartTime;
-		this.logger.info('Workflow history compaction complete', {
+		const payload = {
 			workflowsProcessed: workflowIds.length,
 			totalVersionsSeen,
 			totalVersionsDeleted,
 			errorCount,
 			durationMs,
-			dateRange: { start: startIso, end: endIso },
-		});
+			compactionStartTime: new Date(compactionStartTime),
+			windowStartIso: startIso,
+			windowEndIso: endIso,
+		} satisfies RelayEventMap['history-compacted'];
+		this.logger.debug('Workflow history compaction complete', payload);
+		this.eventService.emit('history-compacted', payload);
 	}
 }

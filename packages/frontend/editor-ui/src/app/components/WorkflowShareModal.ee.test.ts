@@ -3,7 +3,11 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { FrontendSettings } from '@n8n/api-types';
-import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
+import {
+	createProjectListItem,
+	createTestProject,
+} from '@/features/collaboration/projects/__tests__/utils';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore, getDropdownItems } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -40,10 +44,11 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 		saveAsNewWorkflow: saveAsNewWorkflowMock,
 	}),
 }));
+const mockGetResourcePermissions = vi.fn(() => ({
+	workflow: { share: true },
+}));
 vi.mock('@n8n/permissions', () => ({
-	getResourcePermissions: () => ({
-		workflow: { share: true },
-	}),
+	getResourcePermissions: () => mockGetResourcePermissions(),
 }));
 vi.mock('@n8n/utils/event-bus', () => ({
 	createEventBus: () => ({
@@ -148,6 +153,84 @@ describe('WorkflowShareModal.ee.vue', () => {
 			expect(saveWorkflowSharedWithSpy).toHaveBeenCalledWith({
 				workflowId: 'abc123',
 				sharedWithProjects: [projectsStore.personalProjects[0]],
+			});
+		});
+	});
+
+	describe('personal space restriction message', () => {
+		it('should show personal space restriction message when in personal space and lacking share permission', async () => {
+			// Mock no share permission
+			mockGetResourcePermissions.mockReturnValue({
+				workflow: { share: false },
+			});
+
+			// Set current project as personal project
+			projectsStore.currentProject = createTestProject({
+				id: 'personal-project-id',
+				type: ProjectTypes.Personal,
+			});
+
+			workflowsStore.workflow = {
+				id: 'workflow-1',
+				name: 'My workflow',
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				versionId: '',
+				scopes: [],
+				nodes: [],
+				connections: {},
+			};
+
+			const props = {
+				data: { id: 'workflow-1' },
+			};
+			const { getByText } = renderComponent({ props });
+
+			await waitFor(() => {
+				expect(
+					getByText("You don't have permission to share personal workflows"),
+				).toBeInTheDocument();
+			});
+		});
+
+		it('should show sharee message when not in personal space and lacking share permission', async () => {
+			// Mock no share permission
+			mockGetResourcePermissions.mockReturnValue({
+				workflow: { share: false },
+			});
+
+			// Set current project as team project (not personal)
+			projectsStore.currentProject = createTestProject({
+				id: 'team-project-id',
+				type: ProjectTypes.Team,
+			});
+
+			workflowsStore.workflow = {
+				id: 'workflow-1',
+				name: 'My workflow',
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				versionId: '',
+				scopes: [],
+				nodes: [],
+				connections: {},
+			};
+
+			const props = {
+				data: { id: 'workflow-1' },
+			};
+			const { getByText } = renderComponent({ props });
+
+			await waitFor(() => {
+				expect(
+					getByText(/only .* or users with workflow sharing permission can change/i),
+				).toBeInTheDocument();
 			});
 		});
 	});

@@ -317,11 +317,11 @@ export class SourceControlService {
 			};
 		});
 
-		const allowedResources = (await this.sourceControlStatusService.getStatus(user, {
+		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'push',
 			verbose: false,
 			preferLocalVersion: true,
-		})) as SourceControlledFile[];
+		});
 
 		// Fallback to all allowed resources if no fileNames are provided
 		if (!filesToPush.length) {
@@ -372,7 +372,7 @@ export class SourceControlService {
 					}
 				});
 
-			this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
+			await this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
 			const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
 			await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
@@ -465,11 +465,11 @@ export class SourceControlService {
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
-		const statusResult = (await this.sourceControlStatusService.getStatus(user, {
+		const statusResult = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'pull',
 			verbose: false,
 			preferLocalVersion: false,
-		})) as SourceControlledFile[];
+		});
 
 		if (options.force !== true) {
 			const possibleConflicts = statusResult.filter(
@@ -498,10 +498,27 @@ export class SourceControlService {
 		}
 
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
-		await this.sourceControlImportService.importWorkflowFromWorkFolder(
-			workflowsToBeImported,
-			user.id,
+		const workflowImportResults =
+			await this.sourceControlImportService.importWorkflowFromWorkFolder(
+				workflowsToBeImported,
+				user.id,
+				options.autoPublish,
+			);
+
+		// Add publishing errors to status result
+		const statusByWorkflowId = new Map(
+			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
 		);
+
+		for (const { id, publishingError } of workflowImportResults) {
+			if (!publishingError) continue;
+
+			const statusItem = statusByWorkflowId.get(id);
+			if (statusItem) {
+				statusItem.publishingError = publishingError;
+			}
+		}
+
 		const workflowsToBeDeleted = getDeletedResources(statusResult, 'workflow');
 		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
 			user,
@@ -521,7 +538,7 @@ export class SourceControlService {
 
 		const tagsToBeImported = getNonDeletedResources(statusResult, 'tags')[0];
 		if (tagsToBeImported) {
-			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported);
+			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported, user);
 		}
 		const tagsToBeDeleted = getDeletedResources(statusResult, 'tags');
 		await this.sourceControlImportService.deleteTagsNotInWorkfolder(tagsToBeDeleted);

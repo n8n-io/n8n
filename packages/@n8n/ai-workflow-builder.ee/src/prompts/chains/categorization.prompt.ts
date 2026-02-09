@@ -91,7 +91,7 @@ of how the categorization should be carried out.
 ${formatExamplePrompts()}
 </example_categorization>
 
-Select a maximum of 5 techniques that you believe are applicable, but only select them if you are
+Select the techniques that you believe are applicable, but only select them if you are
 confident that they are applicable. If the prompt is ambiguous or does not provide an obvious workflow
 do not provide any techniques - if confidence is low avoid providing techniques.
 

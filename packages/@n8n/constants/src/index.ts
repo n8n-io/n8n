@@ -36,6 +36,7 @@ export const LICENSE_FEATURES = {
 	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
 	API_KEY_SCOPES: 'feat:apiKeyScopes',
 	WORKFLOW_DIFFS: 'feat:workflowDiffs',
+	NAMED_VERSIONS: 'feat:namedVersions',
 	CUSTOM_ROLES: 'feat:customRoles',
 	AI_BUILDER: 'feat:aiBuilder',
 	DYNAMIC_CREDENTIALS: 'feat:dynamicCredentials',
@@ -120,3 +121,9 @@ export { Time } from './time';
 export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
+
+/**
+ * Character set used for generating nanoid IDs across n8n.
+ * Includes digits (0-9), uppercase letters (A-Z), and lowercase letters (a-z).
+ */
+export const NANOID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';

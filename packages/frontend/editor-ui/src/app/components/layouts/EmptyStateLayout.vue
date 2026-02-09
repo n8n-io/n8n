@@ -1,197 +1,274 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nCard, N8nHeading, N8nText, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
+import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
-import TemplatesDataQualityInlineSection from '@/experiments/templatesDataQuality/components/TemplatesDataQualityInlineSection.vue';
-import type { IUser } from 'n8n-workflow';
+import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
+import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
+import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
 
 const emit = defineEmits<{
 	'click:add': [];
 }>();
 
-const route = useRoute();
 const i18n = useI18n();
-const usersStore = useUsersStore();
+const route = useRoute();
+const bannersStore = useBannersStore();
 const projectsStore = useProjectsStore();
-const sourceControlStore = useSourceControlStore();
 const projectPages = useProjectPages();
+const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const readyToRunStore = useReadyToRunStore();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
 
-const isLoadingReadyToRun = ref(false);
-
-const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const personalProject = computed(() => projectsStore.personalProject);
-const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-
-const projectPermissions = computed(() => {
-	return getResourcePermissions(
-		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
-	);
-});
-
-const emptyListDescription = computed(() => {
-	if (readOnlyEnv.value) {
-		return i18n.baseText('workflows.empty.description.readOnlyEnv');
-	} else if (!projectPermissions.value.workflow.create) {
-		return i18n.baseText('workflows.empty.description.noPermission');
-	} else {
-		return i18n.baseText('workflows.empty.description');
-	}
-});
-
-const showReadyToRunCard = computed(() => {
-	return (
-		isLoadingReadyToRun.value ||
-		readyToRunStore.getCardVisibility(projectPermissions.value.workflow.create, readOnlyEnv.value)
-	);
-});
-
-const showTemplatesDataQualityInline = computed(() => {
-	return (
-		templatesDataQualityStore.isFeatureEnabled() &&
-		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create
-	);
-});
-
-const handleReadyToRunClick = async () => {
-	if (isLoadingReadyToRun.value) return;
-
-	isLoadingReadyToRun.value = true;
-	const projectId = projectPages.isOverviewSubPage
-		? personalProject.value?.id
-		: (route.params.projectId as string);
-
-	try {
-		await readyToRunStore.claimCreditsAndOpenWorkflow(
-			'card',
-			route.params.folderId as string,
-			projectId,
-		);
-	} catch {
-		isLoadingReadyToRun.value = false;
-		// Error already shown by store functions
-	}
-};
+const {
+	showBuilderPrompt,
+	showRecommendedTemplatesInline,
+	builderHeading,
+	emptyStateHeading,
+	emptyStateDescription,
+	canCreateWorkflow,
+} = useWorkflowsEmptyState();
 
 const addWorkflow = () => {
 	emit('click:add');
 };
+
+// Check if user can claim credits for ready-to-run
+const showReadyToRunCard = computed(() => {
+	return readyToRunStore.userCanClaimOpenAiCredits && canCreateWorkflow.value;
+});
+
+const handleReadyToRunClick = async () => {
+	try {
+		await readyToRunStore.claimCreditsAndOpenWorkflow(
+			'card',
+			builderParentFolderId.value,
+			builderProjectId.value,
+		);
+	} catch {
+		// Error already shown by store
+	}
+};
+
+const containerStyle = computed(() => ({
+	minHeight: `calc(100vh - ${bannersStore.bannersHeight}px)`,
+}));
+
+const builderProjectId = computed(() =>
+	projectPages.isOverviewSubPage
+		? projectsStore.personalProject?.id
+		: (route.params.projectId as string),
+);
+
+const builderParentFolderId = computed(() => route.params.folderId as string | undefined);
+
+const handleBuilderPromptSubmit = async (prompt: string) => {
+	await emptyStateBuilderPromptStore.createWorkflowWithPrompt(
+		prompt,
+		builderProjectId.value,
+		builderParentFolderId.value,
+	);
+};
 </script>
 
 <template>
-	<div :class="$style.emptyStateLayout">
-		<div :class="$style.content">
-			<div :class="$style.welcome">
-				<N8nHeading tag="h1" size="2xlarge" :class="$style.welcomeTitle">
-					{{
-						currentUser.firstName
-							? i18n.baseText('workflows.empty.heading', {
-									interpolate: { name: currentUser.firstName },
-								})
-							: i18n.baseText('workflows.empty.heading.userNotSetup')
-					}}
+	<div
+		:class="[
+			$style.emptyStateLayout,
+			{
+				[$style.noTemplatesContent]: !showRecommendedTemplatesInline && !showBuilderPrompt,
+				[$style.builderLayout]: showBuilderPrompt,
+			},
+		]"
+		:style="containerStyle"
+	>
+		<div :class="[$style.content, { [$style.builderContent]: showBuilderPrompt }]">
+			<!-- State 1: AI Builder -->
+			<template v-if="showBuilderPrompt">
+				<div :class="$style.welcomeBuilder">
+					<N8nHeading tag="h1" size="xlarge">
+						{{ builderHeading }}
+					</N8nHeading>
+				</div>
+				<EmptyStateBuilderPrompt
+					data-test-id="empty-state-builder-prompt"
+					:project-id="builderProjectId"
+					:parent-folder-id="builderParentFolderId"
+					@submit="handleBuilderPromptSubmit"
+					@start-from-scratch="addWorkflow"
+				/>
+			</template>
+
+			<!-- State 2: Recommended Templates -->
+			<template v-else-if="showRecommendedTemplatesInline">
+				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
+					{{ emptyStateHeading }}
 				</N8nHeading>
-				<N8nText size="large" color="text-base" :class="$style.welcomeDescription">
-					{{ emptyListDescription }}
-				</N8nText>
-			</div>
 
-			<div
-				v-if="!readOnlyEnv && projectPermissions.workflow.create"
-				:class="$style.actionsContainer"
-			>
-				<N8nCard
-					v-if="showReadyToRunCard"
-					:class="[$style.actionCard, { [$style.loading]: isLoadingReadyToRun }]"
-					:hoverable="!isLoadingReadyToRun"
-					data-test-id="ready-to-run-card"
-					@click="handleReadyToRunClick"
-				>
-					<div :class="$style.cardContent">
-						<N8nIcon
-							:class="$style.cardIcon"
-							:icon="isLoadingReadyToRun ? 'spinner' : 'sparkles'"
-							color="foreground-dark"
-							:stroke-width="1.5"
-							:spin="isLoadingReadyToRun"
-						/>
-						<N8nText size="large" class="mt-xs">
-							{{ i18n.baseText('workflows.empty.readyToRun') }}
+				<div :class="$style.templatesSection">
+					<RecommendedTemplatesSection />
+
+					<div :class="$style.orDivider">
+						<N8nText size="large">
+							{{ i18n.baseText('generic.or') }}
 						</N8nText>
 					</div>
-				</N8nCard>
 
-				<N8nCard
-					:class="$style.actionCard"
-					hoverable
-					data-test-id="new-workflow-card"
-					@click="addWorkflow"
-				>
-					<div :class="$style.cardContent">
-						<N8nIcon
-							:class="$style.cardIcon"
+					<div :class="$style.actionButtons">
+						<ReadyToRunButton type="secondary" size="large" />
+						<N8nButton
+							type="secondary"
 							icon="file"
-							color="foreground-dark"
-							:stroke-width="1.5"
-						/>
-						<N8nText size="large" class="mt-xs">
+							size="large"
+							data-test-id="start-from-scratch-button"
+							@click="addWorkflow"
+						>
 							{{ i18n.baseText('workflows.empty.startFromScratch') }}
-						</N8nText>
+						</N8nButton>
 					</div>
-				</N8nCard>
-			</div>
-			<div v-if="showTemplatesDataQualityInline" :class="$style.templatesSection">
-				<TemplatesDataQualityInlineSection />
-			</div>
+				</div>
+			</template>
+
+			<!-- State 3: Fallback (Baseline) -->
+			<template v-else>
+				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
+					{{ emptyStateHeading }}
+				</N8nHeading>
+				<div :class="$style.fallbackContent">
+					<N8nText tag="p" size="large" color="text-base">
+						{{ emptyStateDescription }}
+					</N8nText>
+
+					<!-- Two cards or single card depending on ready-to-run availability -->
+					<div
+						v-if="canCreateWorkflow"
+						:class="[$style.actionCardsContainer, { [$style.singleCard]: !showReadyToRunCard }]"
+					>
+						<!-- Card 1: Try AI workflow (conditional) -->
+						<N8nCard
+							v-if="showReadyToRunCard"
+							:class="$style.actionCard"
+							hoverable
+							data-test-id="ready-to-run-card"
+							@click="handleReadyToRunClick"
+						>
+							<div :class="$style.cardContent">
+								<N8nIcon
+									:class="$style.cardIcon"
+									icon="zap"
+									color="foreground-dark"
+									:stroke-width="1.5"
+								/>
+								<N8nText size="large" class="mt-xs">
+									{{ i18n.baseText('workflows.empty.tryAiWorkflow') }}
+								</N8nText>
+							</div>
+						</N8nCard>
+
+						<!-- Card 2: Start from scratch (always shown) -->
+						<N8nCard
+							:class="$style.actionCard"
+							hoverable
+							data-test-id="new-workflow-card"
+							@click="addWorkflow"
+						>
+							<div :class="$style.cardContent">
+								<N8nIcon
+									:class="$style.cardIcon"
+									icon="file"
+									color="foreground-dark"
+									:stroke-width="1.5"
+								/>
+								<N8nText size="large" class="mt-xs">
+									{{ i18n.baseText('workflows.empty.startFromScratch') }}
+								</N8nText>
+							</div>
+						</N8nCard>
+					</div>
+				</div>
+			</template>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
+
 .emptyStateLayout {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	justify-content: flex-start;
-	padding-top: var(--spacing--3xl);
-	min-height: 100vh;
+	padding: var(--spacing--4xl) var(--spacing--2xl) 0;
+	max-width: var(--content-container--width);
+
+	@media (max-width: vars.$breakpoint-lg) {
+		padding: var(--spacing--xl) var(--spacing--xs) 0;
+	}
+
+	&.noTemplatesContent {
+		padding-top: var(--spacing--3xl);
+	}
+
+	&.builderLayout {
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		max-width: none;
+		padding: var(--spacing--lg);
+	}
 }
 
 .content {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	max-width: 900px;
+	width: 100%;
+}
+
+.builderContent {
+	max-width: 1024px;
 	text-align: center;
 }
 
-.welcome {
-	margin-bottom: var(--spacing--2xl);
+.welcomeBuilder {
+	margin-bottom: var(--spacing--sm);
 }
 
 .welcomeTitle {
-	margin-bottom: var(--spacing--md);
+	margin-bottom: var(--spacing--2xl);
 }
 
-.welcomeDescription {
-	max-width: 480px;
+.templatesSection {
+	width: 100%;
 }
 
-.actionsContainer {
+.fallbackContent {
 	display: flex;
-	gap: var(--spacing--sm);
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+}
+
+.actionCardsContainer {
+	display: grid;
+	grid-template-columns: repeat(2, 192px);
+	gap: var(--spacing--lg);
+	margin-top: var(--spacing--2xl);
 	justify-content: center;
-	flex-wrap: wrap;
+
+	&.singleCard {
+		grid-template-columns: 192px;
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		grid-template-columns: 1fr;
+		gap: var(--spacing--md);
+		margin-top: var(--spacing--lg);
+	}
 }
 
 .actionCard {
@@ -213,11 +290,6 @@ const addWorkflow = () => {
 			color: var(--color--primary);
 		}
 	}
-
-	&.loading {
-		pointer-events: none;
-		opacity: 0.7;
-	}
 }
 
 .cardContent {
@@ -237,7 +309,15 @@ const addWorkflow = () => {
 	}
 }
 
-.templatesSection {
-	padding-inline: var(--spacing--md);
+.orDivider {
+	margin-top: var(--spacing--lg);
+	text-align: center;
+}
+
+.actionButtons {
+	display: flex;
+	justify-content: center;
+	gap: var(--spacing--xs);
+	margin: var(--spacing--lg) 0;
 }
 </style>

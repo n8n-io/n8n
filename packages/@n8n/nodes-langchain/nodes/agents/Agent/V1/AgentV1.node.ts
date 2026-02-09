@@ -1,7 +1,7 @@
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeInputConfiguration,
-	INodeInputFilter,
+	INodeFilter,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -45,7 +45,7 @@ function getInputs(
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: NodeConnectionType;
-		filter?: INodeInputFilter;
+		filter?: INodeFilter;
 		required?: boolean;
 	}
 

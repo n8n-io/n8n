@@ -1,18 +1,10 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
+import type { CredentialsEntity } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { nanoId, date } from 'minifaker';
 import { randomString } from 'n8n-workflow';
 
-type NewCredentialWithSCopes = {
-	scopes: Scope[];
-	name: string;
-	data: string;
-	type: string;
-	isManaged: boolean;
-	id: string;
-	createdAt: Date;
-	updatedAt: Date;
-};
+export type NewCredentialWithScopes = CredentialsEntity & { scopes: Scope[] };
 
 const name = 'new Credential';
 const type = 'openAiApi';
@@ -43,17 +35,20 @@ export const createNewCredentialsPayload = (payload?: Partial<CreateCredentialDt
 };
 
 export const createdCredentialsWithScopes = (
-	payload?: Partial<NewCredentialWithSCopes>,
-): NewCredentialWithSCopes => {
+	payload?: Partial<NewCredentialWithScopes>,
+): NewCredentialWithScopes => {
 	return {
-		name,
-		type,
-		data: randomString(20),
-		id: nanoId.nanoid(),
-		createdAt: date(),
-		updatedAt: date(),
-		isManaged: false,
-		scopes: credentialScopes,
-		...payload,
-	};
+		name: payload?.name ?? name,
+		type: payload?.type ?? type,
+		data: payload?.data ?? randomString(20),
+		id: payload?.id ?? nanoId.nanoid(),
+		createdAt: payload?.createdAt ?? date(),
+		updatedAt: payload?.updatedAt ?? date(),
+		isManaged: payload?.isManaged ?? false,
+		isGlobal: payload?.isGlobal ?? false,
+		isResolvable: payload?.isResolvable ?? false,
+		resolvableAllowFallback: payload?.resolvableAllowFallback ?? false,
+		resolverId: payload?.resolverId ?? null,
+		scopes: payload?.scopes ?? credentialScopes,
+	} as NewCredentialWithScopes;
 };

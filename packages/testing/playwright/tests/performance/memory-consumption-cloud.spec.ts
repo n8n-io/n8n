@@ -1,12 +1,9 @@
 import { test, expect } from '../../fixtures/base';
-import { attachMetric, waitForMemoryStabilization } from '../../utils/performance-helper';
+import { attachMetric, getStableHeap } from '../../utils/performance-helper';
 
 test.use({
 	capability: {
-		resourceQuota: {
-			memory: 0.75,
-			cpu: 0.5,
-		},
+		resourceQuota: { memory: 0.75, cpu: 0.5 },
 		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	},
 });
@@ -17,15 +14,12 @@ test.describe('Memory Consumption @capability:observability', () => {
 	}, testInfo) => {
 		const obs = n8nContainer.services.observability;
 
-		// Wait for memory to stabilize (V8 GC is non-deterministic)
-		const { heapUsedMB } = await waitForMemoryStabilization(obs.metrics);
+		const { heapUsedMB } = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 
-		// Query other metrics at same instant (not averaged) for consistent snapshot
 		const [heapTotalResult, rssResult] = await Promise.all([
 			obs.metrics.waitForMetric('n8n_nodejs_heap_size_total_bytes / 1024 / 1024'),
 			obs.metrics.waitForMetric('n8n_process_resident_memory_bytes / 1024 / 1024'),
 		]);
-
 		const heapTotalMB = heapTotalResult!.value;
 		const rssMB = rssResult!.value;
 

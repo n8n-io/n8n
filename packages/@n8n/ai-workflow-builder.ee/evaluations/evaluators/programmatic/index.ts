@@ -77,6 +77,12 @@ export function createProgrammaticEvaluator(
 					'metric',
 					formatViolations(result.credentials.violations),
 				),
+				fb(
+					'parameters',
+					result.parameters.score,
+					'metric',
+					formatViolations(result.parameters.violations),
+				),
 			];
 
 			// Similarity check (if reference workflow provided)
