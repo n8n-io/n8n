@@ -9,12 +9,12 @@ function copyTokenizerJsonFiles(baseDir) {
 		fs.mkdirSync(targetDir, { recursive: true });
 	}
 	// Copy all tokenizer JSON files
-	const files = glob.sync('utils/tokenizer/*.json', { cwd: baseDir });
+	const files = glob.sync('src/utils/tokenizer/*.json', { cwd: baseDir });
 	for (const file of files) {
 		const sourcePath = path.resolve(baseDir, file);
-		const targetPath = path.resolve(baseDir, 'dist', file);
+		const targetPath = path.resolve(baseDir, 'dist', file.replace('src/', ''));
 		fs.copyFileSync(sourcePath, targetPath);
-		console.log(`Copied: ${file} -> dist/${file}`);
+		console.log(`Copied: ${file} -> ${targetPath.replace(baseDir, '')}`);
 	}
 }
 

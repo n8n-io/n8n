@@ -62,11 +62,6 @@ export interface ChatModelConfig {
 	 * Additional HTTP headers
 	 */
 	headers?: Record<string, string | undefined>;
-
-	/**
-	 * Provider-specific options
-	 */
-	providerOptions?: Record<string, unknown>;
 }
 
 export interface ChatModel<TConfig extends ChatModelConfig = ChatModelConfig> {

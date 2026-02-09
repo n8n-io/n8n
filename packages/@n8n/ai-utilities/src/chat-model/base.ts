@@ -30,12 +30,6 @@ export abstract class BaseChatModel<TConfig extends ChatModelConfig = ChatModelC
 	}
 
 	/**
-	 * Get all bound tools
-	 */
-	getTools(): Tool[] {
-		return [...this.tools];
-	}
-	/**
 	 * Merge configuration with defaults
 	 */
 	protected mergeConfig(config?: TConfig): ChatModelConfig {
