@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { logWrapper, N8nBinaryLoader } from '@n8n/ai-utilities';
+
 import { getConnectionHintNoticeField, metadataFilterField } from '@utils/sharedFields';
 
 // Dependencies needed underneath the hood for the loaders. We add them

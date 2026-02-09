@@ -1,8 +1,9 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessage, HumanMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
+import { createAgent, createMiddleware } from 'langchain';
+import { z } from 'zod';
 
 import {
 	buildResponderPrompt,
@@ -11,35 +12,17 @@ import {
 	buildGeneralErrorGuidance,
 	buildDataTableCreationGuidance,
 } from '@/prompts';
-
-import type { CoordinationLogEntry } from '../types/coordination';
-import type { DiscoveryContext } from '../types/discovery-types';
-import { isAIMessage } from '../types/langchain';
-import type { SimpleWorkflow } from '../types/workflow';
+import type { CoordinationLogEntry } from '@/types/coordination';
+import type { DiscoveryContext } from '@/types/discovery-types';
+import type { SimpleWorkflow } from '@/types/workflow';
+import { buildSimplifiedExecutionContext, buildWorkflowOverview } from '@/utils/context-builders';
 import {
 	getErrorEntry,
 	getBuilderOutput,
 	hasRecursionErrorsCleared,
-} from '../utils/coordination-log';
-import { extractDataTableInfo } from '../utils/data-table-helpers';
-
-const systemPrompt = ChatPromptTemplate.fromMessages([
-	[
-		'system',
-		[
-			{
-				type: 'text',
-				text: buildResponderPrompt(),
-				cache_control: { type: 'ephemeral' },
-			},
-		],
-	],
-	['placeholder', '{messages}'],
-]);
-
-export interface ResponderAgentConfig {
-	llm: BaseChatModel;
-}
+} from '@/utils/coordination-log';
+import { extractDataTableInfo } from '@/utils/data-table-helpers';
+import type { ChatPayload } from '@/workflow-builder-agent';
 
 /**
  * Context required for the responder to generate a response
@@ -55,123 +38,220 @@ export interface ResponderContext {
 	workflowJSON: SimpleWorkflow;
 	/** Summary of previous conversation (from compaction) */
 	previousSummary?: string;
+	/** Workflow context with execution data */
+	workflowContext?: ChatPayload['workflowContext'];
 }
 
 /**
- * Responder Agent
- *
- * Synthesizes final user-facing responses from workflow building context.
- * Handles conversational queries and explanations.
+ * Schema for context passed via runtime.context
  */
-export class ResponderAgent {
-	private llm: BaseChatModel;
+const responderContextSchema = z.object({
+	coordinationLog: z.array(z.any()),
+	discoveryContext: z.any().optional().nullable(),
+	workflowJSON: z.any(),
+	previousSummary: z.string().optional(),
+	workflowContext: z.any().optional(),
+});
 
-	constructor(config: ResponderAgentConfig) {
-		this.llm = config.llm;
+/**
+ * Build internal context message from coordination log and state.
+ * This is called by the middleware to inject context into the message stream.
+ */
+function buildContextContent(context: ResponderContext): string | null {
+	const contextParts: string[] = [];
+
+	// Previous conversation summary (from compaction)
+	if (context.previousSummary) {
+		contextParts.push(`**Previous Conversation Summary:**\n${context.previousSummary}`);
 	}
 
-	/**
-	 * Build internal context message from coordination log and state
-	 */
-	private buildContextMessage(context: ResponderContext): HumanMessage | null {
-		const contextParts: string[] = [];
+	// Check for state management actions (compact/clear)
+	const stateManagementEntry = context.coordinationLog.find((e) => e.phase === 'state_management');
+	if (stateManagementEntry) {
+		contextParts.push(`**State Management:** ${stateManagementEntry.summary}`);
+	}
 
-		// Previous conversation summary (from compaction)
-		if (context.previousSummary) {
-			contextParts.push(`**Previous Conversation Summary:**\n${context.previousSummary}`);
-		}
+	// Check for errors - provide context-aware guidance (AI-1812)
+	// Skip errors that have been cleared (AI-1812)
+	const errorEntry = getErrorEntry(context.coordinationLog);
+	const errorsCleared = hasRecursionErrorsCleared(context.coordinationLog);
 
-		// Check for state management actions (compact/clear)
-		const stateManagementEntry = context.coordinationLog.find(
-			(e) => e.phase === 'state_management',
+	if (errorEntry && !errorsCleared) {
+		const hasWorkflow = context.workflowJSON.nodes.length > 0;
+		const errorMessage = errorEntry.summary.toLowerCase();
+		const isRecursionError =
+			errorMessage.includes('recursion') ||
+			errorMessage.includes('maximum number of steps') ||
+			errorMessage.includes('iteration limit');
+
+		contextParts.push(
+			`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
 		);
-		if (stateManagementEntry) {
-			contextParts.push(`**State Management:** ${stateManagementEntry.summary}`);
+
+		// AI-1812: Provide better guidance based on workflow state and error type
+		if (isRecursionError && hasWorkflow) {
+			// Recursion error but workflow was created
+			const guidance = buildRecursionErrorWithWorkflowGuidance(context.workflowJSON.nodes.length);
+			contextParts.push(...guidance);
+		} else if (isRecursionError && !hasWorkflow) {
+			// Recursion error and no workflow created
+			const guidance = buildRecursionErrorNoWorkflowGuidance();
+			contextParts.push(...guidance);
+		} else {
+			// Other errors (not recursion-related)
+			contextParts.push(buildGeneralErrorGuidance());
+		}
+	}
+
+	// Discovery context
+	if (context.discoveryContext?.nodesFound.length) {
+		contextParts.push(
+			`**Discovery:** Found ${context.discoveryContext.nodesFound.length} relevant nodes`,
+		);
+	}
+
+	// Builder output (handles both node creation and parameter configuration)
+	const builderOutput = getBuilderOutput(context.coordinationLog);
+	if (builderOutput) {
+		contextParts.push(`**Builder:** ${builderOutput}`);
+	} else if (context.workflowJSON.nodes.length) {
+		// Provide workflow overview with Mermaid diagram and parameters
+		contextParts.push(`**Workflow:**\n${buildWorkflowOverview(context.workflowJSON)}`);
+	}
+
+	// Data Table creation guidance
+	// If the workflow contains Data Table nodes, inform user they need to create tables manually
+	const dataTableInfo = extractDataTableInfo(context.workflowJSON);
+	if (dataTableInfo.length > 0) {
+		const dataTableGuidance = buildDataTableCreationGuidance(dataTableInfo);
+		contextParts.push(dataTableGuidance);
+	}
+
+	// Execution status (simplified error info for user explanations)
+	if (context.workflowContext) {
+		const executionStatus = buildSimplifiedExecutionContext(
+			context.workflowContext,
+			context.workflowJSON.nodes,
+		);
+		contextParts.push(`**Execution Status:**\n${executionStatus}`);
+	}
+
+	if (contextParts.length === 0) {
+		return null;
+	}
+
+	return `[Internal Context - Use this to craft your response]\n${contextParts.join('\n\n')}`;
+}
+
+/**
+ * Middleware that injects coordination context into the model request.
+ * This replaces the manual context building in the old class-based implementation.
+ */
+const contextInjectionMiddleware = createMiddleware({
+	name: 'ResponderContextInjection',
+	contextSchema: responderContextSchema,
+	wrapModelCall: async (request, handler) => {
+		const context = request.runtime.context as z.infer<typeof responderContextSchema> | undefined;
+		if (!context) {
+			return await handler(request);
 		}
 
-		// Check for errors - provide context-aware guidance (AI-1812)
-		// Skip errors that have been cleared (AI-1812)
-		const errorEntry = getErrorEntry(context.coordinationLog);
-		const errorsCleared = hasRecursionErrorsCleared(context.coordinationLog);
+		// Build the full ResponderContext for the helper function
+		// Use explicit casts since the Zod schema uses z.any() for complex types
+		const responderContext: ResponderContext = {
+			messages: request.messages,
+			coordinationLog: (context.coordinationLog ?? []) as CoordinationLogEntry[],
+			discoveryContext: context.discoveryContext as DiscoveryContext | null | undefined,
+			workflowJSON: (context.workflowJSON ?? { nodes: [], connections: {} }) as SimpleWorkflow,
+			previousSummary: context.previousSummary,
+			workflowContext: context.workflowContext as ChatPayload['workflowContext'] | undefined,
+		};
 
-		if (errorEntry && !errorsCleared) {
-			const hasWorkflow = context.workflowJSON.nodes.length > 0;
-			const errorMessage = errorEntry.summary.toLowerCase();
-			const isRecursionError =
-				errorMessage.includes('recursion') ||
-				errorMessage.includes('maximum number of steps') ||
-				errorMessage.includes('iteration limit');
-
-			contextParts.push(
-				`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
-			);
-
-			// AI-1812: Provide better guidance based on workflow state and error type
-			if (isRecursionError && hasWorkflow) {
-				// Recursion error but workflow was created
-				const guidance = buildRecursionErrorWithWorkflowGuidance(context.workflowJSON.nodes.length);
-				contextParts.push(...guidance);
-			} else if (isRecursionError && !hasWorkflow) {
-				// Recursion error and no workflow created
-				const guidance = buildRecursionErrorNoWorkflowGuidance();
-				contextParts.push(...guidance);
-			} else {
-				// Other errors (not recursion-related)
-				contextParts.push(buildGeneralErrorGuidance());
-			}
+		const contextContent = buildContextContent(responderContext);
+		if (!contextContent) {
+			return await handler(request);
 		}
 
-		// Discovery context
-		if (context.discoveryContext?.nodesFound.length) {
-			contextParts.push(
-				`**Discovery:** Found ${context.discoveryContext.nodesFound.length} relevant nodes`,
-			);
-		}
+		// Inject context as an additional human message
+		const contextMessage = new HumanMessage({ content: contextContent });
 
-		// Builder output (handles both node creation and parameter configuration)
-		const builderOutput = getBuilderOutput(context.coordinationLog);
-		if (builderOutput) {
-			contextParts.push(`**Builder:** ${builderOutput}`);
-		} else if (context.workflowJSON.nodes.length) {
-			contextParts.push(`**Workflow:** ${context.workflowJSON.nodes.length} nodes created`);
-		}
+		return await handler({
+			...request,
+			messages: [...request.messages, contextMessage],
+		});
+	},
+});
 
-		// Data Table creation guidance
-		// If the workflow contains Data Table nodes, inform user they need to create tables manually
-		const dataTableInfo = extractDataTableInfo(context.workflowJSON);
-		if (dataTableInfo.length > 0) {
-			const dataTableGuidance = buildDataTableCreationGuidance(dataTableInfo);
-			contextParts.push(dataTableGuidance);
-		}
+export interface ResponderAgentConfig {
+	llm: BaseChatModel;
+}
 
-		if (contextParts.length === 0) {
-			return null;
-		}
+/**
+ * Create Responder agent using LangChain v1 createAgent.
+ *
+ * The Responder synthesizes final user-facing responses from workflow building context.
+ * It handles conversational queries and explanations.
+ */
+export function createResponderAgent(config: ResponderAgentConfig) {
+	const systemPromptText = buildResponderPrompt();
 
-		return new HumanMessage({
-			content: `[Internal Context - Use this to craft your response]\n${contextParts.join('\n\n')}`,
+	// Use SystemMessage with cache_control for Anthropic prompt caching
+	const systemPrompt = new SystemMessage({
+		content: [
+			{
+				type: 'text',
+				text: systemPromptText,
+				cache_control: { type: 'ephemeral' },
+			},
+		],
+	});
+
+	return createAgent({
+		model: config.llm,
+		tools: [], // Responder has no tools
+		systemPrompt,
+		middleware: [contextInjectionMiddleware],
+		contextSchema: responderContextSchema,
+	});
+}
+
+/**
+ * Type for the compiled agent returned by createResponderAgent
+ */
+export type ResponderAgentType = ReturnType<typeof createResponderAgent>;
+
+/**
+ * Invoke the responder agent with the given context.
+ * This is a convenience wrapper that handles context passing.
+ *
+ * @returns The last AI message from the agent's response
+ */
+export async function invokeResponderAgent(
+	agent: ResponderAgentType,
+	context: ResponderContext,
+	config?: RunnableConfig,
+): Promise<BaseMessage> {
+	const result = await agent.invoke(
+		{ messages: context.messages },
+		{
+			...config,
+			context: {
+				coordinationLog: context.coordinationLog,
+				discoveryContext: context.discoveryContext,
+				workflowJSON: context.workflowJSON,
+				previousSummary: context.previousSummary,
+				workflowContext: context.workflowContext,
+			},
+		},
+	);
+
+	// Extract the last message from the result
+	// The agent returns { messages: BaseMessage[], ... } after processing
+	const messages = result.messages;
+	if (messages.length === 0) {
+		return new AIMessage({
+			content: 'I encountered an issue generating a response. Please try again.',
 		});
 	}
-
-	/**
-	 * Invoke the responder agent with the given context
-	 * @param context - Responder context with messages and workflow state
-	 * @param config - Optional RunnableConfig for tracing callbacks
-	 */
-	async invoke(context: ResponderContext, config?: RunnableConfig): Promise<AIMessage> {
-		const agent = systemPrompt.pipe(this.llm);
-
-		const contextMessage = this.buildContextMessage(context);
-		const messagesToSend = contextMessage
-			? [...context.messages, contextMessage]
-			: context.messages;
-
-		const result = await agent.invoke({ messages: messagesToSend }, config);
-		if (!isAIMessage(result)) {
-			return new AIMessage({
-				content: 'I encountered an issue generating a response. Please try again.',
-			});
-		}
-		return result;
-	}
+	return messages[messages.length - 1];
 }

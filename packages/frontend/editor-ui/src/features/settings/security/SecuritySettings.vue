@@ -3,11 +3,10 @@ import { computed, useCssModule } from 'vue';
 import { useAsyncState } from '@vueuse/core';
 import { ElSwitch } from 'element-plus';
 import { N8nHeading, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
-import type { UpdateSecuritySettingsDto } from '@n8n/api-types';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 
@@ -19,57 +18,98 @@ const message = useMessage();
 
 const { state, isLoading } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
-	return settings.personalSpacePublishing;
+	return {
+		personalSpacePublishing: settings.personalSpacePublishing,
+		personalSpaceSharing: settings.personalSpaceSharing,
+		publishedPersonalWorkflowsCount: settings.publishedPersonalWorkflowsCount,
+		sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
+		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
+	};
 }, undefined);
 
-const personalSpacePublishing = computed({
-	get: () => state.value ?? false,
-	set: async (value: boolean) => {
-		if (!value) {
-			const confirmDisablingPublishing = await promptConfirmDisablingPersonalSpacePublishing();
-			if (confirmDisablingPublishing !== MODAL_CONFIRM) {
-				return;
-			}
-		}
-
-		state.value = value;
-		await updatePublishingSetting(value);
-	},
-});
-
-async function promptConfirmDisablingPersonalSpacePublishing() {
-	const confirmAction = await message.confirm(
-		i18n.baseText('settings.security.personalSpace.publishing.confirmMessage.disable.message'),
-		i18n.baseText('settings.security.personalSpace.publishing.confirmMessage.disable.headline'),
-		{
-			cancelButtonText: i18n.baseText('generic.cancel'),
-			confirmButtonText: i18n.baseText('generic.confirm'),
-		},
-	);
-	return confirmAction;
-}
-
-async function updatePublishingSetting(value: boolean) {
+async function updatePersonalSpaceSetting(
+	key: 'personalSpacePublishing' | 'personalSpaceSharing',
+	value: boolean,
+	toastNamespace: string,
+) {
 	try {
-		const data: UpdateSecuritySettingsDto = {
-			personalSpacePublishing: value,
-		};
-
-		await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, data);
-
+		await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, {
+			[key]: value,
+		});
 		showToast({
 			type: 'success',
 			title: value
-				? i18n.baseText('settings.security.personalSpace.publishing.success.enabled')
-				: i18n.baseText('settings.security.personalSpace.publishing.success.disabled'),
+				? i18n.baseText(
+						`settings.security.personalSpace.${toastNamespace}.success.enabled` as BaseTextKey,
+					)
+				: i18n.baseText(
+						`settings.security.personalSpace.${toastNamespace}.success.disabled` as BaseTextKey,
+					),
 			message: '',
 		});
 	} catch (error) {
-		// Revert optimistic update on error
-		state.value = !value;
-		showError(error, i18n.baseText('settings.security.personalSpace.publishing.error'));
+		if (state.value) {
+			state.value = { ...state.value, [key]: !value };
+		}
+		showError(
+			error,
+			i18n.baseText(`settings.security.personalSpace.${toastNamespace}.error` as BaseTextKey),
+		);
 	}
 }
+
+const personalSpacePublishing = computed({
+	get: () => state.value?.personalSpacePublishing ?? false,
+	set: async (value: boolean) => {
+		if (!value) {
+			const confirmed = await message.confirm(
+				i18n.baseText('settings.security.personalSpace.publishing.confirmMessage.disable.message'),
+				i18n.baseText('settings.security.personalSpace.publishing.confirmMessage.disable.headline'),
+				{
+					cancelButtonText: i18n.baseText('generic.cancel'),
+					confirmButtonText: i18n.baseText('generic.confirm'),
+				},
+			);
+			if (confirmed !== MODAL_CONFIRM) return;
+		}
+		if (state.value) {
+			state.value = { ...state.value, personalSpacePublishing: value };
+		}
+		await updatePersonalSpaceSetting('personalSpacePublishing', value, 'publishing');
+	},
+});
+
+const personalSpaceSharing = computed({
+	get: () => state.value?.personalSpaceSharing ?? false,
+	set: async (value: boolean) => {
+		if (!value) {
+			const confirmed = await message.confirm(
+				i18n.baseText('settings.security.personalSpace.sharing.confirmMessage.disable.message'),
+				i18n.baseText('settings.security.personalSpace.sharing.confirmMessage.disable.headline'),
+				{
+					cancelButtonText: i18n.baseText('generic.cancel'),
+					confirmButtonText: i18n.baseText('generic.confirm'),
+				},
+			);
+			if (confirmed !== MODAL_CONFIRM) return;
+		}
+		if (state.value) {
+			state.value = { ...state.value, personalSpaceSharing: value };
+		}
+		await updatePersonalSpaceSetting('personalSpaceSharing', value, 'sharing');
+	},
+});
+
+const sharingCountText = computed(() => {
+	const workflows = state.value?.sharedPersonalWorkflowsCount ?? 0;
+	const credentials = state.value?.sharedPersonalCredentialsCount ?? 0;
+	return i18n.baseText('settings.security.personalSpace.sharing.existingCount.value', {
+		interpolate: {
+			workflowCount: String(workflows),
+			credentialCount: String(credentials),
+		},
+	});
+});
 </script>
 
 <template>
@@ -82,22 +122,67 @@ async function updatePublishingSetting(value: boolean) {
 			{{ i18n.baseText('settings.security.personalSpace.title') }}
 		</N8nHeading>
 
-		<div :class="$style.settingsContainer">
-			<div :class="$style.settingsContainerInfo">
-				<N8nText :bold="true">
-					{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
+		<div :class="$style.settingsSection">
+			<div :class="$style.settingsContainer">
+				<div :class="$style.settingsContainerInfo">
+					<N8nText :bold="true">
+						{{ i18n.baseText('settings.security.personalSpace.sharing.title') }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.security.personalSpace.sharing.description') }}
+					</N8nText>
+				</div>
+				<div :class="$style.settingsContainerAction">
+					<ElSwitch
+						v-model="personalSpaceSharing"
+						:loading="isLoading"
+						size="large"
+						data-test-id="security-personal-space-sharing-toggle"
+					/>
+				</div>
+			</div>
+			<div :class="$style.settingsCountRow" data-test-id="security-sharing-count">
+				<N8nText size="small">
+					{{ i18n.baseText('settings.security.personalSpace.sharing.existingCount.label') }}
 				</N8nText>
 				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.security.personalSpace.publishing.description') }}
+					{{ sharingCountText }}
 				</N8nText>
 			</div>
-			<div :class="$style.settingsContainerAction">
-				<ElSwitch
-					v-model="personalSpacePublishing"
-					:loading="isLoading"
-					size="large"
-					data-test-id="security-personal-space-publishing-toggle"
-				/>
+		</div>
+
+		<div :class="$style.settingsSection">
+			<div :class="$style.settingsContainer">
+				<div :class="$style.settingsContainerInfo">
+					<N8nText :bold="true">
+						{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.security.personalSpace.publishing.description') }}
+					</N8nText>
+				</div>
+				<div :class="$style.settingsContainerAction">
+					<ElSwitch
+						v-model="personalSpacePublishing"
+						:loading="isLoading"
+						size="large"
+						data-test-id="security-personal-space-publishing-toggle"
+					/>
+				</div>
+			</div>
+			<div :class="$style.settingsCountRow" data-test-id="security-publishing-count">
+				<N8nText size="small">
+					{{ i18n.baseText('settings.security.personalSpace.publishing.existingCount.label') }}
+				</N8nText>
+				<N8nText size="small" color="text-light">
+					{{
+						i18n.baseText('settings.security.personalSpace.publishing.existingCount.value', {
+							interpolate: {
+								count: String(state?.publishedPersonalWorkflowsCount ?? 0),
+							},
+						})
+					}}
+				</N8nText>
 			</div>
 		</div>
 	</div>
@@ -108,16 +193,19 @@ async function updatePublishingSetting(value: boolean) {
 	padding-bottom: var(--spacing--md);
 }
 
+.settingsSection {
+	border-radius: var(--radius);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	max-width: 600px;
+	margin-bottom: var(--spacing--lg);
+}
+
 .settingsContainer {
 	display: flex;
 	align-items: center;
 	padding-left: var(--spacing--sm);
-	margin-bottom: var(--spacing--lg);
 	justify-content: space-between;
 	flex-shrink: 0;
-	border-radius: var(--radius);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	max-width: 600px;
 }
 
 .settingsContainerInfo {
@@ -137,5 +225,13 @@ async function updatePublishingSetting(value: boolean) {
 	justify-content: flex-end;
 	align-items: center;
 	flex-shrink: 0;
+}
+
+.settingsCountRow {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 }
 </style>

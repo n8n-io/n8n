@@ -16,11 +16,11 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
@@ -73,6 +73,8 @@ const hideMenuBar = computed(() =>
 );
 const workflow = computed(() => workflowsStore.workflow);
 const workflowId = injectStrict(WorkflowIdKey);
+const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
 const isEnterprise = computed(
@@ -281,7 +283,7 @@ async function onWorkflowDeactivated() {
 				<WorkflowDetails
 					v-if="workflow?.name"
 					:id="workflow.id"
-					:tags="workflow.tags"
+					:tags="workflowTags"
 					:name="workflow.name"
 					:meta="workflow.meta"
 					:scopes="workflow.scopes"

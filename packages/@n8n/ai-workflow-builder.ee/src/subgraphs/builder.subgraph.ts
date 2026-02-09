@@ -19,16 +19,23 @@ import type { ParentGraphState } from '../parent-graph-state';
 // Tools (alphabetically ordered)
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
+import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
+import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
+import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
+import { createGetNodeContextTool } from '../tools/get-node-context.tool';
 import {
 	createGetNodeConnectionExamplesTool,
 	createGetNodeConfigurationExamplesTool,
 } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
+// Workflow context tools
+import { createGetWorkflowOverviewTool } from '../tools/get-workflow-overview.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
+import { mermaidStringify } from '../tools/utils/mermaid.utils';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import { createValidateStructureTool } from '../tools/validate-structure.tool';
 // Types and utilities
@@ -40,13 +47,12 @@ import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
+	buildConversationContext,
 	buildDiscoveryContextBlock,
-	buildWorkflowJsonBlock,
-	buildExecutionSchemaBlock,
-	buildExecutionContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
+import { formatPlanAsText } from '../utils/plan-helpers';
 import {
 	detectRLCParametersForPrefetch,
 	prefetchRLCOptions,
@@ -184,6 +190,13 @@ export class BuilderSubgraph extends BaseSubgraph<
 			),
 			createGetNodeParameterTool(),
 			createValidateConfigurationTool(config.parsedNodeTypes),
+			// Execution data tools
+			createGetExecutionSchemaTool(config.logger),
+			createGetExecutionLogsTool(config.logger),
+			createGetExpressionDataMappingTool(config.logger),
+			// Workflow context tools
+			createGetWorkflowOverviewTool(config.logger),
+			createGetNodeContextTool(config.logger),
 			// Conditionally add resource locator tool if callback is provided
 			...(config.resourceLocatorCallback
 				? [
@@ -333,13 +346,47 @@ export class BuilderSubgraph extends BaseSubgraph<
 		// Build context parts
 		const contextParts: string[] = [];
 
-		// 1. User request (primary)
-		if (userRequest) {
-			contextParts.push('=== USER REQUEST ===');
-			contextParts.push(userRequest);
+		// When a plan exists it is the single authoritative source of truth.
+		// The plan may differ from the original request (e.g. user edited the
+		// model from gpt-4.1-mini to gpt-5.2-mini). Including conversation
+		// context or the raw user request alongside the plan creates conflicting
+		// signals that cause the builder to follow the stale original request.
+		// The plan is cleared after building (transformOutput), so follow-up
+		// messages still get full conversation context.
+		if (parentState.planOutput) {
+			contextParts.push('=== APPROVED PLAN (FOLLOW THIS) ===');
+			contextParts.push(formatPlanAsText(parentState.planOutput));
+			if (parentState.workflowJSON?.nodes?.length > 0) {
+				const overview = mermaidStringify(
+					{ workflow: parentState.workflowJSON },
+					{ includeNodeType: true, includeNodeParameters: true, includeNodeName: true },
+				);
+				contextParts.push(
+					'=== EXISTING WORKFLOW (do NOT recreate these nodes) ===',
+					overview,
+					'Only make the changes described in the plan.',
+				);
+			}
+		} else {
+			// Conversation context (history, original request, previous actions)
+			// Supports UNDERSTANDING_CONTEXT prompt section for investigating issues
+			const conversationContext = buildConversationContext(
+				parentState.messages,
+				parentState.coordinationLog,
+				parentState.previousSummary,
+			);
+			if (conversationContext) {
+				contextParts.push('=== CONVERSATION CONTEXT ===');
+				contextParts.push(conversationContext);
+			}
+
+			if (userRequest) {
+				contextParts.push('=== USER REQUEST ===');
+				contextParts.push(userRequest);
+			}
 		}
 
-		// 2. Discovery context (what nodes to use)
+		// 3. Discovery context (what nodes to use)
 		// Include best practices only when template examples feature flag is enabled
 		if (parentState.discoveryContext) {
 			const includeBestPractices = this.config?.featureFlags?.templateExamples === true;
@@ -349,7 +396,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			);
 		}
 
-		// 3. Check if this workflow came from a recovered builder recursion error (AI-1812)
+		// 4. Check if this workflow came from a recovered builder recursion error (AI-1812)
 		const builderErrorEntry = parentState.coordinationLog?.find((entry) => {
 			if (entry.status !== 'error') return false;
 			if (entry.phase !== 'builder') return false;
@@ -367,25 +414,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 			const { nodeCount, nodeNames } = builderErrorEntry.metadata.partialBuilderData;
 			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
 		}
-
-		// 4. Current workflow JSON (to add nodes to / configure)
-		contextParts.push('=== CURRENT WORKFLOW ===');
-		if (parentState.workflowJSON.nodes.length > 0) {
-			contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
-		} else {
-			contextParts.push('Empty workflow - ready to build');
-		}
-
-		// 5. Execution schema (data types available for parameter values)
-		const schemaBlock = buildExecutionSchemaBlock(parentState.workflowContext);
-		if (schemaBlock) {
-			contextParts.push('=== AVAILABLE DATA SCHEMA ===');
-			contextParts.push(schemaBlock);
-		}
-
-		// 6. Full execution context (data + schema for parameter values)
-		contextParts.push('=== EXECUTION CONTEXT ===');
-		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);
@@ -463,6 +491,10 @@ export class BuilderSubgraph extends BaseSubgraph<
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			coordinationLog: [logEntry],
 			cachedTemplates: subgraphOutput.cachedTemplates,
+			planOutput: null,
+			planDecision: null,
+			planFeedback: null,
+			planPrevious: null,
 			// NO messages - clean separation from user-facing conversation
 		};
 	}

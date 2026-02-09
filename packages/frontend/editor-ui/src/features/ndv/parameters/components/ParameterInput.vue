@@ -112,7 +112,9 @@ import {
 	N8nInputNumber,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch2,
 } from '@n8n/design-system';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
 
@@ -184,6 +186,7 @@ const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
 const builderStore = useBuilderStore();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -575,6 +578,10 @@ const isSwitch = computed(
 	() => props.parameter.type === 'boolean' && !isModelValueExpression.value,
 );
 
+const switchLabel = computed(() =>
+	i18n.nodeText(node.value?.type).inputLabelDisplayName(props.parameter, props.path),
+);
+
 const isTextarea = computed(
 	() => props.parameter.type === 'string' && editorRows.value !== undefined,
 );
@@ -587,6 +594,9 @@ const parameterInputClasses = computed(() => {
 
 	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
+		if (isCollectionOverhaulEnabled.value) {
+			classes['inline-switch-mode'] = true;
+		}
 	} else {
 		classes['parameter-value-container'] = true;
 	}
@@ -749,6 +759,7 @@ async function loadRemoteParameterOptions() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
 			projectId: projectsStore.currentProjectId,
+			workflowId: workflowsStore.workflowId,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -1865,7 +1876,23 @@ onUpdated(async () => {
 				</N8nOption>
 			</N8nSelect>
 
-			<!-- temporary state of booleans while data is mapped -->
+			<N8nInput
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled && droppable"
+				:size="inputSize"
+				:disabled="isReadOnly"
+				:title="displayTitle"
+				class="switch-droppable-input"
+			>
+				<template #prefix>
+					<N8nSwitch2
+						:model-value="Boolean(displayValue)"
+						:label="switchLabel"
+						:disabled="true"
+						size="small"
+					/>
+				</template>
+			</N8nInput>
+
 			<N8nInput
 				v-else-if="parameter.type === 'boolean' && droppable"
 				:size="inputSize"
@@ -1873,6 +1900,17 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
+
+			<N8nSwitch2
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
+				ref="inputField"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				:model-value="Boolean(displayValue)"
+				:disabled="isReadOnly"
+				size="small"
+				@update:model-value="valueChanged"
+			/>
+
 			<ElSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
@@ -1926,6 +1964,11 @@ onUpdated(async () => {
 	align-self: flex-start;
 	justify-items: center;
 	gap: var(--spacing--xs);
+
+	&.inline-switch-mode {
+		width: 100%;
+		gap: 0;
+	}
 }
 
 .parameter-input {
@@ -1979,6 +2022,12 @@ onUpdated(async () => {
 
 .has-issues {
 	--input--border-color: var(--color--danger);
+}
+
+.switch-droppable-input {
+	.el-input__prefix {
+		left: var(--spacing--2xs);
+	}
 }
 
 .el-dropdown {
@@ -2090,6 +2139,7 @@ onUpdated(async () => {
 
 .tipVisible {
 	--input--radius--bottom-left: 0;
+	--input--radius--bottom-right: 0;
 	--input-triple--radius--bottom-right: 0;
 }
 

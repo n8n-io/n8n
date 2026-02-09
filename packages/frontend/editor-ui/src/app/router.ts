@@ -605,11 +605,14 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.SECURITY_SETTINGS,
 				component: SecuritySettingsView,
 				meta: {
-					middleware: ['authenticated', 'custom'],
+					middleware: ['authenticated', 'custom', 'rbac'],
 					middlewareOptions: {
 						custom: () => {
 							const { check } = useEnvFeatureFlag();
 							return check.value('PERSONAL_SECURITY_SETTINGS');
+						},
+						rbac: {
+							scope: ['securitySettings:manage'],
 						},
 					},
 					telemetry: {

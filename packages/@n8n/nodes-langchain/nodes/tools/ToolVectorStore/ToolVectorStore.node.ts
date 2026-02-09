@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, nodeNameToToolName } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 async function getTool(

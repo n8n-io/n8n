@@ -273,6 +273,61 @@ describe('Member', () => {
 			expect(storedAnswers).toEqual(validPayload);
 		}
 	});
+
+	describe('PATCH /me/settings', () => {
+		test('should succeed with valid inputs', async () => {
+			const validPayload = {
+				easyAIWorkflowOnboarded: true,
+				dismissedCallouts: { 'test-callout': true },
+			};
+
+			const response = await authMemberAgent.patch('/me/settings').send(validPayload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.easyAIWorkflowOnboarded).toBe(true);
+			expect(response.body.data.dismissedCallouts).toEqual({ 'test-callout': true });
+
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+			expect(storedMember.settings?.easyAIWorkflowOnboarded).toBe(true);
+			expect(storedMember.settings?.dismissedCallouts).toEqual({ 'test-callout': true });
+		});
+
+		test('should strip allowSSOManualLogin from payload (security)', async () => {
+			const maliciousPayload = {
+				easyAIWorkflowOnboarded: true,
+				allowSSOManualLogin: true, // This should be stripped - admin only field
+			};
+
+			const response = await authMemberAgent.patch('/me/settings').send(maliciousPayload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.easyAIWorkflowOnboarded).toBe(true);
+			// allowSSOManualLogin should NOT be set
+			expect(response.body.data.allowSSOManualLogin).toBeUndefined();
+
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+			expect(storedMember.settings?.easyAIWorkflowOnboarded).toBe(true);
+			expect(storedMember.settings?.allowSSOManualLogin).toBeUndefined();
+		});
+
+		test('should strip userActivated from payload (backend-only field)', async () => {
+			const payload = {
+				easyAIWorkflowOnboarded: true,
+				userActivated: true, // This should be stripped - backend only field
+			};
+
+			const response = await authMemberAgent.patch('/me/settings').send(payload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.easyAIWorkflowOnboarded).toBe(true);
+			// userActivated should NOT be set via this endpoint
+			expect(response.body.data.userActivated).toBeUndefined();
+
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+			expect(storedMember.settings?.easyAIWorkflowOnboarded).toBe(true);
+			expect(storedMember.settings?.userActivated).toBeUndefined();
+		});
+	});
 });
 
 describe('Chat User', () => {

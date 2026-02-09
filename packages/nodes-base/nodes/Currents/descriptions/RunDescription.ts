@@ -1,5 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import {
+	filterAuthorsOption,
+	filterBranchesOption,
+	filterTagsOption,
+	projectRLC,
+} from './common.descriptions';
+
 export const runOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -302,35 +309,13 @@ export const runFields: INodeProperties[] = [
 	//         run:find
 	// ----------------------------------
 	{
-		displayName: 'Project',
-		name: 'projectId',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
+		...projectRLC,
 		displayOptions: {
 			show: {
 				resource: ['run'],
 				operation: ['find', 'getAll'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a project...',
-				typeOptions: {
-					searchListMethod: 'getProjects',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. abc123',
-			},
-		],
 		routing: {
 			send: {
 				type: 'query',
@@ -338,7 +323,6 @@ export const runFields: INodeProperties[] = [
 				value: '={{ $value }}',
 			},
 		},
-		description: 'The Currents project',
 	},
 	{
 		displayName: 'Filters',
@@ -379,19 +363,7 @@ export const runFields: INodeProperties[] = [
 				},
 				description: 'Filter by CI build ID',
 			},
-			{
-				displayName: 'Tag',
-				name: 'tag',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'tag',
-					},
-				},
-				description: 'Filter by tag',
-			},
+			filterTagsOption,
 		],
 	},
 
@@ -434,32 +406,8 @@ export const runFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Authors',
-				name: 'author',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'author',
-					},
-				},
-				description: 'Filter by git commit author names (comma-separated for multiple)',
-			},
-			{
-				displayName: 'Branch',
-				name: 'branch',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'branch',
-					},
-				},
-				description: 'Filter by git branch name',
-			},
+			filterAuthorsOption,
+			filterBranchesOption,
 			{
 				displayName: 'Completion State',
 				name: 'completionState',
@@ -537,19 +485,7 @@ export const runFields: INodeProperties[] = [
 				},
 				description: 'Filter by run status',
 			},
-			{
-				displayName: 'Tags',
-				name: 'tag',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'tag',
-					},
-				},
-				description: 'Filter by tags (comma-separated for multiple)',
-			},
+			filterTagsOption,
 			{
 				displayName: 'Tag Operator',
 				name: 'tagOperator',

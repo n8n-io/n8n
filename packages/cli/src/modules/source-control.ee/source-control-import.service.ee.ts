@@ -1410,7 +1410,7 @@ export class SourceControlImportService {
 			const connectionsChanged = !isEqual(existingVersion.connections, connections);
 
 			if (nodesChanged || connectionsChanged) {
-				await this.workflowHistoryService.updateVersion(versionId, id, {
+				await this.workflowHistoryService.updateVersion(id, versionId, {
 					nodes,
 					connections,
 					authors,

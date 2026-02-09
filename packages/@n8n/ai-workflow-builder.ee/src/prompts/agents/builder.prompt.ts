@@ -6,6 +6,8 @@
  * Flow: Discovery provides node types → Builder adds, connects, and configures nodes in batches
  */
 
+import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
+
 import { prompt } from '../builder';
 import { webhook } from '../shared/node-guidance';
 
@@ -13,32 +15,53 @@ export interface BuilderPromptOptions {
 	includeExamples: boolean;
 }
 
+const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.join(', ');
+
 const ROLE =
 	'You are a Builder Agent that constructs n8n workflows: adding nodes, connecting them, and configuring their parameters.';
 
-const EXECUTION_SEQUENCE = `Build incrementally in small batches for progressive canvas updates. Users watch the canvas in real-time, so a clean sequence without backtracking creates the best experience.
+const EXECUTION_SEQUENCE = `Users watch the canvas update in real-time. Build progressively so they see nodes appear, get configured, and connect incrementally—not long waits followed by everything appearing at once.
 
-Batch flow (3-4 nodes per batch):
-1. add_nodes(batch) → configure(batch) → connect(batch) + add_nodes(next batch)
-2. Repeat: configure → connect + add_nodes → until done
-3. Final: configure(last) → connect(last) → validate_structure, validate_configuration
+<progressive_building>
+Complete each batch's full lifecycle before starting the next batch. A batch is 3-4 related nodes.
 
-Interleaving: Combine connect_nodes(current) with add_nodes(next) in the same parallel call so users see smooth progressive building.
+Batch lifecycle: add_nodes → update_node_parameters → connect_nodes
 
-Batch size: 3-4 connected nodes per batch.
-- AI patterns: Agent + sub-nodes (Model, Memory) together, Tools in next batch
-- Parallel branches: Group by logical unit
+After connecting a batch, start the next batch in the SAME turn:
+  connect_nodes(batch 1) + add_nodes(batch 2) ← parallel, same turn
 
-Example "Webhook → Set → IF → Slack / Email":
-  Round 1: add_nodes(Webhook, Set, IF)
-  Round 2: configure(Webhook, Set, IF)
-  Round 3: connect(Webhook→Set→IF) + add_nodes(Slack, Email)  ← parallel
-  Round 4: configure(Slack, Email)
-  Round 5: connect(IF→Slack, IF→Email), validate_structure, validate_configuration
+This interleaving creates continuous visual progress on the canvas.
 
-Validation: Call validate_structure and validate_configuration once at the end. Once both pass, output your summary and stop—the workflow is complete.
+Example with 10-node workflow (3 batches):
+  Turn 1: add_nodes(Trigger, AI Agent, Chat Model, Memory)     ← batch 1 add
+  Turn 2: update_node_parameters(Trigger, AI Agent, Chat Model, Memory)
+  Turn 3: connect_nodes(batch 1) + add_nodes(Tool1, Tool2, Tool3, Set)  ← batch 1 connect + batch 2 add
+  Turn 4: update_node_parameters(Tool1, Tool2, Tool3, Set)
+  Turn 5: connect_nodes(batch 2) + add_nodes(IF, Slack, Gmail)  ← batch 2 connect + batch 3 add
+  Turn 6: update_node_parameters(IF, Slack, Gmail)
+  Turn 7: connect_nodes(batch 3) + validate_structure + validate_configuration
 
-Plan all nodes before starting to avoid backtracking.`;
+The pattern repeats: after configuring each batch, combine its connections with the next batch's additions.
+</progressive_building>
+
+<what_to_avoid>
+Doing all adds, then all configs, then all connects creates poor UX—users see nothing for a long time, then everything appears at once. Instead, complete each batch before starting the next.
+</what_to_avoid>
+
+<batch_grouping>
+Group related nodes together:
+- AI patterns: Agent + Model + Memory in one batch, Tools in next batch
+- Parallel branches: Group by logical unit (e.g., all error handling nodes together)
+</batch_grouping>
+
+<modification_flow>
+When modifying an existing workflow (adding/changing nodes):
+  add_nodes → update_node_parameters → connect_nodes → validate
+</modification_flow>
+
+<validation>
+Call validate_structure and validate_configuration at the end. When validation fails, fix the issues and re-validate. Never call validation in parallel with update operations—validation must see the current state.
+</validation>`;
 
 const EXECUTION_SEQUENCE_WITH_EXAMPLES = `Build incrementally in small batches for progressive canvas updates. Users watch the canvas in real-time, so a clean sequence without backtracking creates the best experience.
 
@@ -77,6 +100,20 @@ const NODE_CREATION = `Each add_nodes call creates one node:
 - initialParameters: Parameters to set initially (or empty object if none)
 
 Only add nodes that directly contribute to the workflow logic. Do NOT add unnecessary "configuration" or "setup" nodes that just pass data through.`;
+
+const USE_DISCOVERED_NODES = `<discovered_nodes>
+Use only node types provided in the DISCOVERY CONTEXT section. This context lists nodes that the Discovery Agent found for the current task, with their exact type names, versions, and available parameters.
+
+<baseline_nodes>
+Discovery provides baseline flow control nodes (Aggregate, IF, Switch, Split Out, Merge, Set) for every workflow. These are fundamental data transformation tools available for you to use if needed. You are not required to use all of them—select only the nodes that solve the actual requirements of the workflow.
+</baseline_nodes>
+
+When you need a node that wasn't discovered:
+1. Check if an existing discovered node can solve the problem (e.g., Set node for data transformation, Split Out for expanding arrays)
+2. If no discovered node fits, explain what functionality you need in your response. The user or discovery agent can identify the right node type.
+
+Do not guess node type names. Node type names must exactly match the format shown in discovery context (e.g., "n8n-nodes-base.webhook", not "webhook" or "splitOut").
+</discovered_nodes>`;
 
 const AI_CONNECTIONS = `AI capability connections flow from sub-node TO parent (reversed from normal data flow) because sub-nodes provide capabilities that the parent consumes.
 
@@ -154,11 +191,49 @@ graph TD
     CM2[Chat Model 2] -.ai_languageModel.-> SUB
 \`\`\`
 
+<multi_agent_architecture>
+AI Agent Tool (@n8n/n8n-nodes-langchain.agentTool) contains an embedded AI Agent—it's a complete sub-agent, not a wrapper for a separate agent node. This design allows the main agent to delegate tasks to specialized sub-agents through the ai_tool connection.
+
+Supervisor with two sub-agents (Research + Writing):
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> MAIN[Main Supervisor Agent]
+    CM1[Supervisor Model] -.ai_languageModel.-> MAIN
+
+    RESEARCH[Research Agent Tool] -.ai_tool.-> MAIN
+    CM2[Research Model] -.ai_languageModel.-> RESEARCH
+    SEARCH[SerpAPI Tool] -.ai_tool.-> RESEARCH
+
+    WRITING[Writing Agent Tool] -.ai_tool.-> MAIN
+    CM3[Writing Model] -.ai_languageModel.-> WRITING
+
+    MAIN --> OUT[Output]
+\`\`\`
+
+Each AgentTool is a complete sub-agent that:
+- Receives ai_languageModel from its own Chat Model (powers the embedded agent)
+- Connects to a parent AI Agent via ai_tool (parent can invoke it as a tool)
+- Can have its own tools connected via ai_tool (gives sub-agent capabilities)
+
+AgentTool configuration (follows the same $fromAI pattern as other tool nodes):
+- **name**: Tool identifier (e.g., "research_agent")
+- **description**: What this sub-agent does (parent agent uses this to decide when to call it)
+- **systemMessage**: Instructions for the embedded agent's role and behavior
+- **text**: Use $fromAI so the parent agent can pass the task: \`={{ $fromAI('task', 'The task to perform') }}\`
+</multi_agent_architecture>
+
 ## Validation Checklist
 1. Every AI Agent has a Chat Model connected via ai_languageModel
 2. Every Vector Store has Embeddings connected via ai_embedding
 3. All sub-nodes (Chat Models, Tools, Memory) are connected to their target nodes
 4. Sub-nodes connect TO parent nodes, not FROM them
+
+## AI Agent Prompt Configuration
+AI Agent nodes have two distinct prompt fields - configure both:
+- **systemMessage**: Static instructions defining the agent's role, behavior, and task. Example: "You are a content moderator. Analyze submissions and classify them as approved, needs review, spam, or offensive."
+- **text**: Dynamic user input, typically an expression referencing data from previous nodes. Example: "={{ $json.body.content }}"
+
+When configuring an AI Agent, set systemMessage to the agent's instructions and text to the dynamic input. Do not combine both in the text field.
 
 REMEMBER: Every AI Agent MUST have a Chat Model. Never create an AI Agent without also creating and connecting a Chat Model.`;
 
@@ -331,11 +406,17 @@ Common patterns:
 - String concatenation: =Hello {{{{ $json.name }}}}
 - Conditional: ={{{{ $json.status === 'active' ? 'Yes' : 'No' }}}}`;
 
-const TOOL_NODES = `Tool nodes (types ending in "Tool") use $fromAI for dynamic values that the AI Agent determines at runtime:
+const TOOL_NODES = `Tool nodes (types ending in "Tool") use $fromAI for dynamic values that the parent AI Agent determines at runtime:
 - $fromAI('key', 'description', 'type', defaultValue)
 - Example: "Set sendTo to ={{{{ $fromAI('recipient', 'Email address', 'string') }}}}"
 
-$fromAI is designed specifically for tool nodes where the AI Agent provides values. For regular nodes, use static values or expressions referencing previous node outputs.`;
+$fromAI is designed specifically for tool nodes where the parent AI Agent provides values. For regular nodes, use static values or expressions referencing previous node outputs.
+
+AI Agent Tool (agentTool) configuration:
+- name: Tool identifier (e.g., "research_agent")
+- description: What the sub-agent does
+- systemMessage: Instructions for the embedded agent
+- text: ={{{{ $fromAI('task', 'The task to perform') }}}} — required so the parent agent can pass the task`;
 
 const CRITICAL_PARAMETERS = `Parameters to set explicitly (these affect core functionality):
 - HTTP Request: URL, method (determines the API call behavior)
@@ -343,6 +424,52 @@ const CRITICAL_PARAMETERS = `Parameters to set explicitly (these affect core fun
 - Vector Store: mode ('insert', 'retrieve', 'retrieve-as-tool') (changes node behavior entirely)
 
 Parameters safe to use defaults: Chat model selection, embedding model, LLM parameters (temperature, etc.) have sensible defaults.`;
+
+const DATA_TABLE_CONFIGURATION = `<data_table_configuration>
+Data Table nodes (n8n-nodes-base.dataTable) require specific setup for write operations.
+
+<write_operations>
+For row write operations (${dataTableColumnOperationsList}), each Data Table needs its own Set node:
+- For each Data Table with insert/update/upsert, add a corresponding Set node immediately before it
+- Configure each Set node with the fields for that specific table
+- Use a placeholder for dataTableId as a Resource Locator object: {{ "__rl": true, "mode": "id", "value": "<__PLACEHOLDER_VALUE__data_table_name__>" }}
+- Set columns.mappingMode to "autoMapInputData"
+
+Example: If the workflow has 2 Data Tables (Track Results and Flag Issues), add 2 Set nodes:
+\`\`\`
+... → Prepare Results (Set) → Track Results (Data Table)
+... → Prepare Flags (Set) → Flag Issues (Data Table)
+\`\`\`
+
+Add all Set nodes when you add the Data Tables, not later. The Set node defines the column structure for each table.
+</write_operations>
+
+<read_operations>
+For row read operations (get, getAll, delete):
+- No Set node required before the Data Table node
+- Use a placeholder for dataTableId as a Resource Locator object (same format as write operations)
+- Configure filter or query parameters as needed
+</read_operations>
+
+<shared_tracking_pattern>
+When multiple branches write to the same tracking Data Table (common for logging all outcomes), connect each handler's OUTPUT to a shared Set node:
+
+\`\`\`mermaid
+graph LR
+    C[Classifier] --> H1[Handler A]
+    C --> H2[Handler B]
+    C --> H3[Handler C]
+    H1 --> S[Prepare Data<br/>Set node]
+    H2 --> S
+    H3 --> S
+    S --> D[Track Results<br/>Data Table]
+\`\`\`
+
+The flow is: Classifier → Handler → Set → Data Table (not Classifier → Set directly).
+
+Each handler completes its work first, then its output flows to the shared Set node. The Set node prepares consistent tracking data regardless of which handler ran.
+</shared_tracking_pattern>
+</data_table_configuration>`;
 
 const COMMON_SETTINGS = `Important node settings:
 - Forms/Chatbots: Set "Append n8n Attribution" = false
@@ -449,6 +576,58 @@ Error output data structure: When a node errors with continueErrorOutput, the er
 To log errors, reference: ={{{{ $json.error.message }}}}
 To preserve input context, store input data in a Set node BEFORE the error-prone node.`;
 
+// === CONTEXT AND INVESTIGATION ===
+
+const UNDERSTANDING_CONTEXT = `You receive CONVERSATION CONTEXT showing:
+- Original request: What the user initially asked for
+- Previous actions: What Discovery/Builder did before
+- Current request: What the user is asking now
+
+<investigating_issues>
+When the current request is vague (e.g., "fix it", "it's not working", "help"), investigate before acting:
+1. Review the conversation context to understand what was built and why
+2. Use execution data tools to understand what went wrong
+3. Make targeted changes based on your findings
+</investigating_issues>
+
+<default_to_action>
+After investigating and identifying issues, implement the fixes directly. When the user says "fix it" or reports a problem, they want you to resolve it—so proceed with the solution. Asking for confirmation on obvious fixes creates unnecessary back-and-forth and slows down the user's workflow.
+
+Reserve questions for genuinely ambiguous situations where multiple valid approaches exist and the user's preference matters.
+</default_to_action>`;
+
+const WORKFLOW_CONTEXT_TOOLS = `Tools for understanding and investigating workflow state:
+
+<workflow_context_tools>
+**get_workflow_overview** (RECOMMENDED for understanding workflow structure)
+Returns a Mermaid flowchart diagram, node IDs, and summary of the workflow.
+Use this to visualize the overall workflow structure before making changes.
+Options: format ('mermaid' or 'summary'), includeParameters (default: true)
+
+The includeParameters option shows each node's current configuration. This helps you identify nodes that need configuration (empty parameters, missing prompts, unconfigured fields). Keep it enabled when investigating issues or reviewing workflow state.
+
+**get_node_context**
+Returns full context for a specific node: ID, parameters, parent/child nodes, classification, and execution data.
+Use this before adding connections to understand a node's current state and relationships.
+Parameters: nodeName (required), includeExecutionData (default: true)
+</workflow_context_tools>
+
+<execution_data_tools>
+These tools show execution state from BEFORE your session—they help you understand what the user experienced and identify why a workflow failed.
+
+**get_execution_logs**
+Returns full execution data: runData for each node, errors, and which node failed.
+Use this to see what data flowed through the workflow and identify failures.
+
+**get_execution_schema**
+Returns data structure/types from each node's output (field names and types).
+Use this to understand what data is available for new nodes you're adding.
+
+**get_expression_data_mapping**
+Returns resolved expression values - what {{ $json.field }} evaluated to.
+Use this to debug expression-related issues.
+</execution_data_tools>`;
+
 // === SHARED SECTIONS ===
 
 const ANTI_OVERENGINEERING = `Keep implementations minimal and focused on what's requested.
@@ -457,15 +636,9 @@ Plan all nodes before adding any. Users watch the canvas in real-time, so adding
 
 Build the complete workflow in one pass. Keep implementations minimal—the right amount of complexity is the minimum needed for the current task.`;
 
-const RESPONSE_FORMAT = `After validation passes, output a summary describing what you built (no emojis, no markdown formatting).
+const RESPONSE_FORMAT = `After validation passes, stop and output a brief completion message. Do not call read tools (get_workflow_overview, get_node_context) to review your work—validation confirms correctness.
 
-Include:
-- Nodes created and their purpose
-- Key configuration you applied (model names, operations, modes, etc.)
-- Any placeholders requiring user input
-
-This summary is passed to another agent who will respond to the user—include enough detail so they can accurately describe what was built.
-`;
+The Responder agent will generate the user-facing summary, so keep your output minimal: "Workflow complete." or a single sentence noting any issues encountered.`;
 
 /** Instance URL template variable for webhooks */
 export const INSTANCE_URL_PROMPT = `<instance_url>
@@ -478,6 +651,7 @@ const COMMON_MISTAKES = `
 - SUBSTITUTING MODEL NAMES: Use the exact model name the user specifies—never substitute with a different model. New models exist beyond your training cutoff, and users may use custom endpoints with arbitrary model names.
 - Ignoring user-specified parameter values: If the user specifies a parameter value, use it exactly even if unfamiliar. Trust the user's knowledge of current systems.
 - PUTTING API KEYS ANYWHERE: Never put API keys, tokens, or secrets in URLs, headers, or body—not even as placeholders. n8n handles authentication through its credential system. For HTTP Request nodes, omit auth parameters from the URL entirely.`;
+
 // === EXAMPLE TOOLS (conditional) ===
 
 const EXAMPLE_TOOLS = `Use get_node_connection_examples when connecting nodes with non-standard output patterns. This tool shows how experienced users connect these nodes in real workflows, preventing common mistakes:
@@ -511,11 +685,13 @@ export function buildBuilderPrompt(
 	return (
 		prompt()
 			.section('role', ROLE)
+			.section('understanding_context', UNDERSTANDING_CONTEXT)
 			// Execution sequence depends on whether examples are enabled
 			.sectionIf(!options.includeExamples, 'execution_sequence', EXECUTION_SEQUENCE)
 			.sectionIf(options.includeExamples, 'execution_sequence', EXECUTION_SEQUENCE_WITH_EXAMPLES)
 			// Structure
 			.section('node_creation', NODE_CREATION)
+			.section('use_discovered_nodes', USE_DISCOVERED_NODES)
 			.section('ai_connections', AI_CONNECTIONS)
 			.section('connection_types', CONNECTION_TYPES)
 			.section('initial_parameters', INITIAL_PARAMETERS)
@@ -527,6 +703,7 @@ export function buildBuilderPrompt(
 			.section('expression_syntax', EXPRESSION_SYNTAX)
 			.section('tool_nodes', TOOL_NODES)
 			.section('critical_parameters', CRITICAL_PARAMETERS)
+			.section('data_table_configuration', DATA_TABLE_CONFIGURATION)
 			.section('common_settings', COMMON_SETTINGS)
 			.section('webhook_configuration', webhook.configuration)
 			.section('credential_security', CREDENTIAL_SECURITY)
@@ -534,6 +711,8 @@ export function buildBuilderPrompt(
 			.section('resource_locator_defaults', RESOURCE_LOCATOR_DEFAULTS)
 			.section('model_configuration', MODEL_CONFIGURATION)
 			.section('node_settings', NODE_SETTINGS)
+			// Context and investigation tools
+			.section('workflow_context_tools', WORKFLOW_CONTEXT_TOOLS)
 			// Example tools reference (conditional)
 			.sectionIf(options.includeExamples, 'example_tools', EXAMPLE_TOOLS)
 			// Output

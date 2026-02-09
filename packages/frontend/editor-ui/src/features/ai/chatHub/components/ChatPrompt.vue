@@ -209,8 +209,8 @@ defineExpose({
 		committedSpokenMessage.value = '';
 		attachments.value = [];
 	},
-	setText: (text: string) => {
-		message.value = text;
+	appendText: (text: string) => {
+		message.value += text;
 	},
 	addAttachments: (files: File[]) => {
 		attachments.value.push(...files);
@@ -455,6 +455,10 @@ defineExpose({
 	flex-direction: column;
 	gap: var(--spacing--md);
 	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+	--input--border-color: transparent;
+	--input--border-color--hover: transparent;
+	--input--border-color--focus: transparent;
+	--input--color--background: transparent;
 
 	&:focus-within,
 	&:hover:has(textarea:not(:disabled)) {
@@ -465,8 +469,6 @@ defineExpose({
 		font-size: var(--font-size--md);
 		line-height: 1.5em;
 		resize: none;
-		background-color: transparent !important;
-		border: none !important;
 		padding: 0 !important;
 	}
 

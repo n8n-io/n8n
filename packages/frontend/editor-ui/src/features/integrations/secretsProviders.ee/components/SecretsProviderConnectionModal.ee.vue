@@ -23,55 +23,91 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
+	N8nInfoTip,
 	type IMenuItem,
 } from '@n8n/design-system';
 import { useElementSize } from '@vueuse/core';
+import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 // Props
-const props = defineProps<{
-	modalName: string;
-	data?: {
-		providerKey?: string;
-		providerTypes?: SecretProviderTypeResponse[];
-		existingProviderNames?: string[];
-		onClose?: () => void;
-	};
-}>();
+const props = withDefaults(
+	defineProps<{
+		modalName: string;
+		data?: {
+			activeTab?: string;
+			providerKey?: string;
+			providerTypes?: SecretProviderTypeResponse[];
+			existingProviderNames?: string[];
+			projectId?: string;
+			onClose?: (saved?: boolean) => void;
+		};
+	}>(),
+	{
+		data: () => ({
+			activeTab: 'connection',
+		}),
+	},
+);
 
 // Composables
 const i18n = useI18n();
 const { confirm } = useMessage();
 const eventBus = createEventBus();
+const projectsStore = useProjectsStore();
 
 // Constants
 const LABEL_SIZE: IParameterLabel = { size: 'medium' };
-const ACTIVE_TAB = ref('connection');
-
-// TODO: Get actual secrets count from backend API after connection test
-const SECRETS_COUNT = 0;
+const ACTIVE_TAB = ref(props.data?.activeTab ?? 'connection');
 
 // Modal state
-const providerTypes = computed(() => props.data?.providerTypes ?? []);
-const providerKey = computed(() => props.data?.providerKey ?? '');
-const existingProviderNames = computed(() => props.data?.existingProviderNames ?? []);
+const providerTypes = computed(() => props.data.providerTypes ?? []);
+const providerKey = computed(() => props.data.providerKey ?? '');
+const existingProviderNames = computed(() => props.data.existingProviderNames ?? []);
+const projectId = computed(() => props.data.projectId);
 
 const modal = useConnectionModal({
 	providerTypes,
 	providerKey,
 	existingProviderNames,
+	projectId: projectId.value,
 });
 
 const sidebarItems = computed(() => {
-	const items: IMenuItem[] = [
+	const menuItems: IMenuItem[] = [
 		{
 			id: 'connection',
 			label: i18n.baseText('settings.secretsProviderConnections.modal.items.connection'),
 			position: 'top',
 		},
+		{
+			id: 'sharing',
+			label: i18n.baseText('settings.secretsProviderConnections.modal.items.scope'),
+			position: 'top',
+		},
 	];
 
-	return items;
+	return menuItems;
 });
+
+const scopeProjects = computed(() =>
+	modal.canShareGlobally.value
+		? projectsStore.teamProjects.filter(
+				(p: ProjectSharingData) => !modal.projectIds.value.includes(p.id),
+			)
+		: [],
+);
+
+// Sync scope changes to composable (max 1 project)
+function handleScopeUpdate(value: ProjectSharingData[] | ProjectSharingData | null) {
+	const project = Array.isArray(value) ? value.at(-1) : value;
+	modal.setScopeState(project ? [project.id] : [], false);
+}
+
+function handleShareGlobally(value: boolean) {
+	modal.setScopeState([], value);
+}
 
 // Handlers
 function handleConnectionNameUpdate(value: string) {
@@ -112,7 +148,7 @@ async function handleBeforeClose() {
 		}
 	}
 
-	props.data?.onClose?.();
+	props.data.onClose?.(modal.didSave.value);
 	return true;
 }
 
@@ -121,8 +157,10 @@ onMounted(async () => {
 	if (providerTypes.value.length === 0) return;
 
 	if (modal.isEditMode.value) {
-		await modal.loadConnection();
+		await Promise.all([modal.loadConnection()]);
 	}
+
+	await projectsStore.getAllProjects();
 });
 
 const nameRef = useTemplateRef('nameRef');
@@ -211,7 +249,7 @@ const { width } = useElementSize(nameRef);
 													'settings.secretsProviderConnections.modal.testConnection.success.serviceEnabled',
 													{
 														interpolate: {
-															count: SECRETS_COUNT,
+															count: modal.providerSecretsCount.value,
 															providerName: modal.connectionName.value,
 														},
 													},
@@ -330,6 +368,38 @@ const { width } = useElementSize(nameRef);
 										@update="handleSettingChange"
 									/>
 								</form>
+							</div>
+						</div>
+
+						<!-- Scope Tab Content (edit mode only) -->
+						<div v-if="ACTIVE_TAB === 'sharing' && modal.isEditMode" :class="$style.mainContent">
+							<div>
+								<N8nInfoTip :bold="false" class="mb-s">
+									{{ i18n.baseText('settings.secretsProviderConnections.modal.scope.info') }}
+								</N8nInfoTip>
+								<ProjectSharing
+									:model-value="modal.sharedWithProjects.value"
+									:projects="scopeProjects"
+									:readonly="!modal.canUpdate.value"
+									:static="!modal.canUpdate.value"
+									:placeholder="
+										i18n.baseText(
+											'settings.secretsProviderConnections.modal.scope.placeholder.project',
+										)
+									"
+									:all-users-label="
+										i18n.baseText('settings.secretsProviderConnections.modal.scope.global')
+									"
+									:empty-options-text="
+										i18n.baseText(
+											'settings.secretsProviderConnections.modal.scope.emptyOptionsText',
+										)
+									"
+									:can-share-globally="modal.canShareGlobally.value"
+									:is-shared-globally="modal.isSharedGlobally.value"
+									@update:share-with-all-users="handleShareGlobally"
+									@update:model-value="handleScopeUpdate"
+								/>
 							</div>
 						</div>
 					</div>

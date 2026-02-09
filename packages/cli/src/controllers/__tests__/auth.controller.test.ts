@@ -7,8 +7,8 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import * as auth from '@/auth';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
+import type { EmailAuthHandler } from '@/auth/handlers/email.auth-handler';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { EventService } from '@/events/event.service';
@@ -28,10 +28,6 @@ import { ResolveSignupTokenQueryDto } from '@n8n/api-types';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-jest.mock('@/auth');
-
-const mockedAuth = auth as jest.Mocked<typeof auth>;
-
 describe('AuthController', () => {
 	mockInstance(Logger);
 	mockInstance(EventService);
@@ -43,6 +39,7 @@ describe('AuthController', () => {
 	mockInstance(License);
 	const ldapService = mockInstance(LdapService);
 	const authHandlerRegistry = mockInstance(AuthHandlerRegistry);
+	const emailAuthHandler = mock<EmailAuthHandler>();
 	const controller = Container.get(AuthController);
 	const userService = Container.get(UserService);
 	const authService = Container.get(AuthService);
@@ -52,10 +49,13 @@ describe('AuthController', () => {
 	describe('login', () => {
 		beforeEach(() => {
 			jest.resetAllMocks();
-			// Setup auth handler registry to return ldapService for 'ldap'
+			// Setup auth handler registry to return handlers
 			authHandlerRegistry.get.mockImplementation((method: string) => {
 				if (method === 'ldap') {
 					return ldapService;
+				}
+				if (method === 'email') {
+					return emailAuthHandler;
 				}
 				return undefined;
 			});
@@ -85,7 +85,7 @@ describe('AuthController', () => {
 
 			const res = mock<Response>();
 
-			mockedAuth.handleEmailLogin.mockResolvedValue(member);
+			emailAuthHandler.handleLogin.mockResolvedValue(member);
 
 			ldapService.handleLogin.mockResolvedValue(member);
 
@@ -97,7 +97,7 @@ describe('AuthController', () => {
 
 			// Assert
 
-			expect(mockedAuth.handleEmailLogin).toHaveBeenCalledWith(
+			expect(emailAuthHandler.handleLogin).toHaveBeenCalledWith(
 				body.emailOrLdapLoginId,
 				body.password,
 			);
@@ -137,7 +137,7 @@ describe('AuthController', () => {
 
 			const res = mock<Response>();
 
-			mockedAuth.handleEmailLogin.mockResolvedValue(member);
+			emailAuthHandler.handleLogin.mockResolvedValue(member);
 			config.set('userManagement.authenticationMethod', 'oidc');
 
 			// Act
@@ -148,7 +148,7 @@ describe('AuthController', () => {
 
 			// Assert
 
-			expect(mockedAuth.handleEmailLogin).toHaveBeenCalledWith(
+			expect(emailAuthHandler.handleLogin).toHaveBeenCalledWith(
 				body.emailOrLdapLoginId,
 				body.password,
 			);
@@ -177,13 +177,13 @@ describe('AuthController', () => {
 
 			const res = mock<Response>();
 
-			mockedAuth.handleEmailLogin.mockResolvedValue(member); // Act
+			emailAuthHandler.handleLogin.mockResolvedValue(member); // Act
 
 			await controller.login(req, res, body);
 
 			// Assert
 
-			expect(mockedAuth.handleEmailLogin).toHaveBeenCalledWith(
+			expect(emailAuthHandler.handleLogin).toHaveBeenCalledWith(
 				body.emailOrLdapLoginId,
 				body.password,
 			);

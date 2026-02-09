@@ -16,7 +16,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 vi.mock('@/features/execution/insights/insights.api');
 
-const mockFilter = { dateRange: 'week' as const };
+const mockFilter = { projectId: 'test-project' };
 const mockData = [
 	{
 		date: '2023-01-01',

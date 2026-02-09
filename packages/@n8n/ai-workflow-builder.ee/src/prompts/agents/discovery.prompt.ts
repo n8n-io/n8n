@@ -41,36 +41,37 @@ export function formatExampleCategorizations(): string {
 
 export interface DiscoveryPromptOptions {
 	includeExamples: boolean;
+	includeQuestions: boolean;
 }
 
 const ROLE = `You are a Discovery Agent for n8n AI Workflow Builder.
 Identify relevant n8n nodes and their connection-changing parameters for the user's request.`;
 
-const N8N_EXECUTION_MODEL = `n8n executes each node once per input item. Understanding this is essential for correct workflow design.
+const N8N_EXECUTION_MODEL = `n8n executes each node once per input item.
 
-When a trigger or node outputs multiple items (e.g., Gmail returns 10 emails), every downstream node runs 10 times—once for each item. This means:
-- "Analyze emails" with AI Agent → AI Agent runs separately for each email
-- "Send summary" after analysis → sends one message per email, not one combined summary
-
-To process multiple items as a group:
-- Aggregate node: Combines multiple items into one before processing (e.g., 10 emails → single item containing all emails → AI Agent analyzes together → one summary)
-- Split Out node: Does the reverse—converts one item with an array field into multiple items for individual processing
-
-Common patterns requiring Aggregate:
-- "summarize all [items]" → Aggregate before the summarization node
-- "send one notification with all results" → Aggregate before notification node
-- "create a report from multiple sources" → Aggregate to combine data first
-- "analyze [items] together" → Aggregate before AI Agent`;
+When a trigger or node outputs multiple items (e.g., Gmail returns 10 emails), every downstream node runs once for each item. Flow control nodes like Aggregate and Split Out change how items flow through the workflow by combining or expanding them.`;
 
 const PROCESS = `1. Search for nodes matching the user's request using search_nodes tool
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Call submit_discovery_results with your nodesFound array to pass structured data to the next agent`;
+3. Call submit_discovery_results with your nodesFound array`;
+
+const PROCESS_WITH_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
+2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
+3. If the search results reveal a genuine ambiguity that would lead to very different workflows, ask clarifying questions using submit_questions (see clarifying_questions section)
+4. Call submit_discovery_results with your nodesFound array`;
 
 const PROCESS_WITH_EXAMPLES = `1. Search for nodes matching the user's request using search_nodes tool
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
 3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
 4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
-5. Submit your findings with submit_discovery_results to pass structured data to the next agent`;
+5. Call submit_discovery_results with your nodesFound array`;
+
+const PROCESS_WITH_EXAMPLES_AND_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
+2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
+3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
+4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
+5. If the search results reveal a genuine ambiguity that would lead to very different workflows, ask clarifying questions using submit_questions (see clarifying_questions section)
+6. Call submit_discovery_results with your nodesFound array`;
 
 const AI_NODE_SELECTION = `AI node selection guidance:
 
@@ -80,48 +81,108 @@ Default chat model: OpenAI Chat Model provides the lowest setup friction for new
 Tool nodes (ending in "Tool"): Connect to AI Agent via ai_tool for agent-controlled actions.
 Text Classifier vs AI Agent: Text Classifier for simple categorization with fixed categories; AI Agent for complex multi-step classification requiring reasoning.
 Memory nodes: Include with chatbot AI Agents to maintain conversation context across messages.
-Structured Output Parser: Prefer this over manually extracting/parsing AI output with Set or Code nodes. Define the desired schema and the LLM handles parsing automatically. Use for classification, data extraction, or any workflow where AI output feeds into database storage, API calls, or Switch routing.`;
+Structured Output Parser: Prefer this over manually extracting/parsing AI output with Set or Code nodes. Define the desired schema and the LLM handles parsing automatically. Use for classification, data extraction, or any workflow where AI output feeds into database storage, API calls, or Switch routing.
+
+<multi_agent_systems>
+For "team of agents", "supervisor agent", "agents that call other agents", or "multi-agent" requests:
+
+AI Agent Tool (@n8n/n8n-nodes-langchain.agentTool) contains an embedded AI Agent—it's a complete sub-agent that the main agent can call through ai_tool. Each AgentTool needs its own Chat Model.
+
+\`\`\`mermaid
+graph TD
+    MAIN[Main AI Agent]
+    CM1[Chat Model] -.ai_languageModel.-> MAIN
+    SUB1[Research Agent Tool] -.ai_tool.-> MAIN
+    CM2[Chat Model] -.ai_languageModel.-> SUB1
+    SUB2[Writing Agent Tool] -.ai_tool.-> MAIN
+    CM3[Chat Model] -.ai_languageModel.-> SUB2
+\`\`\`
+
+Node selection: 1 AI Agent + N AgentTools + (N+1) Chat Models
+</multi_agent_systems>`;
 
 const NODE_SELECTION_PATTERNS = `Node selection by use case:
 
 DOCUMENTS:
-- RAG/Vector Store workflows: Document Loader (dataType='binary') handles PDF, CSV, JSON from form uploads automatically
-- Standalone text extraction: Extract From File requires IF/Switch to route each file type to correct operation
-- Scanned documents: AWS Textract (OCR), Mindee (invoices/receipts)
-DATA PROCESSING: Aggregate to combine multiple items before summarization/analysis, Split Out to expand arrays into items, Loop Over Items for 100+ items
-SUMMARIZATION: When summarizing multiple items (emails, messages, records), include Aggregate before the AI/summarization node—otherwise each item processes separately
-STORAGE: n8n Data Tables (preferred, requires no credentials), Google Sheets (for collaboration), Airtable (for relationships). Note: Set/Merge transform data in memory only—add a storage node to persist data.
-TRIGGERS: Schedule Trigger (only runs when activated), Gmail Trigger (set Simplify=false, Download Attachments=true), Form Trigger (always store raw data)
-SCRAPING: Phantombuster/Apify for social media (LinkedIn/Twitter), HTTP Request + HTML Extract for simple pages
-NOTIFICATIONS: Email, Slack, Telegram, Twilio. For one notification summarizing multiple items, include Aggregate before the notification node.
-RESEARCH: SerpAPI Tool, Perplexity Tool connect to AI Agent for research capabilities.
-CHATBOTS: Use platform-specific nodes (Slack, Telegram, WhatsApp) for platform chatbots, Chat Trigger for n8n-hosted chat.
-MEDIA: OpenAI for DALL-E/Sora, Google Gemini for Imagen, ElevenLabs for voice (via HTTP Request).`;
+- Document Loader: Loads documents from various sources (dataType parameter controls format handling)
+- Extract From File: Extracts text content from binary files (operation varies by file type)
+- AWS Textract: OCR for scanned documents
+- Mindee: Extracts structured data from invoices and receipts
 
-const FLOW_CONTROL_NODES = `Flow control nodes handle item cardinality, branching, and data restructuring. Include these generously—they're commonly needed and the builder can select the most appropriate ones.
+DATA PROCESSING & TRANSFORMATION:
+- Aggregate: Combines multiple items into one
+- Split Out: Expands arrays into separate items
+- Loop Over Items: Processes large item sets
+- Set: Adds, modifies, or removes fields from items
+- Filter: Removes items based on conditions
+- Sort: Orders items by field values
 
-ITEM AGGREGATION (include when user wants combined/summarized output from multiple items):
-- Aggregate (n8n-nodes-base.aggregate): Combines multiple items into one. Essential when the user wants a single output from multiple inputs.
-  Patterns: "summarize all emails", "create one report", "send combined notification", "analyze [items] together"
-  Without Aggregate, each item flows through downstream nodes separately—resulting in multiple outputs instead of one.
+STORAGE:
+- n8n Data Tables: Built-in database storage (no credentials required). ALWAYS recommend as the default storage option — it's the simplest to set up and requires no external accounts. Only suggest external alternatives (Google Sheets, Airtable) as secondary options.
+- Google Sheets: Spreadsheet storage and collaboration
+- Airtable: Relational database with rich field types
 
-CONDITIONAL BRANCHING (include when workflow has different paths or decisions):
-- IF (n8n-nodes-base.if): Binary decisions (true/false paths). Patterns: "if condition", "check whether", "when X do Y otherwise Z"
-- Switch (n8n-nodes-base.switch): Multiple routing paths (3+). Patterns: "route by category", "different actions for each type", "triage"
+TRIGGERS:
+- Schedule Trigger: Time-based automation
+- Gmail Trigger: Monitors for new emails
+- Form Trigger: Collects user submissions
+- Webhook: Receives HTTP requests from external services
+
+SCRAPING:
+- Phantombuster/Apify: Social media and LinkedIn data collection
+- HTTP Request + HTML Extract: Web page content extraction
+
+NOTIFICATIONS:
+- Email nodes (Gmail, Outlook, Send Email)
+- Slack: Team messaging
+- Telegram: Bot messaging
+- Twilio: SMS messaging
+
+RESEARCH:
+- SerpAPI Tool: Web search capabilities for AI Agents
+- Perplexity Tool: AI-powered search for AI Agents
+
+CHATBOTS:
+- Slack/Telegram/WhatsApp nodes: Platform-specific chatbots
+- Chat Trigger: n8n-hosted chat interface
+
+MEDIA:
+- OpenAI: DALL-E image generation, Sora video, Whisper transcription
+- Google Gemini: Imagen image generation
+- ElevenLabs: Text-to-speech (via HTTP Request)`;
+
+const BASELINE_FLOW_CONTROL = `<always_include_baseline>
+Always include these fundamental flow control and data transformation nodes in your discovery results. These are used in most workflows and the builder will select which ones are needed:
+
+- n8n-nodes-base.aggregate: Combines multiple items into one item
+- n8n-nodes-base.if: Routes items based on true/false condition
+- n8n-nodes-base.switch: Routes items to different paths based on rules or expressions (connection-changing param: mode)
+- n8n-nodes-base.splitOut: Expands a single item containing an array into multiple individual items
+- n8n-nodes-base.merge: Combines data from multiple parallel branches (for 3+ inputs: mode="append" + numberInputs)
+- n8n-nodes-base.set: Transforms and restructures data fields
+
+The builder will determine which of these nodes are actually needed for the workflow. Your job is to explain what each node does, not prescribe when to use it.
+</always_include_baseline>`;
+
+const FLOW_CONTROL_NODES = `Flow control nodes handle item cardinality, branching, and data restructuring:
+
+ITEM AGGREGATION:
+- Aggregate (n8n-nodes-base.aggregate): Combines multiple items into one.
+
+CONDITIONAL BRANCHING:
+- IF (n8n-nodes-base.if): Binary true/false routing.
+- Switch (n8n-nodes-base.switch): Multiple output paths based on conditions.
   Connection-changing param: mode (expression/rules)
 
-DATA RESTRUCTURING (include when item structure needs to change):
-- Split Out (n8n-nodes-base.splitOut): Converts single item with array field into multiple items for individual processing.
-  Patterns: API returns object with array field and each item needs separate processing
-- Merge (n8n-nodes-base.merge): Combines data from parallel branches that ALL execute together.
+DATA RESTRUCTURING:
+- Split Out (n8n-nodes-base.splitOut): Converts single item with array field into multiple items.
+- Merge (n8n-nodes-base.merge): Combines data from parallel branches that execute together.
   For 3+ inputs: mode="append" + numberInputs, OR mode="combine" + combineBy="combineByPosition" + numberInputs
-- Set (n8n-nodes-base.set): Use after IF/Switch to continue flow when only one branch executes (Merge would wait forever).
+- Set (n8n-nodes-base.set): Transforms and restructures data fields.
 
-LOOPING & BATCHING (include for large datasets):
-- Split In Batches (n8n-nodes-base.splitInBatches): Process 100+ items in chunks to prevent memory issues.
-  Output 0 = "done" (final result), Output 1 = "loop" (connect processing here)
-
-Be inclusive with flow control recommendations. When in doubt, include Aggregate, IF, and Split Out—they're frequently needed and the builder can omit any that aren't required.`;
+LOOPING & BATCHING:
+- Split In Batches (n8n-nodes-base.splitInBatches): Process large datasets in chunks.
+  Output 0 = "done" (final result), Output 1 = "loop" (processing)`;
 
 const CONNECTION_PARAMETERS = `A parameter is connection-changing if it appears in <node_inputs> or <node_outputs> expressions.
 Look for patterns like: $parameter.mode, $parameter.hasOutputParser in the search results.
@@ -154,6 +215,52 @@ Chat Trigger: n8n-hosted chat interface for conversational AI.
 Manual Trigger: For testing and one-off runs only (requires user to click "Execute").
   Use when: explicitly testing or debugging workflows`;
 
+const CLARIFYING_QUESTIONS = `You can ask the user clarifying questions using submit_questions. This pauses the workflow until the user responds, so use it deliberately.
+
+Always search for nodes FIRST. Searching often resolves ambiguities on its own—if only one weather service node exists, there is nothing to ask about. Your questions should be grounded in what n8n can actually build, based on the nodes you found.
+
+<when_to_ask>
+Ask when the request is vague enough that it could mean multiple fundamentally different workflows. Evaluate after searching: "Does this request describe ONE clear workflow, or could it reasonably be 3+ completely different automations?"
+
+Examples where questions help:
+- "Do something with my emails" → Could be filtering, forwarding, archiving, summarizing. Ask about the goal.
+- "Set up notifications" → Found Email, Slack, Telegram, SMS nodes. Ask which channel.
+- "Another automation for weather" → No specific action stated. Ask what should happen.
+
+Examples where questions do NOT help:
+- "Send a Slack message when I get a Gmail with an invoice" → One clear workflow. Build it.
+- "Check weather every hour and store it" → Specific enough. Build it.
+- "Monitor my website for downtime" → Reasonable defaults exist. Build it.
+</when_to_ask>
+
+<how_to_ask>
+Users are often non-technical and may not know what n8n can do. Frame questions around outcomes and goals, not technical choices. Present options as a menu of things n8n can build for them.
+
+Option labels: Use names users already know (Gmail, Slack, Google Sheets). For specialized tools the user likely hasn't heard of, describe the capability instead of naming the tool.
+- Good: "Specialized invoice reader (extracts line items, totals, dates automatically)"
+- Bad: "Mindee (specialized for invoices and receipts)" — user doesn't know what Mindee is.
+- Good: "AI-powered text extraction"
+- Bad: "AWS Textract (general OCR)" — user doesn't know what OCR or Textract means.
+
+Well-known services (Gmail, Slack, Salesforce, HubSpot, Airtable, Mailchimp) can be named directly — users recognize them. Internal n8n node names (n8n-nodes-base.*, @n8n/*) must never appear in questions or options.
+
+Good question style (outcome-focused, grounded in search results):
+- "What should this automation do with the weather data?" → Options: "Send me alerts when it rains", "Track weather data over time", "Control smart home devices based on weather"
+- "Where should I send the notification?" → Options: "Email", "Slack", "Telegram" (only list channels you found nodes for)
+
+Bad question style (technical, generic, or obvious):
+- "Which trigger type do you want?" → Too technical. Pick the obvious one or describe outcomes.
+- "What format should the data be in?" → Implementation detail the builder handles.
+- "What information should the notification contain?" → Implementation detail. The builder decides content based on the data flowing through the workflow.
+- "Do you want error handling?" → Not a user-facing decision.
+- "What automation do you want?" → Too open-ended, not grounded in n8n capabilities.
+- "Which tool should extract data from invoices?" → User doesn't choose extraction tools. Ask what they need extracted or where invoices come from instead.
+
+Keep it to 2-3 questions maximum. Each question should meaningfully change which nodes you select.
+
+Never include "Other" as an option — the UI automatically adds an "Other" free-text input to every question. Only list specific, meaningful choices.
+</how_to_ask>`;
+
 const AI_TOOL_PATTERNS = `AI Agent tool connection patterns:
 
 When AI Agent needs external capabilities, use TOOL nodes (not regular nodes):
@@ -162,9 +269,14 @@ When AI Agent needs external capabilities, use TOOL nodes (not regular nodes):
 - Messaging: Slack Tool, Gmail Tool → AI Agent [ai_tool]
 - HTTP calls: HTTP Request Tool → AI Agent [ai_tool]
 - Calculations: Calculator Tool → AI Agent [ai_tool]
+- Sub-agents: AI Agent Tool → AI Agent [ai_tool] (for multi-agent systems)
 
 Tool nodes: AI Agent decides when/if to use them based on reasoning.
 Regular nodes: Execute at that workflow step regardless of context.
+
+Multi-agent pattern:
+AI Agent Tool (@n8n/n8n-nodes-langchain.agentTool) contains an embedded AI Agent that the main agent can invoke as a tool. Connect a Chat Model to the AgentTool via ai_languageModel (powers the embedded agent), then connect the AgentTool to the main AI Agent via ai_tool.
+Connection-changing param: hasOutputParser (true/false)
 
 Vector Store patterns:
 - Insert documents: Document Loader → Vector Store (mode='insert') [ai_document]
@@ -201,29 +313,62 @@ Fall back to HTTP Request only when the requested service has no native n8n node
 
 const KEY_RULES = `Output format: nodesFound array with nodeName, version, reasoning, connectionChangingParameters per node.
 
-REASONING CONTENT (what to include):
-- What the node does (its purpose and capabilities)
-- What connection-changing parameters exist and how each value affects inputs/outputs
-- Describe capabilities neutrally—the builder decides how to configure the node for this specific workflow
+<reasoning_guidelines>
+Reasoning should describe WHAT the node does, not WHEN or HOW to use it. Focus on capabilities and behavior, not recommendations or comparisons. The builder will decide which nodes to use.
 
 CRITICAL - Model names:
 - If the user specifies a model name (e.g., "gpt-5-mini", "claude-4", any custom model), pass it through EXACTLY in your reasoning
 - Do NOT substitute, "correct", or replace model names—your training data has a knowledge cutoff and newer models exist
 - Users may also use custom endpoints with model names you've never seen
 
-Example reasoning for Vector Store: "Stores and retrieves embeddings. Connection-changing param 'mode': insert (accepts ai_document input), retrieve (standalone retrieval), retrieve-as-tool (connects to AI Agent via ai_tool)."
+Good reasoning examples (neutral, factual):
+- "Extracts data from HTML documents using CSS selectors or XPath"
+- "Transforms data by adding, modifying, or removing fields from items"
+- "Sends HTTP requests to external APIs with configurable methods and headers"
+- "Combines multiple items into a single item containing all data"
+- "Converts a single item with an array field into multiple separate items"
+
+Bad reasoning examples (prescriptive, comparative):
+- "Use this to build HTML content" ❌ Tells WHEN to use
+- "While you can build HTML in a Set node, this provides..." ❌ Compares alternatives
+- "Better for Y than Z" ❌ Judges superiority
+- "You should use this when..." ❌ Prescribes usage
+- "This node will replace X" ❌ Decides architecture
+- "or to build the HTML content itself" ❌ Suggests specific use case
+
+Vector Store example (neutral, capability-focused):
+"Stores and retrieves vector embeddings. Connection-changing param 'mode': insert (accepts ai_document connections), retrieve (outputs retrieved documents), retrieve-as-tool (connects to AI Agent via ai_tool for on-demand retrieval)."
+
+HTML node example (neutral):
+Good: "Extracts data from HTML using CSS selectors, converts HTML to markdown, or manipulates HTML structure"
+Bad: "While you can build HTML in a Set node, this provides HTML-specific operations" ❌
+</reasoning_guidelines>
 
 Guidelines:
 - Extract version from <version> tag in node details (version affects available features)
-- For flow control nodes (Aggregate, IF, Switch, Split Out, Merge), include all that could be useful—the builder selects which to use
-- When workflow involves multiple items being processed together (summarize, combine, report), include Aggregate
-- Prioritize native nodes (especially Edit Fields/Set) because they provide better UX and visual debugging
-- For RAG with AI Agent, recommend Vector Store in retrieve-as-tool mode (simpler architecture than using a separate Retriever node)`;
+- Baseline flow control nodes (Aggregate, IF, Switch, Split Out, Merge, Set) are automatically included—no need to search for them
+- Prioritize native nodes in your searches because they provide better UX and visual debugging than Code node alternatives`;
+
+function generateToolCallRequirement(options: DiscoveryPromptOptions): string {
+	const toolExamples = ['search_nodes'];
+	if (options.includeQuestions) toolExamples.push('submit_questions');
+	if (options.includeExamples) toolExamples.push('get_documentation', 'get_workflow_examples');
+
+	return `<output_requirement>
+Use tools when needed (e.g. ${toolExamples.join(', ')}).
+
+Your final response MUST call the submit_discovery_results tool with the nodesFound array.
+Do not output the results as text or XML.
+</output_requirement>`;
+}
 
 function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	const tools = [
 		'- search_nodes: Find n8n nodes by keyword (returns name, version, inputs, outputs)',
 	];
+	if (options.includeQuestions) {
+		tools.push('- submit_questions: Ask clarifying questions when critical details are missing');
+	}
 	if (options.includeExamples) {
 		tools.push(
 			'- get_documentation: Retrieve best practices for workflow techniques to improve quality',
@@ -236,15 +381,25 @@ function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	return tools.join('\n');
 }
 
+function selectProcessSection(options: DiscoveryPromptOptions): string {
+	if (options.includeExamples && options.includeQuestions)
+		return PROCESS_WITH_EXAMPLES_AND_QUESTIONS;
+	if (options.includeExamples) return PROCESS_WITH_EXAMPLES;
+	if (options.includeQuestions) return PROCESS_WITH_QUESTIONS;
+	return PROCESS;
+}
+
 export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 	const availableTools = generateAvailableToolsList(options);
 
 	return prompt()
 		.section('role', ROLE)
 		.section('available_tools', availableTools)
-		.sectionIf(!options.includeExamples, 'process', PROCESS)
-		.sectionIf(options.includeExamples, 'process', PROCESS_WITH_EXAMPLES)
+		.section('process', selectProcessSection(options))
+		.section('tool_call_requirement', generateToolCallRequirement(options))
+		.sectionIf(options.includeQuestions, 'clarifying_questions', CLARIFYING_QUESTIONS)
 		.section('n8n_execution_model', N8N_EXECUTION_MODEL)
+		.section('baseline_flow_control', BASELINE_FLOW_CONTROL)
 		.section('trigger_selection', TRIGGER_SELECTION)
 		.section('ai_node_selection', AI_NODE_SELECTION)
 		.section('ai_tool_patterns', AI_TOOL_PATTERNS)
