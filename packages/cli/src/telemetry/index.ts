@@ -188,8 +188,7 @@ export class Telemetry {
 			if (
 				!properties.success &&
 				properties.is_manual &&
-				properties.error_node_type?.startsWith('n8n-nodes-base') &&
-				!properties.used_dynamic_credentials
+				properties.error_node_type?.startsWith('n8n-nodes-base')
 			) {
 				this.track('Workflow execution errored', properties);
 			}
