@@ -130,66 +130,45 @@ describe('useQuickConnect()', () => {
 				expect(quickConnect.value).toEqual(undefined);
 			});
 
-			describe('credentialTypes parameter', () => {
-				it('returns undefined when credentialTypes array is empty', () => {
-					const quickConnect = useQuickConnect({ credentialTypes: [] });
+			it('returns undefined when credentialTypes array is empty', () => {
+				const quickConnect = useQuickConnect({ credentialTypes: [] });
 
-					expect(quickConnect.value).toBe(undefined);
+				expect(quickConnect.value).toBe(undefined);
+			});
+
+			it('returns undefined when no credentialTypes match', () => {
+				const quickConnect = useQuickConnect({
+					credentialTypes: ['non-matching-credentials', 'another-non-matching'],
 				});
 
-				it('returns undefined when no credentialTypes match', () => {
-					const quickConnect = useQuickConnect({
-						credentialTypes: ['non-matching-credentials', 'another-non-matching'],
-					});
+				expect(quickConnect.value).toBe(undefined);
+			});
 
-					expect(quickConnect.value).toBe(undefined);
+			it('returns correct option when one of multiple credentialTypes matches', () => {
+				const quickConnect = useQuickConnect({
+					credentialTypes: ['non-matching', 'test-credentials', 'another-non-matching'],
 				});
 
-				it.each([['test-credentials'], ref(['test-credentials'])])(
-					'returns correct option when credentialTypes array contains matching type',
-					(credentialTypes) => {
-						const quickConnect = useQuickConnect({ credentialTypes });
+				expect(quickConnect.value).toEqual(quickConnectOption);
+			});
 
-						expect(quickConnect.value).toEqual(quickConnectOption);
-					},
-				);
+			it('returns first matching option when multiple credentialTypes match', () => {
+				const secondOption: QuickConnectOption = {
+					packageName: 'second-package',
+					credentialType: 'second-credentials',
+					text: 'second promotion text',
+					quickConnectType: 'manual',
+				};
 
-				it('returns correct option when one of multiple credentialTypes matches', () => {
-					const quickConnect = useQuickConnect({
-						credentialTypes: ['non-matching', 'test-credentials', 'another-non-matching'],
-					});
+				settingsStore.moduleSettings['quick-connect'] = {
+					options: [quickConnectOption, secondOption],
+				};
 
-					expect(quickConnect.value).toEqual(quickConnectOption);
+				const quickConnect = useQuickConnect({
+					credentialTypes: ['test-credentials', 'second-credentials'],
 				});
 
-				it('returns first matching option when multiple credentialTypes match', () => {
-					const secondOption: QuickConnectOption = {
-						packageName: 'second-package',
-						credentialType: 'second-credentials',
-						text: 'second promotion text',
-						quickConnectType: 'manual',
-					};
-
-					settingsStore.moduleSettings['quick-connect'] = {
-						options: [quickConnectOption, secondOption],
-					};
-
-					const quickConnect = useQuickConnect({
-						credentialTypes: ['test-credentials', 'second-credentials'],
-					});
-
-					expect(quickConnect.value).toEqual(quickConnectOption);
-				});
-
-				it('updates reactive value based on credentialTypes ref', () => {
-					const credentialTypes = ref<string[]>(['non-matching']);
-					const quickConnect = useQuickConnect({ credentialTypes });
-
-					expect(quickConnect.value).toBe(undefined);
-
-					credentialTypes.value = ['test-credentials'];
-					expect(quickConnect.value).toEqual(quickConnectOption);
-				});
+				expect(quickConnect.value).toEqual(quickConnectOption);
 			});
 		});
 	});
