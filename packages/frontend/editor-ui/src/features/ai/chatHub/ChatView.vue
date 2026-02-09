@@ -68,6 +68,7 @@ import ChatGreetings from './components/ChatGreetings.vue';
 import { useChatPushHandler } from './composables/useChatPushHandler';
 import ChatArtifactViewer from './components/ChatArtifactViewer.vue';
 import { useChatArtifacts } from './composables/useChatArtifacts';
+import { useChatInputFocus } from './composables/useChatInputFocus';
 
 const router = useRouter();
 const route = useRoute();
@@ -354,6 +355,10 @@ const canAcceptFiles = computed(() => {
 });
 
 const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
+
+useChatInputFocus(inputRef, {
+	disabled: computed(() => showWelcomeScreen.value === true || messagingState.value !== 'idle'),
+});
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
