@@ -318,7 +318,7 @@ const nextButtonLabel = computed(() => {
 					<div v-else />
 
 					<N8nButton
-						type="secondary"
+						:type="isLastQuestion && hasValidAnswer ? 'primary' : 'secondary'"
 						size="small"
 						:disabled="disabled || isSubmitted"
 						data-test-id="plan-mode-questions-next"
@@ -346,7 +346,7 @@ const nextButtonLabel = computed(() => {
 
 .container {
 	border: var(--border);
-	border-radius: var(--radius--s);
+	border-radius: 4px;
 }
 
 .question {

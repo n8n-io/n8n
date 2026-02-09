@@ -244,7 +244,7 @@
 	"aiAssistant.builder.planMode.selector.plan.description": "Refine requirements first · free",
 	"aiAssistant.builder.planMode.questions.title": "A few quick questions",
 	"aiAssistant.builder.planMode.questions.customPlaceholder": "Add details (optional)",
-	"aiAssistant.builder.planMode.questions.submitButton": "Submit answers",
+	"aiAssistant.builder.planMode.questions.submitButton": "Submit",
 	"aiAssistant.builder.planMode.questions.back": "Back",
 	"aiAssistant.builder.planMode.questions.next": "Next",
 	"aiAssistant.builder.planMode.questions.skip": "Skip",
