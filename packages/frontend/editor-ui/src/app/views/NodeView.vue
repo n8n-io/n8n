@@ -17,6 +17,8 @@ import {
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
+import SecurityPanel from '@/features/securityScanner/components/SecurityPanel.vue';
+import { useSecurityScannerStore } from '@/features/securityScanner/securityScanner.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
@@ -202,6 +204,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
+const securityScannerStore = useSecurityScannerStore();
 
 const workflowState = injectWorkflowState();
 
@@ -1895,6 +1898,7 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 		</WorkflowCanvas>
+		<SecurityPanel v-if="securityScannerStore.panelOpen && !isLoading" />
 		<FocusSidebar
 			v-if="
 				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)
