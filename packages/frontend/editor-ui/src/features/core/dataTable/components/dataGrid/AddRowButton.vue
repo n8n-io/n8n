@@ -7,12 +7,19 @@ const i18n = useI18n();
 const props = defineProps<{
 	params: {
 		onClick: () => void;
+		disabled?: boolean;
 	};
 }>();
 </script>
 
 <template>
 	<N8nTooltip :content="i18n.baseText('dataTable.addRow.label')">
-		<N8nIconButton text type="tertiary" icon="plus" @click="props.params.onClick" />
+		<N8nIconButton
+			text
+			type="tertiary"
+			icon="plus"
+			:disabled="props.params.disabled"
+			@click="props.params.onClick"
+		/>
 	</N8nTooltip>
 </template>

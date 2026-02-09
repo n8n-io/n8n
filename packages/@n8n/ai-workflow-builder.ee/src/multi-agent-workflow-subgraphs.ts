@@ -404,6 +404,18 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					clear_error_state: 'clear_error_state',
 					continue: 'supervisor',
 				};
+
+				// In plan mode, skip the supervisor and go directly to discovery
+				// (which contains the planner) when no plan has been generated yet
+				if (
+					state.nextPhase === 'continue' &&
+					featureFlags?.planMode === true &&
+					state.mode === 'plan' &&
+					!state.planOutput
+				) {
+					return 'discovery_subgraph';
+				}
+
 				return routes[state.nextPhase] ?? 'supervisor';
 			})
 			// Route after state modification nodes

@@ -1,6 +1,40 @@
 import * as LangchainMessages from '@langchain/core/messages';
+import { jsonParse } from 'n8n-workflow';
 
 import type * as N8nMessages from '../types/message';
+import type { Message } from '../types/message';
+
+function isN8nTextBlock(block: N8nMessages.MessageContent): block is N8nMessages.ContentText {
+	return block.type === 'text';
+}
+function isN8nReasoningBlock(
+	block: N8nMessages.MessageContent,
+): block is N8nMessages.ContentReasoning {
+	return block.type === 'reasoning';
+}
+function isN8nFileBlock(block: N8nMessages.MessageContent): block is N8nMessages.ContentFile {
+	return block.type === 'file';
+}
+function isN8nToolCallBlock(
+	block: N8nMessages.MessageContent,
+): block is N8nMessages.ContentToolCall {
+	return block.type === 'tool-call';
+}
+function isN8nToolResultBlock(
+	block: N8nMessages.MessageContent,
+): block is N8nMessages.ContentToolResult {
+	return block.type === 'tool-result';
+}
+function isN8nCitationBlock(
+	block: N8nMessages.MessageContent,
+): block is N8nMessages.ContentCitation {
+	return block.type === 'citation';
+}
+function isN8nProviderBlock(
+	block: N8nMessages.MessageContent,
+): block is N8nMessages.ContentProvider {
+	return block.type === 'provider';
+}
 
 function fromLcRole(role: LangchainMessages.MessageType): N8nMessages.MessageRole {
 	switch (role) {
@@ -160,17 +194,20 @@ function fromLcContent(
 
 export function fromLcMessage(msg: LangchainMessages.BaseMessage): N8nMessages.Message {
 	if (LangchainMessages.ToolMessage.isInstance(msg)) {
+		const result = typeof msg.content === 'string' ? msg.content : fromLcContent(msg.content);
 		return {
 			role: 'tool',
 			content: [
 				{
 					type: 'tool-result',
 					toolCallId: msg.tool_call_id,
-					result: fromLcContent(msg.content),
-					isError: false,
+					result,
+					isError: msg.status === 'error',
 					providerMetadata: msg.metadata,
 				},
 			],
+			id: msg.id,
+			name: msg.name,
 		};
 	}
 	if (LangchainMessages.AIMessage.isInstance(msg)) {
@@ -218,4 +255,116 @@ export function fromLcMessage(msg: LangchainMessages.BaseMessage): N8nMessages.M
 		};
 	}
 	throw new Error(`Provided message is not a valid Langchain message: ${JSON.stringify(msg)}`);
+}
+
+function toLcContent(block: N8nMessages.MessageContent): LangchainMessages.ContentBlock | null {
+	if (isN8nTextBlock(block)) {
+		return { type: 'text', text: block.text };
+	}
+	if (isN8nReasoningBlock(block)) {
+		return { type: 'reasoning', reasoning: block.text };
+	}
+	if (isN8nFileBlock(block)) {
+		const { url, fileId, ...rest } = block.providerMetadata ?? {};
+		return {
+			type: 'file',
+			mimeType: block.mediaType ?? 'application/octet-stream',
+			data: block.data,
+			...(url ? { url } : {}),
+			...(fileId ? { fileId } : {}),
+			...(Object.keys(rest).length > 0 ? { metadata: rest } : {}),
+		} as LangchainMessages.ContentBlock.Multimodal.Standard;
+	}
+	if (isN8nToolCallBlock(block)) {
+		return {
+			type: 'tool_call',
+			id: block.toolCallId,
+			name: block.toolName,
+			args: jsonParse<Record<string, unknown>>(block.input, { fallbackValue: {} }),
+		} as LangchainMessages.ContentBlock.Tools.ToolCall;
+	}
+	if (isN8nToolResultBlock(block)) {
+		return {
+			type: 'server_tool_call_result',
+			toolCallId: block.toolCallId,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			output: block.result,
+			status: block.isError ? 'error' : 'success',
+		} as unknown as LangchainMessages.ContentBlock.Tools.ServerToolCallResult;
+	}
+	if (isN8nCitationBlock(block)) {
+		return {
+			type: 'citation',
+			source: block.source,
+			url: block.url,
+			title: block.title,
+			startIndex: block.startIndex,
+			endIndex: block.endIndex,
+			citedText: block.text,
+		} as unknown as LangchainMessages.ContentBlock;
+	}
+	if (isN8nProviderBlock(block)) {
+		return {
+			type: 'non_standard',
+			value: block.value,
+		} as LangchainMessages.ContentBlock.NonStandard;
+	}
+	return null;
+}
+
+export function toLcMessage(message: Message): LangchainMessages.BaseMessage {
+	const lcContent = message.content
+		.map(toLcContent)
+		.filter((c): c is LangchainMessages.ContentBlock => c !== null);
+
+	switch (message.role) {
+		case 'system':
+			return new LangchainMessages.SystemMessage({
+				content: lcContent,
+				id: message.id,
+				name: message.name,
+			});
+		case 'human':
+			return new LangchainMessages.HumanMessage({
+				content: lcContent,
+				id: message.id,
+				name: message.name,
+			});
+		case 'ai': {
+			const toolCalls = message.content.filter(isN8nToolCallBlock).map((c) => ({
+				id: c.toolCallId,
+				name: c.toolName,
+				args: jsonParse<Record<string, unknown>>(c.input, { fallbackValue: {} }),
+			}));
+			const nonToolContent = lcContent.filter((c) => c.type !== 'tool_call');
+			return new LangchainMessages.AIMessage({
+				content: nonToolContent,
+				id: message.id,
+				name: message.name,
+				tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+			});
+		}
+		case 'tool': {
+			const toolResult = message.content.find(isN8nToolResultBlock);
+			if (!toolResult) {
+				throw new Error('Tool message is missing a tool-result content block');
+			}
+			const content =
+				typeof toolResult.result === 'string'
+					? toolResult.result
+					: JSON.stringify(toolResult.result);
+			return new LangchainMessages.ToolMessage({
+				content,
+				tool_call_id: toolResult.toolCallId,
+				name: message.name,
+				status: toolResult.isError ? 'error' : 'success',
+			});
+		}
+		default:
+			return new LangchainMessages.HumanMessage({
+				content: lcContent,
+				id: message.id,
+				name: message.name,
+			});
+	}
 }

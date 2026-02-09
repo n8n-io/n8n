@@ -77,14 +77,17 @@ export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutO
  * @param timeoutOptions - Optional timeout configuration to override defaults
  */
 export async function proxyFetch(
-	input: string | URL,
+	input: RequestInfo | URL,
 	init?: RequestInit,
 	timeoutOptions?: AgentTimeoutOptions,
 ): Promise<Response> {
+	const targetUrl = input instanceof Request ? input.url : input.toString();
+	const dispatcher = getProxyAgent(targetUrl, timeoutOptions);
+
 	return await fetch(input, {
 		...init,
 		// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
-		dispatcher: getProxyAgent(input.toString(), timeoutOptions),
+		dispatcher,
 	});
 }
 

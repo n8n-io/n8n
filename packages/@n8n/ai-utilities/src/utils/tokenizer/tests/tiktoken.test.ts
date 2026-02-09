@@ -6,7 +6,7 @@
 import type { TiktokenEncoding } from 'js-tiktoken/lite';
 import { Tiktoken } from 'js-tiktoken/lite';
 
-import { getEncoding, encodingForModel } from '../tokenizer/tiktoken';
+import { getEncoding, encodingForModel } from '../tiktoken';
 
 jest.mock('js-tiktoken/lite', () => ({
 	Tiktoken: jest.fn(),
@@ -39,6 +39,7 @@ describe('tiktoken utils', () => {
 			throw new Error(`Unexpected file path: ${path}`);
 		});
 
+		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
 		mockJsonParse.mockImplementation((content: string) => JSON.parse(content));
 	});
 

@@ -120,6 +120,9 @@ catalogs:
     js-base64:
       specifier: 3.7.2
       version: 3.7.2
+    js-tiktoken:
+      specifier: 1.0.12
+      version: 1.0.12
     jsonrepair:
       specifier: 3.13.1
       version: 3.13.1
@@ -504,15 +507,27 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      https-proxy-agent:
+        specifier: 'catalog:'
+        version: 7.0.6
+      js-tiktoken:
+        specifier: 'catalog:'
+        version: 1.0.12
       langchain:
         specifier: 'catalog:'
         version: 1.2.3(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      proxy-from-env:
+        specifier: ^1.1.0
+        version: 1.1.0
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3
+      undici:
+        specifier: ^6.23.0
+        version: 6.23.0
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1484,14 +1499,11 @@ importers:
       html-to-text:
         specifier: 9.0.5
         version: 9.0.5
-      https-proxy-agent:
-        specifier: 'catalog:'
-        version: 7.0.6
       ignore:
         specifier: ^5.2.0
         version: 5.2.4
       js-tiktoken:
-        specifier: ^1.0.12
+        specifier: 'catalog:'
         version: 1.0.12
       jsdom:
         specifier: 23.0.1
@@ -1526,9 +1538,6 @@ importers:
       pg:
         specifier: 'catalog:'
         version: 8.17.0
-      proxy-from-env:
-        specifier: ^1.1.0
-        version: 1.1.0
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -1544,9 +1553,6 @@ importers:
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3
-      undici:
-        specifier: ^6.23.0
-        version: 6.23.0
       vm2:
         specifier: 'catalog:'
         version: 3.10.2
