@@ -9,22 +9,27 @@ import NodeSetupCard from './NodeSetupCard.vue';
 import type { NodeSetupState } from '../setupPanel.types';
 import type { INodeUi } from '@/Interface';
 
-const { mockExecute } = vi.hoisted(() => ({
+const { mockExecute, mockComposableState } = vi.hoisted(() => ({
 	mockExecute: vi.fn(),
+	mockComposableState: {
+		isExecuting: false,
+		hasIssues: false,
+		disabledReason: '',
+	},
 }));
 
 vi.mock('@/app/composables/useNodeExecution', async () => {
-	const { ref } = await import('vue');
+	const { ref, computed } = await import('vue');
 	return {
 		useNodeExecution: vi.fn(() => ({
-			isExecuting: ref(false),
+			isExecuting: computed(() => mockComposableState.isExecuting),
 			isListening: ref(false),
 			isListeningForWorkflowEvents: ref(false),
 			buttonLabel: ref('Test node'),
 			buttonIcon: ref('flask-conical'),
-			disabledReason: ref(''),
+			disabledReason: computed(() => mockComposableState.disabledReason),
 			isTriggerNode: ref(false),
-			hasIssues: ref(false),
+			hasIssues: computed(() => mockComposableState.hasIssues),
 			shouldGenerateCode: ref(false),
 			execute: mockExecute,
 			stopExecution: vi.fn(),
@@ -75,6 +80,9 @@ describe('NodeSetupCard', () => {
 
 	beforeEach(() => {
 		mockExecute.mockClear();
+		mockComposableState.isExecuting = false;
+		mockComposableState.hasIssues = false;
+		mockComposableState.disabledReason = '';
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
@@ -315,17 +323,26 @@ describe('NodeSetupCard', () => {
 		});
 
 		it('should disable test button when node has issues', () => {
-			const state = createState({ isTrigger: true });
-			state.node.issues = { credentials: { openAiApi: ['Missing credential'] } };
+			mockComposableState.hasIssues = true;
 
 			const { getByTestId } = renderComponent({
-				props: { state, expanded: true },
+				props: { state: createState({ isTrigger: true }), expanded: true },
 			});
 
 			expect(getByTestId('node-setup-card-test-button')).toBeDisabled();
 		});
 
-		it('should enable test button when node has no issues', () => {
+		it('should disable test button when node is executing', () => {
+			mockComposableState.isExecuting = true;
+
+			const { getByTestId } = renderComponent({
+				props: { state: createState({ isTrigger: true }), expanded: true },
+			});
+
+			expect(getByTestId('node-setup-card-test-button')).toBeDisabled();
+		});
+
+		it('should enable test button when node has no issues and is not executing', () => {
 			const { getByTestId } = renderComponent({
 				props: { state: createState({ isTrigger: true }), expanded: true },
 			});

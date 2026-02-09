@@ -26,31 +26,22 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 
 const nodeRef = computed(() => props.state.node);
-const { isExecuting, buttonLabel, buttonIcon, disabledReason, execute } = useNodeExecution(nodeRef);
+const { isExecuting, buttonLabel, buttonIcon, disabledReason, hasIssues, execute } =
+	useNodeExecution(nodeRef);
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
 
-const isLoading = computed(() => isExecuting.value);
-
-const hasNodeIssues = computed(() => {
-	const node = props.state.node;
-	return Boolean(
-		node.issues &&
-			(Object.keys(node.issues.credentials ?? {}).length > 0 ||
-				Object.keys(node.issues.parameters ?? {}).length > 0),
-	);
-});
-
-// For triggers: button is disabled if node has issues or there's a disabledReason
-// The button should be enabled once issues are resolved, even before execution completes
-const isButtonDisabled = computed(() => hasNodeIssues.value || !!disabledReason.value);
+// For triggers: button is disabled if node has issues, is executing, or there's a disabledReason
+const isButtonDisabled = computed(
+	() => isExecuting.value || hasIssues.value || !!disabledReason.value,
+);
 
 const showFooter = computed(() => props.state.isTrigger || props.state.isComplete);
 
 const tooltipText = computed(() => {
-	if (hasNodeIssues.value) {
+	if (hasIssues.value) {
 		return i18n.baseText('ndv.execute.requiredFieldsMissing');
 	}
 	return disabledReason.value;
@@ -174,7 +165,7 @@ onMounted(() => {
 						data-test-id="node-setup-card-test-button"
 						:label="buttonLabel"
 						:disabled="isButtonDisabled"
-						:loading="isLoading"
+						:loading="isExecuting"
 						:icon="buttonIcon"
 						size="small"
 						@click="onTestClick"
