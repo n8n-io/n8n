@@ -25,3 +25,4 @@ export {
 	buildGeneralErrorGuidance,
 	buildDataTableCreationGuidance,
 } from './responder.prompt';
+export { buildSecurityAnalysisPrompt } from './security-analyst.prompt';

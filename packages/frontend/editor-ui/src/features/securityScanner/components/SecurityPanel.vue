@@ -22,7 +22,7 @@ const $style = useCssModule();
 const i18n = useI18n();
 const securityStore = useSecurityScannerStore();
 
-const { panelWidth, activeTab, filteredFindings, summary, categoryCount } =
+const { panelWidth, activeTab, filteredFindings, summary, categoryCount, isAiAvailable } =
 	storeToRefs(securityStore);
 
 const tabs = computed(() =>
@@ -46,6 +46,10 @@ const onResizeThrottle = useThrottleFn(onResize, 50);
 
 function onClose() {
 	securityStore.closePanel();
+}
+
+function onAnalyzeWithAi() {
+	void securityStore.analyzeWithAi();
 }
 
 function onNavigateToNode(nodeName: string) {
@@ -72,14 +76,26 @@ function onNavigateToNode(nodeName: string) {
 							{{ i18n.baseText('securityScanner.panel.title') }}
 						</N8nText>
 					</div>
-					<N8nButton
-						type="tertiary"
-						size="small"
-						icon="x"
-						square
-						data-test-id="security-panel-close"
-						@click="onClose"
-					/>
+					<div :class="$style.headerActions">
+						<N8nButton
+							v-if="isAiAvailable"
+							type="secondary"
+							size="small"
+							icon="wand-sparkles"
+							data-test-id="security-analyze-ai"
+							@click="onAnalyzeWithAi"
+						>
+							{{ i18n.baseText('securityScanner.ai.analyze' as BaseTextKey) }}
+						</N8nButton>
+						<N8nButton
+							type="tertiary"
+							size="small"
+							icon="x"
+							square
+							data-test-id="security-panel-close"
+							@click="onClose"
+						/>
+					</div>
 				</div>
 
 				<SecuritySummaryBar :summary="summary" />
@@ -135,6 +151,12 @@ function onNavigateToNode(nodeName: string) {
 }
 
 .titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.headerActions {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);

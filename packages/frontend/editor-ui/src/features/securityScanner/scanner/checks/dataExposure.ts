@@ -1,30 +1,31 @@
 import type { INodeUi } from '@/Interface';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { IConnections } from 'n8n-workflow';
 import type { SecurityFinding } from '../types';
 
-// Node types that send data externally
-const EXTERNAL_SERVICE_TYPES = new Set([
-	'n8n-nodes-base.httpRequest',
-	'n8n-nodes-base.slack',
-	'n8n-nodes-base.gmail',
-	'n8n-nodes-base.telegram',
-	'n8n-nodes-base.discord',
-	'n8n-nodes-base.microsoftTeams',
-	'n8n-nodes-base.sendGrid',
-	'n8n-nodes-base.mailchimp',
-	'n8n-nodes-base.hubspot',
-	'n8n-nodes-base.salesforce',
-	'n8n-nodes-base.airtable',
-	'n8n-nodes-base.googleSheets',
-	'n8n-nodes-base.notion',
-]);
+/**
+ * Determines if a node is an input trigger by checking its node type metadata.
+ * Uses `group: ['trigger']` from INodeTypeDescription instead of a hardcoded list.
+ */
+function isInputTrigger(node: INodeUi): boolean {
+	const nodeTypesStore = useNodeTypesStore();
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (!nodeType) return false;
+	return nodeType.group?.includes('trigger') ?? false;
+}
 
-// Node types that receive external input
-const INPUT_TRIGGER_TYPES = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.formTrigger',
-	'n8n-nodes-base.emailReadImap',
-]);
+/**
+ * Determines if a node sends data to an external service.
+ * A node is considered external if it has credential definitions
+ * (meaning it authenticates to a third-party service) or is an HTTP Request node.
+ */
+function isExternalService(node: INodeUi): boolean {
+	if (node.type === 'n8n-nodes-base.httpRequest') return true;
+	const nodeTypesStore = useNodeTypesStore();
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (!nodeType) return false;
+	return (nodeType.credentials?.length ?? 0) > 0;
+}
 
 /**
  * Builds a set of all node names downstream from the given source nodes,
@@ -68,9 +69,7 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
 
 	// Find input trigger nodes
-	const triggerNames = new Set(
-		nodes.filter((n) => INPUT_TRIGGER_TYPES.has(n.type)).map((n) => n.name),
-	);
+	const triggerNames = new Set(nodes.filter((n) => isInputTrigger(n)).map((n) => n.name));
 
 	if (triggerNames.size > 0) {
 		// Find which nodes are downstream from triggers
@@ -81,7 +80,7 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 			const node = nodesByName.get(nodeName);
 			if (!node) continue;
 
-			if (EXTERNAL_SERVICE_TYPES.has(node.type) && !triggerNames.has(node.name)) {
+			if (isExternalService(node) && !triggerNames.has(node.name)) {
 				const triggerList = [...triggerNames].join(', ');
 				findings.push({
 					id: `exposure-${++counter}`,

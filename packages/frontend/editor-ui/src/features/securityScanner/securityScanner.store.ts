@@ -2,7 +2,10 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores/constants';
 
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { runSecurityScan, computeSummary } from './scanner/runSecurityScan';
@@ -88,6 +91,42 @@ export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () =
 		return DEFAULT_PANEL_WIDTH;
 	}
 
+	const isAiAvailable = computed(() => {
+		const settingsStore = useSettingsStore();
+		return Boolean(settingsStore.isAiAssistantEnabled);
+	});
+
+	async function analyzeWithAi() {
+		if (!isAiAvailable.value) return;
+
+		const chatPanelStore = useChatPanelStore();
+		const builderStore = useBuilderStore();
+
+		// Open the builder chat panel
+		await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
+
+		// Format the static findings as context for the AI
+		const findingsContext = JSON.stringify(
+			findings.value.map((f) => ({
+				category: f.category,
+				severity: f.severity,
+				title: f.title,
+				description: f.description,
+				nodeName: f.nodeName,
+				parameterPath: f.parameterPath,
+				matchedValue: f.matchedValue,
+			})),
+			null,
+			2,
+		);
+
+		// Send the security analysis request to the builder
+		await builderStore.sendChatMessage({
+			text: `Perform a security and PII scan of my current workflow using the security_scan tool. Here are the static analysis results for additional context:\n\n${findingsContext}\n\nAnalyze each finding, identify additional risks, assess compliance, and provide an executive summary with fix recommendations.`,
+			source: 'canvas',
+		});
+	}
+
 	return {
 		panelOpen,
 		activeTab,
@@ -96,11 +135,13 @@ export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () =
 		summary,
 		filteredFindings,
 		categoryCount,
+		isAiAvailable,
 		openPanel,
 		closePanel,
 		togglePanel,
 		setActiveTab,
 		updateWidth,
 		navigateToNode,
+		analyzeWithAi,
 	};
 });
