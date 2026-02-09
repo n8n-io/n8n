@@ -219,11 +219,14 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		this.parsedNodeTypes = config.parsedNodeTypes;
 		this.featureFlags = config.featureFlags;
 
-		// Check if template examples are enabled
+		// Check feature flags
 		const includeExamples = config.featureFlags?.templateExamples === true;
+		const includePlanMode = config.featureFlags?.planMode === true;
 
 		// Create base tools - search_nodes provides all data needed for discovery
-		const baseTools = [createNodeSearchTool(config.parsedNodeTypes).tool, submitQuestionsTool];
+		const baseTools = includePlanMode
+			? [createNodeSearchTool(config.parsedNodeTypes).tool, submitQuestionsTool]
+			: [createNodeSearchTool(config.parsedNodeTypes).tool];
 
 		// Conditionally add documentation and workflow examples tools if feature flag is enabled
 		const tools = includeExamples
@@ -244,7 +247,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		});
 
 		// Generate prompt based on feature flags
-		const discoveryPrompt = buildDiscoveryPrompt({ includeExamples });
+		const discoveryPrompt = buildDiscoveryPrompt({
+			includeExamples,
+			includeQuestions: includePlanMode,
+		});
 
 		// Create agent with tools bound (including submit tool)
 		const systemPrompt = ChatPromptTemplate.fromMessages([

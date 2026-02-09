@@ -41,6 +41,7 @@ export function formatExampleCategorizations(): string {
 
 export interface DiscoveryPromptOptions {
 	includeExamples: boolean;
+	includeQuestions: boolean;
 }
 
 const ROLE = `You are a Discovery Agent for n8n AI Workflow Builder.
@@ -52,10 +53,20 @@ When a trigger or node outputs multiple items (e.g., Gmail returns 10 emails), e
 
 const PROCESS = `1. Search for nodes matching the user's request using search_nodes tool
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
+3. Call submit_discovery_results with your nodesFound array`;
+
+const PROCESS_WITH_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
+2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
 3. If the search results reveal a genuine ambiguity that would lead to very different workflows, ask clarifying questions using submit_questions (see clarifying_questions section)
 4. Call submit_discovery_results with your nodesFound array`;
 
 const PROCESS_WITH_EXAMPLES = `1. Search for nodes matching the user's request using search_nodes tool
+2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
+3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
+4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
+5. Call submit_discovery_results with your nodesFound array`;
+
+const PROCESS_WITH_EXAMPLES_AND_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
 3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
 4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
@@ -338,18 +349,26 @@ Guidelines:
 - Baseline flow control nodes (Aggregate, IF, Switch, Split Out, Merge, Set) are automatically included—no need to search for them
 - Prioritize native nodes in your searches because they provide better UX and visual debugging than Code node alternatives`;
 
-const TOOL_CALL_REQUIREMENT = `<output_requirement>
-Use tools when needed (e.g. search_nodes, submit_questions, get_documentation, get_workflow_examples).
+function generateToolCallRequirement(options: DiscoveryPromptOptions): string {
+	const toolExamples = ['search_nodes'];
+	if (options.includeQuestions) toolExamples.push('submit_questions');
+	if (options.includeExamples) toolExamples.push('get_documentation', 'get_workflow_examples');
+
+	return `<output_requirement>
+Use tools when needed (e.g. ${toolExamples.join(', ')}).
 
 Your final response MUST call the submit_discovery_results tool with the nodesFound array.
 Do not output the results as text or XML.
 </output_requirement>`;
+}
 
 function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	const tools = [
 		'- search_nodes: Find n8n nodes by keyword (returns name, version, inputs, outputs)',
-		'- submit_questions: Ask clarifying questions when critical details are missing',
 	];
+	if (options.includeQuestions) {
+		tools.push('- submit_questions: Ask clarifying questions when critical details are missing');
+	}
 	if (options.includeExamples) {
 		tools.push(
 			'- get_documentation: Retrieve best practices for workflow techniques to improve quality',
@@ -362,16 +381,23 @@ function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	return tools.join('\n');
 }
 
+function selectProcessSection(options: DiscoveryPromptOptions): string {
+	if (options.includeExamples && options.includeQuestions)
+		return PROCESS_WITH_EXAMPLES_AND_QUESTIONS;
+	if (options.includeExamples) return PROCESS_WITH_EXAMPLES;
+	if (options.includeQuestions) return PROCESS_WITH_QUESTIONS;
+	return PROCESS;
+}
+
 export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 	const availableTools = generateAvailableToolsList(options);
 
 	return prompt()
 		.section('role', ROLE)
 		.section('available_tools', availableTools)
-		.sectionIf(!options.includeExamples, 'process', PROCESS)
-		.sectionIf(options.includeExamples, 'process', PROCESS_WITH_EXAMPLES)
-		.section('tool_call_requirement', TOOL_CALL_REQUIREMENT)
-		.section('clarifying_questions', CLARIFYING_QUESTIONS)
+		.section('process', selectProcessSection(options))
+		.section('tool_call_requirement', generateToolCallRequirement(options))
+		.sectionIf(options.includeQuestions, 'clarifying_questions', CLARIFYING_QUESTIONS)
 		.section('n8n_execution_model', N8N_EXECUTION_MODEL)
 		.section('baseline_flow_control', BASELINE_FLOW_CONTROL)
 		.section('trigger_selection', TRIGGER_SELECTION)
