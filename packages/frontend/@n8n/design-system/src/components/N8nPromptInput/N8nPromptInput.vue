@@ -363,11 +363,9 @@ defineExpose({
 					type="auto"
 				>
 					<!-- Chips row (above textarea) -->
-					<Transition name="chips-slide">
-						<div v-if="$slots['inline-chips']" :class="$style.chipsRow">
-							<slot name="inline-chips" />
-						</div>
-					</Transition>
+					<div v-if="$slots['inline-chips']" :class="$style.chipsRow">
+						<slot name="inline-chips" />
+					</div>
 					<!-- Textarea -->
 					<textarea
 						ref="textareaRef"
@@ -389,11 +387,9 @@ defineExpose({
 				</N8nScrollArea>
 				<div :class="$style.bottomActions">
 					<!-- Slot for bottom actions chips (e.g., unconfirmed node chips) -->
-					<Transition name="chips-slide">
-						<div v-if="$slots['bottom-actions-chips']" :class="$style.bottomActionsChips">
-							<slot name="bottom-actions-chips" />
-						</div>
-					</Transition>
+					<div v-if="$slots['bottom-actions-chips']" :class="$style.bottomActionsChips">
+						<slot name="bottom-actions-chips" />
+					</div>
 					<slot name="extra-actions" />
 					<N8nSendStopButton
 						data-test-id="send-message-button"
@@ -528,7 +524,7 @@ defineExpose({
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--3xs);
+	padding: 0 var(--spacing--3xs);
 	padding-bottom: var(--spacing--4xs);
 }
 
@@ -576,20 +572,5 @@ defineExpose({
 		color: var(--color--danger);
 		font-weight: var(--font-weight--bold);
 	}
-}
-</style>
-
-<style lang="scss" scoped>
-.chips-slide-enter-active,
-.chips-slide-leave-active {
-	transition:
-		opacity 0.2s ease,
-		transform 0.2s ease;
-}
-
-.chips-slide-enter-from,
-.chips-slide-leave-to {
-	opacity: 0;
-	transform: translateY(4px);
 }
 </style>

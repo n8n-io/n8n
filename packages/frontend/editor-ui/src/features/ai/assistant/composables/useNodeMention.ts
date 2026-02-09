@@ -204,9 +204,10 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 
 			const beforeMention = value.substring(0, mentionStartIndex.value);
 			const afterCursor = value.substring(cursorPosition);
-			input.value = beforeMention + afterCursor;
+			const insertedName = node.name + ' ';
+			input.value = beforeMention + insertedName + afterCursor;
 
-			const newPosition = mentionStartIndex.value;
+			const newPosition = mentionStartIndex.value + insertedName.length;
 			input.setSelectionRange(newPosition, newPosition);
 			input.dispatchEvent(new Event('input', { bubbles: true }));
 		}

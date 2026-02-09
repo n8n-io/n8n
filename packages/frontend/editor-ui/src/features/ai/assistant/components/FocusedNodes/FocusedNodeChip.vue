@@ -45,12 +45,14 @@ function handleRemove(event: MouseEvent) {
 	<span :class="[$style.chip, { [$style.unconfirmed]: isUnconfirmed }]" @click="handleClick">
 		<span :class="[$style.iconWrapper, { [$style.confirmedIcon]: isConfirmed }]">
 			<N8nIcon v-if="isUnconfirmed" icon="plus" size="xsmall" :class="$style.prefixIcon" />
-			<NodeIcon v-else :node-type="nodeType" :size="12" />
+			<template v-else>
+				<NodeIcon :node-type="nodeType" :size="12" :class="$style.nodeIcon" />
+				<button type="button" :class="$style.removeButton" @click="handleRemove">
+					<N8nIcon icon="x" size="small" />
+				</button>
+			</template>
 		</span>
 		<span :class="$style.label">{{ truncatedName }}</span>
-		<button v-if="isConfirmed" type="button" :class="$style.removeButton" @click="handleRemove">
-			<N8nIcon icon="x" size="xsmall" />
-		</button>
 	</span>
 </template>
 
@@ -58,28 +60,25 @@ function handleRemove(event: MouseEvent) {
 .chip {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	height: 24px;
 	padding: 0 var(--spacing--2xs);
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	background-color: var(--background--success);
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	border: 1px solid var(--background--success);
+	background-color: light-dark(var(--color--green-100), var(--color--green-900));
+	border: 1px solid light-dark(var(--color--green-100), var(--color--green-900));
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	color: var(--text-color--success);
+	color: light-dark(var(--color--green-800), var(--color--green-200));
 	cursor: pointer;
 	white-space: nowrap;
 
 	&:hover {
-		background-color: var(--color--success--tint-2);
+		background-color: light-dark(var(--color--green-200), var(--color--green-800));
 	}
 
 	&.unconfirmed {
 		background-color: var(--color--background--light-3);
-		border: 1px dashed var(--color--foreground);
-		color: var(--color--text--tint-1);
+		border: 1px dashed light-dark(var(--color--foreground--shade-2), var(--color--foreground));
+		color: light-dark(var(--color--foreground--shade-2), var(--color--text--tint-1));
 		font-style: italic;
 
 		&:hover {
@@ -92,44 +91,49 @@ function handleRemove(event: MouseEvent) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	width: 12px;
+	height: 12px;
+	position: relative;
 }
 
 .confirmedIcon {
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	color: var(--text-color--success);
-	mix-blend-mode: luminosity;
+	color: light-dark(var(--color--green-800), var(--color--green-200));
 
 	:global(svg) {
-		/* stylelint-disable-next-line @n8n/css-var-naming */
-		color: var(--text-color--success);
+		color: light-dark(var(--color--green-800), var(--color--green-200));
+	}
+
+	:global(img) {
+		mix-blend-mode: luminosity;
+	}
+}
+
+.nodeIcon {
+	.chip:hover & {
+		display: none;
+	}
+}
+
+.removeButton {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: light-dark(var(--color--green-800), var(--color--green-200));
+
+	.chip:hover & {
+		display: flex;
 	}
 }
 
 .prefixIcon {
-	color: var(--color--text--tint-1);
+	color: light-dark(var(--color--foreground--shade-2), var(--color--text--tint-1));
 }
 
 .label {
 	line-height: 1;
-}
-
-.removeButton {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 24px;
-	min-height: 24px;
-	padding: 0;
-	margin-left: var(--spacing--4xs);
-	background: none;
-	border: none;
-	cursor: pointer;
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	color: var(--text-color--success);
-
-	&:hover {
-		/* stylelint-disable-next-line @n8n/css-var-naming */
-		color: var(--text-color--success);
-	}
 }
 </style>

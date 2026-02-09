@@ -192,7 +192,7 @@ onUnmounted(() => {
 	outline: none;
 
 	&::placeholder {
-		color: var(--color--text--tint-2);
+		color: var(--color--text--tint-1);
 	}
 }
 
@@ -214,16 +214,16 @@ onUnmounted(() => {
 
 	&:hover,
 	&.highlighted {
-		background: var(--color--foreground--tint-2);
+		background: light-dark(var(--color--foreground--tint-1), var(--color--foreground--tint-2));
 	}
 
 	&.selected {
-		background-color: var(--color--success--tint-4);
+		background-color: light-dark(var(--color--success--tint-3), var(--color--success--tint-4));
 	}
 
 	&.selected:hover,
 	&.selected.highlighted {
-		background-color: var(--color--success--tint-3);
+		background-color: light-dark(var(--color--success--tint-2), var(--color--success--tint-3));
 	}
 }
 
@@ -245,6 +245,6 @@ onUnmounted(() => {
 	padding: var(--spacing--sm);
 	text-align: center;
 	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 </style>

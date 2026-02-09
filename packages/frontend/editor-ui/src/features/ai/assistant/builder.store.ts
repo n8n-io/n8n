@@ -489,14 +489,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function prepareForStreaming(
 		userMessage: string,
 		messageId: string,
-		revertVersion?: { id: string; createdAt: string },
+		focusedNodeNames?: string[],
 		planAnswers?: PlanMode.QuestionResponse[],
 	) {
-		// If we have plan answers, create a custom user answers message instead of text
-		const focusedNodeNames = focusedNodesStore.confirmedNodes.map((n) => n.nodeName);
 		const userMsg = planAnswers
 			? createUserAnswersMessage(planAnswers, messageId)
-			: createUserMessage(userMessage, messageId, revertVersion, focusedNodeNames);
+			: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
@@ -652,6 +650,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return;
 		}
 
+		const focusedNodeNames = focusedNodesStore.confirmedNodes.map((n) => n.nodeName);
+
 		// If there's a pending plan and user is sending a chat message (not a resumeData action),
 		// automatically treat it as a plan modification request.
 		// Avoid mutating the caller's object - reassign to a shallow copy.
@@ -716,7 +716,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		resetManualExecutionStats();
 
-		prepareForStreaming(text, userMessageId, undefined, options.planAnswers);
+		prepareForStreaming(text, userMessageId, focusedNodeNames, options.planAnswers);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const modeForPayload =
@@ -735,6 +735,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (resumeData !== undefined) {
 			payload.resumeData = resumeData;
 		}
+
+		focusedNodesStore.clearAll();
 
 		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
 

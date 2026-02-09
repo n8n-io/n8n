@@ -324,7 +324,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	display: inline-flex;
 	align-items: center;
 	height: 20px;
-	padding: 0 var(--spacing--2xs);
+	padding: 0 var(--spacing--4xs);
 	background-color: var(--color--foreground--tint-2);
 	border-radius: var(--radius);
 	font-size: var(--font-size--3xs);

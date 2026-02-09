@@ -3,8 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nPopover } from '@n8n/design-system';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { useFocusedNodesChipUI } from '../../composables/useFocusedNodesChipUI';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import FocusedNodeChip from './FocusedNodeChip.vue';
 
@@ -13,49 +12,24 @@ const emit = defineEmits<{
 }>();
 
 const focusedNodesStore = useFocusedNodesStore();
-const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 
-function getNodeType(nodeTypeName: string) {
-	return nodeTypesStore.getNodeType(nodeTypeName);
-}
+const {
+	confirmedNodes,
+	confirmedCount,
+	unconfirmedCount,
+	shouldBundleConfirmed,
+	shouldBundleUnconfirmed,
+	individualConfirmedNodes,
+	individualUnconfirmedNodes,
+	getNodeType,
+	handleChipClick,
+	handleRemove,
+} = useFocusedNodesChipUI();
 
 const isFeatureEnabled = computed(() => focusedNodesStore.isFeatureEnabled);
 const hasVisibleNodes = computed(() => focusedNodesStore.hasVisibleNodes);
 const shouldCollapse = computed(() => focusedNodesStore.shouldCollapseChips);
-const confirmedCount = computed(() => focusedNodesStore.confirmedNodes.length);
-const unconfirmedCount = computed(() => focusedNodesStore.filteredUnconfirmedNodes.length);
-
-const shouldBundleConfirmed = computed(() => confirmedCount.value >= 4);
-const shouldBundleUnconfirmed = computed(() => unconfirmedCount.value >= 4);
-
-const individualConfirmedNodes = computed(() =>
-	confirmedCount.value >= 1 && confirmedCount.value <= 3 ? focusedNodesStore.confirmedNodes : [],
-);
-const individualUnconfirmedNodes = computed(() =>
-	unconfirmedCount.value >= 1 && unconfirmedCount.value <= 3
-		? focusedNodesStore.filteredUnconfirmedNodes
-		: [],
-);
-
-function handleChipClick(nodeId: string) {
-	const node = focusedNodesStore.focusedNodesMap[nodeId];
-	if (node?.state === 'confirmed') {
-		canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
-	} else {
-		const isSelectedOnCanvas = focusedNodesStore.isNodeSelectedOnCanvas(nodeId);
-		focusedNodesStore.toggleNode(nodeId, isSelectedOnCanvas);
-	}
-}
-
-function handleRemove(nodeId: string) {
-	const isSelectedOnCanvas = focusedNodesStore.isNodeSelectedOnCanvas(nodeId);
-	if (isSelectedOnCanvas) {
-		focusedNodesStore.setState(nodeId, 'unconfirmed');
-	} else {
-		focusedNodesStore.removeNode(nodeId);
-	}
-}
 
 function handleExpandClick() {
 	emit('expand');
@@ -97,25 +71,27 @@ function handleRemoveAllConfirmed() {
 				<N8nPopover v-if="shouldBundleConfirmed" side="top" width="220px">
 					<template #trigger>
 						<span :class="$style.bundledChip">
-							<N8nIcon icon="layers" size="small" :class="$style.bundledIcon" />
+							<span :class="$style.bundledIconWrapper">
+								<N8nIcon icon="layers" size="small" :class="$style.bundledIcon" />
+								<button
+									type="button"
+									:class="$style.bundledRemoveButton"
+									@click.stop="handleRemoveAllConfirmed"
+								>
+									<N8nIcon icon="x" size="small" />
+								</button>
+							</span>
 							<span :class="$style.label">{{
 								i18n.baseText('focusedNodes.nodesCount', {
 									interpolate: { count: confirmedCount },
 								})
 							}}</span>
-							<button
-								type="button"
-								:class="$style.removeButton"
-								@click.stop="handleRemoveAllConfirmed"
-							>
-								<N8nIcon icon="x" size="xsmall" />
-							</button>
 						</span>
 					</template>
 					<template #content>
 						<div :class="$style.expandedNodeList">
 							<div
-								v-for="node in focusedNodesStore.confirmedNodes"
+								v-for="node in confirmedNodes"
 								:key="node.nodeId"
 								:class="$style.expandedNodeItem"
 							>
@@ -196,20 +172,43 @@ function handleRemoveAllConfirmed() {
 	gap: var(--spacing--4xs);
 	height: 24px;
 	padding: 0 var(--spacing--2xs);
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	background-color: var(--background--success);
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	border: 1px solid var(--background--success);
+	background-color: light-dark(var(--color--green-100), var(--color--green-900));
+	border: 1px solid light-dark(var(--color--green-100), var(--color--green-900));
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	color: var(--text-color--success);
+	color: light-dark(var(--color--green-800), var(--color--green-200));
 	white-space: nowrap;
 }
 
+.bundledIconWrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+}
+
 .bundledIcon {
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	color: var(--text-color--success);
+	color: light-dark(var(--color--green-800), var(--color--green-200));
+
+	.bundledChip:hover & {
+		display: none;
+	}
+}
+
+.bundledRemoveButton {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: light-dark(var(--color--green-800), var(--color--green-200));
+
+	.bundledChip:hover & {
+		display: flex;
+	}
 }
 
 .bundledUnconfirmedChip {
@@ -219,12 +218,12 @@ function handleRemoveAllConfirmed() {
 	height: 24px;
 	padding: 0 var(--spacing--2xs);
 	background-color: var(--color--background--light-3);
-	border: 1px dashed var(--color--foreground);
+	border: 1px dashed light-dark(var(--color--foreground--shade-2), var(--color--foreground));
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--regular);
 	font-style: italic;
-	color: var(--color--text--tint-1);
+	color: light-dark(var(--color--foreground--shade-2), var(--color--text--tint-1));
 	cursor: pointer;
 	white-space: nowrap;
 
@@ -234,31 +233,11 @@ function handleRemoveAllConfirmed() {
 }
 
 .bundledUnconfirmedIcon {
-	color: var(--color--text--tint-1);
+	color: light-dark(var(--color--foreground--shade-2), var(--color--text--tint-1));
 }
 
 .label {
 	line-height: 1;
-}
-
-.removeButton {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 24px;
-	min-height: 24px;
-	padding: 0;
-	margin-left: var(--spacing--4xs);
-	background: none;
-	border: none;
-	cursor: pointer;
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	color: var(--text-color--success);
-
-	&:hover {
-		/* stylelint-disable-next-line @n8n/css-var-naming */
-		color: var(--text-color--success);
-	}
 }
 
 .expandedNodeList {
