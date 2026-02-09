@@ -43,6 +43,7 @@ export const defaultSettings: FrontendSettings = {
 		advancedPermissions: false,
 		apiKeyScopes: false,
 		workflowDiffs: false,
+		namedVersions: false,
 		provisioning: true,
 		projects: {
 			team: {

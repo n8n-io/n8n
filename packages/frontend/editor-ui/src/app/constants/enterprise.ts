@@ -19,5 +19,6 @@ export const EnterpriseEditionFeature: Record<
 	WorkerView: 'workerView',
 	AdvancedPermissions: 'advancedPermissions',
 	ApiKeyScopes: 'apiKeyScopes',
+	NamedVersions: 'namedVersions',
 	Provisioning: 'provisioning',
 };

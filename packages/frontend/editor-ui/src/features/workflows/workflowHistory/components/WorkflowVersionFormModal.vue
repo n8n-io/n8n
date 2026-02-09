@@ -1,56 +1,56 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { N8nHeading, N8nButton } from '@n8n/design-system';
-import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
-import { WORKFLOW_HISTORY_PUBLISH_MODAL_KEY } from '@/app/constants';
+import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useUIStore } from '@/app/stores/ui.store';
-import { ref, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 
-export type WorkflowHistoryPublishModalEventBusEvents = {
-	publish: { versionId: string; name: string; description: string };
+export type WorkflowVersionFormModalEventBusEvents = {
+	submit: { versionId: string; name: string; description: string };
 	cancel: undefined;
+};
+
+export type WorkflowVersionFormModalData = {
+	versionId: string;
+	versionName?: string;
+	description?: string;
+	modalTitle: string;
+	submitButtonLabel: string;
+	submitting?: boolean;
+	eventBus: EventBus<WorkflowVersionFormModalEventBusEvents>;
 };
 
 const props = defineProps<{
 	modalName: string;
-	data: {
-		versionId: string;
-		workflowId: string;
-		formattedCreatedAt: string;
-		versionName?: string;
-		description?: string;
-		eventBus: EventBus<WorkflowHistoryPublishModalEventBusEvents>;
-	};
+	data: WorkflowVersionFormModalData;
 }>();
 
 const i18n = useI18n();
 const modalEventBus = createEventBus();
-const workflowActivate = useWorkflowActivate();
 const uiStore = useUIStore();
 
-const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
+const versionForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('versionForm');
 
 const versionName = ref('');
 const description = ref('');
 
+const submitting = computed(() => props.data.submitting ?? false);
+
 function onModalOpened() {
-	publishForm.value?.focusInput();
+	versionForm.value?.focusInput();
 }
 
 onMounted(() => {
-	// Populate version name from existing data or generate from version ID
 	if (props.data.versionName) {
 		versionName.value = props.data.versionName;
 	} else if (props.data.versionId) {
 		versionName.value = generateVersionName(props.data.versionId);
 	}
 
-	// Populate description if available
 	if (props.data.description) {
 		description.value = props.data.description;
 	}
@@ -71,33 +71,16 @@ const onCancel = () => {
 	closeModal();
 };
 
-const publishing = ref(false);
-
-const handlePublish = async () => {
+const handleSubmit = () => {
 	if (versionName.value.trim().length === 0) {
 		return;
 	}
 
-	publishing.value = true;
-	const { success } = await workflowActivate.publishWorkflow(
-		props.data.workflowId,
-		props.data.versionId,
-		{
-			name: versionName.value,
-			description: description.value,
-		},
-	);
-
-	publishing.value = false;
-
-	if (success) {
-		props.data.eventBus.emit('publish', {
-			versionId: props.data.versionId,
-			name: versionName.value,
-			description: description.value,
-		});
-		closeModal();
-	}
+	props.data.eventBus.emit('submit', {
+		versionId: props.data.versionId,
+		name: versionName.value,
+		description: description.value,
+	});
 };
 </script>
 
@@ -105,37 +88,38 @@ const handlePublish = async () => {
 	<Modal
 		width="500px"
 		max-height="85vh"
-		:name="WORKFLOW_HISTORY_PUBLISH_MODAL_KEY"
+		:name="modalName"
 		:event-bus="modalEventBus"
 		:center="true"
 		:before-close="onCancel"
 	>
 		<template #header>
-			<N8nHeading size="xlarge">{{ i18n.baseText('workflows.publishModal.title') }}</N8nHeading>
+			<N8nHeading size="xlarge">{{ data.modalTitle }}</N8nHeading>
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<WorkflowPublishForm
-					ref="publishForm"
+				<WorkflowVersionForm
+					ref="versionForm"
 					v-model:version-name="versionName"
 					v-model:description="description"
-					version-name-test-id="workflow-history-publish-version-name-input"
-					description-test-id="workflow-history-publish-description-input"
+					:version-name-test-id="`${modalName}-version-name-input`"
+					:description-test-id="`${modalName}-description-input`"
+					@submit="handleSubmit"
 				/>
 				<div :class="$style.actions">
 					<N8nButton
-						:disabled="publishing"
+						:disabled="submitting"
 						type="secondary"
 						:label="i18n.baseText('generic.cancel')"
-						data-test-id="workflow-history-publish-cancel-button"
+						:data-test-id="`${modalName}-cancel-button`"
 						@click="onCancel"
 					/>
 					<N8nButton
-						:loading="publishing"
+						:loading="submitting"
 						:disabled="versionName.trim().length === 0"
-						:label="i18n.baseText('workflows.publish')"
-						data-test-id="workflow-history-publish-button"
-						@click="handlePublish"
+						:label="data.submitButtonLabel"
+						:data-test-id="`${modalName}-submit-button`"
+						@click="handleSubmit"
 					/>
 				</div>
 			</div>

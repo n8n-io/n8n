@@ -947,6 +947,7 @@ export type EnterpriseEditionFeatureKey =
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'
 	| 'EnforceMFA'
+	| 'NamedVersions'
 	| 'Provisioning';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
