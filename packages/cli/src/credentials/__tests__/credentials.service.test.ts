@@ -1134,7 +1134,7 @@ describe('CredentialsService', () => {
 			});
 		});
 
-		describe.only('with externalSecretsStore', () => {
+		describe('with externalSecretsStore', () => {
 			const createCredentialWithEncryptedData = (id: string, apiKey: string) =>
 				mock<CredentialsEntity>({
 					id,
