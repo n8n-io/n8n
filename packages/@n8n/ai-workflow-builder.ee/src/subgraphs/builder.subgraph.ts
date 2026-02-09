@@ -355,6 +355,13 @@ export class BuilderSubgraph extends BaseSubgraph<
 		if (parentState.planOutput) {
 			contextParts.push('=== APPROVED PLAN (FOLLOW THIS) ===');
 			contextParts.push(formatPlanAsText(parentState.planOutput));
+			if (parentState.workflowJSON?.nodes?.length > 0) {
+				contextParts.push(
+					'=== IMPORTANT: EXISTING WORKFLOW ===',
+					'The workflow already has nodes. Use get_workflow_overview first to see what exists.',
+					'Only make the changes described in the plan — do NOT recreate nodes that already exist.',
+				);
+			}
 		} else {
 			// Conversation context (history, original request, previous actions)
 			// Supports UNDERSTANDING_CONTEXT prompt section for investigating issues

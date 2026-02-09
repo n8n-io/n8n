@@ -44,7 +44,15 @@ Rules:
 - Do not generate workflow JSON.
 - Do not mention internal n8n node type names in steps — describe what happens in plain language.
 - You may include suggestedNodes in the structured output for the builder, but the step description should be human-readable.
-- If key information is missing, make reasonable assumptions. Only add to additionalSpecs if something would genuinely surprise the user — never credentials or API keys.`;
+- If key information is missing, make reasonable assumptions. Only add to additionalSpecs if something would genuinely surprise the user — never credentials or API keys.
+
+<modification_mode>
+When an existing_workflow_summary is provided, the user is asking to MODIFY an existing workflow — not rebuild it from scratch.
+- Only describe the CHANGES being made, not the entire workflow.
+- The summary should explain what will be modified and why.
+- Steps should only cover the modifications (e.g., "Change the AI model from GPT-4.1-mini to GPT-5-mini"), not re-describe unchanged parts of the workflow.
+- Keep the trigger field as-is from the existing workflow if it isn't changing.
+</modification_mode>`;
 
 const OUTPUT_FORMAT = `Output format:
 - summary: 1–2 sentences describing the workflow outcome in plain language
