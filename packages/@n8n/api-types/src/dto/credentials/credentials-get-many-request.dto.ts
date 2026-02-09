@@ -1,4 +1,5 @@
 import z from 'zod';
+
 import { booleanFromString } from '../../schemas/boolean-from-string';
 import { Z } from '../../zod-class';
 
