@@ -383,7 +383,7 @@ describe('NodeSetupCard', () => {
 			const testButton = getByTestId('node-setup-card-test-button');
 			await userEvent.click(testButton);
 
-			expect(mockExecute).toHaveBeenCalledOnce();
+			expect(mockExecute).toHaveBeenCalledTimes(1);
 		});
 	});
 });
