@@ -31,6 +31,10 @@ runs:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
 
+    - name: Upgrade npm (keep Node 22) # We need npm 11.5.1 for OIDC
+      run: npm i -g npm@11.5.1
+      shell: bash
+
     - name: Install Aikido SafeChain
       if: runner.os != 'Windows'
       run: |
