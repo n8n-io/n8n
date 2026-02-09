@@ -772,6 +772,35 @@ describe('useNodeExecution', () => {
 			expect(result).toBe('executed');
 		});
 
+		it('should call onCodeGenerated callback when code is generated', async () => {
+			vi.mocked(generateCodeForAiTransform).mockResolvedValue({
+				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
+				value: 'return items;',
+			});
+			vi.spyOn(workflowState, 'updateNodeProperties').mockImplementation(() => {});
+			const onCodeGenerated = vi.fn();
+			const node = ref(
+				createTestNode({
+					name: 'AI Transform',
+					type: AI_TRANSFORM_NODE_TYPE,
+					parameters: { instructions: 'do something' },
+				}),
+			);
+
+			const { execute } = useNodeExecution(node, { onCodeGenerated });
+			await execute();
+
+			expect(onCodeGenerated).toHaveBeenCalledTimes(2);
+			expect(onCodeGenerated).toHaveBeenCalledWith({
+				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
+				value: 'return items;',
+			});
+			expect(onCodeGenerated).toHaveBeenCalledWith({
+				name: `parameters.${AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT}`,
+				value: 'do something',
+			});
+		});
+
 		it('should return cancelled when code generation fails', async () => {
 			vi.mocked(generateCodeForAiTransform).mockResolvedValue(undefined as never);
 			const node = ref(

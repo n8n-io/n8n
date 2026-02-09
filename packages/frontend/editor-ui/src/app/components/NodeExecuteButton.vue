@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { ButtonSize } from '@/Interface';
+import type { ButtonSize, IUpdateInformation } from '@/Interface';
 import type { ButtonType } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
@@ -43,6 +43,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	stopExecution: [];
 	execute: [];
+	valueChanged: [value: IUpdateInformation];
 }>();
 
 const slots = defineSlots<{ persistentTooltipContent?: {} }>();
@@ -72,6 +73,7 @@ const {
 	telemetrySource: props.telemetrySource,
 	executionMode: computed(() => props.executionMode),
 	source: 'RunData.ExecuteNodeButton',
+	onCodeGenerated: (update) => emit('valueChanged', update),
 });
 
 const lastPopupCountUpdate = ref(0);
@@ -96,7 +98,7 @@ const buttonLabel = computed(() => {
 
 const buttonIcon = computed((): IconName | undefined => {
 	if (props.icon) return props.icon;
-	if (props.hideIcon && nodeButtonIcon.value === 'flask-conical') return undefined;
+	if (props.hideIcon) return undefined;
 	return nodeButtonIcon.value;
 });
 
