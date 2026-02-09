@@ -3,4 +3,6 @@ export type QuickConnectOption = {
 	credentialType: string;
 	text: string;
 	quickConnectType: string;
+	serviceName: string;
+	consentText?: string;
 };

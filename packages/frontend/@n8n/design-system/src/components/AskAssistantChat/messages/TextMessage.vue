@@ -69,6 +69,23 @@ watch(
 	},
 );
 
+const MAX_VISIBLE_FOCUSED_NODES = 3;
+
+const focusedNodesLabel = computed(() => {
+	const names = props.message.focusedNodeNames;
+	if (!names?.length) return '';
+
+	const quoted = names.map((n) => `'${n}'`);
+
+	if (names.length <= MAX_VISIBLE_FOCUSED_NODES) {
+		return `Focusing on ${quoted.join(', ')}`;
+	}
+
+	const visible = quoted.slice(0, MAX_VISIBLE_FOCUSED_NODES).join(', ');
+	const remaining = names.length - MAX_VISIBLE_FOCUSED_NODES;
+	return `Focusing on ${visible}, and ${remaining} more`;
+});
+
 async function onCopyButtonClick(content: string, e: MouseEvent) {
 	const button = e.target as HTMLButtonElement;
 	await navigator.clipboard.writeText(content);
@@ -121,15 +138,13 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				:class="[$style.assistantText, $style.renderedContent]"
 				:style="color ? { color } : undefined"
 			></div>
-			<!-- Focused nodes context pills (shown below user message) -->
-			<div
+			<!-- Focused nodes context label (shown below user message) -->
+			<span
 				v-if="message.role === 'user' && message.focusedNodeNames?.length"
-				:class="$style.focusedNodesPills"
+				:class="$style.focusedNodesLabel"
 			>
-				<span v-for="name in message.focusedNodeNames" :key="name" :class="$style.focusedNodePill">
-					{{ name }}
-				</span>
-			</div>
+				{{ focusedNodesLabel }}
+			</span>
 			<div
 				v-if="message?.codeSnippet"
 				:class="$style.codeSnippet"
@@ -314,21 +329,9 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	}
 }
 
-.focusedNodesPills {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--4xs);
-}
-
-.focusedNodePill {
-	display: inline-flex;
-	align-items: center;
-	height: 20px;
-	padding: 0 var(--spacing--4xs);
-	background-color: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
+.focusedNodesLabel {
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	white-space: nowrap;
+	color: var(--color--text--tint-2);
+	font-style: italic;
 }
 </style>
