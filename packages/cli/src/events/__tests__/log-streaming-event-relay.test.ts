@@ -158,9 +158,10 @@ describe('LogStreamingEventRelay', () => {
 				workflow: mock<IWorkflowDb>({
 					id: 'wf789',
 					name: 'Deactivated Workflow',
-					activeVersionId: 'version-xyz-789',
+					activeVersionId: null,
 				}),
 				publicApi: false,
+				deactivatedVersionId: 'version-xyz-789',
 			};
 
 			eventService.emit('workflow-deactivated', event);
@@ -175,7 +176,42 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'user',
 					workflowId: 'wf789',
 					workflowName: 'Deactivated Workflow',
-					activeVersionId: 'version-xyz-789',
+					deactivatedVersionId: 'version-xyz-789',
+				},
+			});
+		});
+
+		it('should log on `workflow-version-updated` event', () => {
+			const event: RelayEventMap['workflow-version-updated'] = {
+				user: {
+					id: '789',
+					email: 'john@n8n.io',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: 'admin' },
+				},
+				workflowId: 'wf-version-123',
+				workflowName: 'Version Test Workflow',
+				versionId: 'v-001',
+				versionName: 'Production Release',
+				versionDescription: 'Initial production release with all features',
+			};
+
+			eventService.emit('workflow-version-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.version.updated',
+				payload: {
+					userId: '789',
+					_email: 'john@n8n.io',
+					_firstName: 'John',
+					_lastName: 'Doe',
+					globalRole: 'admin',
+					workflowId: 'wf-version-123',
+					workflowName: 'Version Test Workflow',
+					versionId: 'v-001',
+					versionName: 'Production Release',
+					versionDescription: 'Initial production release with all features',
 				},
 			});
 		});

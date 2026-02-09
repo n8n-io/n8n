@@ -112,6 +112,7 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		deactivatedVersionId: string | null;
 	};
 
 	'workflow-pre-execute': {
@@ -147,6 +148,15 @@ export type RelayEventMap = {
 			| 'integrated'
 			| 'evaluation'
 			| 'chat';
+	};
+
+	'workflow-version-updated': {
+		user: UserLike;
+		workflowId: string;
+		workflowName: string;
+		versionId: string;
+		versionName?: string | null;
+		versionDescription?: string | null;
 	};
 
 	// #endregion
