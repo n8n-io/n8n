@@ -35,6 +35,7 @@ import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
+import { mermaidStringify } from '../tools/utils/mermaid.utils';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import { createValidateStructureTool } from '../tools/validate-structure.tool';
 // Types and utilities
@@ -355,6 +356,17 @@ export class BuilderSubgraph extends BaseSubgraph<
 		if (parentState.planOutput) {
 			contextParts.push('=== APPROVED PLAN (FOLLOW THIS) ===');
 			contextParts.push(formatPlanAsText(parentState.planOutput));
+			if (parentState.workflowJSON?.nodes?.length > 0) {
+				const overview = mermaidStringify(
+					{ workflow: parentState.workflowJSON },
+					{ includeNodeType: true, includeNodeParameters: true, includeNodeName: true },
+				);
+				contextParts.push(
+					'=== EXISTING WORKFLOW (do NOT recreate these nodes) ===',
+					overview,
+					'Only make the changes described in the plan.',
+				);
+			}
 		} else {
 			// Conversation context (history, original request, previous actions)
 			// Supports UNDERSTANDING_CONTEXT prompt section for investigating issues

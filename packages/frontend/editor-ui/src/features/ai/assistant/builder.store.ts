@@ -876,17 +876,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 				chatMessages.value = convertedMessages;
 
-				// Restore builderMode from loaded messages:
-				// If any plan-mode interrupt is present, the user was in plan mode
-				const hasPlanModeMessages = convertedMessages.some(
-					(msg) =>
-						msg.role === 'assistant' &&
-						(isPlanModeQuestionsMessage(msg) || isPlanModePlanMessage(msg)),
-				);
-				if (hasPlanModeMessages) {
-					builderMode.value = 'plan';
-				}
-
 				// Restore lastUserMessageId from the loaded session for telemetry tracking
 				const lastUserMsg = [...convertedMessages]
 					.reverse()
@@ -981,6 +970,21 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				void fetchBuilderCredits();
 				void loadSessions();
 			}
+		},
+	);
+
+	// Set default builder mode based on canvas state once nodes are loaded.
+	// Watches both workflowId and nodes.length so it fires when:
+	// - A new workflow is opened (workflowId changes, even if nodes stay empty)
+	// - Nodes are loaded after workflow reset (nodes.length changes)
+	// Only applies when the chat is fresh (no messages) so it doesn't interfere
+	// with an active conversation.
+	watch(
+		[() => workflowsStore.workflowId, () => workflowsStore.workflow.nodes?.length ?? 0],
+		([, nodesCount]) => {
+			if (chatMessages.value.length > 0) return;
+			if (!isPlanModeAvailable.value) return;
+			builderMode.value = nodesCount === 0 ? 'plan' : 'build';
 		},
 	);
 
