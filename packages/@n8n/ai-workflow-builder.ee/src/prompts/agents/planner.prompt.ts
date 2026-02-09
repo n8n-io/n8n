@@ -4,10 +4,10 @@
  * Generates a structured workflow plan for user approval (Plan Mode).
  */
 
+import { mermaidStringify } from '@/tools/utils/mermaid.utils';
 import type { DiscoveryContext } from '@/types/discovery-types';
 import type { PlanOutput } from '@/types/planning';
 import type { SimpleWorkflow } from '@/types/workflow';
-import { mermaidStringify } from '@/tools/utils/mermaid.utils';
 import { formatPlanAsText } from '@/utils/plan-helpers';
 
 import { prompt } from '../builder';

@@ -35,6 +35,7 @@ import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
+import { mermaidStringify } from '../tools/utils/mermaid.utils';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import { createValidateStructureTool } from '../tools/validate-structure.tool';
 // Types and utilities
@@ -44,7 +45,6 @@ import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
-import { mermaidStringify } from '../tools/utils/mermaid.utils';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildConversationContext,
