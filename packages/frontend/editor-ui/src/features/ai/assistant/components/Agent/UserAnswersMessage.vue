@@ -20,8 +20,7 @@ interface Props {
 const props = defineProps<Props>();
 const i18n = useI18n();
 
-// Filter out skipped questions
-const displayedAnswers = computed(() => props.answers.filter((answer) => !answer.skipped));
+const displayedAnswers = computed(() => props.answers);
 
 function formatAnswer(answer: PlanMode.QuestionResponse): string {
 	const parts: string[] = [];
@@ -48,7 +47,10 @@ function formatAnswer(answer: PlanMode.QuestionResponse): string {
 			<N8nText :bold="true" :class="$style.question">
 				{{ answer.question }}
 			</N8nText>
-			<N8nText color="text-light">{{ formatAnswer(answer) }}</N8nText>
+			<N8nText v-if="answer.skipped" :class="$style.skipped">
+				{{ i18n.baseText('aiAssistant.builder.planMode.answers.skipped') }}
+			</N8nText>
+			<N8nText v-else>{{ formatAnswer(answer) }}</N8nText>
 		</div>
 	</div>
 </template>

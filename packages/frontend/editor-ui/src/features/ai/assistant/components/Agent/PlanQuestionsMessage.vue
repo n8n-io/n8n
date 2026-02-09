@@ -165,12 +165,31 @@ function goToPrevious() {
 }
 
 function goToNext() {
+	// Mark unanswered question as skipped before advancing
+	if (!hasValidAnswer.value) {
+		const answer = getCurrentAnswer();
+		if (answer) {
+			answer.skipped = true;
+		}
+	}
+
 	if (isLastQuestion.value) {
 		submitAnswers();
 	} else {
 		currentIndex.value++;
 	}
 }
+
+const nextButtonLabel = computed(() => {
+	if (!hasValidAnswer.value) {
+		return isLastQuestion.value
+			? i18n.baseText('aiAssistant.builder.planMode.questions.skipAndSubmit')
+			: i18n.baseText('aiAssistant.builder.planMode.questions.skip');
+	}
+	return isLastQuestion.value
+		? i18n.baseText('aiAssistant.builder.planMode.questions.submitButton')
+		: i18n.baseText('aiAssistant.builder.planMode.questions.next');
+});
 </script>
 
 <template>
@@ -300,15 +319,11 @@ function goToNext() {
 					<N8nButton
 						type="secondary"
 						size="small"
-						:disabled="disabled || !hasValidAnswer || isSubmitted"
+						:disabled="disabled || isSubmitted"
 						data-test-id="plan-mode-questions-next"
 						@click="goToNext"
 					>
-						{{
-							isLastQuestion
-								? i18n.baseText('aiAssistant.builder.planMode.questions.submitButton')
-								: i18n.baseText('aiAssistant.builder.planMode.questions.next')
-						}}
+						{{ nextButtonLabel }}
 					</N8nButton>
 				</div>
 			</div>
