@@ -23,9 +23,22 @@ function toIRun(item?: object) {
 	} as unknown as IRun;
 }
 
+function toIRunMultiNode(nodes: Record<string, object | undefined>) {
+	const runData: Record<string, unknown[]> = {};
+	for (const [name, item] of Object.entries(nodes)) {
+		runData[name] = [{ data: { main: [[item]] } }];
+	}
+	return { data: { resultData: { runData } } } as unknown as IRun;
+}
+
 function getDataId(run: IRun, kind: 'binary' | 'json') {
 	// @ts-expect-error The type doesn't have the correct structure
 	return run.data.resultData.runData.myNode[0].data.main[0][0][kind].data.id;
+}
+
+function getNodeDataId(run: IRun, nodeName: string) {
+	// @ts-expect-error The type doesn't have the correct structure
+	return run.data.resultData.runData[nodeName][0].data.main[0][0].binary.data.id as string;
 }
 
 const binaryDataService = mockInstance(BinaryDataService);
@@ -141,6 +154,33 @@ for (const mode of ['filesystem', 's3'] as const) {
 			await expect(promise).resolves.not.toThrow();
 
 			expect(binaryDataService.rename).not.toHaveBeenCalled();
+		});
+
+		it('should rename only once when multiple nodes share the same binary data', async () => {
+			const workflowId = '6HYhhKmJch2cYxGj';
+			const executionId = 'temp';
+			const binaryDataFileUuid = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
+
+			const incorrectFileId = `workflows/${workflowId}/executions/temp/binary_data/${binaryDataFileUuid}`;
+			const binaryDataId = `s3:${incorrectFileId}`;
+
+			const run = toIRunMultiNode({
+				webhookNode: { binary: { data: { id: binaryDataId } } },
+				setNode: { binary: { data: { id: binaryDataId } } },
+				respondNode: { binary: { data: { id: binaryDataId } } },
+			});
+
+			await restoreBinaryDataId(run, executionId, 'webhook');
+
+			const correctFileId = incorrectFileId.replace('temp', executionId);
+			const correctBinaryDataId = `s3:${correctFileId}`;
+
+			expect(binaryDataService.rename).toHaveBeenCalledTimes(1);
+			expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
+
+			expect(getNodeDataId(run, 'webhookNode')).toBe(correctBinaryDataId);
+			expect(getNodeDataId(run, 'setNode')).toBe(correctBinaryDataId);
+			expect(getNodeDataId(run, 'respondNode')).toBe(correctBinaryDataId);
 		});
 
 		it('should ignore error thrown on renaming', async () => {
