@@ -365,7 +365,7 @@ const nextButtonLabel = computed(() => {
 	// Override ElRadio defaults: display block, allow text wrapping, remove inline margin
 	:global(.el-radio) {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		white-space: normal;
 		margin-right: 0;
 		height: auto;
@@ -417,6 +417,11 @@ const nextButtonLabel = computed(() => {
 		white-space: normal;
 		margin-right: 0;
 		height: auto;
+		width: 100%;
+	}
+
+	:global(.el-radio__label) {
+		flex: 1;
 	}
 }
 
