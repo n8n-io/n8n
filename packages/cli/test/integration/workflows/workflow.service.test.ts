@@ -456,15 +456,15 @@ describe('activateWorkflow()', () => {
 });
 
 describe('deactivateWorkflow()', () => {
-	test('should not deactivate workflow without workflow:publish permission', async () => {
+	test('should not deactivate workflow without workflow:unpublish permission', async () => {
 		const owner = await createOwner();
 		const member = await createMember();
 
-		// custom role with workflow:update but not workflow:publish
+		// custom role with workflow:update but not workflow:unpublish
 		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
 			roleType: 'project',
 			displayName: 'Custom Workflow Updater',
-			description: 'Can update workflows but not publish them',
+			description: 'Can update workflows but not unpublish them',
 		});
 
 		const project = await createTeamProject('Test Project', owner);

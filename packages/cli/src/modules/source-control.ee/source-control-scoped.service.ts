@@ -7,6 +7,7 @@ import {
 	type WorkflowEntity,
 	type WorkflowTagMapping,
 } from '@n8n/db';
+import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -171,6 +172,21 @@ export class SourceControlScopedService {
 		// that the user is an admin off
 		return {
 			workflows: this.getWorkflowsInAdminProjectsFromContextFilter(context),
+		};
+	}
+
+	getDataTablesInAdminProjectsFromContextFilter(
+		context: SourceControlContext,
+	): FindOptionsWhere<DataTable> {
+		if (context.hasAccessToAllProjects()) {
+			// In case the user is a global admin or owner, we don't need a filter
+			return {};
+		}
+
+		// We build a filter to only select data tables that belong to a team project
+		// that the user is an admin of
+		return {
+			project: this.getProjectsWithPushScopeByContextFilter(context),
 		};
 	}
 }

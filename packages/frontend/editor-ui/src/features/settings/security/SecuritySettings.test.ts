@@ -36,6 +36,9 @@ describe('SecuritySettings', () => {
 	const defaultSettings = {
 		personalSpacePublishing: false,
 		personalSpaceSharing: false,
+		publishedPersonalWorkflowsCount: 14,
+		sharedPersonalWorkflowsCount: 12,
+		sharedPersonalCredentialsCount: 5,
 	};
 
 	beforeEach(() => {
@@ -221,5 +224,29 @@ describe('SecuritySettings', () => {
 			expect(confirmMessage).toHaveBeenCalled();
 		});
 		expect(updateSecuritySettings).not.toHaveBeenCalled();
+	});
+
+	it('should display published workflows count', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-publishing-count')).toHaveTextContent('14 workflows');
+		});
+
+		expect(getByTestId('security-publishing-count')).toHaveTextContent(
+			'Existing published workflows',
+		);
+	});
+
+	it('should display shared workflows and credentials counts', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-sharing-count')).toHaveTextContent(
+				'12 workflows, 5 credentials',
+			);
+		});
+
+		expect(getByTestId('security-sharing-count')).toHaveTextContent('Existing shares');
 	});
 });

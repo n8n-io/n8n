@@ -20,7 +20,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import {
@@ -36,6 +36,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
@@ -2131,6 +2132,90 @@ describe('AI Builder store', () => {
 			});
 		});
 
+		describe('default plan mode based on canvas nodes', () => {
+			function enablePlanModeExperiment() {
+				vi.spyOn(posthogStore, 'getVariant').mockImplementation((experiment) =>
+					experiment === AI_BUILDER_PLAN_MODE_EXPERIMENT.name
+						? AI_BUILDER_PLAN_MODE_EXPERIMENT.variant
+						: undefined,
+				);
+			}
+
+			it('should switch to plan mode when nodes become empty and plan mode is available', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Start with nodes, then clear them (simulates workflow load sequence)
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+				expect(builderStore.builderMode).toBe('plan');
+			});
+
+			it('should switch to build mode when nodes are added', async () => {
+				enablePlanModeExperiment();
+				// Start with nodes so the watcher can observe changes
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+
+				const builderStore = useBuilderStore();
+				await nextTick();
+
+				// Clear nodes to trigger plan mode
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+				expect(builderStore.builderMode).toBe('plan');
+
+				// Add nodes back to trigger build mode
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+			});
+
+			it('should stay in build mode when plan mode experiment is not enabled', async () => {
+				const builderStore = useBuilderStore();
+
+				// Change workflowId to trigger the watcher (nodes stay empty)
+				workflowsStore.workflowId = 'different-workflow-id';
+				await nextTick();
+
+				expect(builderStore.builderMode).toBe('build');
+			});
+
+			it('should not change mode when chat has messages', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Add nodes first so we can trigger a change later
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+
+				// Simulate an active conversation
+				builderStore.chatMessages = [{ role: 'user', type: 'text', text: 'hello' } as never];
+
+				// Remove nodes — would normally switch to plan, but chat has messages
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+
+				// Should stay at build because chat has messages
+				expect(builderStore.builderMode).toBe('build');
+			});
+
+			it('should default to plan mode when workflowId changes with empty canvas', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Simulate navigating to a new empty workflow
+				workflowsStore.workflowId = 'new-empty-workflow';
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+
+				expect(builderStore.builderMode).toBe('plan');
+			});
+		});
+
 		describe('fetchExistingVersionIds and message enrichment', () => {
 			it('should enrich messages with revertVersion when versions exist', async () => {
 				const builderStore = useBuilderStore();
@@ -2411,6 +2496,292 @@ describe('AI Builder store', () => {
 			builderStore.clearDoneIndicatorTitle();
 
 			expect(setDocumentTitleMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('revertVersion on user messages', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let capturedOnMessageCallback: ((data: any) => void) | null = null;
+		let capturedDoneCallback: (() => void) | null = null;
+
+		beforeEach(() => {
+			capturedOnMessageCallback = null;
+			capturedDoneCallback = null;
+
+			apiSpy.mockImplementation((_context, _options, onMessage, onDone) => {
+				capturedOnMessageCallback = onMessage;
+				capturedDoneCallback = onDone;
+			});
+		});
+
+		it('should not show revertVersion on user message during streaming', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.isNewWorkflow = false;
+			workflowsStore.workflowVersionId = 'version-1';
+
+			await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+			// While streaming, user message should NOT have revertVersion
+			const userMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
+			expect(userMessage.role).toBe('user');
+			expect(userMessage.revertVersion).toBeUndefined();
+		});
+
+		it('should add revertVersion to user message after streaming when workflow was modified', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.isNewWorkflow = false;
+			workflowsStore.workflowVersionId = 'version-1';
+			workflowsStore.workflow.updatedAt = '2024-01-01T00:00:00Z';
+
+			await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+			// Simulate a workflow-updated message
+			if (capturedOnMessageCallback) {
+				capturedOnMessageCallback({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+			}
+
+			// Complete streaming
+			if (capturedDoneCallback) {
+				capturedDoneCallback();
+			}
+
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			// User message should now have revertVersion
+			const userMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
+			expect(userMessage.role).toBe('user');
+			expect(userMessage.revertVersion).toEqual({
+				id: 'version-1',
+				createdAt: '2024-01-01T00:00:00Z',
+			});
+		});
+
+		it('should not add revertVersion to user message after streaming when workflow was not modified', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.isNewWorkflow = false;
+			workflowsStore.workflowVersionId = 'version-1';
+
+			await builderStore.sendChatMessage({ text: 'What can you help me with?' });
+
+			// Simulate a text response without workflow-updated
+			if (capturedOnMessageCallback) {
+				capturedOnMessageCallback({
+					messages: [
+						{
+							type: 'message',
+							role: 'assistant',
+							text: 'Here is a plan for your workflow.',
+						},
+					],
+					sessionId: 'test-session',
+				});
+			}
+
+			// Complete streaming
+			if (capturedDoneCallback) {
+				capturedDoneCallback();
+			}
+
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			// User message should NOT have revertVersion
+			const userMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
+			expect(userMessage.role).toBe('user');
+			expect(userMessage.revertVersion).toBeUndefined();
+		});
+	});
+
+	describe('Plan mode telemetry', () => {
+		function enablePlanMode() {
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experiment) =>
+				experiment === AI_BUILDER_PLAN_MODE_EXPERIMENT.name
+					? AI_BUILDER_PLAN_MODE_EXPERIMENT.variant
+					: undefined,
+			);
+		}
+
+		function addPlanMessageToChat(builderStore: ReturnType<typeof useBuilderStore>) {
+			builderStore.chatMessages.push({
+				role: 'assistant',
+				type: 'custom',
+				customType: 'plan',
+				data: {
+					plan: { summary: 'Test plan', trigger: 'Manual', steps: [] },
+				},
+			} as unknown as ChatUI.AssistantMessage);
+		}
+
+		describe('user_switched_builder_mode', () => {
+			it('tracks journey event when switching to plan mode', () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+
+				track.mockClear();
+				builderStore.setBuilderMode('plan');
+
+				expect(track).toHaveBeenCalledWith(
+					'Workflow builder journey',
+					expect.objectContaining({
+						event_type: 'user_switched_builder_mode',
+						event_properties: { mode: 'plan' },
+					}),
+				);
+			});
+
+			it('tracks journey event when switching to build mode', () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				track.mockClear();
+				builderStore.setBuilderMode('build');
+
+				expect(track).toHaveBeenCalledWith(
+					'Workflow builder journey',
+					expect.objectContaining({
+						event_type: 'user_switched_builder_mode',
+						event_properties: { mode: 'build' },
+					}),
+				);
+			});
+
+			it('does not track when plan mode is unavailable', () => {
+				const builderStore = useBuilderStore();
+				// Do NOT enable plan mode
+
+				track.mockClear();
+				builderStore.setBuilderMode('plan');
+
+				expect(track).not.toHaveBeenCalledWith(
+					'Workflow builder journey',
+					expect.objectContaining({
+						event_type: 'user_switched_builder_mode',
+					}),
+				);
+			});
+		});
+
+		describe('user_clicked_implement_plan', () => {
+			it('tracks journey event when user approves plan', async () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				// Set up interrupted state with a plan message
+				addPlanMessageToChat(builderStore);
+
+				apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+					onDone();
+				});
+
+				track.mockClear();
+				await builderStore.resumeWithPlanDecision({ action: 'approve' });
+
+				expect(track).toHaveBeenCalledWith(
+					'Workflow builder journey',
+					expect.objectContaining({
+						event_type: 'user_clicked_implement_plan',
+					}),
+				);
+			});
+		});
+
+		describe('mode in User submitted builder message', () => {
+			it('includes plan mode', async () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				apiSpy.mockImplementationOnce(() => {});
+				track.mockClear();
+				await builderStore.sendChatMessage({ text: 'plan something' });
+
+				expect(track).toHaveBeenCalledWith(
+					'User submitted builder message',
+					expect.objectContaining({ mode: 'plan' }),
+				);
+			});
+
+			it('includes build mode by default', async () => {
+				const builderStore = useBuilderStore();
+
+				apiSpy.mockImplementationOnce(() => {});
+				track.mockClear();
+				await builderStore.sendChatMessage({ text: 'build something' });
+
+				expect(track).toHaveBeenCalledWith(
+					'User submitted builder message',
+					expect.objectContaining({ mode: 'build' }),
+				);
+			});
+		});
+
+		describe('mode in End of response from builder', () => {
+			it('includes mode on abort', async () => {
+				const builderStore = useBuilderStore();
+
+				apiSpy.mockImplementationOnce(() => {});
+				await builderStore.sendChatMessage({ text: 'test' });
+
+				track.mockClear();
+				builderStore.abortStreaming();
+
+				expect(track).toHaveBeenCalledWith(
+					'End of response from builder',
+					expect.objectContaining({ mode: 'build' }),
+				);
+			});
+
+			it('includes plan mode on abort when in plan mode', async () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				apiSpy.mockImplementationOnce(() => {});
+				await builderStore.sendChatMessage({ text: 'test' });
+
+				track.mockClear();
+				builderStore.abortStreaming();
+
+				expect(track).toHaveBeenCalledWith(
+					'End of response from builder',
+					expect.objectContaining({ mode: 'plan' }),
+				);
+			});
+
+			it('includes plan_approved when plan was approved', async () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				// Set up interrupted state with a plan message
+				addPlanMessageToChat(builderStore);
+
+				apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+					onDone();
+				});
+
+				track.mockClear();
+				await builderStore.resumeWithPlanDecision({ action: 'approve' });
+				await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+				expect(track).toHaveBeenCalledWith(
+					'End of response from builder',
+					expect.objectContaining({ plan_approved: true }),
+				);
+			});
 		});
 	});
 

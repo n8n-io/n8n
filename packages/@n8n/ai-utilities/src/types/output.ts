@@ -1,21 +1,26 @@
 import type { Message } from './message';
 import type { ToolCall } from './tool';
 
+export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other';
+
+export type TokenUsage<T extends Record<string, unknown> = Record<string, unknown>> = {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	inputTokenDetails?: {
+		cacheRead?: number;
+	};
+	outputTokenDetails?: {
+		reasoning?: number;
+	};
+	additionalMetadata?: T;
+};
+
 export interface GenerateResult {
 	id?: string;
 	text: string;
-	finishReason?: 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other';
-	usage?: {
-		promptTokens: number;
-		completionTokens: number;
-		totalTokens: number;
-		input_token_details?: {
-			cache_read?: number;
-		};
-		output_token_details?: {
-			reasoning?: number;
-		};
-	};
+	finishReason?: FinishReason;
+	usage?: TokenUsage;
 	/**
 	 * Tool calls made by the model
 	 */
@@ -39,11 +44,7 @@ export interface StreamChunk {
 		name?: string;
 		argumentsDelta?: string;
 	};
-	finishReason?: string;
-	usage?: {
-		promptTokens: number;
-		completionTokens: number;
-		totalTokens: number;
-	};
+	finishReason?: FinishReason;
+	usage?: TokenUsage;
 	error?: unknown;
 }

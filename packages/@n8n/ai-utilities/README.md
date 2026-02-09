@@ -19,7 +19,7 @@ pnpm test
 pnpm dev
 ```
 
-# AI Node SDK Interface Specification
+# Model SDK
 
 ## Core Pattern
 
@@ -28,7 +28,7 @@ pnpm dev
 Pass config directly to `supplyModel` for providers that follow the OpenAI API format:
 
 ```typescript
-import { supplyModel } from '@n8n/ai-node-sdk';
+import { supplyModel } from '@n8n/ai-utilities';
 
 return supplyModel(this, {
   type: 'openai',
@@ -43,7 +43,7 @@ return supplyModel(this, {
 Extend `BaseChatModel` and implement `generate()` + `stream()`:
 
 ```typescript
-import { BaseChatModel, supplyModel, type Message, type GenerateResult, type StreamChunk } from '@n8n/ai-node-sdk';
+import { BaseChatModel, supplyModel, type Message, type GenerateResult, type StreamChunk } from '@n8n/ai-utilities';
 
 class MyChatModel extends BaseChatModel {
   async generate(messages: Message[]): Promise<GenerateResult> {
@@ -95,7 +95,7 @@ async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyD
 **After (SDK):**
 
 ```typescript
-import { supplyModel } from '@n8n/ai-node-sdk';
+import { supplyModel } from '@n8n/ai-utilities';
 
 async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
   const credentials = await this.getCredentials<{ url: string; apiKey: string }>('openRouterApi');
@@ -129,7 +129,7 @@ import {
   type GenerateResult,
   type StreamChunk,
   type ChatModelConfig,
-} from '@n8n/ai-node-sdk';
+} from '@n8n/ai-utilities';
 import { NodeConnectionTypes, type INodeType, type ISupplyDataFunctions, type SupplyData } from 'n8n-workflow';
 
 // Custom chat model extending BaseChatModel
@@ -220,14 +220,249 @@ export class LmChatImaginaryLlm implements INodeType {
 
 ---
 
+# Memory SDK
+
+The Memory SDK provides abstractions for building conversation memory nodes without LangChain dependencies.
+
+## Architecture
+
+Memory uses a **two-layer design**:
+
+1. **ChatHistory** (Storage Layer) - Where messages are stored (your custom implementation)
+2. **ChatMemory** (Logic Layer) - How messages are managed (windowing, session scoping)
+
+### Naming Convention
+
+The SDK uses n8n-specific naming to avoid confusion with LangChain classes:
+
+| n8n SDK | LangChain Equivalent |
+|---------|---------------------|
+| `ChatHistory` (interface) | `BaseChatMessageHistory` |
+| `BaseChatHistory` (base class) | `BaseChatMessageHistory` |
+| `ChatMemory` (interface) | `BaseChatMemory` |
+| `BaseChatMemory` (base class) | `BaseChatMemory` |
+| `WindowedChatMemory` | `BufferWindowMemory` |
+
+## Core Pattern
+
+### Option A: Custom Storage
+
+For exotic databases not covered by the SDK, extend `BaseChatHistory`:
+
+```typescript
+import {
+  BaseChatHistory,
+  WindowedChatMemory,
+  supplyMemory,
+  type Message,
+} from '@n8n/ai-utilities';
+
+class MyChatHistory extends BaseChatHistory {
+  constructor(private sessionId: string) {
+    super();
+  }
+
+  async getMessages(): Promise<Message[]> {
+    // Read from your storage...
+    return [];
+  }
+
+  async addMessage(message: Message): Promise<void> {
+    // Write to your storage...
+  }
+
+  async clear(): Promise<void> {
+    // Clear your storage...
+  }
+}
+
+const history = new MyChatHistory(sessionId);
+const memory = new WindowedChatMemory(history, { windowSize: 10 });
+return supplyMemory(this, memory);
+```
+
+### Option B: Custom Memory Logic
+
+For custom memory behavior (not just storage), extend `BaseChatMemory`:
+
+```typescript
+import {
+  BaseChatMemory,
+  supplyMemory,
+  type Message,
+  type ChatHistory,
+  type ChatMemory,
+} from '@n8n/ai-utilities';
+
+class MyCustomChatMemory extends BaseChatMemory {
+  readonly chatHistory: ChatHistory;
+
+  constructor(chatHistory: ChatHistory) {
+    super();
+    this.chatHistory = chatHistory;
+  }
+
+  async loadMessages(): Promise<Message[]> {
+    const messages = await this.chatHistory.getMessages();
+    // Apply your custom logic here...
+    return messages;
+  }
+
+  async saveTurn(input: string, output: string): Promise<void> {
+    await this.chatHistory.addMessages([
+      { role: 'human', content: [{ type: 'text', text: input }] },
+      { role: 'ai', content: [{ type: 'text', text: output }] },
+    ]);
+  }
+
+  async clear(): Promise<void> {
+    await this.chatHistory.clear();
+  }
+}
+
+const history = new MyChatHistory(sessionId);
+const memory = new MyCustomChatMemory(history);
+return supplyMemory(this, memory);
+```
+
+---
+
+## Community Node Examples
+
+### ImaginaryDB Memory Node
+
+```typescript
+import {
+  BaseChatHistory,
+  WindowedChatMemory,
+  supplyMemory,
+  type Message,
+} from '@n8n/ai-utilities';
+import { 
+  NodeConnectionTypes, 
+  type INodeType, 
+  type ISupplyDataFunctions, 
+  type SupplyData,
+  type IHttpRequestMethods,
+} from 'n8n-workflow';
+
+// Custom storage implementation using n8n's HTTP helpers
+class ImaginaryDbChatHistory extends BaseChatHistory {
+  constructor(
+    private sessionId: string,
+    private baseUrl: string,
+    private apiKey: string,
+    private httpRequest: ISupplyDataFunctions['helpers']['httpRequest'],
+  ) {
+    super();
+  }
+
+  async getMessages(): Promise<Message[]> {
+    const data = await this.httpRequest({
+      method: 'GET',
+      url: `${this.baseUrl}/sessions/${this.sessionId}/messages`,
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+      json: true,
+    });
+
+    // Convert from provider format to n8n Message format
+    return data.messages.map((m: any) => ({
+      role: m.speaker === 'user' ? 'human' : m.speaker === 'bot' ? 'ai' : m.speaker,
+      content: [{ type: 'text', text: m.text }],
+    }));
+  }
+
+  async addMessage(message: Message): Promise<void> {
+    const text = message.content.find((c) => c.type === 'text')?.text ?? '';
+    await this.httpRequest({
+      method: 'POST',
+      url: `${this.baseUrl}/sessions/${this.sessionId}/messages`,
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+      body: {
+        speaker: message.role === 'human' ? 'user' : message.role === 'ai' ? 'bot' : message.role,
+        text,
+      },
+      json: true,
+    });
+  }
+
+  async clear(): Promise<void> {
+    await this.httpRequest({
+      method: 'DELETE',
+      url: `${this.baseUrl}/sessions/${this.sessionId}`,
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+    });
+  }
+}
+
+// The n8n node
+export class MemoryImaginaryDb implements INodeType {
+  description = {
+    displayName: 'ImaginaryDB Memory',
+    name: 'memoryImaginaryDb',
+    icon: 'file:imaginarydb.svg',
+    group: ['transform'],
+    version: 1,
+    description: 'Use ImaginaryDB for chat memory storage',
+    defaults: { name: 'ImaginaryDB Memory' },
+    codex: { categories: ['AI'], subcategories: { AI: ['Memory'] } },
+    inputs: [],
+    outputs: [NodeConnectionTypes.AiMemory],
+    outputNames: ['Memory'],
+    credentials: [{ name: 'imaginaryDbApi', required: true }],
+    properties: [
+      {
+        displayName: 'Session ID',
+        name: 'sessionId',
+        type: 'string',
+        default: '={{ $json.sessionId }}',
+        description: 'Unique identifier for the conversation session',
+      },
+      {
+        displayName: 'Window Size',
+        name: 'windowSize',
+        type: 'number',
+        default: 10,
+        description: 'Number of recent message pairs to keep in context',
+      },
+    ],
+  };
+
+  async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+    const credentials = await this.getCredentials<{ apiKey: string; baseUrl: string }>('imaginaryDbApi');
+    const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+    const windowSize = this.getNodeParameter('windowSize', itemIndex) as number;
+
+    // Pass n8n's HTTP request helper directly
+    const history = new ImaginaryDbChatHistory(
+      sessionId,
+      credentials.baseUrl,
+      credentials.apiKey,
+      this.helpers.httpRequest,
+    );
+    const memory = new WindowedChatMemory(history, { windowSize });
+
+    return supplyMemory(this, memory);
+  }
+}
+```
+
+> **Note:** Community nodes must use `this.helpers.httpRequest` or `this.helpers.httpRequestWithAuthentication`
+> for HTTP calls. Direct `fetch` or other global APIs are not allowed.
+
+
+---
+
 ## Summary
 
 | Before (LangChain) | After (SDK) |
 |--------------------|-------------|
-| `import { ChatOpenAI } from '@langchain/openai'` | `import { supplyModel } from '@n8n/ai-node-sdk'` |
+| `import { ChatOpenAI } from '@langchain/openai'` | `import { supplyModel } from '@n8n/ai-utilities'` |
 | `new ChatOpenAI({ ... })` | `supplyModel(this, { type: 'openai', ... })` |
-| Custom provider | `class MyModel extends BaseChatModel { ... }` |
+| Custom model provider | `class MyModel extends BaseChatModel { ... }` |
 | `return { response: model }` | `return supplyModel(this, model)` |
+| `import { BufferWindowMemory } from '@langchain/classic/memory'` | `import { WindowedChatMemory } from '@n8n/ai-utilities'` |
+| Custom storage backend | `class MyHistory extends BaseChatHistory { ... }` |
 | `return { response: logWrapper(memory, this) }` | `return supplyMemory(this, memory)` |
 | LangChain message types | `Message` with roles: `system`, `human`, `ai`, `tool` |
 | `tool_calls[].args` | `toolCalls[].arguments` |

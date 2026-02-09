@@ -25,6 +25,8 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
         <div
           class="inlineActions"
         >
+          
+          
           <button
             aria-disabled="true"
             aria-live="polite"
@@ -94,6 +96,8 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
         <div
           class="inlineActions"
         >
+          
+          
           <button
             aria-live="polite"
             class="button button primary small withIcon square stopButton stopButton"
