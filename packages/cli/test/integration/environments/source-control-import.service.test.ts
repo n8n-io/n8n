@@ -105,6 +105,9 @@ describe('SourceControlImportService', () => {
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
 			sourceControlScopedService,
 			workflowHistoryService,
+			mock(),
+			mock(),
+			mock(),
 		);
 	});
 
