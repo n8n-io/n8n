@@ -46,6 +46,7 @@ describe('useQuickConnect()', () => {
 			credentialType: 'test-credentials',
 			text: 'this is a promotion text',
 			quickConnectType: 'manual',
+			serviceName: 'Test service',
 		};
 
 		beforeEach(() => {
@@ -158,6 +159,7 @@ describe('useQuickConnect()', () => {
 					credentialType: 'second-credentials',
 					text: 'second promotion text',
 					quickConnectType: 'manual',
+					serviceName: 'Other test service',
 				};
 
 				settingsStore.moduleSettings['quick-connect'] = {
