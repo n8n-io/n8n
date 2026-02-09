@@ -64,7 +64,7 @@ export class LmChatOllama implements INodeType {
 			: undefined;
 
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
-			await proxyFetch(input.toString(), init, {});
+			await proxyFetch(input, init, {});
 
 		const model = new ChatOllama({
 			...options,
