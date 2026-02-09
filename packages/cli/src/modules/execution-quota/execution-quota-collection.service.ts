@@ -173,11 +173,10 @@ export class ExecutionQuotaCollectionService {
 				}
 			} finally {
 				this.scheduleFlushing();
-				this.flushesInProgress.delete(flushPromise);
 			}
 		})();
 
 		this.flushesInProgress.add(flushPromise);
-		await flushPromise;
+		await flushPromise.finally(() => this.flushesInProgress.delete(flushPromise));
 	}
 }
