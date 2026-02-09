@@ -325,6 +325,7 @@ describe('CommunityNodeInfo', () => {
 						credentialType: 'some-credentials',
 						text: 'This packages provides trial access',
 						quickConnectType: 'manual',
+						serviceName: 'Test service',
 					}) as ReturnType<typeof useQuickConnect>,
 				);
 			});

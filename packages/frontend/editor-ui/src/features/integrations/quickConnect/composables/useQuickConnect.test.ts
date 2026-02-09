@@ -46,6 +46,7 @@ describe('useQuickConnect()', () => {
 			credentialType: 'test-credentials',
 			text: 'this is a promotion text',
 			quickConnectType: 'manual',
+			serviceName: 'test service',
 		};
 
 		beforeEach(() => {
