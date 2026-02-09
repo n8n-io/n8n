@@ -3,6 +3,7 @@ import { User, WorkflowHistoryRepository } from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
 import { mockClear } from 'jest-mock-extended';
 
+import { EventService } from '@/events/event.service';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -12,10 +13,12 @@ import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 const logger = mockLogger();
 const workflowFinderService = mockInstance(WorkflowFinderService);
+const eventService = mockInstance(EventService);
 const workflowHistoryService = new WorkflowHistoryService(
 	logger,
 	workflowHistoryRepository,
 	workflowFinderService,
+	eventService,
 );
 const testUser = Object.assign(new User(), {
 	id: '1234',

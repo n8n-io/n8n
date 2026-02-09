@@ -177,8 +177,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	async function initializeData() {
+		const isPreviewPage = settingsStore.isPreviewMode && isDemoRoute.value;
 		const loadPromises = (() => {
-			if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
+			if (isPreviewPage) return [];
 
 			const promises: Array<Promise<unknown>> = [
 				workflowsListStore.fetchActiveWorkflows(),
@@ -207,8 +208,14 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		}
 
 		try {
+			// important to load community nodes to render them correctly
+			if (isPreviewPage) {
+				loadPromises.push(nodeTypesStore.fetchCommunityNodePreviews());
+			} else {
+				//We don't need to await this as community node previews are not critical and needed only in nodes search panel
+				void nodeTypesStore.fetchCommunityNodePreviews();
+			}
 			await Promise.all(loadPromises);
-			void nodeTypesStore.fetchCommunityNodePreviews();
 		} catch (error) {
 			toast.showError(
 				error,

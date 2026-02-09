@@ -1,8 +1,8 @@
 import type { IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { secretsProviderTypeSchema } from '../../schemas/secrets-provider.schema';
+import { Z } from '../../zod-class';
 
 export class CreateSecretsProviderConnectionDto extends Z.class({
 	providerKey: z

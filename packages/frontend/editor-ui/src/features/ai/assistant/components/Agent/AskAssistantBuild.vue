@@ -29,8 +29,19 @@ import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
 import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
+import {
+	isPlanModePlanMessage,
+	isPlanModeQuestionsMessage,
+	isPlanModeUserAnswersMessage,
+	type PlanMode,
+} from '../../assistant.types';
+import PlanDisplayMessage from './PlanDisplayMessage.vue';
+import PlanModeSelector from './PlanModeSelector.vue';
+import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
+import UserAnswersMessage from './UserAnswersMessage.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -42,6 +53,7 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowAutosaveStore();
+const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
@@ -83,6 +95,10 @@ const showSettingsButton = computed(() => {
 	return assistantStore.canManageAISettings;
 });
 
+const allowSendingParameterValues = computed(
+	() => settingsStore.settings.ai.allowSendingParameterValues,
+);
+
 const shouldShowNotificationBanner = computed(() => {
 	return notificationsPermissionsBannerTriggered.value && canPrompt.value;
 });
@@ -111,25 +127,32 @@ const loadingMessage = computed(() => {
 });
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
-	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
+	const messages = builderStore.chatMessages;
+	const builderUpdatedWorkflowMessageIndex = messages.findLastIndex(
 		(msg) =>
 			msg.type === 'workflow-updated' ||
 			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
 
 	// Check if there's an error message or task aborted message after the last workflow update
-	const messagesAfterUpdate = builderStore.chatMessages.slice(
-		builderUpdatedWorkflowMessageIndex + 1,
-	);
+	const messagesAfterUpdate = messages.slice(builderUpdatedWorkflowMessageIndex + 1);
 	const hasErrorAfterUpdate = messagesAfterUpdate.some((msg) => msg.type === 'error');
 	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some((msg) => isTaskAbortedMessage(msg));
+
+	// Hide when the last assistant message is a question or plan awaiting user action
+	const lastAssistantMessage = messages.findLast((msg) => msg.role === 'assistant');
+	const hasPendingInteraction =
+		lastAssistantMessage &&
+		(isPlanModeQuestionsMessage(lastAssistantMessage) ||
+			isPlanModePlanMessage(lastAssistantMessage));
 
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
 		!hasErrorAfterUpdate &&
-		!hasTaskAbortedAfterUpdate
+		!hasTaskAbortedAfterUpdate &&
+		!hasPendingInteraction
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
@@ -152,8 +175,12 @@ const isInputDisabled = computed(() => {
 	return collaborationStore.shouldBeReadOnly || isAutosaving.value;
 });
 
+const isChatInputDisabled = computed(() => {
+	return isInputDisabled.value || builderStore.shouldDisableChatInput;
+});
+
 const disabledTooltip = computed(() => {
-	if (!isInputDisabled.value) {
+	if (!isChatInputDisabled.value) {
 		return undefined;
 	}
 	if (isAutosaving.value) {
@@ -164,6 +191,39 @@ const disabledTooltip = computed(() => {
 	}
 	return undefined;
 });
+
+const isPlanModeSelectorDisabled = computed(() => {
+	return builderStore.streaming || isChatInputDisabled.value;
+});
+
+/**
+ * Check if questions have been answered (there's a user_answers message after this questions message)
+ */
+function isQuestionsAnswered(questionsMessage: { id?: string }): boolean {
+	const messages = builderStore.chatMessages;
+	const questionsIndex = messages.findIndex((m) => m.id === questionsMessage.id);
+	if (questionsIndex === -1) return false;
+
+	for (let i = questionsIndex + 1; i < messages.length; i++) {
+		if (isPlanModeUserAnswersMessage(messages[i])) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * Check if this plan message is the last one and nothing has been sent after it.
+ * Only the latest plan with no subsequent messages should show the "Implement" button,
+ * because the HITL interrupt only works for the pending plan.
+ */
+function isLastPlanMessage(message: PlanMode.PlanMessage): boolean {
+	const messages = builderStore.chatMessages;
+	const idx = messages.findLastIndex((m) => m.id === message.id);
+	if (idx === -1) return false;
+	// Check that no user message or other content exists after this plan
+	return !messages.slice(idx + 1).some((m) => m.role === 'user');
+}
 
 async function onUserMessage(content: string) {
 	// Record activity to maintain write lock while building
@@ -407,7 +467,7 @@ defineExpose({
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			:workflow-id="workflowsStore.workflowId"
 			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
-			:disabled="isInputDisabled"
+			:disabled="isChatInputDisabled"
 			:disabled-tooltip="disabledTooltip"
 			@close="emit('close')"
 			@message="onUserMessage"
@@ -422,10 +482,17 @@ defineExpose({
 					<slot name="header" />
 					<AISettingsButton
 						v-if="showSettingsButton"
-						:show-usability-notice="false"
+						:show-usability-notice="!allowSendingParameterValues"
 						:disabled="builderStore.streaming"
 					/>
 				</div>
+			</template>
+			<template v-if="builderStore.isPlanModeAvailable" #before-actions>
+				<PlanModeSelector
+					:model-value="builderStore.builderMode"
+					:disabled="isPlanModeSelectorDisabled"
+					@update:model-value="builderStore.setBuilderMode"
+				/>
 			</template>
 			<template #inputHeader>
 				<Transition name="slide">
@@ -439,6 +506,27 @@ defineExpose({
 				<N8nText :class="$style.topText"
 					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
 				</N8nText>
+			</template>
+			<template #custom-message="{ message }">
+				<!-- Show questions form only if not yet answered; hide completely when answered -->
+				<PlanQuestionsMessage
+					v-if="isPlanModeQuestionsMessage(message) && !isQuestionsAnswered(message)"
+					:questions="message.data.questions"
+					:intro-message="message.data.introMessage"
+					:disabled="builderStore.streaming"
+					@submit="builderStore.resumeWithQuestionsAnswers"
+				/>
+				<PlanDisplayMessage
+					v-else-if="isPlanModePlanMessage(message)"
+					:message="message"
+					:disabled="builderStore.streaming"
+					:show-actions="isLastPlanMessage(message)"
+					@decision="builderStore.resumeWithPlanDecision"
+				/>
+				<UserAnswersMessage
+					v-else-if="isPlanModeUserAnswersMessage(message)"
+					:answers="message.data.answers"
+				/>
 			</template>
 		</N8nAskAssistantChat>
 	</div>

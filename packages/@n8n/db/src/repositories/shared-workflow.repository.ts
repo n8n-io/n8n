@@ -143,6 +143,24 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		});
 	}
 
+	async getSharedPersonalWorkflowsCount(): Promise<number> {
+		return await this.createQueryBuilder('sw')
+			.innerJoin('sw.project', 'project')
+			.where('sw.role = :role', { role: 'workflow:owner' })
+			.andWhere('project.type = :type', { type: 'personal' })
+			.andWhere((qb) => {
+				const subQuery = qb
+					.subQuery()
+					.select('1')
+					.from(SharedWorkflow, 'other')
+					.where('other.workflowId = sw.workflowId')
+					.andWhere('other.projectId != sw.projectId')
+					.getQuery();
+				return `EXISTS ${subQuery}`;
+			})
+			.getCount();
+	}
+
 	async findWorkflowWithOptions(
 		workflowId: string,
 		options: {

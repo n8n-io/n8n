@@ -433,6 +433,65 @@ export class ApiHelpers {
 		}
 	}
 
+	// ===== MCP API KEY METHODS =====
+
+	/**
+	 * Get or create MCP API key for the authenticated user.
+	 * If the user already has an API key, returns the existing one (redacted).
+	 * If not, creates a new one and returns the full key.
+	 *
+	 * @returns The MCP API key data including the key itself
+	 */
+	async getMcpApiKey(): Promise<{ id: string; apiKey: string; userId: string }> {
+		const response = await this.request.get('/rest/mcp/api-key');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to get MCP API key: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Rotate the MCP API key for the authenticated user.
+	 * Creates a new API key and invalidates the old one.
+	 *
+	 * @returns The new MCP API key data
+	 */
+	async rotateMcpApiKey(): Promise<{ id: string; apiKey: string; userId: string }> {
+		const response = await this.request.post('/rest/mcp/api-key/rotate');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to rotate MCP API key: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Enable or disable MCP access for the instance.
+	 * Uses the MCP settings endpoint to toggle access.
+	 *
+	 * @param enabled - Whether MCP access should be enabled
+	 */
+	async setMcpAccess(enabled: boolean): Promise<void> {
+		const response = await this.request.patch('/rest/mcp/settings', {
+			data: { mcpAccessEnabled: enabled },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to set MCP access: ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
 	// ===== PRIVATE METHODS =====
 
 	private async loginAndSetCookies(

@@ -91,6 +91,8 @@ export type PublicFrontendSettings = {
 			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
 		};
 	};
+	/** Used to fetch community nodes on preview instance */
+	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
 
 	mfa?: {
 		enabled: boolean;
@@ -308,6 +310,7 @@ export class FrontendService {
 				advancedPermissions: false,
 				apiKeyScopes: false,
 				workflowDiffs: false,
+				namedVersions: false,
 				provisioning: false,
 				projects: {
 					team: {
@@ -455,6 +458,7 @@ export class FrontendService {
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
+			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
 			customRoles: this.licenseState.isCustomRolesLicensed(),
 		});
 
@@ -544,6 +548,7 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 			mfa,
+			communityNodesEnabled,
 		} = await this.getSettings();
 
 		const publicSettings: PublicFrontendSettings = {
@@ -568,6 +573,7 @@ export class FrontendService {
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
+			communityNodesEnabled,
 		};
 		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;

@@ -42,9 +42,9 @@ describe('Secret Providers Completions API', () => {
 	let owner: User;
 	let member: User;
 	let admin: User;
-	let authOwnerAgent: SuperAgentTest;
-	let authAdminAgent: SuperAgentTest;
-	let authMemberAgent: SuperAgentTest;
+	let ownerAgent: SuperAgentTest;
+	let adminAgent: SuperAgentTest;
+	let memberAgent: SuperAgentTest;
 
 	const testServer = setupTestServer({
 		endpointGroups: ['externalSecrets'],
@@ -65,9 +65,9 @@ describe('Secret Providers Completions API', () => {
 		member = await createMember();
 		admin = await createAdmin();
 
-		authOwnerAgent = testServer.authAgentFor(owner);
-		authAdminAgent = testServer.authAgentFor(admin);
-		authMemberAgent = testServer.authAgentFor(member);
+		ownerAgent = testServer.authAgentFor(owner);
+		adminAgent = testServer.authAgentFor(admin);
+		memberAgent = testServer.authAgentFor(member);
 
 		connectionRepository = Container.get(SecretsProviderConnectionRepository);
 		projectAccessRepository = Container.get(ProjectSecretsProviderAccessRepository);
@@ -81,20 +81,30 @@ describe('Secret Providers Completions API', () => {
 	});
 
 	describe('GET /secret-providers/completions/secrets/global', () => {
-		describe('Authorisation', () => {
-			it('should authorize owner to list global secrets', async () => {
-				const response = await authOwnerAgent.get('/secret-providers/completions/secrets/global');
-				expect(response.status).toBe(200);
+		describe('Authorization', () => {
+			const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+			let agents: Record<string, SuperAgentTest>;
+
+			beforeAll(() => {
+				agents = {
+					owner: ownerAgent,
+					admin: adminAgent,
+					member: memberAgent,
+				};
 			});
 
-			it('should authorize global admin to list global secrets', async () => {
-				const response = await authAdminAgent.get('/secret-providers/completions/secrets/global');
-				expect(response.status).toBe(200);
-			});
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])('should allow=$allowed for $role to list global secrets', async ({ role, allowed }) => {
+				const response = await agents[role]
+					.get('/secret-providers/completions/secrets/global')
+					.expect(allowed ? 200 : 403);
 
-			it('should refuse member to list global secrets', async () => {
-				const response = await authMemberAgent.get('/secret-providers/completions/secrets/global');
-				expect(response.status).toBe(403);
+				if (!allowed) {
+					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+				}
 			});
 		});
 
@@ -124,7 +134,6 @@ describe('Secret Providers Completions API', () => {
 					connectionRepository.create({
 						providerKey: 'global-connection-1',
 						type: 'global_provider_1',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
@@ -132,27 +141,14 @@ describe('Secret Providers Completions API', () => {
 					connectionRepository.create({
 						providerKey: 'global-connection-2',
 						type: 'global_provider_2',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
-
-				// Create disabled global connection (should NOT be returned)
-				await connectionRepository.save(
-					connectionRepository.create({
-						providerKey: 'global-connection-disabled',
-						type: 'global_provider_1',
-						isEnabled: false,
-						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
-					}),
-				);
-
 				// Create project-scoped connection (should NOT be returned)
 				const projectConnection = await connectionRepository.save(
 					connectionRepository.create({
 						providerKey: 'project-connection',
 						type: 'project_provider',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
@@ -165,7 +161,7 @@ describe('Secret Providers Completions API', () => {
 
 				await resetManager();
 
-				const response = await authOwnerAgent
+				const response = await ownerAgent
 					.get('/secret-providers/completions/secrets/global')
 					.expect(200);
 
@@ -192,10 +188,10 @@ describe('Secret Providers Completions API', () => {
 					connectionRepository.create({
 						providerKey: 'project-connection',
 						type: 'project_provider',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
+
 				await projectAccessRepository.save(
 					projectAccessRepository.create({
 						projectId: projectWithConnections.id,
@@ -203,19 +199,9 @@ describe('Secret Providers Completions API', () => {
 					}),
 				);
 
-				// Create disabled global connection (should NOT be returned)
-				await connectionRepository.save(
-					connectionRepository.create({
-						providerKey: 'global-connection-disabled',
-						type: 'project_provider',
-						isEnabled: false,
-						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
-					}),
-				);
-
 				await resetManager();
 
-				const response = await authOwnerAgent
+				const response = await ownerAgent
 					.get('/secret-providers/completions/secrets/global')
 					.expect(200);
 
@@ -225,26 +211,30 @@ describe('Secret Providers Completions API', () => {
 	});
 
 	describe('GET /secret-providers/completions/secrets/project/:projectId', () => {
-		describe('Authorisation', () => {
-			it('should authorize owner to list project secrets', async () => {
-				const response = await authOwnerAgent.get(
-					'/secret-providers/completions/secrets/project/123',
-				);
-				expect(response.status).toBe(200);
+		describe('Authorization', () => {
+			const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+			let agents: Record<string, SuperAgentTest>;
+
+			beforeAll(() => {
+				agents = {
+					owner: ownerAgent,
+					admin: adminAgent,
+					member: memberAgent,
+				};
 			});
 
-			it('should authorize global admin to list project secrets', async () => {
-				const response = await authAdminAgent.get(
-					'/secret-providers/completions/secrets/project/123',
-				);
-				expect(response.status).toBe(200);
-			});
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])('should allow=$allowed for $role to list project secrets', async ({ role, allowed }) => {
+				const response = await agents[role]
+					.get('/secret-providers/completions/secrets/project/123')
+					.expect(allowed ? 200 : 403);
 
-			it('should refuse member to list project secrets', async () => {
-				const response = await authMemberAgent.get(
-					'/secret-providers/completions/secrets/project/123',
-				);
-				expect(response.status).toBe(403);
+				if (!allowed) {
+					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+				}
 			});
 		});
 
@@ -279,7 +269,6 @@ describe('Secret Providers Completions API', () => {
 					connectionRepository.create({
 						providerKey: 'test-project-secret-connection-1',
 						type: 'project_provider_1',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
@@ -287,7 +276,6 @@ describe('Secret Providers Completions API', () => {
 					connectionRepository.create({
 						providerKey: 'test-project-secret-connection-2',
 						type: 'project_provider_2',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
@@ -305,28 +293,11 @@ describe('Secret Providers Completions API', () => {
 					}),
 				);
 
-				// Create disabled connection for the same project (should NOT be returned)
-				const disabledConnection = await connectionRepository.save(
-					connectionRepository.create({
-						providerKey: 'test-project-secret-connection-disabled',
-						type: 'project_provider_1',
-						isEnabled: false,
-						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
-					}),
-				);
-				await projectAccessRepository.save(
-					projectAccessRepository.create({
-						projectId: projectWithConnections.id,
-						secretsProviderConnectionId: disabledConnection.id,
-					}),
-				);
-
 				// Create connection for another project (should NOT be returned)
 				const otherProjectConnection = await connectionRepository.save(
 					connectionRepository.create({
 						providerKey: 'other-project-connection',
 						type: 'other_project_provider',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
@@ -342,14 +313,13 @@ describe('Secret Providers Completions API', () => {
 					connectionRepository.create({
 						providerKey: 'global-connection',
 						type: 'global_provider',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
 
 				await resetManager();
 
-				const response = await authOwnerAgent
+				const response = await ownerAgent
 					.get(`/secret-providers/completions/secrets/project/${projectWithConnections.id}`)
 					.expect(200);
 
@@ -381,7 +351,6 @@ describe('Secret Providers Completions API', () => {
 					connectionRepository.create({
 						providerKey: 'other-project-connection',
 						type: 'project_provider',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
@@ -397,14 +366,13 @@ describe('Secret Providers Completions API', () => {
 					connectionRepository.create({
 						providerKey: 'global-connection',
 						type: 'global_provider',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
 
 				await resetManager();
 
-				const response = await authOwnerAgent
+				const response = await ownerAgent
 					.get(`/secret-providers/completions/secrets/project/${projectWithoutConnections.id}`)
 					.expect(200);
 
@@ -428,7 +396,6 @@ describe('Secret Providers Completions API', () => {
 					connectionRepository.create({
 						providerKey: 'project-connection',
 						type: 'project_provider',
-						isEnabled: true,
 						encryptedSettings: JSON.stringify({ mocked: 'mocked-encrypted-settings' }),
 					}),
 				);
@@ -442,7 +409,7 @@ describe('Secret Providers Completions API', () => {
 				await resetManager();
 
 				const nonExistentProjectId = '00000000-0000-0000-0000-000000000000';
-				const response = await authOwnerAgent
+				const response = await ownerAgent
 					.get(`/secret-providers/completions/secrets/project/${nonExistentProjectId}`)
 					.expect(200);
 

@@ -1,4 +1,5 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -10,11 +11,8 @@ import {
 import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeApi.credentials';
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
-import { getProxyAgent } from '@utils/httpProxyAgent';
 
 import { lemonadeModel, lemonadeOptions, lemonadeDescription } from '../LMLemonade/description';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatLemonade implements INodeType {
 	description: INodeTypeDescription = {

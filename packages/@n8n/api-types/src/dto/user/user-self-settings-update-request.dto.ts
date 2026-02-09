@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 /**
  * DTO for self-service user settings updates via /me/settings endpoint.

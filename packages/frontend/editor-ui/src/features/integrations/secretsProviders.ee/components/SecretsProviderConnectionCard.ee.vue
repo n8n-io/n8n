@@ -95,7 +95,7 @@ function onAction(action: string) {
 								})
 							: i18n.baseText('settings.externalSecrets.card.secretsCount', {
 									interpolate: {
-										count: `${provider.secretsCount}`,
+										count: `${provider.secretsCount ?? 0}`,
 									},
 								})
 					}}
