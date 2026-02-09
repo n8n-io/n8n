@@ -171,6 +171,7 @@ onMounted(() => {
 				<N8nTooltip v-if="state.isTrigger" :disabled="!tooltipText" placement="top">
 					<template #content>{{ tooltipText }}</template>
 					<N8nButton
+						data-test-id="node-setup-card-test-button"
 						:label="buttonLabel"
 						:disabled="isButtonDisabled"
 						:loading="isLoading"
