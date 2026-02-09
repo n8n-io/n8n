@@ -38,6 +38,21 @@ import {
 	FROM_AI_PARAMETERS_MODAL_KEY,
 } from '@/app/constants';
 
+export type ExecuteAction =
+	| 'executed'
+	| 'stopped-webhook'
+	| 'stopped-execution'
+	| 'opened-chat'
+	| 'opened-modal'
+	| 'cancelled'
+	| 'noop';
+
+export type UseNodeExecutionOptions = {
+	telemetrySource?: string;
+	executionMode?: MaybeRef<'inclusive' | 'exclusive'>;
+	source?: string;
+};
+
 export type NodeExecutionState = {
 	isExecuting: ComputedRef<boolean>;
 	isListening: ComputedRef<boolean>;
@@ -46,25 +61,31 @@ export type NodeExecutionState = {
 	buttonIcon: ComputedRef<IconName | undefined>;
 	disabledReason: ComputedRef<string>;
 	isTriggerNode: ComputedRef<boolean>;
+	hasIssues: ComputedRef<boolean>;
+	shouldGenerateCode: ComputedRef<boolean>;
 };
 
 export type NodeExecutionActions = {
-	execute: () => Promise<void>;
+	execute: () => Promise<ExecuteAction>;
 	stopExecution: () => Promise<void>;
 };
 
-// TODO: This duplicates a lot of logic from `NodeExecuteButton` component
-// we need to update the component to use this composable
-
 /**
  * Composable that provides node execution state and actions.
- * @param node - The node to execute (can be a ref or INodeUi object)
- * @param telemetrySource - Source identifier for telemetry tracking
+ * Used by both NodeExecuteButton component and SetupPanel.
+ * @param node - The node to execute (can be a ref, computed, or raw value; may be null/undefined)
+ * @param options - Configuration options for execution behavior
  */
 export function useNodeExecution(
-	node: MaybeRef<INodeUi>,
-	telemetrySource = 'setupPanel',
+	node: MaybeRef<INodeUi | null | undefined>,
+	options: UseNodeExecutionOptions = {},
 ): NodeExecutionState & NodeExecutionActions {
+	const {
+		telemetrySource = 'setupPanel',
+		executionMode = 'inclusive',
+		source = 'SetupPanel.ExecuteNodeButton',
+	} = options;
+
 	const router = useRouter();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
@@ -82,7 +103,7 @@ export function useNodeExecution(
 
 	const codeGenerationInProgress = ref(false);
 
-	const nodeRef = computed(() => toValue(node));
+	const nodeRef = computed(() => toValue(node) ?? null);
 
 	const pinnedData = usePinnedData(nodeRef);
 
@@ -300,15 +321,15 @@ export function useNodeExecution(
 		return true;
 	}
 
-	async function execute(): Promise<void> {
-		if (!nodeRef.value) return;
+	async function execute(): Promise<ExecuteAction> {
+		if (!nodeRef.value) return 'noop';
 
 		const nodeName = nodeRef.value.name;
 
 		// AI Transform code generation
 		if (shouldGenerateCode.value) {
 			const success = await handleCodeGeneration();
-			if (!success) return;
+			if (!success) return 'cancelled';
 		}
 
 		// Chat nodes
@@ -316,19 +337,19 @@ export function useNodeExecution(
 			ndvStore.unsetActiveNodeName();
 			workflowsStore.chatPartialExecutionDestinationNode = nodeName;
 			nodeViewEventBus.emit('openChat');
-			return;
+			return 'opened-chat';
 		}
 
 		// Stop webhook listening
 		if (isListening.value) {
 			await stopWaitingForWebhook();
-			return;
+			return 'stopped-webhook';
 		}
 
 		// Stop workflow execution
 		if (isListeningForWorkflowEvents.value) {
 			await stopCurrentExecution();
-			return;
+			return 'stopped-execution';
 		}
 
 		// Handle pinned data
@@ -358,7 +379,7 @@ export function useNodeExecution(
 						nodeName,
 					},
 				});
-				return;
+				return 'opened-modal';
 			}
 
 			// Normal execution
@@ -373,10 +394,14 @@ export function useNodeExecution(
 			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
 			await runWorkflow({
-				destinationNode: { nodeName, mode: 'inclusive' },
-				source: 'SetupPanel.ExecuteNodeButton',
+				destinationNode: { nodeName, mode: toValue(executionMode) },
+				source,
 			});
+
+			return 'executed';
 		}
+
+		return 'cancelled';
 	}
 
 	async function stopExecution(): Promise<void> {
@@ -395,6 +420,8 @@ export function useNodeExecution(
 		buttonIcon,
 		disabledReason,
 		isTriggerNode,
+		hasIssues,
+		shouldGenerateCode,
 		execute,
 		stopExecution,
 	};
