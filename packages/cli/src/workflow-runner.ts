@@ -23,6 +23,7 @@ import {
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	Workflow,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -162,6 +163,47 @@ export class WorkflowRunner {
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
 			return executionId;
+		}
+
+		// Check execution quotas (skip for manual/internal modes)
+		if (data.executionMode !== 'manual' && data.executionMode !== 'internal') {
+			try {
+				const { ExecutionQuotaEnforcementService } = await import(
+					'@/modules/execution-quota/execution-quota-enforcement.service'
+				);
+				await Container.get(ExecutionQuotaEnforcementService).enforceQuota(
+					workflowId,
+					data.workflowData.name,
+				);
+			} catch (error) {
+				const { ExecutionQuotaExceededError } = await import(
+					'@/modules/execution-quota/execution-quota.errors'
+				);
+				if (error instanceof ExecutionQuotaExceededError) {
+					const executionError = new WorkflowOperationError(error.message);
+					const runData: IRun = {
+						data: createRunExecutionData({
+							resultData: {
+								error: executionError,
+								runData: {},
+							},
+						}),
+						finished: false,
+						mode: data.executionMode,
+						startedAt: new Date(),
+						stoppedAt: new Date(),
+						status: 'error',
+						storedAt: this.storageConfig.modeTag,
+					};
+					const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
+					await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
+					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
+					responsePromise?.reject(error);
+					this.activeExecutions.finalizeExecution(executionId);
+					return executionId;
+				}
+				throw error;
+			}
 		}
 
 		if (responsePromise) {
