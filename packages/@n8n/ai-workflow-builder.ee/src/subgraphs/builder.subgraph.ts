@@ -44,6 +44,7 @@ import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+import { mermaidStringify } from '../tools/utils/mermaid.utils';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildConversationContext,
@@ -356,10 +357,14 @@ export class BuilderSubgraph extends BaseSubgraph<
 			contextParts.push('=== APPROVED PLAN (FOLLOW THIS) ===');
 			contextParts.push(formatPlanAsText(parentState.planOutput));
 			if (parentState.workflowJSON?.nodes?.length > 0) {
+				const overview = mermaidStringify(
+					{ workflow: parentState.workflowJSON },
+					{ includeNodeType: true, includeNodeParameters: true, includeNodeName: true },
+				);
 				contextParts.push(
-					'=== IMPORTANT: EXISTING WORKFLOW ===',
-					'The workflow already has nodes. Use get_workflow_overview first to see what exists.',
-					'Only make the changes described in the plan — do NOT recreate nodes that already exist.',
+					'=== EXISTING WORKFLOW (do NOT recreate these nodes) ===',
+					overview,
+					'Only make the changes described in the plan.',
 				);
 			}
 		} else {

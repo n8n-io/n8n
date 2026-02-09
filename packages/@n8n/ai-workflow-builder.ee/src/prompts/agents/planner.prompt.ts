@@ -7,6 +7,7 @@
 import type { DiscoveryContext } from '@/types/discovery-types';
 import type { PlanOutput } from '@/types/planning';
 import type { SimpleWorkflow } from '@/types/workflow';
+import { mermaidStringify } from '@/tools/utils/mermaid.utils';
 import { formatPlanAsText } from '@/utils/plan-helpers';
 
 import { prompt } from '../builder';
@@ -90,7 +91,13 @@ export function buildPlannerContext(options: PlannerContextOptions): string {
 		.map((node) => `- ${node.nodeName} v${node.version}: ${node.reasoning}`)
 		.join('\n');
 
-	const workflowSummary = workflowJSON.nodes.map((n) => `- ${n.name} (${n.type})`).join('\n');
+	const workflowOverview =
+		workflowJSON.nodes.length > 0
+			? mermaidStringify(
+					{ workflow: workflowJSON },
+					{ includeNodeType: true, includeNodeParameters: true, includeNodeName: true },
+				)
+			: '';
 
 	return prompt()
 		.section('user_request', userRequest)
@@ -99,7 +106,7 @@ export function buildPlannerContext(options: PlannerContextOptions): string {
 			'discovery_context_suggested_nodes',
 			discoveredNodesList,
 		)
-		.sectionIf(workflowJSON.nodes.length > 0, 'existing_workflow_summary', workflowSummary)
+		.sectionIf(workflowJSON.nodes.length > 0, 'existing_workflow', workflowOverview)
 		.sectionIf(planPrevious, 'previous_plan', () => formatPlanAsText(planPrevious!))
 		.sectionIf(planFeedback, 'user_feedback', () => planFeedback!)
 		.build();
