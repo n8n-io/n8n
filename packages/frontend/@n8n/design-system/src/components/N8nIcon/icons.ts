@@ -190,6 +190,7 @@ import IconLucideSatelliteDish from '~icons/lucide/satellite-dish';
 import IconLucideSave from '~icons/lucide/save';
 import IconLucideScale from '~icons/lucide/scale';
 import IconLucideScissors from '~icons/lucide/scissors';
+import IconLucideScrollText from '~icons/lucide/scroll-text';
 import IconLucideSearch from '~icons/lucide/search';
 import IconLucideSend from '~icons/lucide/send';
 import IconLucideServer from '~icons/lucide/server';
@@ -409,6 +410,7 @@ export const deprecatedIconSet = {
 	rss: IconLucideRss,
 	save: IconLucideSave,
 	'satellite-dish': IconLucideSatelliteDish,
+	'scroll-text': IconLucideScrollText,
 	search: IconLucideSearch,
 	'search-minus': IconLucideZoomOut,
 	'search-plus': IconLucideZoomIn,
