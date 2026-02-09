@@ -56,6 +56,7 @@
     "@langchain/core": "catalog:",
     "@langchain/langgraph": "1.0.2",
     "@langchain/openai": "catalog:",
+    "langchain": "catalog:",
     "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
