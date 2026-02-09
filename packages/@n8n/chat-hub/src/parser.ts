@@ -1,4 +1,8 @@
-import type { ChatHubMessageType, ChatMessageContentChunk } from '@n8n/api-types';
+import {
+	chatHubMessageWithButtonsSchema,
+	type ChatHubMessageType,
+	type ChatMessageContentChunk,
+} from '@n8n/api-types';
 
 export interface MessageWithContent {
 	type: ChatHubMessageType;
@@ -19,12 +23,22 @@ export function appendChunkToParsedMessageItems(
 			// Hidden item might be a command prefix, combine with new chunk and re-parse
 			remaining = lastItem.content + chunk;
 			result.pop(); // Remove it so we can re-parse
-		} else if (lastItem.type !== 'text' && lastItem.isIncomplete) {
+		} else if (
+			(lastItem.type === 'artifact-create' || lastItem.type === 'artifact-edit') &&
+			lastItem.isIncomplete
+		) {
 			// Incomplete command - append chunk and re-parse
 			// Don't mutate the original item, create new content string
 			remaining = lastItem.content + chunk;
 			result.pop(); // Remove it so we can re-parse
 		}
+	}
+
+	// Check if the chunk is button JSON (arrives as complete JSON in one chunk)
+	const buttonChunk = tryParseButtonsJson(remaining);
+	if (buttonChunk) {
+		result.push(buttonChunk);
+		return result;
 	}
 
 	// Parse the remaining content
@@ -101,8 +115,8 @@ export function appendChunkToParsedMessageItems(
 }
 
 function addTextToResult(result: ChatMessageContentChunk[], textContent: string): void {
-	// Skip empty or whitespace-only text
-	if (textContent.trim() === '') {
+	// Skip empty text (but preserve whitespace like newlines, which are meaningful in markdown)
+	if (textContent === '') {
 		return;
 	}
 
@@ -231,6 +245,26 @@ function extractTagContent(xml: string, tagName: string): string | null {
 	}
 
 	return xml.slice(contentStart, endIndex);
+}
+
+function tryParseButtonsJson(content: string): ChatMessageContentChunk | null {
+	if (!content.startsWith('{')) return null;
+
+	try {
+		const parsed: unknown = JSON.parse(content);
+		const result = chatHubMessageWithButtonsSchema.safeParse(parsed);
+		if (result.success) {
+			return {
+				type: 'with-buttons',
+				content: result.data.text,
+				buttons: result.data.buttons,
+				blockUserInput: result.data.blockUserInput,
+			};
+		}
+	} catch {
+		// Not valid JSON
+	}
+	return null;
 }
 
 /**

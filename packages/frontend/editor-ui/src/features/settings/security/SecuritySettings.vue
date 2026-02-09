@@ -21,6 +21,9 @@ const { state, isLoading } = useAsyncState(async () => {
 	return {
 		personalSpacePublishing: settings.personalSpacePublishing,
 		personalSpaceSharing: settings.personalSpaceSharing,
+		publishedPersonalWorkflowsCount: settings.publishedPersonalWorkflowsCount,
+		sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
+		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
 	};
 }, undefined);
 
@@ -96,6 +99,17 @@ const personalSpaceSharing = computed({
 		await updatePersonalSpaceSetting('personalSpaceSharing', value, 'sharing');
 	},
 });
+
+const sharingCountText = computed(() => {
+	const workflows = state.value?.sharedPersonalWorkflowsCount ?? 0;
+	const credentials = state.value?.sharedPersonalCredentialsCount ?? 0;
+	return i18n.baseText('settings.security.personalSpace.sharing.existingCount.value', {
+		interpolate: {
+			workflowCount: String(workflows),
+			credentialCount: String(credentials),
+		},
+	});
+});
 </script>
 
 <template>
@@ -108,41 +122,67 @@ const personalSpaceSharing = computed({
 			{{ i18n.baseText('settings.security.personalSpace.title') }}
 		</N8nHeading>
 
-		<div :class="$style.settingsContainer">
-			<div :class="$style.settingsContainerInfo">
-				<N8nText :bold="true">
-					{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
+		<div :class="$style.settingsSection">
+			<div :class="$style.settingsContainer">
+				<div :class="$style.settingsContainerInfo">
+					<N8nText :bold="true">
+						{{ i18n.baseText('settings.security.personalSpace.sharing.title') }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.security.personalSpace.sharing.description') }}
+					</N8nText>
+				</div>
+				<div :class="$style.settingsContainerAction">
+					<ElSwitch
+						v-model="personalSpaceSharing"
+						:loading="isLoading"
+						size="large"
+						data-test-id="security-personal-space-sharing-toggle"
+					/>
+				</div>
+			</div>
+			<div :class="$style.settingsCountRow" data-test-id="security-sharing-count">
+				<N8nText size="small">
+					{{ i18n.baseText('settings.security.personalSpace.sharing.existingCount.label') }}
 				</N8nText>
 				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.security.personalSpace.publishing.description') }}
+					{{ sharingCountText }}
 				</N8nText>
-			</div>
-			<div :class="$style.settingsContainerAction">
-				<ElSwitch
-					v-model="personalSpacePublishing"
-					:loading="isLoading"
-					size="large"
-					data-test-id="security-personal-space-publishing-toggle"
-				/>
 			</div>
 		</div>
 
-		<div :class="$style.settingsContainer">
-			<div :class="$style.settingsContainerInfo">
-				<N8nText :bold="true">
-					{{ i18n.baseText('settings.security.personalSpace.sharing.title') }}
+		<div :class="$style.settingsSection">
+			<div :class="$style.settingsContainer">
+				<div :class="$style.settingsContainerInfo">
+					<N8nText :bold="true">
+						{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.security.personalSpace.publishing.description') }}
+					</N8nText>
+				</div>
+				<div :class="$style.settingsContainerAction">
+					<ElSwitch
+						v-model="personalSpacePublishing"
+						:loading="isLoading"
+						size="large"
+						data-test-id="security-personal-space-publishing-toggle"
+					/>
+				</div>
+			</div>
+			<div :class="$style.settingsCountRow" data-test-id="security-publishing-count">
+				<N8nText size="small">
+					{{ i18n.baseText('settings.security.personalSpace.publishing.existingCount.label') }}
 				</N8nText>
 				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.security.personalSpace.sharing.description') }}
+					{{
+						i18n.baseText('settings.security.personalSpace.publishing.existingCount.value', {
+							interpolate: {
+								count: String(state?.publishedPersonalWorkflowsCount ?? 0),
+							},
+						})
+					}}
 				</N8nText>
-			</div>
-			<div :class="$style.settingsContainerAction">
-				<ElSwitch
-					v-model="personalSpaceSharing"
-					:loading="isLoading"
-					size="large"
-					data-test-id="security-personal-space-sharing-toggle"
-				/>
 			</div>
 		</div>
 	</div>
@@ -153,16 +193,19 @@ const personalSpaceSharing = computed({
 	padding-bottom: var(--spacing--md);
 }
 
+.settingsSection {
+	border-radius: var(--radius);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	max-width: 600px;
+	margin-bottom: var(--spacing--lg);
+}
+
 .settingsContainer {
 	display: flex;
 	align-items: center;
 	padding-left: var(--spacing--sm);
-	margin-bottom: var(--spacing--lg);
 	justify-content: space-between;
 	flex-shrink: 0;
-	border-radius: var(--radius);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	max-width: 600px;
 }
 
 .settingsContainerInfo {
@@ -182,5 +225,13 @@ const personalSpaceSharing = computed({
 	justify-content: flex-end;
 	align-items: center;
 	flex-shrink: 0;
+}
+
+.settingsCountRow {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 }
 </style>

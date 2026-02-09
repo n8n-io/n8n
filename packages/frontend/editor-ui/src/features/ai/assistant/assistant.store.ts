@@ -327,7 +327,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					activeNode,
 					['position', 'parameters.notice'],
 					{
-						trimParameterValues: !allowSendingParameterValues.value,
+						excludeParameterValues: !allowSendingParameterValues.value,
 					},
 				)
 			: null;
@@ -376,7 +376,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				: undefined,
 			currentWorkflow: workflowDataStale.value
 				? await assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
-						trimParameterValues: !allowSendingParameterValues.value,
+						excludeParameterValues: !allowSendingParameterValues.value,
 					})
 				: undefined,
 			executionData:
@@ -393,7 +393,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		const activeNode = workflowsStore.activeNode() as INode;
 		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
-			trimParameterValues: !allowSendingParameterValues.value,
+			excludeParameterValues: !allowSendingParameterValues.value,
 		});
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
@@ -467,7 +467,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
 			context.node,
-			{ trimParameterValues: !allowSendingParameterValues.value },
+			{ excludeParameterValues: !allowSendingParameterValues.value },
 		);
 
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
@@ -483,7 +483,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				context.node,
 				['position', 'parameters.notice'],
 				{
-					trimParameterValues: !allowSendingParameterValues.value,
+					excludeParameterValues: !allowSendingParameterValues.value,
 				},
 			),
 			nodeInputData,
@@ -594,7 +594,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			}
 			const activeNode = workflowsStore.activeNode() as INode;
 			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
-				trimParameterValues: !allowSendingParameterValues.value,
+				excludeParameterValues: !allowSendingParameterValues.value,
 			});
 			const userContext = await getVisualContext(nodeInfo);
 

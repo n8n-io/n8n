@@ -880,6 +880,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			return;
 		}
 
+		// If the previous message was 'waiting', mark it as 'success' now that execution is resuming
+		if (previousMessageId && conversation?.messages[previousMessageId]?.status === 'waiting') {
+			updateMessage(sessionId, previousMessageId, 'success');
+		}
+
 		// Create the AI message placeholder - use streaming state if available for this session
 		const streamingStateForSession =
 			streaming.value?.sessionId === sessionId ? streaming.value : undefined;

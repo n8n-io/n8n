@@ -14,12 +14,10 @@ inputs:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
     default: 'false'
-    type: boolean
   build-command:
     description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
     default: 'pnpm build'
-    type: string
 
 runs:
   using: 'composite'

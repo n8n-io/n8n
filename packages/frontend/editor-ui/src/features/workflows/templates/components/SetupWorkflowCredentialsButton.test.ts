@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { flushPromises } from '@vue/test-utils';
 import SetupWorkflowCredentialsButton from './SetupWorkflowCredentialsButton.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -116,7 +117,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 		expect(uiStore.openModal).not.toHaveBeenCalled();
 	});
 
-	it('calls isReadyToRunTemplateId with the correct template ID', () => {
+	it('calls isReadyToRunTemplateId with the correct template ID', async () => {
 		const templateWorkflow = {
 			...EMPTY_WORKFLOW,
 			meta: { templateId: 'ready-to-run-ai-workflow-v5', templateCredsSetupCompleted: false },
@@ -126,8 +127,10 @@ describe('SetupWorkflowCredentialsButton', () => {
 		workflowsStore.getNodes.mockReturnValue([]);
 
 		mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+		mockRouteQuery.mockReturnValue({ templateId: 'ready-to-run-ai-workflow-v5' });
 
 		renderComponent();
+		await flushPromises();
 
 		expect(readyToRunStore.isReadyToRunTemplateId).toHaveBeenCalledWith(
 			'ready-to-run-ai-workflow-v5',
@@ -150,7 +153,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 			],
 		};
 
-		it('opens modal when all conditions are met', () => {
+		it('opens modal when all conditions are met', async () => {
 			workflowsStore.workflow = workflowWithUnfilledCredentials;
 			workflowsStore.getNodes.mockReturnValue(workflowWithUnfilledCredentials.nodes as never);
 			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
@@ -159,6 +162,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 			mockRouteQuery.mockReturnValue({ templateId: '123' });
 
 			renderComponent();
+			await flushPromises();
 
 			expect(uiStore.openModal).toHaveBeenCalledWith(SETUP_CREDENTIALS_MODAL_KEY);
 		});

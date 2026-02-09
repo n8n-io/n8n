@@ -1,4 +1,9 @@
-import { type ChatMessageId, type ChatSessionId, ChatHubConversationModel } from '@n8n/api-types';
+import {
+	type ChatMessageId,
+	type ChatSessionId,
+	ChatHubConversationModel,
+	chatHubMessageWithButtonsSchema,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository, IExecutionResponse, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -704,6 +709,10 @@ export class ChatHubExecutionService {
 				return sendMessage;
 			}
 
+			const result = chatHubMessageWithButtonsSchema.safeParse(sendMessage);
+			if (result.success) {
+				return jsonStringify(result.data);
+			}
 			return '';
 		}
 

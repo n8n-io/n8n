@@ -52,7 +52,7 @@ export const createWorkflowDetailsTool = (
 				openWorldHint: false, // Works with internal n8n data only
 			},
 		},
-		handler: async ({ workflowId }) => {
+		handler: async ({ workflowId }: { workflowId: string }) => {
 			const parameters = { workflowId };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,

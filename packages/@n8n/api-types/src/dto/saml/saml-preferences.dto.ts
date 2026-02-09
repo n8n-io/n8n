@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 const SamlLoginBindingSchema = z.enum(['redirect', 'post']);
 
@@ -29,7 +30,7 @@ export class SamlPreferencesAttributeMapping extends Z.class({
 
 export class SamlPreferences extends Z.class({
 	/** Mapping of SAML attributes to user fields. */
-	mapping: SamlPreferencesAttributeMapping.optional(),
+	mapping: SamlPreferencesAttributeMapping.schema.optional(),
 	/** SAML metadata in XML format. */
 	metadata: z.string().optional(),
 	metadataUrl: z.string().optional(),

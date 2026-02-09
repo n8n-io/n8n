@@ -11,6 +11,7 @@ import {
 	isLlmProvider,
 	unflattenModel,
 	createMimeTypes,
+	isWaitingForApproval,
 } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -67,6 +68,7 @@ import ChatGreetings from './components/ChatGreetings.vue';
 import { useChatPushHandler } from './composables/useChatPushHandler';
 import ChatArtifactViewer from './components/ChatArtifactViewer.vue';
 import { useChatArtifacts } from './composables/useChatArtifacts';
+import { useChatInputFocus } from './composables/useChatInputFocus';
 
 const router = useRouter();
 const route = useRoute();
@@ -127,6 +129,11 @@ const hasSession = computed(() => (chatStore.sessions.ids?.length ?? 0) > 0);
 const showWelcomeScreen = computed<boolean | undefined>(() => {
 	if (hadConversationBefore.value || welcomeScreenDismissed.value) {
 		return false; // return false early to make UI ready fast
+	}
+
+	// Skip welcome screen if an agent is pre-selected via query params
+	if (route.query.workflowId || route.query.agentId) {
+		return false;
 	}
 
 	if (!chatStore.sessionsReady) {
@@ -311,6 +318,11 @@ const messagingState = computed<MessagingState>(() => {
 		return chatStore.streaming.messageId ? 'receiving' : 'waitingFirstChunk';
 	}
 
+	// Check if waiting for approval (button click)
+	if (isWaitingForApproval(chatStore.lastMessage(sessionId.value))) {
+		return 'waitingForApproval';
+	}
+
 	if (chatStore.agentsReady && !selectedModel.value) {
 		return 'missingAgent';
 	}
@@ -343,6 +355,10 @@ const canAcceptFiles = computed(() => {
 });
 
 const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
+
+useChatInputFocus(inputRef, {
+	disabled: computed(() => showWelcomeScreen.value === true || messagingState.value !== 'idle'),
+});
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({

@@ -16,6 +16,7 @@ import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { ExternalHooks } from '@/external-hooks';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
@@ -1548,6 +1549,23 @@ describe('CredentialsService', () => {
 				'The field "apiKey" is mandatory for credentials of type "apiKey"',
 			);
 		});
+
+		it('should prevent use of external secret expression when required permission is missing', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			const payload = {
+				name: 'Test Credential',
+				type: 'apiKey',
+				data: {
+					apiKey: '$secrets.myApiKey',
+					url: 'https://api.example.com',
+				},
+				projectId: 'project-1',
+			};
+
+			await expect(service.createUnmanagedCredential(payload, memberUser)).rejects.toThrow(
+				'Lacking permissions to reference external secrets in credentials',
+			);
+		});
 	});
 
 	describe('createManagedCredential', () => {
@@ -1639,6 +1657,138 @@ describe('CredentialsService', () => {
 			// ASSERT
 			expect(result).toHaveProperty('id', 'new-managed-cred-id');
 			expect(result).toHaveProperty('name', 'Managed Credential');
+		});
+	});
+
+	describe('checkCredentialData', () => {
+		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should pass when all required fields are provided', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: '',
+				},
+				{
+					displayName: 'Domain',
+					name: 'domain',
+					type: 'string',
+					required: true,
+					default: '',
+				},
+			]);
+
+			const data = {
+				apiKey: 'test-key',
+				domain: 'example.com',
+			};
+
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+		});
+
+		it('should pass when required field with valid default is not provided', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'Host',
+					name: 'host',
+					type: 'string',
+					required: true,
+					default: 'https://api.example.com',
+				},
+			]);
+
+			const data = {};
+
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+		});
+
+		it('should pass when credential has no required fields', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'Optional Field',
+					name: 'optionalField',
+					type: 'string',
+					required: false,
+					default: '',
+				},
+			]);
+
+			const data = {};
+
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+		});
+
+		it('should call validateExternalSecretsPermissions', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			const validateSpy = jest.spyOn(validation, 'validateExternalSecretsPermissions');
+
+			const data = { apiKey: 'test-key' };
+
+			service.checkCredentialData('apiCredential', data, ownerUser);
+
+			expect(validateSpy).toHaveBeenCalledWith(ownerUser, data);
+		});
+
+		it('should throw BadRequestError when required field is missing and has no default', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: undefined,
+				},
+			]);
+
+			const data = {}; // apiKey is missing
+
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
+				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
+			);
+		});
+
+		it('should throw when required field value is undefined', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: '',
+				},
+			]);
+
+			const data = { apiKey: undefined };
+
+			// @ts-expect-error - Testing edge case with undefined value
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
+				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
+			);
+		});
+
+		it('should throw when required field value is empty string', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: '',
+				},
+			]);
+
+			const data = { apiKey: '' };
+
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
+				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
+			);
 		});
 	});
 });

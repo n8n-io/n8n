@@ -90,7 +90,7 @@ jobs:
   e2e-tests:
     name: E2E Tests
     needs: install-and-build
-    if: needs.install-and-build.outputs.non_python_changed == 'true'
+    if: needs.install-and-build.outputs.non_python_changed == 'true' && github.repository == 'n8n-io/n8n'
     uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -126,7 +126,7 @@ jobs:
             needs.unit-test.result == 'skipped' ||
             needs.typecheck.result == 'skipped' ||
             needs.lint.result == 'skipped' ||
-            needs.e2e-tests.result == 'skipped'
+            (needs.e2e-tests.result == 'skipped' && github.repository == 'n8n-io/n8n')
           )) ||
           (needs.install-and-build.outputs.workflows_changed == 'true' &&
             needs.security-checks.result == 'skipped')

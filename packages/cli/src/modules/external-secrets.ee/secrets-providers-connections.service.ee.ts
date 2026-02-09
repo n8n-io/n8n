@@ -19,6 +19,7 @@ import { jsonParse } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
+import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
 
 @Service()
@@ -28,6 +29,7 @@ export class SecretsProvidersConnectionsService {
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
 		private readonly cipher: Cipher,
 		private readonly externalSecretsManager: ExternalSecretsManager,
+		private readonly redactionService: RedactionService,
 	) {}
 
 	async createConnection(
@@ -90,7 +92,10 @@ export class SecretsProvidersConnectionsService {
 			}
 		}
 		if (updates.settings !== undefined) {
-			connection.encryptedSettings = this.encryptConnectionSettings(updates.settings);
+			// Unredact incoming settings before encrypting
+			const savedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
+			const unredactedSettings = this.redactionService.unredact(updates.settings, savedSettings);
+			connection.encryptedSettings = this.encryptConnectionSettings(unredactedSettings);
 		}
 
 		await this.repository.save(connection);
@@ -137,6 +142,10 @@ export class SecretsProvidersConnectionsService {
 		return await this.repository.findByProjectId(projectId);
 	}
 
+	async listConnectionsForProject(projectId: string): Promise<SecretsProviderConnection[]> {
+		return await this.repository.findAllAccessibleByProjectWithProjectAccess(projectId);
+	}
+
 	toSecretCompletionsResponse(connections: SecretsProviderConnection[]): SecretCompletionsResponse {
 		return Object.fromEntries(
 			connections.map((connection) => [
@@ -146,9 +155,9 @@ export class SecretsProvidersConnectionsService {
 		);
 	}
 
-	toPublicConnection(
+	toPublicConnectionListItem(
 		connection: SecretsProviderConnection,
-	): SecretsProvidersResponses.StrippedConnection {
+	): SecretsProvidersResponses.ConnectionListItem {
 		return {
 			id: String(connection.id),
 			name: connection.providerKey,
@@ -157,6 +166,25 @@ export class SecretsProvidersConnectionsService {
 				id: access.project.id,
 				name: access.project.name,
 			})),
+			createdAt: connection.createdAt.toISOString(),
+			updatedAt: connection.updatedAt.toISOString(),
+		};
+	}
+
+	toPublicConnection(connection: SecretsProviderConnection): SecretsProvidersResponses.Connection {
+		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
+		const { provider } = this.externalSecretsManager.getProviderWithSettings(connection.type);
+		const redactedSettings = this.redactionService.redact(decryptedSettings, provider.properties);
+
+		return {
+			id: String(connection.id),
+			name: connection.providerKey,
+			type: connection.type as SecretsProviderType,
+			projects: connection.projectAccess.map((access) => ({
+				id: access.project.id,
+				name: access.project.name,
+			})),
+			settings: redactedSettings,
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
 		};
