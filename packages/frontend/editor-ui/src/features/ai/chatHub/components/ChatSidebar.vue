@@ -1,76 +1,114 @@
 <script lang="ts" setup>
-import ModalDrawer from '@/app/components/ModalDrawer.vue';
-import { CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY } from '@/app/constants';
+import { nextTick, computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/app/constants';
+import { type IMenuItem, N8nResizeWrapper } from '@n8n/design-system';
+import { useSettingsItems } from '@/app/composables/useSettingsItems';
+import { useKeybindings } from '@/app/composables/useKeybindings';
+import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import { N8nScrollArea } from '@n8n/design-system';
+import BottomMenu from '@/app/components/BottomMenu.vue';
+import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import ChatSidebarContent from '@/features/ai/chatHub/components/ChatSidebarContent.vue';
-import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
-import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useEventListener, useMediaQuery } from '@vueuse/core';
-import { onBeforeUnmount, watch } from 'vue';
-import { useRoute } from 'vue-router';
 
-const uiStore = useUIStore();
-const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
-const route = useRoute();
-const sidebar = useChatHubSidebarState();
+const i18n = useI18n();
+const router = useRouter();
 
-const EDGE_TRIGGER_DISTANCE = 10; // pixels from left edge to trigger sidebar
+const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
+	useSidebarLayout();
 
-watch(
-	() => route.fullPath,
-	() => uiStore.closeModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY),
+function openCommandBar(event: MouseEvent) {
+	event.stopPropagation();
+
+	void nextTick(() => {
+		const keyboardEvent = new KeyboardEvent('keydown', {
+			key: 'k',
+			code: 'KeyK',
+			metaKey: true,
+			bubbles: true,
+			cancelable: true,
+		});
+		document.dispatchEvent(keyboardEvent);
+	});
+}
+
+const { settingsItems } = useSettingsItems();
+
+const mainMenuItems = computed<IMenuItem[]>(() => [
+	{
+		id: 'settings',
+		label: i18n.baseText('mainSidebar.settings'),
+		icon: 'settings',
+		available: true,
+		children: settingsItems.value,
+	},
+]);
+
+const visibleMenuItems = computed<IMenuItem[]>(() =>
+	mainMenuItems.value.filter((item) => item.available !== false),
 );
 
-useEventListener(window, 'mousemove', (event: MouseEvent) => {
-	if (sidebar.isCollapsed.value && event.clientX <= EDGE_TRIGGER_DISTANCE) {
-		sidebar.toggleOpen(true);
-	}
+useKeybindings({
+	['bracketleft']: () => toggleCollapse(),
 });
 
-onBeforeUnmount(() => {
-	uiStore.closeModal(CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY);
-});
+const onLogout = () => {
+	void router.push({ name: VIEWS.SIGNOUT });
+};
 </script>
 
 <template>
-	<ChatSidebarContent
-		v-if="sidebar.isStatic.value"
-		:class="$style.static"
-		:is-mobile-device="isMobileDevice"
-	/>
-	<ModalDrawer
-		v-else
-		direction="ltr"
-		width="min(240px, 80vw)"
-		:name="CHAT_HUB_SIDE_MENU_DRAWER_MODAL_KEY"
-		:class="$style.drawer"
-		:close-on-click-modal="true"
-		:show-close="false"
+	<N8nResizeWrapper
+		id="side-menu"
+		:class="{
+			[$style.sideMenu]: true,
+			[$style.sideMenuCollapsed]: isCollapsed,
+		}"
+		:width="sidebarWidth"
+		:style="{ width: `${sidebarWidth}px` }"
+		:supported-directions="['right']"
+		:min-width="200"
+		:max-width="500"
+		:grid-size="8"
+		@resizestart="onResizeStart"
+		@resize="onResize"
+		@resizeend="onResizeEnd"
 	>
-		<template #content>
-			<ChatSidebarContent :class="$style.inDrawer" :is-mobile-device="isMobileDevice" />
-		</template>
-	</ModalDrawer>
+		<MainSidebarHeader
+			hide-create
+			is-beta
+			:is-collapsed="isCollapsed"
+			@collapse="toggleCollapse"
+			@open-command-bar="openCommandBar"
+		/>
+		<N8nScrollArea as-child>
+			<div :class="$style.scrollArea">
+				<ChatSidebarContent :is-collapsed="isCollapsed" />
+				<BottomMenu :items="visibleMenuItems" :is-collapsed="isCollapsed" @logout="onLogout" />
+			</div>
+		</N8nScrollArea>
+	</N8nResizeWrapper>
 </template>
 
 <style lang="scss" module>
-.drawer {
-	& :global(.el-drawer__header) {
-		padding: 0;
-		margin: 0;
+.sideMenu {
+	position: relative;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	border-right: var(--border);
+	background-color: var(--menu--color--background, var(--color--background--light-2));
+
+	&.sideMenuCollapsed {
+		width: $sidebar-width;
+		min-width: auto;
 	}
 }
 
-.inDrawer,
-.static {
+.scrollArea {
 	height: 100%;
-	background-color: var(--color--background--light-2);
-}
-
-.static {
-	width: 240px;
-	position: relative;
-	overflow: auto;
-	margin-right: calc(-1 * var(--spacing--4xs));
+	display: flex;
+	flex-direction: column;
 }
 </style>

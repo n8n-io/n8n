@@ -9,6 +9,8 @@ import type {
 } from 'n8n-workflow';
 
 import { getProxyAgent } from '@utils/httpProxyAgent';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -249,10 +251,16 @@ export class LmOpenAi implements INodeType {
 			topP?: number;
 		};
 
+		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			fetchOptions: {
-				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1'),
+				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1', {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
 			},
+			defaultHeaders,
 		};
 
 		if (options.baseURL) {
@@ -264,7 +272,7 @@ export class LmOpenAi implements INodeType {
 			model: modelName,
 			...options,
 			configuration,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),

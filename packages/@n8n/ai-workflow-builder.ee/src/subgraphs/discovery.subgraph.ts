@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
-import { isAIMessage } from '@langchain/core/messages';
+import type { BaseMessage, AIMessage } from '@langchain/core/messages';
+import { HumanMessage, isAIMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
@@ -10,25 +10,25 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { LLMServiceError } from '@/errors';
+import { buildDiscoveryPrompt } from '@/prompts';
 import {
-	buildDiscoveryPrompt,
-	formatTechniqueList,
-	formatExampleCategorizations,
-} from '@/prompts/agents/discovery.prompt';
+	extractResourceOperations,
+	createResourceCacheKey,
+	type ResourceOperationInfo,
+} from '@/utils/resource-operation-extractor';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
-import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
+import { createGetDocumentationTool } from '../tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
-import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
-import type { NodeConfigurationsMap } from '../types/tools';
+import type { WorkflowMetadata } from '../types/tools';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
-import { appendArrayReducer, nodeConfigurationsReducer } from '../utils/state-reducers';
+import { appendArrayReducer, cachedTemplatesReducer } from '../utils/state-reducers';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
@@ -79,7 +79,7 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Found nodes with version, reasoning and connection-changing parameters
+	// Output: Found nodes with version, reasoning, connection-changing parameters, and available resources
 	nodesFound: Annotation<
 		Array<{
 			nodeName: string;
@@ -88,6 +88,14 @@ export const DiscoverySubgraphState = Annotation.Root({
 			connectionChangingParameters: Array<{
 				name: string;
 				possibleValues: Array<string | boolean | number>;
+			}>;
+			availableResources?: Array<{
+				value: string;
+				displayName: string;
+				operations: Array<{
+					value: string;
+					displayName: string;
+				}>;
 			}>;
 		}>
 	>({
@@ -106,11 +114,23 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Node configurations collected from workflow examples
-	// Used to provide example parameter configurations when get_node_details is called
-	nodeConfigurations: Annotation<NodeConfigurationsMap>({
-		reducer: nodeConfigurationsReducer,
+	// Cached workflow templates (passed from parent, updated by tools)
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
+		default: () => [],
+	}),
+
+	// Cache for resource/operation info to avoid duplicate extraction
+	// Key: "nodeName:version", Value: ResourceOperationInfo or null
+	resourceOperationCache: Annotation<Record<string, ResourceOperationInfo | null>>({
+		reducer: (x, y) => ({ ...x, ...y }),
 		default: () => ({}),
+	}),
+
+	// Retry count for when LLM fails to use tool calls properly
+	toolCallRetryCount: Annotation<number>({
+		reducer: (x, y) => y ?? x,
+		default: () => 0,
 	}),
 });
 
@@ -132,23 +152,21 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private agent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
 	private logger?: Logger;
+	private parsedNodeTypes!: INodeTypeDescription[];
 
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
+		this.parsedNodeTypes = config.parsedNodeTypes;
 
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
 
-		// Create base tools
-		const baseTools = [
-			createGetBestPracticesTool(),
-			createNodeSearchTool(config.parsedNodeTypes),
-			createNodeDetailsTool(config.parsedNodeTypes),
-		];
+		// Create base tools - search_nodes provides all data needed for discovery
+		const baseTools = [createNodeSearchTool(config.parsedNodeTypes)];
 
-		// Conditionally add workflow examples tool if feature flag is enabled
+		// Conditionally add documentation and workflow examples tools if feature flag is enabled
 		const tools = includeExamples
-			? [...baseTools, createGetWorkflowExamplesTool(config.logger)]
+			? [...baseTools, createGetDocumentationTool(), createGetWorkflowExamplesTool(config.logger)]
 			: baseTools;
 
 		this.toolMap = new Map(tools.map((bt) => [bt.tool.name, bt.tool]));
@@ -194,14 +212,17 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			.addNode('agent', this.callAgent.bind(this))
 			.addNode('tools', async (state) => await executeSubgraphTools(state, this.toolMap))
 			.addNode('format_output', this.formatOutput.bind(this))
+			.addNode('reprompt', this.repromptForToolCall.bind(this))
 			.addEdge('__start__', 'agent')
-			// Conditional: tools if has tool calls, format_output if submit called
+			// Conditional: tools if has tool calls, format_output if submit called, reprompt if no tool calls
 			.addConditionalEdges('agent', this.shouldContinue.bind(this), {
 				tools: 'tools',
 				format_output: 'format_output',
-				end: END, // Fallback
+				reprompt: 'reprompt',
+				end: END, // Fallback after max retries
 			})
 			.addEdge('tools', 'agent') // After tools, go back to agent
+			.addEdge('reprompt', 'agent') // After reprompt, try agent again
 			.addEdge('format_output', END); // After formatting, END
 
 		return subgraph.compile();
@@ -221,17 +242,45 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const response = (await this.agent.invoke({
 			messages: state.messages,
 			prompt: state.userRequest,
-			techniques: formatTechniqueList(),
-			exampleCategorizations: formatExampleCategorizations(),
 		})) as AIMessage;
 
 		return { messages: [response] };
 	}
 
 	/**
-	 * Format the output from the submit tool call
-	 * No hydration - just return raw node names. Subgraphs will hydrate if needed.
+	 * Baseline flow control nodes to always include.
+	 * These handle common data transformation needs and are available in every workflow.
+	 * Reasoning is kept neutral - describes what the node does, not when/how to use it.
 	 */
+	private readonly BASELINE_NODES = [
+		{ name: 'n8n-nodes-base.aggregate', reasoning: 'Combines multiple items into a single item' },
+		{
+			name: 'n8n-nodes-base.if',
+			reasoning: 'Routes items to different output paths based on true/false condition evaluation',
+		},
+		{
+			name: 'n8n-nodes-base.switch',
+			reasoning: 'Routes items to different output paths based on rules or expression evaluation',
+		},
+		{
+			name: 'n8n-nodes-base.splitOut',
+			reasoning: 'Converts a single item containing an array field into multiple separate items',
+		},
+		{
+			name: 'n8n-nodes-base.merge',
+			reasoning: 'Combines data from multiple parallel input branches into a single output',
+		},
+		{
+			name: 'n8n-nodes-base.set',
+			reasoning: 'Transforms data by adding, modifying, or removing fields from items',
+		},
+	];
+
+	/**
+	 * Format the output from the submit tool call
+	 * Hydrates availableResources for each node using node type definitions.
+	 */
+	// eslint-disable-next-line complexity
 	private formatOutput(state: typeof DiscoverySubgraphState.State) {
 		const lastMessage = state.messages.at(-1);
 		let output: z.infer<typeof discoveryOutputSchema> | undefined;
@@ -241,28 +290,122 @@ export class DiscoverySubgraph extends BaseSubgraph<
 				(tc) => tc.name === 'submit_discovery_results',
 			);
 			if (submitCall) {
-				output = submitCall.args as z.infer<typeof discoveryOutputSchema>;
+				// Use Zod safeParse for type-safe validation instead of casting
+				const parseResult = discoveryOutputSchema.safeParse(submitCall.args);
+				if (!parseResult.success) {
+					this.logger?.error(
+						'[Discovery] Invalid discovery output schema - returning empty results',
+						{
+							errors: parseResult.error.errors,
+							lastMessageContent:
+								typeof lastMessage?.content === 'string'
+									? lastMessage.content.substring(0, 200)
+									: JSON.stringify(lastMessage?.content)?.substring(0, 200),
+						},
+					);
+					return {
+						nodesFound: [],
+						templateIds: [],
+					};
+				}
+				output = parseResult.data;
 			}
 		}
 
 		if (!output) {
-			this.logger?.error('[Discovery] No submit tool call found in last message');
+			this.logger?.error(
+				'[Discovery] No submit_discovery_results tool call found - agent may have stopped early',
+				{
+					messageCount: state.messages.length,
+					lastMessageType: lastMessage?.getType(),
+				},
+			);
 			return {
 				nodesFound: [],
 				templateIds: [],
 			};
 		}
 
-		const bestPracticesTool = state.messages.find(
-			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
-		);
+		// Add baseline flow control nodes if not already discovered
+		const discoveredNames = new Set(output.nodesFound.map((n) => n.nodeName));
+		const baselineNodesToAdd = this.BASELINE_NODES.filter((bn) => !discoveredNames.has(bn.name));
 
-		// Return raw output without hydration, including templateIds and nodeConfigurations from workflow examples
+		// Look up versions for baseline nodes
+		for (const baselineNode of baselineNodesToAdd) {
+			const nodeType = this.parsedNodeTypes.find((nt) => nt.name === baselineNode.name);
+			if (nodeType) {
+				const version = Array.isArray(nodeType.version)
+					? Math.max(...nodeType.version)
+					: nodeType.version;
+
+				output.nodesFound.push({
+					nodeName: baselineNode.name,
+					version,
+					reasoning: baselineNode.reasoning,
+					connectionChangingParameters: [],
+				});
+			}
+		}
+
+		// Build lookup map for resource hydration
+		const nodeTypeMap = new Map<string, INodeTypeDescription>();
+		for (const nt of this.parsedNodeTypes) {
+			const versions = Array.isArray(nt.version) ? nt.version : [nt.version];
+			for (const v of versions) {
+				nodeTypeMap.set(`${nt.name}:${v}`, nt);
+			}
+		}
+
+		// Get the resource operation cache from state
+		const existingCache = state.resourceOperationCache ?? {};
+
+		// Hydrate nodesFound with availableResources from node type definitions or cache
+		const hydratedNodesFound = output.nodesFound.map((node) => {
+			const cacheKey = createResourceCacheKey(node.nodeName, node.version);
+
+			// Check cache first (populated by node_details tool during discovery)
+			if (cacheKey in existingCache) {
+				const cached = existingCache[cacheKey];
+				if (cached) {
+					return {
+						...node,
+						availableResources: cached.resources,
+					};
+				}
+				// Cached as null means no resources for this node
+				return node;
+			}
+
+			// Cache miss - extract fresh (O(1) lookup using pre-built map)
+			const nodeType = nodeTypeMap.get(cacheKey);
+
+			if (!nodeType) {
+				this.logger?.warn('[Discovery] Node type not found during resource hydration', {
+					nodeName: node.nodeName,
+					nodeVersion: node.version,
+				});
+				return node;
+			}
+
+			// Extract resource/operation info
+			const resourceOpInfo = extractResourceOperations(nodeType, node.version, this.logger);
+
+			if (!resourceOpInfo) {
+				return node;
+			}
+
+			// Add availableResources to the node
+			return {
+				...node,
+				availableResources: resourceOpInfo.resources,
+			};
+		});
+
+		// Return hydrated output with best practices from state (updated by get_documentation tool)
 		return {
-			nodesFound: output.nodesFound,
-			bestPractices: bestPracticesTool?.text,
+			nodesFound: hydratedNodesFound,
+			bestPractices: state.bestPractices,
 			templateIds: state.templateIds ?? [],
-			nodeConfigurations: state.nodeConfigurations ?? {},
 		};
 	}
 
@@ -288,11 +431,47 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			return 'tools';
 		}
 
-		// No tool calls = agent is done (or failed to call tool)
-		// In this pattern, we expect a tool call. If none, we might want to force it or just end.
-		// For now, let's treat it as an end, but ideally we'd reprompt.
-		this.logger?.warn('[Discovery Subgraph] Agent stopped without submitting results');
+		// No tool calls = agent may have output text instead of using tool calling API
+		// This can happen when the model outputs XML-style invocations as text
+		// Allow one retry to reprompt the agent to use proper tool calls
+		const MAX_TOOL_CALL_RETRIES = 1;
+		if (state.toolCallRetryCount < MAX_TOOL_CALL_RETRIES) {
+			this.logger?.warn(
+				'[Discovery] Agent stopped without tool calls - will reprompt to use submit_discovery_results tool',
+				{
+					retryCount: state.toolCallRetryCount,
+					lastMessageContent:
+						typeof lastMessage?.content === 'string'
+							? lastMessage.content.substring(0, 200)
+							: undefined,
+				},
+			);
+			return 'reprompt';
+		}
+
+		// Max retries exceeded - give up
+		this.logger?.error(
+			'[Discovery] Agent failed to use tool calls after retry - check if LLM is producing valid tool calls',
+			{
+				retryCount: state.toolCallRetryCount,
+			},
+		);
 		return 'end';
+	}
+
+	/**
+	 * Reprompt the agent to use the tool calling API instead of text output
+	 */
+	private repromptForToolCall(state: typeof DiscoverySubgraphState.State) {
+		const repromptMessage = new HumanMessage({
+			content:
+				'You must use the submit_discovery_results tool to submit your results. Do not output the results as text or XML - use the actual tool call. The downstream system can only process results submitted via the tool calling API, not text output. Please call the submit_discovery_results tool now with your nodesFound array.',
+		});
+
+		return {
+			messages: [repromptMessage],
+			toolCallRetryCount: state.toolCallRetryCount + 1,
+		};
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
@@ -320,6 +499,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		return {
 			userRequest,
 			messages: [contextMessage], // Context already in messages
+			cachedTemplates: parentState.cachedTemplates,
 		};
 	}
 
@@ -329,11 +509,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
 		const templateIds = subgraphOutput.templateIds || [];
-		const nodeConfigurations = subgraphOutput.nodeConfigurations || {};
 		const discoveryContext = {
 			nodesFound,
 			bestPractices: subgraphOutput.bestPractices,
-			nodeConfigurations,
 		};
 
 		// Create coordination log entry (not a message)
@@ -354,8 +532,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			coordinationLog: [logEntry],
 			// Pass template IDs for telemetry
 			templateIds,
-			// Pass node configurations for example parameters in node details
-			nodeConfigurations,
+			// Propagate cached templates back to parent
+			cachedTemplates: subgraphOutput.cachedTemplates,
 		};
 	}
 }

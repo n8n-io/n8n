@@ -97,3 +97,19 @@ export const limitWaitTimeProperties: INodeProperties[] = [
 		description: 'Continue execution after the specified date and time',
 	},
 ];
+
+export const limitWaitTimeOption: INodeProperties = {
+	displayName: 'Limit Wait Time',
+	name: 'limitWaitTime',
+	type: 'fixedCollection',
+	description:
+		'Whether to limit the time this node should wait for a user response before execution resumes',
+	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: limitWaitTimeProperties,
+		},
+	],
+};

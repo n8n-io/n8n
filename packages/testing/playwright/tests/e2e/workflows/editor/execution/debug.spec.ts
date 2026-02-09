@@ -10,7 +10,6 @@ test.describe('Debug mode', () => {
 	};
 
 	const NOTIFICATIONS = {
-		WORKFLOW_CREATED: 'Workflow successfully created',
 		EXECUTION_IMPORTED: 'Execution data imported',
 		PROBLEM_IN_NODE: 'Problem in node',
 		SUCCESSFUL: 'Successful',
@@ -28,9 +27,8 @@ test.describe('Debug mode', () => {
 		await n8n.canvas.addNode('Manual Trigger');
 		await n8n.canvas.addNode('HTTP Request');
 		await n8n.ndv.fillParameterInput('URL', url);
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 		await n8n.ndv.close();
-		await n8n.canvas.clickSaveWorkflowButton();
-		await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.WORKFLOW_CREATED);
 	}
 
 	// Helper function to import execution for debugging
@@ -54,8 +52,8 @@ test.describe('Debug mode', () => {
 
 		await n8n.canvas.openNode('HTTP Request');
 		await n8n.ndv.fillParameterInput('URL', URLS.SUCCESS);
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 		await n8n.ndv.close();
-		await n8n.canvas.clickSaveWorkflowButton();
 
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL);
 		expect(n8n.page.url()).not.toContain('/debug');

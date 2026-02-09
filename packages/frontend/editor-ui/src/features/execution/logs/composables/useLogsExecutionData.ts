@@ -13,10 +13,7 @@ import { parse } from 'flatted';
 import { useToast } from '@/app/composables/useToast';
 import type { LatestNodeInfo, LogEntry, LogTreeFilter } from '../logs.types';
 import { isChatNode } from '@/app/utils/aiUtils';
-import {
-	LOGS_EXECUTION_DATA_THROTTLE_DURATION,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/app/constants';
+import { LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/app/constants';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
@@ -160,10 +157,8 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 	watch(
 		() => workflowsStore.workflowId,
-		(newId) => {
-			if (newId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				resetExecutionData();
-			}
+		() => {
+			resetExecutionData();
 		},
 	);
 

@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATIONS_DOCS_URL } from '@/app/constants';
-import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { EVALUATIONS_DOCS_URL } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 import { computed, watch } from 'vue';
@@ -20,16 +17,12 @@ const props = defineProps<{
 	name: string;
 }>();
 
-const workflowsStore = useWorkflowsStore();
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
-const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
-
-const { initializeWorkspace } = useCanvasOperations();
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
@@ -80,27 +73,6 @@ const { isReady } = useAsyncState(async () => {
 		await evaluationStore.fetchTestRuns(props.name);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
-	}
-	const workflowId = props.name;
-	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
-	if (isAlreadyInitialized) return;
-
-	if (workflowId && workflowId !== 'new') {
-		// Check if we are loading the Evaluation tab directly, without having loaded the workflow
-		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			try {
-				const data = await workflowsStore.fetchWorkflow(workflowId);
-
-				// We need to check for the evaluation node with setMetrics operation, so we need to initialize the nodeTypesStore to have node properties initialized
-				if (nodeTypesStore.allNodeTypes.length === 0) {
-					await nodeTypesStore.getNodeTypes();
-				}
-
-				await initializeWorkspace(data);
-			} catch (error) {
-				toast.showError(error, locale.baseText('nodeView.showError.openWorkflow.title'));
-			}
-		}
 	}
 }, undefined);
 

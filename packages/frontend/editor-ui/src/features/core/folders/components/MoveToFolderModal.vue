@@ -29,7 +29,7 @@ import {
 	ResourceType,
 	getTruncatedProjectName,
 } from '@/features/collaboration/projects/projects.utils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -46,6 +46,7 @@ type Props = {
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		};
 		workflowListEventBus: EventBus;
 	};
@@ -67,7 +68,7 @@ const foldersStore = useFoldersStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
 const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject);
@@ -317,10 +318,18 @@ const isFolderSelectable = computed(() => {
 	return isOwnPersonalProject.value || !isPersonalProject.value;
 });
 
+// If there is not current project (e.g. on the Overview page), default to the resource's home project
+const currentResourceProjectId = computed(() => {
+	return projectsStore.currentProject?.id ?? props.data.resource.homeProjectId;
+});
+
 onMounted(async () => {
+	if (!projectsStore.isTeamProjectFeatureEnabled) {
+		selectedProject.value = projectsStore.personalProject;
+	}
 	if (isResourceWorkflow.value) {
 		const [workflow, credentials] = await Promise.all([
-			workflowsStore.fetchWorkflow(props.data.resource.id),
+			workflowsListStore.fetchWorkflow(props.data.resource.id),
 			credentialsStore.fetchAllCredentials(),
 		]);
 
@@ -382,7 +391,7 @@ onMounted(async () => {
 							>
 							<template #resourceTypeLabel>{{ resourceTypeLabel }}</template>
 						</I18nT>
-						<span
+						<div
 							v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
 							:class="$style.textBlock"
 						>
@@ -394,7 +403,7 @@ onMounted(async () => {
 									},
 								})
 							}}
-						</span>
+						</div>
 					</N8nText>
 				</div>
 			</EnterpriseEdition>
@@ -407,7 +416,7 @@ onMounted(async () => {
 						ref="moveToFolderDropdown"
 						:selected-location="selectedFolder"
 						:selected-project-id="selectedProject.id"
-						:current-project-id="projectsStore.currentProject?.id"
+						:current-project-id="currentResourceProjectId"
 						:current-folder-id="currentFolder?.id"
 						:parent-folder-id="props.data.resource.parentFolderId"
 						:exclude-only-parent="props.data.resourceType === 'workflow'"
@@ -421,33 +430,35 @@ onMounted(async () => {
 				:class="$style.textBlock"
 				data-test-id="move-modal-share-credentials-checkbox"
 			>
-				<I18nT
-					:keypath="
-						data.resourceType === 'workflow'
-							? 'folders.move.modal.message.usedCredentials.workflow'
-							: 'folders.move.modal.message.usedCredentials.folder'
-					"
-					scope="global"
-				>
-					<template #usedCredentials>
-						<N8nTooltip placement="top">
-							<span :class="$style.tooltipText">
-								{{
-									i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
-										adjustToNumber: shareableCredentials.length,
-										interpolate: { count: shareableCredentials.length },
-									})
-								}}
-							</span>
-							<template #content>
-								<ProjectMoveResourceModalCredentialsList
-									:current-project-id="projectsStore.currentProjectId"
-									:credentials="shareableCredentials"
-								/>
-							</template>
-						</N8nTooltip>
-					</template>
-				</I18nT>
+				<template #label>
+					<I18nT
+						:keypath="
+							data.resourceType === 'workflow'
+								? 'folders.move.modal.message.usedCredentials.workflow'
+								: 'folders.move.modal.message.usedCredentials.folder'
+						"
+						scope="global"
+					>
+						<template #usedCredentials>
+							<N8nTooltip placement="top">
+								<span :class="$style.tooltipText">
+									{{
+										i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
+											adjustToNumber: shareableCredentials.length,
+											interpolate: { count: shareableCredentials.length },
+										})
+									}}
+								</span>
+								<template #content>
+									<ProjectMoveResourceModalCredentialsList
+										:current-project-id="projectsStore.currentProjectId"
+										:credentials="shareableCredentials"
+									/>
+								</template>
+							</N8nTooltip>
+						</template>
+					</I18nT>
+				</template>
 			</N8nCheckbox>
 			<N8nCallout
 				v-if="shareableCredentials.length && !shareUsedCredentials"
@@ -457,7 +468,7 @@ onMounted(async () => {
 			>
 				{{ i18n.baseText('folders.move.modal.message.usedCredentials.warning') }}
 			</N8nCallout>
-			<span v-if="unShareableCredentials.length" :class="$style.textBlock">
+			<div v-if="unShareableCredentials.length" :class="$style.textBlock">
 				<I18nT
 					keypath="projects.move.resource.modal.message.unAccessibleCredentials.note"
 					scope="global"
@@ -476,7 +487,7 @@ onMounted(async () => {
 						</N8nTooltip>
 					</template>
 				</I18nT>
-			</span>
+			</div>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">

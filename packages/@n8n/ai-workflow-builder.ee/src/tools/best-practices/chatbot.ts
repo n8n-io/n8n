@@ -79,6 +79,7 @@ Purpose: Fetches external data to enrich chatbot responses with real-time or org
 
 ### Database Nodes & Google Sheets
 
+- Data Table (n8n-nodes-base.dataTable)
 - Postgres (n8n-nodes-base.postgres)
 - MySQL (n8n-nodes-base.mySql)
 - MongoDB (n8n-nodes-base.mongoDb)

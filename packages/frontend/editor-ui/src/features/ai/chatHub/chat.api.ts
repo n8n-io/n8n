@@ -1,4 +1,4 @@
-import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ChatHubSendMessageRequest,
@@ -14,13 +14,11 @@ import type {
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	ChatHubUpdateConversationRequest,
-	EnrichedStructuredChunk,
 	ChatHubLLMProvider,
+	ChatProviderSettingsDto,
+	ChatSendMessageResponse,
+	ChatReconnectResponse,
 } from '@n8n/api-types';
-import type { ChatProviderSettingsDto } from '@n8n/api-types';
-
-// Workflows stream data as newline separated JSON objects (jsonl)
-const STREAM_SEPARATOR = '\n';
 
 export const fetchChatModelsApi = async (
 	context: IRestApiContext,
@@ -30,61 +28,76 @@ export const fetchChatModelsApi = async (
 	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
 };
 
-export function sendMessageApi(
+/**
+ * Send a message and stream the AI response.
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function sendMessageApi(
 	ctx: IRestApiContext,
 	payload: ChatHubSendMessageRequest,
-	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-) {
-	void streamRequest<EnrichedStructuredChunk>(
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
+		'POST',
 		'/chat/conversations/send',
 		payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-		STREAM_SEPARATOR,
 	);
 }
 
-export function editMessageApi(
+/**
+ * Edit a message and stream the AI response.
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function editMessageApi(
 	ctx: IRestApiContext,
-	sessionId: ChatSessionId,
-	editId: ChatMessageId,
-	payload: ChatHubEditMessageRequest,
-	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-) {
-	void streamRequest<EnrichedStructuredChunk>(
+	request: {
+		sessionId: ChatSessionId;
+		editId: ChatMessageId;
+		payload: ChatHubEditMessageRequest;
+	},
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
-		`/chat/conversations/${sessionId}/messages/${editId}/edit`,
-		payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-		STREAM_SEPARATOR,
+		'POST',
+		`/chat/conversations/${request.sessionId}/messages/${request.editId}/edit`,
+		request.payload,
 	);
 }
 
-export function regenerateMessageApi(
+/**
+ * Regenerate a message and stream the AI response.
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function regenerateMessageApi(
+	ctx: IRestApiContext,
+	request: {
+		sessionId: ChatSessionId;
+		retryId: ChatMessageId;
+		payload: ChatHubRegenerateMessageRequest;
+	},
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate`,
+		request.payload,
+	);
+}
+
+/**
+ * Reconnect to an active chat stream after reconnection
+ */
+export async function reconnectToSessionApi(
 	ctx: IRestApiContext,
 	sessionId: ChatSessionId,
-	retryId: ChatMessageId,
-	payload: ChatHubRegenerateMessageRequest,
-	onMessageUpdated: (data: EnrichedStructuredChunk) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-) {
-	void streamRequest<EnrichedStructuredChunk>(
+	lastSequence?: number,
+): Promise<ChatReconnectResponse> {
+	const queryParams = lastSequence !== undefined ? `?lastSequence=${lastSequence}` : '';
+	return await makeRestApiRequest<ChatReconnectResponse>(
 		ctx,
-		`/chat/conversations/${sessionId}/messages/${retryId}/regenerate`,
-		payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-		STREAM_SEPARATOR,
+		'POST',
+		`/chat/conversations/${sessionId}/reconnect${queryParams}`,
+		{},
 	);
 }
 

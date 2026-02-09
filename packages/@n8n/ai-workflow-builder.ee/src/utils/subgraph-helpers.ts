@@ -3,16 +3,16 @@ import { isAIMessage, ToolMessage, HumanMessage } from '@langchain/core/messages
 import type { StructuredTool } from '@langchain/core/tools';
 import { isCommand, END } from '@langchain/langgraph';
 
-import { mergeNodeConfigurations } from './state-reducers';
 import { isBaseMessage } from '../types/langchain';
-import type { NodeConfigurationsMap } from '../types/tools';
+import type { WorkflowMetadata } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
 
 interface CommandUpdate {
 	messages?: BaseMessage[];
 	workflowOperations?: WorkflowOperation[];
 	templateIds?: number[];
-	nodeConfigurations?: NodeConfigurationsMap;
+	cachedTemplates?: WorkflowMetadata[];
+	bestPractices?: string;
 }
 
 /**
@@ -39,11 +39,19 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 	if ('templateIds' in obj && obj.templateIds !== undefined && !Array.isArray(obj.templateIds)) {
 		return false;
 	}
-	// nodeConfigurations is optional, but if present must be an object
+	// cachedTemplates is optional, but if present must be an array
 	if (
-		'nodeConfigurations' in obj &&
-		obj.nodeConfigurations !== undefined &&
-		(typeof obj.nodeConfigurations !== 'object' || obj.nodeConfigurations === null)
+		'cachedTemplates' in obj &&
+		obj.cachedTemplates !== undefined &&
+		!Array.isArray(obj.cachedTemplates)
+	) {
+		return false;
+	}
+	// bestPractices is optional, but if present must be a string
+	if (
+		'bestPractices' in obj &&
+		obj.bestPractices !== undefined &&
+		typeof obj.bestPractices !== 'string'
 	) {
 		return false;
 	}
@@ -67,7 +75,8 @@ export async function executeSubgraphTools(
 	messages?: BaseMessage[];
 	workflowOperations?: WorkflowOperation[] | null;
 	templateIds?: number[];
-	nodeConfigurations?: NodeConfigurationsMap;
+	cachedTemplates?: WorkflowMetadata[];
+	bestPractices?: string;
 }> {
 	const lastMessage = state.messages[state.messages.length - 1];
 
@@ -106,11 +115,12 @@ export async function executeSubgraphTools(
 		}),
 	);
 
-	// Unwrap Command objects and collect messages/operations/templateIds/nodeConfigurations
+	// Unwrap Command objects and collect messages/operations/templateIds/cachedTemplates/bestPractices
 	const messages: BaseMessage[] = [];
 	const operations: WorkflowOperation[] = [];
 	const templateIds: number[] = [];
-	const nodeConfigurations: NodeConfigurationsMap = {};
+	const cachedTemplates: WorkflowMetadata[] = [];
+	let bestPractices: string | undefined;
 
 	for (const result of toolResults) {
 		if (isCommand(result)) {
@@ -125,8 +135,11 @@ export async function executeSubgraphTools(
 				if (result.update.templateIds) {
 					templateIds.push(...result.update.templateIds);
 				}
-				if (result.update.nodeConfigurations) {
-					mergeNodeConfigurations(nodeConfigurations, result.update.nodeConfigurations);
+				if (result.update.cachedTemplates) {
+					cachedTemplates.push(...result.update.cachedTemplates);
+				}
+				if (result.update.bestPractices) {
+					bestPractices = result.update.bestPractices;
 				}
 			}
 		} else if (isBaseMessage(result)) {
@@ -139,7 +152,8 @@ export async function executeSubgraphTools(
 		messages?: BaseMessage[];
 		workflowOperations?: WorkflowOperation[] | null;
 		templateIds?: number[];
-		nodeConfigurations?: NodeConfigurationsMap;
+		cachedTemplates?: WorkflowMetadata[];
+		bestPractices?: string;
 	} = {};
 
 	if (messages.length > 0) {
@@ -154,8 +168,12 @@ export async function executeSubgraphTools(
 		stateUpdate.templateIds = templateIds;
 	}
 
-	if (Object.keys(nodeConfigurations).length > 0) {
-		stateUpdate.nodeConfigurations = nodeConfigurations;
+	if (cachedTemplates.length > 0) {
+		stateUpdate.cachedTemplates = cachedTemplates;
+	}
+
+	if (bestPractices) {
+		stateUpdate.bestPractices = bestPractices;
 	}
 
 	return stateUpdate;

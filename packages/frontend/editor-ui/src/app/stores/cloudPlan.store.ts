@@ -10,11 +10,10 @@ import {
 	getCurrentUsage,
 } from '@n8n/rest-api-client/api/cloudPlans';
 import { DateTime } from 'luxon';
-import { CLOUD_TRIAL_CHECK_INTERVAL, UPGRADE_PLAN_CTA_EXPERIMENT } from '@/app/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
-import { usePostHog } from './posthog.store';
 
 const DEFAULT_STATE: CloudPlanState = {
 	initialized: false,
@@ -28,13 +27,14 @@ const DYNAMIC_TRIAL_BANNER_DISMISSED_KEY = 'n8n-dynamic-trial-banner-dismissed';
 export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const posthogStore = usePostHog();
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
 	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
 	const isDynamicTrialBannerDismissed = ref<boolean>(
 		localStorage.getItem(DYNAMIC_TRIAL_BANNER_DISMISSED_KEY) === 'true',
 	);
+
+	const now = ref<number>(Date.now());
 
 	const reset = () => {
 		currentUserCloudInfo.value = null;
@@ -116,13 +116,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return await getAdminPanelLoginCode(rootStore.restApiContext);
 	};
 
-	const isTrialUpgradeOnSidebar = computed(() => {
-		return (
-			posthogStore.getVariant(UPGRADE_PLAN_CTA_EXPERIMENT.name) ===
-			UPGRADE_PLAN_CTA_EXPERIMENT.variant
-		);
-	});
-
 	const getOwnerCurrentPlan = async () => {
 		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
 		state.loadingPlan = true;
@@ -164,12 +157,34 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return Math.ceil(differenceInDays);
 	});
 
+	const trialTimeLeft = computed((): { count: number; unit: 'days' | 'hours' | 'minutes' } => {
+		if (!state.data?.expirationDate) {
+			return { count: 0, unit: 'days' };
+		}
+
+		const msLeft = new Date(state.data.expirationDate).valueOf() - now.value;
+		if (msLeft <= 0) {
+			return { count: 0, unit: 'minutes' };
+		}
+
+		const hours = msLeft / (1000 * 60 * 60);
+
+		if (hours < 1) {
+			return { count: Math.ceil(msLeft / (1000 * 60)), unit: 'minutes' };
+		} else if (hours < 24) {
+			return { count: Math.ceil(hours), unit: 'hours' };
+		} else {
+			return { count: Math.ceil(hours / 24), unit: 'days' };
+		}
+	});
+
 	const startPollingInstanceUsageData = () => {
 		const interval = setInterval(async () => {
+			now.value = Date.now();
 			try {
 				await getInstanceCurrentUsage();
 				if (trialExpired.value || allExecutionsUsed.value) {
-					clearTimeout(interval);
+					clearInterval(interval);
 					return;
 				}
 			} catch {}
@@ -231,6 +246,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		state,
 		usageLeft,
 		trialDaysLeft,
+		trialTimeLeft,
 		userIsTrialing,
 		currentPlanData,
 		currentUsageData,
@@ -251,6 +267,5 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		dynamicTrialBannerText,
 		shouldShowDynamicTrialBanner,
 		dismissDynamicTrialBanner,
-		isTrialUpgradeOnSidebar,
 	};
 });

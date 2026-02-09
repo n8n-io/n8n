@@ -49,21 +49,18 @@ describe('API: workflows', () => {
 			expect(result).toEqual(mockResponse);
 		});
 
-		it('should handle 404 error when no successful execution exists', async () => {
+		it('should return null when no successful execution exists', async () => {
 			const workflowId = 'workflow-no-success';
-			const error = {
-				httpStatusCode: 404,
-				message: 'No successful execution found for the workflow',
-			};
-			makeRestApiRequestSpy.mockRejectedValue(error);
+			makeRestApiRequestSpy.mockResolvedValue(null);
 
-			await expect(getLastSuccessfulExecution(mockContext, workflowId)).rejects.toEqual(error);
+			const result = await getLastSuccessfulExecution(mockContext, workflowId);
 
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'GET',
 				`/workflows/${workflowId}/executions/last-successful`,
 			);
+			expect(result).toBeNull();
 		});
 	});
 });

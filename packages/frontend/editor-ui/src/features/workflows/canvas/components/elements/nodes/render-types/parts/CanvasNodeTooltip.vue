@@ -11,22 +11,16 @@ defineProps<{
 const { render } = useCanvasNode();
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
-
-const popperOptions = {
-	modifiers: [
-		{ name: 'flip', enabled: false }, // show tooltip always above the node
-	],
-};
 </script>
 
 <template>
 	<N8nTooltip
 		placement="top"
 		:show-after="500"
-		:visible="true"
+		:visible="visible"
 		:teleported="false"
-		:popper-class="$style.popper"
-		:popper-options="popperOptions"
+		:content-class="$style.content"
+		:avoid-collisions="false"
 	>
 		<template #content>
 			{{ renderOptions.tooltip }}
@@ -44,7 +38,7 @@ const popperOptions = {
 	height: 100%;
 }
 
-.popper {
+.content {
 	white-space: nowrap;
 }
 </style>

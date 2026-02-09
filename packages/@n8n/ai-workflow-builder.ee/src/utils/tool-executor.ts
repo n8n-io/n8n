@@ -5,7 +5,7 @@ import { isCommand } from '@langchain/langgraph';
 
 import { ToolExecutionError, WorkflowStateError } from '../errors';
 import type { ToolExecutorOptions } from '../types/config';
-import type { NodeConfigurationsMap } from '../types/tools';
+import type { WorkflowMetadata } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
 import type { WorkflowState } from '../workflow-state';
 
@@ -37,27 +37,6 @@ function collectArrayFromUpdates<T>(updates: StateUpdate[], key: keyof StateUpda
 		}
 	}
 	return result;
-}
-
-/**
- * Merge node configurations from multiple state updates
- * Configurations are grouped by node type
- */
-function mergeNodeConfigurations(updates: StateUpdate[]): NodeConfigurationsMap {
-	const merged: NodeConfigurationsMap = {};
-
-	for (const update of updates) {
-		if (update.nodeConfigurations && typeof update.nodeConfigurations === 'object') {
-			for (const [nodeType, configs] of Object.entries(update.nodeConfigurations)) {
-				if (!merged[nodeType]) {
-					merged[nodeType] = [];
-				}
-				merged[nodeType].push(...configs);
-			}
-		}
-	}
-
-	return merged;
 }
 
 /**
@@ -182,11 +161,14 @@ export async function executeToolsInParallel(
 		(typeof WorkflowState.State.validationHistory)[number]
 	>(stateUpdates, 'validationHistory');
 
-	// Merge node configurations from all updates
-	const allNodeConfigurations = mergeNodeConfigurations(stateUpdates);
-
 	// Collect template IDs from all updates
 	const allTemplateIds = collectArrayFromUpdates<number>(stateUpdates, 'templateIds');
+
+	// Collect cached templates from all updates
+	const allCachedTemplates = collectArrayFromUpdates<WorkflowMetadata>(
+		stateUpdates,
+		'cachedTemplates',
+	);
 
 	// Return the combined update
 	const finalUpdate: Partial<typeof WorkflowState.State> = {
@@ -205,12 +187,12 @@ export async function executeToolsInParallel(
 		finalUpdate.validationHistory = allValidationHistory;
 	}
 
-	if (Object.keys(allNodeConfigurations).length > 0) {
-		finalUpdate.nodeConfigurations = allNodeConfigurations;
-	}
-
 	if (allTemplateIds.length > 0) {
 		finalUpdate.templateIds = allTemplateIds;
+	}
+
+	if (allCachedTemplates.length > 0) {
+		finalUpdate.cachedTemplates = allCachedTemplates;
 	}
 
 	return finalUpdate;

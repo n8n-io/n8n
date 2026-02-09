@@ -54,5 +54,77 @@ describe('error-handling', () => {
 
 			expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
 		});
+
+		describe('non-chat model error handling', () => {
+			it('should throw helpful error when model requires Responses API', () => {
+				const error = {
+					status: 404,
+					type: 'invalid_request_error',
+					param: 'model',
+					message:
+						'This is not a chat model and thus not supported in the v1/chat/completions endpoint. Did you mean to use v1/completions?',
+					code: null,
+				};
+
+				expect(() => openAiFailedAttemptHandler(error)).toThrow(OperationalError);
+				expect(() => openAiFailedAttemptHandler(error)).toThrow(
+					'This model requires the Responses API. Enable "Use Responses API" in the OpenAI Chat Model node options to use this model.',
+				);
+			});
+
+			it('should not throw for 404 errors with different type', () => {
+				const error = {
+					status: 404,
+					type: 'not_found_error',
+					param: 'model',
+					message: 'This is not a chat model',
+				};
+
+				expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
+			});
+
+			it('should not throw for 404 errors with different param', () => {
+				const error = {
+					status: 404,
+					type: 'invalid_request_error',
+					param: 'api_key',
+					message: 'This is not a chat model',
+				};
+
+				expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
+			});
+
+			it('should not throw for 404 errors with different message', () => {
+				const error = {
+					status: 404,
+					type: 'invalid_request_error',
+					param: 'model',
+					message: 'Model not found',
+				};
+
+				expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
+			});
+
+			it('should not throw for errors with different status', () => {
+				const error = {
+					status: 400,
+					type: 'invalid_request_error',
+					param: 'model',
+					message: 'This is not a chat model',
+				};
+
+				expect(() => openAiFailedAttemptHandler(error)).not.toThrow();
+			});
+
+			it('should not throw for null or undefined errors', () => {
+				expect(() => openAiFailedAttemptHandler(null)).not.toThrow();
+				expect(() => openAiFailedAttemptHandler(undefined)).not.toThrow();
+			});
+
+			it('should not throw for non-object errors', () => {
+				expect(() => openAiFailedAttemptHandler('string error')).not.toThrow();
+				expect(() => openAiFailedAttemptHandler(123)).not.toThrow();
+			});
+		});
 	});
 });

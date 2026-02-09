@@ -1,11 +1,12 @@
-import { SecretsManager, type SecretsManagerClientConfig } from '@aws-sdk/client-secrets-manager';
+import type { SecretsManager, SecretsManagerClientConfig } from '@aws-sdk/client-secrets-manager';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
-import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '../types';
+import { SecretsProvider } from '../types';
+import type { SecretsProviderSettings } from '../types';
 
 type Secret = {
 	secretName: string;
@@ -25,12 +26,10 @@ export type AwsSecretsManagerContext = SecretsProviderSettings<
 	)
 >;
 
-export class AwsSecretsManager implements SecretsProvider {
+export class AwsSecretsManager extends SecretsProvider {
 	name = 'awsSecretsManager';
 
 	displayName = 'AWS Secrets Manager';
-
-	state: SecretsProviderState = 'initializing';
 
 	properties: INodeProperties[] = [
 		DOCS_HELP_NOTICE,
@@ -101,6 +100,7 @@ export class AwsSecretsManager implements SecretsProvider {
 	private client: SecretsManager;
 
 	constructor(private readonly logger = Container.get(Logger)) {
+		super();
 		this.logger = this.logger.scoped('external-secrets');
 	}
 
@@ -115,6 +115,7 @@ export class AwsSecretsManager implements SecretsProvider {
 			clientConfig.credentials = { accessKeyId, secretAccessKey };
 		}
 
+		const { SecretsManager } = await import('@aws-sdk/client-secrets-manager');
 		this.client = new SecretsManager(clientConfig);
 
 		this.logger.debug('AWS Secrets Manager provider initialized');
@@ -130,16 +131,14 @@ export class AwsSecretsManager implements SecretsProvider {
 		}
 	}
 
-	async connect() {
+	protected async doConnect(): Promise<void> {
 		const [wasSuccessful, errorMsg] = await this.test();
 
-		this.state = wasSuccessful ? 'connected' : 'error';
-
-		if (wasSuccessful) {
-			this.logger.debug('AWS Secrets Manager provider connected');
-		} else {
-			this.logger.error('AWS Secrets Manager provider failed to connect', { errorMsg });
+		if (!wasSuccessful) {
+			throw new Error(errorMsg || 'Connection failed');
 		}
+
+		this.logger.debug('AWS Secrets Manager provider connected');
 	}
 
 	async disconnect() {

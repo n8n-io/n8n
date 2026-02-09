@@ -20,6 +20,9 @@ import {
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
+
+jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python');
 
 /**
  * Integration tests for the JS TaskRunner execution. Starts the TaskRunner
@@ -30,7 +33,6 @@ describe('JS TaskRunner execution on internal mode', () => {
 	runnerConfig.mode = 'internal';
 	runnerConfig.enabled = true;
 	runnerConfig.port = 45678;
-	runnerConfig.isNativePythonRunnerEnabled = false;
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
 	const taskRequester = Container.get(LocalTaskRequester);
@@ -204,6 +206,8 @@ describe('JS TaskRunner execution on internal mode', () => {
 		beforeAll(async () => {
 			process.env.NODE_FUNCTION_ALLOW_BUILTIN = 'crypto';
 			process.env.NODE_FUNCTION_ALLOW_EXTERNAL = 'moment';
+			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service');
+			Container.get(TaskBroker).stopDraining();
 			await taskRunnerModule.start();
 		});
 

@@ -1,6 +1,8 @@
 import type { Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
+import { BaseModal } from './BaseModal';
+
 /**
  * Credential modal component for canvas and credentials interactions.
  * Used within CanvasPage as `n8n.canvas.credentialModal.*`
@@ -11,8 +13,10 @@ import { expect } from '@playwright/test';
  * await n8n.canvas.credentialModal.addCredential();
  * await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
  */
-export class CredentialModal {
-	constructor(private root: Locator) {}
+export class CredentialModal extends BaseModal {
+	constructor(private root: Locator) {
+		super(root.page());
+	}
 
 	getModal(): Locator {
 		return this.root;
@@ -35,7 +39,10 @@ export class CredentialModal {
 	}
 
 	async fillField(key: string, value: string): Promise<void> {
-		const input = this.root.getByTestId(`parameter-input-${key}`).locator('input, textarea');
+		const parameterInput = this.root.getByTestId(`parameter-input-${key}`);
+		const input = parameterInput.locator('input, textarea');
+		// Wait for input to be visible before filling
+		await input.waitFor({ state: 'visible', timeout: 10000 });
 		await input.fill(value);
 		await expect(input).toHaveValue(value);
 	}
@@ -132,6 +139,13 @@ export class CredentialModal {
 
 	async changeTab(tabName: 'Sharing'): Promise<void> {
 		await this.root.getByTestId('menu-item').filter({ hasText: tabName }).click();
+	}
+
+	/**
+	 * Get a specific credential field input
+	 */
+	getFieldInput(key: string): Locator {
+		return this.root.getByTestId(`parameter-input-${key}`).locator('input, textarea');
 	}
 
 	/**

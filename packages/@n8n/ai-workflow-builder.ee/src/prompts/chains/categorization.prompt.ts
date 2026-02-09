@@ -14,11 +14,7 @@ export const examplePrompts = [
 	},
 	{
 		prompt: 'Collect partner referral submissions and verify client instances via BigQuery',
-		techniques: [
-			WorkflowTechnique.FORM_INPUT,
-			WorkflowTechnique.HUMAN_IN_THE_LOOP,
-			WorkflowTechnique.NOTIFICATION,
-		],
+		techniques: [WorkflowTechnique.FORM_INPUT, WorkflowTechnique.HUMAN_IN_THE_LOOP],
 	},
 	{
 		prompt: 'Scrape competitor pricing pages weekly and generate a summary report of changes',
@@ -26,6 +22,7 @@ export const examplePrompts = [
 			WorkflowTechnique.SCHEDULING,
 			WorkflowTechnique.SCRAPING_AND_RESEARCH,
 			WorkflowTechnique.DATA_EXTRACTION,
+			WorkflowTechnique.DATA_PERSISTENCE,
 			WorkflowTechnique.DATA_ANALYSIS,
 		],
 	},
@@ -44,6 +41,19 @@ export const examplePrompts = [
 			WorkflowTechnique.DATA_TRANSFORMATION,
 			WorkflowTechnique.DATA_ANALYSIS,
 			WorkflowTechnique.KNOWLEDGE_BASE,
+		],
+	},
+	{
+		prompt: 'Store customer feedback from our webhook for later analysis',
+		techniques: [WorkflowTechnique.DATA_PERSISTENCE],
+	},
+	{
+		prompt:
+			'Collect form submissions and save them to Google Sheets with automatic email notifications',
+		techniques: [
+			WorkflowTechnique.FORM_INPUT,
+			WorkflowTechnique.DATA_PERSISTENCE,
+			WorkflowTechnique.NOTIFICATION,
 		],
 	},
 ];
@@ -81,7 +91,7 @@ of how the categorization should be carried out.
 ${formatExamplePrompts()}
 </example_categorization>
 
-Select a maximum of 5 techniques that you believe are applicable, but only select them if you are
+Select the techniques that you believe are applicable, but only select them if you are
 confident that they are applicable. If the prompt is ambiguous or does not provide an obvious workflow
 do not provide any techniques - if confidence is low avoid providing techniques.
 

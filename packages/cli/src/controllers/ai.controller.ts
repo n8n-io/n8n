@@ -7,10 +7,11 @@ import {
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
-	AiSessionMetadataResponseDto,
+	AiUsageSettingsRequestDto,
+	AiTruncateMessagesRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Licensed, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Post, RestController, GlobalScope } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -22,6 +23,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
+import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
@@ -35,13 +37,14 @@ export class AiController {
 		private readonly workflowBuilderService: WorkflowBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly userService: UserService,
+		private readonly aiUsageService: AiUsageService,
 	) {}
 
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
 	// "Cannot set headers after they are sent" error for streaming responses.
 	// This ensures errors during streaming are handled within the stream itself.
 	@Licensed('feat:aiBuilder')
-	@Post('/build', { rateLimit: { limit: 100 }, usesTemplates: true })
+	@Post('/build', { ipRateLimit: { limit: 100 }, usesTemplates: true })
 	async build(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
@@ -55,7 +58,7 @@ export class AiController {
 
 			res.on('close', handleClose);
 
-			const { id, text, workflowContext, featureFlags } = payload.payload;
+			const { id, text, workflowContext, featureFlags, versionId } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					id,
@@ -67,6 +70,7 @@ export class AiController {
 						expressionValues: workflowContext.expressionValues,
 					},
 					featureFlags,
+					versionId,
 				},
 				req.user,
 				signal,
@@ -118,7 +122,7 @@ export class AiController {
 		}
 	}
 
-	@Post('/chat', { rateLimit: { limit: 100 } })
+	@Post('/chat', { ipRateLimit: { limit: 100 } })
 	async chat(req: AuthenticatedRequest, res: FlushableResponse, @Body payload: AiChatRequestDto) {
 		try {
 			const aiResponse = await this.aiService.chat(payload, req.user);
@@ -213,7 +217,7 @@ export class AiController {
 	}
 
 	@Licensed('feat:aiBuilder')
-	@Post('/sessions', { rateLimit: { limit: 100 } })
+	@Post('/sessions', { ipRateLimit: { limit: 100 } })
 	async getSessions(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -229,25 +233,6 @@ export class AiController {
 	}
 
 	@Licensed('feat:aiBuilder')
-	@Post('/sessions/metadata', { rateLimit: { limit: 100 } })
-	async getSessionsMetadata(
-		req: AuthenticatedRequest,
-		_: Response,
-		@Body payload: AiSessionRetrievalRequestDto,
-	): Promise<AiSessionMetadataResponseDto> {
-		try {
-			const metadata = await this.workflowBuilderService.getSessionsMetadata(
-				payload.workflowId,
-				req.user,
-			);
-			return metadata;
-		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
-		}
-	}
-
-	@Licensed('feat:aiBuilder')
 	@Get('/build/credits')
 	async getBuilderCredits(
 		req: AuthenticatedRequest,
@@ -255,6 +240,41 @@ export class AiController {
 	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
 		try {
 			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Post('/build/truncate-messages', { ipRateLimit: { limit: 100 } })
+	async truncateMessages(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: AiTruncateMessagesRequestDto,
+	): Promise<{ success: boolean }> {
+		try {
+			const success = await this.workflowBuilderService.truncateMessagesAfter(
+				payload.workflowId,
+				req.user,
+				payload.messageId,
+			);
+			return { success };
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Post('/usage-settings')
+	@GlobalScope('aiAssistant:manage')
+	async updateUsageSettings(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: AiUsageSettingsRequestDto,
+	): Promise<void> {
+		try {
+			await this.aiUsageService.updateAiUsageSettings(payload.allowSendingParameterValues);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

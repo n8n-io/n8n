@@ -8,8 +8,11 @@ import type {
 	IDataObject,
 	ICredentialDataDecryptedObject,
 	MultiPartFormData,
+	INode,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { BlockList, isIPv6 } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
@@ -124,30 +127,78 @@ export const setupOutputConnection = (
 	};
 };
 
-export const isIpWhitelisted = (
-	whitelist: string | string[] | undefined,
+export const isIpAllowed = (
+	allowlist: string | string[] | undefined,
 	ips: string[],
 	ip?: string,
 ) => {
-	if (whitelist === undefined || whitelist === '') {
+	if (allowlist === undefined || allowlist === '') {
 		return true;
 	}
 
-	if (!Array.isArray(whitelist)) {
-		whitelist = whitelist.split(',').map((entry) => entry.trim());
+	if (!Array.isArray(allowlist)) {
+		allowlist = allowlist.split(',').map((entry) => entry.trim());
 	}
 
-	for (const address of whitelist) {
-		if (ip?.includes(address)) {
-			return true;
-		}
+	const allowList = getAllowList(allowlist);
 
-		if (ips.some((entry) => entry.includes(address))) {
+	// Check the primary IP address with proper family detection
+	if (ip) {
+		const ipFamily = isIPv6(ip) ? 'ipv6' : 'ipv4';
+		if (allowList.check(ip, ipFamily)) {
 			return true;
 		}
+	}
+
+	// Check proxy IPs with proper family detection
+	if (
+		ips.some((ipEntry) => {
+			const ipFamily = isIPv6(ipEntry) ? 'ipv6' : 'ipv4';
+			return allowList.check(ipEntry, ipFamily);
+		})
+	) {
+		return true;
 	}
 
 	return false;
+};
+
+const getAllowList = (allowlist: string[]) => {
+	const allowList = new BlockList();
+
+	for (const entry of allowlist) {
+		try {
+			// Check if entry is in CIDR notation (contains /)
+			if (entry.includes('/')) {
+				const [network, prefixStr] = entry.split('/');
+				const prefix = parseInt(prefixStr, 10);
+
+				// Validate prefix is a number
+				if (isNaN(prefix)) {
+					continue;
+				}
+
+				// Detect IP type (IPv4 vs IPv6)
+				const type = network.includes(':') ? 'ipv6' : 'ipv4';
+
+				// Validate prefix range
+				const maxPrefix = type === 'ipv4' ? 32 : 128;
+				if (prefix < 0 || prefix > maxPrefix) {
+					continue;
+				}
+
+				allowList.addSubnet(network, prefix, type);
+			} else {
+				// Single IP address
+				const type = entry.includes(':') ? 'ipv6' : 'ipv4';
+				allowList.addAddress(entry, type);
+			}
+		} catch {
+			// Ignore invalid entries
+		}
+	}
+
+	return allowList;
 };
 
 export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
@@ -205,9 +256,25 @@ export async function validateWebhookAuthentication(
 
 		const providedAuth = basicAuth(req);
 		// Authorization data is missing
-		if (!providedAuth) throw new WebhookAuthorizationError(401);
+		if (!providedAuth) {
+			const authToken = headers['x-auth-token'];
+			if (!authToken) {
+				throw new WebhookAuthorizationError(401);
+			}
 
-		if (providedAuth.name !== expectedAuth.user || providedAuth.pass !== expectedAuth.password) {
+			const expectedAuthToken = generateBasicAuthToken(ctx.getNode(), expectedAuth);
+			if (
+				!expectedAuthToken ||
+				typeof authToken !== 'string' ||
+				expectedAuthToken.length !== authToken.length ||
+				!timingSafeEqual(Buffer.from(expectedAuthToken), Buffer.from(authToken))
+			) {
+				throw new WebhookAuthorizationError(403);
+			}
+		} else if (
+			providedAuth.name !== expectedAuth.user ||
+			providedAuth.pass !== expectedAuth.password
+		) {
 			// Provided authentication data is wrong
 			throw new WebhookAuthorizationError(403);
 		}
@@ -351,4 +418,37 @@ export async function handleFormData(
 	}
 
 	return { workflowData: prepareOutput(returnItem) };
+}
+
+export async function generateFormPostBasicAuthToken(
+	context: IWebhookFunctions,
+	authPropertyName: string,
+) {
+	const node = context.getNode();
+
+	const authentication = context.getNodeParameter(authPropertyName);
+	if (authentication === 'none') return;
+
+	let credentials: ICredentialDataDecryptedObject | undefined;
+
+	try {
+		credentials = await context.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
+	} catch {}
+
+	return generateBasicAuthToken(node, credentials);
+}
+
+export function generateBasicAuthToken(
+	node: INode,
+	credentials: ICredentialDataDecryptedObject | undefined,
+) {
+	if (!credentials || !credentials.user || !credentials.password) {
+		return;
+	}
+
+	const token = createHmac('sha256', `${credentials.user}:${credentials.password}`)
+		.update(`${node.id}-${node.webhookId}`)
+		.digest('hex');
+
+	return token;
 }

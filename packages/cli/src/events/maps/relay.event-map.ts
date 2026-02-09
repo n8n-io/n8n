@@ -44,6 +44,13 @@ export type RelayEventMap = {
 		userId: string | null;
 	};
 
+	'instance-first-production-workflow-failed': {
+		projectId: string;
+		workflowId: string;
+		workflowName: string;
+		userId: string;
+	};
+
 	'first-workflow-data-loaded': {
 		userId: string;
 		workflowId: string;
@@ -125,6 +132,23 @@ export type RelayEventMap = {
 		userIdList: string[];
 	};
 
+	'workflow-executed': {
+		user?: UserLike;
+		workflowId: string;
+		workflowName: string;
+		executionId: string;
+		source:
+			| 'user-manual'
+			| 'user-retry'
+			| 'webhook'
+			| 'trigger'
+			| 'error'
+			| 'cli'
+			| 'integrated'
+			| 'evaluation'
+			| 'chat';
+	};
+
 	// #endregion
 
 	// #region Node
@@ -179,6 +203,15 @@ export type RelayEventMap = {
 	'user-updated': {
 		user: UserLike;
 		fieldsChanged: string[];
+	};
+
+	'user-mfa-enabled': {
+		user: UserLike;
+	};
+
+	'user-mfa-disabled': {
+		user: UserLike;
+		disableMethod: 'mfaCode' | 'recoveryCode';
 	};
 
 	'user-signed-up': {
@@ -325,6 +358,7 @@ export type RelayEventMap = {
 		projectId?: string;
 		projectType?: string;
 		uiContext?: string;
+		isDynamic?: boolean;
 	};
 
 	'credentials-shared': {
@@ -340,6 +374,7 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		isDynamic?: boolean;
 	};
 
 	'credentials-deleted': {
@@ -401,6 +436,12 @@ export type RelayEventMap = {
 		workflowId?: string;
 		workflowName?: string;
 		reason: CancellationReason;
+	};
+
+	'execution-deleted': {
+		user: UserLike;
+		executionIds: string[];
+		deleteBefore?: Date;
 	};
 
 	// #endregion
@@ -493,10 +534,23 @@ export type RelayEventMap = {
 	// #region Variable
 
 	'variable-created': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
 		projectId?: string;
 	};
 
 	'variable-updated': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
+		projectId?: string;
+	};
+
+	'variable-deleted': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
 		projectId?: string;
 	};
 
@@ -510,6 +564,10 @@ export type RelayEventMap = {
 		isValid: boolean;
 		isNew: boolean;
 		errorMessage?: string;
+	};
+
+	'external-secrets-provider-reloaded': {
+		vaultType: string;
 	};
 
 	// #endregion
@@ -600,6 +658,29 @@ export type RelayEventMap = {
 		workflowId: string;
 		hostId: string;
 		jobId: string;
+	};
+
+	// #endregion
+
+	// #region workflow history compaction
+	'history-compacted': {
+		workflowsProcessed: number;
+		totalVersionsSeen: number;
+		totalVersionsDeleted: number;
+		errorCount: number;
+		durationMs: number;
+		windowStartIso: string;
+		windowEndIso: string;
+		compactionStartTime: Date;
+	};
+	// #endregion
+
+	// #region Instance Policies
+
+	'instance-policies-updated': {
+		user: UserLike;
+		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+		value: boolean;
 	};
 
 	// #endregion

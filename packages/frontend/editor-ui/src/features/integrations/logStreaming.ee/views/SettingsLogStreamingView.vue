@@ -98,7 +98,7 @@ function forceUpdateInstance() {
 
 function onBusClosing() {
 	workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
-	uiStore.stateIsDirty = false;
+	uiStore.markStateClean();
 }
 
 async function getDestinationDataFromBackend(): Promise<void> {

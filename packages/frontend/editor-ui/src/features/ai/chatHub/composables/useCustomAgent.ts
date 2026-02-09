@@ -1,10 +1,11 @@
-import { computed, toValue, watch, type MaybeRef } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRef } from 'vue';
 import { useChatStore } from '../chat.store';
 
 export function useCustomAgent(agentId?: MaybeRef<string | undefined>) {
 	const store = useChatStore();
+	const isLoading = ref(false);
 	const id = computed(() => toValue(agentId));
-	const agent = computed(() => {
+	const customAgent = computed(() => {
 		if (!id.value) {
 			return undefined;
 		}
@@ -14,13 +15,18 @@ export function useCustomAgent(agentId?: MaybeRef<string | undefined>) {
 
 	watch(
 		id,
-		(theId) => {
+		async (theId) => {
 			if (theId) {
-				void store.fetchCustomAgent(theId);
+				try {
+					isLoading.value = true;
+					await store.fetchCustomAgent(theId);
+				} finally {
+					isLoading.value = false;
+				}
 			}
 		},
 		{ immediate: true },
 	);
 
-	return agent;
+	return { isLoading, customAgent };
 }

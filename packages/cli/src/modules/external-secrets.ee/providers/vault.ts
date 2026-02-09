@@ -6,7 +6,7 @@ import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 import { ExternalSecretsConfig } from '../external-secrets.config';
-import type { SecretsProviderSettings, SecretsProviderState } from '../types';
+import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
@@ -218,8 +218,6 @@ export class VaultProvider extends SecretsProvider {
 
 	name = 'vault';
 
-	state: SecretsProviderState = 'initializing';
-
 	private cachedSecrets: Record<string, IDataObject> = {};
 
 	private settings: VaultSettings;
@@ -261,48 +259,34 @@ export class VaultProvider extends SecretsProvider {
 		this.logger.debug('Vault provider initialized');
 	}
 
-	async connect(): Promise<void> {
+	protected async doConnect(): Promise<void> {
+		// Authenticate based on method
 		if (this.settings.authMethod === 'token') {
 			this.#currentToken = this.settings.token;
 		} else if (this.settings.authMethod === 'usernameAndPassword') {
-			try {
-				this.#currentToken = await this.authUsernameAndPassword(
-					this.settings.username,
-					this.settings.password,
-				);
-			} catch {
-				this.state = 'error';
-				this.logger.error('Failed to connect to Vault using Username and Password credentials.');
-				return;
+			this.#currentToken = await this.authUsernameAndPassword(
+				this.settings.username,
+				this.settings.password,
+			);
+			if (!this.#currentToken) {
+				throw new Error('Failed to authenticate with Username and Password');
 			}
 		} else if (this.settings.authMethod === 'appRole') {
-			try {
-				this.#currentToken = await this.authAppRole(this.settings.roleId, this.settings.secretId);
-			} catch {
-				this.state = 'error';
-				this.logger.error('Failed to connect to Vault using AppRole credentials.');
-				return;
+			this.#currentToken = await this.authAppRole(this.settings.roleId, this.settings.secretId);
+			if (!this.#currentToken) {
+				throw new Error('Failed to authenticate with AppRole');
 			}
 		}
-		try {
-			if (!(await this.test())[0]) {
-				this.state = 'error';
-			} else {
-				this.state = 'connected';
 
-				[this.#tokenInfo] = await this.getTokenInfo();
-				this.setupTokenRefresh();
-			}
-		} catch (e) {
-			this.state = 'error';
-			this.logger.error('Failed credentials test on Vault connect.');
+		// Test connection
+		const [testSuccess] = await this.test();
+		if (!testSuccess) {
+			throw new Error('Connection test failed');
 		}
 
-		try {
-			await this.update();
-		} catch {
-			this.logger.warn('Failed to update Vault secrets');
-		}
+		// Setup token refresh
+		[this.#tokenInfo] = await this.getTokenInfo();
+		this.setupTokenRefresh();
 	}
 
 	async disconnect(): Promise<void> {

@@ -1,6 +1,9 @@
 import type { FrontendSettings } from '@n8n/api-types';
 
 export const defaultSettings: FrontendSettings = {
+	ai: {
+		allowSendingParameterValues: true,
+	},
 	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
@@ -105,7 +108,6 @@ export const defaultSettings: FrontendSettings = {
 	nodeJsVersion: '',
 	nodeEnv: '',
 	concurrency: -1,
-	isNativePythonRunnerEnabled: false,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',
@@ -154,6 +156,7 @@ export const defaultSettings: FrontendSettings = {
 	aiCredits: {
 		enabled: false,
 		credits: 0,
+		setup: false,
 	},
 	easyAIWorkflowOnboarded: false,
 	folders: {

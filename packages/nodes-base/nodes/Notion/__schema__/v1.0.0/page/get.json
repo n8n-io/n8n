@@ -3,7 +3,10 @@
     "properties": {
         "id": {
             "type": "string"
+        },
+        "Messaggi Schedulati": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

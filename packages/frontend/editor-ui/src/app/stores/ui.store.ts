@@ -2,12 +2,10 @@ import {
 	ABOUT_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
-	CONTACT_PROMPT_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
-	NODE_PINNING_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	VIEWS,
@@ -15,6 +13,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
@@ -26,12 +25,12 @@ import {
 	LOCAL_STORAGE_THEME,
 	WHATS_NEW_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
-	PRE_BUILT_AGENTS_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
+	BINARY_DATA_VIEW_MODAL_KEY,
+	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
@@ -60,6 +59,7 @@ import {
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import {
@@ -124,11 +124,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				CHAT_EMBED_MODAL_KEY,
 				CHANGE_PASSWORD_MODAL_KEY,
 				CONFIRM_PASSWORD_MODAL_KEY,
-				CONTACT_PROMPT_MODAL_KEY,
 				CREDENTIAL_SELECT_MODAL_KEY,
 				DUPLICATE_MODAL_KEY,
 				PERSONALIZATION_MODAL_KEY,
-				NODE_PINNING_MODAL_KEY,
 				INVITE_USER_MODAL_KEY,
 				TAGS_MANAGER_MODAL_KEY,
 				ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -142,17 +140,19 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PROMPT_MFA_CODE_MODAL_KEY,
 				SOURCE_CONTROL_PUSH_MODAL_KEY,
 				SOURCE_CONTROL_PULL_MODAL_KEY,
+				SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 				EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+				SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 				DEBUG_PAYWALL_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_RESTORE,
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
-				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
 				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 				VARIABLE_MODAL_KEY,
+				BINARY_DATA_VIEW_MODAL_KEY,
 				WORKFLOW_DESCRIPTION_MODAL_KEY,
 				WORKFLOW_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
@@ -232,6 +232,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				nodeName: undefined,
 			},
 		},
+		[STOP_MANY_EXECUTIONS_MODAL_KEY]: {
+			open: false,
+			data: {},
+		},
 		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
 			open: false,
 			data: {
@@ -256,16 +260,18 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				nodeName: '',
 			},
 		},
-		[EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY]: {
-			open: false,
-			data: {},
-		},
 	});
 
 	const modalStack = ref<string[]>([]);
-	const sidebarMenuCollapsed = useLocalStorage<boolean>('sidebar.collapsed', true);
+	const sidebarMenuCollapsed = useLocalStorage<boolean | null>('sidebar.collapsed', null, {
+		serializer: {
+			read: (v) => (v === 'null' ? null : v === 'true'),
+			write: (v) => String(v),
+		},
+	});
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
@@ -546,6 +552,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 		workflowListEventBus: EventBus,
 	) => {
@@ -606,6 +613,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
+	const markStateDirty = () => {
+		dirtyStateSetCount.value++;
+		stateIsDirty.value = true;
+	};
+
+	const markStateClean = () => {
+		stateIsDirty.value = false;
+	};
+
 	/**
 	 * Register a modal dynamically
 	 */
@@ -664,7 +680,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isActionActive,
 		activeActions,
 		headerHeight,
-		stateIsDirty,
+		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
+		stateIsDirty: computed(() => stateIsDirty.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
@@ -700,6 +717,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
+		markStateDirty,
+		markStateClean,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
 		moduleTabs,

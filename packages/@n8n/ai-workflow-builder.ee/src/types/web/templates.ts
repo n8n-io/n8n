@@ -53,7 +53,9 @@ export interface TemplateSearchQuery {
 	combineWith?: 'or' | 'and';
 	// category can be used to search by a pre-defined list
 	category?: Category;
-	// there are apps/nodes search properties as well - but have a specific format which is
+	// a specific node is used in the template, should be in node format like n8n-nodes-base.editImage
+	nodes?: string;
+	// there are apps search properties as well - but have a specific format which is
 	// hard to feed to the agent for use in search (free search will work better)
 }
 

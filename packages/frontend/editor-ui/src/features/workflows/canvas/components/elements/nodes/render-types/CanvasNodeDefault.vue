@@ -190,7 +190,9 @@ function onActivate(event: MouseEvent) {
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
 			</div>
-			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+			<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
+				{{ subtitle }}
+			</div>
 		</div>
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 	</div>
@@ -286,11 +288,9 @@ function onActivate(event: MouseEvent) {
 				margin-left: calc((var(--canvas-node--height) - var(--node--icon--size) - 4px) / 2);
 			}
 
-			&:not(.running) {
-				.statusIcons {
-					position: static;
-					margin-right: var(--spacing--2xs);
-				}
+			.statusIcons {
+				position: static;
+				margin-right: var(--spacing--2xs);
 			}
 
 			.description {

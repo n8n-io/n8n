@@ -5,6 +5,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import type { ExecutionSummary } from 'n8n-workflow';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({
@@ -43,6 +45,9 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsCard, {
 			$route: {
 				params: {},
 			},
+		},
+		provide: {
+			[WorkflowIdKey]: computed(() => 'test-workflow-id'),
 		},
 	},
 });

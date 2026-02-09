@@ -2,12 +2,13 @@ import { CredentialsEntity, CredentialsRepository, In, WorkflowRepository } from
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { ICredentialContext, jsonParse } from 'n8n-workflow';
 import { ICredentialResolver } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
 type CredentialStatus = {
 	credentialId: string;
+	credentialName: string;
 	resolverId: string;
 	credentialType: string;
 	status: 'missing' | 'configured';
@@ -73,7 +74,10 @@ export class CredentialResolverWorkflowService {
 	 * @returns Array of credential statuses (configured/missing) with resolver info
 	 * @throws {Error} When workflow is not found or resolver configuration is invalid
 	 */
-	async getWorkflowStatus(workflowId: string, identityToken: string) {
+	async getWorkflowStatus(
+		workflowId: string,
+		credentialContext: ICredentialContext,
+	): Promise<CredentialStatus[]> {
 		const workflow = await this.workflowRepository.get({
 			id: workflowId,
 		});
@@ -122,7 +126,7 @@ export class CredentialResolverWorkflowService {
 				workflowResolverInstance,
 				workflowResolverConfig,
 				resolverId,
-				identityToken,
+				credentialContext,
 			});
 		});
 
@@ -135,7 +139,7 @@ export class CredentialResolverWorkflowService {
 			workflowResolverInstance: ICredentialResolver | null;
 			workflowResolverConfig: Record<string, unknown> | null;
 			resolverId: string | undefined;
-			identityToken: string;
+			credentialContext: ICredentialContext;
 		},
 	): Promise<CredentialStatus | null> {
 		let resolverInstance: ICredentialResolver | null = options.workflowResolverInstance;
@@ -155,18 +159,15 @@ export class CredentialResolverWorkflowService {
 
 		if (resolverConfig && resolverInstance) {
 			try {
-				await resolverInstance.getSecret(
-					credential.id,
-					{ identity: options.identityToken, version: 1 },
-					{
-						configuration: resolverConfig,
-						resolverName: resolverInstance.metadata.name,
-						resolverId: credentialResolverId,
-					},
-				);
+				await resolverInstance.getSecret(credential.id, options.credentialContext, {
+					configuration: resolverConfig,
+					resolverName: resolverInstance.metadata.name,
+					resolverId: credentialResolverId,
+				});
 				return {
 					credentialId: credential.id,
 					resolverId: credentialResolverId,
+					credentialName: credential.name,
 					status: 'configured',
 					credentialType: credential.type,
 				};
@@ -175,6 +176,7 @@ export class CredentialResolverWorkflowService {
 				return {
 					credentialId: credential.id,
 					resolverId: credentialResolverId,
+					credentialName: credential.name,
 					status: 'missing',
 					credentialType: credential.type,
 				};

@@ -20,12 +20,14 @@ const modelValue = defineModel<string>();
 
 const emit = defineEmits<{
 	ready: [];
+	confirm: [];
 }>();
 
 const mcpStore = useMCPStore();
 
 const isLoading = ref(false);
 const hasFetched = ref(false);
+const isDropdownVisible = ref(false);
 const selectRef = ref<InstanceType<typeof N8nSelect>>();
 const workflowOptions = ref<WorkflowListItem[]>([]);
 let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -65,13 +67,23 @@ async function waitFor(timeout: number) {
 }
 
 function focusOnInput() {
-	if (workflowOptions.value.length > 0) {
-		selectRef.value?.focusOnInput();
-	}
+	selectRef.value?.focusOnInput();
 }
 
 function removeOption(value: string) {
 	workflowOptions.value = workflowOptions.value.filter((option) => option.id !== value);
+}
+
+function onVisibleChange(visible: boolean) {
+	isDropdownVisible.value = visible;
+}
+
+function onKeydownCapture(event: KeyboardEvent) {
+	if (event.key === 'Enter' && !isDropdownVisible.value && modelValue.value) {
+		event.preventDefault();
+		event.stopPropagation();
+		emit('confirm');
+	}
 }
 
 onMounted(async () => {
@@ -86,39 +98,44 @@ defineExpose({
 </script>
 
 <template>
-	<N8nSelect
-		ref="selectRef"
-		v-model="modelValue"
-		data-test-id="mcp-workflows-select"
-		:placeholder="placeholder"
-		:disabled="disabled"
-		:loading="isLoading"
-		:filterable="true"
-		:remote="true"
-		:remote-method="searchWorkflows"
-		:no-data-text="i18n.baseText('settings.mcp.connectWorkflows.emptyState')"
-		:popper-class="{
-			[$style['mcp-workflows-select-loading']]: isLoading,
-			[$style['mcp-workflows-select-empty']]: showEmptyState,
-		}"
-	>
-		<template #prefix>
-			<N8nIcon :class="$style['search-icon']" icon="search" size="large" />
-		</template>
-		<N8nOption
-			v-for="workflow in workflowOptions"
-			:key="workflow.id"
-			:value="workflow.id"
-			:label="workflow.name"
+	<div @keydown.enter.capture="onKeydownCapture">
+		<N8nSelect
+			ref="selectRef"
+			v-model="modelValue"
+			data-test-id="mcp-workflows-select"
+			:placeholder="placeholder"
+			:disabled="disabled"
+			:loading="isLoading"
+			:filterable="true"
+			:remote="true"
+			:remote-method="searchWorkflows"
+			:popper-class="{
+				[$style['mcp-workflows-select-loading']]: isLoading,
+				[$style['mcp-workflows-select-empty']]: showEmptyState,
+			}"
+			@visible-change="onVisibleChange"
 		>
-			<WorkflowLocation
-				:workflow-id="workflow.id"
-				:workflow-name="workflow.name"
-				:home-project="workflow.homeProject"
-				:parent-folder="workflow.parentFolder"
-			/>
-		</N8nOption>
-	</N8nSelect>
+			<template #prefix>
+				<N8nIcon :class="$style['search-icon']" icon="search" size="large" />
+			</template>
+			<N8nOption v-if="showEmptyState" value="" disabled :class="$style['empty-option']">
+				{{ i18n.baseText('settings.mcp.connectWorkflows.emptyState') }}
+			</N8nOption>
+			<N8nOption
+				v-for="workflow in workflowOptions"
+				:key="workflow.id"
+				:value="workflow.id"
+				:label="workflow.name"
+			>
+				<WorkflowLocation
+					:workflow-id="workflow.id"
+					:workflow-name="workflow.name"
+					:home-project="workflow.homeProject"
+					:parent-folder="workflow.parentFolder"
+				/>
+			</N8nOption>
+		</N8nSelect>
+	</div>
 </template>
 
 <style module lang="scss">
@@ -128,5 +145,10 @@ defineExpose({
 	min-height: var(--spacing--5xl);
 	align-items: center;
 	justify-content: space-around;
+}
+
+.empty-option {
+	cursor: default !important;
+	color: var(--color--text) !important;
 }
 </style>

@@ -1,7 +1,7 @@
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeInputConfiguration,
-	INodeInputFilter,
+	INodeFilter,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -45,7 +45,7 @@ function getInputs(
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: NodeConnectionType;
-		filter?: INodeInputFilter;
+		filter?: INodeFilter;
 		required?: boolean;
 	}
 
@@ -318,20 +318,6 @@ export class AgentV1 implements INodeType {
 							agent: ['conversationalAgent', 'toolsAgent'],
 						},
 					},
-				},
-				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					displayName: 'Get started faster with our',
-					name: 'preBuiltAgentsCallout',
-					type: 'callout',
-					typeOptions: {
-						calloutAction: {
-							label: 'pre-built agents',
-							icon: 'bot',
-							type: 'openPreBuiltAgentsCollection',
-						},
-					},
-					default: '',
 				},
 				{
 					displayName:

@@ -20,6 +20,27 @@ export class StripeApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
+		{
+			displayName: 'Signature Secret',
+			name: 'signatureSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'The signature secret is used to verify the authenticity of requests sent by Stripe.',
+		},
+		{
+			displayName:
+				'We strongly recommend setting up a <a href="https://stripe.com/docs/webhooks" target="_blank">signing secret</a> to ensure the authenticity of requests.',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					signatureSecret: [''],
+				},
+			},
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {

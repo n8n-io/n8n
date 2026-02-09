@@ -30,7 +30,7 @@ const props = defineProps<{
 	data: {
 		provider: ChatHubLLMProvider;
 		disabled: boolean;
-		onConfirm: (settings: ChatProviderSettingsDto) => void;
+		onConfirm: (settings: ChatProviderSettingsDto) => void | Promise<void>;
 		onCancel: () => void;
 	};
 }>();
@@ -130,9 +130,9 @@ function onCredentialDeselect() {
 	}
 }
 
-function onConfirm() {
+async function onConfirm() {
 	if (settings.value) {
-		props.data.onConfirm(settings.value);
+		await props.data.onConfirm(settings.value);
 	} else {
 		props.data.onCancel();
 	}
@@ -235,8 +235,8 @@ watch(
 
 		<template #content>
 			<div :class="$style.content">
-				<div :class="$style.container">
-					<N8nText tag="label" color="text-dark">
+				<label :class="$style.container">
+					<N8nText color="text-dark">
 						{{
 							i18n.baseText('settings.chatHub.providers.modal.edit.enabled.label', {
 								interpolate: { provider: providerDisplayNames[props.data.provider] },
@@ -257,10 +257,10 @@ watch(
 							@update:model-value="onToggleEnabled"
 						/>
 					</N8nTooltip>
-				</div>
+				</label>
 
-				<div v-if="settings && settings.enabled" :class="$style.container">
-					<N8nText tag="label" color="text-dark">
+				<label v-if="settings && settings.enabled" :class="$style.container">
+					<N8nText color="text-dark">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.label') }}
 					</N8nText>
 
@@ -284,10 +284,13 @@ watch(
 							@click="onCredentialDeselect"
 						/>
 					</div>
-				</div>
+				</label>
 
-				<div v-if="settings && settings.enabled && settings.credentialId" :class="$style.container">
-					<N8nText tag="label" color="text-dark">
+				<label
+					v-if="settings && settings.enabled && settings.credentialId"
+					:class="$style.container"
+				>
+					<N8nText color="text-dark">
 						{{
 							i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.label', {
 								interpolate: { provider: providerDisplayNames[props.data.provider] },
@@ -295,28 +298,26 @@ watch(
 						}}
 					</N8nText>
 
-					<div :class="$style.toggle">
-						<N8nTooltip
-							:content="i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.tooltip')"
+					<N8nTooltip
+						:content="i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.tooltip')"
+						:disabled="props.data.disabled"
+						placement="top"
+					>
+						<ElSwitch
+							size="large"
+							:model-value="limitModels"
 							:disabled="props.data.disabled"
-							placement="top"
-						>
-							<ElSwitch
-								size="large"
-								:model-value="limitModels"
-								:disabled="props.data.disabled"
-								:loading="loadingSettings"
-								@update:model-value="onToggleLimitModels"
-							/>
-						</N8nTooltip>
-					</div>
-				</div>
+							:loading="loadingSettings"
+							@update:model-value="onToggleLimitModels"
+						/>
+					</N8nTooltip>
+				</label>
 
-				<div
+				<label
 					v-if="settings && settings.enabled && settings.credentialId && limitModels"
 					:class="$style.container"
 				>
-					<N8nText tag="label" color="text-dark">
+					<N8nText color="text-dark">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.allowedModels.label') }}
 					</N8nText>
 					<TagsDropdown
@@ -332,7 +333,7 @@ watch(
 						:create-tag="addManualModel"
 						:create-tag-i18n-key="'settings.chatHub.providers.modal.edit.models.create'"
 					/>
-				</div>
+				</label>
 			</div>
 		</template>
 
@@ -370,13 +371,6 @@ watch(
 	justify-content: space-between;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-}
-
-.toggle {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
-	flex-shrink: 0;
 }
 
 .credentialContainer {

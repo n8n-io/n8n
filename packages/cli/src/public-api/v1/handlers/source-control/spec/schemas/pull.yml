@@ -3,6 +3,16 @@ properties:
   force:
     type: boolean
     example: true
+  autoPublish:
+    type: string
+    enum: [none, all, published]
+    default: none
+    description: |
+      Controls automatic workflow publishing after import:
+      - `none`: Keep workflows in their local published state (default)
+      - `all`: Publish all imported workflows
+      - `published`: Publish only workflows that were published locally before import
+    example: published
   variables:
     type: object
     example: { 'foo': 'bar' }

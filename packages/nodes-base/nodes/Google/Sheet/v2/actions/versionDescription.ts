@@ -23,22 +23,6 @@ export const authentication: INodeProperties = {
 	default: 'oAuth2',
 };
 
-const preBuiltAgentsCallout: INodeProperties = {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-	displayName: 'Manage tasks in Google Sheets using our pre-built',
-	name: 'preBuiltAgentsCalloutGoogleSheets',
-	type: 'callout',
-	typeOptions: {
-		calloutAction: {
-			label: 'Task management agent',
-			icon: 'bot',
-			type: 'openSampleWorkflowTemplate',
-			templateId: 'task_management_agent_with_google_sheets',
-		},
-	},
-	default: '',
-};
-
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Sheets',
 	name: 'googleSheets',
@@ -110,7 +94,6 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
-		preBuiltAgentsCallout,
 		authentication,
 		{
 			displayName: 'Resource',

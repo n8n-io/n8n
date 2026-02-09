@@ -212,7 +212,7 @@ export function useChatHubCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'square-pen',
+						icon: 'plus',
 					},
 				},
 				keywords: [
@@ -230,7 +230,7 @@ export function useChatHubCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'robot',
+						icon: 'message-square-plus',
 					},
 				},
 				keywords: [
@@ -249,7 +249,7 @@ export function useChatHubCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'layers',
+						icon: 'message-square',
 						color: 'text-light',
 					},
 				},

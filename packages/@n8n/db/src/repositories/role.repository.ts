@@ -1,4 +1,3 @@
-import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, Repository } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
@@ -7,15 +6,13 @@ import { ProjectRelation, Role, User } from '../entities';
 
 @Service()
 export class RoleRepository extends Repository<Role> {
-	constructor(
-		dataSource: DataSource,
-		private readonly databaseConfig: DatabaseConfig,
-	) {
+	constructor(dataSource: DataSource) {
 		super(Role, dataSource.manager);
 	}
 
-	async findAll() {
-		return await this.find({ relations: ['scopes'] });
+	async findAll(trx?: EntityManager) {
+		const em = trx ?? this.manager;
+		return await em.find(Role, { relations: ['scopes'] });
 	}
 
 	async countUsersWithRole(role: Role): Promise<number> {
@@ -121,10 +118,6 @@ export class RoleRepository extends Repository<Role> {
 		slug: string,
 		newData: Partial<Pick<Role, 'description' | 'scopes' | 'displayName'>>,
 	) {
-		// Do not use transactions for sqlite legacy
-		if (this.databaseConfig.isLegacySqlite) {
-			return await this.updateEntityWithManager(this.manager, slug, newData);
-		}
 		return await this.manager.transaction(async (transactionManager) => {
 			return await this.updateEntityWithManager(transactionManager, slug, newData);
 		});

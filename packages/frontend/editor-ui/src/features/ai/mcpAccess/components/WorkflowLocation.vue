@@ -12,15 +12,17 @@ type ParentFolder = {
 	parentFolderId: string | null;
 };
 
+// If workflow name is not provided, only project and folder (if any) will be shown.
 const props = withDefaults(
 	defineProps<{
 		workflowId: string;
-		workflowName: string;
+		workflowName?: string;
 		homeProject?: ProjectSharingData;
 		parentFolder?: ParentFolder;
 		asLinks?: boolean;
 	}>(),
 	{
+		workflowName: undefined,
 		homeProject: undefined,
 		parentFolder: undefined,
 		asLinks: false,

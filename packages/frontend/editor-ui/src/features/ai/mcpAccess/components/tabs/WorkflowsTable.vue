@@ -128,10 +128,17 @@ const onConnectClick = () => {
 						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
 							{{ i18n.baseText('settings.mcp.workflows.table.empty.title') }}
 						</N8nText>
+						<N8nText
+							data-test-id="mcp-workflow-table-empty-state-description"
+							size="small"
+							color="text-base"
+						>
+							{{ i18n.baseText('settings.mcp.workflows.table.empty.description') }}
+						</N8nText>
 						<N8nButton
 							data-test-id="mcp-workflow-table-empty-state-button"
 							type="primary"
-							:label="i18n.baseText('settings.mcp.workflows.table.empty.button.label')"
+							:label="i18n.baseText('settings.mcp.connectWorkflows')"
 							@click="onConnectClick"
 						/>
 					</div>
@@ -160,7 +167,6 @@ const onConnectClick = () => {
 					<div :class="$style['location-cell']" data-test-id="mcp-workflow-location-cell">
 						<WorkflowLocation
 							:workflow-id="item.id"
-							:workflow-name="item.name"
 							:home-project="item.homeProject"
 							:parent-folder="item.parentFolder"
 							:as-links="true"

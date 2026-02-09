@@ -16,6 +16,7 @@ import TextWithHighlights from './TextWithHighlights.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/features/ndv/runData/components/RunDataJsonActions.vue'),
@@ -47,6 +48,7 @@ const ndvStore = useNDVStore();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
+const workflowsStore = useWorkflowsStore();
 
 const selectedJsonPath = ref(nonExistingJsonPath);
 const draggingPath = ref<null | string>(null);
@@ -73,6 +75,7 @@ const getJsonParameterPath = (path: string) => {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: subPath,
+		binaryMode: workflowsStore.workflow.settings?.binaryMode,
 	});
 };
 

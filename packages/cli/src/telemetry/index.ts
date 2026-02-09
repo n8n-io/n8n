@@ -18,7 +18,7 @@ import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
-import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'
@@ -248,19 +248,6 @@ export class Telemetry {
 		const maxPayloadSize = 32 << 10; // 32 KB
 
 		if (payloadSize > maxPayloadSize) {
-			this.errorReporter.warn(
-				new Error(
-					`Telemetry event "${eventName}" payload size (${payloadSize} bytes) exceeds limit (${maxPayloadSize} bytes). Skipping event.`,
-				),
-				{
-					extra: {
-						eventName,
-						payloadSize,
-						maxPayloadSize,
-						userId: payload.userId,
-					},
-				},
-			);
 			return;
 		}
 

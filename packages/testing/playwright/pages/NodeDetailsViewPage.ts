@@ -225,10 +225,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.locator('.webhook-url').textContent();
 	}
 
-	getVisiblePoppers() {
-		return this.page.locator('.el-popper:visible');
-	}
-
 	async clearExpressionEditor(parameterName?: string) {
 		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
@@ -275,16 +271,12 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterOptions(): Promise<void> {
-		await this.page.locator('.param-options').click();
+		await this.page.getByTestId('collection-parameter-add').click();
 	}
 
 	async addParameterOptionByName(optionName: string): Promise<void> {
 		await this.clickParameterOptions();
 		await this.selectFromVisibleDropdown(optionName);
-	}
-
-	getVisiblePopper() {
-		return this.page.locator('.el-popper:visible');
 	}
 
 	async waitForParameterDropdown(parameterName: string): Promise<void> {
@@ -522,6 +514,14 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterTextInput(parameterName: string) {
 		return this.getParameterInput(parameterName).locator('input[type="text"]');
+	}
+
+	/**
+	 * Get the N8nInput container element for a parameter.
+	 * Use this for checking border styles since N8nInput has border on container, not input.
+	 */
+	getParameterInputContainer(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('input[type="text"]').locator('..');
 	}
 
 	getInlineExpressionEditorContent() {
@@ -779,14 +779,20 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async searchOutputData(searchTerm: string) {
+		// Focus the search input to expand it (it has opacity:0 when collapsed)
 		const searchInput = this.outputPanel.getSearchInput();
-		await searchInput.click();
+		await searchInput.focus();
+		// Wait for the search input to become visible after focus triggers expansion
+		await searchInput.waitFor({ state: 'visible' });
 		await searchInput.fill(searchTerm);
 	}
 
 	async searchInputData(searchTerm: string) {
+		// Focus the search input to expand it (it has opacity:0 when collapsed)
 		const searchInput = this.inputPanel.getSearchInput();
-		await searchInput.click();
+		await searchInput.focus();
+		// Wait for the search input to become visible after focus triggers expansion
+		await searchInput.waitFor({ state: 'visible' });
 		await searchInput.fill(searchTerm);
 	}
 
@@ -871,6 +877,17 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async addItemToFixedCollection(collectionName: string) {
 		await this.page.getByTestId(`fixed-collection-${collectionName}`).click();
+	}
+
+	getFixedCollectionPropertyPicker(index?: number) {
+		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-property');
+		return index !== undefined ? pickers.nth(index) : pickers.first();
+	}
+
+	async addFixedCollectionProperty(propertyName: string, index?: number) {
+		const picker = this.getFixedCollectionPropertyPicker(index);
+		await picker.locator('input').click();
+		await this.page.getByRole('option', { name: propertyName, exact: true }).click();
 	}
 
 	async clickParameterItemAction(actionText: string) {

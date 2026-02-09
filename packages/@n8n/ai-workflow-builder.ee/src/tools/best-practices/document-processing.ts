@@ -61,6 +61,11 @@ For high-volume processing:
 - Process files sequentially or in small batches
 - Drop unnecessary binary data after extraction to free memory
 
+### File Metadata
+Documents uploaded via a form trigger will have various bits of metadata available - filename, mimetype and size.
+These are accessible using an expression like {{ $json.documents[0].mimetype }} to access each of the document's details.
+Multiple files can be uploaded to a form which is the reason for the documents array.
+
 ## Text Extraction Strategy
 
 Choose extraction method based on document type and content:
@@ -98,14 +103,12 @@ For varied or complex documents:
 Option 1 - Using Document Loader (Recommended for binary files):
 1. Pass binary data directly to Document Loader node (set Data Source to "Binary")
 2. Connect to AI Agent or LLM Chain for processing
-3. Use Structured Output Parser to ensure consistent JSON
-4. Validate extracted fields before processing
+3. Validate extracted fields before processing
 
 Option 2 - Using text extraction:
 1. Extract raw text using Extract from File or OCR
 2. Pass to AI Agent or LLM Chain with structured prompt
-3. Use Structured Output Parser to ensure consistent JSON
-4. Validate extracted fields before processing
+3. Validate extracted fields before processing
 
 Example system prompt structure:
 "Extract the following fields from the document: [field list]. Return as JSON with this schema: [schema example]"
@@ -168,8 +171,14 @@ Configuration: Set appropriate folder and file type filters
 **Extract from File (n8n-nodes-base.extractFromFile)**
 Purpose: Extract text from various file formats using format-specific operations
 Critical: ALWAYS check file type first with an IF or Switch before and select the correct operation (Extract from PDF, Extract from MS Excel, etc.)
+Critical: If the user requests handling of multiple file types (PDF, CSV, JSON, etc) then a Switch (n8n-nodes-base.switch) node should be used
+to check the file type before text extraction. Multiple text extraction nodes should be used to handle each of the different file types. For example,
+if the workflow contains a form trigger node which receives a file, then a Switch node MUST be used to split the different options out to different extraction nodes.
 Output: Extracted text is returned under the "text" key in JSON (e.g., access with {{ $json.text }})
-Pitfalls: Returns empty for scanned documents - always check and fallback to OCR; Using wrong operation causes errors
+Pitfalls:
+- Returns empty for scanned documents - always check and fallback to OCR; Using wrong operation causes errors
+- If connecting to a document upload form (n8n-nodes-base.formTrigger) use a File field type and then connect it to the extract from file node using the field name.
+For example if creating a form trigger with field "Upload Document" then set the extract from file input binary field to "Upload_Document"
 
 **AWS Textract (n8n-nodes-base.awsTextract)**
 Purpose: Advanced OCR with table and form detection
@@ -187,7 +196,6 @@ Configuration: Include structured output tools for consistent results
 
 **LLM Chain (@n8n/n8n-nodes-langchain.chainLlm)**
 Purpose: Document classification and data extraction
-Use with: Structured Output Parser for JSON consistency
 
 **Document Loader (@n8n/n8n-nodes-langchain.documentLoader)**
 Purpose: Load and process documents directly from binary data for AI processing
@@ -227,7 +235,7 @@ Modes: Use "Pass Through" to preserve binary from one branch
 **Edit Fields (Set) (n8n-nodes-base.set)**
 Purpose: Better choice for combining data from separate/independent branches
 Use for: Adding fields from different sources, preserving binary while adding processed data
-Configuration: Set common fields and use "Include Other Input Fields" OFF to preserve existing data including binary
+Configuration: Set common fields and use "Include Other Input Fields" ON to preserve existing data including binary
 
 **Execute Workflow Trigger (n8n-nodes-base.executeWorkflowTrigger)**
 Purpose: Start point for sub-workflows that are called by other workflows

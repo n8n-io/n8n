@@ -61,9 +61,11 @@ test.describe('Webhook Trigger node', () => {
 		await n8n.ndv.setupHelper.webhook({ httpMethod: 'GET' });
 		const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
 
-		await n8n.ndv.setOptionalParameter('Response Code', 'responseCode', '201');
-		// Extra wait to ensure parameter is persisted before webhook registration
-		await n8n.ndv.waitForDebounce();
+		// Add the Response Code optional parameter
+		await n8n.ndv.getAddOptionDropdown().click();
+		await n8n.page.getByRole('option', { name: 'Response Code' }).click();
+		// Select 201 from the dropdown
+		await n8n.ndv.selectOptionInParameterDropdown('responseCode', '201');
 		await n8n.ndv.execute();
 		await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();
 

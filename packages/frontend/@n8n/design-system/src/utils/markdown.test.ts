@@ -1,4 +1,4 @@
-import { toggleCheckbox } from './markdown';
+import { toggleCheckbox, serializeAttr } from './markdown';
 
 describe('toggleCheckbox', () => {
 	it('should do nothing when there are no checkboxes', () => {
@@ -23,5 +23,37 @@ describe('toggleCheckbox', () => {
 			'"## I\'m a note \n* [x] First\n* [x] Second\n* [ ] Third\n"',
 		);
 		expect(toggleCheckbox(updatedContent, 1)).toBe(content);
+	});
+});
+
+describe('serializeAttr', () => {
+	it('should serialize attribute with safe value', () => {
+		const result = serializeAttr('a', 'href', 'https://example.com');
+		expect(result).toBe('href="https://example.com"');
+	});
+
+	it('should return empty string for unsafe attribute value', () => {
+		const result = serializeAttr('a', 'href', 'javascript:alert(1)');
+		expect(result).toBe('');
+	});
+
+	it('should handle empty attribute value', () => {
+		const result = serializeAttr('img', 'alt', '');
+		expect(result).toBe('');
+	});
+
+	it('should handle numeric attribute value', () => {
+		const result = serializeAttr('iframe', 'width', '600');
+		expect(result).toBe('width="600"');
+	});
+
+	it('should escape special characters in attribute value', () => {
+		const result = serializeAttr('img', 'alt', 'Image "description" & more');
+		expect(result).toBe('alt="Image &quot;description&quot; & more"');
+	});
+
+	it('should escape iframe src attribute value', () => {
+		const result = serializeAttr('iframe', 'src', 'https://example.com/1 ></">');
+		expect(result).toBe('src="https://example.com/1 &gt;&lt;/&quot;&gt;"');
 	});
 });

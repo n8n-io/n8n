@@ -14,6 +14,7 @@ import { useToast } from '@/app/composables/useToast';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
+
 const props = defineProps<{
 	appName: string;
 	credentialType: string;

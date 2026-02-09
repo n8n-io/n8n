@@ -8,7 +8,6 @@ import {
 	getWorkflowById,
 	setActiveVersion,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -287,85 +286,116 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
-	// NOTE: these tests use the workflow dependency repository, which is not enabled
-	// on legacy Sqlite.
-	const globalConfig = Container.get(GlobalConfig);
-	if (!globalConfig.database.isLegacySqlite) {
-		describe('findWorkflowsNeedingIndexing', () => {
-			it('should return workflows with no dependencies or outdated dependencies', async () => {
-				//
-				// ARRANGE
-				//
-				const workflowRepository = Container.get(WorkflowRepository);
-				const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+	describe('findWorkflowsNeedingIndexing', () => {
+		it('should return workflows with no dependencies or outdated dependencies', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
 
-				// Workflow 1: No dependencies
-				const workflow1 = await createWorkflow({ versionCounter: 5 });
+			// Workflow 1: No dependencies
+			const workflow1 = await createWorkflow({ versionCounter: 5 });
 
-				// Workflow 2: Has dependencies but with outdated version
-				const workflow2 = await createWorkflow({ versionCounter: 10 });
-				const dependencies2 = new WorkflowDependencies(workflow2.id, 7);
-				dependencies2.add({
-					dependencyType: 'credentialId',
-					dependencyKey: 'cred-123',
-					dependencyInfo: null,
-				});
-				await workflowDependencyRepository.updateDependenciesForWorkflow(
-					workflow2.id,
-					dependencies2,
-				);
-
-				// Workflow 3: Has up-to-date dependencies
-				const workflow3 = await createWorkflow({ versionCounter: 15 });
-				const dependencies3 = new WorkflowDependencies(workflow3.id, 15);
-				dependencies3.add({
-					dependencyType: 'nodeType',
-					dependencyKey: 'n8n-nodes-base.httpRequest',
-					dependencyInfo: null,
-				});
-				await workflowDependencyRepository.updateDependenciesForWorkflow(
-					workflow3.id,
-					dependencies3,
-				);
-
-				//
-				// ACT
-				//
-				const workflowsNeedingIndexing = await workflowRepository.findWorkflowsNeedingIndexing();
-
-				//
-				// ASSERT
-				//
-				expect(workflowsNeedingIndexing).toHaveLength(2);
-				const workflowIds = workflowsNeedingIndexing.map((w) => w.id);
-				expect(workflowIds).toContain(workflow1.id);
-				expect(workflowIds).toContain(workflow2.id);
-				expect(workflowIds).not.toContain(workflow3.id);
+			// Workflow 2: Has dependencies but with outdated version
+			const workflow2 = await createWorkflow({ versionCounter: 10 });
+			const dependencies2 = new WorkflowDependencies(workflow2.id, 7);
+			dependencies2.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-123',
+				dependencyInfo: null,
 			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow2.id, dependencies2);
 
-			it('should respect the batch size limit', async () => {
-				//
-				// ARRANGE
-				//
-				const workflowRepository = Container.get(WorkflowRepository);
-
-				// Create 5 workflows with no dependencies
-				for (let i = 0; i < 5; i++) {
-					await createWorkflow({ versionCounter: 1 });
-				}
-
-				//
-				// ACT
-				//
-				const batchSize = 3;
-				const workflowsNeedingIndexing =
-					await workflowRepository.findWorkflowsNeedingIndexing(batchSize);
-
-				//
-				// ASSERT
-				//
-				expect(workflowsNeedingIndexing).toHaveLength(batchSize);
+			// Workflow 3: Has up-to-date dependencies
+			const workflow3 = await createWorkflow({ versionCounter: 15 });
+			const dependencies3 = new WorkflowDependencies(workflow3.id, 15);
+			dependencies3.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
 			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow3.id, dependencies3);
+
+			//
+			// ACT
+			//
+			const workflowsNeedingIndexing = await workflowRepository.findWorkflowsNeedingIndexing();
+
+			//
+			// ASSERT
+			//
+			expect(workflowsNeedingIndexing).toHaveLength(2);
+			const workflowIds = workflowsNeedingIndexing.map((w) => w.id);
+			expect(workflowIds).toContain(workflow1.id);
+			expect(workflowIds).toContain(workflow2.id);
+			expect(workflowIds).not.toContain(workflow3.id);
 		});
-	}
+
+		it('should respect the batch size limit', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			// Create 5 workflows with no dependencies
+			for (let i = 0; i < 5; i++) {
+				await createWorkflow({ versionCounter: 1 });
+			}
+
+			//
+			// ACT
+			//
+			const batchSize = 3;
+			const workflowsNeedingIndexing =
+				await workflowRepository.findWorkflowsNeedingIndexing(batchSize);
+
+			//
+			// ASSERT
+			//
+			expect(workflowsNeedingIndexing).toHaveLength(batchSize);
+		});
+	});
+
+	describe('hasAnyWorkflowsWithErrorWorkflow', () => {
+		it('should return false when no workflows have error workflow configured', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow({ settings: {} });
+			await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const result = await workflowRepository.hasAnyWorkflowsWithErrorWorkflow();
+
+			expect(result).toBe(false);
+		});
+
+		it('should return true when at least one workflow has error workflow configured', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow({ settings: {} });
+			await createWorkflow({ settings: { errorWorkflow: 'error-workflow-id-123' } });
+
+			const result = await workflowRepository.hasAnyWorkflowsWithErrorWorkflow();
+
+			expect(result).toBe(true);
+		});
+
+		it('should return true when multiple workflows have error workflow configured', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow({ settings: { errorWorkflow: 'error-workflow-1' } });
+			await createWorkflow({ settings: { errorWorkflow: 'error-workflow-2' } });
+			await createWorkflow({ settings: {} });
+
+			const result = await workflowRepository.hasAnyWorkflowsWithErrorWorkflow();
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false when workflows have null settings', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow({ settings: null as any });
+
+			const result = await workflowRepository.hasAnyWorkflowsWithErrorWorkflow();
+
+			expect(result).toBe(false);
+		});
+	});
 });

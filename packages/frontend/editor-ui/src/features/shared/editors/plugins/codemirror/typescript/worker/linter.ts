@@ -54,6 +54,8 @@ function isIgnoredDiagnostic(diagnostic: ts.Diagnostic) {
 		case 7006:
 		// Cannot find module or its corresponding type declarations.
 		case 2307:
+		// 'await' expressions are only allowed within async functions and at the top levels of modules.
+		case 1308:
 			return true;
 	}
 

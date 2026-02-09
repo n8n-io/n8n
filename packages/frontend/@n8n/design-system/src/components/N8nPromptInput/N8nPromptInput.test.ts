@@ -15,7 +15,14 @@ describe('N8nPromptInput', () => {
 		it('should render correctly with default props', () => {
 			const { container } = renderComponent({
 				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: false,
+						N8nTooltip: {
+							template: '<slot />',
+						},
+					},
 				},
 			});
 			expect(container).toMatchSnapshot();
@@ -40,7 +47,14 @@ describe('N8nPromptInput', () => {
 					streaming: true,
 				},
 				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: false,
+						N8nTooltip: {
+							template: '<slot />',
+						},
+					},
 				},
 			});
 			const textarea = container.querySelector('textarea');
@@ -619,7 +633,9 @@ describe('N8nPromptInput', () => {
 							props: ['disabled', 'streaming'],
 							template: '<button :disabled="disabled"></button>',
 						},
-						N8nTooltip: true,
+						N8nTooltip: {
+							template: '<div><slot /></div>',
+						},
 						N8nLink: true,
 						N8nIcon: true,
 					},
@@ -707,7 +723,7 @@ describe('N8nPromptInput', () => {
 						N8nTooltip: {
 							props: ['disabled', 'content', 'placement'],
 							template:
-								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="disabled"><slot /></div>',
+								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="String(disabled)"><slot /></div>',
 						},
 						N8nLink: true,
 						N8nIcon: true,
@@ -715,11 +731,11 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			// Find tooltips with different placements
-			const creditsTooltip = wrapper.find('.tooltip-top');
-			const askOwnerTooltip = wrapper.findAll('.tooltip-top')[1]; // Second tooltip with top placement
+			// Find tooltips: [0]=outer wrapper, [1]=credits info, [2]=ask owner
+			const tooltips = wrapper.findAll('.tooltip-top');
+			const askOwnerTooltip = tooltips[2];
 
-			expect(creditsTooltip.exists()).toBe(true);
+			expect(tooltips.length).toBe(3);
 			expect(askOwnerTooltip.exists()).toBe(true);
 			expect(askOwnerTooltip.attributes('data-disabled')).toBe('false');
 
@@ -741,7 +757,7 @@ describe('N8nPromptInput', () => {
 						N8nTooltip: {
 							props: ['disabled', 'content', 'placement'],
 							template:
-								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="disabled"><slot /></div>',
+								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="String(disabled)"><slot /></div>',
 						},
 						N8nLink: true,
 						N8nIcon: true,
@@ -749,11 +765,11 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			// Find tooltips with different placements
-			const creditsTooltip = wrapper.find('.tooltip-top');
-			const askOwnerTooltip = wrapper.findAll('.tooltip-top')[1]; // Second tooltip with top placement
+			// Find tooltips: [0]=outer wrapper, [1]=credits info, [2]=ask owner
+			const tooltips = wrapper.findAll('.tooltip-top');
+			const askOwnerTooltip = tooltips[2];
 
-			expect(creditsTooltip.exists()).toBe(true);
+			expect(tooltips.length).toBe(3);
 			expect(askOwnerTooltip.exists()).toBe(true);
 			expect(askOwnerTooltip.attributes('data-disabled')).toBe('true');
 

@@ -1,8 +1,8 @@
 import xss from 'xss';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { scopesSchema } from '../../schemas/scopes.schema';
+import { Z } from '../../zod-class';
 
 const xssCheck = (value: string) =>
 	value ===

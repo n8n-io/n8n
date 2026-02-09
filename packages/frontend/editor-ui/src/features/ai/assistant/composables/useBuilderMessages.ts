@@ -286,11 +286,9 @@ export function useBuilderMessages() {
 
 		const thinkingMessage = determineThinkingMessage(mutableMessages);
 
-		// Apply rating logic only to messages after workflow-updated
-		const messagesWithRatingLogic = applyRatingLogic(mutableMessages);
-
+		// Rating is now handled in the footer of AskAssistantChat, not per-message
 		// Remove retry from all error messages except the last one
-		const messagesWithRetryLogic = removeRetryFromOldErrorMessages(messagesWithRatingLogic);
+		const messagesWithRetryLogic = removeRetryFromOldErrorMessages(mutableMessages);
 
 		return {
 			messages: messagesWithRetryLogic,
@@ -310,12 +308,17 @@ export function useBuilderMessages() {
 		});
 	}
 
-	function createUserMessage(content: string, id: string): ChatUI.AssistantMessage {
+	function createUserMessage(
+		content: string,
+		id: string,
+		revertVersion?: { id: string; createdAt: string },
+	): ChatUI.AssistantMessage {
 		return {
 			id,
 			role: 'user',
 			type: 'text',
 			content,
+			revertVersion,
 			read: true,
 		};
 	}
@@ -391,6 +394,7 @@ export function useBuilderMessages() {
 				role: message.role ?? 'assistant',
 				type: 'text',
 				content: message.text,
+				revertVersion: message.revertVersion,
 				read: false,
 			} satisfies ChatUI.AssistantMessage;
 		}

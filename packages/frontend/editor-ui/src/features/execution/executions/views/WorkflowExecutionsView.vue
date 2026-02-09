@@ -6,22 +6,21 @@ import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
-import { NEW_WORKFLOW_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { useRoute, useRouter } from 'vue-router';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { executionRetryMessage } from '../executions.utils';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
-const nodeTypesStore = useNodeTypesStore();
-const projectsStore = useProjectsStore();
+const workflowsListStore = useWorkflowsListStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const route = useRoute();
@@ -29,21 +28,17 @@ const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
 
-const { initializeWorkspace } = useCanvasOperations();
-
 const loading = ref(false);
 const loadingMore = ref(false);
 
 const workflow = ref<IWorkflowDb | undefined>();
 
-const workflowId = computed(() => {
-	const workflowIdParam = route.params.name as string;
-	return [PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID].includes(workflowIdParam)
-		? undefined
-		: workflowIdParam;
-});
+const workflowId = injectStrict(WorkflowIdKey);
 
-const executionId = computed(() => route.params.executionId as string);
+const executionId = computed(() => {
+	const id = route.params.executionId;
+	return typeof id === 'string' ? id : undefined;
+});
 
 const executions = computed(() =>
 	workflowId.value
@@ -60,10 +55,15 @@ const execution = computed(() => {
 
 const currentExecution = ref<ExecutionSummary | undefined>();
 
+// Check if this is a new workflow by looking for the ?new query param
+const isNewWorkflowRoute = computed(() => {
+	return route.query.new === 'true';
+});
+
 watch(
 	() => workflowId.value,
-	async () => {
-		await fetchWorkflow();
+	() => {
+		fetchWorkflow();
 	},
 );
 
@@ -75,7 +75,7 @@ watch(
 );
 
 onMounted(async () => {
-	await Promise.all([nodeTypesStore.loadNodeTypesIfNotLoaded(), fetchWorkflow()]);
+	fetchWorkflow();
 
 	if (workflowId.value) {
 		await Promise.all([executionsStore.initialize(workflowId.value), fetchExecution()]);
@@ -135,26 +135,15 @@ async function initializeRoute() {
 	}
 }
 
-async function fetchWorkflow() {
-	if (workflowId.value) {
-		// Check if we are loading the Executions tab directly, without having loaded the workflow
-		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			try {
-				await workflowsStore.fetchActiveWorkflows();
-				const data = await workflowsStore.fetchWorkflow(workflowId.value);
-				await initializeWorkspace(data);
-			} catch (error) {
-				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
-			}
-		}
-
-		workflow.value = workflowsStore.getWorkflowById(workflowId.value);
-		const workflowData = await workflowsStore.fetchWorkflow(workflow.value.id);
-
-		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
-	} else {
+function fetchWorkflow() {
+	// Skip fetching if it's a new workflow that hasn't been saved yet
+	if (isNewWorkflowRoute.value || !workflowId.value) {
 		workflow.value = workflowsStore.workflow;
+		return;
 	}
+
+	// Use the workflow from the list store (already loaded by WorkflowLayout)
+	workflow.value = workflowsListStore.workflowsById[workflowId.value] ?? workflowsStore.workflow;
 }
 
 async function onAutoRefreshToggle(value: boolean) {

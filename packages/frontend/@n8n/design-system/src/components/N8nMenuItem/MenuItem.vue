@@ -3,6 +3,7 @@ import { computed } from 'vue';
 
 import type { IMenuItem } from '@n8n/design-system/types';
 
+import BetaTag from '../BetaTag/BetaTag.vue';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
@@ -24,6 +25,10 @@ const emit = defineEmits<{
 }>();
 
 const to = computed(() => {
+	if (props.item.disabled) {
+		return undefined;
+	}
+
 	if (props.item.route) {
 		return props.item.route.to;
 	}
@@ -34,6 +39,13 @@ const to = computed(() => {
 
 	return undefined;
 });
+
+const handleClick = () => {
+	if (props.item.disabled) {
+		return;
+	}
+	emit('click');
+};
 
 const icon = computed<IconName | undefined>(() => {
 	if (typeof props.item.icon === 'object' && props.item.icon?.type === 'icon') {
@@ -55,21 +67,51 @@ const iconColor = computed(() => {
 
 	return props.item.icon?.color;
 });
+
+const tooltipDisabled = computed(() => {
+	return !props.compact && !(props.item.disabled && props.item.disabledReason);
+});
+
+const tooltipContent = computed(() => {
+	if (props.item.disabled && props.item.disabledReason) {
+		return props.item.disabledReason;
+	}
+
+	if (props.compact) {
+		return props.item.label;
+	}
+
+	return undefined;
+});
+
+const tooltipPlacement = computed(() => {
+	return props.item.disabled && props.item.disabledReason ? 'top' : 'right';
+});
 </script>
 
 <template>
 	<div :data-test-id="item.id" :class="$style.menuItemWrapper">
-		<N8nTooltip :placement="'right'" :disabled="!compact" :show-after="500">
-			<template v-if="compact" #content>{{ item.label }}</template>
+		<N8nTooltip :placement="tooltipPlacement" :disabled="tooltipDisabled" :show-after="500">
+			<template #content>
+				{{ tooltipContent }}
+			</template>
 
 			<N8nRoute
 				:id="item.id"
 				:to="to"
 				role="menuitem"
-				:class="[$style.menuItem, { [$style.active]: active }]"
-				:aria-label="props.ariaLabel"
+				:class="[
+					$style.menuItem,
+					{
+						[$style.active]: active,
+						[$style.compact]: compact,
+						[$style.disabled]: item.disabled,
+					},
+				]"
+				:aria-label="props.ariaLabel ?? props.item.label"
+				:aria-disabled="item.disabled"
 				data-test-id="menu-item"
-				@click="emit('click')"
+				@click="handleClick"
 			>
 				<div
 					v-if="item.icon"
@@ -83,7 +125,16 @@ const iconColor = computed(() => {
 					>
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
 				</div>
-				<N8nText v-if="!compact" :class="$style.menuItemText">{{ item.label }}</N8nText>
+				<div :class="$style.menuItemLabel">
+					<N8nText
+						v-if="!compact"
+						:class="$style.menuItemText"
+						:color="item.disabled ? 'text-light' : 'text-dark'"
+					>
+						{{ item.label }}
+					</N8nText>
+					<BetaTag v-if="!compact && item.beta" />
+				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
 		</N8nTooltip>
@@ -112,7 +163,7 @@ const iconColor = computed(() => {
 	width: 100%;
 	position: relative;
 
-	&:hover .menuItemIcon {
+	&:hover:not(.disabled) .menuItemIcon {
 		color: var(--color--text--shade-1);
 	}
 
@@ -121,9 +172,13 @@ const iconColor = computed(() => {
 		background-color: var(--color--background--light-1);
 	}
 
-	&:hover:not(.active):not(:global(.router-link-active)) {
+	&:hover:not(.active):not(:global(.router-link-active)):not(.disabled) {
 		background-color: var(--color--background--light-1);
 		color: var(--color--text--shade-1);
+	}
+
+	&.compact {
+		gap: 0;
 	}
 }
 
@@ -132,11 +187,14 @@ const iconColor = computed(() => {
 	outline-offset: -1px;
 }
 
+.menuItem.disabled {
+	cursor: not-allowed;
+}
+
 .menuItemText {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
-	flex: 1;
 	line-height: var(--font-size--lg);
 	min-width: 0;
 }
@@ -175,5 +233,14 @@ const iconColor = computed(() => {
 	.menuItemIcon {
 		color: var(--color--text--shade-1);
 	}
+}
+
+.menuItemLabel {
+	display: flex;
+	align-items: center;
+	flex-direction: row;
+	gap: var(--spacing--3xs);
+	flex: 1;
+	min-width: 0;
 }
 </style>

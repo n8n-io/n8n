@@ -1,5 +1,5 @@
 <template>
-	<span :class="$style.typing"><i></i><i></i><i></i></span>
+	<span :class="$style.typing" data-test-id="chat-typing-indicator"><i></i><i></i><i></i></span>
 </template>
 
 <style lang="scss" module>

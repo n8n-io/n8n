@@ -110,16 +110,24 @@ export class SidebarPage {
 		return this.page.getByTestId('banners-TRIAL');
 	}
 
-	getMainSidebarTrialUpgrade(): Locator {
-		return this.page.getByTestId('main-sidebar-trial-upgrade');
-	}
-
 	getTemplatesLink(): Locator {
 		return this.page.getByTestId('main-sidebar-templates').locator('a');
 	}
 
 	getVersionUpdateItem(): Locator {
 		return this.page.getByTestId('version-update-cta-button');
+	}
+
+	getSourceControlPushButton(): Locator {
+		return this.page.getByTestId('main-sidebar-source-control-push');
+	}
+
+	getSourceControlPullButton(): Locator {
+		return this.page.getByTestId('main-sidebar-source-control-pull');
+	}
+
+	getSourceControlConnectedIndicator(): Locator {
+		return this.page.getByTestId('main-sidebar-source-control-connected');
 	}
 
 	async openSettings(): Promise<void> {

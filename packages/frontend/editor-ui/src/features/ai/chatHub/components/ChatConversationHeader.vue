@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
-import ChatSidebarOpener from '@/features/ai/chatHub/components/ChatSidebarOpener.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
-import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import type {
 	ChatHubConversationModel,
 	ChatHubLLMProvider,
@@ -12,17 +8,16 @@ import type {
 	ChatModelDto,
 	ChatSessionId,
 } from '@n8n/api-types';
-import { N8nButton, N8nIconButton } from '@n8n/design-system';
+import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, useTemplateRef, watch, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { useChatStore } from '../chat.store';
 
-const { isNewSession, selectedModel, credentials, readyToShowModelSelector } = defineProps<{
-	isNewSession: boolean;
+const { selectedModel, credentials, readyToShowModelSelector, showArtifactIcon } = defineProps<{
 	selectedModel: ChatModelDto | null;
 	credentials: CredentialsMap | null;
 	readyToShowModelSelector: boolean;
+	showArtifactIcon: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -32,10 +27,9 @@ const emit = defineEmits<{
 	createCustomAgent: [];
 	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 	openWorkflow: [workflowId: string];
+	reopenArtifact: [];
 }>();
 
-const sidebar = useChatHubSidebarState();
-const router = useRouter();
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
 const i18n = useI18n();
 const chatStore = useChatStore();
@@ -45,7 +39,7 @@ const isLoadingAgents = ref(false);
 const showOpenWorkflow = computed(() => {
 	return (
 		selectedModel?.model.provider === 'n8n' &&
-		hasPermission(['rbac'], { rbac: { scope: 'workflow:read' } })
+		selectedModel.metadata.scopes?.includes('workflow:read')
 	);
 });
 
@@ -57,12 +51,6 @@ function onOpenWorkflow() {
 
 function onModelChange(selection: ChatHubConversationModel) {
 	emit('selectModel', selection);
-}
-
-function onNewChat() {
-	sidebar.toggleOpen(false);
-
-	void router.push({ name: CHAT_VIEW, force: true });
 }
 
 // Update agents when credentials are updated
@@ -91,18 +79,6 @@ defineExpose({
 <template>
 	<div :class="$style.component">
 		<div :class="$style.grow">
-			<ChatSidebarOpener :class="$style.menuButton" />
-			<N8nIconButton
-				v-if="!sidebar.isStatic.value"
-				:class="$style.menuButton"
-				type="secondary"
-				icon="square-pen"
-				text
-				icon-size="large"
-				:aria-label="i18n.baseText('chatHub.chat.header.button.newChat')"
-				:disabled="isNewSession"
-				@click="onNewChat"
-			/>
 			<ModelSelector
 				v-if="readyToShowModelSelector"
 				ref="modelSelectorRef"
@@ -118,6 +94,14 @@ defineExpose({
 				"
 			/>
 		</div>
+		<N8nButton
+			v-if="showArtifactIcon"
+			type="secondary"
+			size="medium"
+			icon="notebook-pen"
+			text
+			@click="emit('reopenArtifact')"
+		/>
 		<N8nButton
 			v-if="selectedModel?.model.provider === 'custom-agent'"
 			:class="$style.editAgent"
