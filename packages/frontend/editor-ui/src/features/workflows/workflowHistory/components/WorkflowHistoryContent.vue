@@ -205,6 +205,7 @@ $descriptionBoxMaxWidth: 330px;
 }
 
 .mainLine {
+	display: block;
 	@include mixins.utils-ellipsis;
 	cursor: default;
 }
