@@ -1,8 +1,12 @@
 import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
+import {
+	getNodeProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+} from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
-import { getNodeProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
@@ -11,9 +15,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,6 +1,6 @@
 import { Agent, ProxyAgent } from 'undici';
 
-import { getProxyAgent, proxyFetch } from '../httpProxyAgent';
+import { getProxyAgent, proxyFetch } from './http-proxy-agent';
 
 // Mock the dependencies
 jest.mock('undici', () => ({
@@ -317,6 +317,19 @@ describe('proxyFetch', () => {
 				dispatcher: undefined,
 			});
 		});
+
+		it('should handle Request objects', async () => {
+			const request = new Request('https://api.openai.com/v1', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ test: 'data' }),
+			});
+			await proxyFetch(request);
+
+			expect(mockFetch).toHaveBeenCalledWith(request, {
+				dispatcher: undefined,
+			});
+		});
 	});
 
 	describe('with proxy configured', () => {
@@ -361,6 +374,19 @@ describe('proxyFetch', () => {
 
 			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
 			expect(mockFetch).toHaveBeenCalledWith(url, {
+				dispatcher: expect.objectContaining({ type: 'ProxyAgent' }),
+			});
+		});
+
+		it('should handle Request objects with proxy', async () => {
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+
+			const request = new Request('https://api.openai.com/v1');
+			await proxyFetch(request);
+
+			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
+			expect(mockFetch).toHaveBeenCalledWith(request, {
 				dispatcher: expect.objectContaining({ type: 'ProxyAgent' }),
 			});
 		});

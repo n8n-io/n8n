@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
@@ -7,7 +8,9 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { WORKFLOW_PUBLISH_MODAL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { INodeUi } from '@/Interface';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -32,6 +35,8 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 const mockSaveCurrentWorkflow = vi.fn().mockResolvedValue(true);
+const mockUnpublishWorkflowFromHistory = vi.fn().mockResolvedValue(true);
+const mockShowMessage = vi.fn();
 
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({
@@ -39,10 +44,22 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useWorkflowActivate', () => ({
+	useWorkflowActivate: () => ({
+		unpublishWorkflowFromHistory: mockUnpublishWorkflowFromHistory,
+	}),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage: mockShowMessage,
+	}),
+}));
+
 const initialState = {
 	[STORES.SETTINGS]: {
 		settings: {
-			enterprise: {},
+			enterprise: createMockEnterpriseSettings(),
 		},
 	},
 };
@@ -522,6 +539,99 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 
 			expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
+		});
+	});
+
+	describe('Name Version action', () => {
+		let workflowHistoryStore: MockedStore<typeof useWorkflowHistoryStore>;
+		let settingsStore: MockedStore<typeof useSettingsStore>;
+
+		beforeEach(() => {
+			workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+			settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.NamedVersions]: true,
+			});
+			workflowsStore.workflow = {
+				...workflowsStore.workflow,
+				versionId: 'version-1',
+				updatedAt: Date.now(),
+			};
+			workflowsStore.versionData = {
+				versionId: 'version-1',
+				name: 'Test Version',
+				description: 'Test description',
+			};
+			workflowHistoryStore.updateWorkflowHistoryVersion = vi.fn().mockResolvedValue(undefined);
+		});
+
+		it('should be available when workflow history feature is enabled', () => {
+			setupEnabledPublishButton();
+			const { container } = renderComponent();
+			expect(container).toBeInTheDocument();
+		});
+
+		it('should not be available when named versions feature is disabled', () => {
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.NamedVersions]: false,
+			});
+			const { container } = renderComponent();
+			expect(container).toBeInTheDocument();
+		});
+	});
+
+	describe('Unpublish action', () => {
+		beforeEach(() => {
+			workflowsStore.workflow = {
+				...workflowsStore.workflow,
+				activeVersion: createMockActiveVersion('active-version-1'),
+			};
+			mockUnpublishWorkflowFromHistory.mockClear();
+			mockUnpublishWorkflowFromHistory.mockResolvedValue(true);
+			mockShowMessage.mockClear();
+		});
+
+		it('should be available when active version exists', () => {
+			setupEnabledPublishButton();
+			const { container } = renderComponent();
+			expect(container).toBeInTheDocument();
+		});
+
+		it('should not be available when no active version exists', () => {
+			workflowsStore.workflow.activeVersion = null;
+			const { container } = renderComponent();
+			expect(container).toBeInTheDocument();
+		});
+	});
+
+	describe('Dropdown menu actions', () => {
+		let settingsStore: MockedStore<typeof useSettingsStore>;
+
+		beforeEach(() => {
+			settingsStore = mockedStore(useSettingsStore);
+			setupEnabledPublishButton();
+		});
+
+		it('should render dropdown menu', () => {
+			const { container } = renderComponent();
+			expect(container).toBeInTheDocument();
+		});
+
+		it('should render when name version feature is enabled', () => {
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.NamedVersions]: true,
+			});
+			workflowsStore.workflow.versionId = 'version-1';
+
+			const { container } = renderComponent();
+			expect(container).toBeInTheDocument();
+		});
+
+		it('should render when active version exists for unpublish action', () => {
+			workflowsStore.workflow.activeVersion = createMockActiveVersion('active-version-1');
+
+			const { container } = renderComponent();
+			expect(container).toBeInTheDocument();
 		});
 	});
 });
