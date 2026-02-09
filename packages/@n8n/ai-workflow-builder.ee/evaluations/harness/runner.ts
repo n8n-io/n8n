@@ -118,20 +118,8 @@ function hasErrorFeedback(feedback: Feedback[]): boolean {
 }
 
 /**
- * Convert milliseconds to seconds for LangSmith metrics.
- * LangSmith scores must be within [-99999.9999, 99999.9999], so we store
- * latencies in seconds (supporting up to ~27 hours) instead of milliseconds.
- */
-function msToSeconds(ms: number): number {
-	return ms / 1000;
-}
-
-/**
  * Create feedback items for subgraph metrics.
  * These are reported to LangSmith as 'metrics' evaluator feedback.
- *
- * Note: Latencies are converted from milliseconds to seconds to stay within
- * LangSmith's score limits while preserving precision for long-running operations.
  */
 function createMetricsFeedback(args: {
 	discoveryDurationMs?: number;
@@ -144,8 +132,8 @@ function createMetricsFeedback(args: {
 	if (args.discoveryDurationMs !== undefined) {
 		feedback.push({
 			evaluator: 'metrics',
-			metric: 'discovery_latency_s',
-			score: msToSeconds(args.discoveryDurationMs),
+			metric: 'discovery_latency_ms',
+			score: args.discoveryDurationMs,
 			kind: 'metric',
 		});
 	}
@@ -153,8 +141,8 @@ function createMetricsFeedback(args: {
 	if (args.builderDurationMs !== undefined) {
 		feedback.push({
 			evaluator: 'metrics',
-			metric: 'builder_latency_s',
-			score: msToSeconds(args.builderDurationMs),
+			metric: 'builder_latency_ms',
+			score: args.builderDurationMs,
 			kind: 'metric',
 		});
 	}
@@ -162,8 +150,8 @@ function createMetricsFeedback(args: {
 	if (args.responderDurationMs !== undefined) {
 		feedback.push({
 			evaluator: 'metrics',
-			metric: 'responder_latency_s',
-			score: msToSeconds(args.responderDurationMs),
+			metric: 'responder_latency_ms',
+			score: args.responderDurationMs,
 			kind: 'metric',
 		});
 	}
