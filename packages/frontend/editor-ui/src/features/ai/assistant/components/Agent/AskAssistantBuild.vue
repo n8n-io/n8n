@@ -508,12 +508,13 @@ defineExpose({
 				</N8nText>
 			</template>
 			<template #custom-message="{ message }">
-				<!-- Show questions form only if not yet answered; hide completely when answered -->
+				<!-- Always render questions message; when answered, collapse to intro text only -->
 				<PlanQuestionsMessage
-					v-if="isPlanModeQuestionsMessage(message) && !isQuestionsAnswered(message)"
+					v-if="isPlanModeQuestionsMessage(message)"
 					:questions="message.data.questions"
 					:intro-message="message.data.introMessage"
 					:disabled="builderStore.streaming"
+					:answered="isQuestionsAnswered(message)"
 					@submit="builderStore.resumeWithQuestionsAnswers"
 				/>
 				<PlanDisplayMessage

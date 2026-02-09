@@ -17,6 +17,7 @@ interface Props {
 	questions: PlanMode.PlannerQuestion[];
 	introMessage?: string;
 	disabled?: boolean;
+	answered?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -199,7 +200,7 @@ const nextButtonLabel = computed(() => {
 			{{ introMessage }}
 		</N8nText>
 
-		<div v-if="currentQuestion && currentAnswer" :class="$style.container">
+		<div v-if="!answered && currentQuestion && currentAnswer" :class="$style.container">
 			<!-- Question -->
 			<div :class="$style.question">
 				<N8nText tag="p" :bold="true" :class="$style.questionText">

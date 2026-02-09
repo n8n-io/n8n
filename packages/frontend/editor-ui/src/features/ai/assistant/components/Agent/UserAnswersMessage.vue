@@ -60,6 +60,7 @@ function formatAnswer(answer: PlanMode.QuestionResponse): string {
 	background-color: var(--assistant--color--background--user-bubble);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--sm);
+	margin-top: var(--spacing--sm);
 }
 
 .answerItem {
