@@ -82,6 +82,10 @@ paths:
     $ref: './handlers/users/spec/paths/users.id.role.yml'
   /source-control/pull:
     $ref: './handlers/source-control/spec/paths/sourceControl.yml'
+  /source-control/push:
+    $ref: './handlers/source-control/spec/paths/sourceControl.push.yml'
+  /source-control/status:
+    $ref: './handlers/source-control/spec/paths/sourceControl.status.yml'
   /variables:
     $ref: './handlers/variables/spec/paths/variables.yml'
   /variables/{id}:

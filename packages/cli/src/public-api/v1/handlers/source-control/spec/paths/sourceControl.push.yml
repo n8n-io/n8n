@@ -1,0 +1,25 @@
+post:
+  x-eov-operation-id: push
+  x-eov-operation-handler: v1/handlers/source-control/source-control.handler
+  tags:
+    - SourceControl
+  summary: Push changes to the remote repository
+  description: Requires the Source Control feature to be licensed and connected to a repository.
+  requestBody:
+    description: Push options
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/push.yml'
+  responses:
+    '200':
+      description: Push result with files and commit info
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pushResult.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'

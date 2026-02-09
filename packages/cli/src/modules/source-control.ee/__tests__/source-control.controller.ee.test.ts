@@ -25,6 +25,7 @@ describe('SourceControlController', () => {
 			pullWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200 }),
 			getStatus: jest.fn().mockResolvedValue([]),
 			setGitUserDetails: jest.fn(),
+			autoConfigureFromEnv: jest.fn().mockResolvedValue(undefined),
 		} as unknown as SourceControlService;
 
 		sourceControlPreferencesService = mock<SourceControlPreferencesService>();
@@ -203,6 +204,32 @@ describe('SourceControlController', () => {
 			const getPreferencesRoute = controllerMetadata.routes.get('getPreferences');
 			expect(getPreferencesRoute).toBeDefined();
 			expect(getPreferencesRoute?.skipAuth).toBe(false);
+		});
+	});
+
+	describe('autoConfigure', () => {
+		it('should call autoConfigureFromEnv and return preferences', async () => {
+			const mockPreferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connected: true,
+			};
+			(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue(
+				mockPreferences,
+			);
+
+			const result = await controller.autoConfigure();
+
+			expect(sourceControlService.autoConfigureFromEnv).toHaveBeenCalled();
+			expect(result).toEqual(mockPreferences);
+		});
+
+		it('should throw BadRequestError when autoConfigureFromEnv fails', async () => {
+			(sourceControlService.autoConfigureFromEnv as jest.Mock).mockRejectedValueOnce(
+				new Error('Configuration failed'),
+			);
+
+			await expect(controller.autoConfigure()).rejects.toThrow('Configuration failed');
 		});
 	});
 });

@@ -1,0 +1,15 @@
+type: object
+properties:
+  force:
+    type: boolean
+    description: Whether to force push (overwrite conflicts)
+    example: false
+  commitMessage:
+    type: string
+    description: Commit message for the push
+    example: Updated workflows
+  fileNames:
+    type: array
+    description: List of files to push. If empty, all changed files are pushed.
+    items:
+      $ref: './sourceControlledFile.yml'

@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { isContainedWithin } from '@n8n/backend-common';
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, type WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,11 +11,13 @@ import { SourceControlPreferencesService } from '@/modules/source-control.ee/sou
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
+import type { SourceControlConfig } from '../source-control.config';
 import type { ExportResult } from '../types/export-result';
 
 // Mock the status service to avoid complex dependency issues
@@ -45,8 +48,9 @@ describe('SourceControlService', () => {
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const gitService = mock<SourceControlGitService>();
 	const eventService = mock<EventService>();
+	const mockLogger = mock<Logger>();
 	const sourceControlService = new SourceControlService(
-		mock(), // logger
+		mockLogger,
 		gitService,
 		preferencesService,
 		sourceControlExportService,
@@ -1148,6 +1152,220 @@ describe('SourceControlService', () => {
 
 			// ACT & ASSERT
 			await expect(sourceControlService.sanityCheck()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('autoConfigureFromEnv', () => {
+		const mockOwner = Object.assign(new User(), { id: 'owner-id', role: GLOBAL_ADMIN_ROLE });
+		const mockOwnershipService = mock<OwnershipService>();
+
+		let mockConfig: SourceControlConfig;
+
+		beforeEach(() => {
+			mockConfig = {
+				repositoryUrl: 'git@github.com:test/repo.git',
+				branch: 'main',
+				branchReadOnly: false,
+				connectionType: 'ssh' as const,
+				sshKey: '-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----',
+				autoPullOnStartup: false,
+				failOnPullError: false,
+				defaultKeyPairType: 'ed25519' as const,
+			};
+
+			mockOwnershipService.getInstanceOwner.mockResolvedValue(mockOwner);
+
+			jest.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+				const name = typeof token === 'function' ? token.name : String(token);
+				if (name === 'SourceControlConfig') return mockConfig;
+				if (name === 'OwnershipService') return mockOwnershipService;
+				return Container.get(token as any);
+			});
+
+			preferencesService.setPreferences = jest.fn().mockResolvedValue({});
+			preferencesService.saveKeyPairFromEnv = jest.fn().mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.getPreferences = jest.fn().mockReturnValue({
+				repositoryUrl: 'git@github.com:test/repo.git',
+				branchName: 'main',
+				branchReadOnly: false,
+				connectionType: 'ssh',
+				connected: false,
+			});
+		});
+
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
+		it('should return early when no repo URL is configured', async () => {
+			mockConfig.repositoryUrl = '';
+
+			await sourceControlService.autoConfigureFromEnv();
+
+			expect(preferencesService.setPreferences).not.toHaveBeenCalled();
+		});
+
+		it('should skip config but pull when already connected and autoPull=true', async () => {
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
+			mockConfig.autoPullOnStartup = true;
+
+			jest.spyOn(sourceControlService, 'pullWorkfolder').mockResolvedValue({
+				statusCode: 200,
+				statusResult: [],
+			});
+
+			await sourceControlService.autoConfigureFromEnv();
+
+			expect(preferencesService.setPreferences).not.toHaveBeenCalled();
+			expect(sourceControlService.pullWorkfolder).toHaveBeenCalledWith(mockOwner, {
+				force: true,
+				autoPublish: 'none',
+			});
+		});
+
+		it('should skip all when already connected and autoPull=false', async () => {
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
+			mockConfig.autoPullOnStartup = false;
+
+			jest.spyOn(sourceControlService, 'pullWorkfolder');
+
+			await sourceControlService.autoConfigureFromEnv();
+
+			expect(preferencesService.setPreferences).not.toHaveBeenCalled();
+			expect(sourceControlService.pullWorkfolder).not.toHaveBeenCalled();
+		});
+
+		it('should import SSH key, set prefs, and init repo when not connected with SSH', async () => {
+			jest
+				.spyOn(sourceControlService, 'initializeRepository')
+				.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			await sourceControlService.autoConfigureFromEnv();
+
+			expect(preferencesService.saveKeyPairFromEnv).toHaveBeenCalledWith(mockConfig.sshKey);
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith(
+				expect.objectContaining({
+					repositoryUrl: 'git@github.com:test/repo.git',
+					branchName: 'main',
+					connectionType: 'ssh',
+				}),
+				true,
+				false,
+			);
+			expect(sourceControlService.initializeRepository).toHaveBeenCalled();
+		});
+
+		it('should skip SSH key import when connection type is HTTPS', async () => {
+			mockConfig.connectionType = 'https';
+			mockConfig.repositoryUrl = 'https://github.com/test/repo.git';
+			jest
+				.spyOn(sourceControlService, 'initializeRepository')
+				.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			await sourceControlService.autoConfigureFromEnv();
+
+			expect(preferencesService.saveKeyPairFromEnv).not.toHaveBeenCalled();
+		});
+
+		it('should skip SSH key import when sshKey is empty', async () => {
+			mockConfig.sshKey = '';
+			jest
+				.spyOn(sourceControlService, 'initializeRepository')
+				.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			await sourceControlService.autoConfigureFromEnv();
+
+			expect(preferencesService.saveKeyPairFromEnv).not.toHaveBeenCalled();
+		});
+
+		it('should disconnect and throw when initializeRepository fails', async () => {
+			jest
+				.spyOn(sourceControlService, 'initializeRepository')
+				.mockRejectedValue(new Error('Git init failed'));
+			jest.spyOn(sourceControlService, 'disconnect').mockResolvedValue({} as any);
+
+			await expect(sourceControlService.autoConfigureFromEnv()).rejects.toThrow(
+				'Failed to auto-connect source control from environment variables',
+			);
+
+			expect(sourceControlService.disconnect).toHaveBeenCalledWith({ keepKeyPair: true });
+		});
+
+		it('should pull after successful connect when autoPull=true', async () => {
+			mockConfig.autoPullOnStartup = true;
+			jest
+				.spyOn(sourceControlService, 'initializeRepository')
+				.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+			jest.spyOn(sourceControlService, 'pullWorkfolder').mockResolvedValue({
+				statusCode: 200,
+				statusResult: [],
+			});
+
+			await sourceControlService.autoConfigureFromEnv();
+
+			expect(sourceControlService.initializeRepository).toHaveBeenCalled();
+			expect(sourceControlService.pullWorkfolder).toHaveBeenCalledWith(mockOwner, {
+				force: true,
+				autoPublish: 'none',
+			});
+		});
+
+		it('should not pull after connect when autoPull=false', async () => {
+			mockConfig.autoPullOnStartup = false;
+			jest
+				.spyOn(sourceControlService, 'initializeRepository')
+				.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+			jest.spyOn(sourceControlService, 'pullWorkfolder');
+
+			await sourceControlService.autoConfigureFromEnv();
+
+			expect(sourceControlService.pullWorkfolder).not.toHaveBeenCalled();
+		});
+
+		it('should use SOURCE_CONTROL_DEFAULT_BRANCH when branch is empty', async () => {
+			mockConfig.branch = '';
+			jest
+				.spyOn(sourceControlService, 'initializeRepository')
+				.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			await sourceControlService.autoConfigureFromEnv();
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith(
+				expect.objectContaining({ branchName: 'main' }),
+				true,
+				false,
+			);
+		});
+
+		it('should throw UnexpectedError when pull fails and failOnError=true', async () => {
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
+			mockConfig.autoPullOnStartup = true;
+			mockConfig.failOnPullError = true;
+
+			jest
+				.spyOn(sourceControlService, 'pullWorkfolder')
+				.mockRejectedValue(new Error('Pull failed'));
+
+			await expect(sourceControlService.autoConfigureFromEnv()).rejects.toThrow(
+				'Auto-pull from source control failed: Pull failed',
+			);
+		});
+
+		it('should warn but not throw when pull fails and failOnError=false', async () => {
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
+			mockConfig.autoPullOnStartup = true;
+			mockConfig.failOnPullError = false;
+
+			jest
+				.spyOn(sourceControlService, 'pullWorkfolder')
+				.mockRejectedValue(new Error('Pull failed'));
+
+			await expect(sourceControlService.autoConfigureFromEnv()).resolves.toBeUndefined();
+
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Auto-pull from source control failed: Pull failed',
+			);
 		});
 	});
 });

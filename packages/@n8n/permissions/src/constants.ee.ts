@@ -68,7 +68,7 @@ export const API_KEY_RESOURCES = {
 	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
 	credential: ['create', 'update', 'move', 'delete', 'list'] as const,
-	sourceControl: ['pull'] as const,
+	sourceControl: ['pull', 'push', 'manage'] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
 	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
