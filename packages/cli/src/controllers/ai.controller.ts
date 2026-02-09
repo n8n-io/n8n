@@ -71,6 +71,8 @@ export class AiController {
 					},
 					featureFlags,
 					versionId,
+					mode: payload.payload.mode,
+					resumeData: payload.payload.resumeData,
 				},
 				req.user,
 				signal,

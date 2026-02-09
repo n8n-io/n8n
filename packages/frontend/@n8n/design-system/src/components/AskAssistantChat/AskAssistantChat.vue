@@ -87,11 +87,48 @@ function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.As
 	);
 }
 
+/**
+ * Build a Set of tool message IDs whose "region" in the original (unfiltered) messages
+ * contained a workflow-updated message. A region is a contiguous run of tool +
+ * workflow-updated messages (any other type breaks the region).
+ * This is needed because workflow-updated messages are filtered before grouping,
+ * so the grouping function can't see them directly.
+ */
+function getToolIdsWithWorkflowUpdate(
+	messages: ChatUI.AssistantMessage[],
+): Set<string | undefined> {
+	const result = new Set<string | undefined>();
+	let currentGroupToolIds: Array<string | undefined> = [];
+	let hasWorkflowUpdate = false;
+
+	for (const msg of messages) {
+		if (msg.type === 'tool') {
+			currentGroupToolIds.push(msg.id);
+		} else if (msg.type === 'workflow-updated') {
+			hasWorkflowUpdate = true;
+		} else {
+			// Group boundary — flush
+			if (hasWorkflowUpdate) {
+				for (const id of currentGroupToolIds) result.add(id);
+			}
+			currentGroupToolIds = [];
+			hasWorkflowUpdate = false;
+		}
+	}
+	// Flush final group
+	if (hasWorkflowUpdate) {
+		for (const id of currentGroupToolIds) result.add(id);
+	}
+
+	return result;
+}
+
 function groupToolMessagesIntoThinking(
 	messages: ChatUI.AssistantMessage[],
 	options: {
 		streaming?: boolean;
 		loadingMessage?: string;
+		toolIdsWithWorkflowUpdate?: Set<string | undefined>;
 		t: (key: string) => string;
 	},
 ): ChatUI.AssistantMessage[] {
@@ -131,10 +168,23 @@ function groupToolMessagesIntoThinking(
 		}
 		const uniqueTools = Array.from(uniqueToolsMap.values());
 
-		// Check if this is the last group of tools in the messages
-		const isLastToolGroup = j >= messages.length;
+		// Check if there are any more tool messages after this group
+		let hasMoreToolsAfter = false;
+		for (let k = j; k < messages.length; k++) {
+			if (isToolMessage(messages[k])) {
+				hasMoreToolsAfter = true;
+				break;
+			}
+		}
+		const isLastToolGroup = !hasMoreToolsAfter;
 		const allToolsCompleted = uniqueTools.every((m) => m.status === 'completed');
 		const hasRunningTool = uniqueTools.some((m) => m.status === 'running');
+
+		// A group is "active" (still receiving stream data) only if it's the last tool group
+		// AND there are no messages after it. If there are messages after it (text response,
+		// user message for next turn), this group is completed — even if streaming is active
+		// for a newer turn.
+		const isActiveGroup = isLastToolGroup && j >= messages.length;
 
 		// Build the items array - use toolName as id since we dedupe by toolName
 		const items: ChatUI.ThinkingItem[] = uniqueTools.map((m) => ({
@@ -149,9 +199,9 @@ function groupToolMessagesIntoThinking(
 			status: m.status,
 		}));
 
-		// If this is the last group, all tools completed, and we're still streaming,
-		// add a "Thinking" item to show the AI is processing
-		if (isLastToolGroup && allToolsCompleted && options.streaming && options.loadingMessage) {
+		// Only add "Thinking" spinner if this group is actively streaming (no response yet).
+		// Don't add it to old completed groups when a new turn starts streaming.
+		if (isActiveGroup && allToolsCompleted && options.streaming && options.loadingMessage) {
 			items.push({
 				id: 'thinking-item',
 				displayTitle: options.loadingMessage,
@@ -159,9 +209,18 @@ function groupToolMessagesIntoThinking(
 			});
 		}
 
-		// Determine the latest status text - prioritize running tools, then thinking state, then completed
+		// Determine the latest status text per-group:
+		// - Running tools: show tool name (dynamic)
+		// - Active group + streaming: show loading message (dynamic)
+		// - Completed group: "Workflow generated" if workflow-updated, else "Thinking"
 		const runningTool = uniqueTools.find((m) => m.status === 'running');
 		let latestStatus: string;
+
+		// Check if this specific group generated a workflow by looking up tool IDs
+		// in the pre-computed set (built from unfiltered messages before workflow-updated was removed)
+		const groupGeneratedWorkflow =
+			options.toolIdsWithWorkflowUpdate?.size &&
+			toolGroup.some((tool) => options.toolIdsWithWorkflowUpdate?.has(tool.id));
 
 		if (hasRunningTool) {
 			latestStatus =
@@ -172,26 +231,20 @@ function groupToolMessagesIntoThinking(
 					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 					.join(' ') ||
 				options.t('assistantChat.thinking.processing');
-		} else if (
-			isLastToolGroup &&
-			allToolsCompleted &&
-			options.streaming &&
-			options.loadingMessage
-		) {
-			// Still streaming after tools completed - show thinking message
-			latestStatus = options.loadingMessage;
-		} else if (allToolsCompleted && !options.streaming) {
-			latestStatus = options.t('assistantChat.thinking.workflowGenerated');
-		} else if (allToolsCompleted) {
+		} else if (!allToolsCompleted) {
+			latestStatus = options.t('assistantChat.thinking.thinking');
+		} else if (isActiveGroup && options.streaming) {
 			latestStatus = options.loadingMessage ?? options.t('assistantChat.thinking.processing');
+		} else if (groupGeneratedWorkflow) {
+			latestStatus = options.t('assistantChat.thinking.workflowGenerated');
 		} else {
 			latestStatus = options.t('assistantChat.thinking.thinking');
 		}
 
 		// Create a ThinkingGroup message with deduplicated items
-		// Use a stable ID so Vue preserves component state when items update
+		// Use a stable per-group ID so Vue correctly diffs multiple thinking blocks
 		const thinkingGroup: ChatUI.ThinkingGroupMessage = {
-			id: 'thinking-group',
+			id: `thinking-group-${i}`,
 			role: 'assistant',
 			type: 'thinking-group',
 			items,
@@ -205,12 +258,17 @@ function groupToolMessagesIntoThinking(
 	return result;
 }
 
+// Pre-compute which tool IDs belong to groups that had workflow-updated messages.
+// This uses the original unfiltered messages because workflow-updated is filtered before grouping.
+const toolIdsWithWorkflowUpdate = computed(() => getToolIdsWithWorkflowUpdate(props.messages));
+
 // Ensure all messages have required id and read properties, and group tool messages into thinking blocks
 const normalizedMessages = computed(() => {
 	const normalized = normalizeMessages(props.messages);
 	return groupToolMessagesIntoThinking(filterOutHiddenMessages(normalized), {
 		streaming: props.streaming,
 		loadingMessage: props.loadingMessage,
+		toolIdsWithWorkflowUpdate: toolIdsWithWorkflowUpdate.value,
 		t,
 	});
 });
@@ -527,7 +585,11 @@ defineExpose({
 								@upgrade-click="emit('upgrade-click')"
 								@submit="onSendMessage"
 								@stop="emit('stop')"
-							/>
+							>
+								<template v-if="$slots['before-actions']" #beforeActions>
+									<slot name="before-actions" />
+								</template>
+							</N8nPromptInput>
 						</template>
 					</N8nPromptInputSuggestions>
 				</div>
@@ -589,7 +651,11 @@ defineExpose({
 				@upgrade-click="emit('upgrade-click')"
 				@submit="onSendMessage"
 				@stop="emit('stop')"
-			/>
+			>
+				<template v-if="$slots['before-actions']" #beforeActions>
+					<slot name="before-actions" />
+				</template>
+			</N8nPromptInput>
 		</div>
 	</div>
 </template>

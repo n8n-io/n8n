@@ -5,7 +5,7 @@ import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import type { MemorySaver, StateSnapshot } from '@langchain/langgraph';
-import { GraphRecursionError } from '@langchain/langgraph';
+import { Command, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import {
 	ApplicationError,
@@ -21,6 +21,7 @@ import { ValidationError } from './errors';
 import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
 import type { ResourceLocatorCallback } from './types/callbacks';
+import type { HITLInterruptValue } from './types/planning';
 import type { SimpleWorkflow } from './types/workflow';
 import { createStreamProcessor, type StreamEvent } from './utils/stream-processor';
 import type { WorkflowState } from './workflow-state';
@@ -48,6 +49,7 @@ export interface StageLLMs {
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
 	parameterUpdater: BaseChatModel;
+	planner: BaseChatModel;
 }
 
 export interface WorkflowBuilderAgentConfig {
@@ -76,6 +78,7 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
+	planMode?: boolean;
 }
 
 export interface ChatPayload {
@@ -90,6 +93,12 @@ export interface ChatPayload {
 	featureFlags?: BuilderFeatureFlags;
 	/** Version ID to store in message metadata for restore functionality */
 	versionId?: string;
+	/** Builder mode: 'build' for direct generation, 'plan' for planning first */
+	mode?: 'build' | 'plan';
+	/** Resume payload for LangGraph interrupt() */
+	resumeData?: unknown;
+	/** Interrupt record for session replay (server-provided on resume) */
+	resumeInterrupt?: HITLInterruptValue;
 }
 
 export class WorkflowBuilderAgent {
@@ -102,6 +111,8 @@ export class WorkflowBuilderAgent {
 	private runMetadata?: Record<string, unknown>;
 	private onGenerationSuccess?: () => Promise<void>;
 	private resourceLocatorCallback?: ResourceLocatorCallback;
+	/** Feature flags stored from the first chat call to ensure consistency across a session */
+	private sessionFeatureFlags?: BuilderFeatureFlags;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -191,7 +202,12 @@ export class WorkflowBuilderAgent {
 		abortSignal?: AbortSignal,
 		externalCallbacks?: Callbacks,
 	) {
-		const agent = this.createWorkflow(payload.featureFlags);
+		// Store feature flags from the first call; reuse for all subsequent calls
+		// to prevent mid-session flag changes from causing inconsistency
+		if (!this.sessionFeatureFlags && payload.featureFlags) {
+			this.sessionFeatureFlags = payload.featureFlags;
+		}
+		const agent = this.createWorkflow(this.sessionFeatureFlags ?? payload.featureFlags);
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
@@ -222,22 +238,54 @@ export class WorkflowBuilderAgent {
 		streamConfig: RunnableConfig,
 		agent: ReturnType<typeof this.createWorkflow>,
 	): Promise<AsyncIterable<StreamEvent>> {
+		const additionalKwargs: Record<string, unknown> = {};
+		if (payload.versionId) additionalKwargs.versionId = payload.versionId;
+		if (payload.id) additionalKwargs.messageId = payload.id;
+		if (payload.resumeData !== undefined) additionalKwargs.resumeData = payload.resumeData;
+
 		const humanMessage = new HumanMessage({
 			content: payload.message,
-			additional_kwargs: {
-				...(payload.versionId && { versionId: payload.versionId }),
-				...(payload.id && { messageId: payload.id }),
-			},
+			additional_kwargs: additionalKwargs,
 		});
-		const stream = await agent.stream(
-			{
-				messages: [humanMessage],
-				workflowJSON: this.getDefaultWorkflowJSON(payload),
-				workflowOperations: [],
-				workflowContext: payload.workflowContext,
-			},
-			streamConfig,
-		);
+
+		const workflowJSON = this.getDefaultWorkflowJSON(payload);
+		const workflowContext = payload.workflowContext;
+
+		const mode = payload.mode ?? 'build';
+
+		const stream = payload.resumeData
+			? await agent.stream(
+					new Command({
+						resume: payload.resumeData,
+						update: {
+							messages: [
+								...(payload.resumeInterrupt
+									? [
+											new AIMessage({
+												content: JSON.stringify(payload.resumeInterrupt),
+												additional_kwargs: { messageType: payload.resumeInterrupt.type },
+											}),
+										]
+									: []),
+								humanMessage,
+							],
+							workflowJSON,
+							workflowContext,
+							...(payload.mode ? { mode: payload.mode } : {}),
+						},
+					}),
+					streamConfig,
+				)
+			: await agent.stream(
+					{
+						messages: [humanMessage],
+						workflowJSON,
+						workflowOperations: [],
+						workflowContext,
+						mode,
+					},
+					streamConfig,
+				);
 		// LangGraph's stream has a complex type that doesn't match our StreamEvent definition,
 		// but at runtime it produces the correct shape based on streamMode configuration.
 		// With streamMode: ['updates', 'custom'] and subgraphs enabled, events are:

@@ -687,4 +687,242 @@ describe('SessionManagerService', () => {
 			);
 		});
 	});
+
+	describe('HITL history and session replay', () => {
+		const workflowId = 'test-workflow';
+		const userId = 'test-user';
+		const threadId = 'workflow-test-workflow-user-test-user';
+
+		const questionsInterrupt = {
+			type: 'questions' as const,
+			introMessage: 'I need some info',
+			questions: [{ id: 'q1', question: 'Source?', type: 'single' as const, options: ['A', 'B'] }],
+		};
+
+		const planOutput = {
+			summary: 'A workflow',
+			trigger: 'Manual',
+			steps: [{ description: 'Step 1' }],
+		};
+
+		function mockCheckpointWithMessages(msgs: Array<Record<string, unknown>>) {
+			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue({
+				checkpoint: {
+					channel_values: {
+						messages: [new HumanMessage('initial request')],
+					},
+					ts: '2026-01-01T00:00:00Z',
+				},
+			});
+			// formatMessages returns the checkpoint messages
+			formatMessagesSpy.mockReturnValue(msgs);
+		}
+
+		it('should store and retrieve HITL history entries', () => {
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'msg-1',
+				interrupt: questionsInterrupt,
+				answers: [{ questionId: 'q1', question: 'Source?', selectedOptions: ['A'] }],
+			});
+
+			const history = service.getHitlHistory(threadId);
+			expect(history).toHaveLength(1);
+			expect(history[0].type).toBe('questions_answered');
+		});
+
+		it('should store multiple HITL rounds in order', () => {
+			// Round 1: questions + answers
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'msg-1',
+				interrupt: questionsInterrupt,
+				answers: [{ questionId: 'q1', selectedOptions: ['A'] }],
+			});
+			// Round 1: plan rejected
+			service.addHitlEntry(threadId, {
+				type: 'plan_decided',
+				afterMessageId: 'msg-1',
+				plan: planOutput,
+				decision: 'reject',
+				feedback: 'Try again',
+			});
+			// Round 2: more questions
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'msg-1',
+				interrupt: questionsInterrupt,
+				answers: [{ questionId: 'q1', selectedOptions: ['B'] }],
+			});
+
+			const history = service.getHitlHistory(threadId);
+			expect(history).toHaveLength(3);
+			expect(history[0].type).toBe('questions_answered');
+			expect(history[1].type).toBe('plan_decided');
+			expect(history[2].type).toBe('questions_answered');
+		});
+
+		it('should inject Q&A after triggering message in getSessions', async () => {
+			mockCheckpointWithMessages([
+				{ role: 'user', type: 'message', text: 'Build something', id: 'msg-1' },
+				{ role: 'assistant', type: 'plan', plan: planOutput },
+				{ role: 'user', type: 'message', text: 'Implement' },
+				{ role: 'assistant', type: 'message', text: 'Done!' },
+			]);
+
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'msg-1',
+				interrupt: questionsInterrupt,
+				answers: [{ questionId: 'q1', selectedOptions: ['A'] }],
+			});
+
+			const result = await service.getSessions(workflowId, userId);
+			const messages = result.sessions[0].messages;
+
+			// Q&A should be inserted after 'msg-1', before the plan
+			expect(messages[0]).toMatchObject({ role: 'user', text: 'Build something' });
+			expect(messages[1]).toMatchObject({ role: 'assistant', type: 'questions' });
+			expect(messages[2]).toMatchObject({ role: 'user', type: 'user_answers' });
+			expect(messages[3]).toMatchObject({ role: 'assistant', type: 'plan' });
+			expect(messages[4]).toMatchObject({ role: 'user', text: 'Implement' });
+			expect(messages[5]).toMatchObject({ role: 'assistant', text: 'Done!' });
+		});
+
+		it('should inject rejected plan + feedback in getSessions', async () => {
+			mockCheckpointWithMessages([
+				{ role: 'user', type: 'message', text: 'Build something', id: 'msg-1' },
+				{ role: 'assistant', type: 'plan', plan: planOutput }, // final approved plan
+				{ role: 'user', type: 'message', text: 'Implement' },
+			]);
+
+			// Q&A then plan rejected then Q&A again
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'msg-1',
+				interrupt: questionsInterrupt,
+				answers: [{ questionId: 'q1', selectedOptions: ['A'] }],
+			});
+			service.addHitlEntry(threadId, {
+				type: 'plan_decided',
+				afterMessageId: 'msg-1',
+				plan: { ...planOutput, summary: 'First attempt' },
+				decision: 'reject',
+				feedback: 'Add error handling',
+			});
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'msg-1',
+				interrupt: questionsInterrupt,
+				answers: [{ questionId: 'q1', selectedOptions: ['B'] }],
+			});
+
+			const result = await service.getSessions(workflowId, userId);
+			const messages = result.sessions[0].messages;
+
+			// Full sequence: user → Q&A → rejected plan → feedback → Q&A → approved plan → implement
+			expect(messages[0]).toMatchObject({ role: 'user', text: 'Build something' });
+			expect(messages[1]).toMatchObject({ role: 'assistant', type: 'questions' });
+			expect(messages[2]).toMatchObject({ role: 'user', type: 'user_answers' });
+			expect(messages[3]).toMatchObject({ role: 'assistant', type: 'plan' });
+			expect(messages[4]).toMatchObject({ role: 'user', text: 'Add error handling' });
+			expect(messages[5]).toMatchObject({ role: 'assistant', type: 'questions' });
+			expect(messages[6]).toMatchObject({ role: 'user', type: 'user_answers' });
+			expect(messages[7]).toMatchObject({ role: 'assistant', type: 'plan' }); // approved plan from checkpoint
+			expect(messages[8]).toMatchObject({ role: 'user', text: 'Implement' });
+		});
+
+		it('should handle multiple user requests with Q&A at correct positions', async () => {
+			mockCheckpointWithMessages([
+				{ role: 'user', type: 'message', text: 'Build invoices', id: 'msg-1' },
+				{ role: 'assistant', type: 'plan', plan: planOutput },
+				{ role: 'user', type: 'message', text: 'Implement' },
+				{ role: 'assistant', type: 'message', text: 'Built it!' },
+				{ role: 'user', type: 'message', text: 'Also add Slack', id: 'msg-2' },
+				{ role: 'assistant', type: 'plan', plan: planOutput },
+				{ role: 'user', type: 'message', text: 'Implement' },
+				{ role: 'assistant', type: 'message', text: 'Updated!' },
+			]);
+
+			// Q&A for first request
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'msg-1',
+				interrupt: questionsInterrupt,
+				answers: [{ questionId: 'q1', selectedOptions: ['A'] }],
+			});
+			// Q&A for second request
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'msg-2',
+				interrupt: { ...questionsInterrupt, introMessage: 'For Slack:' },
+				answers: [{ questionId: 'q1', selectedOptions: ['B'] }],
+			});
+
+			const result = await service.getSessions(workflowId, userId);
+			const messages = result.sessions[0].messages;
+
+			// First Q&A after msg-1, second Q&A after msg-2
+			expect(messages[0]).toMatchObject({ text: 'Build invoices' });
+			expect(messages[1]).toMatchObject({ type: 'questions' }); // round 1
+			expect(messages[2]).toMatchObject({ type: 'user_answers' }); // round 1
+			expect(messages[3]).toMatchObject({ type: 'plan' }); // approved plan 1
+			expect(messages[4]).toMatchObject({ text: 'Implement' });
+			expect(messages[5]).toMatchObject({ text: 'Built it!' });
+			expect(messages[6]).toMatchObject({ text: 'Also add Slack' });
+			expect(messages[7]).toMatchObject({ type: 'questions' }); // round 2
+			expect(messages[8]).toMatchObject({ type: 'user_answers' }); // round 2
+			expect(messages[9]).toMatchObject({ type: 'plan' }); // approved plan 2
+		});
+
+		it('should fall back to first user message when afterMessageId not found', async () => {
+			mockCheckpointWithMessages([
+				{ role: 'user', type: 'message', text: 'Request', id: 'msg-1' },
+				{ role: 'assistant', type: 'message', text: 'Response' },
+			]);
+
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'nonexistent-id',
+				interrupt: questionsInterrupt,
+				answers: [{ questionId: 'q1', selectedOptions: ['A'] }],
+			});
+
+			const result = await service.getSessions(workflowId, userId);
+			const messages = result.sessions[0].messages;
+
+			// Falls back to after first user message
+			expect(messages[0]).toMatchObject({ text: 'Request' });
+			expect(messages[1]).toMatchObject({ type: 'questions' });
+			expect(messages[2]).toMatchObject({ type: 'user_answers' });
+			expect(messages[3]).toMatchObject({ text: 'Response' });
+		});
+
+		it('should append pending HITL after injected history', async () => {
+			mockCheckpointWithMessages([{ role: 'user', type: 'message', text: 'Request', id: 'msg-1' }]);
+
+			// Answered questions
+			service.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: 'msg-1',
+				interrupt: questionsInterrupt,
+				answers: [{ questionId: 'q1', selectedOptions: ['A'] }],
+			});
+
+			// Pending plan (not yet decided)
+			service.setPendingHitl(threadId, { type: 'plan', plan: planOutput });
+
+			const result = await service.getSessions(workflowId, userId);
+			const messages = result.sessions[0].messages;
+
+			expect(messages[0]).toMatchObject({ text: 'Request' });
+			expect(messages[1]).toMatchObject({ type: 'questions' });
+			expect(messages[2]).toMatchObject({ type: 'user_answers' });
+			expect(messages[3]).toMatchObject({ type: 'plan', plan: planOutput }); // pending at end
+		});
+
+		it('should return empty history for unknown thread', () => {
+			expect(service.getHitlHistory('unknown')).toEqual([]);
+		});
+	});
 });

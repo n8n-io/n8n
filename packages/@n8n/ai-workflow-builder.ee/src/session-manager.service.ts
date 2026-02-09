@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { getBuilderToolsForDisplay } from '@/tools/builder-tools';
+import type { HITLHistoryEntry, HITLInterruptValue } from '@/types/planning';
 import { isLangchainMessagesArray, LangchainMessage, Session } from '@/types/sessions';
 import { formatMessages } from '@/utils/stream-processor';
 
@@ -13,6 +14,20 @@ export class SessionManagerService {
 	private checkpointer: MemorySaver;
 
 	private nodeTypes: INodeTypeDescription[];
+
+	private static readonly HITL_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
+
+	private pendingHitlByThreadId = new Map<
+		string,
+		{ value: HITLInterruptValue; triggeringMessageId?: string; expiresAt: number }
+	>();
+
+	/**
+	 * Chronological log of HITL interactions for session replay.
+	 * Command.update messages don't persist in the parent checkpoint when a
+	 * subgraph node interrupts multiple times, so we store them here.
+	 */
+	private hitlHistoryByThreadId = new Map<string, HITLHistoryEntry[]>();
 
 	constructor(
 		parsedNodeTypes: INodeTypeDescription[],
@@ -44,6 +59,179 @@ export class SessionManagerService {
 	 */
 	getCheckpointer(): MemorySaver {
 		return this.checkpointer;
+	}
+
+	setPendingHitl(threadId: string, value: HITLInterruptValue, triggeringMessageId?: string) {
+		this.evictExpiredHitl();
+		this.pendingHitlByThreadId.set(threadId, {
+			value,
+			triggeringMessageId,
+			expiresAt: Date.now() + SessionManagerService.HITL_TTL_MS,
+		});
+	}
+
+	clearPendingHitl(threadId: string) {
+		this.pendingHitlByThreadId.delete(threadId);
+	}
+
+	/**
+	 * Atomically get and clear the pending HITL value for a thread.
+	 * Prevents TOCTOU races between separate get + clear calls.
+	 */
+	getAndClearPendingHitl(
+		threadId: string,
+	): { value: HITLInterruptValue; triggeringMessageId?: string } | undefined {
+		this.evictExpiredHitl();
+		const entry = this.pendingHitlByThreadId.get(threadId);
+		if (!entry) return undefined;
+		if (Date.now() > entry.expiresAt) {
+			this.pendingHitlByThreadId.delete(threadId);
+			return undefined;
+		}
+		this.pendingHitlByThreadId.delete(threadId);
+		return { value: entry.value, triggeringMessageId: entry.triggeringMessageId };
+	}
+
+	getPendingHitl(threadId: string): HITLInterruptValue | undefined {
+		this.evictExpiredHitl();
+		const entry = this.pendingHitlByThreadId.get(threadId);
+		if (!entry) return undefined;
+		if (Date.now() > entry.expiresAt) {
+			this.pendingHitlByThreadId.delete(threadId);
+			return undefined;
+		}
+		return entry.value;
+	}
+
+	/**
+	 * Append an entry to the HITL interaction history for a thread.
+	 * Called when a questions or plan interrupt is resumed.
+	 */
+	addHitlEntry(threadId: string, entry: HITLHistoryEntry) {
+		const history = this.hitlHistoryByThreadId.get(threadId) ?? [];
+		history.push(entry);
+		this.hitlHistoryByThreadId.set(threadId, history);
+	}
+
+	getHitlHistory(threadId: string): HITLHistoryEntry[] {
+		return this.hitlHistoryByThreadId.get(threadId) ?? [];
+	}
+
+	/**
+	 * Remove HITL history entries whose afterMessageId references a message
+	 * that no longer exists in the surviving checkpoint messages.
+	 */
+	private truncateHitlHistory(threadId: string, survivingMessages: LangchainMessage[]) {
+		const history = this.hitlHistoryByThreadId.get(threadId);
+		if (!history || history.length === 0) return;
+
+		const survivingIds = new Set(
+			survivingMessages
+				.map((m) => m.additional_kwargs?.messageId as string | undefined)
+				.filter(Boolean),
+		);
+
+		const filtered = history.filter(
+			(entry) => !entry.afterMessageId || survivingIds.has(entry.afterMessageId),
+		);
+
+		if (filtered.length === 0) {
+			this.hitlHistoryByThreadId.delete(threadId);
+		} else {
+			this.hitlHistoryByThreadId.set(threadId, filtered);
+		}
+	}
+
+	/**
+	 * Inject HITL history entries into the formatted messages array at the
+	 * correct positions. Entries with the same afterMessageId are grouped
+	 * together in chronological order.
+	 */
+	private injectHitlHistory(threadId: string, formattedMessages: Array<Record<string, unknown>>) {
+		const history = this.getHitlHistory(threadId);
+		if (history.length === 0) return;
+
+		// Group entries by afterMessageId (preserving insertion order)
+		const groups = new Map<string | undefined, Array<Record<string, unknown>>>();
+		for (const entry of history) {
+			const key = entry.afterMessageId;
+			const msgs = groups.get(key) ?? [];
+			msgs.push(...this.hitlEntryToMessages(entry));
+			groups.set(key, msgs);
+		}
+
+		// Insert each group at the correct position (reverse order for stable indices)
+		const keys = [...groups.keys()].reverse();
+		for (const afterMessageId of keys) {
+			const msgs = groups.get(afterMessageId)!;
+			const insertAt = this.findInsertPosition(formattedMessages, afterMessageId);
+			formattedMessages.splice(insertAt, 0, ...msgs);
+		}
+	}
+
+	private hitlEntryToMessages(entry: HITLHistoryEntry): Array<Record<string, unknown>> {
+		if (entry.type === 'questions_answered') {
+			return [
+				{
+					role: 'assistant',
+					type: 'questions',
+					questions: entry.interrupt.questions,
+					...(entry.interrupt.introMessage ? { introMessage: entry.interrupt.introMessage } : {}),
+				},
+				{
+					role: 'user',
+					type: 'user_answers',
+					answers: Array.isArray(entry.answers) ? entry.answers : [],
+				},
+			];
+		}
+
+		// plan_decided (reject or modify — approved plans survive in the checkpoint)
+		const messages: Array<Record<string, unknown>> = [
+			{
+				role: 'assistant',
+				type: 'plan',
+				plan: entry.plan,
+			},
+		];
+
+		if (entry.decision === 'reject') {
+			messages.push({
+				role: 'user',
+				type: 'message',
+				text: entry.feedback ?? 'Plan rejected',
+			});
+		} else if (entry.decision === 'modify') {
+			messages.push({
+				role: 'user',
+				type: 'message',
+				text: entry.feedback ?? 'Please modify the plan',
+			});
+		}
+
+		return messages;
+	}
+
+	private findInsertPosition(
+		formattedMessages: Array<Record<string, unknown>>,
+		afterMessageId?: string,
+	): number {
+		if (afterMessageId) {
+			const idx = formattedMessages.findIndex((m) => m.id === afterMessageId);
+			if (idx !== -1) return idx + 1;
+		}
+		// Fallback: after the first user message
+		const firstUserIdx = formattedMessages.findIndex((m) => m.role === 'user');
+		return firstUserIdx !== -1 ? firstUserIdx + 1 : 0;
+	}
+
+	private evictExpiredHitl() {
+		const now = Date.now();
+		for (const [id, entry] of this.pendingHitlByThreadId) {
+			if (now > entry.expiresAt) {
+				this.pendingHitlByThreadId.delete(id);
+			}
+		}
 	}
 
 	/**
@@ -82,6 +270,27 @@ export class SessionManagerService {
 							nodeTypes: this.nodeTypes,
 						}),
 					);
+
+					// Inject HITL history that isn't in the checkpoint.
+					// Command.update messages don't persist when a subgraph node
+					// interrupts multiple times, so we replay them from stored history.
+					this.injectHitlHistory(threadId, formattedMessages);
+
+					const pendingHitl = this.getPendingHitl(threadId);
+					if (pendingHitl) {
+						formattedMessages.push({
+							role: 'assistant',
+							type: pendingHitl.type,
+							...(pendingHitl.type === 'questions'
+								? {
+										questions: pendingHitl.questions,
+										...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
+									}
+								: {
+										plan: pendingHitl.plan,
+									}),
+						});
+					}
 
 					sessions.push({
 						sessionId: threadId,
@@ -164,6 +373,14 @@ export class SessionManagerService {
 			};
 
 			await this.checkpointer.put(threadConfig, updatedCheckpoint, metadata);
+
+			// Also prune HITL history entries that reference removed messages.
+			// Entries whose afterMessageId no longer exists in the surviving
+			// messages would fall back near the start and reappear as stale.
+			this.truncateHitlHistory(threadId, truncatedMessages);
+
+			// Clear any pending HITL interrupt that belongs to the truncated portion
+			this.clearPendingHitl(threadId);
 
 			this.logger?.debug('Messages truncated successfully', {
 				threadId,

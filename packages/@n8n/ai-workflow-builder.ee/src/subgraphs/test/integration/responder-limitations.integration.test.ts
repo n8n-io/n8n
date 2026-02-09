@@ -12,7 +12,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 
-import { ResponderAgent } from '@/agents/responder.agent';
+import { createResponderAgent, invokeResponderAgent } from '@/agents/responder.agent';
 import {
 	setupIntegrationLLM,
 	shouldRunIntegrationTests,
@@ -59,9 +59,9 @@ describe('Responder Limitations - Integration Tests (AI-1894)', () => {
 
 			console.log('\n📝 Testing web search limitation acknowledgment...\n');
 
-			const responderAgent = new ResponderAgent({ llm });
+			const responderAgent = createResponderAgent({ llm });
 
-			const response = await responderAgent.invoke({
+			const response = await invokeResponderAgent(responderAgent, {
 				messages: [
 					new HumanMessage({
 						content: 'Can you search the web for information about Slack API rate limits?',
@@ -114,9 +114,9 @@ describe('Responder Limitations - Integration Tests (AI-1894)', () => {
 
 			console.log('\n📝 Testing alternative help offer when documentation lookup requested...\n');
 
-			const responderAgent = new ResponderAgent({ llm });
+			const responderAgent = createResponderAgent({ llm });
 
-			const response = await responderAgent.invoke({
+			const response = await invokeResponderAgent(responderAgent, {
 				messages: [
 					new HumanMessage({
 						content:
@@ -163,9 +163,9 @@ describe('Responder Limitations - Integration Tests (AI-1894)', () => {
 
 			console.log('\n📝 Testing redirect for real-time data requests...\n');
 
-			const responderAgent = new ResponderAgent({ llm });
+			const responderAgent = createResponderAgent({ llm });
 
-			const response = await responderAgent.invoke({
+			const response = await invokeResponderAgent(responderAgent, {
 				messages: [
 					new HumanMessage({
 						content: 'What is the current Bitcoin price?',

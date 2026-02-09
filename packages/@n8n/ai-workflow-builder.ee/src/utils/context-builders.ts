@@ -5,6 +5,7 @@ import { MAX_AI_RESPONSE_CHARS } from '../constants';
 import { mermaidStringify } from '../tools/utils/mermaid.utils';
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
+import type { QuestionResponse } from '../types/planning';
 import type { SimpleWorkflow } from '../types/workflow';
 import type { ChatPayload } from '../workflow-builder-agent';
 import { isTriggerNodeType } from './node-helpers';
@@ -175,6 +176,20 @@ function getMessageContent(message: BaseMessage): string {
 }
 
 /**
+ * Extract structured Q&A answers from a HumanMessage's resumeData, if present.
+ * Returns null when the message doesn't carry question answers.
+ */
+function getQuestionAnswers(message: BaseMessage | undefined): QuestionResponse[] | null {
+	if (!message) return null;
+	const resumeData: unknown = message.additional_kwargs?.resumeData;
+	if (!Array.isArray(resumeData) || resumeData.length === 0) return null;
+	// Validate the first element looks like a QuestionResponse
+	const first = resumeData[0] as Record<string, unknown>;
+	if (typeof first !== 'object' || !('question' in first)) return null;
+	return resumeData as QuestionResponse[];
+}
+
+/**
  * Build conversation context for subgraphs (Builder)
  * Provides history so agents understand what happened before the current request
  *
@@ -221,36 +236,14 @@ export function buildConversationContext(
 		parts.push('');
 	}
 
-	// 4. Last AI response (what was offered/said before user's current request)
-	// This helps understand what the user is responding to
-	if (lastUserMessage) {
-		const lastUserIndex = messages.lastIndexOf(lastUserMessage);
-		if (lastUserIndex > 0) {
-			// Find the AI message right before the last user message
-			for (let i = lastUserIndex - 1; i >= 0; i--) {
-				if (messages[i] instanceof AIMessage) {
-					const aiContent = getMessageContent(messages[i]);
-					if (aiContent) {
-						// Truncate if too long, keep the most relevant part (usually at the end)
-						const truncatedContent =
-							aiContent.length > MAX_AI_RESPONSE_CHARS
-								? '...' + aiContent.slice(-MAX_AI_RESPONSE_CHARS)
-								: aiContent;
-						parts.push(`Last AI response: "${truncatedContent}"`);
-						parts.push('');
-					}
-					break;
-				}
-			}
-		}
-	}
-
-	// 5. Current request (last HumanMessage)
-	if (lastUserMessage) {
-		const currentContent = getMessageContent(lastUserMessage);
-		if (currentContent) {
-			parts.push(`Current request: "${currentContent}"`);
-		}
+	// 4. Check if the last user message contains Q&A answers (from clarification questions).
+	// When present, format them as readable Q&A pairs instead of showing the raw JSON
+	// "Last AI response" and the generic "Current request: Submit answers".
+	const qaAnswers = lastUserMessage ? getQuestionAnswers(lastUserMessage) : null;
+	if (qaAnswers && lastUserMessage) {
+		appendQAPairs(parts, qaAnswers, humanMessages, lastUserMessage, firstUserMessage);
+	} else {
+		appendLastExchange(parts, messages, lastUserMessage);
 	}
 
 	return parts.join('\n');
@@ -258,6 +251,71 @@ export function buildConversationContext(
 
 function capitalizeFirst(str: string): string {
 	return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/** Format Q&A answers as readable pairs and include the triggering user request. */
+function appendQAPairs(
+	parts: string[],
+	qaAnswers: QuestionResponse[],
+	humanMessages: BaseMessage[],
+	lastUserMessage: BaseMessage,
+	firstUserMessage: BaseMessage | undefined,
+): void {
+	parts.push('Clarification Q&A:');
+	for (const answer of qaAnswers) {
+		if (answer.skipped) continue;
+		const responseParts: string[] = [];
+		if (answer.selectedOptions.length > 0) responseParts.push(answer.selectedOptions.join(', '));
+		if (answer.customText?.trim()) responseParts.push(answer.customText.trim());
+		const response = responseParts.length > 0 ? responseParts.join(', ') : '(no answer)';
+		parts.push(`- Q: ${answer.question}`);
+		parts.push(`  A: ${response}`);
+	}
+	parts.push('');
+
+	// Still show the user's original text request that triggered the questions
+	// (the non-resume message before this one, e.g. "also send it to S or T")
+	const previousNonResumeMessage = [...humanMessages]
+		.reverse()
+		.find((msg) => msg !== lastUserMessage && !msg.additional_kwargs?.resumeData);
+	if (previousNonResumeMessage && previousNonResumeMessage !== firstUserMessage) {
+		const prevContent = getMessageContent(previousNonResumeMessage);
+		if (prevContent) {
+			parts.push(`Current request: "${prevContent}"`);
+		}
+	}
+}
+
+/** Append "Last AI response" and "Current request" from the raw message history. */
+function appendLastExchange(
+	parts: string[],
+	messages: BaseMessage[],
+	lastUserMessage: BaseMessage | undefined,
+): void {
+	if (!lastUserMessage) return;
+
+	const lastUserIndex = messages.lastIndexOf(lastUserMessage);
+	if (lastUserIndex > 0) {
+		for (let i = lastUserIndex - 1; i >= 0; i--) {
+			if (messages[i] instanceof AIMessage) {
+				const aiContent = getMessageContent(messages[i]);
+				if (aiContent) {
+					const truncatedContent =
+						aiContent.length > MAX_AI_RESPONSE_CHARS
+							? '...' + aiContent.slice(-MAX_AI_RESPONSE_CHARS)
+							: aiContent;
+					parts.push(`Last AI response: "${truncatedContent}"`);
+					parts.push('');
+				}
+				break;
+			}
+		}
+	}
+
+	const currentContent = getMessageContent(lastUserMessage);
+	if (currentContent) {
+		parts.push(`Current request: "${currentContent}"`);
+	}
 }
 
 // ============================================================================

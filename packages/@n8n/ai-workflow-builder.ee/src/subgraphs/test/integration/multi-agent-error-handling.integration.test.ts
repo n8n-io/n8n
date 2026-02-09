@@ -14,7 +14,7 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { ResponderAgent } from '@/agents/responder.agent';
+import { createResponderAgent, invokeResponderAgent } from '@/agents/responder.agent';
 import {
 	setupIntegrationLLM,
 	shouldRunIntegrationTests,
@@ -116,6 +116,7 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 					discovery: llm,
 					builder: llm,
 					parameterUpdater: llm,
+					planner: llm,
 				},
 				logger: mockLogger,
 			});
@@ -172,9 +173,9 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 			];
 
 			// Test responder agent directly instead of full graph
-			const responderAgent = new ResponderAgent({ llm });
+			const responderAgent = createResponderAgent({ llm });
 
-			const response = await responderAgent.invoke({
+			const response = await invokeResponderAgent(responderAgent, {
 				messages: [
 					new HumanMessage({
 						content:

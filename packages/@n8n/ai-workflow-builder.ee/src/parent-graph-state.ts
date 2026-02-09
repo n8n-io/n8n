@@ -3,6 +3,7 @@ import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
 import type { CoordinationLogEntry } from './types/coordination';
 import type { DiscoveryContext } from './types/discovery-types';
+import type { PlanDecision, PlanOutput } from './types/planning';
 import type { WorkflowMetadata } from './types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers';
@@ -73,5 +74,35 @@ export const ParentGraphState = Annotation.Root({
 	cachedTemplates: Annotation<WorkflowMetadata[]>({
 		reducer: cachedTemplatesReducer,
 		default: () => [],
+	}),
+
+	// Plan Mode: Current plan (set by planner, consumed by builder)
+	planOutput: Annotation<PlanOutput | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
+	}),
+
+	// Plan Mode: Request mode ('build' for direct build, 'plan' for planning first)
+	mode: Annotation<'build' | 'plan'>({
+		reducer: (x, y) => y ?? x,
+		default: () => 'build',
+	}),
+
+	// Plan Mode: Last plan decision after interrupt resume
+	planDecision: Annotation<PlanDecision | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
+	}),
+
+	// Plan Mode: User feedback after a "modify" decision (for plan revision)
+	planFeedback: Annotation<string | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
+	}),
+
+	// Plan Mode: Previous plan to revise after a "modify" decision
+	planPrevious: Annotation<PlanOutput | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
 	}),
 });
