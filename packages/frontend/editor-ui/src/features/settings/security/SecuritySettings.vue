@@ -11,6 +11,7 @@ import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings
 import { useMessage } from '@/app/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
+import EnvFeatureFlag from '@/features/shared/envFeatureFlag/EnvFeatureFlag.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -202,73 +203,75 @@ const sharingCountText = computed(() => {
 			</div>
 		</div>
 
-		<N8nHeading tag="h2" size="large" class="mb-l">
-			{{ i18n.baseText('settings.security.personalSpace.title') }}
-		</N8nHeading>
+		<EnvFeatureFlag name="PERSONAL_SECURITY_SETTINGS">
+			<N8nHeading tag="h2" size="large" class="mb-l">
+				{{ i18n.baseText('settings.security.personalSpace.title') }}
+			</N8nHeading>
 
-		<div :class="$style.settingsSection">
-			<div :class="$style.settingsContainer">
-				<div :class="$style.settingsContainerInfo">
-					<N8nText :bold="true">
-						{{ i18n.baseText('settings.security.personalSpace.sharing.title') }}
+			<div :class="$style.settingsSection">
+				<div :class="$style.settingsContainer">
+					<div :class="$style.settingsContainerInfo">
+						<N8nText :bold="true">
+							{{ i18n.baseText('settings.security.personalSpace.sharing.title') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.security.personalSpace.sharing.description') }}
+						</N8nText>
+					</div>
+					<div :class="$style.settingsContainerAction">
+						<ElSwitch
+							v-model="personalSpaceSharing"
+							:loading="isLoading"
+							size="large"
+							data-test-id="security-personal-space-sharing-toggle"
+						/>
+					</div>
+				</div>
+				<div :class="$style.settingsCountRow" data-test-id="security-sharing-count">
+					<N8nText size="small">
+						{{ i18n.baseText('settings.security.personalSpace.sharing.existingCount.label') }}
 					</N8nText>
 					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('settings.security.personalSpace.sharing.description') }}
+						{{ sharingCountText }}
 					</N8nText>
 				</div>
-				<div :class="$style.settingsContainerAction">
-					<ElSwitch
-						v-model="personalSpaceSharing"
-						:loading="isLoading"
-						size="large"
-						data-test-id="security-personal-space-sharing-toggle"
-					/>
-				</div>
 			</div>
-			<div :class="$style.settingsCountRow" data-test-id="security-sharing-count">
-				<N8nText size="small">
-					{{ i18n.baseText('settings.security.personalSpace.sharing.existingCount.label') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ sharingCountText }}
-				</N8nText>
-			</div>
-		</div>
 
-		<div :class="$style.settingsSection">
-			<div :class="$style.settingsContainer">
-				<div :class="$style.settingsContainerInfo">
-					<N8nText :bold="true">
-						{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
+			<div :class="$style.settingsSection">
+				<div :class="$style.settingsContainer">
+					<div :class="$style.settingsContainerInfo">
+						<N8nText :bold="true">
+							{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.security.personalSpace.publishing.description') }}
+						</N8nText>
+					</div>
+					<div :class="$style.settingsContainerAction">
+						<ElSwitch
+							v-model="personalSpacePublishing"
+							:loading="isLoading"
+							size="large"
+							data-test-id="security-personal-space-publishing-toggle"
+						/>
+					</div>
+				</div>
+				<div :class="$style.settingsCountRow" data-test-id="security-publishing-count">
+					<N8nText size="small">
+						{{ i18n.baseText('settings.security.personalSpace.publishing.existingCount.label') }}
 					</N8nText>
 					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('settings.security.personalSpace.publishing.description') }}
+						{{
+							i18n.baseText('settings.security.personalSpace.publishing.existingCount.value', {
+								interpolate: {
+									count: String(state?.publishedPersonalWorkflowsCount ?? 0),
+								},
+							})
+						}}
 					</N8nText>
 				</div>
-				<div :class="$style.settingsContainerAction">
-					<ElSwitch
-						v-model="personalSpacePublishing"
-						:loading="isLoading"
-						size="large"
-						data-test-id="security-personal-space-publishing-toggle"
-					/>
-				</div>
 			</div>
-			<div :class="$style.settingsCountRow" data-test-id="security-publishing-count">
-				<N8nText size="small">
-					{{ i18n.baseText('settings.security.personalSpace.publishing.existingCount.label') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText('settings.security.personalSpace.publishing.existingCount.value', {
-							interpolate: {
-								count: String(state?.publishedPersonalWorkflowsCount ?? 0),
-							},
-						})
-					}}
-				</N8nText>
-			</div>
-		</div>
+		</EnvFeatureFlag>
 	</div>
 </template>
 

@@ -63,6 +63,12 @@ describe('SecuritySettings', () => {
 		settingsStore.isMFAEnforced = false;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA] = true;
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+
+		// Enable PERSONAL_SECURITY_SETTINGS env feature flag for Personal Space section
+		settingsStore.settings.envFeatureFlags = {
+			...settingsStore.settings.envFeatureFlags,
+			N8N_ENV_FEAT_PERSONAL_SECURITY_SETTINGS: 'true',
+		};
 	});
 
 	it('should render security heading and personal space section', async () => {
@@ -267,6 +273,22 @@ describe('SecuritySettings', () => {
 		});
 
 		expect(getByTestId('security-sharing-count')).toHaveTextContent('Existing shares');
+	});
+
+	it('should hide personal space section when PERSONAL_SECURITY_SETTINGS flag is disabled', async () => {
+		settingsStore.settings.envFeatureFlags = {
+			...settingsStore.settings.envFeatureFlags,
+			N8N_ENV_FEAT_PERSONAL_SECURITY_SETTINGS: 'false',
+		};
+
+		const { getByText, queryByText, getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		expect(getByText('Security')).toBeInTheDocument();
+		expect(queryByText('Personal Space')).not.toBeInTheDocument();
 	});
 
 	it('should render the enforce MFA toggle', async () => {
