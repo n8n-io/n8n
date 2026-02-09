@@ -9,7 +9,6 @@ import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 import YAML from 'yamljs';
 
-import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UrlService } from '@/services/url.service';
 
@@ -126,5 +125,5 @@ export const loadPublicApiVersions = async (
 };
 
 export function isApiEnabled(): boolean {
-	return !Container.get(GlobalConfig).publicApi.disabled && !Container.get(License).isAPIDisabled();
+	return !Container.get(GlobalConfig).publicApi.disabled;
 }
