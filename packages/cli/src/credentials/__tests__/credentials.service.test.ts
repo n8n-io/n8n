@@ -10,12 +10,7 @@ import type {
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
-import {
-	CREDENTIAL_EMPTY_VALUE,
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	type ICredentialType,
-} from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, type ICredentialType } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
@@ -28,7 +23,6 @@ import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
-import assert from 'assert';
 
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({
