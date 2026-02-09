@@ -10,6 +10,7 @@ interface VueComponentInstance {
 			showExecuteMessage?: boolean;
 			isInputDisabled?: boolean;
 			disabledTooltip?: string;
+			workflowSuggestions?: unknown[] | undefined;
 		};
 	};
 }
@@ -457,6 +458,64 @@ describe('AskAssistantBuild', () => {
 			const disabledTooltip = vm?.setupState?.disabledTooltip;
 
 			expect(disabledTooltip).toBeUndefined();
+		});
+	});
+
+	describe('workflow suggestions visibility', () => {
+		it('should not show suggestions when workflow has existing nodes', () => {
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+			builderStore.hasMessages = false;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeUndefined();
+		});
+
+		it('should show suggestions when workflow is empty and has no messages', () => {
+			workflowsStore.$patch({
+				workflow: { nodes: [], connections: {} },
+			});
+			builderStore.hasMessages = false;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeDefined();
+			expect(Array.isArray(workflowSuggestions)).toBe(true);
+			expect(workflowSuggestions!.length).toBeGreaterThan(0);
+		});
+
+		it('should not show suggestions when there are already messages', () => {
+			workflowsStore.$patch({
+				workflow: { nodes: [], connections: {} },
+			});
+			builderStore.hasMessages = true;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeUndefined();
 		});
 	});
 

@@ -239,6 +239,8 @@
 	"aiAssistant.builder.mode": "AI Builder",
 	"aiAssistant.builder.placeholder": "Ask n8n to build...",
 	"aiAssistant.builder.assistantPlaceholder": "What would you like to modify or add?",
+	"aiAssistant.builder.existingWorkflow.emptyState.title": "Modify your workflow",
+	"aiAssistant.builder.existingWorkflow.emptyState.body": "Ask n8n AI to modify existing nodes, add new steps, update parameters, or help debug issues in your workflow.",
 	"aiAssistant.builder.planMode.selector.build": "Build",
 	"aiAssistant.builder.planMode.selector.build.description": "Build right away · 1 credit",
 	"aiAssistant.builder.planMode.selector.plan": "Plan",
