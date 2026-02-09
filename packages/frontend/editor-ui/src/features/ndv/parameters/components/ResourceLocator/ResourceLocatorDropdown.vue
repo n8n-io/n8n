@@ -288,6 +288,7 @@ watch(
 				<N8nInput
 					ref="searchRef"
 					:model-value="props.filter"
+					size="medium"
 					:clearable="true"
 					:placeholder="
 						props.allowNewResources.label

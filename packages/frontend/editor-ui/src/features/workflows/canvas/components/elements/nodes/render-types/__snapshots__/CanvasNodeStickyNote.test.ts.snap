@@ -21,14 +21,16 @@ exports[`CanvasNodeStickyNote > should render node correctly 1`] = `
     <div class="n8n-input inputContainer large">
       <!-- Prepend slot (outside input container, before) -->
       <!--v-if-->
-      <!-- Prefix slot -->
-      <!--v-if-->
-      <!-- Input element -->
-      <!-- Textarea element --><textarea class="input textarea" placeholder="" rows="5" autocomplete="off" name="sticky-input" value=""></textarea><!-- Suffix slot -->
-      <!--v-if-->
-      <!-- Clear button -->
-      <!--v-if-->
-      <!-- Append slot (outside input container, after) -->
+      <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
+      <div class="inputWrapper">
+        <!-- Prefix slot -->
+        <!--v-if-->
+        <!-- Input element -->
+        <!-- Textarea element --><textarea class="input textarea" placeholder="" rows="5" autocomplete="off" name="sticky-input" value=""></textarea><!-- Suffix slot -->
+        <!--v-if-->
+        <!-- Clear button -->
+        <!--v-if-->
+      </div><!-- Append slot (outside input container, after) -->
       <!--v-if-->
     </div>
   </div>

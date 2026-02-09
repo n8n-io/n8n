@@ -332,12 +332,12 @@ test.describe('Data Mapping', () => {
 		await expect(n8n.ndv.getParameterSwitch('includeOtherFields')).toBeHidden();
 		await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeVisible();
 
-		// Check border on input element (N8nInput has border on input, not container)
-		const includeOtherFieldsInput = n8n.ndv.getParameterTextInput('includeOtherFields');
-		await expect(includeOtherFieldsInput).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+		// Check border on input wrapper (N8nInput has border on wrapper, not input)
+		const includeOtherFieldsWrapper = n8n.ndv.getParameterInputContainer('includeOtherFields');
+		await expect(includeOtherFieldsWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
 
-		const valueInput = n8n.ndv.getParameterTextInput('value');
-		await expect(valueInput).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+		const valueWrapper = n8n.ndv.getParameterInputContainer('value');
+		await expect(valueWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
 
 		await n8n.page.mouse.up();
 	});

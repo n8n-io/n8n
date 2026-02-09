@@ -229,7 +229,14 @@ export function useWorkflowSaving({
 			if (!workflowData.checksum) {
 				throw new Error('Failed to update workflow');
 			}
-			workflowsStore.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
+			workflowsStore.setWorkflowVersionData(
+				{
+					versionId: workflowData.versionId,
+					name: null,
+					description: null,
+				},
+				workflowData.checksum,
+			);
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
 			if (name) {
@@ -263,6 +270,53 @@ export function useWorkflowSaving({
 
 			uiStore.removeActiveAction('workflowSaving');
 
+			if (error.errorCode === 100) {
+				telemetry.track('User attempted to save locked workflow', {
+					workflowId: currentWorkflow,
+					sharing_role: getWorkflowProjectRole(currentWorkflow),
+				});
+
+				// Hide modal if we already showed it
+				// So that user could explore the workflow
+				if (!autosaveStore.conflictModalShown) {
+					if (autosaved) {
+						autosaveStore.setConflictModalShown(true);
+					}
+
+					const url = router.resolve({
+						name: VIEWS.WORKFLOW,
+						params: { name: currentWorkflow },
+					}).href;
+
+					const overwrite = await message.confirm(
+						i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
+							interpolate: {
+								url,
+							},
+						}),
+						i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
+						{
+							confirmButtonText: i18n.baseText(
+								'workflows.concurrentChanges.confirmMessage.confirmButtonText',
+							),
+							cancelButtonText: i18n.baseText(
+								'workflows.concurrentChanges.confirmMessage.cancelButtonText',
+							),
+						},
+					);
+
+					if (overwrite === MODAL_CONFIRM) {
+						return await saveCurrentWorkflow({ id, name, tags }, redirect, true);
+					}
+				}
+
+				// For autosaves, fall through to retry logic below
+				// As we want to still communicate autosave stopped working
+				if (!autosaved) {
+					return false;
+				}
+			}
+
 			// Handle autosave failures with exponential backoff
 			if (autosaved) {
 				autosaveStore.incrementRetry();
@@ -291,41 +345,6 @@ export function useWorkflowSaving({
 					type: 'error',
 					duration: retryDelay,
 				});
-
-				return false;
-			}
-
-			if (error.errorCode === 100) {
-				telemetry.track('User attempted to save locked workflow', {
-					workflowId: currentWorkflow,
-					sharing_role: getWorkflowProjectRole(currentWorkflow),
-				});
-
-				const url = router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { name: currentWorkflow },
-				}).href;
-
-				const overwrite = await message.confirm(
-					i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
-						interpolate: {
-							url,
-						},
-					}),
-					i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
-					{
-						confirmButtonText: i18n.baseText(
-							'workflows.concurrentChanges.confirmMessage.confirmButtonText',
-						),
-						cancelButtonText: i18n.baseText(
-							'workflows.concurrentChanges.confirmMessage.cancelButtonText',
-						),
-					},
-				);
-
-				if (overwrite === MODAL_CONFIRM) {
-					return await saveCurrentWorkflow({ id, name, tags }, redirect, true);
-				}
 
 				return false;
 			}
@@ -456,7 +475,11 @@ export function useWorkflowSaving({
 
 			workflowState.setActive(workflowData.activeVersionId);
 			workflowState.setWorkflowId(workflowData.id);
-			workflowsStore.setWorkflowVersionId(workflowData.versionId);
+			workflowsStore.setWorkflowVersionData({
+				versionId: workflowData.versionId,
+				name: null,
+				description: null,
+			});
 			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);

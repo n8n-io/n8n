@@ -58,7 +58,7 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 				template:
 					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 			},
-			WorkflowPublishForm: {
+			WorkflowVersionForm: {
 				template: `
 					<div>
 						<input data-test-id="workflow-publish-version-name-input" @input="$emit('update:versionName', $event.target.value)" />

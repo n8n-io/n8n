@@ -67,7 +67,6 @@ catalog:
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
-  run-script-os: 1.1.6
   simple-git: 3.28.0
   tsdown: ^0.16.5
   tsx: ^4.19.3
@@ -82,6 +81,7 @@ catalog:
   xss: 1.0.15
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
+  js-tiktoken: 1.0.12
 
 catalogs:
   frontend:
