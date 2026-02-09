@@ -2,19 +2,55 @@
 import { computed, useCssModule } from 'vue';
 import { useAsyncState } from '@vueuse/core';
 import { ElSwitch } from 'element-plus';
-import { N8nHeading, N8nText } from '@n8n/design-system';
+import { I18nT } from 'vue-i18n';
+import { N8nBadge, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM } from '@/app/constants/modals';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
+import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const message = useMessage();
+const pageRedirectionHelper = usePageRedirectionHelper();
+
+const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
+
+const isEnforceMFAEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
+);
+
+async function onUpdateMfaEnforced(value: string | number | boolean) {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
+	try {
+		await usersStore.updateEnforceMfa(boolValue);
+		showToast({
+			type: 'success',
+			title: boolValue
+				? i18n.baseText('settings.personal.mfa.enforce.enabled.title')
+				: i18n.baseText('settings.personal.mfa.enforce.disabled.title'),
+			message: boolValue
+				? i18n.baseText('settings.personal.mfa.enforce.enabled.message')
+				: i18n.baseText('settings.personal.mfa.enforce.disabled.message'),
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.personal.mfa.enforce.error'));
+	}
+}
+
+function goToUpgrade() {
+	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
+}
 
 const { state, isLoading } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
@@ -117,6 +153,54 @@ const sharingCountText = computed(() => {
 		<N8nHeading tag="h1" size="2xlarge" class="mb-xl">
 			{{ i18n.baseText('settings.security') }}
 		</N8nHeading>
+
+		<N8nHeading tag="h2" size="large" class="mb-l">
+			{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
+		</N8nHeading>
+
+		<div :class="$style.settingsSection">
+			<div :class="$style.settingsContainer">
+				<div :class="$style.settingsContainerInfo">
+					<N8nText :bold="true"
+						>{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
+						<N8nBadge v-if="!isEnforceMFAEnabled" class="ml-4xs">{{
+							i18n.baseText('generic.upgrade')
+						}}</N8nBadge>
+					</N8nText>
+					<N8nText size="small" color="text-light">{{
+						i18n.baseText('settings.personal.mfa.enforce.message')
+					}}</N8nText>
+				</div>
+				<div :class="$style.settingsContainerAction">
+					<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
+						<ElSwitch
+							:model-value="settingsStore.isMFAEnforced"
+							size="large"
+							data-test-id="enable-force-mfa"
+							@update:model-value="onUpdateMfaEnforced"
+						/>
+						<template #fallback>
+							<N8nTooltip>
+								<ElSwitch
+									:model-value="settingsStore.isMFAEnforced"
+									size="large"
+									:disabled="true"
+								/>
+								<template #content>
+									<I18nT :keypath="tooltipKey" tag="span" scope="global">
+										<template #action>
+											<a @click="goToUpgrade">
+												{{ i18n.baseText('settings.personal.mfa.enforce.unlicensed_tooltip.link') }}
+											</a>
+										</template>
+									</I18nT>
+								</template>
+							</N8nTooltip>
+						</template>
+					</EnterpriseEdition>
+				</div>
+			</div>
+		</div>
 
 		<N8nHeading tag="h2" size="large" class="mb-l">
 			{{ i18n.baseText('settings.security.personalSpace.title') }}
