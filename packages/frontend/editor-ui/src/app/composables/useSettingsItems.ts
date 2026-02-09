@@ -127,6 +127,17 @@ export function useSettingsItems() {
 		];
 
 		menuItems.push({
+			id: 'settings-execution-quotas',
+			icon: 'clock',
+			label: i18n.baseText('settings.executionQuotas'),
+			position: 'top',
+			available:
+				hasPermission(['rbac'], { rbac: { scope: 'project:update' } }) &&
+				canUserAccessRouteByName(VIEWS.EXECUTION_QUOTAS),
+			route: { to: { name: VIEWS.EXECUTION_QUOTAS } },
+		});
+
+		menuItems.push({
 			id: 'settings-log-streaming',
 			icon: 'log-in',
 			label: i18n.baseText('settings.log-streaming'),
