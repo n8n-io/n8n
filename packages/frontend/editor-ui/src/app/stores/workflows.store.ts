@@ -60,7 +60,12 @@ import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { isJsonKeyObject, stringSizeInBytes, isPresent } from '@/app/utils/typesUtils';
-import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
+import {
+	makeRestApiRequest,
+	ResponseError,
+	type WorkflowHistory,
+	type WorkflowVersionData,
+} from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
 	findTriggerNodeToAutoSelect,
@@ -132,6 +137,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		createWorkflowObject(workflow.value.nodes, workflow.value.connections),
 	);
 
+	const versionData = ref<WorkflowVersionData | null>(null);
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
@@ -650,15 +656,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {});
 	}
 
-	function setWorkflowVersionId(versionId: string, newChecksum?: string) {
-		workflow.value.versionId = versionId;
+	function setWorkflowActiveVersion(version: WorkflowHistory | null) {
+		workflow.value.activeVersion = deepCopy(version);
+	}
+
+	function setWorkflowVersionData(version: WorkflowVersionData, newChecksum?: string) {
+		versionData.value = deepCopy(version);
+		workflow.value.versionId = version.versionId;
 		if (newChecksum) {
 			workflowChecksum.value = newChecksum;
 		}
-	}
-
-	function setWorkflowActiveVersion(version: WorkflowHistory | null) {
-		workflow.value.activeVersion = deepCopy(version);
 	}
 
 	// replace invalid credentials in workflow
@@ -743,7 +750,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflow.value.id) {
 			setIsArchived(true);
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			setWorkflowVersionData(
+				{
+					versionId: updatedWorkflow.versionId,
+					name: versionData.value?.name ?? null,
+					description: versionData.value?.description ?? null,
+				},
+				updatedWorkflow.checksum,
+			);
 		}
 	}
 
@@ -752,7 +766,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflow.value.id) {
 			setIsArchived(false);
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			setWorkflowVersionData(
+				{
+					versionId: updatedWorkflow.versionId,
+					name: versionData.value?.name ?? null,
+					description: versionData.value?.description ?? null,
+				},
+				updatedWorkflow.checksum,
+			);
 		}
 	}
 
@@ -1447,7 +1468,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		if (id === workflow.value.id) {
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			setWorkflowVersionData(
+				{
+					versionId: updatedWorkflow.versionId,
+					name: versionData.value?.name ?? null,
+					description: versionData.value?.description ?? null,
+				},
+				updatedWorkflow.checksum,
+			);
 		}
 
 		if (
@@ -1491,7 +1519,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			setWorkflowVersionData(
+				{
+					versionId: updatedWorkflow.versionId,
+					name: versionData.value?.name ?? null,
+					description: versionData.value?.description ?? null,
+				},
+				updatedWorkflow.checksum,
+			);
 		}
 
 		return updatedWorkflow;
@@ -1771,6 +1806,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	return {
 		workflow,
+		versionData,
 		usedCredentials,
 		currentWorkflowExecutions,
 		workflowExecutionData,
@@ -1842,8 +1878,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetWorkflow,
 		addNodeExecutionStartedData,
 		setUsedCredentials,
-		setWorkflowVersionId,
 		setWorkflowActiveVersion,
+		setWorkflowVersionData,
 		replaceInvalidWorkflowCredentials,
 		assignCredentialToMatchingNodes,
 		archiveWorkflow,
