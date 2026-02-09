@@ -24,6 +24,7 @@ export const LOG_SCOPES = [
 	'workflow-activation',
 	'ssh-client',
 	'data-table',
+	'execution-quota',
 	'cron',
 	'community-nodes',
 	'chat-hub',
