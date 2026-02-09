@@ -181,10 +181,15 @@ export class Telemetry {
 				executionTrackDataKey.count++;
 			}
 
+			if (properties.used_dynamic_credentials) {
+				this.track('Workflow execution with dynamic credentials', properties);
+			}
+
 			if (
 				!properties.success &&
 				properties.is_manual &&
-				properties.error_node_type?.startsWith('n8n-nodes-base')
+				properties.error_node_type?.startsWith('n8n-nodes-base') &&
+				!properties.used_dynamic_credentials
 			) {
 				this.track('Workflow execution errored', properties);
 			}
