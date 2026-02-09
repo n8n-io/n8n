@@ -6,25 +6,14 @@ import { computed, type Ref, toRef } from 'vue';
 type UseQuickConnectParams =
 	| {
 			packageName: string | Ref<string | undefined>;
-			credentialType?: never;
 			credentialTypes?: never;
 	  }
 	| {
 			packageName?: never;
-			credentialType: string | Ref<string | undefined>;
-			credentialTypes?: never;
-	  }
-	| {
-			packageName?: never;
-			credentialType?: never;
-			credentialTypes: string[] | Ref<string[] | undefined>;
+			credentialTypes: string[] | Ref<string[]>;
 	  };
 
-export function useQuickConnect({
-	credentialType,
-	credentialTypes,
-	packageName,
-}: UseQuickConnectParams) {
+export function useQuickConnect({ credentialTypes, packageName }: UseQuickConnectParams) {
 	const settingsStore = useSettingsStore();
 	const posthogStore = usePostHog();
 	const quickConnectEnabled = posthogStore.isVariantEnabled(
@@ -36,12 +25,8 @@ export function useQuickConnect({
 		if (quickConnectEnabled && settingsStore.moduleSettings['quick-connect']?.options.length) {
 			const options = settingsStore.moduleSettings['quick-connect']?.options;
 
-			if (credentialType) {
-				return options.find((option) => option.credentialType === toRef(credentialType).value);
-			}
-
 			if (credentialTypes) {
-				const types = toRef(credentialTypes).value ?? [];
+				const types = toRef(credentialTypes).value;
 				return options.find((option) => types.includes(option.credentialType));
 			}
 

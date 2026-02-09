@@ -60,12 +60,6 @@ describe('useQuickConnect()', () => {
 			expect(quickConnect.value).toBe(undefined);
 		});
 
-		it('returns undefined when credentialType is configured but quick connect feature is disabled', () => {
-			const quickConnect = useQuickConnect({ credentialType: 'test-credentials' });
-
-			expect(quickConnect.value).toBe(undefined);
-		});
-
 		it('returns undefined when credentialTypes are configured but quick connect feature is disabled', () => {
 			const quickConnect = useQuickConnect({ credentialTypes: ['test-credentials'] });
 
@@ -95,10 +89,10 @@ describe('useQuickConnect()', () => {
 				},
 			);
 
-			it.each(['test-credentials', ref('test-credentials')])(
+			it.each([['test-credentials'], ref(['test-credentials'])])(
 				'returns correct option for configured credentials',
-				(credentialType) => {
-					const quickConnect = useQuickConnect({ credentialType });
+				(credentialTypes) => {
+					const quickConnect = useQuickConnect({ credentialTypes });
 
 					expect(quickConnect.value).toEqual(quickConnectOption);
 				},
@@ -114,13 +108,13 @@ describe('useQuickConnect()', () => {
 				expect(quickConnect.value).toEqual(quickConnectOption);
 			});
 
-			it('updates reactive value based on credential type', () => {
-				const credentialType = ref('hello');
-				const quickConnect = useQuickConnect({ credentialType });
+			it('updates reactive value based on credential types', () => {
+				const credentialTypes = ref(['hello']);
+				const quickConnect = useQuickConnect({ credentialTypes });
 
 				expect(quickConnect.value).toEqual(undefined);
 
-				credentialType.value = 'test-credentials';
+				credentialTypes.value = ['test-credentials'];
 				expect(quickConnect.value).toEqual(quickConnectOption);
 			});
 
