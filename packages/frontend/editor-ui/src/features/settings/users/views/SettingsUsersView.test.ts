@@ -824,6 +824,16 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
+		it('should refresh the users list after a successful role update', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalled();
+			});
+		});
+
 		it('should handle role update error', async () => {
 			usersStore.updateGlobalRole = vi.fn().mockRejectedValue(new Error('Failed to update role'));
 

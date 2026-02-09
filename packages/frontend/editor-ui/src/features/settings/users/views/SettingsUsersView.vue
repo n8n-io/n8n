@@ -332,6 +332,8 @@ function goToUpgradeAdvancedPermissions() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 }
 
+const updatingRoleUserId = ref<string | null>(null);
+
 const onUpdateRole = async (payload: { userId: string; role: Role }) => {
 	const user = usersStore.usersList.state.items.find((u) => u.id === payload.userId);
 	if (!user) {
@@ -341,57 +343,6 @@ const onUpdateRole = async (payload: { userId: string; role: Role }) => {
 
 	await onRoleChange(user, payload.role);
 };
-
-async function onRoleChange(user: User, newRoleName: Role) {
-	if (newRoleName === user.role) return;
-
-	const name =
-		user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.email ?? '');
-	const role = userRoles.value.find(({ value }) => value === newRoleName)?.label ?? newRoleName;
-
-	if (newRoleName === ROLE.ChatUser) {
-		const confirmed = await message.confirm(
-			i18n.baseText('settings.users.userRoleUpdated.confirm.message', {
-				interpolate: {
-					role,
-				},
-			}),
-			i18n.baseText('settings.users.userRoleUpdated.confirm.title', {
-				interpolate: {
-					user: name,
-				},
-			}),
-			{
-				confirmButtonText: i18n.baseText('settings.users.userRoleUpdated.confirm.button'),
-				cancelButtonText: i18n.baseText('settings.users.userRoleUpdated.cancel.button'),
-			},
-		);
-
-		if (confirmed !== MODAL_CONFIRM) {
-			return;
-		}
-	}
-
-	try {
-		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
-
-		showToast({
-			type: 'success',
-			title: i18n.baseText('settings.users.userRoleUpdated'),
-			message: i18n.baseText('settings.users.userRoleUpdated.message', {
-				interpolate: {
-					user: name,
-					role,
-				},
-			}),
-		});
-	} catch (e) {
-		showError(e, i18n.baseText('settings.users.userRoleUpdatedError'));
-	}
-}
-
-const isValidSortKey = (key: string): key is UsersListSortOptions =>
-	(USERS_LIST_SORT_OPTIONS as readonly string[]).includes(key);
 
 const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions) => {
 	try {
@@ -427,6 +378,61 @@ const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions
 		showError(error, i18n.baseText('settings.users.table.update.error'));
 	}
 };
+
+async function onRoleChange(user: User, newRoleName: Role) {
+	if (newRoleName === user.role) return;
+
+	const name =
+		user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.email ?? '');
+	const role = userRoles.value.find(({ value }) => value === newRoleName)?.label ?? newRoleName;
+
+	if (newRoleName === ROLE.ChatUser) {
+		const confirmed = await message.confirm(
+			i18n.baseText('settings.users.userRoleUpdated.confirm.message', {
+				interpolate: {
+					role,
+				},
+			}),
+			i18n.baseText('settings.users.userRoleUpdated.confirm.title', {
+				interpolate: {
+					user: name,
+				},
+			}),
+			{
+				confirmButtonText: i18n.baseText('settings.users.userRoleUpdated.confirm.button'),
+				cancelButtonText: i18n.baseText('settings.users.userRoleUpdated.cancel.button'),
+			},
+		);
+
+		if (confirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
+	updatingRoleUserId.value = user.id;
+	try {
+		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
+		await updateUsersTableData(usersTableState.value);
+
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.users.userRoleUpdated'),
+			message: i18n.baseText('settings.users.userRoleUpdated.message', {
+				interpolate: {
+					user: name,
+					role,
+				},
+			}),
+		});
+	} catch (e) {
+		showError(e, i18n.baseText('settings.users.userRoleUpdatedError'));
+	} finally {
+		updatingRoleUserId.value = null;
+	}
+}
+
+const isValidSortKey = (key: string): key is UsersListSortOptions =>
+	(USERS_LIST_SORT_OPTIONS as readonly string[]).includes(key);
 
 const debouncedUpdateUsersTableData = useDebounceFn(() => {
 	usersTableState.value.page = 0; // Reset to first page on search
@@ -584,6 +590,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				:can-edit-role="!isInstanceRoleProvisioningEnabled"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
+				:updating-role-user-id="updatingRoleUserId"
 				:actions="usersListActions"
 				@update:options="updateUsersTableData"
 				@update:role="onUpdateRole"
