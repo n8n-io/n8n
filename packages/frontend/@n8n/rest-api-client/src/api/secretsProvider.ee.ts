@@ -66,3 +66,14 @@ export const testSecretProviderConnection = async (
 		`/secret-providers/connections/${providerKey}/test`,
 	);
 };
+
+export const getProjectSecretProviderConnectionsByProjectId = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<SecretProviderConnection[]> => {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/secret-providers/projects/${projectId}/connections`,
+	);
+};

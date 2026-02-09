@@ -543,7 +543,9 @@ describe('useConnectionModal', () => {
 				name: 'new-connection',
 				type: 'awsSecretsManager',
 				settings: {},
+				secretsCount: 5,
 			});
+			mockConnection.connectionState.value = 'connected';
 
 			selectProviderType('awsSecretsManager');
 			connectionName.value = 'new-connection';

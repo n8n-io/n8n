@@ -25,6 +25,7 @@ import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import { N8nAlert } from '@n8n/design-system';
+import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 
 import {
 	N8nButton,
@@ -609,7 +610,10 @@ onMounted(async () => {
 					@validate="isValid = $event"
 				/>
 			</fieldset>
-			<fieldset>
+
+			<ProjectExternalSecrets :class="$style.externalSecrets" />
+
+			<fieldset id="projectMembers">
 				<h3>
 					<label for="projectMembers">{{
 						i18n.baseText('projects.settings.projectMembers')
@@ -755,6 +759,11 @@ onMounted(async () => {
 
 .upgrade {
 	cursor: pointer;
+}
+
+.externalSecrets {
+	max-width: 100%;
+	overflow: hidden;
 }
 
 .membersInputRow {
