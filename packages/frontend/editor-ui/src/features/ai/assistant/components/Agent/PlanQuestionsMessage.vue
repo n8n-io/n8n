@@ -72,12 +72,17 @@ watch(currentIndex, () => {
 	}
 });
 
-// Get answer for current question (pure computed - no side effects)
 const currentAnswer = computed(() => {
 	const q = currentQuestion.value;
 	if (!q) return undefined;
 	return answers.value.get(q.id);
 });
+
+function getCurrentAnswer(): PlanMode.QuestionResponse | undefined {
+	const q = currentQuestion.value;
+	if (!q) return undefined;
+	return answers.value.get(q.id);
+}
 
 // Check if current question has a valid answer
 const hasValidAnswer = computed(() => {
@@ -95,16 +100,20 @@ const hasValidAnswer = computed(() => {
 });
 
 function onSingleSelect(option: string) {
-	currentAnswer.value.selectedOptions = [option];
+	const answer = getCurrentAnswer();
+	if (!answer) return;
+	answer.selectedOptions = [option];
 	// Clear custom text when selecting a regular option (not "Other")
 	if (option !== '__other__') {
-		currentAnswer.value.customText = '';
+		answer.customText = '';
 	}
-	currentAnswer.value.skipped = false;
+	answer.skipped = false;
 }
 
 function onMultiSelect(option: string, checked: boolean) {
-	const options = currentAnswer.value.selectedOptions;
+	const answer = getCurrentAnswer();
+	if (!answer) return;
+	const options = answer.selectedOptions;
 	if (checked) {
 		if (!options.includes(option)) {
 			options.push(option);
@@ -115,12 +124,14 @@ function onMultiSelect(option: string, checked: boolean) {
 			options.splice(idx, 1);
 		}
 	}
-	currentAnswer.value.skipped = false;
+	answer.skipped = false;
 }
 
 function onCustomTextChange(text: string) {
-	currentAnswer.value.customText = text;
-	currentAnswer.value.skipped = false;
+	const answer = getCurrentAnswer();
+	if (!answer) return;
+	answer.customText = text;
+	answer.skipped = false;
 }
 
 function submitAnswers() {

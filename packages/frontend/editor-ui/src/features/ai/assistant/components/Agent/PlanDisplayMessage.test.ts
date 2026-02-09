@@ -103,7 +103,7 @@ describe('PlanDisplayMessage', () => {
 		await fireEvent.click(getByTestId('plan-mode-plan-approve'));
 
 		expect(emitted().decision).toHaveLength(1);
-		expect(emitted().decision[0][0]).toEqual({ action: 'approve' });
+		expect(emitted().decision[0]).toEqual([{ action: 'approve' }]);
 	});
 
 	it('disables the button when disabled prop is true', () => {
