@@ -627,7 +627,6 @@ export class WorkflowService {
 		if (previousActiveVersionId) {
 			await this.activeWorkflowManager.remove(workflowId);
 
-			assert(previousActiveVersionId !== null);
 			this.eventService.emit('workflow-deactivated', {
 				user,
 				workflowId,
