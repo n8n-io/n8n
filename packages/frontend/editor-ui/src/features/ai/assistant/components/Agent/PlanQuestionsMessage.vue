@@ -340,7 +340,6 @@ const nextButtonLabel = computed(() => {
 }
 
 .intro {
-	color: var(--color--text);
 	line-height: var(--line-height--xl);
 }
 
