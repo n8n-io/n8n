@@ -6,18 +6,20 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
 import {
+	SOURCE_CONTROL_DEFAULT_BRANCH,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
+import { SourceControlConfig } from './source-control.config';
 import { SourceControlExportService } from './source-control-export.service.ee';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
@@ -45,6 +47,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { IWorkflowToImport } from '@/interfaces';
+import { OwnershipService } from '@/services/ownership.service';
 
 @Service()
 export class SourceControlService {
@@ -76,6 +79,107 @@ export class SourceControlService {
 
 	async start(): Promise<void> {
 		await this.refreshServiceState();
+	}
+
+	/**
+	 * Automatically configures and connects source control from environment variables.
+	 * Only runs if:
+	 *  - A repository URL is configured via N8N_SOURCECONTROL_REPO_URL
+	 *  - Source control is not already connected
+	 *
+	 * Optionally pulls from git on startup if N8N_SOURCECONTROL_AUTO_PULL_ON_STARTUP is true.
+	 */
+	async autoConfigureFromEnv(): Promise<void> {
+		const config = Container.get(SourceControlConfig);
+
+		if (!config.repositoryUrl) {
+			return;
+		}
+
+		if (this.sourceControlPreferencesService.isSourceControlConnected()) {
+			this.logger.debug(
+				'Source control is already connected, skipping auto-configuration from env vars',
+			);
+
+			if (config.autoPullOnStartup) {
+				await this.autoPullOnStartup(config.failOnPullError);
+			}
+			return;
+		}
+
+		this.logger.info('Auto-configuring source control from environment variables');
+
+		// Import SSH key from env var if provided
+		if (config.sshKey && config.connectionType === 'ssh') {
+			await this.sourceControlPreferencesService.saveKeyPairFromEnv(config.sshKey);
+			this.logger.debug('SSH key pair imported from environment variable');
+		}
+
+		// Set preferences from env vars
+		const preferences: Partial<SourceControlPreferences> = {
+			repositoryUrl: config.repositoryUrl,
+			branchName: config.branch || SOURCE_CONTROL_DEFAULT_BRANCH,
+			branchReadOnly: config.branchReadOnly,
+			connectionType: config.connectionType,
+		};
+
+		await this.sourceControlPreferencesService.setPreferences(preferences, true, false);
+
+		// Initialize repository (connect)
+		const owner = await Container.get(OwnershipService).getInstanceOwner();
+
+		try {
+			await this.initializeRepository(
+				{
+					...this.sourceControlPreferencesService.getPreferences(),
+					branchName: preferences.branchName || SOURCE_CONTROL_DEFAULT_BRANCH,
+					initRepo: true,
+				},
+				owner,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Failed to auto-connect source control to ${config.repositoryUrl}: ${(error as Error).message}`,
+			);
+			// Clean up partial state
+			await this.disconnect({ keepKeyPair: true });
+			throw new UnexpectedError(
+				'Failed to auto-connect source control from environment variables',
+				{
+					cause: error,
+				},
+			);
+		}
+
+		this.logger.info(
+			`Source control connected to ${config.repositoryUrl} on branch ${preferences.branchName}`,
+		);
+
+		// Auto-pull if enabled
+		if (config.autoPullOnStartup) {
+			await this.autoPullOnStartup(config.failOnPullError);
+		}
+	}
+
+	private async autoPullOnStartup(failOnError: boolean): Promise<void> {
+		this.logger.info('Auto-pulling from source control on startup');
+
+		const owner = await Container.get(OwnershipService).getInstanceOwner();
+
+		try {
+			const result = await this.pullWorkfolder(owner, { force: true, autoPublish: 'none' });
+			this.logger.info(
+				`Auto-pull completed successfully, ${result.statusResult.length} files processed`,
+			);
+		} catch (error) {
+			const message = `Auto-pull from source control failed: ${(error as Error).message}`;
+
+			if (failOnError) {
+				throw new UnexpectedError(message, { cause: error });
+			}
+
+			this.logger.warn(message);
+		}
 	}
 
 	/**

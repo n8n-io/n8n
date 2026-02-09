@@ -11,6 +11,7 @@ import * as path from 'path';
 
 import {
 	SOURCE_CONTROL_GIT_FOLDER,
+	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_SSH_KEY_NAME,
@@ -228,6 +229,49 @@ export class SourceControlPreferencesService {
 		}
 
 		return this.getPreferences();
+	}
+
+	/**
+	 * Import an SSH private key from an environment variable and store it encrypted in the database.
+	 * Derives the public key from the private key using sshpk.
+	 */
+	async saveKeyPairFromEnv(privateKeyRaw: string): Promise<void> {
+		const sshpk = await import('sshpk');
+		const normalizedKey = privateKeyRaw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+
+		let sshPrivateKey: string;
+		let sshPublicKey: string;
+
+		try {
+			const parsedKey = sshpk.parsePrivateKey(normalizedKey, 'auto');
+			parsedKey.comment = SOURCE_CONTROL_GIT_KEY_COMMENT;
+
+			const publicKey = parsedKey.toPublic();
+			publicKey.comment = SOURCE_CONTROL_GIT_KEY_COMMENT;
+
+			sshPrivateKey = parsedKey.toString('ssh-private');
+			sshPublicKey = publicKey.toString('ssh');
+		} catch (error) {
+			throw new UnexpectedError(
+				'Failed to parse SSH private key from environment variable. Ensure it is a valid OpenSSH or PEM-formatted private key.',
+				{ cause: error },
+			);
+		}
+
+		try {
+			await this.settingsRepository.save({
+				key: 'features.sourceControl.sshKeys',
+				value: JSON.stringify({
+					encryptedPrivateKey: this.cipher.encrypt(sshPrivateKey),
+					publicKey: sshPublicKey,
+				}),
+				loadOnStartup: true,
+			});
+		} catch (error) {
+			throw new UnexpectedError('Failed to save SSH key pair from environment variable', {
+				cause: error,
+			});
+		}
 	}
 
 	isBranchReadOnly(): boolean {
