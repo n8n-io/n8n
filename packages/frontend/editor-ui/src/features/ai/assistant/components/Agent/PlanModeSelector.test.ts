@@ -15,22 +15,27 @@ describe('PlanModeSelector', () => {
 		expect(getByTestId('plan-mode-selector')).toBeTruthy();
 	});
 
-	it('renders the current mode label for build mode', () => {
-		const { container } = render('build');
-		// The button should contain the "Build" label text (i18n key resolved to key itself in test)
-		const labelSpan = container.querySelector('[class*="label"]');
-		expect(labelSpan?.textContent).toBeTruthy();
+	it('shows "Build" label when modelValue is build', () => {
+		const { getByTestId } = render('build');
+		const button = getByTestId('plan-mode-selector').querySelector('button');
+		expect(button?.textContent).toContain('Build');
 	});
 
-	it('renders the current mode label for plan mode', () => {
-		const { container } = render('plan');
-		const labelSpan = container.querySelector('[class*="label"]');
-		expect(labelSpan?.textContent).toBeTruthy();
+	it('shows "Plan" label when modelValue is plan', () => {
+		const { getByTestId } = render('plan');
+		const button = getByTestId('plan-mode-selector').querySelector('button');
+		expect(button?.textContent).toContain('Plan');
 	});
 
 	it('disables the button when disabled prop is true', () => {
-		const { container } = render('build', true);
-		const button = container.querySelector('button');
+		const { getByTestId } = render('build', true);
+		const button = getByTestId('plan-mode-selector').querySelector('button');
 		expect(button?.hasAttribute('disabled')).toBe(true);
+	});
+
+	it('does not disable the button when disabled prop is false', () => {
+		const { getByTestId } = render('build', false);
+		const button = getByTestId('plan-mode-selector').querySelector('button');
+		expect(button?.hasAttribute('disabled')).toBe(false);
 	});
 });

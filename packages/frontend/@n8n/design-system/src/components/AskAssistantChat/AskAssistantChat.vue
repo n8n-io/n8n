@@ -98,7 +98,7 @@ function getToolIdsWithWorkflowUpdate(
 	messages: ChatUI.AssistantMessage[],
 ): Set<string | undefined> {
 	const result = new Set<string | undefined>();
-	let currentGroupToolIds: (string | undefined)[] = [];
+	let currentGroupToolIds: Array<string | undefined> = [];
 	let hasWorkflowUpdate = false;
 
 	for (const msg of messages) {
