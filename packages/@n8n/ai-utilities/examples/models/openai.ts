@@ -370,12 +370,12 @@ function parseTokenUsage(
 				promptTokens: usage.input_tokens ?? 0,
 				completionTokens: usage.output_tokens ?? 0,
 				totalTokens: usage.total_tokens ?? 0,
-				input_token_details: {
+				inputTokenDetails: {
 					...(!!usage.input_tokens_details?.cached_tokens && {
-						cache_read: usage.input_tokens_details.cached_tokens,
+						cacheRead: usage.input_tokens_details.cached_tokens,
 					}),
 				},
-				output_token_details: {
+				outputTokenDetails: {
 					...(!!usage.output_tokens_details?.reasoning_tokens && {
 						reasoning: usage.output_tokens_details.reasoning_tokens,
 					}),

@@ -3,7 +3,7 @@ import type { ToolCall } from './tool';
 
 export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other';
 
-export interface TokenUsage {
+export type TokenUsage<T extends Record<string, unknown> = Record<string, unknown>> = {
 	promptTokens: number;
 	completionTokens: number;
 	totalTokens: number;
@@ -13,8 +13,8 @@ export interface TokenUsage {
 	outputTokenDetails?: {
 		reasoning?: number;
 	};
-	[key: string]: unknown;
-}
+	additionalMetadata?: T;
+};
 
 export interface GenerateResult {
 	id?: string;

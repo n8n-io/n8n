@@ -3,6 +3,7 @@ import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LangchainAdapter } from '../adapters/langchain-chat-model';
+import { BaseChatModel } from '../chat-model/base';
 import type { ChatModel } from '../types/chat-model';
 import type { OpenAIModelOptions } from '../types/openai';
 import { makeN8nLlmFailedAttemptHandler } from '../utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
@@ -15,7 +16,7 @@ type OpenAiModel = OpenAIModelOptions & {
 type ModelOptions = ChatModel | OpenAiModel;
 
 function isOpenAiModel(model: ModelOptions): model is OpenAiModel {
-	return 'type' in model && model.type === 'openai';
+	return 'type' in model && model.type === 'openai' && !(model instanceof BaseChatModel);
 }
 
 function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
