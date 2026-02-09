@@ -81,6 +81,7 @@ catalog:
   xss: 1.0.15
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
+  js-tiktoken: 1.0.12
 
 catalogs:
   frontend:

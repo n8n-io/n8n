@@ -40,6 +40,8 @@ export interface StageModels {
 	builder?: ModelId;
 	/** Model for parameter updater (within builder) */
 	parameterUpdater?: ModelId;
+	/** Model for planner stage (plan mode) */
+	planner?: ModelId;
 	/** Model for LLM judge evaluation */
 	judge?: ModelId;
 }
@@ -55,6 +57,7 @@ export interface ResolvedStageLLMs {
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
 	parameterUpdater: BaseChatModel;
+	planner: BaseChatModel;
 	judge: BaseChatModel;
 }
 
@@ -106,6 +109,7 @@ export async function resolveStageModels(stageModels: StageModels): Promise<Reso
 		parameterUpdater: stageModels.parameterUpdater
 			? await setupLLM(stageModels.parameterUpdater)
 			: builderLLM,
+		planner: stageModels.planner ? await setupLLM(stageModels.planner) : defaultLLM,
 		judge: stageModels.judge ? await setupLLM(stageModels.judge) : defaultLLM,
 	};
 }
@@ -221,6 +225,7 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 			discovery: llms.discovery,
 			builder: llms.builder,
 			parameterUpdater: llms.parameterUpdater,
+			planner: llms.planner,
 		},
 		checkpointer: new MemorySaver(),
 		tracer,

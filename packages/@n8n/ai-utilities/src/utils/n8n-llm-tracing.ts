@@ -12,8 +12,8 @@ import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { logAiEvent } from '@n8n/ai-utilities';
-import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
+import { logAiEvent } from './log-ai-event';
+import { estimateTokensFromStringList } from './tokenizer/token-estimator';
 
 type TokensUsageParser = (result: LLMResult) => {
 	completionTokens: number;
@@ -192,6 +192,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
 		// Filter out non-x- headers to avoid leaking sensitive information in logs
+		// eslint-disable-next-line no-prototype-builtins
 		if (typeof error === 'object' && error?.hasOwnProperty('headers')) {
 			const errorWithHeaders = error as { headers: Record<string, unknown> };
 
@@ -220,6 +221,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		}
 
 		logAiEvent(this.executionFunctions, 'ai-llm-errored', {
+			// eslint-disable-next-line @typescript-eslint/no-base-to-string
 			error: Object.keys(error).length === 0 ? error.toString() : error,
 			runId,
 			parentRunId,
