@@ -9,7 +9,7 @@ import {
 	AI_TRANSFORM_NODE_TYPE,
 } from 'n8n-workflow';
 
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -51,6 +51,7 @@ export type UseNodeExecutionOptions = {
 	telemetrySource?: string;
 	executionMode?: MaybeRef<'inclusive' | 'exclusive'>;
 	source?: string;
+	onCodeGenerated?: (update: IUpdateInformation) => void;
 };
 
 export type NodeExecutionState = {
@@ -297,6 +298,15 @@ export function useNodeExecution(
 						[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]: prompt,
 					},
 				},
+			});
+
+			options.onCodeGenerated?.({
+				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
+				value: updateInformation.value,
+			});
+			options.onCodeGenerated?.({
+				name: `parameters.${AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT}`,
+				value: prompt,
 			});
 
 			telemetry.trackAiTransform('generationFinished', {
