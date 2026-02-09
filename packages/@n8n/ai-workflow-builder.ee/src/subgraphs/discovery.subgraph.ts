@@ -15,17 +15,10 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { LLMServiceError } from '@/errors';
-import { buildDiscoveryPrompt } from '@/prompts';
-import {
-	createResourceCacheKey,
-	extractResourceOperations,
-	type ResourceOperationInfo,
-} from '@/utils/resource-operation-extractor';
-import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
-
 import { createPlannerAgent, invokePlannerNode } from '@/agents/planner.agent';
+import { LLMServiceError } from '@/errors';
 import type { ParentGraphState } from '@/parent-graph-state';
+import { buildDiscoveryPrompt } from '@/prompts';
 import { createGetDocumentationTool } from '@/tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '@/tools/get-workflow-examples.tool';
 import { createNodeSearchTool } from '@/tools/node-search.tool';
@@ -38,8 +31,14 @@ import type { WorkflowMetadata } from '@/types/tools';
 import type { SimpleWorkflow } from '@/types/workflow';
 import { applySubgraphCacheMarkers } from '@/utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '@/utils/context-builders';
+import {
+	createResourceCacheKey,
+	extractResourceOperations,
+	type ResourceOperationInfo,
+} from '@/utils/resource-operation-extractor';
 import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers';
 import { executeSubgraphTools, extractUserRequest } from '@/utils/subgraph-helpers';
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 

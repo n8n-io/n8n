@@ -42,19 +42,16 @@ import type { CoordinationLogEntry } from '../types/coordination';
 import { createBuilderMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
-import { formatPlanAsText } from '../utils/plan-helpers';
 import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildConversationContext,
 	buildDiscoveryContextBlock,
-	buildWorkflowJsonBlock,
-	buildExecutionSchemaBlock,
-	buildExecutionContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
+import { formatPlanAsText } from '../utils/plan-helpers';
 import {
 	detectRLCParametersForPrefetch,
 	prefetchRLCOptions,

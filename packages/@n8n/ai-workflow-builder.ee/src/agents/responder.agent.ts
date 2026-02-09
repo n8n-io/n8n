@@ -12,7 +12,6 @@ import {
 	buildGeneralErrorGuidance,
 	buildDataTableCreationGuidance,
 } from '@/prompts';
-
 import type { CoordinationLogEntry } from '@/types/coordination';
 import type { DiscoveryContext } from '@/types/discovery-types';
 import type { SimpleWorkflow } from '@/types/workflow';

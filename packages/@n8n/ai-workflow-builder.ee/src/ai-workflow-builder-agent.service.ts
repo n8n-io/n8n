@@ -8,13 +8,12 @@ import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
-
 import { z } from 'zod';
 
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
-import type { ResourceLocatorCallbackFactory } from '@/types/callbacks';
+import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import type { HITLInterruptValue } from '@/types/planning';
 import {
 	BuilderFeatureFlags,
