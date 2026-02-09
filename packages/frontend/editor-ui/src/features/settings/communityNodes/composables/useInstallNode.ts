@@ -12,9 +12,9 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';
-	telemetry?: {
-		hasQuickConnect?: boolean;
-		source?: string;
+	telemetry: {
+		hasQuickConnect: boolean;
+		source: string;
 	};
 } & (
 	| {
@@ -64,8 +64,8 @@ export function useInstallNode() {
 
 		telemetry.track('user started cnr package install', {
 			input_string: props.packageName,
-			has_quick_connect: props.telemetry?.hasQuickConnect,
-			source: props.telemetry?.source,
+			has_quick_connect: props.telemetry.hasQuickConnect,
+			source: props.telemetry.source,
 		});
 
 		try {
