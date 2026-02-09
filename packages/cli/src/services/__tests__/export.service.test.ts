@@ -280,6 +280,56 @@ describe('ExportService', () => {
 
 			await expect(exportService.exportEntities(outputDir)).rejects.toThrow('Permission denied');
 		});
+
+		it('should skip tables that do not exist in the database', async () => {
+			const outputDir = '/test/output';
+
+			// Mock DataSource with entities including one that doesn't exist in DB
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'User',
+					tableName: 'user',
+					columns: [{ databaseName: 'id' }, { databaseName: 'email' }],
+				},
+				{
+					name: 'SecretsProviderConnection',
+					tableName: 'secrets_provider_connection',
+					columns: [{ databaseName: 'id' }, { databaseName: 'providerKey' }],
+				},
+			];
+
+			let queryCount = 0;
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				queryCount++;
+				// Migrations table doesn't exist
+				if (query.includes('migrations')) {
+					throw new Error('Table not found');
+				}
+				// User table exists and has no data
+				if (query.includes('user') && query.includes('SELECT 1')) {
+					return [{ '1': 1 }];
+				}
+				if (query.includes('user')) {
+					return [];
+				}
+				// secrets_provider_connection table doesn't exist
+				if (query.includes('secrets_provider_connection')) {
+					throw new Error('relation "secrets_provider_connection" does not exist');
+				}
+				return [];
+			});
+			jest.mocked(readdir).mockResolvedValue([]);
+
+			await exportService.exportEntities(outputDir);
+
+			// Should log warning about missing table
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'   ⚠️  Table secrets_provider_connection does not exist in the database, skipping...',
+			);
+			// Should complete successfully
+			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
+		});
 	});
 
 	describe('clearExistingEntityFiles', () => {
