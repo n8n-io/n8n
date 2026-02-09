@@ -56,3 +56,16 @@ export { BaseChatModel } from './chat-model/base';
 
 export { getParametersJsonSchema } from './converters/tool';
 export { supplyModel } from './suppliers/supplyModel';
+
+// Memory types
+export type { ChatHistory, ChatMemory } from './types/memory';
+
+// Memory base classes
+export { BaseChatHistory } from './memory/base-chat-history';
+export { BaseChatMemory } from './memory/base-chat-memory';
+
+// Memory implementations
+export { WindowedChatMemory, type WindowedChatMemoryConfig } from './memory/windowed-chat-memory';
+
+// Memory supplier
+export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory';
