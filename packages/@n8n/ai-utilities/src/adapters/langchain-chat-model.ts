@@ -4,22 +4,49 @@ import type { BindToolsInput } from '@langchain/core/language_models/chat_models
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage, ContentBlock } from '@langchain/core/messages';
 import { AIMessage, AIMessageChunk } from '@langchain/core/messages';
-import type { ChatResult } from '@langchain/core/outputs';
+import type { ChatResult, LLMResult } from '@langchain/core/outputs';
 import { ChatGenerationChunk } from '@langchain/core/outputs';
 import type { Runnable } from '@langchain/core/runnables';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 import { fromLcMessage } from '../converters/message';
 import { fromLcTool } from '../converters/tool';
 import type { ChatModel, ChatModelConfig } from '../types/chat-model';
+import { makeN8nLlmFailedAttemptHandler } from '../utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../utils/n8n-llm-tracing';
 
 export class LangchainAdapter<
 	CallOptions extends ChatModelConfig = ChatModelConfig,
 > extends BaseChatModel<CallOptions> {
-	constructor(private chatModel: ChatModel) {
-		super({
-			// TODO: Move N8nLlmTracing to ai-utilities
-			// callbacks: [new N8nLlmTracing(this)],
-		});
+	constructor(
+		private chatModel: ChatModel,
+		private ctx?: ISupplyDataFunctions,
+	) {
+		const params = {
+			...(ctx
+				? {
+						callbacks: [
+							new N8nLlmTracing(ctx, {
+								tokensUsageParser: (result: LLMResult) => {
+									const tokenUsage = result?.llmOutput?.tokenUsage as
+										| AIMessage['usage_metadata']
+										| undefined;
+									const completionTokens = (tokenUsage?.output_tokens as number) ?? 0;
+									const promptTokens = (tokenUsage?.input_tokens as number) ?? 0;
+
+									return {
+										completionTokens,
+										promptTokens,
+										totalTokens: completionTokens + promptTokens,
+									};
+								},
+							}),
+						],
+						onFailedAttempt: makeN8nLlmFailedAttemptHandler(ctx),
+					}
+				: {}),
+		};
+		super(params);
 	}
 
 	_llmType(): string {
@@ -48,8 +75,16 @@ export class LangchainAdapter<
 					input_tokens: result.usage.promptTokens ?? 0,
 					output_tokens: result.usage.completionTokens ?? 0,
 					total_tokens: result.usage.totalTokens ?? 0,
-					input_token_details: result.usage.input_token_details,
-					output_token_details: result.usage.output_token_details,
+					input_token_details: result.usage.inputTokenDetails
+						? {
+								cache_read: result.usage.inputTokenDetails.cacheRead,
+							}
+						: undefined,
+					output_token_details: result.usage.outputTokenDetails
+						? {
+								reasoning: result.usage.outputTokenDetails.reasoning,
+							}
+						: undefined,
 				}
 			: undefined;
 
@@ -84,7 +119,7 @@ export class LangchainAdapter<
 			],
 			llmOutput: {
 				id: result.id,
-				estimatedTokenUsage: usage_metadata,
+				tokenUsage: usage_metadata,
 			},
 		};
 	}
@@ -182,7 +217,7 @@ export class LangchainAdapter<
 	): Runnable<BaseLanguageModelInput, AIMessageChunk, CallOptions> {
 		const genericTools = tools.map(fromLcTool);
 		const newModel = this.chatModel.withTools(genericTools);
-		const newAdapter = new LangchainAdapter(newModel);
+		const newAdapter = new LangchainAdapter(newModel, this.ctx);
 
 		return newAdapter as any;
 	}

@@ -1,35 +1,46 @@
+/**
+ * Discovery Subgraph
+ *
+ * Discovers relevant nodes, best practices, and optional plan generation/approval.
+ * Uses tool-loop pattern for discovery with structured submit tool.
+ */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage, AIMessage } from '@langchain/core/messages';
-import { HumanMessage, isAIMessage } from '@langchain/core/messages';
+import { HumanMessage, ToolMessage, isAIMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import type { Runnable } from '@langchain/core/runnables';
+import type { Runnable, RunnableConfig } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
-import { Annotation, StateGraph, END } from '@langchain/langgraph';
+import { Annotation, END, START, StateGraph, type BaseCheckpointSaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { createPlannerAgent, invokePlannerNode } from '@/agents/planner.agent';
 import { LLMServiceError } from '@/errors';
+import type { ParentGraphState } from '@/parent-graph-state';
 import { buildDiscoveryPrompt } from '@/prompts';
+import { createGetDocumentationTool } from '@/tools/get-documentation.tool';
+import { createGetWorkflowExamplesTool } from '@/tools/get-workflow-examples.tool';
+import { createNodeSearchTool } from '@/tools/node-search.tool';
+import { submitQuestionsTool } from '@/tools/submit-questions.tool';
+import type { CoordinationLogEntry } from '@/types/coordination';
+import { createDiscoveryMetadata } from '@/types/coordination';
+import type { DiscoveryContext } from '@/types/discovery-types';
+import type { PlanDecision, PlanOutput } from '@/types/planning';
+import type { WorkflowMetadata } from '@/types/tools';
+import type { SimpleWorkflow } from '@/types/workflow';
+import { applySubgraphCacheMarkers } from '@/utils/cache-control';
+import { buildWorkflowSummary, createContextMessage } from '@/utils/context-builders';
 import {
-	extractResourceOperations,
 	createResourceCacheKey,
+	extractResourceOperations,
 	type ResourceOperationInfo,
 } from '@/utils/resource-operation-extractor';
+import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers';
+import { executeSubgraphTools, extractUserRequest } from '@/utils/subgraph-helpers';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
-import type { ParentGraphState } from '../parent-graph-state';
-import { createGetDocumentationTool } from '../tools/get-documentation.tool';
-import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
-import { createNodeSearchTool } from '../tools/node-search.tool';
-import type { CoordinationLogEntry } from '../types/coordination';
-import { createDiscoveryMetadata } from '../types/coordination';
-import type { WorkflowMetadata } from '../types/tools';
-import { applySubgraphCacheMarkers } from '../utils/cache-control';
-import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
-import { appendArrayReducer, cachedTemplatesReducer } from '../utils/state-reducers';
-import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
  * Strict Output Schema for Discovery
@@ -63,6 +74,8 @@ const discoveryOutputSchema = z.object({
 		.describe('List of n8n nodes identified as necessary for the workflow'),
 });
 
+type DiscoveryOutput = z.infer<typeof discoveryOutputSchema>;
+
 /**
  * Discovery Subgraph State
  */
@@ -71,6 +84,48 @@ export const DiscoverySubgraphState = Annotation.Root({
 	userRequest: Annotation<string>({
 		reducer: (x, y) => y ?? x,
 		default: () => '',
+	}),
+
+	// Input: Current workflow
+	workflowJSON: Annotation<SimpleWorkflow>({
+		reducer: (x, y) => y ?? x,
+		default: () => ({ nodes: [], connections: {}, name: '' }),
+	}),
+
+	// Plan Mode: Request mode ('build' for direct build, 'plan' for planning first)
+	mode: Annotation<'build' | 'plan'>({
+		reducer: (x, y) => y ?? x,
+		default: () => 'build',
+	}),
+
+	// Plan Mode: Current plan (set by planner, consumed by builder)
+	planOutput: Annotation<PlanOutput | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
+	}),
+
+	// Plan Mode: Last plan decision after interrupt resume
+	planDecision: Annotation<PlanDecision | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
+	}),
+
+	// Plan Mode: Feedback after modify decision
+	planFeedback: Annotation<string | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
+	}),
+
+	// Plan Mode: Previous plan to revise
+	planPrevious: Annotation<PlanOutput | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
+	}),
+
+	// Plan Mode: Number of modify iterations (capped to prevent infinite loops)
+	planModifyCount: Annotation<number>({
+		reducer: (x, y) => y ?? x,
+		default: () => 0,
 	}),
 
 	// Internal: Conversation within this subgraph
@@ -137,8 +192,11 @@ export const DiscoverySubgraphState = Annotation.Root({
 export interface DiscoverySubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
+	plannerLLM: BaseChatModel;
 	logger?: Logger;
 	featureFlags?: BuilderFeatureFlags;
+	/** Optional checkpointer for interrupt/resume support (used in integration tests) */
+	checkpointer?: BaseCheckpointSaver;
 }
 
 export class DiscoverySubgraph extends BaseSubgraph<
@@ -150,26 +208,36 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	description = 'Discovers nodes and context for the workflow';
 
 	private agent!: Runnable;
+	private plannerAgent!: ReturnType<typeof createPlannerAgent>;
 	private toolMap!: Map<string, StructuredTool>;
 	private logger?: Logger;
 	private parsedNodeTypes!: INodeTypeDescription[];
+	private featureFlags?: BuilderFeatureFlags;
 
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
 		this.parsedNodeTypes = config.parsedNodeTypes;
+		this.featureFlags = config.featureFlags;
 
-		// Check if template examples are enabled
+		// Check feature flags
 		const includeExamples = config.featureFlags?.templateExamples === true;
+		const includePlanMode = config.featureFlags?.planMode === true;
 
 		// Create base tools - search_nodes provides all data needed for discovery
-		const baseTools = [createNodeSearchTool(config.parsedNodeTypes)];
+		const baseTools = includePlanMode
+			? [createNodeSearchTool(config.parsedNodeTypes).tool, submitQuestionsTool]
+			: [createNodeSearchTool(config.parsedNodeTypes).tool];
 
 		// Conditionally add documentation and workflow examples tools if feature flag is enabled
 		const tools = includeExamples
-			? [...baseTools, createGetDocumentationTool(), createGetWorkflowExamplesTool(config.logger)]
+			? [
+					...baseTools,
+					createGetDocumentationTool().tool,
+					createGetWorkflowExamplesTool(config.logger).tool,
+				]
 			: baseTools;
 
-		this.toolMap = new Map(tools.map((bt) => [bt.tool.name, bt.tool]));
+		this.toolMap = new Map(tools.map((toolInstance) => [toolInstance.name, toolInstance]));
 
 		// Define output tool
 		const submitTool = tool(() => {}, {
@@ -179,7 +247,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		});
 
 		// Generate prompt based on feature flags
-		const discoveryPrompt = buildDiscoveryPrompt({ includeExamples });
+		const discoveryPrompt = buildDiscoveryPrompt({
+			includeExamples,
+			includeQuestions: includePlanMode,
+		});
 
 		// Create agent with tools bound (including submit tool)
 		const systemPrompt = ChatPromptTemplate.fromMessages([
@@ -204,28 +275,36 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		}
 
 		// Bind all tools including the output tool
-		const allTools = [...tools.map((bt) => bt.tool), submitTool];
+		const allTools = [...tools, submitTool];
 		this.agent = systemPrompt.pipe(config.llm.bindTools(allTools));
+		this.plannerAgent = createPlannerAgent({
+			llm: config.plannerLLM,
+			tools: [createGetDocumentationTool().tool],
+		});
 
 		// Build the subgraph
 		const subgraph = new StateGraph(DiscoverySubgraphState)
-			.addNode('agent', this.callAgent.bind(this))
+			.addNode('discovery_agent', this.callAgent.bind(this))
 			.addNode('tools', async (state) => await executeSubgraphTools(state, this.toolMap))
 			.addNode('format_output', this.formatOutput.bind(this))
 			.addNode('reprompt', this.repromptForToolCall.bind(this))
-			.addEdge('__start__', 'agent')
+			.addNode('planner', this.plannerNode.bind(this))
+			.addEdge(START, 'discovery_agent')
 			// Conditional: tools if has tool calls, format_output if submit called, reprompt if no tool calls
-			.addConditionalEdges('agent', this.shouldContinue.bind(this), {
+			.addConditionalEdges('discovery_agent', this.shouldContinue.bind(this), {
 				tools: 'tools',
 				format_output: 'format_output',
 				reprompt: 'reprompt',
 				end: END, // Fallback after max retries
 			})
-			.addEdge('tools', 'agent') // After tools, go back to agent
-			.addEdge('reprompt', 'agent') // After reprompt, try agent again
-			.addEdge('format_output', END); // After formatting, END
+			.addEdge('tools', 'discovery_agent') // After tools, go back to agent
+			.addEdge('reprompt', 'discovery_agent') // After reprompt, try agent again
+			.addConditionalEdges('format_output', this.shouldPlan.bind(this))
+			.addConditionalEdges('planner', this.shouldLoopPlanner.bind(this));
 
-		return subgraph.compile();
+		return subgraph.compile(
+			config.checkpointer ? { checkpointer: config.checkpointer } : undefined,
+		);
 	}
 
 	/**
@@ -245,6 +324,61 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		})) as AIMessage;
 
 		return { messages: [response] };
+	}
+
+	/**
+	 * Planner node - delegates to the planner agent for plan generation,
+	 * interrupt, and decision handling. Skips if plan mode is not active.
+	 */
+	private async plannerNode(
+		state: typeof DiscoverySubgraphState.State,
+		runnableConfig?: RunnableConfig,
+	) {
+		if (!this.featureFlags?.planMode || state.mode !== 'plan' || state.planOutput) {
+			return {};
+		}
+
+		const result = await invokePlannerNode(
+			this.plannerAgent,
+			{
+				userRequest: state.userRequest || 'Build a workflow',
+				discoveryContext: {
+					nodesFound: state.nodesFound ?? [],
+					bestPractices: state.bestPractices,
+				},
+				workflowJSON: state.workflowJSON,
+				planPrevious: state.planPrevious,
+				planFeedback: state.planFeedback,
+			},
+			runnableConfig,
+		);
+
+		if (result.planDecision === 'modify') {
+			return { ...result, planModifyCount: state.planModifyCount + 1 };
+		}
+
+		return result;
+	}
+
+	private shouldPlan(state: typeof DiscoverySubgraphState.State): 'planner' | typeof END {
+		if (!this.featureFlags?.planMode) return END;
+		if (state.mode !== 'plan') return END;
+		return state.planOutput ? END : 'planner';
+	}
+
+	private static readonly MAX_PLAN_MODIFY_ITERATIONS = 5;
+
+	private shouldLoopPlanner(
+		state: typeof DiscoverySubgraphState.State,
+	): 'discovery_agent' | typeof END {
+		if (state.planDecision !== 'modify') return END;
+		if (state.planModifyCount >= DiscoverySubgraph.MAX_PLAN_MODIFY_ITERATIONS) {
+			this.logger?.warn(
+				`[Discovery] Plan modify limit reached (${DiscoverySubgraph.MAX_PLAN_MODIFY_ITERATIONS}), proceeding with last plan`,
+			);
+			return END;
+		}
+		return 'discovery_agent';
 	}
 
 	/**
@@ -283,13 +417,15 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	// eslint-disable-next-line complexity
 	private formatOutput(state: typeof DiscoverySubgraphState.State) {
 		const lastMessage = state.messages.at(-1);
-		let output: z.infer<typeof discoveryOutputSchema> | undefined;
+		let output: DiscoveryOutput | undefined;
+		let submitToolCallId: string | undefined;
 
 		if (lastMessage && isAIMessage(lastMessage) && lastMessage.tool_calls) {
 			const submitCall = lastMessage.tool_calls.find(
 				(tc) => tc.name === 'submit_discovery_results',
 			);
 			if (submitCall) {
+				submitToolCallId = submitCall.id;
 				// Use Zod safeParse for type-safe validation instead of casting
 				const parseResult = discoveryOutputSchema.safeParse(submitCall.args);
 				if (!parseResult.success) {
@@ -326,18 +462,34 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			};
 		}
 
+		// Correct node versions against actual parsedNodeTypes.
+		// The LLM may return stale versions from its training data even when
+		// search_nodes provided the correct version.
+		const latestVersionMap = new Map<string, number>();
+		for (const nt of this.parsedNodeTypes) {
+			const ver = Array.isArray(nt.version) ? Math.max(...nt.version) : nt.version;
+			const existing = latestVersionMap.get(nt.name);
+			if (existing === undefined || ver > existing) {
+				latestVersionMap.set(nt.name, ver);
+			}
+		}
+
+		for (const node of output.nodesFound) {
+			const latest = latestVersionMap.get(node.nodeName);
+			if (latest !== undefined) {
+				node.version = latest;
+			}
+		}
+
 		// Add baseline flow control nodes if not already discovered
-		const discoveredNames = new Set(output.nodesFound.map((n) => n.nodeName));
-		const baselineNodesToAdd = this.BASELINE_NODES.filter((bn) => !discoveredNames.has(bn.name));
+		const discoveredNames = new Set(output.nodesFound.map((node) => node.nodeName));
+		const baselineNodesToAdd = this.BASELINE_NODES.filter(
+			(baselineNode) => !discoveredNames.has(baselineNode.name),
+		);
 
-		// Look up versions for baseline nodes
 		for (const baselineNode of baselineNodesToAdd) {
-			const nodeType = this.parsedNodeTypes.find((nt) => nt.name === baselineNode.name);
-			if (nodeType) {
-				const version = Array.isArray(nodeType.version)
-					? Math.max(...nodeType.version)
-					: nodeType.version;
-
+			const version = latestVersionMap.get(baselineNode.name);
+			if (version !== undefined) {
 				output.nodesFound.push({
 					nodeName: baselineNode.name,
 					version,
@@ -380,10 +532,13 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			const nodeType = nodeTypeMap.get(cacheKey);
 
 			if (!nodeType) {
-				this.logger?.warn('[Discovery] Node type not found during resource hydration', {
-					nodeName: node.nodeName,
-					nodeVersion: node.version,
-				});
+				this.logger?.warn(
+					`[Discovery] Node type not found during resource hydration ${node.nodeName}:${node.version}`,
+					{
+						nodeName: node.nodeName,
+						nodeVersion: node.version,
+					},
+				);
 				return node;
 			}
 
@@ -401,11 +556,24 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			};
 		});
 
+		// Add a ToolMessage for the submit_discovery_results call that was routed here
+		// instead of through the tools node. This keeps the message history valid for
+		// the Anthropic API (every tool_use must have a matching tool_result).
+		const toolResponseMessages = submitToolCallId
+			? [
+					new ToolMessage({
+						content: `Discovery complete: found ${hydratedNodesFound.length} nodes.`,
+						tool_call_id: submitToolCallId,
+					}),
+				]
+			: [];
+
 		// Return hydrated output with best practices from state (updated by get_documentation tool)
 		return {
 			nodesFound: hydratedNodesFound,
 			bestPractices: state.bestPractices,
 			templateIds: state.templateIds ?? [],
+			messages: toolResponseMessages,
 		};
 	}
 
@@ -498,6 +666,12 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		return {
 			userRequest,
+			workflowJSON: parentState.workflowJSON,
+			mode: parentState.mode,
+			planOutput: parentState.planOutput,
+			planDecision: null,
+			planFeedback: parentState.planFeedback ?? null,
+			planPrevious: parentState.planPrevious ?? null,
 			messages: [contextMessage], // Context already in messages
 			cachedTemplates: parentState.cachedTemplates,
 		};
@@ -509,7 +683,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
 		const templateIds = subgraphOutput.templateIds || [];
-		const discoveryContext = {
+		const discoveryContext: DiscoveryContext = {
 			nodesFound,
 			bestPractices: subgraphOutput.bestPractices,
 		};
@@ -522,10 +696,18 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			summary: `Discovered ${nodesFound.length} nodes`,
 			metadata: createDiscoveryMetadata({
 				nodesFound: nodesFound.length,
-				nodeTypes: nodesFound.map((n) => n.nodeName),
+				nodeTypes: nodesFound.map((node) => node.nodeName),
 				hasBestPractices: !!subgraphOutput.bestPractices,
 			}),
 		};
+
+		// If the modify-loop cap was reached, the subgraph exited with the
+		// last plan but planDecision is still 'modify'. Clear it so the
+		// parent router doesn't send the flow back to discovery again,
+		// which would reset the subgraph-local counter and bypass the cap.
+		const cappedModify =
+			subgraphOutput.planDecision === 'modify' &&
+			subgraphOutput.planModifyCount >= DiscoverySubgraph.MAX_PLAN_MODIFY_ITERATIONS;
 
 		return {
 			discoveryContext,
@@ -534,6 +716,11 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			templateIds,
 			// Propagate cached templates back to parent
 			cachedTemplates: subgraphOutput.cachedTemplates,
+			planOutput: subgraphOutput.planOutput,
+			planDecision: cappedModify ? null : subgraphOutput.planDecision,
+			planFeedback: subgraphOutput.planFeedback,
+			planPrevious: subgraphOutput.planPrevious,
+			...(subgraphOutput.mode ? { mode: subgraphOutput.mode } : {}),
 		};
 	}
 }

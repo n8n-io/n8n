@@ -23,7 +23,7 @@ export const makeN8nLlmFailedAttemptHandler = (
 			n8nDefaultFailedAttemptHandler(error);
 		} catch (e) {
 			// Wrap the error in a NodeApiError
-			const apiError = new NodeApiError(ctx.getNode(), e as unknown as JsonObject, {
+			const apiError = new NodeApiError(ctx.getNode(), e as JsonObject, {
 				functionality: 'configuration-node',
 			});
 

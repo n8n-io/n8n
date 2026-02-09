@@ -947,6 +947,7 @@ export type EnterpriseEditionFeatureKey =
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'
 	| 'EnforceMFA'
+	| 'NamedVersions'
 	| 'Provisioning'
 	| 'CustomRoles';
 
