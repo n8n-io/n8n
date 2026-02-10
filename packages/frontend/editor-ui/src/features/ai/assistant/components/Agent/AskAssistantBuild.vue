@@ -31,7 +31,8 @@ import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettings
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
-import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
+import { N8nAskAssistantChat } from '@n8n/design-system';
+import BuildModeEmptyState from './BuildModeEmptyState.vue';
 import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
@@ -160,8 +161,10 @@ const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	// we don't show the suggestions if there are already messages
-	return builderStore.hasMessages ? undefined : shuffle(WORKFLOW_SUGGESTIONS);
+	if (builderStore.hasMessages || workflowsStore.workflow.nodes.length > 0) {
+		return undefined;
+	}
+	return shuffle(WORKFLOW_SUGGESTIONS);
 });
 
 const isAutosaving = computed(() => {
@@ -503,9 +506,7 @@ defineExpose({
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
 			<template #placeholder>
-				<N8nText :class="$style.topText"
-					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
-				</N8nText>
+				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">
 				<!-- Show questions form only if not yet answered; hide completely when answered -->
@@ -559,10 +560,6 @@ defineExpose({
 	&.with-slot {
 		justify-content: space-between;
 	}
-}
-
-.topText {
-	color: var(--color--text);
 }
 
 .newWorkflowButtonWrapper {
