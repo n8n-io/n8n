@@ -1,31 +1,20 @@
 import type { INodeUi } from '@/Interface';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { IConnections } from 'n8n-workflow';
 import type { SecurityFinding } from '../types';
+import { isInputTrigger, isExternalService } from '../utils/nodeClassification';
 
-/**
- * Determines if a node is an input trigger by checking its node type metadata.
- * Uses `group: ['trigger']` from INodeTypeDescription instead of a hardcoded list.
- */
-function isInputTrigger(node: INodeUi): boolean {
-	const nodeTypesStore = useNodeTypesStore();
-	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-	if (!nodeType) return false;
-	return nodeType.group?.includes('trigger') ?? false;
-}
+/** Dangerous function patterns in Code nodes that indicate code injection risk. */
+const DANGEROUS_CODE_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+	{ pattern: /\beval\s*\(/, label: 'eval()' },
+	{ pattern: /\bnew\s+Function\s*\(/, label: 'new Function()' },
+	{ pattern: /\bchild_process\b/, label: 'child_process' },
+	{ pattern: /\brequire\s*\(\s*['"]fs['"]/, label: "require('fs')" },
+	{ pattern: /\bexecSync\s*\(|\bexec\s*\(/, label: 'exec()' },
+	{ pattern: /\bspawnSync\s*\(|\bspawn\s*\(/, label: 'spawn()' },
+];
 
-/**
- * Determines if a node sends data to an external service.
- * A node is considered external if it has credential definitions
- * (meaning it authenticates to a third-party service) or is an HTTP Request node.
- */
-function isExternalService(node: INodeUi): boolean {
-	if (node.type === 'n8n-nodes-base.httpRequest') return true;
-	const nodeTypesStore = useNodeTypesStore();
-	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-	if (!nodeType) return false;
-	return (nodeType.credentials?.length ?? 0) > 0;
-}
+/** Number of external services from a single trigger that triggers a fan-out warning. */
+const FAN_OUT_THRESHOLD = 5;
 
 /**
  * Builds a set of all node names downstream from the given source nodes,
@@ -95,7 +84,7 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 		}
 	}
 
-	// Check Code nodes for console.log
+	// Check Code nodes for console.log and dangerous functions
 	for (const node of nodes) {
 		if (
 			(node.type === 'n8n-nodes-base.code' || node.type === 'n8n-nodes-base.codeNode') &&
@@ -113,6 +102,46 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 					nodeName: node.name,
 					nodeId: node.id,
 					parameterPath: 'jsCode',
+				});
+			}
+
+			// Code injection: detect dangerous functions
+			for (const { pattern, label } of DANGEROUS_CODE_PATTERNS) {
+				if (pattern.test(code)) {
+					findings.push({
+						id: `exposure-${++counter}`,
+						category: 'data-exposure',
+						severity: 'warning',
+						title: `Dangerous "${label}" usage in Code node "${node.name}"`,
+						description: `The Code node uses "${label}" which can execute arbitrary code or access the server. This is a code injection risk if the node processes user-controlled input.`,
+						nodeName: node.name,
+						nodeId: node.id,
+						parameterPath: 'jsCode',
+					});
+				}
+			}
+		}
+	}
+
+	// Fan-out blast radius: flag triggers that reach many external services
+	if (triggerNames.size > 0) {
+		for (const triggerName of triggerNames) {
+			const triggerDownstream = getDownstreamNodes(new Set([triggerName]), connections);
+			let externalCount = 0;
+			for (const nodeName of triggerDownstream) {
+				if (nodeName === triggerName) continue;
+				const node = nodesByName.get(nodeName);
+				if (node && isExternalService(node)) externalCount++;
+			}
+			if (externalCount >= FAN_OUT_THRESHOLD) {
+				findings.push({
+					id: `exposure-${++counter}`,
+					category: 'data-exposure',
+					severity: 'warning',
+					title: `High fan-out: "${triggerName}" reaches ${externalCount} external services`,
+					description: `A single trigger fans out to ${externalCount} external services. A compromised input could affect all of them. Consider reducing the blast radius.`,
+					nodeName: triggerName,
+					nodeId: nodesByName.get(triggerName)?.id ?? triggerName,
 				});
 			}
 		}

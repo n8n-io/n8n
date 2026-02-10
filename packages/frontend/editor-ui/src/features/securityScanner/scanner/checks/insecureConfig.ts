@@ -4,6 +4,10 @@ import { walkParameters } from '../utils/parameterWalker';
 
 const LOCAL_URL_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/;
 
+/** RFC 1918 and other internal/private network ranges. */
+const INTERNAL_NETWORK_PATTERN =
+	/^https?:\/\/(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0\.0\.0\.0)(:|\/|$)/;
+
 /**
  * Detects insecure configuration: HTTP URLs (non-localhost), disabled SSL verification,
  * and unauthenticated webhooks.
@@ -98,6 +102,28 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 						parameterPath: 'authentication',
 					});
 				}
+			}
+		}
+	}
+
+	// SSRF risk: webhook trigger + HTTP requests to internal network
+	const hasWebhook = nodes.some((n) => n.type === 'n8n-nodes-base.webhook');
+	if (hasWebhook) {
+		for (const node of nodes) {
+			if (node.type !== 'n8n-nodes-base.httpRequest' || !node.parameters) continue;
+			const url = String((node.parameters as Record<string, unknown>).url ?? '');
+			if (url && !url.startsWith('=') && INTERNAL_NETWORK_PATTERN.test(url)) {
+				findings.push({
+					id: `config-${++counter}`,
+					category: 'insecure-config',
+					severity: 'warning',
+					title: `SSRF risk: webhook with internal URL in "${node.name}"`,
+					description:
+						'This workflow has a public webhook and an HTTP Request to an internal network address. An attacker could exploit the webhook to probe internal services.',
+					nodeName: node.name,
+					nodeId: node.id,
+					parameterPath: 'url',
+				});
 			}
 		}
 	}

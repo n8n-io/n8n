@@ -371,6 +371,334 @@ function checkDataExposure(
 	return findings;
 }
 
+// --- AI Security Checks ---
+
+const AI_NODE_PREFIX = '@n8n/n8n-nodes-langchain';
+const AI_AGENT_TYPE = `${AI_NODE_PREFIX}.agent`;
+const DANGEROUS_TOOL_TYPES = new Set([
+	`${AI_NODE_PREFIX}.toolHttpRequest`,
+	`${AI_NODE_PREFIX}.toolCode`,
+]);
+const SYSTEM_PROMPT_PARAMS = new Set(['systemMessage', 'text', 'messages']);
+const INPUT_REF_PATTERN = /\$json\b|\$input\b|\$\('|\$node\[/;
+
+function isAiNode(node: INode): boolean {
+	return node.type.startsWith(AI_NODE_PREFIX);
+}
+
+function checkAiPromptInjection(nodes: INode[]): SecurityFinding[] {
+	const findings: SecurityFinding[] = [];
+
+	for (const node of nodes) {
+		if (!isAiNode(node) || !node.parameters) continue;
+
+		walkParameters(node.parameters, (value, path, isExpr) => {
+			if (!isExpr) return;
+			const topParam = path.split('.')[0];
+			if (!SYSTEM_PROMPT_PARAMS.has(topParam)) return;
+
+			if (INPUT_REF_PATTERN.test(value)) {
+				findings.push({
+					severity: 'warning',
+					title: `User input in AI system prompt of "${node.name}"`,
+					description:
+						'The system prompt references user-controlled data. An attacker could craft input that overrides system instructions (prompt injection).',
+					nodeName: node.name,
+					parameterPath: path,
+				});
+			}
+		});
+	}
+
+	return findings;
+}
+
+function checkDirectTriggerToAi(
+	workflow: SimpleWorkflow,
+	nodeTypeMap: Map<string, INodeTypeDescription>,
+): SecurityFinding[] {
+	const findings: SecurityFinding[] = [];
+	const { nodes, connections } = workflow;
+	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+
+	for (const node of nodes) {
+		if (!isNodeTrigger(node, nodeTypeMap)) continue;
+
+		const nodeConns = connections[node.name];
+		if (!nodeConns?.main) continue;
+
+		for (const outputGroup of nodeConns.main) {
+			if (!outputGroup) continue;
+			for (const conn of outputGroup) {
+				const target = nodesByName.get(conn.node);
+				if (target && isAiNode(target)) {
+					findings.push({
+						severity: 'warning',
+						title: `Trigger data flows directly to AI node "${target.name}"`,
+						description: `"${node.name}" connects directly to "${target.name}" without intermediate filtering. Raw user input may be sent to the AI provider.`,
+						nodeName: target.name,
+					});
+				}
+			}
+		}
+	}
+
+	return findings;
+}
+
+function checkOverPrivilegedTools(workflow: SimpleWorkflow): SecurityFinding[] {
+	const findings: SecurityFinding[] = [];
+	const { nodes, connections } = workflow;
+	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+
+	for (const [sourceName, nodeConns] of Object.entries(connections)) {
+		const toolOutputs = nodeConns.ai_tool;
+		if (!toolOutputs) continue;
+
+		for (const outputGroup of toolOutputs) {
+			if (!outputGroup) continue;
+			for (const conn of outputGroup) {
+				const agentNode = nodesByName.get(conn.node);
+				const toolNode = nodesByName.get(sourceName);
+				if (!agentNode || !toolNode) continue;
+				if (agentNode.type !== AI_AGENT_TYPE) continue;
+
+				if (DANGEROUS_TOOL_TYPES.has(toolNode.type)) {
+					const toolLabel = toolNode.type.includes('toolHttpRequest')
+						? 'HTTP Request tool'
+						: 'Code tool';
+					findings.push({
+						severity: 'info',
+						title: `AI Agent "${agentNode.name}" has ${toolLabel}`,
+						description: `The ${toolLabel} "${toolNode.name}" gives the AI agent the ability to ${toolNode.type.includes('toolHttpRequest') ? 'make arbitrary HTTP requests' : 'execute arbitrary code'}.`,
+						nodeName: agentNode.name,
+					});
+				}
+			}
+		}
+	}
+
+	return findings;
+}
+
+function checkAiOutputToExternal(
+	workflow: SimpleWorkflow,
+	nodeTypeMap: Map<string, INodeTypeDescription>,
+): SecurityFinding[] {
+	const findings: SecurityFinding[] = [];
+	const { nodes, connections } = workflow;
+	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+
+	for (const node of nodes) {
+		if (!isAiNode(node)) continue;
+
+		const nodeConns = connections[node.name];
+		if (!nodeConns?.main) continue;
+
+		for (const outputGroup of nodeConns.main) {
+			if (!outputGroup) continue;
+			for (const conn of outputGroup) {
+				const target = nodesByName.get(conn.node);
+				if (target && isNodeExternalService(target, nodeTypeMap)) {
+					findings.push({
+						severity: 'info',
+						title: `AI output sent directly to "${target.name}"`,
+						description: `"${node.name}" outputs directly to the external service "${target.name}". AI outputs may contain hallucinated data or leaked context.`,
+						nodeName: target.name,
+					});
+				}
+			}
+		}
+	}
+
+	return findings;
+}
+
+function checkSecretsInAiPrompts(nodes: INode[]): SecurityFinding[] {
+	const findings: SecurityFinding[] = [];
+
+	for (const node of nodes) {
+		if (!isAiNode(node) || !node.parameters) continue;
+
+		walkParameters(node.parameters, (value, path, isExpr) => {
+			if (isExpr) return;
+			const topParam = path.split('.')[0];
+			if (!SYSTEM_PROMPT_PARAMS.has(topParam)) return;
+
+			for (const { pattern, provider } of SECRET_PATTERNS) {
+				if (pattern.test(value)) {
+					findings.push({
+						severity: 'critical',
+						title: `${provider} key in AI prompt of "${node.name}"`,
+						description: `A ${provider} secret in the system prompt will likely be echoed by the LLM. Move it to n8n credentials.`,
+						nodeName: node.name,
+						parameterPath: path,
+						matchedValue: redactValue(value),
+					});
+					return;
+				}
+			}
+		});
+	}
+
+	return findings;
+}
+
+function checkAiChaining(workflow: SimpleWorkflow): SecurityFinding[] {
+	const findings: SecurityFinding[] = [];
+	const { nodes, connections } = workflow;
+	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+
+	for (const node of nodes) {
+		if (!isAiNode(node)) continue;
+
+		const nodeConns = connections[node.name];
+		if (!nodeConns?.main) continue;
+
+		for (const outputGroup of nodeConns.main) {
+			if (!outputGroup) continue;
+			for (const conn of outputGroup) {
+				const target = nodesByName.get(conn.node);
+				if (target && isAiNode(target)) {
+					findings.push({
+						severity: 'warning',
+						title: `AI node "${node.name}" chains directly to AI node "${target.name}"`,
+						description:
+							'Chained AI nodes amplify hallucination risk and can propagate prompt injection. Add validation between them.',
+						nodeName: target.name,
+					});
+				}
+			}
+		}
+	}
+
+	return findings;
+}
+
+function checkCodeInjection(nodes: INode[]): SecurityFinding[] {
+	const codePatterns: Array<{ pattern: RegExp; label: string }> = [
+		{ pattern: /\beval\s*\(/, label: 'eval()' },
+		{ pattern: /\bnew\s+Function\s*\(/, label: 'new Function()' },
+		{ pattern: /\bchild_process\b/, label: 'child_process' },
+		{ pattern: /\brequire\s*\(\s*['"]fs['"]/, label: "require('fs')" },
+		{ pattern: /\bexecSync\s*\(|\bexec\s*\(/, label: 'exec()' },
+		{ pattern: /\bspawnSync\s*\(|\bspawn\s*\(/, label: 'spawn()' },
+	];
+	const findings: SecurityFinding[] = [];
+
+	for (const node of nodes) {
+		if (node.type !== 'n8n-nodes-base.code' && node.type !== 'n8n-nodes-base.codeNode') continue;
+		if (!node.parameters) continue;
+
+		const rawCode = (node.parameters as Record<string, unknown>).jsCode;
+		const code = typeof rawCode === 'string' ? rawCode : '';
+		for (const { pattern, label } of codePatterns) {
+			if (pattern.test(code)) {
+				findings.push({
+					severity: 'warning',
+					title: `Dangerous "${label}" usage in Code node "${node.name}"`,
+					description: `The Code node uses "${label}" which can execute arbitrary code or access the server.`,
+					nodeName: node.name,
+					parameterPath: 'jsCode',
+				});
+			}
+		}
+	}
+
+	return findings;
+}
+
+function checkFanOutBlastRadius(
+	workflow: SimpleWorkflow,
+	nodeTypeMap: Map<string, INodeTypeDescription>,
+): SecurityFinding[] {
+	const fanOutThreshold = 5;
+	const findings: SecurityFinding[] = [];
+	const { nodes, connections } = workflow;
+	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+
+	const triggerNames = nodes.filter((n) => isNodeTrigger(n, nodeTypeMap)).map((n) => n.name);
+
+	for (const triggerName of triggerNames) {
+		const visited = new Set<string>();
+		const queue = [triggerName];
+		while (queue.length > 0) {
+			const current = queue.pop()!;
+			if (visited.has(current)) continue;
+			visited.add(current);
+			const nodeConns = connections[current];
+			if (!nodeConns) continue;
+			for (const connType of Object.values(nodeConns)) {
+				for (const outputConns of connType) {
+					if (!outputConns) continue;
+					for (const conn of outputConns) {
+						if (!visited.has(conn.node)) queue.push(conn.node);
+					}
+				}
+			}
+		}
+
+		let externalCount = 0;
+		for (const nodeName of visited) {
+			if (nodeName === triggerName) continue;
+			const node = nodesByName.get(nodeName);
+			if (node && isNodeExternalService(node, nodeTypeMap)) externalCount++;
+		}
+
+		if (externalCount >= fanOutThreshold) {
+			findings.push({
+				severity: 'warning',
+				title: `High fan-out: "${triggerName}" reaches ${externalCount} external services`,
+				description: `A single trigger fans out to ${externalCount} external services. A compromised input could affect all of them.`,
+				nodeName: triggerName,
+			});
+		}
+	}
+
+	return findings;
+}
+
+function checkSsrfRisk(nodes: INode[]): SecurityFinding[] {
+	const internalPattern =
+		/^https?:\/\/(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0\.0\.0\.0)(:|\/|$)/;
+	const findings: SecurityFinding[] = [];
+
+	const hasWebhook = nodes.some((n) => n.type === 'n8n-nodes-base.webhook');
+	if (!hasWebhook) return findings;
+
+	for (const node of nodes) {
+		if (node.type !== 'n8n-nodes-base.httpRequest' || !node.parameters) continue;
+		const rawUrl = (node.parameters as Record<string, unknown>).url;
+		const url = typeof rawUrl === 'string' ? rawUrl : '';
+		if (url && !isExpression(url) && internalPattern.test(url)) {
+			findings.push({
+				severity: 'warning',
+				title: `SSRF risk: webhook with internal URL in "${node.name}"`,
+				description:
+					'This workflow has a public webhook and an HTTP Request to an internal network address. An attacker could exploit the webhook to probe internal services.',
+				nodeName: node.name,
+				parameterPath: 'url',
+			});
+		}
+	}
+
+	return findings;
+}
+
+function checkAiSecurity(
+	workflow: SimpleWorkflow,
+	nodeTypeMap: Map<string, INodeTypeDescription>,
+): SecurityFinding[] {
+	return [
+		...checkAiPromptInjection(workflow.nodes),
+		...checkSecretsInAiPrompts(workflow.nodes),
+		...checkDirectTriggerToAi(workflow, nodeTypeMap),
+		...checkOverPrivilegedTools(workflow),
+		...checkAiOutputToExternal(workflow, nodeTypeMap),
+		...checkAiChaining(workflow),
+	];
+}
+
 // --- Context Functions ---
 
 /**
@@ -573,6 +901,10 @@ export function createSecurityScanTool(parsedNodeTypes: INodeTypeDescription[]):
 					...checkInsecureConfig(workflow.nodes),
 					...checkExpressionRisks(workflow.nodes),
 					...checkDataExposure(workflow, nodeTypeMap),
+					...checkAiSecurity(workflow, nodeTypeMap),
+					...checkCodeInjection(workflow.nodes),
+					...checkFanOutBlastRadius(workflow, nodeTypeMap),
+					...checkSsrfRisk(workflow.nodes),
 				];
 
 				// Build workflow overview (without parameters to avoid leaking sensitive values)

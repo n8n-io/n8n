@@ -7,6 +7,7 @@ import { checkPiiPatterns } from './checks/piiPatterns';
 import { checkInsecureConfig } from './checks/insecureConfig';
 import { checkDataExposure } from './checks/dataExposure';
 import { checkExpressionRisks } from './checks/expressionRisks';
+import { checkAiSecurity } from './checks/aiSecurityChecks';
 
 const SEVERITY_ORDER: Record<string, number> = {
 	critical: 0,
@@ -27,6 +28,7 @@ export function runSecurityScan(nodes: INodeUi[], connections: IConnections): Se
 		...checkInsecureConfig(nodes),
 		...checkDataExposure(nodes, connections),
 		...checkExpressionRisks(nodes),
+		...checkAiSecurity(nodes, connections),
 	];
 
 	findings.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2));
