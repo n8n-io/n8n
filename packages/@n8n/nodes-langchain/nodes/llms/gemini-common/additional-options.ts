@@ -93,7 +93,7 @@ export function getAdditionalOptions({
 		baseOptions.options?.push({
 			displayName: 'Thinking Budget',
 			name: 'thinkingBudget',
-			default: undefined,
+			default: -1,
 			description:
 				'Controls reasoning tokens for thinking models. Set to 0 to disable automatic thinking. Set to -1 for dynamic thinking. Leave empty for auto mode.',
 			type: 'number',
