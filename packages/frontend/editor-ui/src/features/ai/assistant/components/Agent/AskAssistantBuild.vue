@@ -17,6 +17,7 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
+import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { useToast } from '@/app/composables/useToast';
@@ -507,6 +508,9 @@ defineExpose({
 			@restore-confirm="onRestoreConfirm"
 			@show-version="onShowVersion"
 		>
+			<template #focused-nodes-chips="{ message }">
+				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />
+			</template>
 			<template #header>
 				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
 					<slot name="header" />

@@ -48,7 +48,7 @@ function handleRemove(event: MouseEvent) {
 			<template v-else>
 				<NodeIcon :node-type="nodeType" :size="12" :class="$style.nodeIcon" />
 				<button type="button" :class="$style.removeButton" @click="handleRemove">
-					<N8nIcon icon="x" size="small" />
+					<N8nIcon icon="x" :class="$style.closeIcon" />
 				</button>
 			</template>
 		</span>
@@ -94,6 +94,7 @@ function handleRemove(event: MouseEvent) {
 	width: 12px;
 	height: 12px;
 	position: relative;
+	overflow: visible;
 }
 
 .confirmedIcon {
@@ -127,6 +128,11 @@ function handleRemove(event: MouseEvent) {
 	.chip:hover & {
 		display: flex;
 	}
+}
+
+.closeIcon :global(svg) {
+	width: 24px;
+	height: 24px;
 }
 
 .prefixIcon {

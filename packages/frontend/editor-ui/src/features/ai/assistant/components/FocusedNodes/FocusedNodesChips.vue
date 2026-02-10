@@ -18,6 +18,8 @@ const {
 	confirmedNodes,
 	confirmedCount,
 	unconfirmedCount,
+	allNodesConfirmed,
+	allNodesUnconfirmed,
 	shouldBundleConfirmed,
 	shouldBundleUnconfirmed,
 	individualConfirmedNodes,
@@ -58,81 +60,111 @@ function handleRemoveAllConfirmed() {
 		<template v-else>
 			<!-- Confirmed nodes section -->
 			<template v-if="confirmedCount > 0">
-				<!-- Individual confirmed chips (1-3 nodes) -->
-				<FocusedNodeChip
-					v-for="node in individualConfirmedNodes"
-					:key="node.nodeId"
-					:node="node"
-					@click="handleChipClick(node.nodeId)"
-					@remove="handleRemove(node.nodeId)"
-				/>
+				<!-- All nodes confirmed: single "All nodes" chip -->
+				<span v-if="allNodesConfirmed" :class="$style.bundledChip">
+					<span :class="$style.bundledIconWrapper">
+						<N8nIcon icon="layers" size="small" :class="$style.bundledIcon" />
+						<button
+							type="button"
+							:class="$style.bundledRemoveButton"
+							@click.stop="handleRemoveAllConfirmed"
+						>
+							<N8nIcon icon="x" size="small" />
+						</button>
+					</span>
+					<span :class="$style.label">{{ i18n.baseText('focusedNodes.allNodes') }}</span>
+				</span>
+				<template v-else>
+					<!-- Individual confirmed chips (1-3 nodes) -->
+					<FocusedNodeChip
+						v-for="node in individualConfirmedNodes"
+						:key="node.nodeId"
+						:node="node"
+						@click="handleChipClick(node.nodeId)"
+						@remove="handleRemove(node.nodeId)"
+					/>
 
-				<!-- Bundled confirmed chip (4+ nodes) with expandable popover -->
-				<N8nPopover v-if="shouldBundleConfirmed" side="top" width="220px" :z-index="2000">
-					<template #trigger>
-						<span :class="$style.bundledChip">
-							<span :class="$style.bundledIconWrapper">
-								<N8nIcon icon="layers" size="small" :class="$style.bundledIcon" />
-								<button
-									type="button"
-									:class="$style.bundledRemoveButton"
-									@click.stop="handleRemoveAllConfirmed"
-								>
-									<N8nIcon icon="x" size="small" />
-								</button>
+					<!-- Bundled confirmed chip (4+ nodes) with expandable popover -->
+					<N8nPopover v-if="shouldBundleConfirmed" side="top" width="220px" :z-index="2000">
+						<template #trigger>
+							<span :class="$style.bundledChip">
+								<span :class="$style.bundledIconWrapper">
+									<N8nIcon icon="layers" size="small" :class="$style.bundledIcon" />
+									<button
+										type="button"
+										:class="$style.bundledRemoveButton"
+										@click.stop="handleRemoveAllConfirmed"
+									>
+										<N8nIcon icon="x" size="small" />
+									</button>
+								</span>
+								<span :class="$style.label">{{
+									i18n.baseText('focusedNodes.nodesCount', {
+										interpolate: { count: confirmedCount },
+									})
+								}}</span>
 							</span>
-							<span :class="$style.label">{{
-								i18n.baseText('focusedNodes.nodesCount', {
-									interpolate: { count: confirmedCount },
-								})
-							}}</span>
-						</span>
-					</template>
-					<template #content>
-						<div :class="$style.expandedNodeList">
-							<div
-								v-for="node in confirmedNodes"
-								:key="node.nodeId"
-								:class="$style.expandedNodeItem"
-							>
-								<NodeIcon :node-type="getNodeType(node.nodeType)" :size="12" />
-								<span :class="$style.expandedNodeName">{{ node.nodeName }}</span>
-								<button
-									type="button"
-									:class="$style.expandedRemoveButton"
-									@click.stop="handleRemove(node.nodeId)"
+						</template>
+						<template #content>
+							<div :class="$style.expandedNodeList">
+								<div
+									v-for="node in confirmedNodes"
+									:key="node.nodeId"
+									:class="$style.expandedNodeItem"
 								>
-									<N8nIcon icon="x" size="xsmall" />
-								</button>
+									<NodeIcon :node-type="getNodeType(node.nodeType)" :size="12" />
+									<span :class="$style.expandedNodeName">{{ node.nodeName }}</span>
+									<button
+										type="button"
+										:class="$style.expandedRemoveButton"
+										@click.stop="handleRemove(node.nodeId)"
+									>
+										<N8nIcon icon="x" size="xsmall" />
+									</button>
+								</div>
 							</div>
-						</div>
-					</template>
-				</N8nPopover>
+						</template>
+					</N8nPopover>
+				</template>
 			</template>
 
 			<!-- Unconfirmed nodes section -->
 			<template v-if="unconfirmedCount > 0">
-				<!-- Individual unconfirmed chips (1-3 nodes) -->
-				<FocusedNodeChip
-					v-for="node in individualUnconfirmedNodes"
-					:key="node.nodeId"
-					:node="node"
-					@click="handleChipClick(node.nodeId)"
-					@remove="handleRemove(node.nodeId)"
-				/>
-
-				<!-- Bundled unconfirmed chip (4+ nodes) -->
+				<!-- All nodes unconfirmed: single "All nodes" chip -->
 				<button
-					v-if="shouldBundleUnconfirmed"
+					v-if="allNodesUnconfirmed"
 					type="button"
 					:class="$style.bundledUnconfirmedChip"
 					@click="handleConfirmAll"
 				>
 					<N8nIcon icon="plus" size="xsmall" :class="$style.bundledUnconfirmedIcon" />
-					<span :class="$style.label">{{
-						i18n.baseText('focusedNodes.nodesCount', { interpolate: { count: unconfirmedCount } })
-					}}</span>
+					<span :class="$style.label">{{ i18n.baseText('focusedNodes.allNodes') }}</span>
 				</button>
+				<template v-else>
+					<!-- Individual unconfirmed chips (1-3 nodes) -->
+					<FocusedNodeChip
+						v-for="node in individualUnconfirmedNodes"
+						:key="node.nodeId"
+						:node="node"
+						@click="handleChipClick(node.nodeId)"
+						@remove="handleRemove(node.nodeId)"
+					/>
+
+					<!-- Bundled unconfirmed chip (4+ nodes) -->
+					<button
+						v-if="shouldBundleUnconfirmed"
+						type="button"
+						:class="$style.bundledUnconfirmedChip"
+						@click="handleConfirmAll"
+					>
+						<N8nIcon icon="plus" size="xsmall" :class="$style.bundledUnconfirmedIcon" />
+						<span :class="$style.label">{{
+							i18n.baseText('focusedNodes.nodesCount', {
+								interpolate: { count: unconfirmedCount },
+							})
+						}}</span>
+					</button>
+				</template>
 			</template>
 		</template>
 	</div>
@@ -201,6 +233,9 @@ function handleRemoveAllConfirmed() {
 	display: none;
 	align-items: center;
 	justify-content: center;
+	min-width: 24px;
+	min-height: 24px;
+	margin: -5px;
 	padding: 0;
 	background: none;
 	border: none;

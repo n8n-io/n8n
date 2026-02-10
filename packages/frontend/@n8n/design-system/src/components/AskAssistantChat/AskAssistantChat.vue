@@ -518,6 +518,9 @@ defineExpose({
 									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
 										<slot name="custom-message" v-bind="customMessageProps" />
 									</template>
+									<template v-if="$slots['focused-nodes-chips']" #focused-nodes-chips="chipProps">
+										<slot name="focused-nodes-chips" v-bind="chipProps" />
+									</template>
 								</MessageWrapper>
 
 								<div
