@@ -97,9 +97,9 @@ export async function sqlAgentAgentExecute(
 			}
 
 			const agentOptions: SqlCreatePromptArgs = {
-				topK: options.topK ?? 10,
-				prefix: options.prefixPrompt ?? SQL_PREFIX,
-				suffix: options.suffixPrompt ?? SQL_SUFFIX,
+				topK: (options.topK as number) ?? 10,
+				prefix: (options.prefixPrompt as string) ?? SQL_PREFIX,
+				suffix: (options.suffixPrompt as string) ?? SQL_SUFFIX,
 				inputVariables: ['chatHistory', 'input', 'agent_scratchpad'],
 			};
 
