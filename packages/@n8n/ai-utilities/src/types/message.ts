@@ -1,4 +1,4 @@
-export type MessageRole = 'system' | 'human' | 'ai' | 'tool';
+export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
 export type MessageContent =
 	| ContentText
