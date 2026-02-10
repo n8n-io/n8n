@@ -13,14 +13,13 @@
  *   pnpm generate-types
  *
  * Output:
- *   ~/.n8n/node-definitions/
+ *   dist/node-definitions/ (within each node package)
  *
  * @generated - This file generates code, but is itself manually maintained.
  */
 
 import * as fs from 'fs';
 import { deepCopy } from 'n8n-workflow';
-import * as os from 'os';
 import * as path from 'path';
 
 // eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
@@ -42,7 +41,8 @@ const NODES_LANGCHAIN_TYPES = path.resolve(
 	__dirname,
 	'../../../nodes-langchain/dist/types/nodes.json',
 );
-const OUTPUT_PATH = path.join(os.homedir(), '.n8n', 'node-definitions');
+/** Dev script output path (local to the package) */
+const DEV_OUTPUT_PATH = path.resolve(__dirname, '../../dist/node-definitions');
 
 // Path to nodes-base dist for finding output schemas
 const NODES_BASE_DIST = path.resolve(__dirname, '../../../../nodes-base/dist/nodes');
@@ -3984,7 +3984,7 @@ export async function generateTypes(): Promise<void> {
 		);
 	}
 
-	const result = await orchestrateGeneration({ nodes: allNodes, outputDir: OUTPUT_PATH });
+	const result = await orchestrateGeneration({ nodes: allNodes, outputDir: DEV_OUTPUT_PATH });
 
 	if (result.nodeCount === 0) {
 		// Generate placeholder if no nodes found
@@ -4001,7 +4001,7 @@ export async function generateTypes(): Promise<void> {
 
 export {};
 `;
-		await fs.promises.writeFile(path.join(OUTPUT_PATH, 'index.ts'), placeholderContent);
+		await fs.promises.writeFile(path.join(DEV_OUTPUT_PATH, 'index.ts'), placeholderContent);
 		console.log('Generated placeholder index.ts (no nodes found)');
 	} else {
 		console.log(`Generated definitions for ${result.nodeCount} nodes`);

@@ -179,8 +179,13 @@ export class AiWorkflowBuilderService {
 			'@n8n/n8n-nodes-langchain.code',
 		]);
 
+		const isBuiltInNode = (name: string) =>
+			name.startsWith('n8n-nodes-base.') || name.startsWith('@n8n/');
+
 		const visibleNodeTypes = nodeTypes.filter(
 			(nodeType) =>
+				// Only include built-in nodes (community nodes are not supported)
+				isBuiltInNode(nodeType.name) &&
 				// We filter out hidden nodes, except for the Data Table node which has custom hiding logic
 				// See more details in DataTable.node.ts#L29
 				!ignoredTypes.has(nodeType.name) &&
