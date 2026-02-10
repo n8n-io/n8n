@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { WorkflowRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -124,100 +124,31 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			}
 		}
 
-		const workflows = (await Container.get(WorkflowRepository).find({
+		const workflows = await Container.get(WorkflowRepository).find({
 			where: flags.id ? { id: flags.id } : {},
 			relations: ['tags', 'shared', 'shared.project'],
-		})) as WorkflowWithHistory[];
+		});
 
 		if (workflows.length === 0) {
 			throw new UserError('No workflows found with specified filters');
 		}
 
-		if (flags.id && (flags.version || flags.published)) {
-			const workflow = workflows[0];
-			let targetVersionId: string;
+		const workflowsToExport = await getWorkflowsToExport(workflows, flags);
 
-			if (flags.published) {
-				if (!workflow.activeVersionId) {
-					throw new UserError(
-						`Workflow "${workflow.name}" (${workflow.id}) has no published version`,
-					);
-				}
-				targetVersionId = workflow.activeVersionId;
-			} else {
-				targetVersionId = flags.version!;
-			}
-
-			if (targetVersionId !== workflow.versionId) {
-				const workflowHistory = await Container.get(WorkflowHistoryRepository).findOne({
-					where: {
-						workflowId: workflow.id,
-						versionId: targetVersionId,
-					},
-				});
-
-				if (!workflowHistory) {
-					throw new UserError(
-						`Version "${targetVersionId}" not found for workflow "${workflow.name}" (${workflow.id})`,
-					);
-				}
-
-				workflow.nodes = workflowHistory.nodes;
-				workflow.connections = workflowHistory.connections;
-				workflow.versionId = workflowHistory.versionId;
-
-				// Add workflowHistory metadata for version name and description
-				workflow.workflowHistory = {
-					name: workflowHistory.name,
-					description: workflowHistory.description,
-				};
-			}
+		if (flags.published && workflowsToExport.length === 0) {
+			if (flags.id)
+				throw new UserError(
+					`No published version found for workflow "${workflows[0].name}" (${workflows[0].id})`,
+				);
+			else throw new UserError('No workflows with published versions found.');
 		}
-
-		// Handle --all --published: export all workflows in their published versions
-		if (flags.all && flags.published) {
-			const workflowsToExport = [];
-			for (const workflow of workflows) {
-				if (!workflow.activeVersionId) {
-					this.logger.warn(
-						`Skipping workflow "${workflow.name}" (${workflow.id}) - no published version`,
-					);
-					continue;
-				}
-
-				// If published version is not the current draft, fetch it from history
-				if (workflow.activeVersionId !== workflow.versionId) {
-					const workflowHistory = await Container.get(WorkflowHistoryRepository).findOne({
-						where: {
-							workflowId: workflow.id,
-							versionId: workflow.activeVersionId,
-						},
-					});
-
-					if (workflowHistory) {
-						workflow.nodes = workflowHistory.nodes;
-						workflow.connections = workflowHistory.connections;
-						workflow.versionId = workflowHistory.versionId;
-
-						// Add workflowHistory metadata for version name and description
-						workflow.workflowHistory = {
-							name: workflowHistory.name,
-							description: workflowHistory.description,
-						};
-					}
-				}
-
-				workflowsToExport.push(workflow);
-			}
-
-			// Replace workflows array with only the published ones
-			workflows.length = 0;
-			workflows.push(...workflowsToExport);
-
-			if (workflows.length === 0) {
-				this.logger.info('No workflows with published versions found.');
-				return;
-			}
+		if (flags.version && flags.id && workflowsToExport.length === 0) {
+			throw new UserError(
+				`Version "${flags.version}" not found for workflow "${workflows[0].name}" (${workflows[0].id})`,
+			);
+		}
+		if (workflowsToExport.length === 0) {
+			throw new UserError('No workflows found with specified filters');
 		}
 
 		if (flags.separate) {
@@ -247,7 +178,80 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		}
 	}
 
-	async catch(_error: Error) {
+	catch(_error: Error) {
 		this.logger.error('Error exporting workflows. See log messages for details.');
 	}
+}
+
+/**
+ * For each workflow, determine the target version based on flags and fetch its history.
+ * Then merge the history data into the workflow objects for export with metadata fields (name and description).
+ */
+async function getWorkflowsToExport(
+	workflows: WorkflowWithHistory[],
+	flags: z.infer<typeof flagsSchema>,
+) {
+	const workflowVersionPairs = workflows
+		.map((workflow) => {
+			const versionId = getTargetVersionId(workflow, flags);
+			return versionId ? { workflowId: workflow.id, versionId } : null;
+		})
+		.filter((pair) => pair !== null);
+
+	const workflowHistories: WorkflowHistory[] =
+		workflowVersionPairs.length > 0
+			? await Container.get(WorkflowHistoryRepository).find({
+					where: workflowVersionPairs,
+				})
+			: [];
+
+	const historyMap = new Map<string, WorkflowHistory>(
+		workflowHistories.map((h) => [`${h.workflowId}:${h.versionId}`, h]),
+	);
+
+	return mergeHistoriesIntoWorkflows(workflows, historyMap, flags);
+}
+
+function getTargetVersionId(
+	workflow: WorkflowWithHistory,
+	flags: z.infer<typeof flagsSchema>,
+): string | null {
+	if (flags.published) return workflow.activeVersionId ?? null;
+	if (flags.version) return flags.version;
+	return workflow.versionId;
+}
+
+function mergeHistoriesIntoWorkflows(
+	workflows: WorkflowWithHistory[],
+	historyMap: Map<string, WorkflowHistory>,
+	flags: z.infer<typeof flagsSchema>,
+) {
+	return workflows
+		.map((workflow) => {
+			const versionId = getTargetVersionId(workflow, flags);
+			if (!versionId) return null;
+
+			const history = historyMap.get(`${workflow.id}:${versionId}`);
+
+			if (!history && (flags.published || flags.version)) return null;
+
+			if (history) {
+				return {
+					...workflow,
+					nodes: history.nodes,
+					connections: history.connections,
+					versionId: history.versionId,
+					workflowHistory: {
+						name: history.name,
+						description: history.description,
+					},
+				};
+			}
+
+			return {
+				...workflow,
+				workflowHistory: undefined,
+			};
+		})
+		.filter((w): w is WorkflowWithHistory => w !== null);
 }
