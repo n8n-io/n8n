@@ -53,11 +53,19 @@ export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
 }
 
+export interface IWorkflowHistoryMetadata {
+	workflowHistory?: {
+		name: string | null;
+		description: string | null;
+	};
+}
+
 export interface IWorkflowToImport
 	extends Omit<
-		IWorkflowBase,
-		'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
-	> {
+			IWorkflowBase,
+			'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
+		>,
+		IWorkflowHistoryMetadata {
 	owner?:
 		| {
 				type: 'personal';
@@ -71,12 +79,7 @@ export interface IWorkflowToImport
 	parentFolderId: string | null;
 }
 
-export type IWorkflowWithHistoryMetadata = IWorkflowDb & {
-	workflowHistory?: {
-		name: string | null;
-		description: string | null;
-	};
-};
+export type IWorkflowWithHistoryMetadata = IWorkflowDb & IWorkflowHistoryMetadata;
 
 // ----------------------------------
 //            credentials

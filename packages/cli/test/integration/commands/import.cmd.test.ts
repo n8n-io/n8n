@@ -5,7 +5,8 @@ import {
 	getAllSharedWorkflows,
 	getAllWorkflows,
 } from '@n8n/backend-test-utils';
-import { WorkflowPublishHistoryRepository } from '@n8n/db';
+import { WorkflowPublishHistoryRepository, WorkflowHistoryRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
@@ -339,4 +340,34 @@ test('`import:workflow --projectId ... --userId ...` fails explaining that only 
 	).rejects.toThrowError(
 		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 	);
+});
+
+test('should preserve workflowHistory metadata from JSON file when importing', async () => {
+	//
+	// ARRANGE
+	//
+	await createOwner();
+
+	//
+	// ACT
+	//
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/with-history/workflow-with-metadata.json',
+	]);
+
+	//
+	// ASSERT
+	//
+	const workflows = await getAllWorkflows();
+	expect(workflows).toHaveLength(1);
+	expect(workflows[0].id).toBe('test-workflow-123');
+	expect(workflows[0].name).toBe('Workflow with History Metadata');
+
+	const workflowHistoryRecords = await Container.get(WorkflowHistoryRepository).find({
+		where: { workflowId: 'test-workflow-123' },
+	});
+
+	expect(workflowHistoryRecords).toHaveLength(1);
+	expect(workflowHistoryRecords[0].name).toBe('Historical Version Name');
+	expect(workflowHistoryRecords[0].description).toBe('Historical version description');
 });
