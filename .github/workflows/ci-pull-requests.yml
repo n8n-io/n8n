@@ -90,7 +90,7 @@ jobs:
   e2e-tests:
     name: E2E Tests
     needs: install-and-build
-    if: needs.install-and-build.outputs.non_python_changed == 'true'
+    if: needs.install-and-build.outputs.non_python_changed == 'true' && github.repository == 'n8n-io/n8n'
     uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -115,17 +115,18 @@ jobs:
     if: always()
     runs-on: ubuntu-slim
     steps:
-      - name: Fail if any required job failed or was skipped unexpectedly
+      - name: Fail if any required job failed, was cancelled, or was skipped unexpectedly
         # Explicit checks for each job's skip conditions:
         # - Non-python jobs (unit-test, typecheck, lint, e2e-tests): can skip when non_python_changed == false
         # - security-checks: can skip when workflows_changed == false
         if: |
           contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
           (needs.install-and-build.outputs.non_python_changed == 'true' && (
             needs.unit-test.result == 'skipped' ||
             needs.typecheck.result == 'skipped' ||
             needs.lint.result == 'skipped' ||
-            needs.e2e-tests.result == 'skipped'
+            (needs.e2e-tests.result == 'skipped' && github.repository == 'n8n-io/n8n')
           )) ||
           (needs.install-and-build.outputs.workflows_changed == 'true' &&
             needs.security-checks.result == 'skipped')

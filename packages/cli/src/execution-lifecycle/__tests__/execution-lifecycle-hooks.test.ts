@@ -326,6 +326,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteAfter).toHaveLength(2);
 			expect(handlers.workflowExecuteBefore).toHaveLength(3);
 			expect(handlers.workflowExecuteAfter).toHaveLength(5);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
@@ -417,10 +418,12 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 
-				expect(executionRepository.findSingleExecution).toHaveBeenCalledWith(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
+				expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					{ data: runExecutionData, status: 'running' },
+					{ requireNotFinished: true, requireNotCanceled: true },
+				);
 			});
 
 			it('should not save execution progress when disabled', async () => {
@@ -731,6 +734,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteAfter).toHaveLength(0);
 			expect(handlers.workflowExecuteBefore).toHaveLength(2);
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(0);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
@@ -866,6 +870,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteAfter).toHaveLength(2);
 			expect(handlers.workflowExecuteBefore).toHaveLength(2);
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
@@ -990,6 +995,7 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeExecuteAfter).toHaveLength(1);
 			expect(handlers.workflowExecuteBefore).toHaveLength(2);
 			expect(handlers.workflowExecuteAfter).toHaveLength(4);
+			expect(handlers.workflowExecuteResume).toHaveLength(0);
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);

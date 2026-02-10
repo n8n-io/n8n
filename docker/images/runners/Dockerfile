@@ -74,6 +74,9 @@ RUN uv sync \
 			--all-extras \
       --no-editable
 
+# Install the python runner package itself into site packages. We can remove the src directory then
+RUN uv pip install . && rm -rf /app/task-runner-python/src
+
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================

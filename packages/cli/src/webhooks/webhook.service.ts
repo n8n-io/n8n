@@ -369,9 +369,7 @@ export class WebhookService {
 		const checkEntries = Object.values(workflow.nodes)
 			.map((node) => ({
 				node,
-				webhooks: this.getNodeWebhooks(workflow, node, additionalData)
-					// ignore webhooks without fixed path, for example thewait node
-					.filter(({ path, webhookId }) => path || webhookId),
+				webhooks: this.getNodeWebhooks(workflow, node, additionalData, true),
 			}))
 			.filter(({ webhooks }) => webhooks.length !== 0);
 

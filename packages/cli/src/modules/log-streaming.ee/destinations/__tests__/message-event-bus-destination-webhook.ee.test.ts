@@ -1,7 +1,11 @@
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+
 import { MessageEventBusDestinationWebhook } from '../message-event-bus-destination-webhook.ee';
+
+const mockEventBus = {} as MessageEventBus;
 
 describe('MessageEventBusDestinationWebhook', () => {
 	describe('isMessageEventBusDestinationWebhookOptions', () => {
@@ -48,6 +52,65 @@ describe('MessageEventBusDestinationWebhook', () => {
 			);
 
 			expect(destination).toBeNull();
+		});
+	});
+
+	describe('proxy config (buildAxiosSetting)', () => {
+		it('should unwrap nested proxy from fixedCollection shape (options.proxy.proxy)', () => {
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				options: {
+					proxy: {
+						proxy: {
+							protocol: 'http',
+							host: '127.0.0.1',
+							port: 3128,
+						},
+					},
+				} as any,
+			};
+
+			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
+
+			expect(destination.axiosInstance.defaults.proxy).toEqual({
+				protocol: 'http',
+				host: '127.0.0.1',
+				port: 3128,
+			});
+		});
+
+		it('should pass through flat proxy config when not nested', () => {
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+				options: {
+					proxy: {
+						protocol: 'https',
+						host: 'proxy.example.com',
+						port: 9000,
+					},
+				},
+			};
+
+			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
+
+			expect(destination.axiosInstance.defaults.proxy).toEqual({
+				protocol: 'https',
+				host: 'proxy.example.com',
+				port: 9000,
+			});
+		});
+
+		it('should set proxy to false when options.proxy is absent', () => {
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+			};
+
+			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
+
+			expect(destination.axiosInstance.defaults.proxy).toBe(false);
 		});
 	});
 });

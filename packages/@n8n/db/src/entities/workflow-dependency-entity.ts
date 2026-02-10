@@ -38,6 +38,15 @@ export class WorkflowDependency extends WithCreatedAt {
 	workflowVersionId: number;
 
 	/**
+	 * The published version ID, if this dependency belongs to a published workflow version.
+	 * - NULL = draft dependency (current behavior)
+	 * - UUID value = published version dependency (the activeVersionId)
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Index()
+	publishedVersionId: string | null;
+
+	/**
 	 * The type of the dependency.
 	 * credentialId | nodeType | webhookPath | workflowCall | workflowIndexed
 	 */

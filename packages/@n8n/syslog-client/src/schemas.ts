@@ -42,7 +42,7 @@ export const logOptionsSchema = z.object({
 	appName: z.string().max(48).optional(),
 	syslogHostname: z.string().optional(),
 	timestamp: z.instanceof(Date).optional(),
-	msgid: z.string().optional(),
+	msgid: z.string().max(32).optional(), // RFC 5424 limit
 });
 
 /**

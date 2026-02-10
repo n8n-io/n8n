@@ -9,7 +9,7 @@ export class ExternalSecretsModule implements ModuleInterface {
 
 		await import('./secrets-providers-types.controller.ee');
 		await import('./secrets-providers-connections.controller.ee');
-		await import('./secrets-providers-autocomplete.controller.ee');
+		await import('./secrets-providers-completions.controller.ee');
 		await import('./secrets-providers-project.controller.ee');
 
 		const { ExternalSecretsManager } = await import('./external-secrets-manager.ee');

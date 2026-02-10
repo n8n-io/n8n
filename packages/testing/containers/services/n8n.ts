@@ -1,14 +1,13 @@
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
-import { getDockerImageFromEnv } from '../docker-image';
 import { DockerImageNotFoundError } from '../docker-image-not-found-error';
 import { createElapsedLogger, createSilentLogConsumer } from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { FileToMount } from './types';
 
-const N8N_IMAGE = getDockerImageFromEnv(TEST_CONTAINER_IMAGES.n8n);
+const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
 
 const BASE_ENV: Record<string, string> = {
 	N8N_LOG_LEVEL: 'debug',
@@ -25,6 +24,8 @@ const BASE_ENV: Record<string, string> = {
 	N8N_RUNNERS_MODE: 'external',
 	N8N_RUNNERS_AUTH_TOKEN: 'test',
 	N8N_RUNNERS_BROKER_LISTEN_ADDRESS: '0.0.0.0',
+	// Expose V8 garbage collector for memory profiling in performance tests
+	NODE_OPTIONS: '--expose-gc',
 };
 
 const MAIN_WAIT_STRATEGY = Wait.forAll([
@@ -209,6 +210,12 @@ export async function createN8NInstances(
 			instanceNumber: i + 1,
 		})),
 	];
+
+	// Service-only mode: no n8n containers needed
+	if (instances.length === 0) {
+		log('No n8n instances requested (service-only mode)');
+		return { containers, environment };
+	}
 
 	// Start main 1 first (handles DB migrations/setup)
 	const [main1, ...remaining] = instances;

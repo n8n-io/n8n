@@ -1,20 +1,19 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import {
 	NodeConnectionTypes,
+	type INodeProperties,
 	type INodeType,
 	type INodeTypeDescription,
-	type SupplyData,
 	type ISupplyDataFunctions,
-	type INodeProperties,
+	type SupplyData,
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { logWrapper } from '@utils/logWrapper';
-
-import { getProxyAgent } from '@utils/httpProxyAgent';
+import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
+import { getProxyAgent, logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
-import { Container } from '@n8n/di';
-import { AiConfig } from '@n8n/config';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
@@ -146,7 +145,7 @@ export class EmbeddingsOpenAi implements INodeType {
 					{
 						displayName: 'Dimensions',
 						name: 'dimensions',
-						default: undefined,
+						default: 1536,
 						description:
 							'The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.',
 						type: 'options',
@@ -213,7 +212,7 @@ export class EmbeddingsOpenAi implements INodeType {
 						name: 'encodingFormat',
 						type: 'options',
 						description: 'The format to return the embeddings in',
-						default: undefined,
+						default: 'float',
 						options: [
 							{
 								name: 'Float',
@@ -253,6 +252,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			defaultHeaders,
 		};
 		if (options.baseURL) {
+			checkDomainRestrictions(this, credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;

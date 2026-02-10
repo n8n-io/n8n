@@ -11,6 +11,8 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { getDropdownItems } from '@/__tests__/utils';
 import { useI18n } from '@n8n/i18n';
 import type * as I18nModule from '@n8n/i18n';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
 	const actual = await importOriginal<typeof I18nModule>();
@@ -27,6 +29,8 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 			'Only users with credential sharing permission can change who this credential is shared with',
 		'credentialEdit.credentialSharing.info.sharee.team': 'Shared by team project',
 		'credentialEdit.credentialSharing.info.sharee.personal': 'Shared by personal project',
+		'credentialEdit.credentialSharing.info.personalSpaceRestricted':
+			"You don't have permission to share personal credentials",
 		'credentialEdit.credentialSharing.role.user': 'User',
 		'auth.roles.owner': 'Owner',
 		'contextual.credentials.sharing.unavailable.title': 'Upgrade to collaborate',
@@ -123,6 +127,7 @@ describe('CredentialSharing.ee', () => {
 				advancedPermissions: false,
 				apiKeyScopes: false,
 				workflowDiffs: false,
+				namedVersions: false,
 				provisioning: true,
 				showNonProdBanner: false,
 				projects: {
@@ -308,6 +313,73 @@ describe('CredentialSharing.ee', () => {
 			// Select should not be visible when static prop is true
 			expect(queryByTestId('project-sharing-select')).not.toBeInTheDocument();
 			// Info tip should be shown - since credential is team project, shows "Shared by team project"
+			expect(getByText(/shared by team project/i)).toBeInTheDocument();
+		});
+	});
+
+	describe('personal space restriction message', () => {
+		it('should show personal space restriction message when in personal space and lacking share permission', () => {
+			// Set current project as personal project
+			projectsStore.currentProject = createTestProject({
+				id: 'personal-project-id',
+				type: ProjectTypes.Personal,
+			});
+
+			const credential = createCredential({
+				homeProject: {
+					id: 'personal-project-id',
+					name: 'Personal Project',
+					type: 'personal',
+					icon: null,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				},
+			});
+
+			const { getByText } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: false },
+					credential,
+					modalBus: createEventBus(),
+				},
+			});
+
+			expect(
+				getByText("You don't have permission to share personal credentials"),
+			).toBeInTheDocument();
+		});
+
+		it('should show sharee message when not in personal space and lacking share permission', () => {
+			// Set current project as team project (not personal)
+			projectsStore.currentProject = createTestProject({
+				id: 'team-project-id',
+				type: ProjectTypes.Team,
+			});
+
+			const credential = createCredential({
+				homeProject: {
+					id: 'team-project-id',
+					name: 'Team Project',
+					type: 'team',
+					icon: null,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				},
+			});
+
+			const { getByText } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: false },
+					credential,
+					modalBus: createEventBus(),
+				},
+			});
+
+			// Team project shows the team sharee message
 			expect(getByText(/shared by team project/i)).toBeInTheDocument();
 		});
 	});

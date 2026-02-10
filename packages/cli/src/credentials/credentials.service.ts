@@ -49,8 +49,11 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
+import { getAllKeyPaths } from '@/utils';
 
 import { CredentialsFinderService } from './credentials-finder.service';
+import { validateExternalSecretsPermissions } from './validation';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -101,6 +104,7 @@ export class CredentialsService {
 			includeData: true;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			externalSecretsStore?: string;
 		},
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
 	async getMany(
@@ -111,6 +115,7 @@ export class CredentialsService {
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			externalSecretsStore?: string;
 		},
 	): Promise<CredentialsEntity[]>;
 	async getMany(
@@ -121,12 +126,14 @@ export class CredentialsService {
 			includeData = false,
 			onlySharedWithMe = false,
 			includeGlobal = false,
+			externalSecretsStore,
 		}: {
 			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			externalSecretsStore?: string;
 		} = {},
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		const returnAll = hasGlobalScope(user, 'credential:list');
@@ -153,6 +160,10 @@ export class CredentialsService {
 			);
 		}
 
+		if (externalSecretsStore) {
+			credentials = this.filterByExternalSecretsStore(credentials, externalSecretsStore);
+		}
+
 		return await this.enrichCredentials(
 			credentials,
 			user,
@@ -162,6 +173,35 @@ export class CredentialsService {
 			listQueryOptions,
 			onlySharedWithMe,
 		);
+	}
+
+	private filterByExternalSecretsStore(
+		credentials: CredentialsEntity[],
+		externalSecretsStore: string,
+	): CredentialsEntity[] {
+		// matches either dot notation ($secrets.providerKey) or square bracket notation ($secrets['providerKey'])
+		const providerRegex = /\$secrets(?:\.([A-Za-z0-9_-]+)|\[['"]([^'"]+)['"]\])/g;
+		credentials = credentials.filter((credential) => {
+			const decryptedData = this.decrypt(credential, true);
+			const matchingSecretPaths = getAllKeyPaths(decryptedData, '', [], (value) => {
+				if (!value.includes('$secrets')) {
+					return false;
+				}
+
+				let match: RegExpExecArray | null;
+				while ((match = providerRegex.exec(value)) !== null) {
+					const providerKey = match[1] ?? match[2];
+					if (providerKey === externalSecretsStore) {
+						return true;
+					}
+				}
+
+				return false;
+			});
+
+			return matchingSecretPaths.length > 0;
+		});
+		return credentials;
 	}
 
 	private applyOnlySharedWithMeFilter(
@@ -451,9 +491,12 @@ export class CredentialsService {
 	}
 
 	async prepareUpdateData(
+		user: User,
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
 	): Promise<CredentialsEntity> {
+		validateExternalSecretsPermissions(user, data.data, decryptedData);
+
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
 			mergedData.data = this.unredact(mergedData.data, decryptedData);
@@ -471,6 +514,11 @@ export class CredentialsService {
 			// @ts-ignore
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
+
+		this.validateOAuthCredentialUrls(
+			updateData.type,
+			updateData.data as unknown as ICredentialDataDecryptedObject,
+		);
 		return updateData;
 	}
 
@@ -870,7 +918,12 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: false }, user);
 	}
 
-	private checkCredentialData(type: string, data: ICredentialDataDecryptedObject) {
+	/**
+	 * Used to check credential data for creating a new credential.
+	 * TODO: consider refactoring enable using this for both creating and updating, right now only used for creation
+	 * (likely only affects the validateExternalSecretsPermissions call)
+	 */
+	checkCredentialData(type: string, data: ICredentialDataDecryptedObject, user: User) {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
@@ -887,7 +940,36 @@ export class CredentialsService {
 			}
 		}
 
-		// TODO: add further validation if needed
+		validateExternalSecretsPermissions(user, data);
+		this.validateOAuthCredentialUrls(type, data);
+	}
+
+	/**
+	 * Validates that OAuth credential URL fields (authUrl, accessTokenUrl, etc.) use http/https only.
+	 * No-op if the credential type is not OAuth1 or OAuth2 (including extended types).
+	 */
+	private validateOAuthCredentialUrls(type: string, data: ICredentialDataDecryptedObject) {
+		const parentTypes = this.credentialTypes.getParentTypes(type) ?? [];
+		const isOAuth2 = type === 'oAuth2Api' || parentTypes.includes('oAuth2Api');
+		const isOAuth1 = type === 'oAuth1Api' || parentTypes.includes('oAuth1Api');
+		if (isOAuth2) {
+			const oauthUrlFields = ['authUrl', 'accessTokenUrl', 'serverUrl'] as const;
+			for (const field of oauthUrlFields) {
+				const value = data[field];
+				if (typeof value === 'string' && value.trim() !== '') {
+					validateOAuthUrl(value);
+				}
+			}
+		}
+		if (isOAuth1) {
+			const oauthUrlFields = ['authUrl', 'requestTokenUrl', 'accessTokenUrl'] as const;
+			for (const field of oauthUrlFields) {
+				const value = data[field];
+				if (typeof value === 'string' && value.trim() !== '') {
+					validateOAuthUrl(value);
+				}
+			}
+		}
 	}
 
 	/**
@@ -899,7 +981,7 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
-		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject);
+		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject, user);
 		const encryptedCredential = this.createEncryptedData({
 			id: null,
 			name: opts.name,

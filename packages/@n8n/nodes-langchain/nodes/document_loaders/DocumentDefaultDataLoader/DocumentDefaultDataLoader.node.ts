@@ -9,9 +9,8 @@ import {
 	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
-import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { logWrapper, N8nBinaryLoader, N8nJsonLoader } from '@n8n/ai-utilities';
+
 import { metadataFilterField } from '@utils/sharedFields';
 
 // Dependencies needed underneath the hood for the loaders. We add them
@@ -68,6 +67,14 @@ export class DocumentDefaultDataLoader implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
+		builderHint: {
+			inputs: {
+				ai_textSplitter: {
+					required: true,
+					displayOptions: { show: { textSplittingMode: ['custom'] } },
+				},
+			},
+		},
 		properties: [
 			{
 				displayName:

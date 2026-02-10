@@ -65,7 +65,7 @@ import {
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 type Props = {
 	modalName: string;
@@ -92,7 +92,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 const activeTab = ref('connection');
 const authError = ref('');
@@ -350,10 +350,6 @@ const showSharingContent = computed(() => activeTab.value === 'sharing' && !!cre
 const homeProject = computed(() => {
 	const { currentProject, personalProject } = projectsStore;
 	return currentProject ?? personalProject;
-});
-
-const isDynamicCredentialsEnabled = computed<boolean>(() => {
-	return checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS');
 });
 
 const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
@@ -1054,6 +1050,33 @@ async function oAuthCredentialAuthorize() {
 			i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message'),
 		);
 
+		return;
+	}
+
+	if (url === undefined || url === '') {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+		);
+		return;
+	}
+
+	// Prevent javascript:, data:, vbscript: and other non-http(s) protocols (XSS)
+	const allowedOAuthUrlProtocols = ['http:', 'https:'];
+	try {
+		const parsedUrl = new URL(url);
+		if (!allowedOAuthUrlProtocols.includes(parsedUrl.protocol)) {
+			toast.showError(
+				new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+				i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+			);
+			return;
+		}
+	} catch {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+		);
 		return;
 	}
 

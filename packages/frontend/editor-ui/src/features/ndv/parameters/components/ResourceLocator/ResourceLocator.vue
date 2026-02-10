@@ -147,7 +147,7 @@ const searchFilter = ref('');
 const cachedResponses = ref<Record<string, IResourceLocatorQuery>>({});
 const hasCompletedASearch = ref(false);
 const width = ref(0);
-const inputRef = ref<HTMLInputElement>();
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 const containerRef = ref<HTMLDivElement>();
 const dropdownRef = ref<InstanceType<typeof ResourceLocatorDropdown>>();
 const showSlowLoadNotice = ref(false);
@@ -486,7 +486,7 @@ watch(currentMode, (mode) => {
 	}
 });
 
-watch([currentQueryLoading, resourceDropdownVisible], (isLoading, isDropdownVisible) => {
+watch([currentQueryLoading, resourceDropdownVisible], ([isLoading, isDropdownVisible]) => {
 	if (!slowLoadNoticeMessage.value) return;
 
 	if (isLoading && isDropdownVisible) {
@@ -663,6 +663,12 @@ function onInputMouseDown(event: MouseEvent): void {
 	if (isListMode.value) {
 		event.preventDefault();
 	}
+}
+
+function onInputContainerClick(): void {
+	// Focus the input when clicking anywhere in the container
+	// This ensures the dropdown opens in list mode even when clicking on the container itself
+	inputRef.value?.focus();
 }
 
 function onModeSelected(value: string): void {
@@ -1049,14 +1055,6 @@ function removeOverride() {
 						hasMultipleModes && canBeContentOverride && !isContentOverride,
 				}"
 			>
-				<div
-					:class="[
-						$style.background,
-						{
-							[$style.backgroundOverride]: showOverrideButton,
-						},
-					]"
-				></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
@@ -1084,7 +1082,11 @@ function removeOverride() {
 					</N8nSelect>
 				</div>
 
-				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
+				<div
+					:class="$style.inputContainer"
+					data-test-id="rlc-input-container"
+					@click="onInputContainerClick"
+				>
 					<DraggableTarget
 						type="mapping"
 						:disabled="hasOnlyListMode"
@@ -1144,10 +1146,11 @@ function removeOverride() {
 									@mousedown="onInputMouseDown"
 								>
 									<template v-if="isListMode" #suffix>
-										<i
+										<N8nIcon
+											icon="chevron-down"
+											color="text-light"
+											size="medium"
 											:class="{
-												['el-input__icon']: true,
-												['el-icon-arrow-down']: true,
 												[$style.selectIcon]: true,
 												[$style.isReverse]: resourceDropdownVisible,
 											}"

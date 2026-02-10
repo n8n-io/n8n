@@ -1,6 +1,7 @@
 import {
 	ChatHubConversationModel,
 	ChatSessionId,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubBaseLLMModel,
 	type ChatHubInputModality,
 	type ChatModelMetadataDto,
@@ -9,6 +10,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
+	User,
 	withTransaction,
 	WorkflowEntity,
 	WorkflowRepository,
@@ -16,7 +18,9 @@ import {
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
+import { Cipher } from 'n8n-core';
 import {
+	CHAT_NODE_TYPE,
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
@@ -36,14 +40,33 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
+import {
+	CHAT_TRIGGER_NODE_MIN_VERSION,
+	getModelMetadata,
+	NODE_NAMES,
+	PROVIDER_NODE_TYPE_MAP,
+	SUPPORTED_RESPONSE_MODES,
+	TOOLS_AGENT_NODE_MIN_VERSION,
+} from './chat-hub.constants';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
+import {
+	chatTriggerParamsShape,
+	MessageRecord,
+	PreparedChatWorkflow,
+	type ContentBlock,
+	type ChatTriggerResponseMode,
+} from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
-import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
-import { Cipher } from 'n8n-core';
+import { parseMessage, collectChatArtifacts } from '@n8n/chat-hub';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -52,8 +75,18 @@ export class ChatHubWorkflowService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
+		private readonly chatHubAgentService: ChatHubAgentService,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
+		private readonly chatHubCredentialsService: ChatHubCredentialsService,
+		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly cipher: Cipher,
-	) {}
+	) {
+		this.logger = this.logger.scoped('chat-hub');
+	}
+
+	async deleteChatWorkflow(workflowId: string): Promise<void> {
+		await this.workflowRepository.delete(workflowId);
+	}
 
 	async createChatWorkflow(
 		userId: string,
@@ -87,7 +120,7 @@ export class ChatHubWorkflowService {
 				attachments,
 				credentials,
 				model,
-				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
+				systemMessage: systemMessage ?? this.getBaseSystemMessage(history, timeZone),
 				tools,
 				executionMetadata,
 			});
@@ -184,55 +217,6 @@ export class ChatHubWorkflowService {
 				executionData,
 			};
 		});
-	}
-
-	prepareExecutionData(
-		triggerNode: INode,
-		sessionId: string,
-		message: string,
-		attachments: IBinaryData[],
-		executionMetadata: ChatHubAuthenticationMetadata,
-	): IExecuteData[] {
-		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
-		// Attachments are already processed (id field populated) by the caller
-		return [
-			{
-				node: {
-					...triggerNode,
-					parameters: {
-						...triggerNode.parameters,
-						executionsHooksVersion: 1,
-						contextEstablishmentHooks: {
-							hooks: [
-								{
-									hookName: CHATHUB_EXTRACTOR_NAME,
-									isAllowedToFail: true,
-								},
-							],
-						},
-					},
-				},
-				data: {
-					main: [
-						[
-							{
-								encryptedMetadata,
-								json: {
-									sessionId,
-									action: 'sendMessage',
-									chatInput: message,
-									files: attachments.map(({ data, ...metadata }) => metadata),
-								},
-								binary: Object.fromEntries(
-									attachments.map((attachment, index) => [`data${index}`, attachment]),
-								),
-							},
-						],
-					],
-				},
-				source: null,
-			},
-		];
 	}
 
 	/**
@@ -499,21 +483,92 @@ export class ChatHubWorkflowService {
 	}
 
 	getSystemMessageMetadata(timeZone: string) {
-		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
+		if (inE2ETests) {
+			return '__e2e_system_prompt_placeholder__';
+		}
+
+		const now = DateTime.now();
 		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
-		return `The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
+		return `
+# Current Date and Time
+
+The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
 When you need to reference "now", use this date and time.
 
-You can only produce text responses.
-You cannot create, generate, edit, or display images, videos, or other non-text content.
-If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.`;
+# Output Capabilities
+
+## Multimedia Generation
+
+You are allowed to describe, explain and analyze provided multimedia data if you're capable of, but not allowed to create, generate, edit, or display images, videos, or other non-text content.
+If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
+
+## Document Generation
+
+You can create and edit documents for the user using special XML-like commands. When you use these commands, documents appear in a side panel next to this chat where users can view them in real-time. You can create multiple documents in a conversation, and users can switch between them using a dropdown selector.
+
+Write these commands DIRECTLY in your response - do NOT wrap them in code fences or backticks.
+
+### Creating a Document
+
+To create a new document, include this command directly in your response:
+
+<command:artifact-create>
+<title>Document Title</title>
+<type>md</type>
+<content>
+Document content here...
+</content>
+</command:artifact-create>
+
+The type can be:
+- html for HTML documents
+- md for Markdown documents
+- A code language like typescript, python, json, etc. for code files
+
+Example response:
+"I'll create an RFC document for you.
+
+<command:artifact-create>
+<title>RFC: New Feature</title>
+<type>md</type>
+<content>
+# RFC: New Feature
+
+## Summary
+This feature will...
+</content>
+</command:artifact-create>
+
+I've created the RFC above. Let me know if you'd like any changes!"
+
+### Editing a Document
+
+To make targeted edits to a document, you must specify the exact title of the document you want to edit:
+
+<command:artifact-edit>
+<title>Document Title</title>
+<oldString>text to find</oldString>
+<newString>replacement text</newString>
+<replaceAll>false</replaceAll>
+</command:artifact-edit>
+
+- <title> is required and must match the exact title of an existing document.
+- Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
+- If the document title doesn't exist, the edit command will be ignored.
+
+IMPORTANT:
+- Write these commands directly in your response text, NOT inside code blocks or fences.
+- ALWAYS include conversational text before and/or after document commands. Never send a message with only commands and no explanation.
+`;
 	}
 
-	private getBaseSystemMessage(timeZone: string) {
+	private getBaseSystemMessage(history: ChatHubMessage[], timeZone: string) {
+		const artifactContext = this.buildArtifactContext(history);
+
 		return `You are a helpful assistant.
 
-${this.getSystemMessageMetadata(timeZone)}`;
+${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 	}
 
 	private buildToolsAgentNode(
@@ -937,5 +992,340 @@ Respond the title only:`,
 			return 'video';
 		}
 		return 'file';
+	}
+
+	prepareExecutionData(
+		triggerNode: INode,
+		sessionId: string,
+		message: string,
+		attachments: IBinaryData[],
+		executionMetadata: ChatHubAuthenticationMetadata,
+	): IExecuteData[] {
+		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
+		// Attachments are already processed (id field populated) by the caller
+		return [
+			{
+				node: {
+					...triggerNode,
+					parameters: {
+						...triggerNode.parameters,
+						executionsHooksVersion: 1,
+						contextEstablishmentHooks: {
+							hooks: [
+								{
+									hookName: CHATHUB_EXTRACTOR_NAME,
+									isAllowedToFail: true,
+								},
+							],
+						},
+					},
+				},
+				data: {
+					main: [
+						[
+							{
+								encryptedMetadata,
+								json: {
+									sessionId,
+									action: 'sendMessage',
+									chatInput: message,
+									files: attachments.map(({ data, ...metadata }) => metadata),
+								},
+								binary: Object.fromEntries(
+									attachments.map((attachment, index) => [`data${index}`, attachment]),
+								),
+							},
+						],
+					],
+				},
+				source: null,
+			},
+		];
+	}
+
+	async prepareReplyWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		credentials: INodeCredentials,
+		model: ChatHubConversationModel,
+		history: ChatHubMessage[],
+		message: string,
+		tools: INode[],
+		attachments: IBinaryData[],
+		timeZone: string,
+		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	): Promise<PreparedChatWorkflow> {
+		if (model.provider === 'n8n') {
+			return await this.prepareWorkflowAgentWorkflow(
+				user,
+				sessionId,
+				model.workflowId,
+				message,
+				attachments,
+				trx,
+				executionMetadata,
+			);
+		}
+
+		if (model.provider === 'custom-agent') {
+			return await this.prepareChatAgentWorkflow(
+				model.agentId,
+				user,
+				sessionId,
+				history,
+				message,
+				attachments,
+				timeZone,
+				trx,
+				executionMetadata,
+			);
+		}
+
+		return await this.prepareBaseChatWorkflow(
+			user,
+			sessionId,
+			credentials,
+			model,
+			history,
+			message,
+			undefined,
+			tools,
+			attachments,
+			timeZone,
+			trx,
+			executionMetadata,
+		);
+	}
+
+	private async prepareBaseChatWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		credentials: INodeCredentials,
+		model: ChatHubBaseLLMModel,
+		history: ChatHubMessage[],
+		message: string,
+		systemMessage: string | undefined,
+		tools: INode[],
+		attachments: IBinaryData[],
+		timeZone: string,
+		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
+		await this.chatHubSettingsService.ensureModelIsAllowed(model);
+		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+
+		return await this.createChatWorkflow(
+			user.id,
+			sessionId,
+			projectId,
+			history,
+			message,
+			attachments,
+			credentials,
+			model,
+			systemMessage,
+			tools,
+			timeZone,
+			executionMetadata,
+			trx,
+		);
+	}
+
+	private async prepareChatAgentWorkflow(
+		agentId: string,
+		user: User,
+		sessionId: ChatSessionId,
+		history: ChatHubMessage[],
+		message: string,
+		attachments: IBinaryData[],
+		timeZone: string,
+		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
+		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id, trx);
+
+		if (!agent) {
+			throw new BadRequestError('Agent not found');
+		}
+
+		if (!agent.provider || !agent.model) {
+			throw new BadRequestError('Provider or model not set for agent');
+		}
+
+		const credentialId = agent.credentialId;
+		if (!credentialId) {
+			throw new BadRequestError('Credentials not set for agent');
+		}
+
+		const artifactContext = this.buildArtifactContext(history);
+		const systemMessage =
+			agent.systemPrompt + '\n\n' + this.getSystemMessageMetadata(timeZone) + artifactContext;
+
+		const model: ChatHubBaseLLMModel = {
+			provider: agent.provider,
+			model: agent.model,
+		};
+
+		const credentials: INodeCredentials = {
+			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
+				id: credentialId,
+				name: '',
+			},
+		};
+
+		const { tools } = agent;
+
+		return await this.prepareBaseChatWorkflow(
+			user,
+			sessionId,
+			credentials,
+			model,
+			history,
+			message,
+			systemMessage,
+			tools,
+			attachments,
+			timeZone,
+			trx,
+			executionMetadata,
+		);
+	}
+
+	private async prepareWorkflowAgentWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		workflowId: string,
+		message: string,
+		attachments: IBinaryData[],
+		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:execute-chat'],
+			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
+		);
+
+		if (!workflow?.activeVersion) {
+			throw new BadRequestError('Workflow not found');
+		}
+
+		const chatTriggers = workflow.activeVersion.nodes.filter(
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+		);
+
+		if (chatTriggers.length !== 1) {
+			throw new BadRequestError('Workflow must have exactly one chat trigger');
+		}
+
+		const chatTrigger = chatTriggers[0];
+
+		if (chatTrigger.typeVersion < CHAT_TRIGGER_NODE_MIN_VERSION) {
+			throw new BadRequestError(
+				'Chat Trigger node version is too old to support Chat. Please update the node.',
+			);
+		}
+
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+		if (!chatTriggerParams) {
+			throw new BadRequestError('Chat Trigger node has invalid parameters');
+		}
+
+		if (!chatTriggerParams.availableInChat) {
+			throw new BadRequestError('Chat Trigger node must be made available in Chat');
+		}
+
+		const responseMode = chatTriggerParams.options?.responseMode ?? 'streaming';
+		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
+			throw new BadRequestError(
+				'Chat Trigger node response mode must be set to "When Last Node Finishes", "Using Response Nodes" or "Streaming" to use the workflow on Chat',
+			);
+		}
+
+		const chatResponseNodes = workflow.activeVersion.nodes.filter(
+			(node) => node.type === CHAT_NODE_TYPE,
+		);
+
+		if (chatResponseNodes.length > 0 && responseMode !== 'responseNodes') {
+			throw new BadRequestError(
+				'Chat nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or remove the nodes from the workflow.',
+			);
+		}
+
+		const agentNodes = workflow.activeVersion.nodes?.filter(
+			(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
+		);
+
+		// Agents older than this can't do streaming
+		if (agentNodes.some((node) => node.typeVersion < TOOLS_AGENT_NODE_MIN_VERSION)) {
+			throw new BadRequestError(
+				'Agent node version is too old to support streaming responses. Please update the node.',
+			);
+		}
+
+		const nodeExecutionStack = this.prepareExecutionData(
+			chatTrigger,
+			sessionId,
+			message,
+			attachments,
+			executionMetadata,
+		);
+
+		const executionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack,
+			},
+			manualData: {
+				userId: user.id,
+			},
+		});
+
+		const workflowData: IWorkflowBase = {
+			...workflow,
+			nodes: workflow.activeVersion.nodes,
+			connections: workflow.activeVersion.connections,
+			// Force saving data on successful executions for custom agent workflows
+			// to be able to read the results after execution.
+			settings: {
+				...workflow.settings,
+				saveDataSuccessExecution: 'all',
+			},
+		};
+
+		return {
+			workflowData,
+			executionData,
+			responseMode,
+		};
+	}
+
+	private buildArtifactContext(history: ChatHubMessage[]): string {
+		const artifacts = collectChatArtifacts(history.flatMap(parseMessage));
+		if (artifacts.length === 0) {
+			return '';
+		}
+
+		// Multiple artifacts - show all of them
+		const artifactsText = artifacts
+			.map(
+				(artifact, index) => `
+
+### Document ${index + 1}: ${artifact.title} (type: ${artifact.type})
+
+${artifact.content}
+`,
+			)
+			.join('\n');
+
+		return `
+
+## Current Documents
+
+${artifactsText}
+
+You can update the most recent document using the commands described above, or create a new document.`;
 	}
 }

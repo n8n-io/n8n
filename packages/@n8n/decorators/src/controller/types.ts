@@ -32,6 +32,7 @@ export interface RouteMetadata {
 	skipAuth: boolean;
 	allowSkipPreviewAuth: boolean;
 	allowSkipMFA: boolean;
+	allowUnauthenticated: boolean;
 	apiKeyAuth: boolean;
 	cors?: Partial<CorsOptions> | true;
 	/** Whether to apply IP-based rate limiting to the route */

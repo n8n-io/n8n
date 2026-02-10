@@ -39,7 +39,6 @@ import {
 } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
-import { ExecutionDataRepository } from './execution-data.repository';
 import {
 	AnnotationTagEntity,
 	AnnotationTagMapping,
@@ -52,7 +51,6 @@ import {
 	WorkflowEntity,
 } from '../entities';
 import type {
-	CreateExecutionPayload,
 	ExecutionSummaries,
 	IExecutionBase,
 	IExecutionFlattedDb,
@@ -64,6 +62,12 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 	constructor(rows: unknown) {
 		super('Failed to retrieve live execution rows in Postgres', { extra: { rows } });
 	}
+}
+
+export interface UpdateExecutionConditions {
+	requireStatus?: ExecutionStatus;
+	requireNotFinished?: boolean;
+	requireNotCanceled?: boolean;
 }
 
 export interface IGetExecutionsQueryFilter {
@@ -154,7 +158,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
@@ -342,29 +345,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
-	/**
-	 * Insert a new execution and its execution data using a transaction.
-	 */
-	async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
-		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
-		const { connections, nodes, name, settings } = currentWorkflow ?? {};
-		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
-		const data = stringify(dataObj);
-
-		return await this.manager.transaction(async (transactionManager) => {
-			const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
-				...rest,
-				createdAt: new Date(),
-			});
-			const { id: executionId } = inserted[0] as { id: string };
-			await this.executionDataRepository.createExecutionDataForExecution(
-				{ executionId, workflowData, data, workflowVersionId: currentWorkflow.versionId },
-				transactionManager,
-			);
-			return String(executionId);
-		});
-	}
-
 	async markAsCrashed(executionIds: string | string[]) {
 		if (!Array.isArray(executionIds)) executionIds = [executionIds];
 
@@ -416,13 +396,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 *
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
-	 * @param requireStatus - Optional status requirement. If provided, update only succeeds if execution has this status
-	 * @returns true if update succeeded, false if no execution was found or requireStatus condition was not met
+	 * @param conditions - Optional conditions that must be met for the update to proceed.
+	 *   `requireStatus`: only update if execution has this exact status.
+	 *   `requireNotFinished`: only update if `finished = false`.
+	 *   `requireNotCanceled`: only update if `status != 'canceled'`.
+	 *   Note: `requireStatus` and `requireNotCanceled` both constrain the `status` column,
+	 *   so combining them is not supported.
+	 * @returns true if update succeeded, false if no rows matched (execution not found or conditions not met)
 	 */
 	async updateExistingExecution(
 		executionId: string,
 		execution: Partial<IExecutionResponse>,
-		requireStatus?: ExecutionStatus,
+		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
 		const {
 			id,
@@ -442,13 +427,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
-				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
-				if (requireStatus) whereCondition.status = requireStatus;
+				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				if (conditions?.requireNotFinished) whereCondition.finished = false;
+				if (conditions?.requireNotCanceled)
+					whereCondition.status = Not('canceled') as FindOperator<ExecutionStatus>;
 
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
 				const executionTableAffectedRows = result.affected ?? 0;
 
-				// If requireStatus was set and the update failed, abort the
+				// If conditions were set and the update failed, abort the
 				// transaction early and return false.
 				if (executionTableAffectedRows === 0) {
 					return false;
@@ -855,40 +843,35 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 		>,
 	) {
-		return rawExecutionsWithTags.reduce(
-			(
-				acc,
-				{
-					annotation_id: _,
-					annotation_vote: vote,
-					annotation_tags_id: tagId,
-					annotation_tags_name: tagName,
-					...row
-				},
-			) => {
-				const existingExecution = acc.find((e) => e.id === row.id);
+		const summariesById = new Map<string, ExecutionSummary>();
 
-				if (existingExecution) {
-					if (tagId) {
-						existingExecution.annotation = existingExecution.annotation ?? {
-							vote,
-							tags: [] as Array<{ id: string; name: string }>,
-						};
-						existingExecution.annotation.tags.push({ id: tagId, name: tagName });
-					}
-				} else {
-					acc.push({
-						...row,
-						annotation: {
-							vote,
-							tags: tagId ? [{ id: tagId, name: tagName }] : [],
-						},
-					});
-				}
-				return acc;
-			},
-			[] as ExecutionSummary[],
-		);
+		for (const {
+			annotation_id: _,
+			annotation_vote: vote,
+			annotation_tags_id: tagId,
+			annotation_tags_name: tagName,
+			...row
+		} of rawExecutionsWithTags) {
+			let execution = summariesById.get(row.id);
+			if (!execution) {
+				execution = {
+					...row,
+					annotation: {
+						vote,
+						tags: tagId ? [{ id: tagId, name: tagName }] : [],
+					},
+				};
+				summariesById.set(row.id, execution);
+			} else if (tagId) {
+				execution.annotation = execution.annotation ?? {
+					vote,
+					tags: [] as Array<{ id: string; name: string }>,
+				};
+				execution.annotation.tags.push({ id: tagId, name: tagName });
+			}
+		}
+
+		return [...summariesById.values()];
 	}
 
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
@@ -1109,8 +1092,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		// Sort the final result after the joins again, because there is no
 		// guarantee that the order is unchanged after performing joins. Especially
-		// postgres and MySQL returned to the natural order again, listing
-		// executions in the order they were created.
+		// postgres returned to the natural order again, listing executions in the
+		// order they were created.
 		if (query.kind === 'range') {
 			if (query.order?.startedAt === 'DESC') {
 				const table = qb.escape('e');

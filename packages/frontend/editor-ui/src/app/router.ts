@@ -6,7 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
-import { nanoid } from 'nanoid';
+import { generateNanoId } from '@n8n/utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -24,6 +24,7 @@ import { useRecentResources } from '@/features/shared/commandBar/composables/use
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -98,10 +99,13 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 const ResourceCenterSectionView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
+const SecuritySettingsView = async () =>
+	await import('@/features/settings/security/SecuritySettings.vue');
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -370,9 +374,9 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 		beforeEnter: (to) => {
-			// Generate a unique workflow ID using nanoid and redirect to it
+			// Generate a unique workflow ID using 16-character nanoid and redirect to it
 			// Preserve existing query params (e.g., templateId, projectId) and add new=true
-			const newWorkflowId = nanoid();
+			const newWorkflowId = generateNanoId();
 			return {
 				name: VIEWS.WORKFLOW,
 				params: { name: newWorkflowId },
@@ -598,6 +602,27 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'security',
+				name: VIEWS.SECURITY_SETTINGS,
+				component: SecuritySettingsView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['securitySettings:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'users',
 				name: VIEWS.USERS_SETTINGS,
 				component: SettingsUsersView,
@@ -619,6 +644,31 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'ai',
+				name: VIEWS.AI_SETTINGS,
+				component: SettingsAIView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'aiAssistant:manage',
+						},
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isAiAssistantEnabled || settingsStore.isAskAiEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'assistant',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'resolvers',
 				name: VIEWS.RESOLVERS,
 				component: SettingsResolversView,
@@ -626,8 +676,8 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
 						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('DYNAMIC_CREDENTIALS');
+							const { isEnabled } = useDynamicCredentials();
+							return isEnabled.value;
 						},
 					},
 					telemetry: {

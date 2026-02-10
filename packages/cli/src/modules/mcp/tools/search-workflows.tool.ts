@@ -85,7 +85,15 @@ export const createSearchWorkflowsTool = (
 				openWorldHint: false, // Works with internal n8n data only
 			},
 		},
-		handler: async ({ limit = MAX_RESULTS, query, projectId }) => {
+		handler: async ({
+			limit = MAX_RESULTS,
+			query,
+			projectId,
+		}: {
+			limit?: number;
+			query?: string;
+			projectId?: string;
+		}) => {
 			const parameters = { limit, query, projectId };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,

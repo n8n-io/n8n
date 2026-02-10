@@ -5,6 +5,7 @@ import { resolveParameter, useWorkflowHelpers } from '@/app/composables/useWorkf
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -44,6 +45,7 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 	let workflowState: WorkflowState;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
@@ -52,6 +54,7 @@ describe('useWorkflowHelpers', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
@@ -237,18 +240,17 @@ describe('useWorkflowHelpers', () => {
 				sharedWithProjects: [],
 				tags: [],
 			});
-			const addWorkflowSpy = vi.spyOn(workflowsStore, 'addWorkflow');
+			const addWorkflowSpy = vi.spyOn(workflowsListStore, 'addWorkflow');
 			const setActiveSpy = vi.spyOn(workflowState, 'setActive');
 			const setWorkflowIdSpy = vi.spyOn(workflowState, 'setWorkflowId');
 			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
 			const setWorkflowSettingsSpy = vi.spyOn(workflowState, 'setWorkflowSettings');
 			const setWorkflowPinDataSpy = vi.spyOn(workflowState, 'setWorkflowPinData');
-			const setWorkflowVersionIdSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionId');
+			const setWorkflowVersionDataSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionData');
 			const setWorkflowMetadataSpy = vi.spyOn(workflowState, 'setWorkflowMetadata');
 			const setWorkflowScopesSpy = vi.spyOn(workflowState, 'setWorkflowScopes');
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
-			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
 			await initState(workflowData);
@@ -265,7 +267,10 @@ describe('useWorkflowHelpers', () => {
 				timezone: 'DEFAULT',
 			});
 			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
-			expect(setWorkflowVersionIdSpy).toHaveBeenCalledWith('v1', 'checksum');
+			expect(setWorkflowVersionDataSpy).toHaveBeenCalledWith(
+				{ versionId: 'v1', name: null, description: null },
+				'checksum',
+			);
 			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
 			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
 			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
@@ -273,7 +278,7 @@ describe('useWorkflowHelpers', () => {
 				workflowId: '1',
 				sharedWithProjects: [],
 			});
-			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
+			// Tags are now managed by workflowDocumentStore
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
 
@@ -309,12 +314,11 @@ describe('useWorkflowHelpers', () => {
 				meta: {},
 				scopes: [],
 			});
-			const setWorkflowTagIdsSpy = vi.spyOn(workflowState, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
 			await initState(workflowData);
 
-			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
+			// Tags are now managed by workflowDocumentStore
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
 	});
@@ -323,7 +327,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return null if no conflicts', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [],
 			} as unknown as IWorkflowDb);
 			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
@@ -332,7 +336,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return conflicting webhook data and workflow id is different', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
@@ -371,7 +375,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return conflicting webhook data and workflow id is different in trigger', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: SLACK_TRIGGER_NODE_TYPE,
@@ -404,7 +408,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return conflicting webhook data and workflow id is different in chat', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: CHAT_TRIGGER_NODE_TYPE,
@@ -437,7 +441,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return null if webhook already exist but workflow id is the same', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
@@ -472,7 +476,7 @@ describe('useWorkflowHelpers', () => {
 			const workflowHelpers = useWorkflowHelpers();
 			const uiStore = mockedStore(useUIStore);
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: 'n8n-nodes-base.formTrigger',
@@ -492,7 +496,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return conflicting webhook data and workflow id is different with FORM_TRIGGER_NODE_TYPE', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: 'n8n-nodes-base.formTrigger',
@@ -533,7 +537,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return null if webhook already exist but workflow id is the same with FORM_TRIGGER_NODE_TYPE', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: 'n8n-nodes-base.formTrigger',
@@ -558,7 +562,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return trigger.parameters.path when both trigger.parameters.path and trigger.webhookId are strings', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
@@ -583,7 +587,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return trigger.webhookId when trigger.parameters.path is an empty string', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
@@ -608,7 +612,7 @@ describe('useWorkflowHelpers', () => {
 		it('should find conflicting webhook data with multiple methods', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
@@ -649,7 +653,7 @@ describe('useWorkflowHelpers', () => {
 		it('should return null if no conflicts with multiple methods', async () => {
 			const workflowHelpers = useWorkflowHelpers();
 			uiStore.markStateClean();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
@@ -668,7 +672,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should fallback to GET, POST if httpMethod is not set and multipleMethods is true', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
@@ -694,7 +698,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should fallback to GET if httpMethod is not set and multipleMethods is false', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,

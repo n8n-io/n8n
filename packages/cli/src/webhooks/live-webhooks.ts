@@ -98,7 +98,7 @@ export class LiveWebhooks implements IWebhookManager {
 			where: { id: webhook.workflowId },
 			relations: {
 				activeVersion: true,
-				shared: { project: { projectRelations: true } },
+				shared: true,
 			},
 		});
 
@@ -133,8 +133,9 @@ export class LiveWebhooks implements IWebhookManager {
 			settings: workflowData.settings,
 		});
 
-		const ownerProjectId = workflowData.shared.find((share) => share.role === 'workflow:owner')
-			?.project.id;
+		const ownerProjectId = workflowData.shared.find(
+			(share) => share.role === 'workflow:owner',
+		)?.projectId;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			projectId: ownerProjectId,
 		});

@@ -15,6 +15,7 @@ export * from './utils';
 export * from './http-proxy';
 export * from './validation';
 export { WorkflowHasIssuesError } from './errors/workflow-has-issues.error';
+export * from './observability';
 
 export type * from './interfaces';
 export * from './node-execute-functions';

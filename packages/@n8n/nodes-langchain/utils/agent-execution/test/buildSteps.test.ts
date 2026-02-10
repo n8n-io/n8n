@@ -1432,6 +1432,157 @@ describe('buildSteps', () => {
 			});
 		});
 
+		it('should group parallel tool calls into shared AIMessage with Gemini signature', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_1',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'shared_gemini_sig',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Weather',
+							input: {
+								id: 'call_2',
+								input: { location: 'NYC' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_2',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'shared_gemini_sig',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { temp: '72F' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+
+			// First step should have the shared AIMessage with ALL tool calls
+			const firstMessage = result[0].action.messageLog![0];
+			expect(firstMessage).toBeDefined();
+			expect(firstMessage.tool_calls).toHaveLength(2);
+			expect(firstMessage.tool_calls![0].name).toBe('Calculator');
+			expect(firstMessage.tool_calls![1].name).toBe('Weather');
+
+			// Signature should only be on the first tool call in the map
+			const sigMap = firstMessage.additional_kwargs
+				.__gemini_function_call_thought_signatures__ as Record<string, string>;
+			expect(sigMap).toEqual({ call_1: 'shared_gemini_sig' });
+
+			// Signatures array should have: ['', 'sig', ''] (text part, first func call, second func call)
+			const sigArray = firstMessage.additional_kwargs.signatures as string[];
+			expect(sigArray).toEqual(['', 'shared_gemini_sig', '']);
+
+			// Second step should have EMPTY messageLog (no duplicate AIMessage)
+			expect(result[1].action.messageLog).toEqual([]);
+
+			// Both steps should have correct observations
+			expect(result[0].observation).toBe(JSON.stringify([{ result: '4' }]));
+			expect(result[1].observation).toBe(JSON.stringify([{ temp: '72F' }]));
+		});
+
+		it('should NOT group parallel tool calls without Gemini signature', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_1',
+							metadata: { itemIndex: 0 },
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Weather',
+							input: {
+								id: 'call_2',
+								input: { location: 'NYC' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_2',
+							metadata: { itemIndex: 0 },
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { temp: '72F' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+
+			// Without Gemini signature, each step should have its own AIMessage
+			expect(result[0].action.messageLog).toHaveLength(1);
+			expect(result[0].action.messageLog![0].tool_calls).toHaveLength(1);
+			expect(result[1].action.messageLog).toHaveLength(1);
+			expect(result[1].action.messageLog![0].tool_calls).toHaveLength(1);
+		});
+
 		it('should not include additional_kwargs when no thought_signature present', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [

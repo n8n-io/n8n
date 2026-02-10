@@ -114,18 +114,10 @@ export class N8NCredentialResolver implements ICredentialResolver {
 		return await this.n8nIdentifier.resolve(context, configuration);
 	}
 
-	async validateIdentity(identity: string, handle: CredentialResolverHandle): Promise<void> {
-		await this.resolveIdentifier(
-			{
-				identity,
-				version: 1,
-				metadata: {
-					// Skip browserId check for identity validation only
-					// Full session validation happens during actual credential resolution
-					browserId: false,
-				},
-			},
-			handle.configuration,
-		);
+	async validateIdentity(
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+	): Promise<void> {
+		await this.resolveIdentifier(context, handle.configuration);
 	}
 }

@@ -1,20 +1,22 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
+import fs from 'fs';
 import { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import path from 'path';
 
 import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES, type ModelId } from '@/llm-config';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 import { WorkflowBuilderAgent } from '@/workflow-builder-agent';
 
-import { loadNodesFromFile } from './load-nodes.js';
-import type { EvalLogger } from '../harness/logger.js';
+import { loadNodesFromFile } from './load-nodes';
+import type { EvalLogger } from '../harness/logger';
 import {
 	createTraceFilters,
 	isMinimalTracingEnabled,
 	type TraceFilters,
-} from '../langsmith/trace-filters.js';
+} from '../langsmith/trace-filters';
 
 /** Maximum memory for trace queue (3GB) */
 const MAX_INGEST_MEMORY_BYTES = 3 * 1024 * 1024 * 1024;
@@ -36,12 +38,12 @@ export interface StageModels {
 	responder?: ModelId;
 	/** Model for discovery stage (node discovery) */
 	discovery?: ModelId;
-	/** Model for builder stage (workflow structure) */
+	/** Model for builder stage (workflow structure and configuration) */
 	builder?: ModelId;
-	/** Model for configurator stage (node configuration) */
-	configurator?: ModelId;
-	/** Model for parameter updater (within configurator) */
+	/** Model for parameter updater (within builder) */
 	parameterUpdater?: ModelId;
+	/** Model for planner stage (plan mode) */
+	planner?: ModelId;
 	/** Model for LLM judge evaluation */
 	judge?: ModelId;
 }
@@ -56,8 +58,8 @@ export interface ResolvedStageLLMs {
 	responder: BaseChatModel;
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
-	configurator: BaseChatModel;
 	parameterUpdater: BaseChatModel;
+	planner: BaseChatModel;
 	judge: BaseChatModel;
 }
 
@@ -69,6 +71,8 @@ export interface TestEnvironment {
 	lsClient?: Client;
 	/** Trace filtering utilities (only present when minimal tracing is enabled) */
 	traceFilters?: TraceFilters;
+	/** Directories containing generated node definition files */
+	nodeDefinitionDirs: string[];
 }
 
 /**
@@ -97,21 +101,19 @@ export async function resolveStageModels(stageModels: StageModels): Promise<Reso
 	const defaultLLM = await setupLLM(stageModels.default);
 
 	// For stages without specific model, use default
-	// For parameter updater, fall back to configurator if not specified
-	const configuratorLLM = stageModels.configurator
-		? await setupLLM(stageModels.configurator)
-		: defaultLLM;
+	// For parameter updater, fall back to builder if not specified
+	const builderLLM = stageModels.builder ? await setupLLM(stageModels.builder) : defaultLLM;
 
 	return {
 		default: defaultLLM,
 		supervisor: stageModels.supervisor ? await setupLLM(stageModels.supervisor) : defaultLLM,
 		responder: stageModels.responder ? await setupLLM(stageModels.responder) : defaultLLM,
 		discovery: stageModels.discovery ? await setupLLM(stageModels.discovery) : defaultLLM,
-		builder: stageModels.builder ? await setupLLM(stageModels.builder) : defaultLLM,
-		configurator: configuratorLLM,
+		builder: builderLLM,
 		parameterUpdater: stageModels.parameterUpdater
 			? await setupLLM(stageModels.parameterUpdater)
-			: configuratorLLM,
+			: builderLLM,
+		planner: stageModels.planner ? await setupLLM(stageModels.planner) : defaultLLM,
 		judge: stageModels.judge ? await setupLLM(stageModels.judge) : defaultLLM,
 	};
 }
@@ -172,6 +174,51 @@ export function createLangsmithClient(logger?: EvalLogger): LangsmithClientResul
 }
 
 /**
+ * Resolve built-in node definition directories from installed node packages.
+ * Mirrors `WorkflowBuilderService.resolveBuiltinNodeDefinitionDirs()` for use
+ * in the eval harness where the DI container is not available.
+ */
+export function resolveBuiltinNodeDefinitionDirs(): string[] {
+	// In a pnpm monorepo, n8n-nodes-base and n8n-nodes-langchain are not direct
+	// dependencies of ai-workflow-builder.ee, so bare require.resolve() fails.
+	// Resolve from packages/cli which has them as dependencies.
+	const repoRoot = findRepoRoot(__dirname);
+	const resolvePaths = repoRoot ? [path.join(repoRoot, 'packages', 'cli')] : undefined;
+
+	const dirs: string[] = [];
+	for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+		try {
+			const packageJsonPath = require.resolve(`${packageId}/package.json`, {
+				paths: resolvePaths,
+			});
+			const distDir = path.dirname(packageJsonPath);
+			const nodeDefsDir = path.join(distDir, 'dist', 'node-definitions');
+			if (fs.existsSync(nodeDefsDir)) {
+				dirs.push(nodeDefsDir);
+			}
+		} catch {
+			// Package not installed, skip
+		}
+	}
+	if (dirs.length === 0) {
+		console.error('[NODE-DEFS] No node definition dirs resolved — get_node_types will fail');
+	}
+	return dirs;
+}
+
+/** Walk up from startDir to find the monorepo root (contains pnpm-workspace.yaml). */
+function findRepoRoot(startDir: string): string | undefined {
+	let dir = startDir;
+	while (dir !== path.dirname(dir)) {
+		if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
+			return dir;
+		}
+		dir = path.dirname(dir);
+	}
+	return undefined;
+}
+
+/**
  * Sets up the test environment with LLM, nodes, and tracing
  * @param stageModels - Per-stage model configuration (optional, uses default model if not provided)
  * @param logger - Optional logger for trace filter output
@@ -199,6 +246,7 @@ export async function setupTestEnvironment(
 		tracer,
 		lsClient,
 		traceFilters,
+		nodeDefinitionDirs: resolveBuiltinNodeDefinitionDirs(),
 	};
 }
 
@@ -226,8 +274,8 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 			responder: llms.responder,
 			discovery: llms.discovery,
 			builder: llms.builder,
-			configurator: llms.configurator,
 			parameterUpdater: llms.parameterUpdater,
+			planner: llms.planner,
 		},
 		checkpointer: new MemorySaver(),
 		tracer,

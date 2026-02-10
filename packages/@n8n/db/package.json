@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -29,6 +29,7 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/permissions": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@n8n/typeorm": "catalog:",
     "class-validator": "0.14.0",
     "flatted": "catalog:",

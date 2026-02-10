@@ -9,7 +9,8 @@ export {
 	DateTimeColumn,
 } from './entities/abstract-entity';
 
-export { generateNanoId } from './utils/generators';
+export { generateNanoId } from '@n8n/utils';
+export { generateHostInstanceId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
 export { isValidEmail } from './utils/is-valid-email';
 export { separate } from './utils/separate';
@@ -29,7 +30,6 @@ export * from './subscribers';
 export { Column as DslColumn } from './migrations/dsl/column';
 export { CreateTable } from './migrations/dsl/table';
 export { sqliteMigrations } from './migrations/sqlite';
-export { mysqlMigrations } from './migrations/mysqldb';
 export { postgresMigrations } from './migrations/postgresdb';
 
 export { wrapMigration } from './migrations/migration-helpers';

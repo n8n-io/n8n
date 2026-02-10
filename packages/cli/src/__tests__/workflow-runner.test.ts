@@ -316,6 +316,39 @@ describe('enqueueExecution', () => {
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
+
+	it('should include restartExecutionId in job data when provided', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionData: undefined,
+			pushRef: 'push-ref',
+			streamingEnabled: true,
+		});
+		const error = new Error('stop for test purposes');
+
+		// mock a rejection to stop execution flow before we create the PCancelable promise,
+		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		addJob.mockRejectedValueOnce(error);
+
+		const restartExecutionId = 'restart-execution-id';
+
+		await expect(
+			// @ts-expect-error Private method
+			runner.enqueueExecution('1', 'workflow-xyz', data, false, false, restartExecutionId),
+		).rejects.toThrowError(error);
+
+		expect(addJob).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workflowId: 'workflow-xyz',
+				executionId: '1',
+				restartExecutionId,
+			}),
+			expect.any(Object),
+		);
+	});
 });
 
 describe('workflow timeout with startedAt', () => {

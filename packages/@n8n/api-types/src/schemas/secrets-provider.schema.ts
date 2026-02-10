@@ -91,10 +91,11 @@ export const secretProviderTypeResponseSchema = z.object({
 export type SecretProviderTypeResponse = z.infer<typeof secretProviderTypeResponseSchema>;
 
 /**
- * Autocompletion secrets - keyed by connectionName
+ * Secret completions response - maps providerKey to a list of secret names
+ * Example: { providerA: ["secret1", "secret2"], providerB: ["secret3"] }
  */
-export const autocompletionSecretsResponseSchema = z.record(z.string(), z.array(z.string()));
-export type AutocompletionSecretsResponse = z.infer<typeof autocompletionSecretsResponseSchema>;
+export const secretCompletionsResponseSchema = z.record(z.string(), z.array(z.string()));
+export type SecretCompletionsResponse = z.infer<typeof secretCompletionsResponseSchema>;
 
 /**
  * Test connection result
@@ -106,6 +107,16 @@ export const testSecretProviderConnectionResponseSchema = z.object({
 });
 export type TestSecretProviderConnectionResponse = z.infer<
 	typeof testSecretProviderConnectionResponseSchema
+>;
+
+/**
+ * Reload connection result
+ */
+export const reloadSecretProviderConnectionResponseSchema = z.object({
+	success: z.boolean(),
+});
+export type ReloadSecretProviderConnectionResponse = z.infer<
+	typeof reloadSecretProviderConnectionResponseSchema
 >;
 
 // ==========

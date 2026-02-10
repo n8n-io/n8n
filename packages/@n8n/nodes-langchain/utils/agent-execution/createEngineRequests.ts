@@ -142,7 +142,7 @@ function extractThinkingMetadata(
 									const toolCallIndex = msgToolCalls.findIndex(
 										(tc) => tc.id === toolCall.toolCallId,
 									);
-									if (toolCallIndex !== -1 && toolCallIndex < signatures.length) {
+									if (toolCallIndex > 0 && toolCallIndex < signatures.length) {
 										thoughtSignature = signatures[toolCallIndex];
 									}
 								}

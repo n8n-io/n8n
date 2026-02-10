@@ -25,6 +25,7 @@ import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import { N8nAlert } from '@n8n/design-system';
+import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 
 import {
 	N8nButton,
@@ -94,8 +95,12 @@ const membersTableState = ref<TableOptions>({
 	],
 });
 
+const userSearchQuery = ref('');
+const userSearchResults = ref<typeof usersStore.allUsers>([]);
+const isLoadingUsers = ref(false);
+
 const usersList = computed(() =>
-	usersStore.allUsers.filter((user) => {
+	userSearchResults.value.filter((user) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find((r) => r.id === user.id);
 
 		return !isAlreadySharedWithUser;
@@ -438,9 +443,9 @@ const relationUsers = computed(() =>
 			...user,
 			...relation,
 			role: safeRole,
-			firstName: user?.firstName ?? null,
-			lastName: user?.lastName ?? null,
-			email: user?.email ?? null,
+			firstName: relation?.firstName ?? user?.firstName ?? null,
+			lastName: relation?.lastName ?? user?.lastName ?? null,
+			email: relation?.email ?? user?.email ?? null,
 		};
 	}),
 );
@@ -486,8 +491,41 @@ const onUpdateMembersTableOptions = (options: TableOptions) => {
 	membersTableState.value = options;
 };
 
+const searchUsers = async (query: string) => {
+	userSearchQuery.value = query;
+
+	isLoadingUsers.value = true;
+	try {
+		// If query is empty, load initial set of users, otherwise search
+		const filter = query.trim() ? { fullText: query } : undefined;
+		await usersStore.fetchUsers({
+			take: 50,
+			filter,
+		});
+		// Get the search results from the store
+		if (query.trim()) {
+			userSearchResults.value = usersStore.allUsers.filter((user) => {
+				const searchLower = query.toLowerCase();
+				const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.toLowerCase();
+				const email = (user.email ?? '').toLowerCase();
+				return fullName.includes(searchLower) || email.includes(searchLower);
+			});
+		} else {
+			// Show all loaded users when no search query
+			userSearchResults.value = usersStore.allUsers;
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('projects.settings.users.search.error'));
+	} finally {
+		isLoadingUsers.value = false;
+	}
+};
+
+const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
 onBeforeMount(async () => {
-	await usersStore.fetchUsers();
+	// Load initial set of users for dropdown
+	await searchUsers('');
 });
 
 const isProjectRoleProvisioningEnabled = computed(
@@ -572,7 +610,10 @@ onMounted(async () => {
 					@validate="isValid = $event"
 				/>
 			</fieldset>
-			<fieldset>
+
+			<ProjectExternalSecrets :class="$style.externalSecrets" />
+
+			<fieldset id="projectMembers">
 				<h3>
 					<label for="projectMembers">{{
 						i18n.baseText('projects.settings.projectMembers')
@@ -587,6 +628,9 @@ onMounted(async () => {
 						:current-user-id="usersStore.currentUser?.id"
 						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="project-members-select"
+						remote
+						:remote-method="debouncedUserSearch"
+						:loading="isLoadingUsers"
 						@update:model-value="onAddMember"
 						:disabled="isProjectRoleProvisioningEnabled"
 					>
@@ -715,6 +759,11 @@ onMounted(async () => {
 
 .upgrade {
 	cursor: pointer;
+}
+
+.externalSecrets {
+	max-width: 100%;
+	overflow: hidden;
 }
 
 .membersInputRow {

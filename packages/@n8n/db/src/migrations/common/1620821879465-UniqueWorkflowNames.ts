@@ -4,7 +4,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class UniqueWorkflowNames1620821879465 implements ReversibleMigration {
 	protected indexSuffix = '943d8f922be094eb507cb9a7f9';
 
-	async up({ isMysql, escape, runQuery }: MigrationContext) {
+	async up({ escape, runQuery }: MigrationContext) {
 		const tableName = escape.tableName('workflow_entity');
 		const workflowNames: Array<Pick<WorkflowEntity, 'name'>> = await runQuery(
 			`SELECT name FROM ${tableName}`,
@@ -30,18 +30,11 @@ export class UniqueWorkflowNames1620821879465 implements ReversibleMigration {
 		}
 
 		const indexName = escape.indexName(this.indexSuffix);
-		await runQuery(
-			isMysql
-				? `ALTER TABLE ${tableName} ADD UNIQUE INDEX ${indexName} (${escape.columnName('name')})`
-				: `CREATE UNIQUE INDEX ${indexName} ON ${tableName} ("name")`,
-		);
+		await runQuery(`CREATE UNIQUE INDEX ${indexName} ON ${tableName} ("name")`);
 	}
 
-	async down({ isMysql, escape, runQuery }: MigrationContext) {
-		const tableName = escape.tableName('workflow_entity');
+	async down({ escape, runQuery }: MigrationContext) {
 		const indexName = escape.indexName(this.indexSuffix);
-		await runQuery(
-			isMysql ? `ALTER TABLE ${tableName} DROP INDEX ${indexName}` : `DROP INDEX ${indexName}`,
-		);
+		await runQuery(`DROP INDEX ${indexName}`);
 	}
 }

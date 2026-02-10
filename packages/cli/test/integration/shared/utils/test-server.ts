@@ -9,6 +9,7 @@ import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
@@ -316,6 +317,10 @@ export const setupTestServer = ({
 						await import('@/controllers/module-settings.controller');
 						break;
 
+					case 'security-settings':
+						await import('@/controllers/security-settings.controller');
+						break;
+
 					case 'third-party-licenses':
 						await import('@/controllers/third-party-licenses.controller');
 						break;
@@ -324,6 +329,8 @@ export const setupTestServer = ({
 
 			await Container.get(ModuleRegistry).initModules('main');
 			Container.get(ControllerRegistry).activate(app);
+
+			await Container.get(AuthHandlerRegistry).init();
 		}
 	});
 

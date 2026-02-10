@@ -42,6 +42,8 @@ export declare namespace ExecutionRequest {
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
+	type GetTags = AuthenticatedRequest<{ id: string }>;
+	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<{ id: string }>>;
 }
 
 export declare namespace TagRequest {
@@ -145,6 +147,13 @@ export declare namespace UserRequest {
 }
 
 export declare namespace CredentialRequest {
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{ limit?: number; cursor?: string; offset?: number }
+	>;
+
 	type Create = AuthenticatedRequest<
 		{},
 		{},

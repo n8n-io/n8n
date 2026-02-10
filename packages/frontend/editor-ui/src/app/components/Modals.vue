@@ -3,9 +3,9 @@ import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
-	CONTACT_PROMPT_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
@@ -23,6 +23,7 @@ import {
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -57,6 +58,7 @@ import {
 } from '@/features/core/folders/folders.constants';
 import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
@@ -75,7 +77,6 @@ import ChatEmbedModal from '@/app/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/features/settings/communityNodes/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue';
 import CommunityPlusEnrollmentModal from '@/features/settings/usage/components/CommunityPlusEnrollmentModal.vue';
-import ContactPromptModal from '@/app/components/ContactPromptModal.vue';
 import CredentialEdit from '@/features/credentials/components/CredentialEdit/CredentialEdit.vue';
 import CredentialsSelectModal from '@/features/credentials/components/CredentialsSelectModal.vue';
 import DebugPaywallModal from '@/features/execution/executions/components/DebugPaywallModal.vue';
@@ -84,6 +85,7 @@ import MoveToFolderModal from '@/features/core/folders/components/MoveToFolderMo
 import DeleteUserModal from '@/features/settings/users/components/DeleteUserModal.vue';
 import DuplicateWorkflowDialog from '@/app/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
+import SecretsProviderConnectionModal from '@/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue';
 import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
@@ -97,6 +99,7 @@ import ProjectMoveResourceModal from '@/features/collaboration/projects/componen
 import EventDestinationSettingsModal from '@/features/integrations/logStreaming.ee/components/EventDestinationSettingsModal.vue';
 import SetupWorkflowCredentialsModal from '@/features/workflows/templates/components/SetupWorkflowCredentialsModal.vue';
 import SourceControlPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue';
+import SourceControlPullResultModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullResultModal.vue';
 import SourceControlPushModal from '@/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue';
 import AnnotationTagsManager from '@/features/shared/tags/components/TagsManager/AnnotationTagsManager.ee.vue';
 import WorkflowTagsManager from '@/features/shared/tags/components/TagsManager/WorkflowTagsManager.vue';
@@ -105,6 +108,9 @@ import WorkflowActivationConflictingWebhookModal from '@/app/components/Workflow
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
+import WorkflowVersionFormModal, {
+	type WorkflowVersionFormModalData,
+} from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import WorkflowSettings from '@/app/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/app/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
@@ -117,19 +123,12 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
-import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryPublishModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
 </script>
 
 <template>
 	<div>
-		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
-			<template #default="{ modalName }">
-				<ContactPromptModal :modal-name="modalName" />
-			</template>
-		</ModalRoot>
-
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CredentialEdit :modal-name="modalName" :mode="mode" :active-id="activeId" />
@@ -285,6 +284,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="SOURCE_CONTROL_PULL_RESULT_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SourceControlPullResultModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_DIFF_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowDiffModal :modal-name="modalName" :data="data" />
@@ -294,6 +299,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 		<ModalRoot :name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<ExternalSecretsProviderModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SECRETS_PROVIDER_CONNECTION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SecretsProviderConnectionModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
@@ -323,6 +334,16 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 					data-test-id="workflow-history-version-unpublish-modal"
 					:modal-name="modalName"
 					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowVersionFormModal
+					data-test-id="workflow-history-name-version-modal"
+					:modal-name="modalName"
+					:data="data as WorkflowVersionFormModalData"
 				/>
 			</template>
 		</ModalRoot>
@@ -437,7 +458,10 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 
 		<ModalRoot :name="WORKFLOW_HISTORY_PUBLISH_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<WorkflowHistoryPublishModal :modal-name="modalName" :data="data" />
+				<WorkflowVersionFormModal
+					:modal-name="modalName"
+					:data="data as WorkflowVersionFormModalData"
+				/>
 			</template>
 		</ModalRoot>
 

@@ -15,7 +15,7 @@ import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
-import type { ZodClass } from 'zod-class';
+import type { ZodClass } from '@n8n/api-types';
 
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { LastActiveAtService } from './services/last-active-at.service';
@@ -133,6 +133,7 @@ export class ControllerRegistry {
 			skipAuth?: boolean;
 			allowSkipMFA?: boolean;
 			allowSkipPreviewAuth?: boolean;
+			allowUnauthenticated?: boolean;
 			ipRateLimit?: boolean | RateLimiterLimits;
 			keyedRateLimit?: KeyedRateLimiterConfig;
 			licenseFeature?: BooleanLicenseFeature;
@@ -169,6 +170,7 @@ export class ControllerRegistry {
 				this.authService.createAuthMiddleware({
 					allowSkipMFA: route.allowSkipMFA ?? false,
 					allowSkipPreviewAuth: route.allowSkipPreviewAuth ?? false,
+					allowUnauthenticated: route.allowUnauthenticated ?? false,
 				}),
 				this.lastActiveAtService.middleware.bind(this.lastActiveAtService) as RequestHandler,
 			);
