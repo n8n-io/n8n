@@ -635,6 +635,80 @@ describe('resource-operation-extractor', () => {
 			expect(dbPageV2?.operations.map((o) => o.value)).toEqual(['create', 'update']);
 		});
 
+		it('should extract description and builderHint from resources and operations', () => {
+			const nodeType = createMockNodeType([
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					default: 'message',
+					options: [
+						{
+							name: 'Message',
+							value: 'message',
+							description: 'Work with email messages',
+							builderHint: { message: 'Use for reading, sending, or managing emails' },
+						},
+						{
+							name: 'Draft',
+							value: 'draft',
+							description: 'Work with email drafts',
+							// No builderHint - should be undefined
+						},
+					],
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					default: 'send',
+					options: [
+						{
+							name: 'Send',
+							value: 'send',
+							description: 'Send an email message',
+							builderHint: { message: 'Use to send composed emails to recipients' },
+						},
+						{
+							name: 'Get All',
+							value: 'getAll',
+							description: 'Retrieve all messages',
+							// No builderHint
+						},
+					],
+				},
+			]);
+
+			// Pass fields option to include description and builderHint
+			const result = extractResourceOperations(nodeType, 1, undefined, {
+				fields: { description: true, builderHint: true },
+			});
+
+			expect(result).not.toBeNull();
+
+			// Check resource description and builderHint
+			const messageResource = result?.resources.find((r) => r.value === 'message');
+			expect(messageResource?.description).toBe('Work with email messages');
+			expect(messageResource?.builderHint).toEqual({
+				message: 'Use for reading, sending, or managing emails',
+			});
+
+			const draftResource = result?.resources.find((r) => r.value === 'draft');
+			expect(draftResource?.description).toBe('Work with email drafts');
+			expect(draftResource?.builderHint).toBeUndefined();
+
+			// Check operation description and builderHint
+			const sendOp = messageResource?.operations.find((op) => op.value === 'send');
+			expect(sendOp?.description).toBe('Send an email message');
+			expect(sendOp?.builderHint).toEqual({
+				message: 'Use to send composed emails to recipients',
+			});
+
+			const getAllOp = messageResource?.operations.find((op) => op.value === 'getAll');
+			expect(getAllOp?.description).toBe('Retrieve all messages');
+			expect(getAllOp?.builderHint).toBeUndefined();
+		});
+
 		it('should handle resource property with version conditions', () => {
 			// Tests that the resource property itself can be filtered by version
 			const nodeType = createMockNodeType([

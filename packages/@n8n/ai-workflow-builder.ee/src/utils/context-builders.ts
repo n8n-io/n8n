@@ -537,6 +537,110 @@ export function buildSimplifiedExecutionContext(
 }
 
 // ============================================================================
+// SELECTED NODES CONTEXT BUILDERS
+// ============================================================================
+
+/**
+ * Build selected nodes context block for agents.
+ * This provides context about nodes the user has explicitly selected/focused,
+ * enabling deictic resolution ("this node", "it") and focused responses.
+ *
+ * Note: Only includes additional context (issues, connections) not in currentWorkflow.nodes.
+ * Full node details (type, parameters) should be looked up by name in currentWorkflow.nodes.
+ */
+export function buildSelectedNodesContextBlock(
+	workflowContext: ChatPayload['workflowContext'] | undefined,
+): string {
+	const selectedNodes = workflowContext?.selectedNodes;
+	if (!selectedNodes || selectedNodes.length === 0) return '';
+
+	const parts: string[] = [];
+	parts.push('<selected_nodes>');
+	parts.push('The user has explicitly selected the following node(s) for you to focus on.');
+	parts.push(
+		'When the user says "this node", "it", "this", or similar deictic references, they refer to these selected nodes.',
+	);
+	parts.push(
+		'Look up full node details (type, parameters) by matching the name in <current_workflow_json>.',
+	);
+	parts.push('');
+
+	for (const node of selectedNodes) {
+		parts.push(`<node name="${escapeXmlAttr(node.name)}">`);
+
+		if (node.issues && Object.keys(node.issues).length > 0) {
+			parts.push('  <issues>');
+			for (const [param, issues] of Object.entries(node.issues)) {
+				for (const issue of issues) {
+					parts.push(
+						`    <issue parameter="${escapeXmlAttr(param)}">${escapeXmlContent(issue)}</issue>`,
+					);
+				}
+			}
+			parts.push('  </issues>');
+		}
+
+		if (node.incomingConnections.length > 0) {
+			parts.push(
+				`  <incoming_connections>${node.incomingConnections.map(escapeXmlContent).join(', ')}</incoming_connections>`,
+			);
+		}
+		if (node.outgoingConnections.length > 0) {
+			parts.push(
+				`  <outgoing_connections>${node.outgoingConnections.map(escapeXmlContent).join(', ')}</outgoing_connections>`,
+			);
+		}
+
+		parts.push('</node>');
+		parts.push('');
+	}
+
+	parts.push('</selected_nodes>');
+
+	return parts.join('\n');
+}
+
+/**
+ * Build a concise summary of selected nodes for routing decisions.
+ * Used by Supervisor to understand user intent without full node details.
+ */
+export function buildSelectedNodesSummary(
+	workflowContext: ChatPayload['workflowContext'] | undefined,
+): string {
+	const selectedNodes = workflowContext?.selectedNodes;
+	if (!selectedNodes || selectedNodes.length === 0) return '';
+
+	const nodeList = selectedNodes.map((n) => `- "${n.name}"`).join('\n');
+
+	const hasIssues = selectedNodes.some((n) => n.issues && Object.keys(n.issues).length > 0);
+
+	let summary = `User has ${selectedNodes.length} node(s) selected:\n${nodeList}`;
+	if (hasIssues) {
+		summary += '\nNote: Some selected nodes have configuration issues.';
+	}
+
+	return summary;
+}
+
+/**
+ * Escape XML attribute value (replaces quotes, ampersand, less-than, greater-than)
+ */
+function escapeXmlAttr(str: string): string {
+	return str
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
+/**
+ * Escape XML content (replaces ampersand, less-than, greater-than)
+ */
+function escapeXmlContent(str: string): string {
+	return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ============================================================================
 // MESSAGE BUILDERS
 // ============================================================================
 

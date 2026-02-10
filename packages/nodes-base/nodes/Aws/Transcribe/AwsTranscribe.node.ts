@@ -18,6 +18,7 @@ export class AwsTranscribe implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to AWS Transcribe',
+		schemaPath: 'Aws/Transcribe',
 		defaults: {
 			name: 'AWS Transcribe',
 		},

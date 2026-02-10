@@ -146,11 +146,30 @@ function extractMessageContent(messages: MessageContent[]): string | null {
  * Remove context tags from message content that are used for AI context
  * but shouldn't be displayed to users.
  *
- * This removes the entire context block from <current_workflow_json> through
- * </current_execution_nodes_schemas>
+ * Handles multiple formats:
+ * 1. Old multi-agent format: <current_workflow_json>...</current_execution_nodes_schemas>
+ * 2. Code builder format with <user_request> XML tag
+ * 3. Fallback: strips individual context tags
  */
 export function cleanContextTags(text: string): string {
-	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
+	// Handle old multi-agent format
+	let cleaned = text.replace(
+		/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/,
+		'',
+	);
+
+	// Handle code builder format - extract content from <user_request> tag
+	const userRequestMatch = cleaned.match(/<user_request>\n?([\s\S]*?)\n?<\/user_request>/);
+	if (userRequestMatch) {
+		return userRequestMatch[1].trim();
+	}
+
+	// Fallback: strip individual tags if no user request marker found
+	cleaned = cleaned.replace(/<conversation_summary>[\s\S]*?<\/conversation_summary>\s*/g, '');
+	cleaned = cleaned.replace(/<previous_requests>[\s\S]*?<\/previous_requests>\s*/g, '');
+	cleaned = cleaned.replace(/<workflow_file[^>]*>[\s\S]*?<\/workflow_file>\s*/g, '');
+
+	return cleaned.trim();
 }
 
 // ============================================================================

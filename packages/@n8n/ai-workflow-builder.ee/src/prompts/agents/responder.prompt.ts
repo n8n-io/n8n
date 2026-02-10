@@ -8,6 +8,7 @@
 import { type DataTableInfo, isDataTableRowColumnOperation } from '@/utils/data-table-helpers';
 
 import { prompt } from '../builder';
+import { buildDeicticResolutionPrompt } from '../shared/deictic-resolution';
 
 const RESPONDER_ROLE = `You are a helpful AI assistant for n8n workflow automation.
 
@@ -42,6 +43,61 @@ Example response structure:
 [If data tables are used, include Data Table creation steps with link to Data Tables tab]
 
 Let me know if you'd like to adjust anything."`;
+
+const DEICTIC_RESOLUTION = buildDeicticResolutionPrompt({
+	conversationContext:
+		'(e.g., a topic being discussed, a question asked, an explanation given), use that referent.\n   Examples: "Explain this more" after a topic, "What about this?" referring to something mentioned.',
+	selectedNodes: [
+		'"what does this do?" → Explain what the selected node(s) do',
+		'"how does this work?" → Explain the functionality of selected node(s)',
+		'"what\'s wrong with this?" → Review issues/configuration of selected node(s)',
+		'"explain this connection" → Describe data flow to/from selected node(s)',
+	],
+	positionalReferences: [
+		'"what does the previous node do?" → Explain the node in incomingConnections',
+		'"what comes next?" → Describe the node(s) in outgoingConnections',
+		'"explain what happens upstream" → Describe the data flow leading to selected node',
+		'"what triggers this?" → Trace back to the trigger/start node',
+	],
+	explicitNameMentions: [
+		'"explain the HTTP Request node" → Find and explain the node named "HTTP Request"',
+		'"what does the Gmail node do?" → Explain the Gmail node\'s functionality',
+		'"how is the Webhook configured?" → Describe Webhook node\'s current configuration',
+	],
+	attributeBasedReferences: [
+		'"what\'s wrong with the broken one?" → Explain issues in the node with <issues>',
+		'"why is this node red?" → Explain the validation errors/issues',
+		'"which nodes are unconfigured?" → List nodes with missing required parameters',
+	],
+	dualReferences: [
+		'"what\'s the difference between this and that?" → Compare selected vs clarified node',
+		'"how does this connect to the HTTP Request?" → Explain data flow between them',
+	],
+	workflowFallback: [
+		'"what does this do?" → Explain what the entire workflow does',
+		'"how does this work?" → Explain the workflow\'s overall logic and data flow',
+		'"what\'s wrong with this?" → Review the workflow for issues',
+		'"explain these" → Describe all nodes and their connections',
+	],
+	examplesWithSelection: [
+		'User selects "HTTP Request", says "what does this do?" → Explain HTTP Request functionality',
+		'User selects 2 nodes, says "explain this" → Explain both nodes and their relationship',
+	],
+	examplesWithoutSelection: [
+		'No selection + "explain the Gmail node" → Find and explain Gmail node',
+		'No selection + "what\'s the trigger?" → Explain the workflow\'s trigger node',
+	],
+	additionalNotes: `When answering about selected nodes:
+1. Reference the node by name (e.g., "The HTTP Request node...")
+2. Use information from <selected_nodes> context (connections, issues)
+3. If the node has issues listed, proactively mention them
+4. Explain how the node fits into the workflow based on its connections
+
+When answering about the workflow (no selection):
+1. Provide a high-level overview of what the workflow accomplishes
+2. Describe the data flow from trigger to end
+3. Highlight any issues or areas that need attention`,
+});
 
 const CONVERSATIONAL_RESPONSES = `- Be friendly and concise
 - Explain n8n capabilities when asked
@@ -170,6 +226,7 @@ export function buildResponderPrompt(): string {
 		.section('role', RESPONDER_ROLE)
 		.section('guardrails', GUARDRAILS)
 		.section('execution_issue_handling', EXECUTION_ISSUE_HANDLING)
+		.section('deictic_resolution', DEICTIC_RESOLUTION)
 		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
 		.section('conversational_responses', CONVERSATIONAL_RESPONSES)
 		.section('response_style', RESPONSE_STYLE)

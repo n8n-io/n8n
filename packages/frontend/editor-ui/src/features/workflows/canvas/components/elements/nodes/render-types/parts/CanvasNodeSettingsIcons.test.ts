@@ -9,23 +9,24 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { createTestingPinia } from '@pinia/testing';
 import CanvasNodeSettingsIcons from './CanvasNodeSettingsIcons.vue';
 import type { INode } from 'n8n-workflow';
+import { computed } from 'vue';
 
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: vi.fn(),
+vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
+	useDynamicCredentials: vi.fn(),
 }));
 
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
-const mockedUseEnvFeatureFlag = vi.mocked(useEnvFeatureFlag);
+const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);
 
 const renderComponent = createComponentRenderer(CanvasNodeSettingsIcons, {
 	pinia: createTestingPinia(),
 });
 
 const mockFeatureFlag = (enabled: boolean) => {
-	mockedUseEnvFeatureFlag.mockReturnValue({
-		check: { value: (flag: string) => enabled && flag === 'DYNAMIC_CREDENTIALS' },
-	} as unknown as ReturnType<typeof useEnvFeatureFlag>);
+	mockedUseDynamicCredentials.mockReturnValue({
+		isEnabled: computed(() => enabled),
+	} as ReturnType<typeof useDynamicCredentials>);
 };
 
 describe('CanvasNodeSettingsIcons', () => {
