@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quality Platform Tech Tree</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1a2e;
+    color: #e0d5c1;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow-x: auto;
+    overflow-y: auto;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2eee 80%, #1a1a2e00 100%);
+    padding: 20px 40px 30px;
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #d4a853;
+    text-shadow: 0 0 20px #d4a85344;
+  }
+  .header .subtitle {
+    font-size: 13px;
+    color: #8a8070;
+    margin-top: 4px;
+    letter-spacing: 2px;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #8a8070;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+
+  /* ── Tree Container ── */
+  .tree-container {
+    position: relative;
+    display: flex;
+    gap: 0;
+    padding: 10px 40px 60px;
+    min-width: fit-content;
+  }
+
+  /* ── SVG overlay for connections ── */
+  .connections-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ── Era columns ── */
+  .era {
+    flex: 0 0 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 10px;
+    position: relative;
+    z-index: 2;
+  }
+  .era-header {
+    text-align: center;
+    padding: 10px 0 14px;
+    border-bottom: 1px solid #d4a85333;
+    margin-bottom: 6px;
+    position: sticky;
+    top: 90px;
+    background: #1a1a2e;
+    z-index: 10;
+  }
+  .era-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #6b5f50;
+  }
+  .era-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #d4a853;
+    margin-top: 2px;
+  }
+
+  /* ── Tech Nodes ── */
+  .node {
+    position: relative;
+    border-radius: 6px;
+    padding: 12px 14px;
+    cursor: default;
+    transition: transform 0.15s, box-shadow 0.15s;
+    border: 1px solid;
+  }
+  .node:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px #00000066;
+    z-index: 20;
+  }
+  .node-title {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+  .node-desc {
+    font-size: 10px;
+    line-height: 1.4;
+    opacity: 0.7;
+  }
+  .node-tag {
+    display: inline-block;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-top: 6px;
+    font-weight: 600;
+  }
+  .node-outputs {
+    font-size: 9px;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #ffffff11;
+    opacity: 0.6;
+  }
+
+  /* ── Status styles ── */
+  .node.built {
+    background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
+    border-color: #40916c;
+  }
+  .node.built .node-tag { background: #40916c33; color: #95d5b2; }
+
+  .node.active {
+    background: linear-gradient(135deg, #c44536 0%, #8b2500 100%);
+    border-color: #e76f51;
+    animation: pulse 3s ease-in-out infinite;
+  }
+  .node.active .node-tag { background: #e76f5133; color: #f4a261; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 #e76f5100; }
+    50% { box-shadow: 0 0 12px 2px #e76f5144; }
+  }
+
+  .node.root {
+    background: linear-gradient(135deg, #b8860b 0%, #8b6914 100%);
+    border-color: #d4a853;
+  }
+  .node.root .node-tag { background: #d4a85333; color: #f0d890; }
+
+  .node.junction {
+    background: linear-gradient(135deg, #a4161a 0%, #6a040f 100%);
+    border-color: #e63946;
+    box-shadow: 0 0 16px #e6394633;
+  }
+  .node.junction .node-tag { background: #e6394633; color: #ffa3a8; }
+
+  .node.ready {
+    background: linear-gradient(135deg, #1d3557 0%, #14253d 100%);
+    border-color: #457b9d;
+  }
+  .node.ready .node-tag { background: #457b9d33; color: #a8dadc; }
+
+  .node.idea {
+    background: linear-gradient(135deg, #3a3a4a 0%, #2a2a38 100%);
+    border-color: #555565;
+  }
+  .node.idea .node-tag { background: #55556533; color: #9a9aaa; }
+
+  .node.output {
+    background: linear-gradient(135deg, #264653 0%, #1a3040 100%);
+    border-color: #2a9d8f;
+  }
+  .node.output .node-tag { background: #2a9d8f33; color: #7cdcd0; }
+
+  .node.convergence {
+    background: linear-gradient(135deg, #5a189a 0%, #3c096c 100%);
+    border-color: #7b2cbf;
+    box-shadow: 0 0 12px #7b2cbf22;
+  }
+  .node.convergence .node-tag { background: #7b2cbf33; color: #c77dff; }
+
+  /* ── Connector dots ── */
+  .node::before, .node::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .node::before {
+    left: -4px;
+    background: #d4a853;
+    border: 1px solid #1a1a2e;
+    opacity: 0.5;
+  }
+  .node::after {
+    right: -4px;
+    background: #d4a853;
+    border: 1px solid #1a1a2e;
+    opacity: 0.5;
+  }
+
+  /* ── Spacer for alignment ── */
+  .spacer {
+    height: 20px;
+    flex-shrink: 0;
+  }
+  .spacer.large { height: 50px; }
+
+  /* ── Tooltip ── */
+  .tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0f0f1ef0;
+    border: 1px solid #d4a85366;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #e0d5c1;
+    white-space: nowrap;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .node:hover .tooltip { display: block; }
+
+  /* ── Scroll hint ── */
+  .scroll-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #d4a85322;
+    border: 1px solid #d4a85333;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 11px;
+    color: #d4a853;
+    letter-spacing: 1px;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Quality Platform Tech Tree</h1>
+  <div class="subtitle">n8n QA / DevEx / Security Capability Roadmap</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#2d6a4f"></div>Built</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c44536"></div>Active</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#b8860b"></div>Priority Root</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a4161a"></div>Key Junction</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1d3557"></div>Ready to Build</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3a3a4a"></div>Idea</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#264653"></div>Output</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#5a189a"></div>Convergence</div>
+  </div>
+</div>
+
+<svg class="connections-svg" id="connections"></svg>
+
+<div class="tree-container" id="tree">
+
+  <!-- ═══ ERA 0: FOUNDATIONS ═══ -->
+  <div class="era">
+    <div class="era-header">
+      <div class="era-label">Layer 0</div>
+      <div class="era-name">Foundations</div>
+    </div>
+
+    <div class="node built" id="n-pw">
+      <div class="node-title">Playwright Migration</div>
+      <div class="node-desc">Full E2E suite migrated from Cypress</div>
+      <div class="node-tag">Complete</div>
+    </div>
+
+    <div class="node built" id="n-tc">
+      <div class="node-title">Testcontainers</div>
+      <div class="node-desc">Postgres, Redis, Gitea, Kafka, Task Runner</div>
+      <div class="node-tag">Complete</div>
+    </div>
+
+    <div class="node built" id="n-perf">
+      <div class="node-title">Performance Tests</div>
+      <div class="node-desc">Baseline memory tests, nightly CI runs</div>
+      <div class="node-tag">Complete</div>
+    </div>
+
+    <div class="node built" id="n-ci">
+      <div class="node-title">CI Infrastructure</div>
+      <div class="node-desc">Blacksmith, caching, orchestration</div>
+      <div class="node-tag">Complete</div>
+    </div>
+
+    <div class="node built" id="n-obs">
+      <div class="node-title">Observability Stack</div>
+      <div class="node-desc">Victoria Logs/Metrics, Jaeger tracing</div>
+      <div class="node-tag">Complete</div>
+    </div>
+
+    <div class="node built" id="n-qb1">
+      <div class="node-title">QBot L1: Ask</div>
+      <div class="node-desc">Slack ChatOps, BigQuery queries via AI</div>
+      <div class="node-tag">Shipped</div>
+    </div>
+
+    <div class="node built" id="n-bq">
+      <div class="node-title">BigQuery QA Pipelines</div>
+      <div class="node-desc">13 qa_* tables, CI/CD + test metrics</div>
+      <div class="node-tag">Live</div>
+    </div>
+  </div>
+
+  <!-- ═══ ERA 1: ROOT NODES ═══ -->
+  <div class="era">
+    <div class="era-header">
+      <div class="era-label">Layer 1</div>
+      <div class="era-name">Root Nodes</div>
+    </div>
+
+    <div class="node root" id="n-b1">
+      <div class="node-title">B1: Seed Data Tooling</div>
+      <div class="node-desc">Large datasets for local/CI testing. Highest downstream value.</div>
+      <div class="node-tag">Highest Priority</div>
+    </div>
+
+    <div class="node root" id="n-a">
+      <div class="node-title">A: Speed Up Local Build</div>
+      <div class="node-desc">Faster build/test, devs skip to CI today</div>
+      <div class="node-tag">Priority</div>
+    </div>
+
+    <div class="node active" id="n-jan">
+      <div class="node-title">Playwright Janitor</div>
+      <div class="node-desc">Static analysis + auto-fix for Playwright tests</div>
+      <div class="node-tag">Active</div>
+    </div>
+
+    <div class="node ready" id="n-ev">
+      <div class="node-title">Evidence.dev Dashboards</div>
+      <div class="node-desc">Dashboards as code, replace Metabase. PoC done.</div>
+      <div class="node-tag">30 min to deploy</div>
+    </div>
+
+    <div class="node ready" id="n-f">
+      <div class="node-title">F: DoD Enforcement</div>
+      <div class="node-desc">Definition of Done with test requirements</div>
+      <div class="node-tag">Process</div>
+    </div>
+
+    <div class="node ready" id="n-h">
+      <div class="node-title">H: Bug Watermark Rework</div>
+      <div class="node-desc">Severity-weighted, not just count</div>
+      <div class="node-tag">Process</div>
+    </div>
+
+    <div class="node ready" id="n-cif">
+      <div class="node-title">CI Filter Action RFC</div>
+      <div class="node-desc">Unified path filtering &amp; validation</div>
+      <div class="node-tag">Ready to Build</div>
+    </div>
+
+    <div class="node ready" id="n-bsp">
+      <div class="node-title">Batch Security Patches</div>
+      <div class="node-desc">Weekly batching for non-critical fixes</div>
+      <div class="node-tag">Process</div>
+    </div>
+
+    <div class="node ready" id="n-e1">
+      <div class="node-title">E1: Distribute Security Fixing</div>
+      <div class="node-desc">Education through doing, across all teams</div>
+      <div class="node-tag">Process</div>
+    </div>
+  </div>
+
+  <!-- ═══ ERA 2: FIRST UNLOCKS ═══ -->
+  <div class="era">
+    <div class="era-header">
+      <div class="era-label">Layer 2</div>
+      <div class="era-name">First Unlocks</div>
+    </div>
+
+    <div class="node idea" id="n-b2">
+      <div class="node-title">B2: Staging Env + Prod Data</div>
+      <div class="node-desc">Staging environment seeded with production-scale data</div>
+      <div class="node-tag">Requires: Seed Data</div>
+    </div>
+
+    <div class="node idea" id="n-harn">
+      <div class="node-title">Testcontainer Harness</div>
+      <div class="node-desc">Generic infra: BYOC, BYOH, lazy loading, CLI</div>
+      <div class="node-tag">Requires: Janitor</div>
+    </div>
+
+    <div class="node idea" id="n-team">
+      <div class="node-title">Team Registry + Ownership</div>
+      <div class="node-desc">Annotations on tests, auto-routing to teams</div>
+      <div class="node-tag">Requires: Janitor</div>
+    </div>
+
+    <div class="node idea" id="n-sel">
+      <div class="node-title">Smart Selective Tests</div>
+      <div class="node-desc">Auto-select relevant tests from code changes</div>
+      <div class="node-tag">Requires: Faster Build</div>
+    </div>
+
+    <div class="node idea" id="n-pbench">
+      <div class="node-title">Perf Benchmark Library</div>
+      <div class="node-desc">Standalone npm pkg, warmup-aware stats</div>
+      <div class="node-tag">Requires: Janitor</div>
+    </div>
+
+    <div class="node idea" id="n-qb2">
+      <div class="node-title">QBot L2: Do</div>
+      <div class="node-desc">Trigger actions from Slack: quarantine, fix, deploy</div>
+      <div class="node-tag">Requires: QBot L1</div>
+    </div>
+
+    <div class="node idea" id="n-vitest">
+      <div class="node-title">Jest to Vitest Analyzer</div>
+      <div class="node-desc">Automated migration tooling</div>
+      <div class="node-tag">Requires: Faster Build</div>
+    </div>
+  </div>
+
+  <!-- ═══ ERA 3: CORE CAPABILITIES ═══ -->
+  <div class="era">
+    <div class="era-header">
+      <div class="era-label">Layer 3</div>
+      <div class="era-name">Core Capabilities</div>
+    </div>
+
+    <div class="node idea" id="n-night">
+      <div class="node-title">Nightly Smoke + Load Testing</div>
+      <div class="node-desc">Automated nightly E2E + load against staging</div>
+      <div class="node-tag">Requires: Staging Env</div>
+    </div>
+
+    <div class="node junction" id="n-soak">
+      <div class="node-title">Soak Testing RFC</div>
+      <div class="node-desc">Hours-long tests with prod-scale data. Key junction node.</div>
+      <div class="node-tag">1 Project &rarr; 5 Outputs</div>
+      <div class="node-outputs">Unlocks: Sizing Guide, SQLite vs Postgres, Contention Suite, Perf Regression, Instance Limits</div>
+    </div>
+
+    <div class="node idea" id="n-mig">
+      <div class="node-title">Migration Testing</div>
+      <div class="node-desc">Required for all table/data migrations</div>
+      <div class="node-tag">Requires: Staging Env</div>
+    </div>
+
+    <div class="node idea" id="n-mock">
+      <div class="node-title">3P Service Mocking</div>
+      <div class="node-desc">Record real requests, replay in tests</div>
+      <div class="node-tag">Requires: Harness</div>
+    </div>
+
+    <div class="node idea" id="n-honey">
+      <div class="node-title">Honeycomb Observability</div>
+      <div class="node-desc">Persistent OTEL traces, BubbleUp anomalies</div>
+      <div class="node-tag">Requires: Harness</div>
+    </div>
+
+    <div class="node idea" id="n-triage">
+      <div class="node-title">Auto Test Failure Triage</div>
+      <div class="node-desc">Currents &rarr; GH diff &rarr; LLM analysis &rarr; PR comment</div>
+      <div class="node-tag">Requires: Team Registry</div>
+    </div>
+
+    <div class="node idea" id="n-grind">
+      <div class="node-title">THE GRINDER</div>
+      <div class="node-desc">500 runs on worst flaky test every Saturday</div>
+      <div class="node-tag">Requires: Currents + CI</div>
+    </div>
+
+    <div class="node idea" id="n-d1">
+      <div class="node-title">D1: Nightly Releases</div>
+      <div class="node-desc">Auto-upgrade internal, rollout to cloud</div>
+      <div class="node-tag">Requires: Nightly Testing</div>
+    </div>
+  </div>
+
+  <!-- ═══ ERA 4: HIGH-VALUE OUTPUTS ═══ -->
+  <div class="era">
+    <div class="era-header">
+      <div class="era-label">Layer 4</div>
+      <div class="era-name">High-Value Outputs</div>
+    </div>
+
+    <div class="node output" id="n-size">
+      <div class="node-title">Instance Sizing Guide</div>
+      <div class="node-desc">T-shirt sizes: XS to XL with reference workloads</div>
+      <div class="node-tag">Customer-Facing</div>
+    </div>
+
+    <div class="node output" id="n-sqlp">
+      <div class="node-title">SQLite vs Postgres Data</div>
+      <div class="node-desc">At what volume does SQLite fall over?</div>
+      <div class="node-tag">Customer-Facing</div>
+    </div>
+
+    <div class="node output" id="n-cont">
+      <div class="node-title">Contention Test Suite</div>
+      <div class="node-desc">Multi-user concurrent execution testing</div>
+      <div class="node-tag">From Soak RFC</div>
+    </div>
+
+    <div class="node output" id="n-preg">
+      <div class="node-title">Perf Regression (Load)</div>
+      <div class="node-desc">Detect regressions under sustained load</div>
+      <div class="node-tag">From Soak RFC</div>
+    </div>
+
+    <div class="node output" id="n-watch">
+      <div class="node-title">Release Watchdog</div>
+      <div class="node-desc">Error spike detection, auto-rollback</div>
+      <div class="node-tag">Requires: Nightly + Observability</div>
+    </div>
+
+    <div class="node output" id="n-patch">
+      <div class="node-title">Patch Release Audit</div>
+      <div class="node-desc">Root cause analysis via n8n workflow</div>
+      <div class="node-tag">Requires: Nightly + Bugs</div>
+    </div>
+
+    <div class="node output" id="n-qb3">
+      <div class="node-title">QBot L3: Watch</div>
+      <div class="node-desc">Proactive alerts: flake spikes, CI degradation, SLAs</div>
+      <div class="node-tag">Requires: QBot L2 + Honeycomb</div>
+    </div>
+
+    <div class="node output" id="n-aita">
+      <div class="node-title">AI Test Authoring</div>
+      <div class="node-desc">Scaffold tests from code changes + ownership</div>
+      <div class="node-tag">Requires: Harness + Ownership</div>
+    </div>
+  </div>
+
+  <!-- ═══ ERA 5: CONVERGENCE ═══ -->
+  <div class="era">
+    <div class="era-header">
+      <div class="era-label">Layer 5</div>
+      <div class="era-name">Platform Maturity</div>
+    </div>
+
+    <div class="node convergence" id="n-self">
+      <div class="node-title">Self-Serve Test Creation</div>
+      <div class="node-desc">Any engineer can create tests using the platform</div>
+      <div class="node-tag">Platform Goal</div>
+    </div>
+
+    <div class="node convergence" id="n-auto">
+      <div class="node-title">Auto-Triage Agent</div>
+      <div class="node-desc">Full loop: detect &rarr; classify &rarr; route &rarr; fix</div>
+      <div class="node-tag">Platform Goal</div>
+    </div>
+
+    <div class="node convergence" id="n-dast">
+      <div class="node-title">DAST / Fuzzing</div>
+      <div class="node-desc">Dynamic security testing at scale</div>
+      <div class="node-tag">Security Maturity</div>
+    </div>
+
+    <div class="node convergence" id="n-ent">
+      <div class="node-title">Enterprise Debug Envs</div>
+      <div class="node-desc">On-demand customer-like environments</div>
+      <div class="node-tag">Platform Goal</div>
+    </div>
+
+    <div class="spacer large"></div>
+
+    <div style="text-align:center; padding: 20px; border: 1px dashed #d4a85333; border-radius: 8px;">
+      <div style="font-size: 11px; color: #d4a853; letter-spacing: 2px; text-transform: uppercase;">Milestone</div>
+      <div style="font-size: 14px; margin-top: 6px; color: #c77dff;">Platform needs users</div>
+      <div style="font-size: 11px; margin-top: 4px; opacity: 0.6;">Case for Junior SDET hire</div>
+    </div>
+  </div>
+</div>
+
+<div class="scroll-hint">Scroll &rarr; to explore</div>
+
+<script>
+  // ── Connection definitions ──
+  // [sourceId, targetId, type]  type: 'main' | 'cross'
+  const connections = [
+    // L0 -> L1
+    ['n-pw', 'n-jan', 'main'],
+    ['n-tc', 'n-jan', 'main'],
+    ['n-ci', 'n-cif', 'main'],
+    ['n-bq', 'n-ev', 'main'],
+
+    // L1 -> L2
+    ['n-b1', 'n-b2', 'main'],
+    ['n-a', 'n-sel', 'main'],
+    ['n-a', 'n-vitest', 'main'],
+    ['n-jan', 'n-harn', 'main'],
+    ['n-jan', 'n-team', 'main'],
+    ['n-jan', 'n-pbench', 'main'],
+    ['n-qb1', 'n-qb2', 'main'],
+
+    // L2 -> L3
+    ['n-b2', 'n-night', 'main'],
+    ['n-b2', 'n-soak', 'main'],
+    ['n-b2', 'n-mig', 'main'],
+    ['n-perf', 'n-soak', 'main'],
+    ['n-tc', 'n-soak', 'main'],
+    ['n-harn', 'n-mock', 'main'],
+    ['n-harn', 'n-honey', 'main'],
+    ['n-team', 'n-triage', 'main'],
+    ['n-ci', 'n-grind', 'main'],
+    ['n-night', 'n-d1', 'main'],
+
+    // L3 -> L4
+    ['n-soak', 'n-size', 'main'],
+    ['n-soak', 'n-sqlp', 'main'],
+    ['n-soak', 'n-cont', 'main'],
+    ['n-soak', 'n-preg', 'main'],
+    ['n-pbench', 'n-preg', 'main'],
+    ['n-d1', 'n-watch', 'main'],
+    ['n-honey', 'n-watch', 'main'],
+    ['n-d1', 'n-patch', 'main'],
+    ['n-h', 'n-patch', 'main'],
+    ['n-qb2', 'n-qb3', 'main'],
+    ['n-honey', 'n-qb3', 'main'],
+    ['n-harn', 'n-aita', 'main'],
+    ['n-team', 'n-aita', 'main'],
+
+    // L4 -> L5
+    ['n-aita', 'n-self', 'main'],
+    ['n-triage', 'n-auto', 'main'],
+    ['n-qb3', 'n-auto', 'main'],
+    ['n-e1', 'n-dast', 'main'],
+    ['n-b2', 'n-dast', 'main'],
+    ['n-harn', 'n-ent', 'main'],
+    ['n-honey', 'n-ent', 'main'],
+
+    // Cross-branch
+    ['n-grind', 'n-triage', 'cross'],
+    ['n-qb2', 'n-grind', 'cross'],
+    ['n-ev', 'n-qb3', 'cross'],
+  ];
+
+  function drawConnections() {
+    const svg = document.getElementById('connections');
+    const tree = document.getElementById('tree');
+    const treeRect = tree.getBoundingClientRect();
+
+    svg.setAttribute('width', tree.scrollWidth);
+    svg.setAttribute('height', tree.scrollHeight);
+    svg.style.width = tree.scrollWidth + 'px';
+    svg.style.height = tree.scrollHeight + 'px';
+
+    svg.innerHTML = `
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 6" refX="10" refY="3"
+                markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 3 L 0 6 z" fill="#d4a85355"/>
+        </marker>
+        <marker id="arrow-cross" viewBox="0 0 10 6" refX="10" refY="3"
+                markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 3 L 0 6 z" fill="#e6394633"/>
+        </marker>
+      </defs>
+    `;
+
+    const scrollLeft = tree.scrollLeft;
+    const scrollTop = tree.scrollTop;
+
+    for (const [srcId, tgtId, type] of connections) {
+      const src = document.getElementById(srcId);
+      const tgt = document.getElementById(tgtId);
+      if (!src || !tgt) continue;
+
+      const srcRect = src.getBoundingClientRect();
+      const tgtRect = tgt.getBoundingClientRect();
+
+      // Coordinates relative to the tree container
+      const x1 = srcRect.right - treeRect.left + scrollLeft;
+      const y1 = srcRect.top + srcRect.height / 2 - treeRect.top + scrollTop;
+      const x2 = tgtRect.left - treeRect.left + scrollLeft;
+      const y2 = tgtRect.top + tgtRect.height / 2 - treeRect.top + scrollTop;
+
+      const midX = (x1 + x2) / 2;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+      if (type === 'cross') {
+        path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+        path.setAttribute('stroke', '#e6394644');
+        path.setAttribute('stroke-dasharray', '6 4');
+        path.setAttribute('marker-end', 'url(#arrow-cross)');
+      } else {
+        path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+        path.setAttribute('stroke', '#d4a85330');
+        path.setAttribute('marker-end', 'url(#arrow)');
+      }
+
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-width', '1.5');
+
+      svg.appendChild(path);
+    }
+  }
+
+  // Draw on load and resize
+  window.addEventListener('load', () => setTimeout(drawConnections, 100));
+  window.addEventListener('resize', drawConnections);
+
+  // Hide scroll hint after scrolling
+  const hint = document.querySelector('.scroll-hint');
+  window.addEventListener('scroll', () => {
+    if (hint) hint.style.opacity = '0';
+  }, { once: true });
+</script>
+
+</body>
+</html>

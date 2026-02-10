@@ -94,7 +94,7 @@ export class MeController {
 
 		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
 
-		const changeableFields = ['email', 'firstName', 'lastName'] as const;
+		const changeableFields = ['email', 'firstName', 'lastName', 'avatar'] as const;
 		const fieldsChanged = changeableFields.filter(
 			(key) => key in payload && payload[key] !== preUpdateUser[key],
 		);

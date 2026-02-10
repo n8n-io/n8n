@@ -116,6 +116,8 @@ const MigrationReportView = async () =>
 const MigrationRuleReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRuleDetail.vue');
 
+const AgentsView = async () => await import('@/features/agents/AgentsView.vue');
+
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
@@ -918,6 +920,14 @@ export const routes: RouteRecordRaw[] = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
+		},
+	},
+	{
+		path: '/agents',
+		name: VIEWS.AGENTS,
+		component: AgentsView,
+		meta: {
+			middleware: ['authenticated'],
 		},
 	},
 	...projectsRoutes,

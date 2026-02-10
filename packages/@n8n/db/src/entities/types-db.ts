@@ -120,6 +120,7 @@ export interface PublicUser {
 	globalScopes?: Scope[];
 	signInType: AuthProviderType;
 	disabled: boolean;
+	avatar?: string | null;
 	settings?: IUserSettings | null; // External type from n8n-workflow
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;

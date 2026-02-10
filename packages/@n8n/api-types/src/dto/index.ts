@@ -159,3 +159,6 @@ export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secret
 export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
 
 export { CreateQuickConnectCredentialDto } from './quick-connect/create-quick-connect-credential.dto';
+
+export { CreateAgentDto } from './agents/create-agent.dto';
+export { UpdateAgentDto } from './agents/update-agent.dto';
