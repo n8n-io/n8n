@@ -192,10 +192,6 @@ const disabledTooltip = computed(() => {
 	return undefined;
 });
 
-const isPlanModeSelectorDisabled = computed(() => {
-	return builderStore.streaming || isChatInputDisabled.value;
-});
-
 /**
  * Check if questions have been answered (there's a user_answers message after this questions message)
  */
@@ -490,7 +486,6 @@ defineExpose({
 			<template v-if="builderStore.isPlanModeAvailable" #before-actions>
 				<PlanModeSelector
 					:model-value="builderStore.builderMode"
-					:disabled="isPlanModeSelectorDisabled"
 					@update:model-value="builderStore.setBuilderMode"
 				/>
 			</template>
