@@ -2925,4 +2925,146 @@ describe('AI Builder store', () => {
 			windowFocusSpy.mockRestore();
 		});
 	});
+
+	describe('focused nodes integration', () => {
+		it('should track focusedNodes.chatSent when confirmed nodes > 0', async () => {
+			const builderStore = useBuilderStore();
+
+			// Add focused nodes
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'fix this node' });
+
+			expect(track).toHaveBeenCalledWith(
+				'ai.focusedNodes.chatSent',
+				expect.objectContaining({
+					focused_count: 1,
+					has_deictic_ref: true,
+				}),
+			);
+		});
+
+		it('should detect deictic references in message text', async () => {
+			const builderStore = useBuilderStore();
+
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'these nodes need updating' });
+
+			expect(track).toHaveBeenCalledWith(
+				'ai.focusedNodes.chatSent',
+				expect.objectContaining({
+					has_deictic_ref: true,
+				}),
+			);
+		});
+
+		it('should not track focusedNodes.chatSent when no confirmed nodes', async () => {
+			const builderStore = useBuilderStore();
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'create a workflow' });
+
+			expect(track).not.toHaveBeenCalledWith('ai.focusedNodes.chatSent', expect.anything());
+		});
+
+		it('should set has_deictic_ref=false without deictic patterns', async () => {
+			const builderStore = useBuilderStore();
+
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'add error handling' });
+
+			expect(track).toHaveBeenCalledWith(
+				'ai.focusedNodes.chatSent',
+				expect.objectContaining({
+					has_deictic_ref: false,
+				}),
+			);
+		});
+
+		it('should include focused node names in user message', async () => {
+			const builderStore = useBuilderStore();
+
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'fix this' });
+
+			// Check that the user message in chatMessages includes focusedNodeNames
+			const userMessage = builderStore.chatMessages.find((m) => m.role === 'user');
+			expect(userMessage).toBeDefined();
+			expect((userMessage as Record<string, unknown>).focusedNodeNames).toEqual(['HTTP Request']);
+		});
+	});
 });

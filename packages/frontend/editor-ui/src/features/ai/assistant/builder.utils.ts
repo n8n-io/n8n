@@ -4,6 +4,7 @@ import {
 	type TextMessageWithRevertVersionId,
 } from '@/features/ai/assistant/assistant.types';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT } from '@/app/constants/experiments';
 import type { IRunExecutionData } from 'n8n-workflow';
@@ -34,6 +35,7 @@ export async function createBuilderPayload(
 ): Promise<ChatRequest.UserChatMessage> {
 	const assistantHelpers = useAIAssistantHelpers();
 	const posthogStore = usePostHog();
+	const focusedNodesStore = useFocusedNodesStore();
 	const workflowContext: ChatRequest.WorkflowContext = {};
 
 	// When privacy is OFF (allowSendingParameterValues=false), exclude parameter values from workflow
@@ -70,6 +72,11 @@ export async function createBuilderPayload(
 			options.nodesForSchema,
 			shouldExcludeParameterValues, // excludeValues: true when privacy OFF, false when privacy ON
 		);
+	}
+
+	const selectedNodes = focusedNodesStore.buildContextPayload();
+	if (selectedNodes.length > 0) {
+		workflowContext.selectedNodes = selectedNodes;
 	}
 
 	// Get feature flags from Posthog
