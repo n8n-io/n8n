@@ -11,11 +11,7 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
-import {
-	getNodeCredentialTypes,
-	buildCredentialRequirement,
-	isNodeSetupComplete,
-} from '../setupPanel.utils';
+import { getNodeCredentialTypes, buildNodeSetupState } from '../setupPanel.utils';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -89,33 +85,18 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * Node setup states - one entry per node that requires setup.
 	 * This data is used by cards component.
 	 */
-	const nodeSetupStates = computed<NodeSetupState[]>(() => {
-		return nodesRequiringSetup.value.map(({ node, credentialTypes, isTrigger }) => {
-			const credentialRequirements = credentialTypes.map((credType) =>
-				buildCredentialRequirement(
-					node,
-					credType,
-					getCredentialDisplayName,
-					credentialTypeToNodeNames.value,
-				),
-			);
-
-			const credentialsConfigured = isNodeSetupComplete(credentialRequirements);
-
-			// For triggers: complete only after successful execution
-			// For regular nodes: complete when credentials are configured
-			const isComplete = isTrigger
-				? credentialsConfigured && hasTriggerExecutedSuccessfully(node.name)
-				: credentialsConfigured;
-
-			return {
+	const nodeSetupStates = computed<NodeSetupState[]>(() =>
+		nodesRequiringSetup.value.map(({ node, credentialTypes, isTrigger }) =>
+			buildNodeSetupState(
 				node,
-				credentialRequirements,
-				isComplete,
+				credentialTypes,
+				getCredentialDisplayName,
+				credentialTypeToNodeNames.value,
 				isTrigger,
-			};
-		});
-	});
+				hasTriggerExecutedSuccessfully(node.name),
+			),
+		),
+	);
 
 	const totalCredentialsMissing = computed(() => {
 		return nodeSetupStates.value.reduce((total, state) => {

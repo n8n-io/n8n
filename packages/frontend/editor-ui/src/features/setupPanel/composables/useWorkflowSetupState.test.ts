@@ -76,6 +76,8 @@ describe('useWorkflowSetupState', () => {
 		// Default: getters return no-op functions
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
+		workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 		mockUpdateNodeProperties.mockReset();
