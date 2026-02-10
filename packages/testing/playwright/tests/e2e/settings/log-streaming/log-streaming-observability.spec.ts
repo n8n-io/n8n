@@ -20,11 +20,8 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 		await n8n.api.enableFeature('logStreaming');
 	});
 
-	test('should configure syslog destination and send test message', async ({
-		api,
-		n8nContainer,
-	}) => {
-		const obs = n8nContainer.services.observability;
+	test('should configure syslog destination and send test message', async ({ api, services }) => {
+		const obs = services.observability;
 
 		// Configure syslog destination pointing to VictoriaLogs
 		// syslog contains: host, port, protocol, facility, appName
@@ -57,8 +54,8 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 		await api.deleteLogStreamingDestination(destination.id);
 	});
 
-	test('should query metrics from VictoriaMetrics', async ({ api, n8nContainer }) => {
-		const obs = n8nContainer.services.observability;
+	test('should query metrics from VictoriaMetrics', async ({ api, services }) => {
+		const obs = services.observability;
 
 		// Import and activate a webhook workflow to generate metrics
 		const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(

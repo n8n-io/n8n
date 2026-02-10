@@ -11,8 +11,9 @@ test.use({
 test.describe('Memory Consumption @capability:observability', () => {
 	test('Memory consumption baseline with starter plan resources', async ({
 		n8nContainer,
+		services,
 	}, testInfo) => {
-		const obs = n8nContainer.services.observability;
+		const obs = services.observability;
 
 		const { heapUsedMB } = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 

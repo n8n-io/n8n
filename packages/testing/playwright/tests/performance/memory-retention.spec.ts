@@ -15,8 +15,12 @@ test.describe('Memory Leak Detection @capability:observability', () => {
 		await n8n.navigate.toWorkflows();
 	}
 
-	test('Memory should be released after actions', async ({ n8nContainer, n8n }, testInfo) => {
-		const obs = n8nContainer.services.observability;
+	test('Memory should be released after actions', async ({
+		n8nContainer,
+		n8n,
+		services,
+	}, testInfo) => {
+		const obs = services.observability;
 
 		const baseline = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 		await performMemoryAction(n8n);

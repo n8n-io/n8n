@@ -60,8 +60,8 @@ test.describe('Multi-main Observability @capability:observability @mode:multi-ma
 	 * This tests the Prometheus-compatible /metrics endpoint exposure and
 	 * service discovery configuration in VictoriaMetrics.
 	 */
-	test('should scrape metrics from all n8n instances', async ({ n8nContainer }) => {
-		const obs = n8nContainer.services.observability;
+	test('should scrape metrics from all n8n instances', async ({ services }) => {
+		const obs = services.observability;
 
 		// Expected targets: 2 mains + 1 worker = 3 instances
 		const expectedTargets = 3;
@@ -108,11 +108,11 @@ test.describe('Multi-main Observability @capability:observability @mode:multi-ma
 	 * - TCP syslog delivery from n8n to VictoriaLogs
 	 * - LogsQL query capability in VictoriaLogs
 	 */
-	test('should configure log streaming and receive events', async ({ api, n8nContainer }) => {
+	test('should configure log streaming and receive events', async ({ api, services }) => {
 		// ========== STEP 1: Enable log streaming feature ==========
 		await api.enableFeature('logStreaming');
 
-		const obs = n8nContainer.services.observability;
+		const obs = services.observability;
 
 		// ========== STEP 2: Configure syslog destination ==========
 		// Create a syslog destination pointing to VictoriaLogs

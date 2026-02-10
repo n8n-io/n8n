@@ -11,10 +11,11 @@ const getContainerName = (log: LogEntry): string | undefined => log.container_na
 
 test('Leader election @mode:multi-main @chaostest @capability:observability', async ({
 	n8nContainer,
+	services,
 }) => {
 	// Find the current leader by querying VictoriaLogs
 	// Vector enriches logs with container_name from Docker metadata
-	const leaderLog = await n8nContainer.logs.waitForLog('Leader is now this', {
+	const leaderLog = await services.observability.logs.waitForLog('Leader is now this', {
 		timeoutMs: 30000,
 		start: '-5m',
 	});
@@ -30,7 +31,7 @@ test('Leader election @mode:multi-main @chaostest @capability:observability', as
 
 	// Wait for new leader election (another instance should take over)
 	// Use LogsQL to exclude logs from the stopped container
-	const newLeaderLog = await n8nContainer.logs.waitForLog(
+	const newLeaderLog = await services.observability.logs.waitForLog(
 		`Leader is now this AND NOT container_name:${currentLeader}`,
 		{
 			timeoutMs: 30000,
