@@ -339,7 +339,7 @@ describe('useInstallNode', () => {
 			expect(track).not.toHaveBeenCalled();
 		});
 
-		it('should track telemetry events when telemetry is not provided', async () => {
+		it('should track telemetry events when telemetry is provided', async () => {
 			const { installNode } = useInstallNode();
 			const { track } = useTelemetry();
 
