@@ -1,11 +1,25 @@
 <script setup lang="ts">
+import { watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import NodeSetupCard from './NodeSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const workflowsStore = useWorkflowsStore();
 const { nodeSetupStates, isAllComplete, setCredential, unsetCredential } = useWorkflowSetupState();
+
+watch(isAllComplete, (allComplete) => {
+	if (allComplete) {
+		telemetry.track('User completed all setup steps', {
+			template_id: workflowsStore.workflow.meta?.templateId,
+			workflow_id: workflowsStore.workflowId,
+		});
+	}
+});
 
 const onCredentialSelected = (
 	nodeName: string,
@@ -16,10 +30,6 @@ const onCredentialSelected = (
 
 const onCredentialDeselected = (nodeName: string, credentialType: string) => {
 	unsetCredential(nodeName, credentialType);
-};
-
-const onTestNode = (_nodeName: string) => {
-	// TODO: Implement node execution
 };
 </script>
 
@@ -47,12 +57,12 @@ const onTestNode = (_nodeName: string) => {
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
 			<NodeSetupCard
-				v-for="state in nodeSetupStates"
+				v-for="(state, index) in nodeSetupStates"
 				:key="state.node.id"
 				:state="state"
+				:expanded="index === 0"
 				@credential-selected="onCredentialSelected(state.node.name, $event)"
 				@credential-deselected="onCredentialDeselected(state.node.name, $event)"
-				@test-node="onTestNode(state.node.name)"
 			/>
 			<div
 				v-if="isAllComplete"

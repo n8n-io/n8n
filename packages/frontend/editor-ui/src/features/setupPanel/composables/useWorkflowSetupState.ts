@@ -1,5 +1,4 @@
 import { computed, type Ref } from 'vue';
-import sortBy from 'lodash/sortBy';
 
 import type { INodeUi } from '@/Interface';
 import type { NodeSetupState } from '../setupPanel.types';
@@ -36,19 +35,35 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		return credentialTypeInfo?.displayName ?? credentialType;
 	};
 
+	const isTriggerNode = (node: INodeUi): boolean => {
+		return nodeTypesStore.isTriggerNode(node.type);
+	};
+
+	const hasTriggerExecutedSuccessfully = (nodeName: string): boolean => {
+		const runData = workflowsStore.getWorkflowResultDataByNodeName(nodeName);
+		return runData !== null && runData.length > 0;
+	};
+
 	/**
-	 * Get nodes that require credentials, sorted by X position (left to right).
+	 * Get nodes that require setup:
+	 * - Nodes with credential requirements
+	 * - Trigger nodes (regardless of credentials)
+	 * Sorted with triggers first, then by X position.
 	 */
-	const nodesRequiringCredentials = computed(() => {
-		const nodesWithCredentials = sourceNodes.value
+	const nodesRequiringSetup = computed(() => {
+		const nodesForSetup = sourceNodes.value
 			.filter((node) => !node.disabled)
 			.map((node) => ({
 				node,
 				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
+				isTrigger: isTriggerNode(node),
 			}))
-			.filter(({ credentialTypes }) => credentialTypes.length > 0);
+			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
 
-		return sortBy(nodesWithCredentials, ({ node }) => node.position[0]);
+		return nodesForSetup.sort(
+			(a, b) =>
+				Number(b.isTrigger) - Number(a.isTrigger) || a.node.position[0] - b.node.position[0],
+		);
 	});
 
 	/**
@@ -56,7 +71,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 */
 	const credentialTypeToNodeNames = computed(() => {
 		const map = new Map<string, string[]>();
-		for (const { node, credentialTypes } of nodesRequiringCredentials.value) {
+		for (const { node, credentialTypes } of nodesRequiringSetup.value) {
 			for (const credType of credentialTypes) {
 				const existing = map.get(credType) ?? [];
 				existing.push(node.name);
@@ -67,16 +82,18 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	/**
-	 * Node setup states - one entry per node that requires credentials.
+	 * Node setup states - one entry per node that requires setup.
 	 * This data is used by cards component.
 	 */
 	const nodeSetupStates = computed<NodeSetupState[]>(() =>
-		nodesRequiringCredentials.value.map(({ node, credentialTypes }) =>
+		nodesRequiringSetup.value.map(({ node, credentialTypes, isTrigger }) =>
 			buildNodeSetupState(
 				node,
 				credentialTypes,
 				getCredentialDisplayName,
 				credentialTypeToNodeNames.value,
+				isTrigger,
+				hasTriggerExecutedSuccessfully(node.name),
 			),
 		),
 	);

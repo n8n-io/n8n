@@ -31,10 +31,9 @@ vi.mock('./NodeSetupCard.vue', () => ({
 			'<span data-test-id="node-name">{{ state.node.name }}</span>' +
 			"<button data-test-id=\"select-credential-btn\" @click=\"$emit('credentialSelected', { credentialType: 'openAiApi', credentialId: 'cred-123' })\">Select</button>" +
 			'<button data-test-id="deselect-credential-btn" @click="$emit(\'credentialDeselected\', \'openAiApi\')">Deselect</button>' +
-			'<button data-test-id="test-node-btn" @click="$emit(\'testNode\')">Test</button>' +
 			'</div>',
 		props: ['state'],
-		emits: ['credentialSelected', 'credentialDeselected', 'testNode'],
+		emits: ['credentialSelected', 'credentialDeselected'],
 	},
 }));
 
@@ -59,6 +58,7 @@ const createState = (overrides: Partial<NodeSetupState> = {}): NodeSetupState =>
 			},
 		],
 		isComplete: false,
+		isTrigger: true,
 		...overrides,
 	};
 };

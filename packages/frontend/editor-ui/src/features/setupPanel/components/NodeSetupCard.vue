@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import SetupCredentialLabel from './SetupCredentialLabel.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import type { NodeSetupState } from '../setupPanel.types';
+import { useNodeExecution } from '@/app/composables/useNodeExecution';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const props = defineProps<{
 	state: NodeSetupState;
@@ -19,37 +22,95 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 const emit = defineEmits<{
 	credentialSelected: [payload: { credentialType: string; credentialId: string }];
 	credentialDeselected: [credentialType: string];
-	testNode: [];
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const nodeTypesStore = useNodeTypesStore();
+const workflowsStore = useWorkflowsStore();
+
+const nodeRef = computed(() => props.state.node);
+const { isExecuting, buttonLabel, buttonIcon, disabledReason, hasIssues, execute } =
+	useNodeExecution(nodeRef);
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
 
+// For triggers: button is disabled if node has issues, is executing, or there's a disabledReason
+const isButtonDisabled = computed(
+	() => isExecuting.value || hasIssues.value || !!disabledReason.value,
+);
+
+const showFooter = computed(() => props.state.isTrigger || props.state.isComplete);
+
+const tooltipText = computed(() => {
+	if (hasIssues.value) {
+		return i18n.baseText('ndv.execute.requiredFieldsMissing');
+	}
+	return disabledReason.value;
+});
+
 const onHeaderClick = () => {
 	expanded.value = !expanded.value;
 };
 
+// Tracks whether the user directly interacted with this card (credential select/deselect or test click).
+// Used to avoid firing telemetry for cards that were auto-completed via credential auto-assignment.
+const hadManualInteraction = ref(false);
+
 const onCredentialSelected = (credentialType: string, credentialId: string) => {
+	hadManualInteraction.value = true;
 	emit('credentialSelected', { credentialType, credentialId });
 };
 
 const onCredentialDeselected = (credentialType: string) => {
+	hadManualInteraction.value = true;
 	emit('credentialDeselected', credentialType);
 };
 
-const onTestClick = () => {
-	emit('testNode');
+const onTestClick = async () => {
+	hadManualInteraction.value = true;
+	await execute();
 };
+
+function collectNodeTypesFromRequirements(
+	requirements: Array<{ nodesWithSameCredential: string[] }>,
+) {
+	const types = new Set<string>();
+
+	for (const req of requirements) {
+		for (const nodeName of req.nodesWithSameCredential) {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (node) types.add(node.type);
+		}
+	}
+
+	return types;
+}
+
+function countRelatedNodes(requirements: Array<{ nodesWithSameCredential: string[] }>) {
+	let count = 0;
+	for (const req of requirements) count += req.nodesWithSameCredential.length;
+	return count;
+}
 
 watch(
 	() => props.state.isComplete,
 	(isComplete) => {
 		if (isComplete) {
 			expanded.value = false;
+
+			if (hadManualInteraction.value) {
+				telemetry.track('User completed setup step', {
+					template_id: workflowsStore.workflow.meta?.templateId,
+					workflow_id: workflowsStore.workflowId,
+					type: props.state.isTrigger ? 'trigger' : 'credential',
+					nodes: Array.from(collectNodeTypesFromRequirements(props.state.credentialRequirements)),
+					related_nodes_count: countRelatedNodes(props.state.credentialRequirements),
+				});
+				hadManualInteraction.value = false;
+			}
 		}
 	},
 );
@@ -64,7 +125,14 @@ onMounted(() => {
 <template>
 	<div
 		data-test-id="node-setup-card"
-		:class="[$style.card, { [$style.collapsed]: !expanded, [$style.completed]: state.isComplete }]"
+		:class="[
+			$style.card,
+			{
+				[$style.collapsed]: !expanded,
+				[$style.completed]: state.isComplete,
+				[$style['no-content']]: !state.credentialRequirements.length,
+			},
+		]"
 	>
 		<header data-test-id="node-setup-card-header" :class="$style.header" @click="onHeaderClick">
 			<N8nIcon
@@ -75,16 +143,36 @@ onMounted(() => {
 				size="medium"
 			/>
 			<NodeIcon v-else :node-type="nodeType" :size="16" />
-			<span :class="$style['node-name']">{{ props.state.node.name }}</span>
+			<N8nText :class="$style['node-name']" size="medium" color="text-dark">
+				{{ props.state.node.name }}
+			</N8nText>
+			<N8nTooltip v-if="state.isTrigger">
+				<template #content>
+					{{ i18n.baseText('nodeCreator.nodeItem.triggerIconTitle') }}
+				</template>
+				<N8nIcon
+					:class="[$style['header-icon'], $style['trigger']]"
+					icon="zap"
+					size="small"
+					color="text-light"
+				/>
+			</N8nTooltip>
 			<N8nIcon
-				:class="$style.chevron"
-				:icon="expanded ? 'chevron-up' : 'chevron-down'"
-				size="small"
+				:class="[$style['header-icon'], $style['chevron']]"
+				:icon="expanded ? 'chevrons-down-up' : 'chevrons-up-down'"
+				size="medium"
+				color="text-light"
 			/>
 		</header>
 
 		<template v-if="expanded">
-			<div :class="$style.content">
+			<div
+				v-if="state.credentialRequirements.length"
+				:class="{ [$style.content]: true, ['pb-s']: !showFooter }"
+			>
+				<N8nText v-if="state.isTrigger" size="medium" color="text-light" class="mb-3xs">
+					{{ i18n.baseText('setupPanel.trigger.credential.note') }}
+				</N8nText>
 				<div
 					v-for="requirement in state.credentialRequirements"
 					:key="requirement.credentialType"
@@ -107,21 +195,25 @@ onMounted(() => {
 				</div>
 			</div>
 
-			<footer :class="$style.footer">
+			<footer v-if="showFooter" :class="$style.footer">
 				<div v-if="state.isComplete" :class="$style['footer-complete-check']">
 					<N8nIcon icon="check" :class="$style['complete-icon']" size="large" />
 					<N8nText size="medium" color="success">
 						{{ i18n.baseText('generic.complete') }}
 					</N8nText>
 				</div>
-				<N8nButton
-					data-test-id="node-setup-card-test-button"
-					:label="i18n.baseText('node.testStep')"
-					:disabled="!state.isComplete"
-					icon="flask-conical"
-					size="small"
-					@click="onTestClick"
-				/>
+				<N8nTooltip v-if="state.isTrigger" :disabled="!tooltipText" placement="top">
+					<template #content>{{ tooltipText }}</template>
+					<N8nButton
+						data-test-id="node-setup-card-test-button"
+						:label="buttonLabel"
+						:disabled="isButtonDisabled"
+						:loading="isExecuting"
+						:icon="buttonIcon"
+						size="small"
+						@click="onTestClick"
+					/>
+				</N8nTooltip>
 			</footer>
 		</template>
 	</div>
@@ -132,10 +224,27 @@ onMounted(() => {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--2xs);
 	background-color: var(--color--background--light-2);
 	border: var(--border);
 	border-radius: var(--radius);
+
+	.header-icon {
+		&.chevron {
+			display: none;
+		}
+	}
+
+	&:hover {
+		.header-icon {
+			&.chevron {
+				display: block;
+			}
+			&.trigger {
+				display: none;
+			}
+		}
+	}
 }
 
 .header {
@@ -148,21 +257,19 @@ onMounted(() => {
 	.card:not(.collapsed) & {
 		margin-bottom: var(--spacing--sm);
 	}
+
+	.card.no-content & {
+		margin-bottom: 0;
+	}
 }
 
 .node-name {
 	flex: 1;
-	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
-	color: var(--color--text);
 }
 
 .complete-icon {
 	color: var(--color--success);
-}
-
-.chevron {
-	color: var(--color--text--tint-1);
 }
 
 .content {
@@ -185,7 +292,7 @@ onMounted(() => {
 .footer {
 	display: flex;
 	justify-content: flex-end;
-	padding: 0 var(--spacing--sm) var(--spacing--sm);
+	padding: var(--spacing--sm);
 }
 
 .footer-complete-check {
