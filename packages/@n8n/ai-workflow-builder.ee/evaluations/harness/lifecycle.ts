@@ -7,10 +7,10 @@ import type {
 	Feedback,
 	ExampleResult,
 	RunSummary,
-} from './harness-types.js';
-import type { EvalLogger } from './logger.js';
+} from './harness-types';
+import type { EvalLogger } from './logger';
 import { groupByEvaluator, selectScoringItems, calculateFiniteAverage } from './score-calculator';
-import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 
 /**
  * Truncate a string for display.

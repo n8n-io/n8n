@@ -30,6 +30,7 @@ import { DataTableRowReturn } from 'n8n-workflow';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -40,12 +41,14 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { ProjectService } from '@/services/project.service.ee';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly projectService: ProjectService,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
 
 	private handleDataTableColumnOperationError(e: unknown): never {
@@ -66,6 +69,15 @@ export class DataTableController {
 			throw new InternalServerError(e.message, e);
 		}
 		throw e;
+	}
+
+	private checkInstanceWriteAccess(): void {
+		const preferences = this.sourceControlPreferencesService.getPreferences();
+		if (preferences.branchReadOnly) {
+			throw new ForbiddenError(
+				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
+			);
+		}
 	}
 
 	@Middleware()
@@ -91,6 +103,7 @@ export class DataTableController {
 		_res: Response,
 		@Body dto: CreateDataTableDto,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.createDataTable(req.params.projectId, dto);
 		} catch (e: unknown) {
@@ -126,6 +139,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpdateDataTableDto,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.updateDataTable(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
@@ -148,6 +162,7 @@ export class DataTableController {
 		_res: Response,
 		@Param('dataTableId') dataTableId: string,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.deleteDataTable(dataTableId, req.params.projectId);
 		} catch (e: unknown) {
@@ -189,6 +204,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: AddDataTableColumnDto,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.addColumn(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
@@ -204,6 +220,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Param('columnId') columnId: string,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.deleteColumn(dataTableId, req.params.projectId, columnId);
 		} catch (e: unknown) {
@@ -220,6 +237,7 @@ export class DataTableController {
 		@Param('columnId') columnId: string,
 		@Body dto: MoveDataTableColumnDto,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.moveColumn(
 				dataTableId,
@@ -241,6 +259,7 @@ export class DataTableController {
 		@Param('columnId') columnId: string,
 		@Body dto: RenameDataTableColumnDto,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.renameColumn(
 				dataTableId,
@@ -325,6 +344,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: AddDataTableRowsDto,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.insertRows(
 				dataTableId,
@@ -353,6 +373,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpsertDataTableRowDto,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			// because of strict overloads, we need separate paths
 			const dryRun = dto.dryRun;
@@ -405,6 +426,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpdateDataTableRowDto,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			// because of strict overloads, we need separate paths
 			const dryRun = dto.dryRun;
@@ -457,6 +479,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Query dto: DeleteDataTableRowsDto,
 	) {
+		this.checkInstanceWriteAccess();
 		try {
 			return await this.dataTableService.deleteRows(
 				dataTableId,

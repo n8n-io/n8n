@@ -86,7 +86,7 @@ export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
  * Matches the CoordinationLogEntry type from src/types/coordination.ts
  */
 interface CoordinationLogEntry {
-	phase: 'discovery' | 'builder' | 'state_management' | 'responder';
+	phase: 'discovery' | 'builder' | 'state_management' | 'responder' | 'planner';
 	status: 'completed' | 'in_progress' | 'error';
 	timestamp: number;
 }
