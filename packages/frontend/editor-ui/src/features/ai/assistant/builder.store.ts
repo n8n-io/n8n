@@ -755,6 +755,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			payload.resumeData = resumeData;
 		}
 
+		// Clear confirmed nodes from input now that they've been captured
+		// in both the chat UI message and the API payload
+		focusedNodesStore.removeAllConfirmed();
+
 		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
 
 		// Abort previous streaming request if any
@@ -785,7 +789,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				},
 				() => {
 					stopStreaming();
-					focusedNodesStore.clearAll();
 				},
 				(e) => handleServiceError(e, userMessageId, retry),
 				revertVersion?.id,

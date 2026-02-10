@@ -4616,5 +4616,7 @@
 	"focusedNodes.nodesCount": "{count} nodes",
 	"focusedNodes.noMatches": "No nodes matching \"{query}\"",
 	"focusedNodes.mentionPlaceholder": "Search nodes...",
-	"focusedNodes.mentionTooltip": "Mention a node"
+	"focusedNodes.mentionTooltip": "Mention a node",
+	"focusedNodes.allNodes": "All nodes",
+	"focusedNodes.unconfirmedTooltip": "Add as context for the assistant"
 }
