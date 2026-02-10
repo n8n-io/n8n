@@ -1,8 +1,4 @@
-import {
-	AnnotationTagMappingRepository,
-	ExecutionAnnotationRepository,
-	ExecutionRepository,
-} from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -22,6 +18,7 @@ import type { ExecutionRequest } from '../../../types';
 import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
+import { getExecutionTags, mapAnnotationTags, updateExecutionTags } from './executions.service';
 
 export = {
 	deleteExecution: [
@@ -220,17 +217,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const annotation = await Container.get(ExecutionAnnotationRepository).findOne({
-				where: { execution: { id } },
-				relations: ['tags'],
-			});
-
-			const tags = (annotation?.tags ?? []).map(({ id: tagId, name, createdAt, updatedAt }) => ({
-				id: tagId,
-				name,
-				createdAt,
-				updatedAt,
-			}));
+			const tags = await getExecutionTags(id);
 
 			return res.json(tags);
 		},
@@ -240,7 +227,7 @@ export = {
 		async (req: ExecutionRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const newTagIds = req.body.map((tag) => tag.id);
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:update']);
 
 			if (!sharedWorkflowsIds.length) {
 				return res.status(404).json({ message: 'Not Found' });
@@ -254,40 +241,16 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			// Upsert annotation (create if it doesn't exist)
-			await Container.get(ExecutionAnnotationRepository).upsert({ execution: { id } }, [
-				'execution',
-			]);
-
-			const annotation = await Container.get(ExecutionAnnotationRepository).findOneOrFail({
-				where: { execution: { id } },
-			});
-
 			try {
-				await Container.get(AnnotationTagMappingRepository).overwriteTags(annotation.id, newTagIds);
+				const updatedTags = await updateExecutionTags(id, newTagIds);
+				const tags = mapAnnotationTags(updatedTags);
+				return res.json(tags);
 			} catch (error) {
 				if (error instanceof QueryFailedError) {
 					return res.status(404).json({ message: 'Some tags not found' });
 				}
 				throw error;
 			}
-
-			// Fetch updated tags to return
-			const updatedAnnotation = await Container.get(ExecutionAnnotationRepository).findOneOrFail({
-				where: { execution: { id } },
-				relations: ['tags'],
-			});
-
-			const tags = (updatedAnnotation.tags ?? []).map(
-				({ id: tagId, name, createdAt, updatedAt }) => ({
-					id: tagId,
-					name,
-					createdAt,
-					updatedAt,
-				}),
-			);
-
-			return res.json(tags);
 		},
 	],
 };
