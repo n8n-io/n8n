@@ -95,6 +95,44 @@ const isPostgres = dbType === 'postgresdb';
 const dbName = globalConfig.database[dbType].database;
 const tablePrefix = globalConfig.database.tablePrefix;
 
+/**
+ * Copies data from one table to another in batches.
+ * @internal Exported for testing purposes only. Use createContext.copyTable instead.
+ */
+export const copyTable = async (
+	queryRunner: QueryRunner,
+	tablePrefix: string,
+	fromTable: string,
+	toTable: string,
+	fromFields?: string[],
+	toFields?: string[],
+	batchSize?: number,
+) => {
+	const { driver } = queryRunner.connection;
+	fromTable = driver.escape(`${tablePrefix}${fromTable}`);
+	toTable = driver.escape(`${tablePrefix}${toTable}`);
+	const fromFieldsStr = fromFields?.length
+		? fromFields.map((f) => driver.escape(f)).join(', ')
+		: '*';
+	const toFieldsStr = toFields?.length
+		? `(${toFields.map((f) => driver.escape(f)).join(', ')})`
+		: '';
+
+	const total = await queryRunner
+		.query(`SELECT COUNT(*) AS count FROM ${fromTable}`)
+		.then((rows: Array<{ count: number }>) => rows[0].count);
+
+	batchSize = batchSize ?? 10;
+	let migrated = 0;
+	while (migrated < total) {
+		const offset = migrated > 0 ? ` OFFSET ${migrated}` : '';
+		await queryRunner.query(
+			`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} LIMIT ${batchSize}${offset}`,
+		);
+		migrated += batchSize;
+	}
+};
+
 const createContext = (queryRunner: QueryRunner, migration: Migration): MigrationContext => ({
 	logger: Container.get(Logger),
 	tablePrefix,
@@ -150,29 +188,15 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 		toFields?: string[],
 		batchSize?: number,
 	) => {
-		const { driver } = queryRunner.connection;
-		fromTable = driver.escape(`${tablePrefix}${fromTable}`);
-		toTable = driver.escape(`${tablePrefix}${toTable}`);
-		const fromFieldsStr = fromFields?.length
-			? fromFields.map((f) => driver.escape(f)).join(', ')
-			: '*';
-		const toFieldsStr = toFields?.length
-			? `(${toFields.map((f) => driver.escape(f)).join(', ')})`
-			: '';
-
-		const total = await queryRunner
-			.query(`SELECT COUNT(*) AS count FROM ${fromTable}`)
-			.then((rows: Array<{ count: number }>) => rows[0].count);
-
-		batchSize = batchSize ?? 10;
-		let migrated = 0;
-		while (migrated < total) {
-			const offset = migrated > 0 ? ` OFFSET ${migrated}` : '';
-			await queryRunner.query(
-				`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} ${offset} LIMIT ${batchSize}`,
-			);
-			migrated += batchSize;
-		}
+		return await copyTable(
+			queryRunner,
+			tablePrefix,
+			fromTable,
+			toTable,
+			fromFields,
+			toFields,
+			batchSize,
+		);
 	},
 });
 

@@ -112,6 +112,7 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		deactivatedVersionId: string | null;
 	};
 
 	'workflow-pre-execute': {
@@ -147,6 +148,15 @@ export type RelayEventMap = {
 			| 'integrated'
 			| 'evaluation'
 			| 'chat';
+	};
+
+	'workflow-version-updated': {
+		user: UserLike;
+		workflowId: string;
+		workflowName: string;
+		versionId: string;
+		versionName?: string | null;
+		versionDescription?: string | null;
 	};
 
 	// #endregion
@@ -673,5 +683,15 @@ export type RelayEventMap = {
 		windowEndIso: string;
 		compactionStartTime: Date;
 	};
+	// #endregion
+
+	// #region Instance Policies
+
+	'instance-policies-updated': {
+		user: UserLike;
+		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+		value: boolean;
+	};
+
 	// #endregion
 } & AiEventMap;

@@ -100,6 +100,14 @@ const containerClasses = computed(() => [
 	},
 ]);
 
+const inputWrapperClasses = computed(() => [
+	$style.inputWrapper,
+	{
+		[$style.disabled]: props.disabled,
+		[$style.readonly]: props.readonly,
+	},
+]);
+
 // Track focus state for blur/focus events
 const isFocused = ref(false);
 
@@ -290,69 +298,72 @@ defineExpose({ focus, blur, select });
 			<slot name="prepend" />
 		</span>
 
-		<!-- Prefix slot -->
-		<span v-if="$slots.prefix" :class="$style.prefix">
-			<slot name="prefix" />
-		</span>
+		<!-- Input wrapper (holds border, contains prefix/input/suffix) -->
+		<div :class="inputWrapperClasses" @click="focus">
+			<!-- Prefix slot -->
+			<span v-if="$slots.prefix" :class="$style.prefix">
+				<slot name="prefix" />
+			</span>
 
-		<!-- Input element -->
-		<input
-			v-if="type !== 'textarea'"
-			ref="inputRef"
-			:type="type"
-			:value="modelValue ?? ''"
-			:class="$style.input"
-			:placeholder="placeholder"
-			:disabled="disabled"
-			:readonly="readonly"
-			:maxlength="maxlength"
-			:autocomplete="autocomplete"
-			:name="name"
-			v-bind="inputAttrs"
-			@input="onInput"
-			@blur="onBlur"
-			@focus="onFocus"
-			@keydown="onKeydown"
-			@mousedown="onMousedown"
-		/>
+			<!-- Input element -->
+			<input
+				v-if="type !== 'textarea'"
+				ref="inputRef"
+				:type="type"
+				:value="modelValue ?? ''"
+				:class="$style.input"
+				:placeholder="placeholder"
+				:disabled="disabled"
+				:readonly="readonly"
+				:maxlength="maxlength"
+				:autocomplete="autocomplete"
+				:name="name"
+				v-bind="inputAttrs"
+				@input="onInput"
+				@blur="onBlur"
+				@focus="onFocus"
+				@keydown="onKeydown"
+				@mousedown="onMousedown"
+			/>
 
-		<!-- Textarea element -->
-		<textarea
-			v-else
-			ref="inputRef"
-			:value="modelValue ?? ''"
-			:class="[$style.input, $style.textarea]"
-			:placeholder="placeholder"
-			:disabled="disabled"
-			:readonly="readonly"
-			:rows="autosize ? undefined : rows"
-			:maxlength="maxlength"
-			:autocomplete="autocomplete"
-			:name="name"
-			:style="autosize ? { ...textareaStyles, resize: 'none', overflow: 'hidden' } : undefined"
-			v-bind="inputAttrs"
-			@input="onInput"
-			@blur="onBlur"
-			@focus="onFocus"
-			@keydown="onKeydown"
-			@mousedown="onMousedown"
-		/>
+			<!-- Textarea element -->
+			<textarea
+				v-else
+				ref="inputRef"
+				:value="modelValue ?? ''"
+				:class="[$style.input, $style.textarea]"
+				:placeholder="placeholder"
+				:disabled="disabled"
+				:readonly="readonly"
+				:rows="autosize ? undefined : rows"
+				:maxlength="maxlength"
+				:autocomplete="autocomplete"
+				:name="name"
+				:style="autosize ? { ...textareaStyles, resize: 'none', overflow: 'hidden' } : undefined"
+				v-bind="inputAttrs"
+				@input="onInput"
+				@blur="onBlur"
+				@focus="onFocus"
+				@keydown="onKeydown"
+				@mousedown="onMousedown"
+			/>
 
-		<!-- Suffix slot -->
-		<span v-if="$slots.suffix" :class="$style.suffix">
-			<slot name="suffix" />
-		</span>
+			<!-- Suffix slot -->
+			<span v-if="$slots.suffix" :class="$style.suffix">
+				<slot name="suffix" />
+			</span>
 
-		<!-- Clear button -->
-		<button
-			v-if="showClearButton"
-			type="button"
-			:class="$style.clearButton"
-			tabindex="-1"
-			@click="onClear"
-		>
-			<Icon icon="x" size="small" />
-		</button>
+			<!-- Clear button -->
+			<button
+				v-if="showClearButton"
+				type="button"
+				:class="$style.clearButton"
+				tabindex="-1"
+				@click="onClear"
+			>
+				<Icon icon="x" size="small" />
+			</button>
+		</div>
 
 		<!-- Append slot (outside input container, after) -->
 		<span v-if="$slots.append" :class="$style.append">
@@ -362,17 +373,44 @@ defineExpose({ focus, blur, select });
 </template>
 
 <style module lang="scss">
-// Local focus mixin matching Element Plus inset shadow pattern
-// TODO: Replace with @include focus.focus-visible mixin from _focus.scss when we have the new design tokens ready
-@mixin input-focus {
-	border-color: var(--color--secondary);
-}
-
 .inputContainer {
 	display: inline-flex;
 	align-items: center;
 	width: 100%;
 	gap: var(--spacing--3xs);
+}
+
+.inputWrapper {
+	display: inline-flex;
+	align-items: center;
+	flex: 1;
+	min-width: 0;
+	gap: var(--spacing--3xs);
+	border-radius: var(--input--radius--top-left, var(--input--radius, var(--radius)))
+		var(--input--radius--top-right, var(--input--radius, var(--radius)))
+		var(--input--radius--bottom-right, var(--input--radius, var(--radius)))
+		var(--input--radius--bottom-left, var(--input--radius, var(--radius)));
+	border: var(--input--border-width, var(--border-width))
+		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
+	background-color: var(--input--color--background, var(--color--background--light-2));
+
+	&:hover:not(.disabled):not(:focus-within) {
+		border-color: var(--input--border-color--hover, var(--color--foreground--shade-1));
+	}
+
+	&:focus-within {
+		border-color: var(--input--border-color--focus, var(--color--secondary));
+	}
+
+	&.disabled {
+		background-color: var(--color--background--light-3);
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+
+	&.readonly {
+		background-color: var(--color--background--light-3);
+	}
 }
 
 .disabled {
@@ -383,109 +421,109 @@ defineExpose({ focus, blur, select });
 	cursor: default;
 }
 
-.hasPrepend {
+.hasPrepend .inputWrapper {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 }
 
-.hasAppend {
+.hasAppend .inputWrapper {
 	border-top-right-radius: 0;
 	border-bottom-right-radius: 0;
 }
 
-/* Size variants - set min-height on input elements */
+/* Size variants - padding on wrapper, height on input */
+.xlarge .inputWrapper {
+	padding: 0 var(--spacing--xs);
+}
+
 .xlarge .input {
 	min-height: 48px;
-	padding: 0 var(--spacing--xs);
-	font-size: var(--font-size--md);
+	font-size: var(--input--font-size, var(--font-size--md));
 }
 
 .xlarge .textarea {
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	font-size: var(--font-size--md);
+	padding: var(--spacing--2xs) 0;
+	font-size: var(--input--font-size, var(--font-size--md));
+}
+
+.large .inputWrapper {
+	padding: 0 var(--spacing--xs);
 }
 
 .large .input {
 	min-height: 40px;
-	padding: 0 var(--spacing--xs);
-	font-size: var(--font-size--sm);
+	font-size: var(--input--font-size, var(--font-size--sm));
 }
 
 .large .textarea {
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	font-size: var(--font-size--sm);
+	padding: var(--spacing--2xs) 0;
+	font-size: var(--input--font-size, var(--font-size--sm));
+}
+
+.medium .inputWrapper {
+	padding: 0 var(--spacing--2xs);
 }
 
 .medium .input {
 	min-height: 36px;
-	padding: 0 var(--spacing--2xs);
-	font-size: var(--font-size--sm);
+	font-size: var(--input--font-size, var(--font-size--sm));
 }
 
 .medium .textarea {
-	padding: var(--spacing--2xs);
-	font-size: var(--font-size--sm);
+	padding: var(--spacing--2xs) 0;
+	font-size: var(--input--font-size, var(--font-size--sm));
+}
+
+.small .inputWrapper {
+	padding: 0 var(--spacing--2xs);
 }
 
 .small .input {
 	min-height: 28px;
-	padding: 0 var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
+	font-size: var(--input--font-size, var(--font-size--2xs));
 }
 
 .small .textarea {
-	padding: var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
+	padding: var(--spacing--2xs) 0;
+	font-size: var(--input--font-size, var(--font-size--2xs));
+}
+
+.mini .inputWrapper {
+	padding: 0 var(--spacing--3xs);
 }
 
 .mini .input {
 	min-height: 22px;
-	padding: 0 var(--spacing--3xs);
-	font-size: var(--font-size--3xs);
+	font-size: var(--input--font-size, var(--font-size--3xs));
 }
 
 .mini .textarea {
-	padding: var(--spacing--3xs);
-	font-size: var(--font-size--3xs);
+	padding: var(--spacing--3xs) 0;
+	font-size: var(--input--font-size, var(--font-size--3xs));
 }
 
 .input {
 	flex: 1;
 	min-width: 0;
-	border-radius: var(--radius);
-	border: var(--input--border-width, var(--border-width))
-		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
-	background-color: var(--input--color--background, var(--color--background--light-2));
+	padding: 0;
+	border: none;
+	background: transparent;
 	outline: none;
 	font-family: inherit;
 	color: var(--color--text--shade-1);
-
-	&:focus {
-		outline: none;
-	}
-
-	&:focus-visible {
-		@include input-focus;
-	}
 }
 
 .input::placeholder {
 	color: var(--color--text--tint-1);
 }
 
-.input:hover:not(:disabled):not(:focus-visible) {
-	border-color: var(--color--foreground--shade-1);
+.input:read-only {
+	cursor: default;
 }
 
 .input:disabled {
-	background-color: var(--color--background--light-3);
 	cursor: not-allowed;
 	color: var(--color--text--tint-1);
-	opacity: 0.6;
-}
-
-.input:read-only {
-	background-color: var(--color--background--light-3);
 }
 
 .textarea {
@@ -493,40 +531,24 @@ defineExpose({ focus, blur, select });
 	min-width: 0;
 	resize: vertical;
 	line-height: var(--line-height--md);
-	border-radius: var(--radius);
-	border: var(--input--border-width, var(--border-width))
-		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
-	background-color: var(--input--color--background, var(--color--background--light-2));
+	border: none;
+	background: transparent;
 	outline: none;
 	font-family: inherit;
 	color: var(--color--text--shade-1);
-
-	&:focus {
-		outline: none;
-	}
-
-	&:focus-visible {
-		@include input-focus;
-	}
 }
 
 .textarea::placeholder {
 	color: var(--color--text--tint-1);
 }
 
-.textarea:hover:not(:disabled):not(:focus-visible) {
-	border-color: var(--color--foreground--shade-1);
+.textarea:read-only {
+	cursor: default;
 }
 
 .textarea:disabled {
-	background-color: var(--color--background--light-3);
 	cursor: not-allowed;
 	color: var(--color--text--tint-1);
-	opacity: 0.6;
-}
-
-.textarea:read-only {
-	background-color: var(--color--background--light-3);
 }
 
 .prefix,

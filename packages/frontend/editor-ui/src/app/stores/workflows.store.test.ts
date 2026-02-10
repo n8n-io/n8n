@@ -65,9 +65,11 @@ const getNodeType = vi.fn((_nodeTypeName: string): Partial<INodeTypeDescription>
 	webhooks: [],
 	properties: [],
 }));
+const communityNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+		communityNodeType,
 	})),
 }));
 
@@ -1468,7 +1470,7 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('archiveWorkflow', () => {
-		it('should call the API to archive the workflow', async () => {
+		it('should call the API to archive the workflow without checksum', async () => {
 			const workflowsListStore = useWorkflowsListStore();
 			const workflowId = '1';
 			const versionId = '00000000-0000-0000-0000-000000000000';
@@ -1504,6 +1506,42 @@ describe('useWorkflowsStore', () => {
 				}),
 				'POST',
 				`/workflows/${workflowId}/archive`,
+				{ expectedChecksum: undefined },
+			);
+		});
+
+		it('should pass expectedChecksum to the API when provided', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			const workflowId = '1';
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+			const expectedChecksum = 'test-checksum-123';
+
+			workflowsListStore.workflowsById = {
+				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
+			};
+			workflowsStore.workflow.active = true;
+			workflowsStore.workflow.isArchived = false;
+			workflowsStore.workflow.id = workflowId;
+			workflowsStore.workflow.versionId = versionId;
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+					checksum: 'checksum',
+				}));
+
+			await workflowsStore.archiveWorkflow(workflowId, expectedChecksum);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/archive`,
+				{ expectedChecksum },
 			);
 		});
 	});
@@ -2383,6 +2421,108 @@ describe('useWorkflowsStore', () => {
 			await workflowsStore.fetchLastSuccessfulExecution();
 
 			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getNodeTypes() - getByNameAndVersion', () => {
+		beforeEach(() => {
+			setActivePinia(createPinia());
+			workflowsStore = useWorkflowsStore();
+		});
+
+		it('should return node type for core nodes', () => {
+			const mockNodeType = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+			});
+
+			getNodeType.mockReturnValue(mockNodeType);
+
+			const nodeTypes = workflowsStore.getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.httpRequest', 1);
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-base.httpRequest');
+		});
+
+		it('should fallback to community node type when core node not found', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-test.test',
+				displayName: 'Test Node',
+			});
+
+			getNodeType.mockReturnValue(null);
+
+			communityNodeType.mockReturnValue({
+				name: 'n8n-nodes-test.test',
+				packageName: 'n8n-nodes-test',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 0,
+				numberOfDownloads: 0,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Test Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: false,
+			});
+
+			const nodeTypes = workflowsStore.getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-test.test');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-test.test');
+		});
+
+		it('should return undefined when node type is not found', () => {
+			getNodeType.mockReturnValue(null);
+
+			communityNodeType.mockReturnValue(undefined);
+
+			const nodeTypes = workflowsStore.getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('non-existent-node');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should use community node description when available and core node is null', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-community.customNode',
+				displayName: 'Custom Community Node',
+				inputs: ['main'],
+				outputs: ['main'],
+			});
+
+			getNodeType.mockReturnValue(null);
+
+			communityNodeType.mockReturnValue({
+				name: 'n8n-nodes-community.customNode',
+				packageName: 'n8n-nodes-community',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 10,
+				numberOfDownloads: 100,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Custom Community Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: true,
+			});
+
+			const nodeTypes = workflowsStore.getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.customNode');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-community.customNode');
+			expect(result?.description.displayName).toBe('Custom Community Node');
 		});
 	});
 });

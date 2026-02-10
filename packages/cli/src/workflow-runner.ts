@@ -348,7 +348,7 @@ export class WorkflowRunner {
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}
-					fullRunData.status = this.activeExecutions.getStatus(executionId);
+
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
@@ -390,6 +390,12 @@ export class WorkflowRunner {
 			pushRef: data.pushRef,
 			streamingEnabled: data.streamingEnabled,
 			restartExecutionId,
+			// MCP-specific fields for queue mode support
+			isMcpExecution: data.isMcpExecution,
+			mcpType: data.mcpType,
+			mcpSessionId: data.mcpSessionId,
+			mcpMessageId: data.mcpMessageId,
+			mcpToolCall: data.mcpToolCall,
 		};
 
 		if (!this.scalingService) {

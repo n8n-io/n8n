@@ -106,6 +106,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			currentNodeParameters: newNode.parameters,
 			credentials: newNode.credentials,
 			projectId: projectsStore.currentProjectId,
+			workflowId: workflowsStore.workflowId,
 		});
 
 		// Load available tools

@@ -41,10 +41,6 @@ const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
 const chatWidth = computed(() => chatPanelStore.width);
 
-const allowSendingParameterValues = computed(
-	() => settingsStore.settings.ai.allowSendingParameterValues,
-);
-
 function onResize(data: { direction: string; x: number; width: number }) {
 	chatPanelStore.updateWidth(data.width);
 }
@@ -142,22 +138,14 @@ onBeforeUnmount(() => {
 				<div :class="$style.assistantContent">
 					<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
 						<template v-if="canToggleModes" #header>
-							<HubSwitcher
-								:is-build-mode="isBuildMode"
-								:disabled="!allowSendingParameterValues"
-								@toggle="toggleAssistantMode"
-							/>
+							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 						</template>
 					</AskAssistantBuild>
 					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
 						<!-- Header switcher is only visible when both modes are available in current view -->
 						<template v-if="canToggleModes" #header>
 							<AskModeCoachmark :visible="canShowCoachmark" @dismiss="onDismissCoachmark">
-								<HubSwitcher
-									:is-build-mode="isBuildMode"
-									:disabled="!allowSendingParameterValues"
-									@toggle="toggleAssistantMode"
-								/>
+								<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 							</AskModeCoachmark>
 						</template>
 					</AskAssistantChat>

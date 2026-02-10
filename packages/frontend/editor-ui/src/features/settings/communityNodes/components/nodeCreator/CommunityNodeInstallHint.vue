@@ -24,7 +24,7 @@ defineProps<Props>();
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--sm);
-	margin: var(--spacing--xs);
+	margin: var(--spacing--sm);
 	margin-top: 0;
 	padding: var(--spacing--xs);
 	border: var(--border-width) solid var(--color--foreground);

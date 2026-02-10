@@ -1,19 +1,24 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { User, type WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
+import { User, WorkflowHistoryRepository } from '@n8n/db';
+import type { UpdateResult } from '@n8n/typeorm';
 import { mockClear } from 'jest-mock-extended';
 
+import { EventService } from '@/events/event.service';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { getWorkflow } from '@test-integration/workflow';
+import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 const logger = mockLogger();
 const workflowFinderService = mockInstance(WorkflowFinderService);
+const eventService = mockInstance(EventService);
 const workflowHistoryService = new WorkflowHistoryService(
 	logger,
 	workflowHistoryRepository,
 	workflowFinderService,
+	eventService,
 );
 const testUser = Object.assign(new User(), {
 	id: '1234',
@@ -23,9 +28,19 @@ const testUser = Object.assign(new User(), {
 	lastName: 'Doe',
 });
 
+const mockUpdateResult: UpdateResult = {
+	affected: 1,
+	generatedMaps: [],
+	raw: [],
+};
+
 describe('WorkflowHistoryService', () => {
 	beforeEach(() => {
 		mockClear(workflowHistoryRepository.insert);
+		mockClear(workflowHistoryRepository.update);
+		mockClear(workflowHistoryRepository.find);
+		mockClear(workflowHistoryRepository.findOne);
+		mockClear(workflowFinderService.findWorkflowForUser);
 	});
 
 	describe('saveVersion', () => {
@@ -172,10 +187,10 @@ describe('WorkflowHistoryService', () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
 
 			const mockVersions = [
-				{ versionId: 'version1', createdAt: new Date('2024-01-01') },
-				{ versionId: 'version3', createdAt: new Date('2024-01-03') },
+				getWorkflowHistory(workflow, { versionId: 'version1', createdAt: new Date('2024-01-01') }),
+				getWorkflowHistory(workflow, { versionId: 'version3', createdAt: new Date('2024-01-03') }),
 			];
-			workflowHistoryRepository.find.mockResolvedValueOnce(mockVersions as any);
+			workflowHistoryRepository.find.mockResolvedValueOnce(mockVersions);
 
 			// Act
 			const result = await workflowHistoryService.getVersionsByIds(
@@ -200,8 +215,8 @@ describe('WorkflowHistoryService', () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
 
 			const createdAt = new Date('2024-01-01');
-			const mockVersions = [{ versionId: 'version1', createdAt }];
-			workflowHistoryRepository.find.mockResolvedValueOnce(mockVersions as WorkflowHistory[]);
+			const mockVersions = [getWorkflowHistory(workflow, { versionId: 'version1', createdAt })];
+			workflowHistoryRepository.find.mockResolvedValueOnce(mockVersions);
 
 			// Act
 			const result = await workflowHistoryService.getVersionsByIds(
@@ -233,6 +248,122 @@ describe('WorkflowHistoryService', () => {
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(workflowId, testUser, [
 				'workflow:read',
 			]);
+		});
+	});
+
+	describe('updateVersionForUser', () => {
+		it('should update version after checking permissions', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionId = 'version1';
+			const updateData = { name: 'Updated Name' };
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.id = workflowId;
+
+			const mockVersion = getWorkflowHistory(workflow, {
+				versionId,
+				workflowId,
+				name: 'Original Name',
+				description: 'Original Description',
+				autosaved: true,
+			});
+
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+			workflowHistoryRepository.findOne.mockResolvedValueOnce(mockVersion);
+			workflowHistoryRepository.update.mockResolvedValue(mockUpdateResult);
+
+			// Act
+			await workflowHistoryService.updateVersionForUser(
+				testUser,
+				workflowId,
+				versionId,
+				updateData,
+			);
+
+			// Assert
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(workflowId, testUser, [
+				'workflow:update',
+			]);
+			expect(workflowHistoryRepository.findOne).toHaveBeenCalledWith({
+				where: { workflowId, versionId },
+			});
+			expect(workflowHistoryRepository.update).toHaveBeenCalledWith(
+				{ versionId, workflowId },
+				updateData,
+			);
+		});
+
+		it('should throw SharedWorkflowNotFoundError when workflow not found for user', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionId = 'version1';
+			const updateData = { name: 'Updated Name' };
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(null);
+
+			// Act & Assert
+			await expect(
+				workflowHistoryService.updateVersionForUser(testUser, workflowId, versionId, updateData),
+			).rejects.toThrow(SharedWorkflowNotFoundError);
+			expect(workflowHistoryRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('should throw WorkflowHistoryVersionNotFoundError when version not found', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionId = 'version1';
+			const updateData = { name: 'Updated Name' };
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.id = workflowId;
+
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+			workflowHistoryRepository.findOne.mockResolvedValueOnce(null);
+
+			// Act & Assert
+			await expect(
+				workflowHistoryService.updateVersionForUser(testUser, workflowId, versionId, updateData),
+			).rejects.toThrow(WorkflowHistoryVersionNotFoundError);
+			expect(workflowHistoryRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateVersion', () => {
+		it('should update version without permission checks', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionId = 'version1';
+			const updateData = { name: 'Updated Name', description: 'Updated Description' };
+			workflowHistoryRepository.update.mockResolvedValue(mockUpdateResult);
+
+			// Act
+			await workflowHistoryService.updateVersion(workflowId, versionId, updateData);
+
+			// Assert
+			expect(workflowHistoryRepository.update).toHaveBeenCalledWith(
+				{ versionId, workflowId },
+				updateData,
+			);
+			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+			expect(workflowHistoryRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('should allow updating name and description', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionId = 'version1';
+			const updateData = {
+				name: 'Updated Name',
+				description: 'Updated Description',
+			};
+			workflowHistoryRepository.update.mockResolvedValue(mockUpdateResult);
+
+			// Act
+			await workflowHistoryService.updateVersion(workflowId, versionId, updateData);
+
+			// Assert
+			expect(workflowHistoryRepository.update).toHaveBeenCalledWith(
+				{ versionId, workflowId },
+				updateData,
+			);
 		});
 	});
 });

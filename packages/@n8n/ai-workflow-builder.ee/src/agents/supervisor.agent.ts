@@ -9,8 +9,13 @@ import { buildSupervisorPrompt } from '@/prompts';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { SimpleWorkflow } from '../types/workflow';
-import { buildWorkflowSummary } from '../utils/context-builders';
+import {
+	buildSelectedNodesSummary,
+	buildSimplifiedExecutionContext,
+	buildWorkflowSummary,
+} from '../utils/context-builders';
 import { summarizeCoordinationLog } from '../utils/coordination-log';
+import type { ChatPayload } from '../workflow-builder-agent';
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -52,6 +57,8 @@ export interface SupervisorContext {
 	coordinationLog: CoordinationLogEntry[];
 	/** Summary of previous conversation (from compaction) */
 	previousSummary?: string;
+	/** Workflow context with execution data */
+	workflowContext?: ChatPayload['workflowContext'];
 }
 
 /**
@@ -80,18 +87,29 @@ export class SupervisorAgent {
 			contextParts.push('</previous_conversation_summary>');
 		}
 
-		// 2. Workflow summary (node count and names only)
+		const selectedNodesSummary = buildSelectedNodesSummary(context.workflowContext);
+		if (selectedNodesSummary) {
+			contextParts.push('<selected_nodes>');
+			contextParts.push(selectedNodesSummary);
+			contextParts.push('</selected_nodes>');
+		}
+
 		if (context.workflowJSON.nodes.length > 0) {
 			contextParts.push('<workflow_summary>');
 			contextParts.push(buildWorkflowSummary(context.workflowJSON));
 			contextParts.push('</workflow_summary>');
 		}
 
-		// 3. Coordination log summary (what phases completed)
 		if (context.coordinationLog.length > 0) {
 			contextParts.push('<completed_phases>');
 			contextParts.push(summarizeCoordinationLog(context.coordinationLog));
 			contextParts.push('</completed_phases>');
+		}
+
+		if (context.workflowContext) {
+			contextParts.push(
+				buildSimplifiedExecutionContext(context.workflowContext, context.workflowJSON.nodes),
+			);
 		}
 
 		if (contextParts.length === 0) {

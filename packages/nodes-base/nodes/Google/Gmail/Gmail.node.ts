@@ -14,6 +14,16 @@ export class Gmail extends VersionedNodeType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume the Gmail API',
 			defaultVersion: 2.2,
+			builderHint: {
+				relatedNodes: [
+					{
+						nodeType: 'n8n-nodes-base.gmailTrigger',
+						relationHint:
+							'Use Gmail Trigger for scheduled email fetching, which is simpler for user than Schedule Trigger with Gmail getAll',
+					},
+				],
+			},
+			schemaPath: 'Google/Gmail',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

@@ -22,6 +22,23 @@ export type JobData = {
 	pushRef?: string;
 	streamingEnabled?: boolean;
 	restartExecutionId?: string;
+
+	// MCP-specific fields for queue mode support
+	/** Whether this execution was triggered by an MCP tool call. */
+	isMcpExecution?: boolean;
+	/** Type of MCP execution: 'service' for MCP Service, 'trigger' for MCP Trigger Node. */
+	mcpType?: 'service' | 'trigger';
+	/** MCP session ID for routing responses back to the correct client. */
+	mcpSessionId?: string;
+	/** MCP message ID for correlating responses with requests. */
+	mcpMessageId?: string;
+	/** Tool call info for MCP Trigger executions (tool name, args, source node). */
+	mcpToolCall?: {
+		toolName: string;
+		arguments: Record<string, unknown>;
+		/** The n8n node name that provides this tool. */
+		sourceNodeName?: string;
+	};
 };
 
 export type JobResult = {
@@ -43,7 +60,8 @@ export type JobMessage =
 	| JobFinishedMessage
 	| JobFailedMessage
 	| AbortJobMessage
-	| SendChunkMessage;
+	| SendChunkMessage
+	| McpResponseMessage;
 
 /** Message sent by worker to main to respond to a webhook. */
 export type RespondToWebhookMessage = {
@@ -87,6 +105,18 @@ export type SendChunkMessage = {
 	kind: 'send-chunk';
 	executionId: string;
 	chunkText: StructuredChunk;
+	workerId: string;
+};
+
+/** Message sent by worker to main to respond to an MCP tool call. */
+export type McpResponseMessage = {
+	kind: 'mcp-response';
+	executionId: string;
+	/** Type of MCP execution: 'service' for MCP Service, 'trigger' for MCP Trigger Node. */
+	mcpType: 'service' | 'trigger';
+	sessionId: string;
+	messageId: string;
+	response: unknown;
 	workerId: string;
 };
 

@@ -35,6 +35,8 @@ export interface N8NStack {
 	metrics: ServiceHelpers['observability']['metrics'];
 	findContainers: (namePattern: string | RegExp) => StartedTestContainer[];
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
+	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
+	mainUrls: string[];
 }
 
 function shouldServiceStart(name: ServiceName, service: Service, ctx: StartContext): boolean {
@@ -218,6 +220,18 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 		ctx.baseUrl = baseUrl;
 
+		// Build direct main URLs (bypassing load balancer)
+		const mainUrls: string[] = [];
+		for (let i = 1; i <= mains; i++) {
+			const mainNamePattern = mains > 1 ? `-n8n-main-${i}` : '-n8n';
+			const mainContainer = containers.find((c) => c.getName().endsWith(mainNamePattern));
+			if (mainContainer) {
+				const mainPort = mainContainer.getMappedPort(5678);
+				mainUrls.push(`http://localhost:${mainPort}`);
+			}
+		}
+		log(`Direct main URLs: ${mainUrls.join(', ')}`);
+
 		// Run verification hooks (e.g. keycloak connectivity check)
 		const n8nContainers = containers.filter((c) => {
 			const name = c.getName();
@@ -299,6 +313,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				const container = containers.find((c) => regex.test(c.getName()));
 				return container ? await container.stop() : null;
 			},
+			mainUrls,
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);

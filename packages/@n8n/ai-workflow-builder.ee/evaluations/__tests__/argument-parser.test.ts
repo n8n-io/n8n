@@ -1,6 +1,22 @@
-import { parseEvaluationArgs } from '../cli/argument-parser';
+import { parseEvaluationArgs, type EvaluationSuite } from '../cli/argument-parser';
 
 describe('argument-parser', () => {
+	describe('suite options', () => {
+		it('accepts all valid suite options', () => {
+			const validSuites: EvaluationSuite[] = [
+				'llm-judge',
+				'pairwise',
+				'programmatic',
+				'similarity',
+			];
+
+			for (const suite of validSuites) {
+				const args = parseEvaluationArgs(['--suite', suite]);
+				expect(args.suite).toBe(suite);
+			}
+		});
+	});
+
 	it('parses numeric flags like --max-examples and --concurrency', () => {
 		const args = parseEvaluationArgs([
 			'--suite',

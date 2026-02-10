@@ -13,6 +13,7 @@ import {
 	NodeOperationError,
 	type INode,
 	type IRun,
+	type IWorkflowBase,
 } from 'n8n-workflow';
 
 import { saveCredential } from '@test-integration/db/credentials';
@@ -25,7 +26,7 @@ import { ExecutionPersistence } from '../../../executions/execution-persistence'
 import { Push } from '../../../push';
 import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
-import * as chatHubConstants from '../chat-hub.constants';
+import { ChatHubExecutionWatcherService } from '../chat-hub-execution-watcher.service';
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
@@ -528,13 +529,13 @@ describe('chatHub', () => {
 			} = response;
 
 			expect(Object.keys(messages)).toHaveLength(4);
-			expect(messages[ids[0]].content).toBe('message 1');
+			expect(messages[ids[0]].content[0].content).toBe('message 1');
 			expect(messages[ids[0]].type).toBe('human');
-			expect(messages[ids[1]].content).toBe('message 2');
+			expect(messages[ids[1]].content[0].content).toBe('message 2');
 			expect(messages[ids[1]].type).toBe('ai');
-			expect(messages[ids[2]].content).toBe('message 3');
+			expect(messages[ids[2]].content[0].content).toBe('message 3');
 			expect(messages[ids[2]].type).toBe('human');
-			expect(messages[ids[3]].content).toBe('message 4');
+			expect(messages[ids[3]].content[0].content).toBe('message 4');
 			expect(messages[ids[3]].type).toBe('ai');
 		});
 
@@ -620,12 +621,12 @@ describe('chatHub', () => {
 			} = response;
 
 			expect(Object.keys(messages)).toHaveLength(6);
-			expect(messages[ids[0]].content).toBe('message 1');
-			expect(messages[ids[1]].content).toBe('message 2');
-			expect(messages[ids[2]].content).toBe('message 3a');
-			expect(messages[ids[3]].content).toBe('message 4a');
-			expect(messages[ids[4]].content).toBe('message 3b');
-			expect(messages[ids[5]].content).toBe('message 4b');
+			expect(messages[ids[0]].content[0].content).toBe('message 1');
+			expect(messages[ids[1]].content[0].content).toBe('message 2');
+			expect(messages[ids[2]].content[0].content).toBe('message 3a');
+			expect(messages[ids[3]].content[0].content).toBe('message 4a');
+			expect(messages[ids[4]].content[0].content).toBe('message 3b');
+			expect(messages[ids[5]].content[0].content).toBe('message 4b');
 			expect(messages[ids[4]].previousMessageId).toBe(ids[1]);
 		});
 
@@ -1237,12 +1238,12 @@ describe('chatHub', () => {
 		describe('n8n workflow agents', () => {
 			let sessionId: string;
 			let messageId: string;
+			let watcherService: ChatHubExecutionWatcherService;
 
 			let spyExecute: jest.SpyInstance<
 				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
 				Parameters<WorkflowExecutionService['executeChatWorkflow']>
 			>;
-			let finishRun = (_: IRun) => {};
 
 			beforeEach(() => {
 				jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
@@ -1251,15 +1252,7 @@ describe('chatHub', () => {
 				jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
 				spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
-
-				jest
-					.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
-					// eslint-disable-next-line @typescript-eslint/promise-function-async
-					.mockImplementation(() => {
-						return new Promise((r) => {
-							finishRun = r;
-						});
-					});
+				watcherService = Container.get(ChatHubExecutionWatcherService);
 
 				sessionId = crypto.randomUUID();
 				messageId = crypto.randomUUID();
@@ -1314,37 +1307,53 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution with successful result
+						const runData: IRun = {
+							finished: true,
+							status: 'success',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'AI Agent': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: { output: 'Hello from last node!' },
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'AI Agent',
+								},
+							}),
+						};
+
+						// Update execution and trigger watcher
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'success',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'AI Agent': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: { output: 'Hello from last node!' },
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'AI Agent',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1435,18 +1444,34 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution with error result - ensure execution is updated BEFORE finishRun
+						const runData: IRun = {
+							finished: true,
+							status: 'error',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {},
+									error: new NodeOperationError(mock<INode>(), 'Workflow execution failed'),
+								},
+							}),
+						};
+
+						// Update execution and trigger watcher
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'error',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {},
-										error: new NodeOperationError(mock<INode>(), 'Workflow execution failed'),
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1533,36 +1558,52 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
+						const runData: IRun = {
+							finished: true,
+							status: 'success',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Code Node': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: { text: 'Response from text field!' },
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Code Node',
+								},
+							}),
+						};
+
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'success',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Code Node': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: { text: 'Response from text field!' },
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Code Node',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1642,6 +1683,7 @@ describe('chatHub', () => {
 					);
 
 					let capturedExecutionId: string;
+					let capturedWorkflowData: IWorkflowBase;
 
 					// Mock initial execution - returns waiting status
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
@@ -1654,38 +1696,55 @@ describe('chatHub', () => {
 							workflowData,
 						});
 						capturedExecutionId = executionId;
+						capturedWorkflowData = workflowData;
+
+						const runData: IRun = {
+							finished: false,
+							status: 'waiting',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'Intermediate message',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
 
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'waiting',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'Intermediate message',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1694,37 +1753,53 @@ describe('chatHub', () => {
 					// Mock ChatExecutionManager.runWorkflow for the resume - updates to success
 					const executionManager = Container.get(ChatExecutionManager);
 					jest.spyOn(executionManager, 'runWorkflow').mockImplementationOnce(async () => {
+						const runData: IRun = {
+							finished: true,
+							status: 'success',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'Final message',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
+
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(capturedExecutionId, {
 								status: 'success',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'Final message',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: capturedWorkflowData,
+								runData,
+								newStaticData: {},
+								executionId: capturedExecutionId,
+							});
 						});
 					});
 
@@ -1812,37 +1887,53 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
+						const runData: IRun = {
+							finished: false,
+							status: 'waiting',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'Please provide input',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
+
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'waiting',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'Please provide input',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1922,6 +2013,7 @@ describe('chatHub', () => {
 					);
 
 					let capturedExecutionId: string;
+					let capturedWorkflowData: IWorkflowBase;
 
 					// First message: workflow goes into waiting state
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
@@ -1934,38 +2026,55 @@ describe('chatHub', () => {
 							workflowData,
 						});
 						capturedExecutionId = executionId;
+						capturedWorkflowData = workflowData;
+
+						const runData: IRun = {
+							finished: false,
+							status: 'waiting',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'What is your name?',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
 
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'waiting',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'What is your name?',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -2007,37 +2116,53 @@ describe('chatHub', () => {
 					const runWorkflowSpy = jest
 						.spyOn(executionManager, 'runWorkflow')
 						.mockImplementationOnce(async () => {
+							const runData: IRun = {
+								finished: true,
+								status: 'success',
+								mode: 'webhook',
+								startedAt: new Date(),
+								stoppedAt: new Date(),
+								storedAt: 'db',
+								data: createRunExecutionData({
+									resultData: {
+										runData: {
+											'Respond to Chat': [
+												{
+													startTime: Date.now(),
+													executionTime: 100,
+													executionIndex: 0,
+													executionStatus: 'success',
+													source: [],
+													data: {
+														main: [
+															[
+																{
+																	json: {},
+																	sendMessage: 'Nice to meet you, Alice!',
+																},
+															],
+														],
+													},
+												},
+											],
+										},
+										lastNodeExecuted: 'Respond to Chat',
+									},
+								}),
+							};
+
 							setTimeout(async () => {
 								await executionRepository.updateExistingExecution(capturedExecutionId, {
 									status: 'success',
-									data: createRunExecutionData({
-										resultData: {
-											runData: {
-												'Respond to Chat': [
-													{
-														startTime: Date.now(),
-														executionTime: 100,
-														executionIndex: 0,
-														executionStatus: 'success',
-														source: [],
-														data: {
-															main: [
-																[
-																	{
-																		json: {},
-																		sendMessage: 'Nice to meet you, Alice!',
-																	},
-																],
-															],
-														},
-													},
-												],
-											},
-											lastNodeExecuted: 'Respond to Chat',
-										},
-									}),
+									data: runData.data,
 								});
-								finishRun({} as IRun);
+								await watcherService.handleWorkflowExecuteAfter({
+									type: 'workflowExecuteAfter',
+									workflow: capturedWorkflowData,
+									runData,
+									newStaticData: {},
+									executionId: capturedExecutionId,
+								});
 							});
 						});
 
@@ -2153,31 +2278,9 @@ describe('chatHub', () => {
 				});
 			});
 
-			describe('multi-main mode execution waiting', () => {
-				const TEST_POLL_INTERVAL = 50;
-				const originalPollInterval = chatHubConstants.EXECUTION_POLL_INTERVAL;
-
-				beforeEach(() => {
-					Object.defineProperty(chatHubConstants, 'EXECUTION_POLL_INTERVAL', {
-						value: TEST_POLL_INTERVAL,
-						writable: true,
-						configurable: true,
-					});
-				});
-
-				afterEach(() => {
-					Object.defineProperty(chatHubConstants, 'EXECUTION_POLL_INTERVAL', {
-						value: originalPollInterval,
-						writable: true,
-						configurable: true,
-					});
-				});
-
-				it('should poll and complete when execution finishes with "waiting" status', async () => {
+			describe('multi-main mode execution handling', () => {
+				it('should complete when execution finishes with "waiting" status', async () => {
 					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					// Spy on findSingleExecution to verify polling occurs
-					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2227,38 +2330,55 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution status to 'waiting' after multiple poll intervals
+						const runData: IRun = {
+							finished: false,
+							status: 'waiting',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'Waiting for your input',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
+
+						// Trigger watcher service after updating execution
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'waiting',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'Waiting for your input',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-						}, TEST_POLL_INTERVAL * 3);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
+						});
 
 						return { executionId };
 					});
@@ -2296,17 +2416,10 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('waiting');
 					expect(messages[1]?.content).toBe('Waiting for your input');
-
-					// Ensure polling happened
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-
-					findSingleExecutionSpy.mockRestore();
 				});
 
-				it('should poll and complete when execution finishes with "success" status', async () => {
+				it('should complete when execution finishes with "success" status', async () => {
 					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2353,37 +2466,54 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution status to 'success' after multiple poll intervals
+						const runData: IRun = {
+							finished: true,
+							status: 'success',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'AI Agent': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: { output: 'Hello from multi-main!' },
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'AI Agent',
+								},
+							}),
+						};
+
+						// Trigger watcher service after updating execution
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'success',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'AI Agent': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: { output: 'Hello from multi-main!' },
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'AI Agent',
-									},
-								}),
+								data: runData.data,
 							});
-						}, TEST_POLL_INTERVAL * 3);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
+						});
 
 						return { executionId };
 					});
@@ -2421,17 +2551,10 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('success');
 					expect(messages[1]?.content).toBe('Hello from multi-main!');
-
-					// Ensure polling happened
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-
-					findSingleExecutionSpy.mockRestore();
 				});
 
-				it('should poll and complete when execution finishes with "error" status', async () => {
+				it('should complete when execution finishes with "error" status', async () => {
 					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2478,18 +2601,35 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution status to 'error' after multiple poll intervals
+						const runData: IRun = {
+							finished: true,
+							status: 'error',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {},
+									error: new NodeOperationError(mock<INode>(), 'Multi-main execution failed'),
+								},
+							}),
+						};
+
+						// Trigger watcher service after updating execution
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'error',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {},
-										error: new NodeOperationError(mock<INode>(), 'Multi-main execution failed'),
-									},
-								}),
+								data: runData.data,
 							});
-						}, TEST_POLL_INTERVAL * 3);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
+						});
 
 						return { executionId };
 					});
@@ -2527,25 +2667,10 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('error');
 					expect(messages[1]?.content).toBe('Multi-main execution failed');
-
-					// Ensure polling happened
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-
-					findSingleExecutionSpy.mockRestore();
 				});
 
-				it('should handle poll error by saving error to message when finding execution throws', async () => {
+				it('should handle execution error by saving error to message', async () => {
 					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					const findSingleExecution = executionRepository.findSingleExecution.bind(
-						executionRepository,
-					) as typeof executionRepository.findSingleExecution;
-
-					// Subsequent calls during polling throw
-					const findSingleExecutionSpy = jest
-						.spyOn(executionRepository, 'findSingleExecution')
-						.mockImplementationOnce(findSingleExecution)
-						.mockRejectedValue(new Error('Database error'));
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2592,6 +2717,36 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
+						const runData: IRun = {
+							finished: true,
+							status: 'error',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {},
+									error: new NodeOperationError(mock<INode>(), 'Database error'),
+								},
+							}),
+						};
+
+						// Trigger watcher service with error status
+						setTimeout(async () => {
+							await executionRepository.updateExistingExecution(executionId, {
+								status: 'error',
+								data: runData.data,
+							});
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
+						});
+
 						return { executionId };
 					});
 
@@ -2629,11 +2784,6 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('error');
 					expect(messages[1]?.content).toBe('Database error');
-
-					// Ensure polling was attempted
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
-
-					findSingleExecutionSpy.mockRestore();
 				});
 			});
 		});

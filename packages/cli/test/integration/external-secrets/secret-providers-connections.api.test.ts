@@ -13,12 +13,55 @@ import { Cipher } from 'n8n-core';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 
-import { MockProviders } from '../../shared/external-secrets/utils';
+import { MockProviders, createDummyProvider } from '../../shared/external-secrets/utils';
 import { createAdmin, createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
 
 const mockProvidersInstance = new MockProviders();
+// Register mock providers for types used in tests
+mockProvidersInstance.setProviders({
+	awsSecretsManager: createDummyProvider({
+		name: 'awsSecretsManager',
+		properties: [
+			{
+				name: 'region',
+				displayName: 'Region',
+				type: 'string',
+				default: '',
+			},
+			{
+				name: 'accessKeyId',
+				displayName: 'Access Key ID',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					password: true,
+				},
+			},
+			{
+				name: 'secretAccessKey',
+				displayName: 'Secret Access Key',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					password: true,
+				},
+			},
+			{
+				name: 'sessionToken',
+				displayName: 'Session Token',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					password: true,
+				},
+			},
+		],
+	}),
+	gcpSecretsManager: createDummyProvider({ name: 'gcpSecretsManager' }),
+	vault: createDummyProvider({ name: 'vault' }),
+});
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 
 const licenseMock = mock<LicenseState>();
@@ -37,12 +80,27 @@ describe('Secret Providers Connections API', () => {
 	});
 
 	let ownerAgent: SuperAgentTest;
+	let memberAgent: SuperAgentTest;
+	let adminAgent: SuperAgentTest;
+	let agents: Record<string, SuperAgentTest>;
 	let teamProject1: Project;
 	let teamProject2: Project;
+
+	const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
 
 	beforeAll(async () => {
 		const owner = await createOwner();
 		ownerAgent = testServer.authAgentFor(owner);
+
+		const [member, admin] = await Promise.all([createMember(), createAdmin()]);
+		memberAgent = testServer.authAgentFor(member);
+		adminAgent = testServer.authAgentFor(admin);
+
+		agents = {
+			owner: ownerAgent,
+			admin: adminAgent,
+			member: memberAgent,
+		};
 
 		teamProject1 = await createTeamProject('Engineering');
 		teamProject2 = await createTeamProject('Marketing');
@@ -74,8 +132,8 @@ describe('Secret Providers Connections API', () => {
 				id: expect.any(String),
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
-				isEnabled: false,
 				projects: [],
+				settings: expect.any(Object),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
@@ -361,11 +419,12 @@ describe('Secret Providers Connections API', () => {
 					id: expect.any(String),
 					name: expect.any(String),
 					type: expect.any(String),
-					isEnabled: expect.any(Boolean),
 					projects: expect.any(Array),
 					createdAt: expect.any(String),
 					updatedAt: expect.any(String),
 				});
+				// LIST endpoint should NOT include settings (lightweight response)
+				expect(connection).not.toHaveProperty('settings');
 			}
 
 			const connection1 = response.body.data.find(
@@ -407,7 +466,6 @@ describe('Secret Providers Connections API', () => {
 				id: expect.any(String),
 				name: 'get-test',
 				type: 'awsSecretsManager',
-				isEnabled: false,
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
@@ -424,7 +482,7 @@ describe('Secret Providers Connections API', () => {
 	});
 
 	describe('Security', () => {
-		test('should never return settings in any endpoint', async () => {
+		test('should return redacted settings without exposing sensitive data', async () => {
 			const sensitiveSettings = {
 				region: 'us-east-1',
 				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
@@ -432,7 +490,7 @@ describe('Secret Providers Connections API', () => {
 				sessionToken: 'very-secret-session-token',
 			};
 
-			// Create
+			// Create connection with sensitive settings
 			const createResponse = await ownerAgent
 				.post('/secret-providers/connections')
 				.send({
@@ -443,67 +501,59 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			expect(createResponse.body.data).not.toHaveProperty('settings');
-			expect(JSON.stringify(createResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
-			expect(JSON.stringify(createResponse.body.data)).not.toContain('very-secret-session-token');
+			// Detail endpoint (POST) should include settings field
+			expect(createResponse.body.data).toHaveProperty('settings');
+			expect(createResponse.body.data.settings).toEqual(expect.any(Object));
 
-			// GET
+			// Password fields should be redacted (contain BLANK_VALUE marker)
+			const responseSettings = createResponse.body.data.settings;
+			const responseString = JSON.stringify(responseSettings);
+			expect(responseString).toContain('__n8n_BLANK_VALUE_');
+
+			// Actual secret values should NOT appear in response
+			expect(responseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(responseString).not.toContain('wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY');
+			expect(responseString).not.toContain('very-secret-session-token');
+
+			// GET detail endpoint should also include redacted settings
 			const getResponse = await ownerAgent
 				.get('/secret-providers/connections/security-test')
 				.expect(200);
 
-			expect(getResponse.body.data).not.toHaveProperty('settings');
-			expect(JSON.stringify(getResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(getResponse.body.data).toHaveProperty('settings');
+			const getResponseString = JSON.stringify(getResponse.body.data.settings);
+			expect(getResponseString).toContain('__n8n_BLANK_VALUE_');
+			expect(getResponseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(getResponseString).not.toContain('very-secret-session-token');
 
-			// LIST
+			// LIST endpoint should NOT include settings
 			const listResponse = await ownerAgent.get('/secret-providers/connections').expect(200);
 
-			const securityConnection = listResponse.body.data.find(
-				(c: { name: string }) => c.name === 'security-test',
+			const securityTestConnection = listResponse.body.data.find(
+				(conn: { name: string }) => conn.name === 'security-test',
 			);
-			expect(securityConnection).not.toHaveProperty('settings');
-			expect(JSON.stringify(listResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(securityTestConnection).toBeDefined();
+			expect(securityTestConnection).not.toHaveProperty('settings');
 
-			// UPDATE
-			const updateResponse = await ownerAgent
-				.patch('/secret-providers/connections/security-test')
-				.send({
-					type: 'awsSecretsManager',
-					settings: { region: 'eu-west-1' },
-				})
-				.expect(200);
+			// Verify entire list response doesn't contain secrets
+			const listResponseString = JSON.stringify(listResponse.body.data);
+			expect(listResponseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(listResponseString).not.toContain('very-secret-session-token');
 
-			expect(updateResponse.body.data).not.toHaveProperty('settings');
-
-			// DELETE
+			// DELETE endpoint should include redacted settings in response
 			const deleteResponse = await ownerAgent
 				.delete('/secret-providers/connections/security-test')
 				.expect(200);
 
-			expect(deleteResponse.body.data).not.toHaveProperty('settings');
+			expect(deleteResponse.body.data).toHaveProperty('settings');
+			const deleteResponseString = JSON.stringify(deleteResponse.body.data.settings);
+			expect(deleteResponseString).toContain('__n8n_BLANK_VALUE_');
+			expect(deleteResponseString).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(deleteResponseString).not.toContain('very-secret-session-token');
 		});
 	});
 
 	describe('Access Control', () => {
-		let memberAgent: SuperAgentTest;
-		let adminAgent: SuperAgentTest;
-		let agents: Record<string, SuperAgentTest>;
-
-		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
-
-		beforeAll(async () => {
-			const [member, admin] = await Promise.all([createMember(), createAdmin()]);
-
-			memberAgent = testServer.authAgentFor(member);
-			adminAgent = testServer.authAgentFor(admin);
-
-			agents = {
-				owner: ownerAgent,
-				admin: adminAgent,
-				member: memberAgent,
-			};
-		});
-
 		async function createTestConnection(providerKey: string, projectIds: string[] = []) {
 			await ownerAgent
 				.post('/secret-providers/connections')
@@ -707,6 +757,205 @@ describe('Secret Providers Connections API', () => {
 				.get('/secret-providers/connections/orphan-test')
 				.expect(200);
 			expect(response.body.data.projects).toEqual([]);
+		});
+	});
+
+	describe('Reload connection secrets', () => {
+		beforeAll(async () => {
+			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
+		});
+
+		afterEach(async () => {
+			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
+		});
+
+		test('should successfully reload connection secrets', async () => {
+			const { ExternalSecretsManager } = await import(
+				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+			);
+
+			await ownerAgent
+				.post('/secret-providers/connections')
+				.send({
+					providerKey: 'reload-success',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { username: 'user', password: 'pass' },
+				})
+				.expect(200);
+
+			const manager = Container.get(ExternalSecretsManager);
+			await manager.reloadAllProviders();
+
+			const provider = manager.getProvider('reload-success');
+			expect(provider).toBeDefined();
+			expect(provider?.state).toBe('connected');
+
+			const updateSpy = jest.spyOn(provider!, 'update');
+
+			const reloadResponse = await ownerAgent
+				.post('/secret-providers/connections/reload-success/reload')
+				.expect(200);
+
+			expect(reloadResponse.body.data).toEqual({ success: true });
+			expect(updateSpy).toHaveBeenCalled();
+		});
+
+		test('should return 404 for non-existent connection', async () => {
+			const response = await ownerAgent
+				.post('/secret-providers/connections/non-existent/reload')
+				.expect(404);
+
+			expect(response.body.message).toBe('Connection with key "non-existent" not found');
+		});
+
+		describe('access control', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])('should allow=$allowed for $role to reload connection', async ({ role, allowed }) => {
+				const { ExternalSecretsManager } = await import(
+					'@/modules/external-secrets.ee/external-secrets-manager.ee'
+				);
+
+				const providerKey = `reload-access-${role}`;
+				await ownerAgent
+					.post('/secret-providers/connections')
+					.send({
+						providerKey,
+						type: 'awsSecretsManager',
+						projectIds: [],
+						settings: { region: 'us-east-1' },
+					})
+					.expect(200);
+
+				await Container.get(ExternalSecretsManager).reloadAllProviders();
+
+				const response = await agents[role]
+					.post(`/secret-providers/connections/${providerKey}/reload`)
+					.expect(allowed ? 200 : 403);
+
+				if (allowed) {
+					expect(response.body.data).toEqual({ success: true });
+				} else {
+					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+				}
+			});
+		});
+	});
+
+	describe('Test connection', () => {
+		beforeAll(async () => {
+			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
+		});
+
+		afterEach(async () => {
+			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
+		});
+
+		test('should successfully test connection with valid settings', async () => {
+			await ownerAgent
+				.post('/secret-providers/connections')
+				.send({
+					providerKey: 'test-success',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { username: 'user', password: 'pass' },
+				})
+				.expect(200);
+
+			const testResponse = await ownerAgent
+				.post('/secret-providers/connections/test-success/test')
+				.expect(200);
+
+			expect(testResponse.body.data).toMatchObject({ success: true });
+		});
+
+		test('should return failure when provider test fails', async () => {
+			const { TestFailProvider } = await import('../../shared/external-secrets/utils');
+
+			mockProvidersInstance.setProviders({ awsSecretsManager: TestFailProvider });
+
+			await ownerAgent
+				.post('/secret-providers/connections')
+				.send({
+					providerKey: 'test-fail',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { region: 'us-east-1' },
+				})
+				.expect(200);
+
+			const testResponse = await ownerAgent
+				.post('/secret-providers/connections/test-fail/test')
+				.expect(200);
+
+			expect(testResponse.body.data).toMatchObject({ success: false });
+		});
+
+		test('should return error when connection fails', async () => {
+			const { FailedProvider } = await import('../../shared/external-secrets/utils');
+
+			mockProvidersInstance.setProviders({ awsSecretsManager: FailedProvider });
+
+			await ownerAgent
+				.post('/secret-providers/connections')
+				.send({
+					providerKey: 'test-connection-fail',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { region: 'us-east-1' },
+				})
+				.expect(200);
+
+			const testResponse = await ownerAgent
+				.post('/secret-providers/connections/test-connection-fail/test')
+				.expect(200);
+
+			expect(testResponse.body.data.success).toBe(false);
+			expect(testResponse.body.data.error).toBeDefined();
+		});
+
+		test('should return 404 for non-existent connection', async () => {
+			const response = await ownerAgent
+				.post('/secret-providers/connections/non-existent/test')
+				.expect(404);
+
+			expect(response.body.message).toBe('Connection with key "non-existent" not found');
+		});
+
+		describe('access control', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])('should allow=$allowed for $role to test connection', async ({ role, allowed }) => {
+				const providerKey = `test-access-${role}`;
+				await ownerAgent
+					.post('/secret-providers/connections')
+					.send({
+						providerKey,
+						type: 'awsSecretsManager',
+						projectIds: [],
+						settings: { region: 'us-east-1' },
+					})
+					.expect(200);
+
+				const response = await agents[role]
+					.post(`/secret-providers/connections/${providerKey}/test`)
+					.expect(allowed ? 200 : 403);
+
+				if (allowed) {
+					expect(response.body.data).toHaveProperty('success');
+				} else {
+					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+				}
+			});
 		});
 	});
 });

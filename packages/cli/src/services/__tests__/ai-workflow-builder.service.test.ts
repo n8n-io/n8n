@@ -10,6 +10,7 @@ import type { License } from '@/license';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { NodeDefinitionGeneratorService } from '@/services/node-definition-generator.service';
 import type { UrlService } from '@/services/url.service';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
@@ -33,6 +34,7 @@ describe('WorkflowBuilderService', () => {
 	let mockPush: Push;
 	let mockTelemetry: Telemetry;
 	let mockInstanceSettings: InstanceSettings;
+	let mockNodeDefinitionGenerator: NodeDefinitionGeneratorService;
 	let mockDynamicNodeParametersService: DynamicNodeParametersService;
 	let mockUser: IUser;
 
@@ -70,6 +72,7 @@ describe('WorkflowBuilderService', () => {
 		mockPush = mock<Push>();
 		mockTelemetry = mock<Telemetry>();
 		mockInstanceSettings = mock<InstanceSettings>();
+		mockNodeDefinitionGenerator = mock<NodeDefinitionGeneratorService>();
 		mockDynamicNodeParametersService = mock<DynamicNodeParametersService>();
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
@@ -79,6 +82,7 @@ describe('WorkflowBuilderService', () => {
 		(mockLicense.loadCertStr as jest.Mock).mockResolvedValue('test-cert');
 		(mockLicense.getConsumerId as jest.Mock).mockReturnValue('test-consumer-id');
 		(mockInstanceSettings.instanceId as unknown) = 'test-instance-id';
+		(mockNodeDefinitionGenerator.getNodeDefinitionDirs as jest.Mock).mockReturnValue([]);
 		mockConfig.aiAssistant = { baseUrl: '' };
 
 		// Reset the mocked AiWorkflowBuilderService
@@ -94,6 +98,7 @@ describe('WorkflowBuilderService', () => {
 			mockPush,
 			mockTelemetry,
 			mockInstanceSettings,
+			mockNodeDefinitionGenerator,
 			mockDynamicNodeParametersService,
 		);
 	});
@@ -132,6 +137,7 @@ describe('WorkflowBuilderService', () => {
 				expect.any(String), // n8nVersion
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
+				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
 			);
 
@@ -175,6 +181,7 @@ describe('WorkflowBuilderService', () => {
 				expect.any(String), // n8nVersion
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
+				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
 			);
 		});
@@ -257,7 +264,7 @@ describe('WorkflowBuilderService', () => {
 			const result = await service.getSessions('workflow-123', mockUser);
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledTimes(1);
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, undefined);
 			expect(result).toEqual(mockSessions);
 		});
 
@@ -270,7 +277,35 @@ describe('WorkflowBuilderService', () => {
 
 			const result = await service.getSessions(undefined, mockUser);
 
-			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser, undefined);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should pass codeBuilder flag to underlying service', async () => {
+			const mockSessions = {
+				sessions: [{ sessionId: 'test-session-code', messages: [], lastUpdated: new Date() }],
+			};
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			const result = await service.getSessions('workflow-123', mockUser, true);
+
+			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, true);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should pass codeBuilder=false to underlying service', async () => {
+			const mockSessions = { sessions: [] };
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			const result = await service.getSessions('workflow-123', mockUser, false);
+
+			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, false);
 			expect(result).toEqual(mockSessions);
 		});
 	});

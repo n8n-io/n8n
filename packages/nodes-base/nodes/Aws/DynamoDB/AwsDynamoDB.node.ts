@@ -38,6 +38,7 @@ export class AwsDynamoDB implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the AWS DynamoDB API',
+		schemaPath: 'Aws/DynamoDB',
 		defaults: {
 			name: 'AWS DynamoDB',
 		},

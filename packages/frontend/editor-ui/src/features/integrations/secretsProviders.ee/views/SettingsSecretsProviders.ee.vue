@@ -33,24 +33,34 @@ function getProviderTypeInfo(providerType: string) {
 	return secretsProviders.providerTypes.value.find((type) => type.type === providerType);
 }
 
-function openConnectionModal(providerKey?: string) {
+function openConnectionModal(
+	providerKey?: string,
+	activeTab: 'connection' | 'sharing' = 'connection',
+) {
 	const existingNames = secretsProviders.activeProviders.value.map((provider) => provider.name);
 
 	uiStore.openModalWithData({
 		name: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 		data: {
+			activeTab,
 			providerKey,
 			providerTypes: secretsProviders.providerTypes.value,
 			existingProviderNames: existingNames,
-			onClose: async () => {
-				await secretsProviders.fetchActiveConnections();
+			onClose: async (saved?: boolean) => {
+				if (saved) {
+					await secretsProviders.fetchActiveConnections();
+				}
 			},
 		},
 	});
 }
 
 function handleEdit(providerKey: string) {
-	openConnectionModal(providerKey);
+	openConnectionModal(providerKey, 'connection');
+}
+
+function handleShare(providerKey: string) {
+	openConnectionModal(providerKey, 'sharing');
 }
 
 onMounted(async () => {
@@ -132,6 +142,7 @@ function goToUpgrade() {
 					:provider-type-info="getProviderTypeInfo(provider.type)"
 					:can-update="secretsProviders.canUpdate.value"
 					@edit="handleEdit"
+					@share="handleShare"
 				/>
 			</div>
 		</div>

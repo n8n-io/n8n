@@ -22,6 +22,17 @@ exports[`ConnectionTracker > should not render error when push connected and con
 </div>
 `;
 
+exports[`ConnectionTracker > should not render error when push is connecting 1`] = `
+<div>
+  <span
+    data-v-f4a2fe1d=""
+  >
+    
+    
+  </span>
+</div>
+`;
+
 exports[`ConnectionTracker > should render network error when both offline and push disconnected 1`] = `
 <div>
   <span

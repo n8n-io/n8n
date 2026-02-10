@@ -69,6 +69,23 @@ watch(
 	},
 );
 
+const MAX_VISIBLE_FOCUSED_NODES = 3;
+
+const focusedNodesLabel = computed(() => {
+	const names = props.message.focusedNodeNames;
+	if (!names?.length) return '';
+
+	const quoted = names.map((n) => `'${n}'`);
+
+	if (names.length <= MAX_VISIBLE_FOCUSED_NODES) {
+		return `Focusing on ${quoted.join(', ')}`;
+	}
+
+	const visible = quoted.slice(0, MAX_VISIBLE_FOCUSED_NODES).join(', ');
+	const remaining = names.length - MAX_VISIBLE_FOCUSED_NODES;
+	return `Focusing on ${visible}, and ${remaining} more`;
+});
+
 async function onCopyButtonClick(content: string, e: MouseEvent) {
 	const button = e.target as HTMLButtonElement;
 	await navigator.clipboard.writeText(content);
@@ -114,13 +131,20 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
 				</button>
 			</div>
-			<!-- Assistant message - simple text without container -->
+			<!-- Assistant message -->
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"
 				:class="[$style.assistantText, $style.renderedContent]"
 				:style="color ? { color } : undefined"
 			></div>
+			<!-- Focused nodes context label (shown below user message) -->
+			<span
+				v-if="message.role === 'user' && message.focusedNodeNames?.length"
+				:class="$style.focusedNodesLabel"
+			>
+				{{ focusedNodesLabel }}
+			</span>
 			<div
 				v-if="message?.codeSnippet"
 				:class="$style.codeSnippet"
@@ -303,5 +327,11 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			padding: var(--spacing--4xs);
 		}
 	}
+}
+
+.focusedNodesLabel {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-2);
+	font-style: italic;
 }
 </style>

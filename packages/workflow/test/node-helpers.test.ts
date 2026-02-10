@@ -24,6 +24,7 @@ import {
 	getNodeWebhookPath,
 	isToolType,
 	isHitlToolType,
+	getNodeOutputs,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -4422,6 +4423,72 @@ describe('NodeHelpers', () => {
 		}
 	});
 
+	describe('getNodeOutputs', () => {
+		const workflowMock = {
+			expression: {
+				getSimpleParameterValue: vi.fn().mockReturnValue([NodeConnectionTypes.Main]),
+			},
+		} as unknown as Workflow;
+
+		test('Should return empty array when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return empty array when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(
+				workflowMock,
+				node,
+				undefined as unknown as INodeTypeDescription,
+			);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return outputs array when nodeTypeData is valid', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const nodeTypeData: INodeTypeDescription = {
+				name: 'TestNode',
+				displayName: 'Test Node',
+				group: ['transform'],
+				description: 'Test node description',
+				version: 1,
+				defaults: {},
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent],
+				properties: [],
+			};
+
+			const result = getNodeOutputs(workflowMock, node, nodeTypeData);
+			expect(result).toEqual([NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent]);
+		});
+	});
+
 	describe('isExecutable', () => {
 		const workflowMock = {
 			expression: {
@@ -4591,6 +4658,34 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.expected);
 			});
 		}
+
+		test('Should return false when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
+
+		test('Should return false when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, undefined as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
 	});
 	describe('displayParameter', () => {
 		const testNode: INode = {
