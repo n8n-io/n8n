@@ -74,6 +74,27 @@ const onTestClick = async () => {
 	await execute();
 };
 
+function collectNodeTypesFromRequirements(
+	requirements: Array<{ nodesWithSameCredential: string[] }>,
+) {
+	const types = new Set<string>();
+
+	for (const req of requirements) {
+		for (const nodeName of req.nodesWithSameCredential) {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (node) types.add(node.type);
+		}
+	}
+
+	return types;
+}
+
+function countRelatedNodes(requirements: Array<{ nodesWithSameCredential: string[] }>) {
+	let count = 0;
+	for (const req of requirements) count += req.nodesWithSameCredential.length;
+	return count;
+}
+
 watch(
 	() => props.state.isComplete,
 	(isComplete) => {
@@ -81,25 +102,12 @@ watch(
 			expanded.value = false;
 
 			if (hadManualInteraction.value) {
-				const nodeTypes = new Set<string>();
-				for (const req of props.state.credentialRequirements) {
-					for (const nodeName of req.nodesWithSameCredential) {
-						const node = workflowsStore.getNodeByName(nodeName);
-						if (node) {
-							nodeTypes.add(node.type);
-						}
-					}
-				}
-
 				telemetry.track('User completed setup step', {
 					template_id: workflowsStore.workflow.meta?.templateId,
 					workflow_id: workflowsStore.workflowId,
 					type: props.state.isTrigger ? 'trigger' : 'credential',
-					nodes: Array.from(nodeTypes),
-					related_nodes_count: props.state.credentialRequirements.reduce(
-						(count, req) => count + req.nodesWithSameCredential.length,
-						0,
-					),
+					nodes: Array.from(collectNodeTypesFromRequirements(props.state.credentialRequirements)),
+					related_nodes_count: countRelatedNodes(props.state.credentialRequirements),
 				});
 				hadManualInteraction.value = false;
 			}
