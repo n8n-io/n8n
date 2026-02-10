@@ -9,7 +9,7 @@ export const CHIP_BUNDLE_THRESHOLD = 3;
 
 /**
  * Shared logic for focused nodes chip UI used by both
- * ChatInputWithMention and FocusedNodesChips components.
+ * ChatInputWithMention component.
  */
 export function useFocusedNodesChipUI() {
 	const focusedNodesStore = useFocusedNodesStore();
