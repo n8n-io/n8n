@@ -38,8 +38,17 @@ function getOrCreateProxyAgent<T extends HttpProxyAgent<string> | HttpsProxyAgen
 	return proxyAgent;
 }
 
-function createFallbackAgent<T extends http.Agent | https.Agent>(agentClass: new () => T): T {
-	return new agentClass();
+function createFallbackAgent<T extends http.Agent | https.Agent>(
+	agentClass: new (options?: http.AgentOptions | https.AgentOptions) => T,
+): T {
+	return new agentClass({
+		keepAlive: true,
+		keepAliveMsecs: 1000,
+		maxSockets: Infinity,
+		maxFreeSockets: 256,
+		timeout: 300000, // 5 minutes
+		scheduling: 'lifo',
+	});
 }
 
 /**
@@ -61,7 +70,15 @@ class HttpProxyManager extends http.Agent {
 			const proxyAgent = getOrCreateProxyAgent(
 				this.proxyAgentCache,
 				proxyUrl,
-				(url) => new HttpProxyAgent(url),
+				(url) =>
+					new HttpProxyAgent(url, {
+						keepAlive: true,
+						keepAliveMsecs: 1000,
+						maxSockets: Infinity,
+						maxFreeSockets: 256,
+						timeout: 300000,
+						scheduling: 'lifo',
+					}),
 			);
 			return proxyAgent.addRequest(req as ProxyClientRequest, options as ProxyRequestOptions);
 		}
@@ -83,7 +100,15 @@ class HttpsProxyManager extends https.Agent {
 			const proxyAgent = getOrCreateProxyAgent(
 				this.proxyAgentCache,
 				proxyUrl,
-				(url) => new HttpsProxyAgent(url),
+				(url) =>
+					new HttpsProxyAgent(url, {
+						keepAlive: true,
+						keepAliveMsecs: 1000,
+						maxSockets: Infinity,
+						maxFreeSockets: 256,
+						timeout: 300000,
+						scheduling: 'lifo',
+					}),
 			);
 			return proxyAgent.addRequest(req, options);
 		}
@@ -99,11 +124,21 @@ export function createHttpProxyAgent(
 ): http.Agent {
 	const proxyUrl = customProxyUrl ?? proxyFromEnv.getProxyForUrl(targetUrl);
 
+	const agentOptions: http.AgentOptions = {
+		keepAlive: true,
+		keepAliveMsecs: 1000,
+		maxSockets: Infinity,
+		maxFreeSockets: 256,
+		timeout: 300000, // 5 minutes
+		scheduling: 'lifo',
+		...options,
+	};
+
 	if (proxyUrl) {
-		return new HttpProxyAgent(proxyUrl, options);
+		return new HttpProxyAgent(proxyUrl, agentOptions);
 	}
 
-	return new http.Agent(options);
+	return new http.Agent(agentOptions);
 }
 
 export function createHttpsProxyAgent(
@@ -113,11 +148,21 @@ export function createHttpsProxyAgent(
 ): https.Agent {
 	const proxyUrl = customProxyUrl ?? proxyFromEnv.getProxyForUrl(targetUrl);
 
+	const agentOptions: https.AgentOptions = {
+		keepAlive: true,
+		keepAliveMsecs: 1000,
+		maxSockets: Infinity,
+		maxFreeSockets: 256,
+		timeout: 300000, // 5 minutes
+		scheduling: 'lifo',
+		...options,
+	};
+
 	if (proxyUrl) {
-		return new HttpsProxyAgent(proxyUrl, options);
+		return new HttpsProxyAgent(proxyUrl, agentOptions);
 	}
 
-	return new https.Agent(options);
+	return new https.Agent(agentOptions);
 }
 
 function hasProxyEnvironmentVariables(): boolean {
@@ -146,6 +191,20 @@ export function installGlobalProxyAgent(): void {
 }
 
 export function uninstallGlobalProxyAgent(): void {
-	http.globalAgent = new http.Agent();
-	https.globalAgent = new https.Agent();
+	http.globalAgent = new http.Agent({
+		keepAlive: true,
+		keepAliveMsecs: 1000,
+		maxSockets: Infinity,
+		maxFreeSockets: 256,
+		timeout: 300000,
+		scheduling: 'lifo',
+	});
+	https.globalAgent = new https.Agent({
+		keepAlive: true,
+		keepAliveMsecs: 1000,
+		maxSockets: Infinity,
+		maxFreeSockets: 256,
+		timeout: 300000,
+		scheduling: 'lifo',
+	});
 }

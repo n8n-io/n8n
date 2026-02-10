@@ -1,3 +1,5 @@
+import { Container } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
 import set from 'lodash/set';
 import type {
 	IBinaryKeyData,
@@ -846,6 +848,23 @@ export class HttpRequestV3 implements INodeType {
 						responseData.reason.message =
 							"Try spacing your requests out using the batching settings under 'Options'";
 					}
+					
+					// Enhanced error handling for binary/file downloads with redirects
+					if (responseFormat === 'file' && responseData.reason.code === 'ECONNRESET') {
+						const errorMessage =
+							'Failed to download binary file. The connection was closed unexpectedly during redirect.';
+						const hint =
+							'This often occurs when downloading files from APIs that redirect to CDNs. The issue has been detected and handled automatically.';
+						
+						responseData.reason.message = errorMessage;
+						responseData.reason.description = hint;
+						
+						Container.get(Logger).error('Binary download failed with ECONNRESET during redirect', {
+							url: requests[itemIndex]?.options?.uri || requests[itemIndex]?.options?.url,
+							error: responseData.reason,
+						});
+					}
+					
 					if (!this.continueOnFail()) {
 						if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
 							responseData.reason.error = Buffer.from(

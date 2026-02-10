@@ -70,6 +70,7 @@ import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
+import { executeBinarySafeRequest } from './binary-redirect-handler';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -142,8 +143,18 @@ function setAxiosAgents(
 
 	if (!targetUrl) return;
 
-	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, agentOptions);
-	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, agentOptions);
+	const enhancedAgentOptions: AgentOptions = {
+		keepAlive: true,
+		keepAliveMsecs: 1000,
+		maxSockets: Infinity,
+		maxFreeSockets: 256,
+		timeout: 300000, // 5 minutes
+		scheduling: 'lifo',
+		...agentOptions,
+	};
+
+	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, enhancedAgentOptions);
+	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, enhancedAgentOptions);
 }
 
 function applyVendorHeaders(config: AxiosRequestConfig) {
@@ -200,7 +211,13 @@ const getBeforeRedirectFn =
 		sendCredentialsOnCrossOriginRedirect: boolean,
 	) =>
 	(redirectedRequest: Record<string, any>) => {
-		const redirectAgentOptions = {
+		const redirectAgentOptions: AgentOptions = {
+			keepAlive: true,
+			keepAliveMsecs: 1000,
+			maxSockets: Infinity,
+			maxFreeSockets: 256,
+			timeout: 300000, // 5 minutes
+			scheduling: 'lifo',
 			...agentOptions,
 			servername: redirectedRequest.hostname,
 		};
@@ -282,6 +299,7 @@ function digestAuthAxiosConfig(
 	}
 	return axiosConfig;
 }
+
 
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
@@ -872,7 +890,14 @@ export async function httpRequest(
 		delete axiosRequest.data;
 	}
 
-	const result = await invokeAxios(axiosRequest, requestOptions.auth);
+	// Detect if this is a binary/streaming request
+	const isBinaryRequest =
+		axiosRequest.responseType === 'arraybuffer' || axiosRequest.responseType === 'stream';
+
+	// Use binary-safe redirect resolution for binary requests
+	const result = isBinaryRequest
+		? await executeBinarySafeRequest(axiosRequest)
+		: await invokeAxios(axiosRequest, requestOptions.auth);
 
 	if (requestOptions.returnFullResponse) {
 		return {
