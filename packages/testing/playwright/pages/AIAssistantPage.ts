@@ -25,12 +25,14 @@ export class AIAssistantPage extends BasePage {
 
 	getChatInput() {
 		// Try suggestions input first (shown when suggestions are visible),
-		// fall back to regular input (shown when there are messages)
+		// fall back to regular input (shown when there are messages),
+		// or the mention input (shown when focused nodes feature is enabled)
 		const suggestionsInput = this.page.getByTestId('chat-suggestions-input').locator('textarea');
 		const regularInput = this.page.getByTestId('chat-input').locator('textarea');
+		const mentionInput = this.page.getByTestId('chat-input-with-mention').locator('textarea');
 
 		// Return the first one that's visible
-		return suggestionsInput.or(regularInput);
+		return suggestionsInput.or(regularInput).or(mentionInput);
 	}
 
 	getSendMessageButton() {

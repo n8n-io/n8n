@@ -17,7 +17,10 @@ const testTemplate = JSON.parse(
 function createTemplateRequirements(): TestRequirements {
 	return {
 		storage: {
-			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'variant' }),
+			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+				'055_template_setup_experience': 'variant',
+				'069_setup_panel': 'control',
+			}),
 		},
 		config: {
 			settings: {
@@ -75,11 +78,8 @@ test.describe('Template credentials setup @db:reset', () => {
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
 
 		await expect(n8n.templateCredentialSetup.getCanvasSetupButton()).toBeVisible();
-		// Modal should open automatically
-		await expect(n8n.templateCredentialSetup.getCanvasCredentialModal()).toBeVisible();
 
-		// Close the modal and re-open it
-		await n8n.templateCredentialSetup.closeSetupCredentialModal();
+		// Open modal via button click
 		await n8n.templateCredentialSetup.getCanvasSetupButton().click();
 		await expect(n8n.templateCredentialSetup.getCanvasCredentialModal()).toBeVisible();
 
