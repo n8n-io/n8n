@@ -1,6 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
+import { screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { vi } from 'vitest';
 import type { AllRolesMap, ProjectRole } from '@n8n/permissions';
@@ -68,6 +70,19 @@ const mockRoles = [
 		displayName: 'Personal Owner',
 		description: null,
 		systemRole: true,
+		licensed: true,
+		roleType: 'project',
+		scopes: [],
+	},
+] as AllRolesMap['project'];
+
+const mockRolesWithCustom = [
+	...mockRoles,
+	{
+		slug: 'project:customDeveloper',
+		displayName: 'Developer',
+		description: 'A custom developer role',
+		systemRole: false,
 		licensed: true,
 		roleType: 'project',
 		scopes: [],
@@ -206,6 +221,46 @@ describe('ProjectMembersRoleCell', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('project-member-role-dropdown')).toBeInTheDocument();
+		});
+	});
+
+	describe('Custom roles section visibility', () => {
+		it('should not show "Custom roles" section label when license is enabled and there are no custom roles', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent();
+
+			// isCustomRolesFeatureEnabled is already true from beforeEach
+			await user.click(getByTestId('project-member-role-dropdown'));
+
+			expect(screen.getByText('System roles')).toBeInTheDocument();
+			expect(screen.queryByText('Custom roles')).not.toBeInTheDocument();
+		});
+
+		it('should show "Custom roles" section label when license is disabled and there are no custom roles', async () => {
+			vi.spyOn(settingsStore, 'isCustomRolesFeatureEnabled', 'get').mockReturnValue(false);
+
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent();
+
+			await user.click(getByTestId('project-member-role-dropdown'));
+
+			expect(screen.getByText('System roles')).toBeInTheDocument();
+			expect(screen.getByText('Custom roles')).toBeInTheDocument();
+		});
+
+		it('should show "Custom roles" section label when custom roles exist regardless of license', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent({
+				props: {
+					data: mockMemberData,
+					roles: mockRolesWithCustom,
+				},
+			});
+
+			await user.click(getByTestId('project-member-role-dropdown'));
+
+			expect(screen.getByText('System roles')).toBeInTheDocument();
+			expect(screen.getByText('Custom roles')).toBeInTheDocument();
 		});
 	});
 });
