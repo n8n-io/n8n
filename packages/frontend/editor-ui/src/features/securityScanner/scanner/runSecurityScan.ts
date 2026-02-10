@@ -31,9 +31,28 @@ export function runSecurityScan(nodes: INodeUi[], connections: IConnections): Se
 		...checkAiSecurity(nodes, connections),
 	];
 
-	findings.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2));
+	// Deduplicate findings that flag the same secret on the same node/parameter.
+	// AI-specific checks (id prefix "ai-") provide better context, so when both
+	// a generic and an AI-specific finding exist for the same spot, keep the AI one.
+	const seen = new Map<string, SecurityFinding>();
+	for (const finding of findings) {
+		if (finding.category !== 'hardcoded-secret' || !finding.parameterPath) {
+			seen.set(finding.id, finding);
+			continue;
+		}
+		const dedupeKey = `${finding.category}:${finding.nodeId}:${finding.parameterPath}`;
+		const existing = seen.get(dedupeKey);
+		if (!existing) {
+			seen.set(dedupeKey, finding);
+		} else if (finding.id.startsWith('ai-')) {
+			seen.set(dedupeKey, finding);
+		}
+	}
+	const deduped = [...seen.values()];
 
-	return findings;
+	deduped.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2));
+
+	return deduped;
 }
 
 /**

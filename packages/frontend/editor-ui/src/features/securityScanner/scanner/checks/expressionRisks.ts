@@ -27,8 +27,11 @@ export function checkExpressionRisks(nodes: INodeUi[]): SecurityFinding[] {
 					title: 'Environment variable accessed in expression',
 					description:
 						"Using $env may expose server-side environment variables. Ensure this is intentional and the variable doesn't contain secrets being passed to untrusted outputs.",
+					remediation:
+						'1. Verify that the environment variable does not contain secrets being sent to untrusted outputs.\n2. If it contains a secret, move it to n8n credentials instead.\n3. Restrict which environment variables are accessible via the N8N_BLOCK_ENV_ACCESS_IN_NODE setting.',
 					nodeName: node.name,
 					nodeId: node.id,
+					nodeType: node.type,
 					parameterPath: path,
 				});
 			}
@@ -42,8 +45,11 @@ export function checkExpressionRisks(nodes: INodeUi[]): SecurityFinding[] {
 					title: 'Expression accesses sensitive field',
 					description:
 						"This expression references a field name that looks like a credential or secret. Ensure sensitive data isn't being passed to untrusted destinations.",
+					remediation:
+						'1. Verify the destination of this data — ensure it is not being sent to an untrusted or external service.\n2. If the field contains credentials, use n8n credentials instead of passing them via expressions.\n3. Add a Set node to redact or mask the sensitive field before passing it downstream.',
 					nodeName: node.name,
 					nodeId: node.id,
+					nodeType: node.type,
 					parameterPath: path,
 				});
 			}

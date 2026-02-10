@@ -35,19 +35,19 @@ const tagClass = computed(() => {
 <style module>
 .TagCritical {
 	color: var(--color--danger);
-	background-color: var(--color--danger--tint-4);
-	border: 0;
+	background-color: light-dark(var(--color--neutral-white), var(--color--foreground--tint-1));
+	border: var(--border-width) var(--border-style) light-dark(var(--color--neutral-300), var(--color--foreground));
 }
 
 .TagWarning {
 	color: var(--color--warning--shade-1);
-	background-color: var(--color--warning--tint-2);
-	border: 0;
+	background-color: light-dark(var(--color--neutral-white), var(--color--foreground--tint-1));
+	border: var(--border-width) var(--border-style) light-dark(var(--color--neutral-300), var(--color--foreground));
 }
 
 .TagInfo {
-	color: var(--color--text--tint-1);
-	background-color: var(--color--foreground--tint-1);
-	border: 0;
+	color: light-dark(var(--color--neutral-600), var(--color--text--tint-1));
+	background-color: light-dark(var(--color--neutral-white), var(--color--foreground--tint-1));
+	border: var(--border-width) var(--border-style) light-dark(var(--color--neutral-300), var(--color--foreground));
 }
 </style>

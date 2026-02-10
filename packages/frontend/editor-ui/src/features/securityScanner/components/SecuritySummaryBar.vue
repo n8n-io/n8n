@@ -13,7 +13,7 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<div :class="$style.bar">
+	<div :class="$style.bar" data-test-id="security-summary-bar">
 		<div :class="[$style.stat, $style.critical]">
 			<N8nText tag="span" size="small" bold>{{ summary.critical }}</N8nText>
 			<N8nText tag="span" size="small">{{
@@ -40,7 +40,9 @@ const i18n = useI18n();
 	display: flex;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	background-color: var(--color--foreground--tint-2);
+	margin: 0 var(--spacing--sm);
+	background-color: light-dark(var(--color--neutral-100), var(--color--foreground--tint-2));
+	border: var(--border-width) var(--border-style) light-dark(var(--color--neutral-250), transparent);
 	border-radius: var(--radius--lg);
 }
 

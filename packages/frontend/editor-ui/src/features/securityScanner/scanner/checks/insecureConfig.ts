@@ -34,8 +34,11 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 						severity: 'warning',
 						title: 'Insecure HTTP URL (no TLS)',
 						description: `Use HTTPS instead of HTTP to encrypt data in transit to "${host}".`,
+						remediation:
+							'1. Change the URL from "http://" to "https://".\n2. If the server does not support HTTPS, contact the service provider to enable TLS.\n3. If this is an internal service, consider placing it behind a reverse proxy with TLS termination.',
 						nodeName: node.name,
 						nodeId: node.id,
+						nodeType: node.type,
 						parameterPath: path,
 					});
 				}
@@ -54,8 +57,11 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 				title: 'SSL certificate verification disabled',
 				description:
 					'Disabling SSL verification makes the connection vulnerable to man-in-the-middle attacks.',
+				remediation:
+					'1. Open the node and uncheck "Allow Unauthorized Certs" (or set it to false).\n2. If the server uses a self-signed certificate, install the CA certificate on the n8n server instead.\n3. For development/testing only: re-enable verification before deploying to production.',
 				nodeName: node.name,
 				nodeId: node.id,
+				nodeType: node.type,
 				parameterPath: 'allowUnauthorizedCerts',
 			});
 		}
@@ -71,8 +77,11 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 					title: 'Unauthenticated webhook',
 					description:
 						'This webhook has no authentication. Anyone with the URL can trigger it. Add header or basic auth.',
+					remediation:
+						'1. Open the Webhook node and set Authentication to "Header Auth" or "Basic Auth".\n2. Configure the authentication credentials.\n3. Update the calling system to include the required auth headers.\n4. Test the webhook to confirm unauthorized requests are rejected.',
 					nodeName: node.name,
 					nodeId: node.id,
+					nodeType: node.type,
 					parameterPath: 'authentication',
 				});
 			}
@@ -98,8 +107,11 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 						title: 'HTTP Request without credentials',
 						description:
 							'This HTTP Request node has no authentication configured. If the API requires auth, use n8n credentials.',
+						remediation:
+							'1. If this API requires authentication, click "Authentication" in the node and select the appropriate method.\n2. Create an n8n credential for the service.\n3. If the API is truly public, you can ignore this finding.',
 						nodeName: node.name,
 						nodeId: node.id,
+						nodeType: node.type,
 						parameterPath: 'authentication',
 					});
 				}
@@ -121,8 +133,11 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 					title: `SSRF risk: webhook with internal URL in "${node.name}"`,
 					description:
 						'This workflow has a public webhook and an HTTP Request to an internal network address. An attacker could exploit the webhook to probe internal services.',
+					remediation:
+						'1. Avoid using internal/private network URLs in HTTP Request nodes that receive data from webhooks.\n2. If internal access is needed, validate and sanitize the input before making the request.\n3. Use an allowlist of permitted internal endpoints instead of accepting arbitrary URLs.\n4. Consider using n8n environment variables for internal URLs rather than hardcoding them.',
 					nodeName: node.name,
 					nodeId: node.id,
+					nodeType: node.type,
 					parameterPath: 'url',
 				});
 			}

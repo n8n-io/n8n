@@ -82,8 +82,11 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 					severity: 'info',
 					title: `External input flows to ${node.type.replace('n8n-nodes-base.', '')}`,
 					description: `Data from ${triggerList} reaches this node. Ensure sensitive input data is filtered before sending externally.`,
+					remediation:
+						'1. Add a Set or Filter node between the trigger and this node to strip sensitive fields.\n2. Only pass the specific fields needed by the external service.\n3. Review what data the trigger receives and ensure PII is not forwarded unintentionally.',
 					nodeName: node.name,
 					nodeId: node.id,
+					nodeType: node.type,
 				});
 			}
 		}
@@ -105,8 +108,11 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 						title: 'console.log in Code node',
 						description:
 							'console.log may expose sensitive data in server logs. Remove logging before production use.',
+						remediation:
+							"1. Remove or comment out console.log statements before deploying to production.\n2. If you need logging, use structured logging that excludes sensitive data.\n3. Consider using n8n's built-in execution data view instead of console.log for debugging.",
 						nodeName: node.name,
 						nodeId: node.id,
+						nodeType: node.type,
 						parameterPath: paramName,
 					});
 				}
@@ -120,8 +126,11 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 							severity: 'warning',
 							title: `Dangerous "${label}" usage in Code node "${node.name}"`,
 							description: `The Code node uses "${label}" which can execute arbitrary code or access the server. This is a code injection risk if the node processes user-controlled input.`,
+							remediation:
+								'1. Replace the dangerous function with a safer alternative (e.g., use JSON.parse instead of eval).\n2. If dynamic code execution is required, validate and sanitize all inputs before processing.\n3. Never pass user-controlled data directly to eval(), exec(), or similar functions.\n4. Consider using a dedicated n8n node instead of custom code where possible.',
 							nodeName: node.name,
 							nodeId: node.id,
+							nodeType: node.type,
 							parameterPath: paramName,
 						});
 					}
@@ -147,8 +156,11 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 					severity: 'warning',
 					title: `High fan-out: "${triggerName}" reaches ${externalCount} external services`,
 					description: `A single trigger fans out to ${externalCount} external services. A compromised input could affect all of them. Consider reducing the blast radius.`,
+					remediation:
+						'1. Review whether all downstream services need the full trigger payload.\n2. Add Set nodes before external services to pass only the minimum required data.\n3. Consider grouping related external calls behind a single sub-workflow to limit blast radius.\n4. Add error handling to prevent a failure in one branch from affecting others.',
 					nodeName: triggerName,
 					nodeId: nodesByName.get(triggerName)?.id ?? triggerName,
+					nodeType: nodesByName.get(triggerName)?.type ?? '',
 				});
 			}
 		}

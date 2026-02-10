@@ -281,11 +281,25 @@ const scrollRight = () => scroll(50);
 	position: absolute;
 	background-color: var(--tabs--arrow-buttons--color, var(--color--foreground--tint-2));
 	z-index: 1;
-	height: 24px;
-	width: 10px;
+	height: 100%;
+	width: 24px;
 	display: flex;
 	align-items: center;
+	justify-content: center;
+	padding: 0;
 	font-weight: var(--font-weight--bold);
+
+	.modern & {
+		padding: 0;
+	}
+
+	.small & {
+		padding: 0;
+	}
+
+	.small.modern & {
+		padding: 0;
+	}
 }
 
 .notificationContainer {

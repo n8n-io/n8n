@@ -228,6 +228,7 @@ describe('checkHardcodedSecrets', () => {
 		expect(findings[0].category).toBe('hardcoded-secret');
 		expect(findings[0].severity).toBe('critical');
 		expect(findings[0].title).toContain('Stripe');
+		expect(findings[0].remediation).toBeTruthy();
 	});
 
 	it('should detect GitHub tokens', () => {
@@ -320,6 +321,7 @@ describe('checkPiiPatterns', () => {
 		const findings = checkPiiPatterns(nodes);
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].title).toContain('Email');
+		expect(findings[0].remediation).toBeTruthy();
 	});
 
 	it('should detect SSN patterns', () => {
@@ -541,6 +543,7 @@ describe('checkExpressionRisks', () => {
 		const findings = checkExpressionRisks(nodes);
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].title).toContain('Environment variable');
+		expect(findings[0].remediation).toBeTruthy();
 	});
 
 	it('should detect access to sensitive fields in expressions', () => {
@@ -938,5 +941,54 @@ describe('Tier 1 checks', () => {
 		const findings = checkInsecureConfig(nodes);
 		const ssrfFinding = findings.find((f) => f.title.includes('SSRF'));
 		expect(ssrfFinding).toBeDefined();
+	});
+});
+
+describe('remediation text', () => {
+	it('should include non-empty remediation in all findings', () => {
+		const nodes = [
+			makeNode({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: { authentication: 'none' },
+			}),
+			makeNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					url: 'http://api.example.com',
+					headerParameters: {
+						parameters: [{ name: 'Authorization', value: 'Bearer sk_test_FAKE0000000000000000xx' }],
+					},
+				},
+			}),
+			makeNode({
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				parameters: {
+					assignments: {
+						assignments: [{ name: 'email', value: 'user@example.com' }],
+					},
+				},
+			}),
+			makeNode({
+				name: 'Code',
+				type: 'n8n-nodes-base.code',
+				parameters: {
+					jsCode: 'console.log($input.all());\nreturn items;',
+				},
+			}),
+		];
+		const connections: IConnections = {
+			Webhook: {
+				main: [[{ node: 'HTTP Request', type: 'main' as never, index: 0 }]],
+			},
+		};
+		const findings = runSecurityScan(nodes, connections);
+		expect(findings.length).toBeGreaterThan(0);
+		for (const finding of findings) {
+			expect(finding.remediation).toBeTruthy();
+			expect(finding.remediation.length).toBeGreaterThan(20);
+		}
 	});
 });

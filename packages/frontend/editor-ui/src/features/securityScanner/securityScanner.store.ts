@@ -6,10 +6,10 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 import { runSecurityScan, computeSummary } from './scanner/runSecurityScan';
-import type { SecurityCategory } from './scanner/types';
+import type { SecurityFinding, SecuritySeverity } from './scanner/types';
 import {
 	SECURITY_PANEL_LOCAL_STORAGE_KEY,
 	DEFAULT_PANEL_WIDTH,
@@ -18,7 +18,6 @@ import {
 
 export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () => {
 	const workflowsStore = useWorkflowsStore();
-	const ndvStore = useNDVStore();
 
 	// UI state
 	const panelOpen = ref(false);
@@ -35,20 +34,18 @@ export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () =
 
 	const filteredFindings = computed(() => {
 		if (activeTab.value === 'all') return findings.value;
-		return findings.value.filter((f) => f.category === activeTab.value);
+		return findings.value.filter((f) => f.severity === activeTab.value);
 	});
 
-	const categoryCount = computed(() => {
-		const counts: Record<SecurityCategory | 'all', number> = {
+	const severityCount = computed(() => {
+		const counts: Record<SecuritySeverity | 'all', number> = {
 			all: findings.value.length,
-			'hardcoded-secret': 0,
-			'pii-data-flow': 0,
-			'insecure-config': 0,
-			'data-exposure': 0,
-			'expression-risk': 0,
+			critical: 0,
+			warning: 0,
+			info: 0,
 		};
 		for (const finding of findings.value) {
-			counts[finding.category]++;
+			counts[finding.severity]++;
 		}
 		return counts;
 	});
@@ -79,7 +76,10 @@ export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () =
 	}
 
 	function navigateToNode(nodeName: string) {
-		ndvStore.setActiveNodeName(nodeName, 'other');
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (node) {
+			canvasEventBus.emit('nodes:select', { ids: [node.id], panIntoView: true });
+		}
 	}
 
 	function loadPanelWidth(): number {
@@ -106,24 +106,60 @@ export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () =
 		// Open the builder chat panel
 		await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
 
-		// Format the static findings as context for the AI
-		const findingsContext = JSON.stringify(
-			findings.value.map((f) => ({
-				category: f.category,
-				severity: f.severity,
-				title: f.title,
-				description: f.description,
-				nodeName: f.nodeName,
-				parameterPath: f.parameterPath,
-				matchedValue: f.matchedValue,
-			})),
+		let prompt: string;
+
+		if (hasFindings.value) {
+			// Format the static findings as context for the AI
+			const findingsContext = JSON.stringify(
+				findings.value.map((f) => ({
+					category: f.category,
+					severity: f.severity,
+					title: f.title,
+					description: f.description,
+					remediation: f.remediation,
+					nodeName: f.nodeName,
+					parameterPath: f.parameterPath,
+					matchedValue: f.matchedValue,
+				})),
+				null,
+				2,
+			);
+
+			prompt = `Perform a security and PII scan of my current workflow using the security_scan tool. Here are the static analysis results for additional context:\n\n${findingsContext}\n\nAnalyze each finding, identify additional risks, assess compliance, and provide an executive summary with fix recommendations.`;
+		} else {
+			prompt =
+				'Perform a deep security and PII scan of my current workflow using the security_scan tool. The static analysis found no issues, but please look deeper for semantic risks such as unsafe data flows between nodes, implicit PII exposure, misconfigured credentials, overly permissive webhooks, or any compliance concerns. Provide an executive summary with your assessment.';
+		}
+
+		// Send the security analysis request to the builder
+		await builderStore.sendChatMessage({ text: prompt, source: 'canvas' });
+	}
+
+	async function fixFindingWithAi(finding: SecurityFinding) {
+		if (!isAiAvailable.value) return;
+
+		const chatPanelStore = useChatPanelStore();
+		const builderStore = useBuilderStore();
+
+		await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
+
+		const findingContext = JSON.stringify(
+			{
+				category: finding.category,
+				severity: finding.severity,
+				title: finding.title,
+				description: finding.description,
+				remediation: finding.remediation,
+				nodeName: finding.nodeName,
+				parameterPath: finding.parameterPath,
+				matchedValue: finding.matchedValue,
+			},
 			null,
 			2,
 		);
 
-		// Send the security analysis request to the builder
 		await builderStore.sendChatMessage({
-			text: `Perform a security and PII scan of my current workflow using the security_scan tool. Here are the static analysis results for additional context:\n\n${findingsContext}\n\nAnalyze each finding, identify additional risks, assess compliance, and provide an executive summary with fix recommendations.`,
+			text: `I have a security finding in my workflow that I need help fixing. Please apply the recommended remediation to the "${finding.nodeName}" node.\n\nFinding details:\n${findingContext}\n\nPlease implement the fix directly in the workflow.`,
 			source: 'canvas',
 		});
 	}
@@ -136,7 +172,7 @@ export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () =
 		summary,
 		hasFindings,
 		filteredFindings,
-		categoryCount,
+		severityCount,
 		isAiAvailable,
 		openPanel,
 		closePanel,
@@ -145,5 +181,6 @@ export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () =
 		updateWidth,
 		navigateToNode,
 		analyzeWithAi,
+		fixFindingWithAi,
 	};
 });

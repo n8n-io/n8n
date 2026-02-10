@@ -69,8 +69,11 @@ export function checkPiiPatterns(nodes: INodeUi[]): SecurityFinding[] {
 						title: `${type} detected in parameter`,
 						description:
 							'Hardcoded PII found. Consider using expressions or credentials instead of embedding personal data directly.',
+						remediation:
+							'1. Remove the hardcoded personal data from the parameter.\n2. If this is test data, use placeholder values instead (e.g., "test@example.com").\n3. For production data, use expressions to reference input data dynamically rather than hardcoding PII.\n4. Consider adding a Set node to redact or mask PII before passing it downstream.',
 						nodeName: node.name,
 						nodeId: node.id,
+						nodeType: node.type,
 						parameterPath: path,
 						matchedValue: redactValue(value),
 					});
@@ -96,8 +99,11 @@ export function checkPiiPatterns(nodes: INodeUi[]): SecurityFinding[] {
 							title: `PII field "${assignment.name}" in "${node.name}"`,
 							description:
 								'This field name suggests personal data is being processed. Ensure proper handling per your data privacy policy.',
+							remediation:
+								'1. Review whether this field truly needs to contain personal data.\n2. If the data is passed to external services, add a filtering step to redact or mask the PII.\n3. Consider renaming the field to a less identifiable name if the downstream consumer allows it.\n4. Document your data handling in accordance with your privacy policy.',
 							nodeName: node.name,
 							nodeId: node.id,
+							nodeType: node.type,
 							parameterPath: `${fieldName}.${assignment.name}`,
 						});
 					}

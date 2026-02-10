@@ -58,12 +58,12 @@ export function checkHardcodedSecrets(nodes: INodeUi[]): SecurityFinding[] {
 		if (!node.parameters) continue;
 
 		walkParameters(node.parameters, (value, path, isExpr) => {
-			// Skip expressions — they're dynamic values, not hardcoded
-			if (isExpr) return;
-
-			// Check known secret patterns
+			// Always check known secret patterns — even inside expressions,
+			// because a value like `={{ $json }} use this key sk_live_abc...`
+			// still contains a hardcoded secret embedded in the expression text.
 			for (const { pattern, provider } of SECRET_PATTERNS) {
-				if (pattern.test(value)) {
+				const match = pattern.exec(value);
+				if (match) {
 					findings.push({
 						id: `secret-${++counter}`,
 						category: 'hardcoded-secret',
@@ -71,14 +71,21 @@ export function checkHardcodedSecrets(nodes: INodeUi[]): SecurityFinding[] {
 						title: `Hardcoded ${provider} key detected`,
 						description:
 							"Move this key to n8n's credential store instead of hardcoding it in the workflow.",
+						remediation:
+							'1. Open the node and remove the hardcoded key from the parameter.\n2. Go to Credentials > Add New Credential and create a credential for this service.\n3. Select the new credential in the node settings.\n4. Delete the old key from the workflow JSON if it was saved.',
 						nodeName: node.name,
 						nodeId: node.id,
+						nodeType: node.type,
 						parameterPath: path,
-						matchedValue: redactValue(value),
+						matchedValue: redactValue(match[0]),
 					});
 					return; // one finding per value
 				}
 			}
+
+			// Skip expressions for heuristic checks — generic token detection
+			// relies on the full value shape and would false-positive on expressions.
+			if (isExpr) return;
 
 			// Check if a sensitive field has a long hardcoded value (likely a token)
 			if (isSensitiveFieldName(path) && value.length >= 16 && GENERIC_TOKEN_PATTERN.test(value)) {
@@ -88,8 +95,11 @@ export function checkHardcodedSecrets(nodes: INodeUi[]): SecurityFinding[] {
 					severity: 'critical',
 					title: 'Possible hardcoded token or secret',
 					description: `The field "${path}" contains a hardcoded value that looks like a secret. Use n8n credentials instead.`,
+					remediation:
+						'1. Open the node and remove the hardcoded value from the parameter.\n2. Create an n8n credential of the appropriate type (or use "Header Auth" for custom headers).\n3. Select the credential in the node\'s Authentication section.\n4. Test the node to verify the credential works.',
 					nodeName: node.name,
 					nodeId: node.id,
+					nodeType: node.type,
 					parameterPath: path,
 					matchedValue: redactValue(value),
 				});

@@ -16,6 +16,7 @@ export interface SecurityFinding {
 	remediation: string;
 	nodeName: string;
 	nodeId: string;
+	nodeType: string;
 	parameterPath?: string;
 	matchedValue?: string;
 }

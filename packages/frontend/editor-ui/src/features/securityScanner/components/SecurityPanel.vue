@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
 import { storeToRefs } from 'pinia';
-import { N8nResizeWrapper, N8nTabs, N8nText, N8nIcon, N8nButton } from '@n8n/design-system';
+import { N8nResizeWrapper, N8nTabs, N8nText, N8nIcon, N8nButton, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useThrottleFn } from '@vueuse/core';
@@ -13,6 +13,7 @@ import {
 	MAX_PANEL_WIDTH,
 	type SecurityTab,
 } from '../securityScanner.constants';
+import type { SecurityFinding } from '../scanner/types';
 import SecuritySummaryBar from './SecuritySummaryBar.vue';
 import SecurityFindingCard from './SecurityFindingCard.vue';
 
@@ -27,7 +28,7 @@ const {
 	activeTab,
 	filteredFindings,
 	summary,
-	categoryCount,
+	severityCount,
 	isAiAvailable,
 	hasFindings,
 } = storeToRefs(securityStore);
@@ -36,7 +37,7 @@ const tabs = computed(() =>
 	SECURITY_TABS.map((tab) => ({
 		label: i18n.baseText(tab.labelKey as BaseTextKey),
 		value: tab.value,
-		tag: categoryCount.value[tab.value] > 0 ? String(categoryCount.value[tab.value]) : undefined,
+		tag: severityCount.value[tab.value] > 0 ? String(severityCount.value[tab.value]) : undefined,
 	})),
 );
 
@@ -68,6 +69,10 @@ function onAnalyzeWithAi() {
 function onNavigateToNode(nodeName: string) {
 	securityStore.navigateToNode(nodeName);
 }
+
+function onFixFindingWithAi(finding: SecurityFinding) {
+	void securityStore.fixFindingWithAi(finding);
+}
 </script>
 
 <template>
@@ -89,26 +94,15 @@ function onNavigateToNode(nodeName: string) {
 							{{ i18n.baseText('securityScanner.panel.title') }}
 						</N8nText>
 					</div>
-					<div :class="$style.headerActions">
-						<N8nButton
-							v-if="isAiAvailable"
-							type="secondary"
-							size="small"
-							icon="wand-sparkles"
-							data-test-id="security-analyze-ai"
-							@click="onAnalyzeWithAi"
-						>
-							{{ i18n.baseText('securityScanner.ai.analyze' as BaseTextKey) }}
-						</N8nButton>
-						<N8nButton
-							type="tertiary"
-							size="small"
-							icon="x"
-							square
-							data-test-id="security-panel-close"
-							@click="onClose"
-						/>
-					</div>
+					<N8nButton
+						:class="$style.closeButton"
+						type="tertiary"
+						size="small"
+						icon="x"
+						square
+						data-test-id="security-panel-close"
+						@click="onClose"
+					/>
 				</div>
 
 				<div v-if="!hasFindings" :class="$style.allClear">
@@ -123,6 +117,17 @@ function onNavigateToNode(nodeName: string) {
 
 				<template v-else>
 					<SecuritySummaryBar :summary="summary" />
+
+					<div v-if="isAiAvailable" :class="$style.aiAction">
+						<N8nLink
+							size="small"
+							data-test-id="security-analyze-ai"
+							@click="onAnalyzeWithAi"
+						>
+							<N8nIcon icon="wand-sparkles" size="small" />
+							{{ i18n.baseText('securityScanner.ai.deepScan' as BaseTextKey) }}
+						</N8nLink>
+					</div>
 
 					<div :class="$style.tabs">
 						<N8nTabs v-model="selectedTab" :options="tabs" variant="modern" />
@@ -144,7 +149,9 @@ function onNavigateToNode(nodeName: string) {
 							v-else
 							:key="finding.id"
 							:finding="finding"
+							:is-ai-available="isAiAvailable"
 							@navigate="onNavigateToNode"
+							@fix-with-ai="onFixFindingWithAi"
 						/>
 					</div>
 				</template>
@@ -158,8 +165,8 @@ function onNavigateToNode(nodeName: string) {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
-	border-left: 1px solid var(--color--foreground);
-	background: var(--color--background--light-3);
+	border-left: 1px solid light-dark(var(--color--neutral-300), var(--color--foreground));
+	background: light-dark(var(--color--neutral-white), var(--color--background--light-3));
 	height: 100%;
 	overflow: hidden;
 }
@@ -169,7 +176,6 @@ function onNavigateToNode(nodeName: string) {
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
-	padding: var(--spacing--sm);
 	gap: var(--spacing--xs);
 }
 
@@ -177,6 +183,7 @@ function onNavigateToNode(nodeName: string) {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 }
 
 .titleRow {
@@ -185,18 +192,38 @@ function onNavigateToNode(nodeName: string) {
 	gap: var(--spacing--2xs);
 }
 
-.headerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+.icon {
+	color: light-dark(var(--color--neutral-800), var(--color--neutral-300));
 }
 
-.icon {
-	color: var(--color--primary);
+.closeButton {
+	border: none;
+	background: none;
+
+	&:hover {
+		background: light-dark(var(--color--neutral-100), var(--color--neutral-800));
+	}
+}
+
+.aiAction {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--sm);
 }
 
 .tabs {
 	flex-shrink: 0;
+	padding: 0 var(--spacing--sm);
+
+	:global(.n8n-tabs .tabs) {
+		width: 100%;
+	}
+
+	:global(.n8n-tabs .tab) {
+		flex: 1;
+		text-align: center;
+	}
 }
 
 .findings {
@@ -204,8 +231,7 @@ function onNavigateToNode(nodeName: string) {
 	overflow-y: auto;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding-bottom: var(--spacing--sm);
+	padding-left: var(--spacing--sm);
 }
 
 .allClear {
