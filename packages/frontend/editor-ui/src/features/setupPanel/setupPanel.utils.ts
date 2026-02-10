@@ -50,7 +50,7 @@ export function buildCredentialRequirement(
 
 	const credentialIssues = node.issues?.credentials ?? {};
 	const issues = credentialIssues[credentialType];
-	const issueMessages = issues ? (Array.isArray(issues) ? issues : [issues]) : [];
+	const issueMessages = [issues ?? []].flat();
 
 	return {
 		credentialType,
