@@ -23,6 +23,28 @@ export namespace ChatRequest {
 		expression: string;
 		resolvedValue?: unknown;
 		nodeType: string;
+		/** Parameter path where the expression is located (e.g., 'url', 'headers.authorization') */
+		parameterPath?: string;
+	}
+
+	/**
+	 * Context for a node selected/focused by the user.
+	 * Used for focused nodes feature - allows user to select specific nodes
+	 * for the AI to prioritize in its responses.
+	 *
+	 * Note: Only contains additional context not already in currentWorkflow.nodes.
+	 * The LLM should look up full node details (type, parameters, etc.) by matching
+	 * the `name` field against currentWorkflow.nodes[].name.
+	 */
+	export interface SelectedNodeContext {
+		/** Node display name - use to look up full node in currentWorkflow.nodes */
+		name: string;
+		/** Configuration issues/validation errors on the node (not in currentWorkflow) */
+		issues?: Record<string, string[]>;
+		/** Names of nodes that connect INTO this node (pre-resolved for convenience) */
+		incomingConnections: string[];
+		/** Names of nodes that this node connects TO (pre-resolved for convenience) */
+		outgoingConnections: string[];
 	}
 
 	export interface WorkflowContext {
@@ -30,6 +52,12 @@ export namespace ChatRequest {
 		currentWorkflow?: Partial<IWorkflowDb>;
 		executionData?: IRunExecutionData['resultData'];
 		expressionValues?: Record<string, ExpressionValue[]>;
+		/** Whether execution schema values were excluded (redacted) for privacy */
+		valuesExcluded?: boolean;
+		/** Node names whose output schema was derived from pin data */
+		pinnedNodes?: string[];
+		/** Nodes explicitly selected/focused by the user for AI context */
+		selectedNodes?: SelectedNodeContext[];
 	}
 
 	export interface ExecutionResultData {
@@ -97,6 +125,7 @@ export namespace ChatRequest {
 
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
+		codeBuilder?: boolean;
 		planMode?: boolean;
 	}
 

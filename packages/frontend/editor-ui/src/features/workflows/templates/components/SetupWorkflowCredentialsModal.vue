@@ -46,7 +46,7 @@ const {
 onMounted(() => {
 	setInitialCredentialSelection();
 
-	telemetry.track('User opened cred setup', { source: 'canvas' });
+	telemetry.track('User opened cred setup', { source: props.data?.source ?? 'canvas' });
 });
 
 onUnmounted(() => {
@@ -55,6 +55,7 @@ onUnmounted(() => {
 		creds_filled: numFilledCredentials.value,
 		creds_needed: credentialUsages.value.length,
 		workflow_id: workflowStore.workflowId,
+		source: props.data?.source ?? 'canvas',
 	});
 });
 </script>

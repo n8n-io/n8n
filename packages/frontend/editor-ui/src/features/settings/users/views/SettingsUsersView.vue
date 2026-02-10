@@ -17,7 +17,6 @@ import {
 	MODAL_CONFIRM,
 } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/app/composables/useToast';
@@ -33,13 +32,11 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import { ElSwitch } from 'element-plus';
 import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
 import {
 	N8nActionBox,
-	N8nBadge,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -64,8 +61,6 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
 const postHog = usePostHog();
 
-const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
-
 const i18n = useI18n();
 
 const search = ref('');
@@ -79,9 +74,6 @@ const usersTableState = ref<TableOptions>({
 	],
 });
 const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
-const isEnforceMFAEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
-);
 
 const isInstanceRoleProvisioningEnabled = computed(
 	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
@@ -332,6 +324,8 @@ function goToUpgradeAdvancedPermissions() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
 }
 
+const updatingRoleUserId = ref<string | null>(null);
+
 const onUpdateRole = async (payload: { userId: string; role: Role }) => {
 	const user = usersStore.usersList.state.items.find((u) => u.id === payload.userId);
 	if (!user) {
@@ -341,57 +335,6 @@ const onUpdateRole = async (payload: { userId: string; role: Role }) => {
 
 	await onRoleChange(user, payload.role);
 };
-
-async function onRoleChange(user: User, newRoleName: Role) {
-	if (newRoleName === user.role) return;
-
-	const name =
-		user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.email ?? '');
-	const role = userRoles.value.find(({ value }) => value === newRoleName)?.label ?? newRoleName;
-
-	if (newRoleName === ROLE.ChatUser) {
-		const confirmed = await message.confirm(
-			i18n.baseText('settings.users.userRoleUpdated.confirm.message', {
-				interpolate: {
-					role,
-				},
-			}),
-			i18n.baseText('settings.users.userRoleUpdated.confirm.title', {
-				interpolate: {
-					user: name,
-				},
-			}),
-			{
-				confirmButtonText: i18n.baseText('settings.users.userRoleUpdated.confirm.button'),
-				cancelButtonText: i18n.baseText('settings.users.userRoleUpdated.cancel.button'),
-			},
-		);
-
-		if (confirmed !== MODAL_CONFIRM) {
-			return;
-		}
-	}
-
-	try {
-		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
-
-		showToast({
-			type: 'success',
-			title: i18n.baseText('settings.users.userRoleUpdated'),
-			message: i18n.baseText('settings.users.userRoleUpdated.message', {
-				interpolate: {
-					user: name,
-					role,
-				},
-			}),
-		});
-	} catch (e) {
-		showError(e, i18n.baseText('settings.users.userRoleUpdatedError'));
-	}
-}
-
-const isValidSortKey = (key: string): key is UsersListSortOptions =>
-	(USERS_LIST_SORT_OPTIONS as readonly string[]).includes(key);
 
 const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions) => {
 	try {
@@ -428,6 +371,61 @@ const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions
 	}
 };
 
+async function onRoleChange(user: User, newRoleName: Role) {
+	if (newRoleName === user.role) return;
+
+	const name =
+		user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.email ?? '');
+	const role = userRoles.value.find(({ value }) => value === newRoleName)?.label ?? newRoleName;
+
+	if (newRoleName === ROLE.ChatUser) {
+		const confirmed = await message.confirm(
+			i18n.baseText('settings.users.userRoleUpdated.confirm.message', {
+				interpolate: {
+					role,
+				},
+			}),
+			i18n.baseText('settings.users.userRoleUpdated.confirm.title', {
+				interpolate: {
+					user: name,
+				},
+			}),
+			{
+				confirmButtonText: i18n.baseText('settings.users.userRoleUpdated.confirm.button'),
+				cancelButtonText: i18n.baseText('settings.users.userRoleUpdated.cancel.button'),
+			},
+		);
+
+		if (confirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
+	updatingRoleUserId.value = user.id;
+	try {
+		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
+		await updateUsersTableData(usersTableState.value);
+
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.users.userRoleUpdated'),
+			message: i18n.baseText('settings.users.userRoleUpdated.message', {
+				interpolate: {
+					user: name,
+					role,
+				},
+			}),
+		});
+	} catch (e) {
+		showError(e, i18n.baseText('settings.users.userRoleUpdatedError'));
+	} finally {
+		updatingRoleUserId.value = null;
+	}
+}
+
+const isValidSortKey = (key: string): key is UsersListSortOptions =>
+	(USERS_LIST_SORT_OPTIONS as readonly string[]).includes(key);
+
 const debouncedUpdateUsersTableData = useDebounceFn(() => {
 	usersTableState.value.page = 0; // Reset to first page on search
 	void updateUsersTableData(usersTableState.value);
@@ -437,24 +435,6 @@ const onSearch = (value: string) => {
 	search.value = value;
 	void debouncedUpdateUsersTableData();
 };
-
-async function onUpdateMfaEnforced(value: string | number | boolean) {
-	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
-	try {
-		await usersStore.updateEnforceMfa(boolValue);
-		showToast({
-			type: 'success',
-			title: boolValue
-				? i18n.baseText('settings.personal.mfa.enforce.enabled.title')
-				: i18n.baseText('settings.personal.mfa.enforce.disabled.title'),
-			message: boolValue
-				? i18n.baseText('settings.personal.mfa.enforce.enabled.message')
-				: i18n.baseText('settings.personal.mfa.enforce.disabled.message'),
-		});
-	} catch (error) {
-		showError(error, i18n.baseText('settings.personal.mfa.enforce.error'));
-	}
-}
 </script>
 
 <template>
@@ -497,43 +477,6 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				</template>
 			</I18nT>
 		</N8nNotice>
-		<div :class="$style.settingsContainer">
-			<div :class="$style.settingsContainerInfo">
-				<N8nText :bold="true"
-					>{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
-					<N8nBadge v-if="!isEnforceMFAEnabled" class="ml-4xs">{{
-						i18n.baseText('generic.upgrade')
-					}}</N8nBadge>
-				</N8nText>
-				<N8nText size="small" color="text-light">{{
-					i18n.baseText('settings.personal.mfa.enforce.message')
-				}}</N8nText>
-			</div>
-			<div :class="$style.settingsContainerAction">
-				<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
-					<ElSwitch
-						:model-value="settingsStore.isMFAEnforced"
-						size="large"
-						data-test-id="enable-force-mfa"
-						@update:model-value="onUpdateMfaEnforced"
-					/>
-					<template #fallback>
-						<N8nTooltip>
-							<ElSwitch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
-							<template #content>
-								<I18nT :keypath="tooltipKey" tag="span" scope="global">
-									<template #action>
-										<a @click="goToUpgrade">
-											{{ i18n.baseText('settings.personal.mfa.enforce.unlicensed_tooltip.link') }}
-										</a>
-									</template>
-								</I18nT>
-							</template>
-						</N8nTooltip>
-					</template>
-				</EnterpriseEdition>
-			</div>
-		</div>
 		<div v-if="isInstanceRoleProvisioningEnabled" :class="$style.container">
 			<N8nAlert
 				type="info"
@@ -584,6 +527,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				:can-edit-role="!isInstanceRoleProvisioningEnabled"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
+				:updating-role-user-id="updatingRoleUserId"
 				:actions="usersListActions"
 				@update:options="updateUsersTableData"
 				@update:role="onUpdateRole"
@@ -612,35 +556,6 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 
 .setupInfoContainer {
 	max-width: 728px;
-}
-
-.settingsContainer {
-	display: flex;
-	align-items: center;
-	padding-left: var(--spacing--sm);
-	margin-bottom: var(--spacing--lg);
-	justify-content: space-between;
-	flex-shrink: 0;
-
-	border-radius: 4px;
-	border: 1px solid var(--Colors-Foreground---color--foreground, #d9dee8);
-}
-
-.settingsContainerInfo {
-	display: flex;
-	padding: 8px 0;
-	flex-direction: column;
-	justify-content: center;
-	align-items: flex-start;
-	gap: 1px;
-}
-
-.settingsContainerAction {
-	display: flex;
-	padding: 20px 16px 20px 248px;
-	justify-content: flex-end;
-	align-items: center;
-	flex-shrink: 0;
 }
 
 .container {

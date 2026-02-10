@@ -24,6 +24,7 @@ import { useRecentResources } from '@/features/shared/commandBar/composables/use
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -605,12 +606,8 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.SECURITY_SETTINGS,
 				component: SecuritySettingsView,
 				meta: {
-					middleware: ['authenticated', 'custom', 'rbac'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('PERSONAL_SECURITY_SETTINGS');
-						},
 						rbac: {
 							scope: ['securitySettings:manage'],
 						},
@@ -679,8 +676,8 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
 						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('DYNAMIC_CREDENTIALS');
+							const { isEnabled } = useDynamicCredentials();
+							return isEnabled.value;
 						},
 					},
 					telemetry: {

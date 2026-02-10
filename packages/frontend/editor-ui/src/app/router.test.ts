@@ -33,11 +33,6 @@ describe('router', () => {
 	beforeEach(() => {
 		settingsStore = useSettingsStore();
 		const usersStore = useUsersStore();
-		// Enable PERSONAL_SECURITY_SETTINGS so /settings/security route's custom middleware passes
-		settingsStore.settings.envFeatureFlags = {
-			...settingsStore.settings.envFeatureFlags,
-			N8N_ENV_FEAT_PERSONAL_SECURITY_SETTINGS: 'true',
-		};
 		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => {
 			await usersStore.initialize();
 		});

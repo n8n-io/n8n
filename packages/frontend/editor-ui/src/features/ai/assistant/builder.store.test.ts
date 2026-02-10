@@ -20,7 +20,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import {
@@ -2132,6 +2132,90 @@ describe('AI Builder store', () => {
 			});
 		});
 
+		describe('default plan mode based on canvas nodes', () => {
+			function enablePlanModeExperiment() {
+				vi.spyOn(posthogStore, 'getVariant').mockImplementation((experiment) =>
+					experiment === AI_BUILDER_PLAN_MODE_EXPERIMENT.name
+						? AI_BUILDER_PLAN_MODE_EXPERIMENT.variant
+						: undefined,
+				);
+			}
+
+			it('should switch to plan mode when nodes become empty and plan mode is available', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Start with nodes, then clear them (simulates workflow load sequence)
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+				expect(builderStore.builderMode).toBe('plan');
+			});
+
+			it('should switch to build mode when nodes are added', async () => {
+				enablePlanModeExperiment();
+				// Start with nodes so the watcher can observe changes
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+
+				const builderStore = useBuilderStore();
+				await nextTick();
+
+				// Clear nodes to trigger plan mode
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+				expect(builderStore.builderMode).toBe('plan');
+
+				// Add nodes back to trigger build mode
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+			});
+
+			it('should stay in build mode when plan mode experiment is not enabled', async () => {
+				const builderStore = useBuilderStore();
+
+				// Change workflowId to trigger the watcher (nodes stay empty)
+				workflowsStore.workflowId = 'different-workflow-id';
+				await nextTick();
+
+				expect(builderStore.builderMode).toBe('build');
+			});
+
+			it('should not change mode when chat has messages', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Add nodes first so we can trigger a change later
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+
+				// Simulate an active conversation
+				builderStore.chatMessages = [{ role: 'user', type: 'text', text: 'hello' } as never];
+
+				// Remove nodes — would normally switch to plan, but chat has messages
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+
+				// Should stay at build because chat has messages
+				expect(builderStore.builderMode).toBe('build');
+			});
+
+			it('should default to plan mode when workflowId changes with empty canvas', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Simulate navigating to a new empty workflow
+				workflowsStore.workflowId = 'new-empty-workflow';
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+
+				expect(builderStore.builderMode).toBe('plan');
+			});
+		});
+
 		describe('fetchExistingVersionIds and message enrichment', () => {
 			it('should enrich messages with revertVersion when versions exist', async () => {
 				const builderStore = useBuilderStore();
@@ -2839,6 +2923,148 @@ describe('AI Builder store', () => {
 			expect(mockNotification.close).toHaveBeenCalled();
 
 			windowFocusSpy.mockRestore();
+		});
+	});
+
+	describe('focused nodes integration', () => {
+		it('should track focusedNodes.chatSent when confirmed nodes > 0', async () => {
+			const builderStore = useBuilderStore();
+
+			// Add focused nodes
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'fix this node' });
+
+			expect(track).toHaveBeenCalledWith(
+				'ai.focusedNodes.chatSent',
+				expect.objectContaining({
+					focused_count: 1,
+					has_deictic_ref: true,
+				}),
+			);
+		});
+
+		it('should detect deictic references in message text', async () => {
+			const builderStore = useBuilderStore();
+
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'these nodes need updating' });
+
+			expect(track).toHaveBeenCalledWith(
+				'ai.focusedNodes.chatSent',
+				expect.objectContaining({
+					has_deictic_ref: true,
+				}),
+			);
+		});
+
+		it('should not track focusedNodes.chatSent when no confirmed nodes', async () => {
+			const builderStore = useBuilderStore();
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'create a workflow' });
+
+			expect(track).not.toHaveBeenCalledWith('ai.focusedNodes.chatSent', expect.anything());
+		});
+
+		it('should set has_deictic_ref=false without deictic patterns', async () => {
+			const builderStore = useBuilderStore();
+
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'add error handling' });
+
+			expect(track).toHaveBeenCalledWith(
+				'ai.focusedNodes.chatSent',
+				expect.objectContaining({
+					has_deictic_ref: false,
+				}),
+			);
+		});
+
+		it('should include focused node names in user message', async () => {
+			const builderStore = useBuilderStore();
+
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'fix this' });
+
+			// Check that the user message in chatMessages includes focusedNodeNames
+			const userMessage = builderStore.chatMessages.find((m) => m.role === 'user');
+			expect(userMessage).toBeDefined();
+			expect((userMessage as Record<string, unknown>).focusedNodeNames).toEqual(['HTTP Request']);
 		});
 	});
 });

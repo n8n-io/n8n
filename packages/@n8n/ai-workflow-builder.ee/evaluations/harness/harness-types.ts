@@ -1,9 +1,9 @@
 import type { Client as LangsmithClient } from 'langsmith/client';
 import type pLimit from 'p-limit';
 
-import type { EvalLogger } from './logger.js';
-import type { GenerationCollectors } from './runner.js';
-import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { EvalLogger } from './logger';
+import type { GenerationCollectors } from './runner';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 
 export type LlmCallLimiter = ReturnType<typeof pLimit>;
 
@@ -32,6 +32,11 @@ export interface EvaluationContext {
 	 * Note: timeouts are best-effort unless underlying calls support cancellation (AbortSignal).
 	 */
 	timeoutMs?: number;
+	/**
+	 * Generated TypeScript SDK code for code-level evaluators.
+	 * Populated from GenerationResult when available.
+	 */
+	generatedCode?: string;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */
@@ -103,8 +108,11 @@ export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'simil
  * Configuration for an evaluation run.
  */
 export interface RunConfigBase {
-	/** Function to generate workflow from prompt. Optional collectors receive metrics. */
-	generateWorkflow: (prompt: string, collectors?: GenerationCollectors) => Promise<SimpleWorkflow>;
+	/** Function to generate workflow from prompt. May return GenerationResult with source code. Optional collectors receive metrics. */
+	generateWorkflow: (
+		prompt: string,
+		collectors?: GenerationCollectors,
+	) => Promise<SimpleWorkflow | GenerationResult>;
 	/** Evaluators to run on each generated workflow */
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	/** Global context available to all evaluators */
@@ -207,7 +215,33 @@ export interface ExampleResult {
 	/** Subgraph timing and workflow metrics */
 	subgraphMetrics?: SubgraphMetrics;
 	workflow?: SimpleWorkflow;
+	/** Generated source code (e.g., TypeScript SDK code from coding agent) */
+	generatedCode?: string;
 	error?: string;
+}
+
+/**
+ * Result from workflow generation that may include source code.
+ * Used by generators that produce code (e.g., coding agent).
+ */
+export interface GenerationResult {
+	workflow: SimpleWorkflow;
+	/** Source code that generated the workflow (e.g., TypeScript SDK code) */
+	generatedCode?: string;
+}
+
+/**
+ * Type guard to check if a generation result is a GenerationResult object.
+ */
+export function isGenerationResult(
+	value: SimpleWorkflow | GenerationResult,
+): value is GenerationResult {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'workflow' in value &&
+		typeof value.workflow === 'object'
+	);
 }
 
 /**
