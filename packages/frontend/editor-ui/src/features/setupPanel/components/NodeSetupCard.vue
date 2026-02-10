@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
