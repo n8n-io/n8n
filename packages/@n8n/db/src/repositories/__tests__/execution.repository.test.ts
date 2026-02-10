@@ -448,7 +448,7 @@ describe('ExecutionRepository', () => {
 				status: 'running',
 				startedAt: expect.any(Function),
 			});
-			expect(updateQueryBuilder.setParameter).toHaveBeenCalledWith('startedAt', expect.any(String));
+			expect(updateQueryBuilder.setParameter).toHaveBeenCalledWith('startedAt', expect.any(Date));
 			expect(updateQueryBuilder.where).toHaveBeenCalledWith('id = :id', { id: executionId });
 			expect(updateQueryBuilder.execute).toHaveBeenCalled();
 
