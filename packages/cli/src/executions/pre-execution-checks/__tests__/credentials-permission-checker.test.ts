@@ -9,6 +9,7 @@ import {
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
+import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
@@ -19,11 +20,13 @@ describe('CredentialsPermissionChecker', () => {
 	const credentialsRepository = mock<CredentialsRepository>();
 	const ownershipService = mock<OwnershipService>();
 	const projectService = mock<ProjectService>();
+	const nodeTypes = mock<NodeTypes>();
 	const permissionChecker = new CredentialsPermissionChecker(
 		sharedCredentialsRepository,
 		credentialsRepository,
 		ownershipService,
 		projectService,
+		nodeTypes,
 	);
 
 	const workflowId = 'workflow123';
@@ -167,6 +170,116 @@ describe('CredentialsPermissionChecker', () => {
 			where: {
 				isGlobal: true,
 			},
+		});
+	});
+
+	describe('credential type filtering', () => {
+		const teamProject = mock<Project>({
+			id: 'team-project',
+			name: 'Team Project',
+			type: 'team',
+		});
+
+		const activeCredentialId = 'active-cred';
+		const staleCredentialId = 'stale-cred';
+
+		const httpRequestNode: INode = {
+			id: 'node-1',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.3,
+			position: [0, 0],
+			parameters: {
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'googleOAuth2Api',
+			},
+			credentials: {
+				httpBearerAuth: {
+					id: staleCredentialId,
+					name: 'Stale Bearer Auth',
+				},
+				googleOAuth2Api: {
+					id: activeCredentialId,
+					name: 'Google OAuth2',
+				},
+			},
+		};
+
+		beforeEach(() => {
+			jest.resetAllMocks();
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
+			projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
+		});
+
+		it('should only check the active credential type for nodes with nodeCredentialType', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					credentials: [
+						{
+							name: 'httpSslAuth',
+							required: true,
+							displayOptions: { show: { provideSslCertificates: [true] } },
+						},
+					],
+				},
+			} as never);
+
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+				activeCredentialId,
+			]);
+			credentialsRepository.find.mockResolvedValue([]);
+
+			await expect(permissionChecker.check(workflowId, [httpRequestNode])).resolves.not.toThrow();
+
+			// Should only check the active credential, not the stale one
+			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+				[teamProject.id],
+				[activeCredentialId],
+			);
+		});
+
+		it('should not fail on stale credentials that do not exist', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					credentials: [
+						{
+							name: 'httpSslAuth',
+							required: true,
+							displayOptions: { show: { provideSslCertificates: [true] } },
+						},
+					],
+				},
+			} as never);
+
+			// The active credential is accessible, the stale one would not be
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+				activeCredentialId,
+			]);
+			credentialsRepository.find.mockResolvedValue([]);
+
+			// This should pass because the stale credential is filtered out
+			await expect(permissionChecker.check(workflowId, [httpRequestNode])).resolves.not.toThrow();
+		});
+
+		it('should fall back to checking all credentials if node type cannot be resolved', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('Unknown node type');
+			});
+
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+				activeCredentialId,
+				staleCredentialId,
+			]);
+			credentialsRepository.find.mockResolvedValue([]);
+
+			await expect(permissionChecker.check(workflowId, [httpRequestNode])).resolves.not.toThrow();
+
+			// Should check both credentials since node type couldn't be resolved
+			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+				[teamProject.id],
+				expect.arrayContaining([activeCredentialId, staleCredentialId]),
+			);
 		});
 	});
 });
