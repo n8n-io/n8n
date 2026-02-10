@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nPopover } from '@n8n/design-system';
+import { N8nIcon, N8nPopover, N8nTooltip } from '@n8n/design-system';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
 import { useFocusedNodesChipUI } from '../../composables/useFocusedNodesChipUI';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -131,15 +131,17 @@ function handleRemoveAllConfirmed() {
 			<!-- Unconfirmed nodes section -->
 			<template v-if="unconfirmedCount > 0">
 				<!-- All nodes unconfirmed: single "All nodes" chip -->
-				<button
+				<N8nTooltip
 					v-if="allNodesUnconfirmed"
-					type="button"
-					:class="$style.bundledUnconfirmedChip"
-					@click="handleConfirmAll"
+					:content="i18n.baseText('focusedNodes.unconfirmedTooltip')"
+					placement="top"
+					:show-after="300"
 				>
-					<N8nIcon icon="plus" size="xsmall" :class="$style.bundledUnconfirmedIcon" />
-					<span :class="$style.label">{{ i18n.baseText('focusedNodes.allNodes') }}</span>
-				</button>
+					<button type="button" :class="$style.bundledUnconfirmedChip" @click="handleConfirmAll">
+						<N8nIcon icon="plus" size="xsmall" :class="$style.bundledUnconfirmedIcon" />
+						<span :class="$style.label">{{ i18n.baseText('focusedNodes.allNodes') }}</span>
+					</button>
+				</N8nTooltip>
 				<template v-else>
 					<!-- Individual unconfirmed chips (1-3 nodes) -->
 					<FocusedNodeChip
@@ -151,19 +153,21 @@ function handleRemoveAllConfirmed() {
 					/>
 
 					<!-- Bundled unconfirmed chip (4+ nodes) -->
-					<button
+					<N8nTooltip
 						v-if="shouldBundleUnconfirmed"
-						type="button"
-						:class="$style.bundledUnconfirmedChip"
-						@click="handleConfirmAll"
+						:content="i18n.baseText('focusedNodes.unconfirmedTooltip')"
+						placement="top"
+						:show-after="300"
 					>
-						<N8nIcon icon="plus" size="xsmall" :class="$style.bundledUnconfirmedIcon" />
-						<span :class="$style.label">{{
-							i18n.baseText('focusedNodes.nodesCount', {
-								interpolate: { count: unconfirmedCount },
-							})
-						}}</span>
-					</button>
+						<button type="button" :class="$style.bundledUnconfirmedChip" @click="handleConfirmAll">
+							<N8nIcon icon="plus" size="xsmall" :class="$style.bundledUnconfirmedIcon" />
+							<span :class="$style.label">{{
+								i18n.baseText('focusedNodes.nodesCount', {
+									interpolate: { count: unconfirmedCount },
+								})
+							}}</span>
+						</button>
+					</N8nTooltip>
 				</template>
 			</template>
 		</template>

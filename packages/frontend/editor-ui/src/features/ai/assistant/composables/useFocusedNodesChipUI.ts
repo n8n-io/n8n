@@ -5,7 +5,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 /** Threshold at which individual chips are bundled into a single count chip */
-export const CHIP_BUNDLE_THRESHOLD = 4;
+export const CHIP_BUNDLE_THRESHOLD = 3;
 
 /**
  * Shared logic for focused nodes chip UI used by both

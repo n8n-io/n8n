@@ -5,7 +5,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounceFn } from '@vueuse/core';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { DEBOUNCE_TIME, FOCUSED_NODES_EXPERIMENT, getDebounceTime } from '@/app/constants';
 import type {
 	FocusedNode,
 	FocusedNodeState,
@@ -15,7 +15,7 @@ import { buildFocusedNodesPayload } from './focusedNodes.utils';
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
-const COLLAPSE_THRESHOLD = 3;
+const COLLAPSE_THRESHOLD = 7;
 const MAX_UNCONFIRMED_DISPLAY = 50;
 
 export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
@@ -25,7 +25,9 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const chatPanelStateStore = useChatPanelStateStore();
 	const ndvStore = useNDVStore();
 
-	const isFeatureEnabled = true;
+	const isFeatureEnabled = computed(() =>
+		posthogStore.isFeatureEnabled(FOCUSED_NODES_EXPERIMENT.name),
+	);
 
 	const focusedNodesMap = ref<Record<string, FocusedNode>>({});
 	const canvasSelectedNodeIds = ref<Set<string>>(new Set());
@@ -312,7 +314,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	watch(
 		() => ndvStore.activeNode,
 		(node) => {
-			if (!isFeatureEnabled || !chatPanelStateStore.isOpen) return;
+			if (!isFeatureEnabled.value || !chatPanelStateStore.isOpen) return;
 			if (node && !focusedNodesMap.value[node.id]) {
 				setUnconfirmedFromCanvasSelection([node.id]);
 			}
@@ -320,7 +322,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	function buildContextPayload(): FocusedNodesContextPayload[] {
-		if (!isFeatureEnabled) {
+		if (!isFeatureEnabled.value) {
 			return [];
 		}
 
