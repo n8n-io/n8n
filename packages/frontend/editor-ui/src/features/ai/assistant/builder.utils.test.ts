@@ -36,6 +36,12 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	}),
 }));
 
+vi.mock('@/features/ai/assistant/focusedNodes.store', () => ({
+	useFocusedNodesStore: () => ({
+		buildContextPayload: vi.fn().mockReturnValue([]),
+	}),
+}));
+
 describe('builder.utils', () => {
 	describe('extractRevertVersionIds', () => {
 		it('should extract revertVersionId from messages that have them', () => {

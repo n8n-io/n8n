@@ -9,6 +9,7 @@
 import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
 
 import { prompt } from '../builder';
+import { buildDeicticResolutionPrompt } from '../shared/deictic-resolution';
 import { webhook } from '../shared/node-guidance';
 
 export interface BuilderPromptOptions {
@@ -517,6 +518,54 @@ Use these alternatives instead of placeholders:
 
 Copy placeholders exactly as shown—the format is parsed by the system to highlight fields requiring user input.`;
 
+const DEICTIC_RESOLUTION = buildDeicticResolutionPrompt({
+	conversationContext:
+		'(e.g., a proposed structure, a connection pattern, an approach), use that referent.\n   Examples: "Do this" after suggesting a connection, "Add these" after listing nodes.',
+	selectedNodes: [
+		'"connect this to X" → Create connection FROM selected node(s) TO node X',
+		'"connect X to this" → Create connection FROM node X TO selected node(s)',
+		'"add X before this" → Create node X, then connect X TO selected node(s)',
+		'"add X after this" → Create node X, then connect selected node(s) TO X',
+		'"disconnect this" → Remove connections involving selected nodes',
+		'"connect these in sequence" → Connect selected nodes in order',
+	],
+	positionalReferences: [
+		'"add a node before the previous one" → Insert node upstream of incomingConnections',
+		'"connect to the next node" → Connect to node in outgoingConnections',
+		'"insert between this and the next" → Add node between selected and its downstream',
+		'"connect to the first node" → Connect to the trigger/start node',
+		'"add after the last node" → Add node after terminal nodes',
+	],
+	explicitNameMentions: [
+		'"connect this to the HTTP Request node" → Connect selected to the named node',
+		'"add a Set node before Gmail" → Create Set node, connect Set → Gmail',
+		'"disconnect the Webhook from Slack" → Remove connection between named nodes',
+	],
+	attributeBasedReferences: [
+		'"connect this to the broken node" → Connect to the node with <issues>',
+		'"add error handling to the unconfigured nodes" → Add error paths to nodes needing config',
+	],
+	dualReferences: [
+		'"connect this to that" → this = selected, that = ask for clarification',
+		'"swap this and that" → this = selected, that = needs clarification',
+		'"insert between this and the HTTP Request" → Add node between selected and named node',
+	],
+	workflowFallback: [
+		'"connect these" → Connect all workflow nodes (clarify order if ambiguous)',
+		'"reorganize this" → Restructure workflow connections',
+	],
+	examplesWithSelection: [
+		'User selects "HTTP Request", says "add an IF node after this" → Create IF, connect HTTP Request → IF',
+		'User selects "Trigger", says "connect this to Slack" → Connect Trigger → Slack',
+		'User selects 2 nodes, says "connect these" → Connect them in logical order',
+	],
+	examplesWithoutSelection: [
+		'No selection + "connect these in sequence" → Connect all workflow nodes sequentially',
+		'No selection + "add error handling to this" → Add error handling to the workflow',
+		'No selection + "connect HTTP Request to Gmail" → Connect the named nodes',
+	],
+});
+
 const RESOURCE_LOCATOR_DEFAULTS = `ResourceLocator field configuration for Google Sheets, Notion, Airtable, etc.:
 
 Default to mode = 'list' for document/database selectors:
@@ -719,6 +768,7 @@ export function buildBuilderPrompt(
 			.section('anti_overengineering', ANTI_OVERENGINEERING)
 			.section('response_format', RESPONSE_FORMAT)
 			.section('common_mistakes', COMMON_MISTAKES)
+			.section('deictic_resolution', DEICTIC_RESOLUTION)
 			.build()
 	);
 }

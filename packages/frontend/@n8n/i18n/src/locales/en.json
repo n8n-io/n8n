@@ -1652,6 +1652,7 @@
 	"node.disable": "Deactivate",
 	"node.enable": "Activate",
 	"node.delete": "Delete",
+	"node.addToAi": "Add to n8n AI",
 	"node.add": "Add",
 	"node.add-human-review-step": "Add human review step",
 	"node.issues": "Issues",
@@ -2040,6 +2041,8 @@
 	"contextMenu.changeColor": "Change color",
 	"contextMenu.copyTestUrl": "Copy test url",
 	"contextMenu.copyProductionUrl": "Copy production url",
+	"contextMenu.focusAiOnSelected": "Add to n8n AI | Add {count} nodes to n8n AI",
+	"contextMenu.addToAi": "Add to n8n AI",
 	"nodeWebhooks.clickToCopyWebhookUrls": "Click to copy webhook URLs",
 	"nodeWebhooks.clickToCopyWebhookUrls.formTrigger": "Click to copy Form URL",
 	"nodeWebhooks.clickToCopyWebhookUrls.chatTrigger": "Click to copy Chat URL",
@@ -4602,5 +4605,10 @@
 	"browserNotifications.permission.denied.title": "Notifications blocked",
 	"browserNotifications.permission.denied.message": "Desktop notifications are blocked. To enable them, click the lock icon in your browser's address bar and allow notifications.",
 	"browserNotifications.permission.denied.checkAgain": "Check again",
-	"browserNotifications.permission.granted.message": "Desktop notifications are enabled"
+	"browserNotifications.permission.granted.message": "Desktop notifications are enabled",
+	"focusedNodes.nodesLabel": "nodes",
+	"focusedNodes.nodesCount": "{count} nodes",
+	"focusedNodes.noMatches": "No nodes matching \"{query}\"",
+	"focusedNodes.mentionPlaceholder": "Search nodes...",
+	"focusedNodes.mentionTooltip": "Mention a node"
 }

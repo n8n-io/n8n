@@ -286,6 +286,7 @@ const lastMessageQuickReplies = computed(() => {
 const textInputValue = ref<string>('');
 const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
+const suggestionsInputFocusFn = ref<(() => void) | null>(null);
 
 const inputWrapperRef = ref<HTMLDivElement | null>(null);
 
@@ -348,8 +349,11 @@ async function onSuggestionClick(suggestion: WorkflowSuggestion) {
 	await nextTick();
 	// Wait one more frame to ensure DOM is fully updated
 	await new Promise(requestAnimationFrame);
-	// Focus the input so user can edit it
-	promptInputRef.value?.focusInput();
+	if (suggestionsInputFocusFn.value) {
+		suggestionsInputFocusFn.value();
+	} else {
+		promptInputRef.value?.focusInput();
+	}
 }
 
 function onQuickReply(opt: ChatUI.QuickReply) {
@@ -568,7 +572,26 @@ defineExpose({
 						@suggestion-click="onSuggestionClick"
 					>
 						<template #prompt-input>
+							<slot
+								v-if="$slots['suggestions-input']"
+								name="suggestions-input"
+								:model-value="textInputValue"
+								:on-update-model-value="(val: string) => (textInputValue = val)"
+								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
+								:disabled="disabled"
+								:disabled-tooltip="disabledTooltip"
+								:streaming="streaming"
+								:credits-quota="creditsQuota"
+								:credits-remaining="creditsRemaining"
+								:show-ask-owner-tooltip="showAskOwnerTooltip"
+								:max-length="maxCharacterLength"
+								:on-submit="onSendMessage"
+								:on-stop="() => emit('stop')"
+								:on-upgrade-click="() => emit('upgrade-click')"
+								:register-focus="(fn: () => void) => (suggestionsInputFocusFn = fn)"
+							/>
 							<N8nPromptInput
+								v-else
 								ref="promptInputRef"
 								v-model="textInputValue"
 								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
@@ -617,7 +640,10 @@ defineExpose({
 		<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
 			<MessageRating minimal @feedback="onRateMessage" />
 		</div>
-		<div v-if="$slots.inputHeader && showBottomInput" :class="$style.inputHeaderWrapper">
+		<div
+			v-if="$slots.inputHeader && (showBottomInput || showSuggestions)"
+			:class="$style.inputHeaderWrapper"
+		>
 			<slot name="inputHeader" />
 		</div>
 		<div

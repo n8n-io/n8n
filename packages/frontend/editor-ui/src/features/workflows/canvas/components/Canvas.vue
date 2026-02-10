@@ -63,6 +63,9 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 
 const $style = useCssModule();
 
@@ -158,6 +161,9 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const experimentalNdvStore = useExperimentalNdvStore();
+const focusedNodesStore = useFocusedNodesStore();
+const chatPanelStore = useChatPanelStore();
+const chatPanelStateStore = useChatPanelStateStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -370,6 +376,7 @@ const keyMap = computed(() => {
 		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
 		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
+		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
 	};
 	return fullKeymap;
 });
@@ -404,6 +411,21 @@ watch(selectedNodes, (nodes) => {
 	}
 });
 
+watch(selectedNodeIds, (newIds) => {
+	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
+		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
+	}
+});
+
+watch(
+	() => chatPanelStore.isOpen,
+	(isOpen) => {
+		if (isOpen && selectedNodeIds.value.length > 0 && focusedNodesStore.isFeatureEnabled) {
+			focusedNodesStore.setUnconfirmedFromCanvasSelection(selectedNodeIds.value);
+		}
+	},
+);
+
 function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
@@ -421,6 +443,11 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
+	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
+		focusedNodesStore.confirmNodes([node.id], 'canvas_selection');
+		chatPanelStateStore.focusRequested++;
+	}
+
 	emit('click:node', node.id, getProjectedPosition(event));
 
 	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
@@ -513,6 +540,19 @@ function onFocusNode(id: string) {
 			setCenter,
 		});
 	}
+}
+
+function onAddToAi(id: string) {
+	focusedNodesStore.confirmNodes([id], 'context_menu');
+	void chatPanelStore.open({ mode: 'builder' });
+}
+
+function onAddSelectedNodesToAi(nodeIds: string[]) {
+	if (!focusedNodesStore.isFeatureEnabled) {
+		return;
+	}
+	focusedNodesStore.confirmNodes(nodeIds, 'context_menu');
+	void chatPanelStore.open({ mode: 'builder' });
 }
 
 /**
@@ -784,6 +824,11 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}
+		case 'focus_ai_on_selected': {
+			focusedNodesStore.confirmNodes(nodeIds, 'context_menu');
+			void chatPanelStore.open({ mode: 'builder' });
+			return;
+		}
 	}
 }
 
@@ -1022,6 +1067,7 @@ defineExpose({
 					@move="onUpdateNodePosition"
 					@add="onClickNodeAdd"
 					@focus="onFocusNode"
+					@add:ai="onAddToAi"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
 						<slot name="nodeToolbar" v-bind="toolbarProps" />

@@ -6,7 +6,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import { AutoSaveState } from '@/app/constants';
-import { computed, watch, ref, useSlots } from 'vue';
+import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -16,6 +16,7 @@ import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-syst
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
+import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { useToast } from '@/app/composables/useToast';
@@ -30,6 +31,7 @@ import shuffle from 'lodash/shuffle';
 import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
@@ -59,6 +61,7 @@ const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
 const assistantStore = useAssistantStore();
+const chatPanelStateStore = useChatPanelStateStore();
 const router = useRouter();
 const i18n = useI18n();
 const route = useRoute();
@@ -80,6 +83,9 @@ onDocumentVisible(() => {
 const processedWorkflowUpdates = ref(new Set<string>());
 const accumulatedNodeIdsToTidyUp = ref<string[]>([]);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
+const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
+const inputText = ref('');
 
 const notificationsPermissionsBannerTriggered = ref(false);
 
@@ -242,6 +248,13 @@ async function onUserMessage(content: string) {
 		text: content,
 		initialGeneration: isInitialGeneration,
 	});
+}
+
+async function onCustomInputSubmit() {
+	if (!inputText.value.trim()) return;
+	const content = inputText.value;
+	inputText.value = '';
+	await onUserMessage(content);
 }
 
 function onNewWorkflow() {
@@ -445,9 +458,23 @@ watch(currentRoute, () => {
 	}
 });
 
+// Refocus chat input when a canvas node is clicked while chat is open
+watch(
+	() => chatPanelStateStore.focusRequested,
+	() => {
+		void nextTick(() => {
+			suggestionsInputRef.value?.focusInput() ??
+				chatInputRef.value?.focusInput() ??
+				n8nChatRef.value?.focusInput();
+		});
+	},
+);
+
 defineExpose({
 	focusInput: () => {
-		n8nChatRef.value?.focusInput();
+		suggestionsInputRef.value?.focusInput() ??
+			chatInputRef.value?.focusInput() ??
+			n8nChatRef.value?.focusInput();
 	},
 });
 </script>
@@ -527,6 +554,56 @@ defineExpose({
 				<UserAnswersMessage
 					v-else-if="isPlanModeUserAnswersMessage(message)"
 					:answers="message.data.answers"
+				/>
+			</template>
+			<template
+				#suggestions-input="{
+					modelValue,
+					onUpdateModelValue,
+					placeholder,
+					disabled: slotDisabled,
+					disabledTooltip: slotDisabledTooltip,
+					streaming: slotStreaming,
+					creditsQuota: slotCreditsQuota,
+					creditsRemaining: slotCreditsRemaining,
+					showAskOwnerTooltip: slotShowAskOwnerTooltip,
+					onSubmit,
+					onStop,
+					onUpgradeClick,
+					registerFocus,
+				}"
+			>
+				<ChatInputWithMention
+					ref="suggestionsInputRef"
+					:model-value="modelValue"
+					:placeholder="placeholder"
+					:disabled="slotDisabled"
+					:disabled-tooltip="slotDisabledTooltip"
+					:streaming="slotStreaming"
+					:credits-quota="slotCreditsQuota"
+					:credits-remaining="slotCreditsRemaining"
+					:show-ask-owner-tooltip="slotShowAskOwnerTooltip"
+					@update:model-value="onUpdateModelValue"
+					@submit="onSubmit"
+					@stop="onStop"
+					@upgrade-click="onUpgradeClick"
+					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
+				/>
+			</template>
+			<template #inputPlaceholder>
+				<ChatInputWithMention
+					ref="chatInputRef"
+					v-model="inputText"
+					:placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+					:disabled="isInputDisabled"
+					:disabled-tooltip="disabledTooltip"
+					:streaming="builderStore.streaming"
+					:credits-quota="creditsQuota"
+					:credits-remaining="creditsRemaining"
+					:show-ask-owner-tooltip="showAskOwnerTooltip"
+					@submit="onCustomInputSubmit"
+					@stop="builderStore.abortStreaming"
+					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 				/>
 			</template>
 		</N8nAskAssistantChat>
