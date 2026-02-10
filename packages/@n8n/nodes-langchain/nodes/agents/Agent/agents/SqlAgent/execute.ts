@@ -179,7 +179,7 @@ function getTracingMetadataValues(
 	if (!Array.isArray(values)) {
 		return undefined;
 	}
-	o;
+
 	const parsed = values.filter(
 		(entry): entry is { key: string; value: string } =>
 			!!entry &&
