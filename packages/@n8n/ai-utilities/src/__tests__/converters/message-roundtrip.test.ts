@@ -46,7 +46,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 	describe('human messages', () => {
 		it('should round-trip a simple text message', () => {
 			const original: Message = {
-				role: 'human',
+				role: 'user',
 				content: [{ type: 'text', text: 'Hello!' }],
 			};
 
@@ -55,7 +55,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should round-trip multiple text blocks', () => {
 			const original: Message = {
-				role: 'human',
+				role: 'user',
 				content: [
 					{ type: 'text', text: 'First part' },
 					{ type: 'text', text: 'Second part' },
@@ -67,7 +67,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should preserve id and name', () => {
 			const original: Message = {
-				role: 'human',
+				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
 				id: 'msg-456',
 				name: 'user-1',
@@ -78,7 +78,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should round-trip a file content block', () => {
 			const original: Message = {
-				role: 'human',
+				role: 'user',
 				content: [
 					{
 						type: 'file',
@@ -93,7 +93,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should round-trip a file with url in providerMetadata', () => {
 			const original: Message = {
-				role: 'human',
+				role: 'user',
 				content: [
 					{
 						type: 'file',
@@ -114,7 +114,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 	describe('ai messages', () => {
 		it('should round-trip a simple text response', () => {
 			const original: Message = {
-				role: 'ai',
+				role: 'assistant',
 				content: [{ type: 'text', text: 'Hello! How can I help you?' }],
 			};
 
@@ -123,7 +123,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should round-trip a reasoning block', () => {
 			const original: Message = {
-				role: 'ai',
+				role: 'assistant',
 				content: [
 					{ type: 'reasoning', text: 'Let me think about this...' },
 					{ type: 'text', text: 'The answer is 42.' },
@@ -135,7 +135,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should round-trip an AI message with tool calls', () => {
 			const original: Message = {
-				role: 'ai',
+				role: 'assistant',
 				content: [
 					{ type: 'text', text: 'Let me look that up.' },
 					{
@@ -150,7 +150,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 			const result = roundTrip(original);
 
 			// Content order may differ: fromLcMessage appends tool calls after content
-			expect(result.role).toBe('ai');
+			expect(result.role).toBe('assistant');
 			expect(result.content).toHaveLength(2);
 
 			const textBlock = result.content.find((c) => c.type === 'text');
@@ -167,7 +167,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should round-trip multiple tool calls', () => {
 			const original: Message = {
-				role: 'ai',
+				role: 'assistant',
 				content: [
 					{
 						type: 'tool-call',
@@ -186,7 +186,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 			const result = roundTrip(original);
 
-			expect(result.role).toBe('ai');
+			expect(result.role).toBe('assistant');
 			const toolCalls = result.content.filter((c) => c.type === 'tool-call');
 			expect(toolCalls).toHaveLength(2);
 			expect(toolCalls[0]).toMatchObject({ toolCallId: 'call-1', toolName: 'search' });
@@ -195,7 +195,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should preserve id and name', () => {
 			const original: Message = {
-				role: 'ai',
+				role: 'assistant',
 				content: [{ type: 'text', text: 'Response' }],
 				id: 'msg-789',
 				name: 'assistant',
@@ -206,7 +206,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should round-trip a citation block', () => {
 			const original: Message = {
-				role: 'ai',
+				role: 'assistant',
 				content: [
 					{
 						type: 'citation',
@@ -226,7 +226,7 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 
 		it('should round-trip a provider (non-standard) block', () => {
 			const original: Message = {
-				role: 'ai',
+				role: 'assistant',
 				content: [
 					{ type: 'provider', value: { customField: 'customValue', nested: { a: 1 } } },
 					{ type: 'text', text: 'Normal text' },

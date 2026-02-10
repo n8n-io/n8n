@@ -5,7 +5,7 @@ import type { ChatHistory, ChatMemory } from '../../types/memory';
 import type { Message } from '../../types/message';
 
 describe('LangchainMemoryAdapter', () => {
-	const createMessage = (role: 'human' | 'ai' | 'system', text: string): Message => ({
+	const createMessage = (role: 'user' | 'assistant' | 'system', text: string): Message => ({
 		role,
 		content: [{ type: 'text', text }],
 	});
@@ -37,7 +37,7 @@ describe('LangchainMemoryAdapter', () => {
 		});
 
 		it('should convert human messages to HumanMessage', async () => {
-			const memory = createMockMemory([createMessage('human', 'Hello')]);
+			const memory = createMockMemory([createMessage('user', 'Hello')]);
 			const adapter = new LangchainMemoryAdapter(memory);
 
 			const result = await adapter.loadMemoryVariables({});
@@ -48,7 +48,7 @@ describe('LangchainMemoryAdapter', () => {
 		});
 
 		it('should convert AI messages to AIMessage', async () => {
-			const memory = createMockMemory([createMessage('ai', 'Hi there!')]);
+			const memory = createMockMemory([createMessage('assistant', 'Hi there!')]);
 			const adapter = new LangchainMemoryAdapter(memory);
 
 			const result = await adapter.loadMemoryVariables({});
@@ -74,8 +74,8 @@ describe('LangchainMemoryAdapter', () => {
 		it('should convert multiple messages in order', async () => {
 			const messages = [
 				createMessage('system', 'System prompt'),
-				createMessage('human', 'Hello'),
-				createMessage('ai', 'Hi!'),
+				createMessage('user', 'Hello'),
+				createMessage('assistant', 'Hi!'),
 			];
 			const memory = createMockMemory(messages);
 			const adapter = new LangchainMemoryAdapter(memory);

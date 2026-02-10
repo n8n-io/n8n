@@ -1,5 +1,4 @@
-import type { Message } from './message';
-import type { ToolCall } from './tool';
+import type { ContentMetadata, Message, MessageContent } from './message';
 
 export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other';
 
@@ -18,17 +17,12 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 
 export interface GenerateResult {
 	id?: string;
-	text: string;
 	finishReason?: FinishReason;
 	usage?: TokenUsage;
 	/**
-	 * Tool calls made by the model
-	 */
-	toolCalls?: ToolCall[];
-	/**
 	 * The generated message
 	 */
-	message?: Message;
+	message: Message;
 	/**
 	 * Metadata about the response from the provider
 	 */
@@ -36,15 +30,36 @@ export interface GenerateResult {
 	rawResponse?: unknown;
 }
 
-export interface StreamChunk {
-	type: 'text-delta' | 'tool-call-delta' | 'finish' | 'error';
-	textDelta?: string;
-	toolCallDelta?: {
-		id?: string;
-		name?: string;
-		argumentsDelta?: string;
-	};
-	finishReason?: FinishReason;
-	usage?: TokenUsage;
-	error?: unknown;
-}
+export type StreamChunk = ContentMetadata &
+	(
+		| {
+				type: 'text-delta';
+				id?: string;
+				delta: string;
+		  }
+		| {
+				type: 'reasoning-delta';
+				id?: string;
+				delta: string;
+		  }
+		| {
+				type: 'tool-call-delta';
+				id?: string;
+				name?: string;
+				argumentsDelta?: string;
+		  }
+		| {
+				type: 'finish';
+				finishReason: FinishReason;
+				usage?: TokenUsage;
+		  }
+		| {
+				type: 'error';
+				error: unknown;
+		  }
+		| {
+				type: 'content';
+				content: MessageContent;
+				id?: string;
+		  }
+	);

@@ -5,7 +5,7 @@ import type { ChatHistory } from '../../types/memory';
 import type { Message } from '../../types/message';
 
 describe('LangchainHistoryAdapter', () => {
-	const createMessage = (role: 'human' | 'ai' | 'system', text: string): Message => ({
+	const createMessage = (role: 'user' | 'assistant' | 'system', text: string): Message => ({
 		role,
 		content: [{ type: 'text', text }],
 	});
@@ -28,7 +28,7 @@ describe('LangchainHistoryAdapter', () => {
 		});
 
 		it('should convert human messages to HumanMessage', async () => {
-			const history = createMockHistory([createMessage('human', 'Hello')]);
+			const history = createMockHistory([createMessage('user', 'Hello')]);
 			const adapter = new LangchainHistoryAdapter(history);
 
 			const result = await adapter.getMessages();
@@ -39,7 +39,7 @@ describe('LangchainHistoryAdapter', () => {
 		});
 
 		it('should convert AI messages to AIMessage', async () => {
-			const history = createMockHistory([createMessage('ai', 'Hi there!')]);
+			const history = createMockHistory([createMessage('assistant', 'Hi there!')]);
 			const adapter = new LangchainHistoryAdapter(history);
 
 			const result = await adapter.getMessages();
@@ -63,8 +63,8 @@ describe('LangchainHistoryAdapter', () => {
 		it('should convert multiple messages preserving order', async () => {
 			const messages = [
 				createMessage('system', 'System prompt'),
-				createMessage('human', 'Hello'),
-				createMessage('ai', 'Hi!'),
+				createMessage('user', 'Hello'),
+				createMessage('assistant', 'Hi!'),
 			];
 			const history = createMockHistory(messages);
 			const adapter = new LangchainHistoryAdapter(history);
@@ -87,7 +87,7 @@ describe('LangchainHistoryAdapter', () => {
 
 			expect(history.addMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
-					role: 'human',
+					role: 'user',
 					content: expect.arrayContaining([
 						expect.objectContaining({ type: 'text', text: 'Hello' }),
 					]),
@@ -103,7 +103,7 @@ describe('LangchainHistoryAdapter', () => {
 
 			expect(history.addMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
-					role: 'ai',
+					role: 'assistant',
 					content: expect.arrayContaining([
 						expect.objectContaining({ type: 'text', text: 'Hi there!' }),
 					]),
@@ -136,8 +136,8 @@ describe('LangchainHistoryAdapter', () => {
 			await adapter.addMessages([new HumanMessage('Hello'), new AIMessage('Hi!')]);
 
 			expect(history.addMessages).toHaveBeenCalledWith([
-				expect.objectContaining({ role: 'human' }),
-				expect.objectContaining({ role: 'ai' }),
+				expect.objectContaining({ role: 'user' }),
+				expect.objectContaining({ role: 'assistant' }),
 			]);
 		});
 
