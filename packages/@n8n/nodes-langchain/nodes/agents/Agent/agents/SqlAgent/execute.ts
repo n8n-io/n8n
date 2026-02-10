@@ -58,23 +58,15 @@ export async function sqlAgentAgentExecute(
 				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
 
-			const options = this.getNodeParameter('options', i, {}) as {
-				includedSampleRows?: number;
-				includedTables?: string;
-				ignoredTables?: string;
-				prefixPrompt?: string;
-				suffixPrompt?: string;
-				topK?: number;
-				tracingMetadata?: { values?: Array<{ key: string; value: string }> };
-			};
+			const options = this.getNodeParameter('options', i, {});
 			const selectedDataSource = this.getNodeParameter('dataSource', i, 'sqlite') as
 				| 'mysql'
 				| 'postgres'
 				| 'sqlite';
 
 			const includedSampleRows = options.includedSampleRows as number;
-			const includedTablesArray = parseTablesString(options.includedTables ?? '');
-			const ignoredTablesArray = parseTablesString(options.ignoredTables ?? '');
+			const includedTablesArray = parseTablesString((options.includedTables as string) ?? '');
+			const ignoredTablesArray = parseTablesString((options.ignoredTables as string) ?? '');
 
 			let dataSource: DataSource | null = null;
 			if (selectedDataSource === 'sqlite') {
