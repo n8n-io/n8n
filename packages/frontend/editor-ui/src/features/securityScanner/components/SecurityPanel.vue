@@ -22,8 +22,15 @@ const $style = useCssModule();
 const i18n = useI18n();
 const securityStore = useSecurityScannerStore();
 
-const { panelWidth, activeTab, filteredFindings, summary, categoryCount, isAiAvailable } =
-	storeToRefs(securityStore);
+const {
+	panelWidth,
+	activeTab,
+	filteredFindings,
+	summary,
+	categoryCount,
+	isAiAvailable,
+	hasFindings,
+} = storeToRefs(securityStore);
 
 const tabs = computed(() =>
 	SECURITY_TABS.map((tab) => ({
@@ -36,6 +43,12 @@ const tabs = computed(() =>
 const selectedTab = computed({
 	get: () => activeTab.value,
 	set: (val: string) => securityStore.setActiveTab(val as SecurityTab),
+});
+
+const activeTabLabel = computed(() => {
+	const tab = SECURITY_TABS.find((t) => t.value === activeTab.value);
+	if (!tab) return '';
+	return i18n.baseText(tab.labelKey as BaseTextKey).toLowerCase();
 });
 
 function onResize(event: ResizeData) {
@@ -98,27 +111,43 @@ function onNavigateToNode(nodeName: string) {
 					</div>
 				</div>
 
-				<SecuritySummaryBar :summary="summary" />
-
-				<div :class="$style.tabs">
-					<N8nTabs v-model="selectedTab" :options="tabs" variant="modern" />
+				<div v-if="!hasFindings" :class="$style.allClear">
+					<N8nIcon icon="circle-check" color="success" :size="32" />
+					<N8nText tag="h3" size="large" bold>
+						{{ i18n.baseText('securityScanner.emptyState.allClear.heading' as BaseTextKey) }}
+					</N8nText>
+					<N8nText tag="p" size="small" color="text-light">
+						{{ i18n.baseText('securityScanner.emptyState.allClear.description' as BaseTextKey) }}
+					</N8nText>
 				</div>
 
-				<div :class="$style.findings">
-					<div v-if="filteredFindings.length === 0" :class="$style.emptyState">
-						<N8nIcon icon="circle-check" :class="$style.emptyIcon" size="large" />
-						<N8nText tag="p" size="small" color="text-light">
-							{{ i18n.baseText('securityScanner.emptyState') }}
-						</N8nText>
+				<template v-else>
+					<SecuritySummaryBar :summary="summary" />
+
+					<div :class="$style.tabs">
+						<N8nTabs v-model="selectedTab" :options="tabs" variant="modern" />
 					</div>
-					<SecurityFindingCard
-						v-for="finding in filteredFindings"
-						v-else
-						:key="finding.id"
-						:finding="finding"
-						@navigate="onNavigateToNode"
-					/>
-				</div>
+
+					<div :class="$style.findings">
+						<div v-if="filteredFindings.length === 0" :class="$style.tabEmpty">
+							<N8nIcon icon="circle-check" color="success" size="large" />
+							<N8nText tag="p" size="small" color="text-light">
+								{{
+									i18n.baseText('securityScanner.emptyState.tabFiltered' as BaseTextKey, {
+										interpolate: { category: activeTabLabel },
+									})
+								}}
+							</N8nText>
+						</div>
+						<SecurityFindingCard
+							v-for="finding in filteredFindings"
+							v-else
+							:key="finding.id"
+							:finding="finding"
+							@navigate="onNavigateToNode"
+						/>
+					</div>
+				</template>
 			</div>
 		</N8nResizeWrapper>
 	</div>
@@ -179,17 +208,24 @@ function onNavigateToNode(nodeName: string) {
 	padding-bottom: var(--spacing--sm);
 }
 
-.emptyState {
+.allClear {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--2xl) var(--spacing--sm);
+	padding: var(--spacing--3xl) var(--spacing--sm);
 	text-align: center;
+	flex: 1;
 }
 
-.emptyIcon {
-	color: var(--color--success);
+.tabEmpty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xl) var(--spacing--sm);
+	text-align: center;
 }
 </style>

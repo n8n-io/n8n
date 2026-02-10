@@ -12,29 +12,163 @@ import { checkAiSecurity } from '../scanner/checks/aiSecurityChecks';
 import { redactValue } from '../scanner/utils/redact';
 
 /**
- * Minimal node type descriptions used by the node classification utilities.
- * Only the fields checked by isInputTrigger() and isExternalService() are needed.
+ * Node type descriptions used by the node classification utilities.
+ * Includes properties, codex, inputs/outputs, and webhooks so the
+ * metadata-driven utility functions work correctly.
  */
 const MOCK_NODE_TYPES: Record<string, Partial<INodeTypeDescription>> = {
-	'n8n-nodes-base.webhook': { group: ['trigger'], credentials: [] },
-	'n8n-nodes-base.formTrigger': { group: ['trigger'], credentials: [] },
-	'n8n-nodes-base.httpRequest': { group: [], credentials: [] },
+	'n8n-nodes-base.webhook': {
+		group: ['trigger'],
+		credentials: [],
+		webhooks: [{ httpMethod: 'GET', name: 'default', path: '', isFullPath: false }],
+		properties: [
+			{
+				name: 'authentication',
+				type: 'options',
+				displayName: 'Authentication',
+				default: 'none',
+			},
+		],
+	},
+	'n8n-nodes-base.formTrigger': {
+		group: ['trigger'],
+		credentials: [],
+		webhooks: [{ httpMethod: 'POST', name: 'setup', path: '', isFullPath: false }],
+		properties: [
+			{
+				name: 'authentication',
+				type: 'options',
+				displayName: 'Authentication',
+				default: 'none',
+			},
+		],
+	},
+	'n8n-nodes-base.httpRequest': { group: [], credentials: [], properties: [] },
 	'n8n-nodes-base.slack': {
 		group: [],
 		credentials: [{ name: 'slackApi', required: true }],
+		properties: [],
 	},
-	'n8n-nodes-base.code': { group: [], credentials: [] },
-	'n8n-nodes-base.codeNode': { group: [], credentials: [] },
-	'n8n-nodes-base.set': { group: [], credentials: [] },
-	'@n8n/n8n-nodes-langchain.agent': { group: [], credentials: [] },
-	'@n8n/n8n-nodes-langchain.chainLlm': { group: [], credentials: [] },
-	'@n8n/n8n-nodes-langchain.toolHttpRequest': { group: [], credentials: [] },
-	'@n8n/n8n-nodes-langchain.toolCode': { group: [], credentials: [] },
+	'n8n-nodes-base.code': {
+		group: ['transform'],
+		credentials: [],
+		properties: [
+			{
+				name: 'jsCode',
+				type: 'string',
+				displayName: 'JavaScript',
+				default: '',
+				typeOptions: { editor: 'codeNodeEditor' },
+			},
+		],
+	},
+	'n8n-nodes-base.codeNode': {
+		group: ['transform'],
+		credentials: [],
+		properties: [
+			{
+				name: 'jsCode',
+				type: 'string',
+				displayName: 'JavaScript',
+				default: '',
+				typeOptions: { editor: 'codeNodeEditor' },
+			},
+		],
+	},
+	'n8n-nodes-base.set': {
+		group: ['input'],
+		credentials: [],
+		properties: [
+			{
+				name: 'assignments',
+				type: 'assignmentCollection',
+				displayName: 'Fields to Set',
+				default: {},
+			},
+		],
+	},
+	'@n8n/n8n-nodes-langchain.agent': {
+		group: [],
+		credentials: [],
+		codex: { categories: ['AI'], subcategories: { AI: ['Agents', 'Root Nodes'] } },
+		inputs: [
+			{ type: 'main', displayName: '' },
+			{ type: 'ai_languageModel', displayName: 'Model' },
+			{ type: 'ai_tool', displayName: 'Tool' },
+		],
+		outputs: ['main'],
+		properties: [
+			{
+				name: 'systemMessage',
+				type: 'string',
+				displayName: 'System Message',
+				default: '',
+			},
+		],
+	},
+	'@n8n/n8n-nodes-langchain.chainLlm': {
+		group: [],
+		credentials: [],
+		codex: { categories: ['AI'], subcategories: { AI: ['Chains', 'Root Nodes'] } },
+		inputs: ['main', 'ai_languageModel'],
+		outputs: ['main'],
+		properties: [
+			{
+				name: 'messages',
+				type: 'fixedCollection',
+				displayName: 'Chat Messages',
+				default: {},
+			},
+		],
+	},
+	'@n8n/n8n-nodes-langchain.toolHttpRequest': {
+		group: [],
+		credentials: [],
+		name: 'toolHttpRequest',
+		displayName: 'HTTP Request Tool',
+		codex: { categories: ['AI'], subcategories: { AI: ['Tools'] } },
+		inputs: [],
+		outputs: ['ai_tool'],
+		properties: [
+			{
+				name: 'url',
+				type: 'string',
+				displayName: 'URL',
+				default: '',
+			},
+		],
+	},
+	'@n8n/n8n-nodes-langchain.toolCode': {
+		group: [],
+		credentials: [],
+		name: 'toolCode',
+		displayName: 'Code Tool',
+		codex: { categories: ['AI'], subcategories: { AI: ['Tools'] } },
+		inputs: [],
+		outputs: ['ai_tool'],
+		properties: [
+			{
+				name: 'jsCode',
+				type: 'string',
+				displayName: 'JavaScript',
+				default: '',
+				typeOptions: { editor: 'codeNodeEditor' },
+			},
+			{
+				name: 'pythonCode',
+				type: 'string',
+				displayName: 'Python',
+				default: '',
+				typeOptions: { editor: 'codeNodeEditor' },
+			},
+		],
+	},
 };
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
-		getNodeType: (type: string) => MOCK_NODE_TYPES[type] ?? null,
+		getNodeType: (type: string) =>
+			(MOCK_NODE_TYPES[type] as INodeTypeDescription | undefined) ?? null,
 	}),
 }));
 
@@ -225,6 +359,41 @@ describe('checkPiiPatterns', () => {
 		expect(findings.some((f) => f.title.includes('firstName'))).toBe(true);
 		expect(findings.some((f) => f.title.includes('ssn'))).toBe(true);
 	});
+
+	it('should detect PII field names in any node with assignmentCollection', () => {
+		// Simulate a custom node type with assignmentCollection
+		const customType = 'n8n-nodes-base.customTransform';
+		(MOCK_NODE_TYPES as Record<string, Partial<INodeTypeDescription>>)[customType] = {
+			group: [],
+			credentials: [],
+			properties: [
+				{
+					name: 'fields',
+					type: 'assignmentCollection',
+					displayName: 'Fields',
+					default: {},
+				},
+			],
+		};
+
+		const nodes = [
+			makeNode({
+				name: 'Custom Transform',
+				type: customType,
+				parameters: {
+					fields: {
+						assignments: [{ name: 'ssn', value: '={{ $json.ssn }}' }],
+					},
+				},
+			}),
+		];
+		const findings = checkPiiPatterns(nodes);
+		expect(findings.some((f) => f.title.includes('ssn'))).toBe(true);
+		expect(findings.some((f) => f.title.includes('Custom Transform'))).toBe(true);
+
+		// Cleanup
+		delete (MOCK_NODE_TYPES as Record<string, unknown>)[customType];
+	});
 });
 
 describe('checkInsecureConfig', () => {
@@ -271,6 +440,20 @@ describe('checkInsecureConfig', () => {
 		const findings = checkInsecureConfig(nodes);
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].title).toContain('webhook');
+	});
+
+	it('should detect unauthenticated formTrigger (webhook-based trigger)', () => {
+		const nodes = [
+			makeNode({
+				name: 'Form Trigger',
+				type: 'n8n-nodes-base.formTrigger',
+				parameters: {
+					authentication: 'none',
+				},
+			}),
+		];
+		const findings = checkInsecureConfig(nodes);
+		expect(findings.some((f) => f.title.includes('webhook'))).toBe(true);
 	});
 
 	it('should detect disabled SSL verification', () => {
@@ -326,6 +509,21 @@ describe('checkDataExposure', () => {
 		const findings = checkDataExposure(nodes, {});
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].title).toContain('console.log');
+	});
+
+	it('should detect dangerous patterns in toolCode pythonCode parameter', () => {
+		const nodes = [
+			makeNode({
+				name: 'Code Tool',
+				type: '@n8n/n8n-nodes-langchain.toolCode',
+				parameters: {
+					pythonCode: 'import subprocess; subprocess.spawn("ls")',
+				},
+			}),
+		];
+		const findings = checkDataExposure(nodes, {});
+		expect(findings.some((f) => f.title.includes('spawn()'))).toBe(true);
+		expect(findings.some((f) => f.parameterPath === 'pythonCode')).toBe(true);
 	});
 });
 
@@ -604,6 +802,30 @@ describe('checkAiSecurity', () => {
 		const chainFindings = findings.filter((f) => f.title.includes('chains directly'));
 		expect(chainFindings).toHaveLength(0);
 	});
+
+	it('should detect Code tool as dangerous tool', () => {
+		const nodes = [
+			makeNode({
+				name: 'AI Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				parameters: {},
+			}),
+			makeNode({
+				name: 'Code Tool',
+				type: '@n8n/n8n-nodes-langchain.toolCode',
+				parameters: {},
+			}),
+		];
+		const connections: IConnections = {
+			'Code Tool': {
+				ai_tool: [[{ node: 'AI Agent', type: 'ai_tool' as never, index: 0 }]],
+			},
+		};
+		const findings = checkAiSecurity(nodes, connections);
+		const toolFinding = findings.find((f) => f.title.includes('Code tool'));
+		expect(toolFinding).toBeDefined();
+		expect(toolFinding?.category).toBe('insecure-config');
+	});
 });
 
 describe('Tier 1 checks', () => {
@@ -698,5 +920,23 @@ describe('Tier 1 checks', () => {
 		const findings = checkInsecureConfig(nodes);
 		const ssrfFindings = findings.filter((f) => f.title.includes('SSRF'));
 		expect(ssrfFindings).toHaveLength(0);
+	});
+
+	it('should detect SSRF risk with formTrigger (webhook-based)', () => {
+		const nodes = [
+			makeNode({
+				name: 'Form Trigger',
+				type: 'n8n-nodes-base.formTrigger',
+				parameters: {},
+			}),
+			makeNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'http://10.0.0.1/internal' },
+			}),
+		];
+		const findings = checkInsecureConfig(nodes);
+		const ssrfFinding = findings.find((f) => f.title.includes('SSRF'));
+		expect(ssrfFinding).toBeDefined();
 	});
 });

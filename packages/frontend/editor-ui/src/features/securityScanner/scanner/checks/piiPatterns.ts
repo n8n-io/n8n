@@ -2,6 +2,7 @@ import type { INodeUi } from '@/Interface';
 import type { SecurityFinding } from '../types';
 import { walkParameters } from '../utils/parameterWalker';
 import { redactValue } from '../utils/redact';
+import { getAssignmentFields } from '../utils/nodeClassification';
 
 // PII value patterns
 const PII_VALUE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
@@ -78,11 +79,13 @@ export function checkPiiPatterns(nodes: INodeUi[]): SecurityFinding[] {
 			}
 		});
 
-		// Check Set node assignments for PII field names
-		if (node.type === 'n8n-nodes-base.set') {
-			const assignments = (
-				node.parameters.assignments as { assignments?: Array<{ name?: string }> } | undefined
-			)?.assignments;
+		// Check assignment collection parameters for PII field names
+		const assignmentFieldNames = getAssignmentFields(node);
+		for (const fieldName of assignmentFieldNames) {
+			const assignmentParam = (node.parameters as Record<string, unknown>)[fieldName] as
+				| { assignments?: Array<{ name?: string }> }
+				| undefined;
+			const assignments = assignmentParam?.assignments;
 			if (Array.isArray(assignments)) {
 				for (const assignment of assignments) {
 					if (assignment.name && isPiiFieldName(assignment.name)) {
@@ -90,12 +93,12 @@ export function checkPiiPatterns(nodes: INodeUi[]): SecurityFinding[] {
 							id: `pii-${++counter}`,
 							category: 'pii-data-flow',
 							severity: 'warning',
-							title: `PII field "${assignment.name}" in Set node`,
+							title: `PII field "${assignment.name}" in "${node.name}"`,
 							description:
 								'This field name suggests personal data is being processed. Ensure proper handling per your data privacy policy.',
 							nodeName: node.name,
 							nodeId: node.id,
-							parameterPath: `assignments.${assignment.name}`,
+							parameterPath: `${fieldName}.${assignment.name}`,
 						});
 					}
 				}

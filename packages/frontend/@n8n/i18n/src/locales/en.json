@@ -4749,6 +4749,8 @@
 	"securityScanner.category.config": "Insecure Config",
 	"securityScanner.category.exposure": "Data Exposure",
 	"securityScanner.category.expressions": "Expression Risks",
-	"securityScanner.emptyState": "No security issues found. Your workflow looks clean!",
+	"securityScanner.emptyState.allClear.heading": "All clear",
+	"securityScanner.emptyState.allClear.description": "No security issues found in this workflow.",
+	"securityScanner.emptyState.tabFiltered": "No {category} issues found.",
 	"securityScanner.ai.analyze": "Analyze with AI"
 }

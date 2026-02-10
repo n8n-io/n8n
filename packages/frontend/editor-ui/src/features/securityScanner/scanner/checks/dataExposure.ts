@@ -1,7 +1,12 @@
 import type { INodeUi } from '@/Interface';
 import type { IConnections } from 'n8n-workflow';
 import type { SecurityFinding } from '../types';
-import { isInputTrigger, isExternalService } from '../utils/nodeClassification';
+import {
+	isInputTrigger,
+	isExternalService,
+	isCodeNode,
+	getCodeParameters,
+} from '../utils/nodeClassification';
 
 /** Dangerous function patterns in Code nodes that indicate code injection risk. */
 const DANGEROUS_CODE_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
@@ -86,38 +91,40 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 
 	// Check Code nodes for console.log and dangerous functions
 	for (const node of nodes) {
-		if (
-			(node.type === 'n8n-nodes-base.code' || node.type === 'n8n-nodes-base.codeNode') &&
-			node.parameters
-		) {
-			const code = String((node.parameters as Record<string, unknown>).jsCode ?? '');
-			if (code.includes('console.log')) {
-				findings.push({
-					id: `exposure-${++counter}`,
-					category: 'data-exposure',
-					severity: 'info',
-					title: 'console.log in Code node',
-					description:
-						'console.log may expose sensitive data in server logs. Remove logging before production use.',
-					nodeName: node.name,
-					nodeId: node.id,
-					parameterPath: 'jsCode',
-				});
-			}
+		if (isCodeNode(node) && node.parameters) {
+			const codeParamNames = getCodeParameters(node);
+			for (const paramName of codeParamNames) {
+				const code = String((node.parameters as Record<string, unknown>)[paramName] ?? '');
+				if (!code) continue;
 
-			// Code injection: detect dangerous functions
-			for (const { pattern, label } of DANGEROUS_CODE_PATTERNS) {
-				if (pattern.test(code)) {
+				if (code.includes('console.log')) {
 					findings.push({
 						id: `exposure-${++counter}`,
 						category: 'data-exposure',
-						severity: 'warning',
-						title: `Dangerous "${label}" usage in Code node "${node.name}"`,
-						description: `The Code node uses "${label}" which can execute arbitrary code or access the server. This is a code injection risk if the node processes user-controlled input.`,
+						severity: 'info',
+						title: 'console.log in Code node',
+						description:
+							'console.log may expose sensitive data in server logs. Remove logging before production use.',
 						nodeName: node.name,
 						nodeId: node.id,
-						parameterPath: 'jsCode',
+						parameterPath: paramName,
 					});
+				}
+
+				// Code injection: detect dangerous functions
+				for (const { pattern, label } of DANGEROUS_CODE_PATTERNS) {
+					if (pattern.test(code)) {
+						findings.push({
+							id: `exposure-${++counter}`,
+							category: 'data-exposure',
+							severity: 'warning',
+							title: `Dangerous "${label}" usage in Code node "${node.name}"`,
+							description: `The Code node uses "${label}" which can execute arbitrary code or access the server. This is a code injection risk if the node processes user-controlled input.`,
+							nodeName: node.name,
+							nodeId: node.id,
+							parameterPath: paramName,
+						});
+					}
 				}
 			}
 		}

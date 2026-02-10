@@ -1,6 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type { SecurityFinding } from '../types';
 import { walkParameters } from '../utils/parameterWalker';
+import { isWebhookNode } from '../utils/nodeClassification';
 
 const LOCAL_URL_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/;
 
@@ -60,7 +61,7 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 		}
 
 		// Check for unauthenticated webhooks
-		if (node.type === 'n8n-nodes-base.webhook') {
+		if (isWebhookNode(node)) {
 			const auth = (node.parameters as Record<string, unknown>).authentication;
 			if (!auth || auth === 'none') {
 				findings.push({
@@ -107,7 +108,7 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 	}
 
 	// SSRF risk: webhook trigger + HTTP requests to internal network
-	const hasWebhook = nodes.some((n) => n.type === 'n8n-nodes-base.webhook');
+	const hasWebhook = nodes.some((n) => isWebhookNode(n));
 	if (hasWebhook) {
 		for (const node of nodes) {
 			if (node.type !== 'n8n-nodes-base.httpRequest' || !node.parameters) continue;

@@ -3,10 +3,14 @@ import type { IConnections } from 'n8n-workflow';
 import type { SecurityFinding } from '../types';
 import { walkParameters } from '../utils/parameterWalker';
 import { redactValue } from '../utils/redact';
-import { isInputTrigger, isExternalService } from '../utils/nodeClassification';
-
-const AI_NODE_PREFIX = '@n8n/n8n-nodes-langchain';
-const AI_AGENT_TYPE = `${AI_NODE_PREFIX}.agent`;
+import {
+	isInputTrigger,
+	isExternalService,
+	isAiNode,
+	isAiAgent,
+	isDangerousTool,
+	getPromptParameters,
+} from '../utils/nodeClassification';
 
 /** Known secret patterns — reused from hardcodedSecrets for AI prompt context. */
 const SECRET_PATTERNS: Array<{ pattern: RegExp; provider: string }> = [
@@ -24,21 +28,8 @@ const SECRET_PATTERNS: Array<{ pattern: RegExp; provider: string }> = [
 	{ pattern: /-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----/, provider: 'Private Key' },
 ];
 
-/** Tool types that grant the LLM arbitrary code execution or HTTP access. */
-const DANGEROUS_TOOL_TYPES = new Set([
-	`${AI_NODE_PREFIX}.toolHttpRequest`,
-	`${AI_NODE_PREFIX}.toolCode`,
-]);
-
-/** Parameter names that hold system-level prompt text in AI nodes. */
-const SYSTEM_PROMPT_PARAMS = new Set(['systemMessage', 'text', 'messages']);
-
 /** Matches expressions that reference external / user-controlled input. */
 const INPUT_REF_PATTERN = /\$json\b|\$input\b|\$\('|\$node\[/;
-
-function isAiNode(node: INodeUi): boolean {
-	return node.type.startsWith(AI_NODE_PREFIX);
-}
 
 /**
  * Check 1 — Prompt Injection Risk
@@ -54,12 +45,14 @@ function checkPromptInjection(nodes: INodeUi[]): SecurityFinding[] {
 	for (const node of nodes) {
 		if (!isAiNode(node) || !node.parameters) continue;
 
+		const promptParams = new Set(getPromptParameters(node));
+
 		walkParameters(node.parameters, (value, path, isExpr) => {
 			if (!isExpr) return;
 
 			// Only inspect system-prompt-like parameters
 			const topParam = path.split('.')[0];
-			if (!SYSTEM_PROMPT_PARAMS.has(topParam)) return;
+			if (!promptParams.has(topParam)) return;
 
 			if (INPUT_REF_PATTERN.test(value)) {
 				findings.push({
@@ -130,9 +123,9 @@ function checkDirectTriggerToAi(nodes: INodeUi[], connections: IConnections): Se
 /**
  * Check 3 — Over-Privileged AI Agent Tools
  *
- * Flags AI Agent nodes that have toolHttpRequest or toolCode connected,
- * which grant the LLM the ability to make arbitrary HTTP requests or
- * execute arbitrary code — a data exfiltration and injection risk.
+ * Flags AI Agent nodes that have dangerous tools connected (code execution
+ * or HTTP access), which grant the LLM the ability to perform arbitrary
+ * operations — a data exfiltration and injection risk.
  */
 function checkOverPrivilegedTools(nodes: INodeUi[], connections: IConnections): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
@@ -151,18 +144,17 @@ function checkOverPrivilegedTools(nodes: INodeUi[], connections: IConnections): 
 				const agentNode = nodesByName.get(conn.node);
 				const toolNode = nodesByName.get(sourceName);
 				if (!agentNode || !toolNode) continue;
-				if (agentNode.type !== AI_AGENT_TYPE) continue;
+				if (!isAiAgent(agentNode)) continue;
 
-				if (DANGEROUS_TOOL_TYPES.has(toolNode.type)) {
-					const toolLabel = toolNode.type.includes('toolHttpRequest')
-						? 'HTTP Request tool'
-						: 'Code tool';
+				const toolResult = isDangerousTool(toolNode);
+				if (toolResult.isDangerous) {
+					const toolLabel = toolResult.reason.includes('HTTP') ? 'HTTP Request tool' : 'Code tool';
 					findings.push({
 						id: `ai-tool-${++counter}`,
 						category: 'insecure-config',
 						severity: 'info',
 						title: `AI Agent "${agentNode.name}" has ${toolLabel}`,
-						description: `The ${toolLabel} "${toolNode.name}" gives the AI agent the ability to ${toolNode.type.includes('toolHttpRequest') ? 'make arbitrary HTTP requests' : 'execute arbitrary code'}. Ensure this is intentional and the agent prompt limits its usage.`,
+						description: `The tool "${toolNode.name}" gives the AI agent the ability to ${toolResult.reason}. Ensure this is intentional and the agent prompt limits its usage.`,
 						nodeName: agentNode.name,
 						nodeId: agentNode.id,
 					});
@@ -234,11 +226,13 @@ function checkSecretsInAiPrompts(nodes: INodeUi[]): SecurityFinding[] {
 	for (const node of nodes) {
 		if (!isAiNode(node) || !node.parameters) continue;
 
+		const promptParams = new Set(getPromptParameters(node));
+
 		walkParameters(node.parameters, (value, path, isExpr) => {
 			if (isExpr) return;
 
 			const topParam = path.split('.')[0];
-			if (!SYSTEM_PROMPT_PARAMS.has(topParam)) return;
+			if (!promptParams.has(topParam)) return;
 
 			for (const { pattern, provider } of SECRET_PATTERNS) {
 				if (pattern.test(value)) {

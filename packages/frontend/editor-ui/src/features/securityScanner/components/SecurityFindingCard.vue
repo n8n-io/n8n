@@ -69,6 +69,11 @@ function onNavigate() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+	transition: border-color 0.15s ease;
+}
+
+.card:hover {
+	border-color: var(--color--foreground--shade-1);
 }
 
 .header {

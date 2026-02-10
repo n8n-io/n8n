@@ -31,6 +31,7 @@ export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () =
 	});
 
 	const summary = computed(() => computeSummary(findings.value));
+	const hasFindings = computed(() => summary.value.total > 0);
 
 	const filteredFindings = computed(() => {
 		if (activeTab.value === 'all') return findings.value;
@@ -133,6 +134,7 @@ export const useSecurityScannerStore = defineStore(STORES.SECURITY_SCANNER, () =
 		panelWidth,
 		findings,
 		summary,
+		hasFindings,
 		filteredFindings,
 		categoryCount,
 		isAiAvailable,

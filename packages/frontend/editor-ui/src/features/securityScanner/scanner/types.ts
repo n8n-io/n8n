@@ -13,6 +13,7 @@ export interface SecurityFinding {
 	severity: SecuritySeverity;
 	title: string;
 	description: string;
+	remediation: string;
 	nodeName: string;
 	nodeId: string;
 	parameterPath?: string;
