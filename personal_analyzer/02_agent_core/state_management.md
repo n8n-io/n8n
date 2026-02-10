@@ -1,631 +1,589 @@
-# State Management - Execution Data Flow
+# State Management - Agent Execution State
 
 ## TL;DR
-n8n quản lý execution state qua `IRunExecutionData` struct chứa: execution stack (nodes chờ execute), waiting execution (multi-input nodes), và run data (kết quả đã execute). Data flow giữa nodes qua `INodeExecutionData` array, với `pairedItem` tracking data lineage.
+AI Agent trong n8n quản lý state qua `RequestResponseMetadata` chứa: **previousRequests** (accumulated steps), **iterationCount** (loop counter), và **itemIndex** (batch tracking). Agent state flows qua `ItemContext` cho mỗi iteration, với memory state managed riêng bởi LangChain.
 
 ---
 
-## State Architecture
+## Agent State Architecture
 
 ```mermaid
 graph TB
-    subgraph "IRunExecutionData"
-        subgraph "startData"
-            SD[destinationNode<br/>runNodeFilter]
-        end
-
-        subgraph "executionData"
-            STACK[nodeExecutionStack<br/>Queue of nodes to execute]
-            WAITING[waitingExecution<br/>Multi-input nodes pending]
-            CTX[contextData<br/>Execution context]
-        end
-
-        subgraph "resultData"
-            RUN[runData<br/>Node execution results]
-            PIN[pinData<br/>Pre-computed data]
-            ERR[error<br/>Execution error]
-            LAST[lastNodeExecuted]
-        end
+    subgraph "RequestResponseMetadata"
+        PREV[previousRequests<br/>ToolCallData[]]
+        ITER[iterationCount<br/>number]
+        ITEM[itemIndex<br/>number]
+        HITL[hitl?<br/>HitlMetadata]
+        THINK[anthropic/google<br/>Thinking metadata]
     end
 
-    STACK -->|pop| EXEC[Execute Node]
-    EXEC -->|store| RUN
-    EXEC -->|queue| STACK
-    EXEC -->|multi-input| WAITING
-    WAITING -->|all ready| STACK
+    subgraph "ItemContext"
+        INPUT[input<br/>User message]
+        STEPS[steps<br/>Previous tool calls]
+        OPTS[options<br/>Agent configuration]
+        TOOLS[tools<br/>Available tools]
+    end
+
+    subgraph "Memory State"
+        CHAT[chatHistory<br/>BaseMessage[]]
+        TOKEN[Token-limited<br/>conversation]
+    end
+
+    PREV --> STEPS
+    ITER --> CHECK[Max Iterations Check]
+    ITEM --> BATCH[Batch Processing]
+
+    STEPS --> AGENT[Agent Reasoning]
+    CHAT --> AGENT
 ```
 
 ---
 
-## Core Data Structures
+## Core State Structures
 
-### IRunExecutionData
+### 1. RequestResponseMetadata
 
 ```typescript
-// packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+// packages/@n8n/nodes-langchain/utils/agent-execution/types.ts
 
-export interface IRunExecutionDataV1 {
-  version: 1;
+export type RequestResponseMetadata = {
+  // Current batch item index
+  itemIndex?: number;
 
-  // ===== START DATA =====
-  startData?: {
-    // Partial execution target
-    destinationNode?: IDestinationNode;
-    originalDestinationNode?: IDestinationNode;
+  // Accumulated tool call history (agent scratchpad)
+  previousRequests?: ToolCallData[];
 
-    // Whitelist of nodes allowed to execute
-    runNodeFilter?: string[];
+  // Current iteration counter
+  iterationCount?: number;
 
-    // Start nodes for execution
-    startNodes?: StartNodeData[];
+  // Human-in-the-loop approval data
+  hitl?: HitlMetadata;
+
+  // Extended thinking metadata (Anthropic)
+  anthropic?: {
+    thinkingContent?: string;        // Raw thinking text
+    thinkingType?: 'thinking' | 'redacted_thinking';
+    thinkingSignature?: string;      // Verification signature
   };
 
-  // ===== EXECUTION DATA =====
-  executionData?: {
-    // Queue of nodes waiting to execute
-    nodeExecutionStack: IExecuteData[];
+  // Extended thinking metadata (Google/Gemini)
+  google?: {
+    thoughtSignature?: string;       // Verification signature
+  };
+};
+```
 
-    // Multi-input nodes waiting for all inputs
-    waitingExecution: IWaitingForExecution;
-    waitingExecutionSource: IWaitingForExecutionSource | null;
+**Line-by-line Explanation:**
+- `itemIndex`: Tracks which item in batch is being processed
+- `previousRequests`: All tool calls và observations from prior iterations
+- `iterationCount`: Loop counter for max iterations check
+- `hitl`: Human approval data khi dùng approval gates
+- `anthropic/google`: Extended thinking metadata cho các models hỗ trợ
 
-    // Execution context (variables, etc.)
-    contextData: IExecuteContextData;
+---
 
-    // Runtime data (task runner state)
-    runtimeData?: IExecutionContext;
+### 2. ToolCallData (Step Entry)
 
-    // Metadata indexed by node name
-    metadata: {
-      [nodeName: string]: ITaskMetadata[];
-    };
+```typescript
+// packages/@n8n/nodes-langchain/utils/agent-execution/types.ts
+
+export type ToolCallData = {
+  action: {
+    // Tool identifier
+    tool: string;                           // e.g., "calculator"
+
+    // Parameters passed to tool
+    toolInput: Record<string, unknown>;     // e.g., { expression: "2+2" }
+
+    // Action description/log
+    log: string | number | true | object;   // "Calculating 2+2..."
+
+    // Full LLM message for thinking blocks
+    messageLog?: AIMessage[];               // Contains thinking content
+
+    // Unique ID for this call
+    toolCallId: string;                     // e.g., "call_abc123"
+
+    // Call type
+    type: string;                           // "tool_call"
   };
 
-  // ===== RESULT DATA =====
-  resultData: {
-    // All node execution results
-    runData: IRunData;
-
-    // Pre-computed pinned data
-    pinData?: IPinData;
-
-    // Execution error if failed
-    error?: ExecutionError;
-
-    // Last executed node name
-    lastNodeExecuted?: string;
-  };
-
-  // Wait until date for scheduled workflows
-  waitTill?: Date;
-
-  // Push notification reference
-  pushRef?: string;
-
-  // Parent execution for sub-workflows
-  parentExecution?: RelatedExecution;
-}
+  // Tool execution result
+  observation: string;                      // "The result is 4"
+};
 ```
 
-### Node Execution Stack Item
-
-```typescript
-// packages/workflow/src/interfaces.ts
-
-export interface IExecuteData {
-  // Node to execute
-  node: INode;
-
-  // Input data by connection type
-  data: ITaskDataConnections;
-
-  // Where the input came from
-  source: ITaskDataConnectionsSource | null;
-
-  // Which run iteration
-  runIndex?: number;
-
-  // Additional metadata
-  metadata?: ITaskMetadata;
-}
-
-// Connection type -> array of outputs -> array of items
-export interface ITaskDataConnections {
-  [connectionType: string]: Array<INodeExecutionData[] | null>;
-}
-
-// Example:
-// {
-//   main: [
-//     [{ json: { id: 1 } }, { json: { id: 2 } }],  // Output 0
-//     [{ json: { id: 3 } }],                        // Output 1
-//   ]
-// }
+**Step Accumulation Flow:**
 ```
+Iteration 1: steps = []
+  → Agent calls tool A
+  → steps = [{ action: { tool: 'A' }, observation: 'result A' }]
 
-### Node Execution Data (Single Item)
+Iteration 2: steps = [step1]
+  → Agent calls tool B
+  → steps = [
+      { action: { tool: 'A' }, observation: 'result A' },
+      { action: { tool: 'B' }, observation: 'result B' }
+    ]
 
-```typescript
-// packages/workflow/src/interfaces.ts
-
-export interface INodeExecutionData {
-  // Main JSON payload
-  json: IDataObject;
-
-  // Binary data (files, images)
-  binary?: IBinaryKeyData;
-
-  // Data lineage tracking
-  pairedItem?: IPairedItemData | IPairedItemData[];
-
-  // Error info if this item failed
-  error?: NodeError;
-
-  // Execution index for debugging
-  index?: number;
-}
-
-// Example item:
-// {
-//   json: {
-//     name: "John",
-//     email: "john@example.com"
-//   },
-//   binary: {
-//     photo: {
-//       data: "base64...",
-//       mimeType: "image/png",
-//       fileName: "photo.png"
-//     }
-//   },
-//   pairedItem: { item: 0 }  // Came from input item 0
-// }
+Iteration 3: steps = [step1, step2]
+  → Agent returns final answer
+  → No new steps added
 ```
 
 ---
 
-## Run Data Structure
-
-### IRunData
+### 3. ItemContext (Per-Item State)
 
 ```typescript
-// packages/workflow/src/interfaces.ts
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/prepareItemContext.ts
 
-// Node name -> array of task data (one per run)
-export interface IRunData {
-  [nodeName: string]: ITaskData[];
+export interface ItemContext {
+  // User input message
+  input: string;
+
+  // Accumulated agent steps (scratchpad)
+  steps: ToolCallData[];
+
+  // Agent configuration options
+  options: AgentOptions;
+
+  // Available tools for this item
+  tools: Array<DynamicStructuredTool | Tool>;
 }
 
-export interface ITaskData extends ITaskStartedData {
-  // Execution timing
-  startTime: number;
-  executionTime: number;
-
-  // Result status
-  executionStatus?: ExecutionStatus;
-
-  // Output data by connection type
-  data?: ITaskDataConnections;
-
-  // Input override (for debugging)
-  inputOverride?: ITaskDataConnections;
-
-  // Error if failed
-  error?: ExecutionError;
-
-  // Task metadata
-  metadata?: ITaskMetadata;
-
-  // Hints for UI
-  hints?: NodeExecutionHint[];
-}
-
-// Example runData:
-// {
-//   "HTTP Request": [{
-//     startTime: 1699999999999,
-//     executionTime: 150,
-//     executionStatus: "success",
-//     data: {
-//       main: [[
-//         { json: { status: 200, data: {...} } }
-//       ]]
-//     }
-//   }],
-//   "If": [{
-//     executionTime: 5,
-//     executionStatus: "success",
-//     data: {
-//       main: [
-//         [{ json: {...} }],  // True branch
-//         []                   // False branch (empty)
-//       ]
-//     }
-//   }]
-// }
-```
-
----
-
-## Waiting Execution (Multi-Input Nodes)
-
-```typescript
-// packages/workflow/src/interfaces.ts
-
-// Node name -> run index -> data
-export interface IWaitingForExecution {
-  [nodeName: string]: {
-    [runIndex: number]: ITaskDataConnections;
-  };
-}
-
-export interface IWaitingForExecutionSource {
-  [nodeName: string]: {
-    [runIndex: number]: ITaskDataConnectionsSource;
-  };
-}
-```
-
-### Multi-Input Flow Example
-
-```mermaid
-sequenceDiagram
-    participant A as Branch A
-    participant B as Branch B
-    participant W as waitingExecution
-    participant M as Merge Node
-
-    Note over W: Initial: Merge = {}
-
-    A->>W: Complete with data [item1, item2]
-    Note over W: Merge[0] = {<br/>main: [[item1, item2], null]<br/>}
-
-    B->>W: Complete with data [item3]
-    Note over W: Merge[0] = {<br/>main: [[item1, item2], [item3]]<br/>}
-
-    W->>W: Check: All inputs ready?
-    W->>M: Yes - Add to execution stack
-
-    M->>M: Execute with all inputs
-```
-
-### Code Implementation
-
-```typescript
-// packages/core/src/execution-engine/workflow-execute.ts
-
-addNodeToBeExecuted(
-  workflow: Workflow,
-  connectionData: IConnection,
-  outputIndex: number,
-  parentNodeName: string,
-  nodeSuccessData: INodeExecutionData[][],
-  runIndex: number,
-): void {
-  const targetNode = connectionData.node;
-  const inputIndex = connectionData.index;
-
-  // Count inputs for target node
-  const numberOfInputs = workflow
-    .connectionsByDestinationNode[targetNode]?.main?.length ?? 0;
-
-  if (numberOfInputs > 1) {
-    // Multi-input node - use waiting mechanism
-
-    // Initialize waiting structure
-    if (!this.runExecutionData.executionData!.waitingExecution[targetNode]) {
-      this.runExecutionData.executionData!.waitingExecution[targetNode] = {};
-      this.runExecutionData.executionData!.waitingExecutionSource[targetNode] = {};
-    }
-
-    const waitingNodeIndex = this.getWaitingNodeIndex(targetNode, runIndex);
-
-    // Initialize this run's waiting data
-    if (!this.runExecutionData.executionData!.waitingExecution[targetNode][waitingNodeIndex]) {
-      this.runExecutionData.executionData!.waitingExecution[targetNode][waitingNodeIndex] = {
-        main: Array(numberOfInputs).fill(null),
-      };
-    }
-
-    // Store data for this input
-    this.runExecutionData.executionData!.waitingExecution[targetNode][waitingNodeIndex]
-      .main[inputIndex] = nodeSuccessData[outputIndex];
-
-    // Store source info
-    this.runExecutionData.executionData!.waitingExecutionSource[targetNode][waitingNodeIndex]
-      .main[inputIndex] = [{
-        previousNode: parentNodeName,
-        previousNodeOutput: outputIndex,
-        previousNodeRun: runIndex,
-      }];
-
-    // Check if all inputs are ready
-    let allDataFound = true;
-    for (let i = 0; i < numberOfInputs; i++) {
-      if (this.runExecutionData.executionData!.waitingExecution[targetNode][waitingNodeIndex]
-          .main[i] === null) {
-        allDataFound = false;
-        break;
-      }
-    }
-
-    if (allDataFound) {
-      // All inputs ready - add to execution stack
-      this.runExecutionData.executionData!.nodeExecutionStack.push({
-        node: workflow.nodes[targetNode],
-        data: this.runExecutionData.executionData!.waitingExecution[targetNode][waitingNodeIndex],
-        source: this.runExecutionData.executionData!.waitingExecutionSource[targetNode][waitingNodeIndex],
-      });
-
-      // Cleanup waiting entry
-      delete this.runExecutionData.executionData!.waitingExecution[targetNode][waitingNodeIndex];
-      delete this.runExecutionData.executionData!.waitingExecutionSource[targetNode][waitingNodeIndex];
-    }
-  } else {
-    // Single input - add directly to stack
-    this.runExecutionData.executionData!.nodeExecutionStack.push({
-      node: workflow.nodes[targetNode],
-      data: {
-        main: [nodeSuccessData[outputIndex]],
-      },
-      source: {
-        main: [{
-          previousNode: parentNodeName,
-          previousNodeOutput: outputIndex,
-          previousNodeRun: runIndex,
-        }],
-      },
-    });
-  }
+// AgentOptions structure
+interface AgentOptions {
+  systemMessage?: string;           // System prompt
+  maxIterations?: number;           // Max reasoning loops
+  returnIntermediateSteps?: boolean;
+  outputParser?: N8nOutputParser;
+  sessionId?: string;               // Memory session ID
+  maxTokensFromMemory?: number;     // Token limit for chat history
+  enableStreaming?: boolean;        // Streaming mode
 }
 ```
 
 ---
 
-## Static Data (Persistent Node State)
+## State Flow Through Execution
+
+### Building State at Each Iteration
 
 ```typescript
-// packages/workflow/src/interfaces.ts
+// packages/@n8n/nodes-langchain/utils/agent-execution/buildSteps.ts
 
-export interface IWorkflowBase {
-  // ...
-  staticData?: IDataObject;  // Workflow-level static data
-}
+export function buildSteps(
+  response: EngineResponse<RequestResponseMetadata> | undefined,
+  itemIndex: number,
+): ToolCallData[] {
+  const steps: ToolCallData[] = [];
 
-// Access in node:
-// packages/core/src/execution-engine/node-execution-context/execute-context.ts
-
-class ExecuteContext {
-  getWorkflowStaticData(type: 'node' | 'global'): IDataObject {
-    if (type === 'global') {
-      // Shared across all nodes
-      return this.workflow.staticData;
-    }
-
-    // Node-specific static data
-    const nodeName = this.node.name;
-    if (!this.workflow.staticData[nodeName]) {
-      this.workflow.staticData[nodeName] = {};
-    }
-    return this.workflow.staticData[nodeName];
-  }
-}
-```
-
-### Static Data Use Case
-
-```typescript
-// Example: Polling node tracking last poll time
-export class EmailTrigger implements INodeType {
-  async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-    const staticData = this.getWorkflowStaticData('node');
-
-    // Get last processed timestamp
-    const lastPollTime = staticData.lastPollTime as number || 0;
-
-    // Fetch new emails since last poll
-    const emails = await this.helpers.request({
-      url: '/api/emails',
-      qs: { since: lastPollTime },
-    });
-
-    // Update last poll time
-    staticData.lastPollTime = Date.now();
-
-    if (emails.length === 0) {
-      return null;  // No new data
-    }
-
-    return [[emails.map(e => ({ json: e }))]];
-  }
-}
-```
-
----
-
-## Data Lineage (Paired Items)
-
-```typescript
-// packages/workflow/src/interfaces.ts
-
-export interface IPairedItemData {
-  // Index of source item
-  item: number;
-
-  // Input connection index (for multi-input nodes)
-  input?: number;
-
-  // Source node name (for cross-node tracking)
-  sourceOverwrite?: string;
-}
-```
-
-### Automatic Pairing
-
-```typescript
-// packages/core/src/execution-engine/workflow-execute.ts
-
-assignPairedItems(
-  nodeSuccessData: INodeExecutionData[][] | null | undefined,
-  executionData: IExecuteData,
-): void {
-  if (!nodeSuccessData) return;
-
-  // Check if 1:1 mapping is possible
-  const isSingleInputAndOutput =
-    executionData.data.main.length === 1 &&
-    executionData.data.main[0]?.length === 1;
-
-  const isSameNumberOfItems =
-    nodeSuccessData.length === 1 &&
-    executionData.data.main.length === 1 &&
-    executionData.data.main[0]?.length === nodeSuccessData[0].length;
-
-  for (const outputData of nodeSuccessData) {
-    for (const [index, item] of outputData.entries()) {
-      if (item.pairedItem === undefined) {
-        if (isSingleInputAndOutput) {
-          // All outputs came from single input
-          item.pairedItem = { item: 0 };
-        } else if (isSameNumberOfItems) {
-          // 1:1 mapping by index
-          item.pairedItem = { item: index };
-        }
-        // Else: Cannot determine pairing automatically
-      }
-    }
-  }
-}
-```
-
-### Manual Pairing in Node
-
-```typescript
-// Explicit pairing in node code
-async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-  const items = this.getInputData();
-  const returnData: INodeExecutionData[] = [];
-
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-
-    // Process and create multiple outputs
-    const results = await processItem(item.json);
-
-    for (const result of results) {
-      returnData.push({
-        json: result,
-        // Explicitly track which input this came from
-        pairedItem: { item: i },
-      });
-    }
+  // 1. Carry forward ALL previous steps
+  if (response?.metadata?.previousRequests) {
+    steps.push(...response.metadata.previousRequests);
   }
 
-  return [returnData];
-}
-```
+  // 2. Add new tool responses from current iteration
+  const responses = response?.actions || [];
 
----
+  for (const tool of responses) {
+    // Filter by item index (for batch processing)
+    if (tool.action?.metadata?.itemIndex !== itemIndex) {
+      continue;
+    }
 
-## Pin Data (Testing Feature)
-
-```typescript
-// packages/workflow/src/interfaces.ts
-
-export interface IPinData {
-  [nodeName: string]: INodeExecutionData[];
-}
-
-// Usage in execution
-// packages/core/src/execution-engine/workflow-execute.ts
-
-processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
-  // ...
-
-  // Check for pinned data
-  const pinData = this.runExecutionData.resultData.pinData;
-
-  // In execution loop
-  if (pinData && pinData[executionNode.name]) {
-    // Use pinned data instead of executing node
-    const pinnedData = pinData[executionNode.name];
-    runNodeData = {
-      data: { main: [pinnedData] },
+    const toolInput: IDataObject = {
+      ...tool.action.input,
+      id: tool.action.id,
     };
 
-    // Skip actual execution
-    skipExecution = true;
+    // Extract tool name with fallback
+    const toolName = resolveToolName(tool);
+
+    steps.push({
+      action: {
+        tool: toolName,
+        toolInput: {
+          ...toolInput,
+          log: toolInput.log,
+        },
+        log: toolInput.log || `Calling ${tool.action.nodeName}`,
+        messageLog: extractMessageLog(tool),
+        toolCallId: tool.action.id,
+        type: 'tool_call',
+      },
+      observation: buildObservation(tool.data),  // Tool result
+    });
+  }
+
+  return steps;
+}
+
+// Build observation from tool output
+function buildObservation(data: IDataObject | IDataObject[]): string {
+  if (Array.isArray(data)) {
+    return data.map(item => JSON.stringify(item)).join('\n');
+  }
+  return JSON.stringify(data);
+}
+```
+
+### Preparing Context for Each Item
+
+```typescript
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/prepareItemContext.ts
+
+export async function prepareItemContext(
+  ctx: IExecuteFunctions | ISupplyDataFunctions,
+  itemIndex: number,
+  response?: EngineResponse<RequestResponseMetadata>,
+): Promise<ItemContext> {
+  // 1. Get user input for this item
+  const input = ctx.getNodeParameter('text', itemIndex) as string;
+
+  // 2. Build steps from previous iterations
+  const steps = buildSteps(response, itemIndex);
+
+  // 3. Get configuration options
+  const options: AgentOptions = {
+    systemMessage: ctx.getNodeParameter('systemMessage', itemIndex, '') as string,
+    maxIterations: ctx.getNodeParameter('options.maxIterations', itemIndex, 10) as number,
+    returnIntermediateSteps: ctx.getNodeParameter(
+      'options.returnIntermediateSteps', itemIndex, false
+    ) as boolean,
+    sessionId: getSessionId(ctx, itemIndex),
+    maxTokensFromMemory: ctx.getNodeParameter(
+      'options.maxTokensFromMemory', itemIndex, undefined
+    ) as number | undefined,
+    enableStreaming: ctx.getNodeParameter(
+      'options.enableStreaming', itemIndex, true
+    ) as boolean,
+  };
+
+  // 4. Get tools from connections
+  const tools = await getConnectedTools(ctx, itemIndex);
+
+  return { input, steps, options, tools };
+}
+```
+
+---
+
+## Iteration Count Management
+
+### Tracking Iterations
+
+```typescript
+// packages/@n8n/nodes-langchain/utils/agent-execution/buildResponseMetadata.ts
+
+export function buildResponseMetadata(
+  response: EngineResponse<RequestResponseMetadata> | undefined,
+  itemIndex: number,
+): RequestResponseMetadata {
+  // Get current iteration count (0 if first iteration)
+  const currentIterationCount = response?.metadata?.iterationCount ?? 0;
+
+  return {
+    // Carry forward all accumulated steps
+    previousRequests: buildSteps(response, itemIndex),
+
+    // Track which item this is for
+    itemIndex,
+
+    // Increment iteration counter
+    iterationCount: currentIterationCount + 1,
+  };
+}
+```
+
+### Max Iterations Check
+
+```typescript
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/checkMaxIterations.ts
+
+export function checkMaxIterations(
+  response: EngineResponse<RequestResponseMetadata> | undefined,
+  maxIterations: number,
+  node: INode,
+): void {
+  // Skip on first iteration (no response yet)
+  if (response?.metadata?.iterationCount === undefined) {
+    return;
+  }
+
+  // Check limit
+  if (response.metadata.iterationCount >= maxIterations) {
+    throw new NodeOperationError(
+      node,
+      `Max iterations (${maxIterations}) reached. ` +
+      `The agent could not complete the task.`,
+      { description: 'Increase max iterations or simplify the task.' }
+    );
   }
 }
 ```
 
 ---
 
-## State Persistence
+## Memory State Management
 
-### Database Storage
+### Loading Memory with Token Limits
 
 ```typescript
-// packages/cli/src/databases/entities/execution-entity.ts
+// packages/@n8n/nodes-langchain/utils/agent-execution/loadMemory.ts
 
-@Entity('execution_entity')
-export class ExecutionEntity {
-  @PrimaryColumn()
-  id: string;
+export async function loadMemory(
+  memory: BaseChatMemory | undefined,
+  model: BaseChatModel,
+  maxTokens?: number,
+): Promise<BaseMessage[]> {
+  if (!memory) {
+    return [];
+  }
 
-  @Column('simple-json')
-  data: IRunExecutionData;
+  // Load full chat history
+  const memoryVariables = await memory.loadMemoryVariables({});
+  let chatHistory = memoryVariables.chat_history || [];
 
-  @Column()
-  finished: boolean;
+  // Apply token limit if specified
+  if (maxTokens && chatHistory.length > 0) {
+    chatHistory = await trimMessages(chatHistory, {
+      maxTokens,
+      tokenCounter: model,
+      strategy: 'last',  // Keep most recent messages
+      allowPartial: false,
+    });
+  }
 
-  @Column()
-  mode: WorkflowExecuteMode;
-
-  @Column()
-  status: ExecutionStatus;
-
-  @Column({ type: 'timestamp' })
-  startedAt: Date;
-
-  @Column({ type: 'timestamp', nullable: true })
-  stoppedAt: Date;
-
-  @ManyToOne(() => WorkflowEntity)
-  workflow: WorkflowEntity;
+  return chatHistory;
 }
 ```
 
-### Saving Execution State
+### Saving to Memory
 
 ```typescript
-// packages/core/src/execution-engine/workflow-execute.ts
+// packages/@n8n/nodes-langchain/utils/agent-execution/saveToMemory.ts
 
-async processSuccessExecution(
-  startedAt: Date,
-  workflow: Workflow,
-  executionError?: ExecutionBaseError,
-): Promise<IRun> {
-  const stoppedAt = new Date();
+export async function saveToMemory(
+  memory: BaseChatMemory | undefined,
+  input: string,
+  output: string,
+): Promise<void> {
+  if (!memory) {
+    return;
+  }
 
-  // Build final run data
-  const fullRunData: IRun = {
-    data: this.runExecutionData,
-    finished: !executionError && !this.runExecutionData.waitTill,
-    mode: this.mode,
-    startedAt,
-    stoppedAt,
-    status: this.status,
-  };
-
-  // Save via hooks (to database)
-  await this.additionalData.hooks?.runHook(
-    'workflowExecuteAfter',
-    [fullRunData, undefined]
+  // Save the conversation turn
+  await memory.saveContext(
+    { input },      // Human message
+    { output },     // AI response
   );
-
-  return fullRunData;
 }
+```
+
+---
+
+## HITL (Human-in-the-Loop) State
+
+### HITL Metadata Structure
+
+```typescript
+// packages/@n8n/nodes-langchain/utils/agent-execution/types.ts
+
+export interface HitlMetadata {
+  // Tool that needs approval
+  toolName: string;
+
+  // Parameters being passed
+  toolParameters: Record<string, unknown>;
+
+  // Whether approval is required
+  requiresApproval: boolean;
+
+  // Approval status
+  approved?: boolean;
+
+  // User who approved
+  approvedBy?: string;
+
+  // Approval timestamp
+  approvedAt?: Date;
+}
+```
+
+### Processing HITL Responses
+
+```typescript
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/processHitlResponses.ts
+
+export function processHitlResponses(
+  response: EngineResponse<RequestResponseMetadata> | undefined,
+): EngineResponse<RequestResponseMetadata> | undefined {
+  if (!response?.actions) {
+    return response;
+  }
+
+  // Filter and process approved actions
+  const processedActions = response.actions.map(action => {
+    const hitl = action.action.metadata?.hitl;
+
+    if (hitl && hitl.requiresApproval) {
+      if (!hitl.approved) {
+        // Action was rejected - convert to error response
+        return {
+          ...action,
+          data: { error: 'Tool call was rejected by user' },
+        };
+      }
+      // Action was approved - proceed normally
+    }
+
+    return action;
+  });
+
+  return {
+    ...response,
+    actions: processedActions,
+  };
+}
+```
+
+---
+
+## Batch State Management
+
+### Batch Execution Context
+
+```typescript
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/executeBatch.ts
+
+export async function executeBatch(
+  ctx: IExecuteFunctions | ISupplyDataFunctions,
+  batch: INodeExecutionData[],
+  startIndex: number,                    // Starting item index
+  model: BaseChatModel,
+  fallbackModel: BaseChatModel | null,
+  memory: BaseChatMemory | undefined,
+  response?: EngineResponse<RequestResponseMetadata>,
+) {
+  const returnData: INodeExecutionData[] = [];
+  const requestAggregator = new RequestAggregator();
+
+  // Process items in parallel
+  const batchPromises = batch.map(async (_item, batchItemIndex) => {
+    // Calculate global item index
+    const itemIndex = startIndex + batchItemIndex;
+
+    // Each item has its own context
+    const itemContext = await prepareItemContext(ctx, itemIndex, response);
+
+    // Run agent for this item
+    return await runAgent(ctx, executor, itemContext, model, memory, response);
+  });
+
+  const batchResults = await Promise.all(batchPromises);
+
+  // Aggregate results
+  for (const result of batchResults) {
+    if ('actions' in result) {
+      // More tool calls needed
+      requestAggregator.addRequest(result);
+    } else {
+      // Item finished
+      returnData.push(finalizeResult(result));
+    }
+  }
+
+  return requestAggregator.hasRequests()
+    ? requestAggregator.build()
+    : [returnData];
+}
+```
+
+---
+
+## State Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        AGENT STATE FLOW                              │
+└─────────────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────────────┐
+                    │   Initial State     │
+                    │   ────────────────  │
+                    │   steps: []         │
+                    │   iterationCount: 0 │
+                    │   memory: loaded    │
+                    └─────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────────────┐
+        │              ITERATION LOOP                  │
+        └─────────────────────────────────────────────┘
+                              │
+                    ┌─────────┴─────────┐
+                    │                   │
+                    ▼                   ▼
+        ┌───────────────────┐   ┌───────────────────┐
+        │  prepareItemContext │   │ checkMaxIterations │
+        │  ─────────────────  │   │  ────────────────  │
+        │  input: user msg    │   │  count >= max?     │
+        │  steps: accumulated │   │  throw if yes      │
+        │  tools: available   │   │                    │
+        └───────────────────┘   └───────────────────┘
+                    │
+                    ▼
+        ┌───────────────────┐
+        │   runAgent        │
+        │   ────────────    │
+        │   LLM reasoning   │
+        │   with context    │
+        └───────────────────┘
+                    │
+            ┌───────┴───────┐
+            │               │
+            ▼               ▼
+    ┌─────────────┐   ┌─────────────┐
+    │  TOOL CALL  │   │   FINISH    │
+    │  ─────────  │   │   ──────    │
+    │  Extract    │   │  Save to    │
+    │  actions    │   │  memory     │
+    │             │   │             │
+    │  Execute    │   │  Return     │
+    │  tools      │   │  result     │
+    └─────────────┘   └─────────────┘
+            │
+            ▼
+    ┌─────────────────┐
+    │ buildSteps      │
+    │ ────────────    │
+    │ Add new step:   │
+    │ - action        │
+    │ - observation   │
+    │                 │
+    │ Accumulate      │
+    │ with previous   │
+    └─────────────────┘
+            │
+            ▼
+    ┌─────────────────────┐
+    │ buildResponseMeta   │
+    │ ─────────────────── │
+    │ previousRequests++  │
+    │ iterationCount++    │
+    └─────────────────────┘
+            │
+            └──────────────┐
+                           │
+                           ▼
+                  ┌────────────────┐
+                  │ Next Iteration │
+                  │ ────────────── │
+                  │ Repeat with    │
+                  │ updated state  │
+                  └────────────────┘
 ```
 
 ---
@@ -634,24 +592,26 @@ async processSuccessExecution(
 
 | Component | File Path |
 |-----------|-----------|
-| IRunExecutionData | `packages/workflow/src/run-execution-data/run-execution-data.v1.ts` |
-| INodeExecutionData | `packages/workflow/src/interfaces.ts` |
-| IRunData | `packages/workflow/src/interfaces.ts` |
-| State Management | `packages/core/src/execution-engine/workflow-execute.ts` |
-| ExecutionEntity | `packages/cli/src/databases/entities/execution-entity.ts` |
+| RequestResponseMetadata | `packages/@n8n/nodes-langchain/utils/agent-execution/types.ts` |
+| buildSteps | `packages/@n8n/nodes-langchain/utils/agent-execution/buildSteps.ts` |
+| prepareItemContext | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/helpers/prepareItemContext.ts` |
+| buildResponseMetadata | `packages/@n8n/nodes-langchain/utils/agent-execution/buildResponseMetadata.ts` |
+| checkMaxIterations | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/helpers/checkMaxIterations.ts` |
+| loadMemory | `packages/@n8n/nodes-langchain/utils/agent-execution/loadMemory.ts` |
+| processHitlResponses | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/helpers/processHitlResponses.ts` |
 
 ---
 
 ## Key Takeaways
 
-1. **Centralized State**: Tất cả execution state trong `IRunExecutionData`, dễ serialize/persist.
+1. **Steps as Scratchpad**: `previousRequests` accumulates tool calls + observations, forming agent's working memory.
 
-2. **Queue + Waiting**: Execution stack cho single-input nodes, waiting map cho multi-input nodes.
+2. **Iteration Tracking**: `iterationCount` prevents infinite loops với configurable max iterations.
 
-3. **Data Lineage**: `pairedItem` tracks input-output relationship cho debugging và error tracing.
+3. **Per-Item Isolation**: Each batch item has independent `ItemContext` với riêng steps, input, tools.
 
-4. **Static Data**: Persistent state per-node cho polling triggers và iteration tracking.
+4. **Memory Token Limits**: Chat history trimmed to `maxTokensFromMemory` để prevent context overflow.
 
-5. **Pin Data**: Testing feature bypass node execution với pre-defined data.
+5. **HITL Integration**: Human approval gates integrated via `HitlMetadata` trong response metadata.
 
-6. **Immutable Results**: `runData` chỉ append, never modify - safe for concurrent access.
+6. **Extended Thinking**: Anthropic/Google thinking blocks preserved qua `anthropic`/`google` metadata fields.

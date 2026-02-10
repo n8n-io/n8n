@@ -1,591 +1,433 @@
-# Agent Class Analysis - WorkflowExecute
+# Agent Class Analysis - ToolsAgent V3
 
 ## TL;DR
-`WorkflowExecute` là class trung tâm điều phối toàn bộ workflow execution trong n8n. Nó quản lý execution stack, xử lý node-by-node theo dependency order, và track state qua `IRunExecutionData`. Class này return `PCancelable` promise cho phép cancel execution bất kỳ lúc nào.
+`ToolsAgent` là AI Agent node chính trong n8n, sử dụng LangChain's `createToolCallingAgent`. Agent thực hiện reasoning loop: nhận input → gọi LLM → detect tool calls → execute tools → observe results → tiếp tục hoặc trả final answer. Hỗ trợ streaming, memory, fallback models, và HITL (Human-in-the-Loop).
 
 ---
 
-## Class Overview
-
-```mermaid
-classDiagram
-    class WorkflowExecute {
-        -status: ExecutionStatus
-        -abortController: AbortController
-        -runExecutionData: IRunExecutionData
-        -additionalData: IWorkflowExecuteAdditionalData
-        -mode: WorkflowExecuteMode
-        +timedOut: boolean
-        +run(options): PCancelable~IRun~
-        +processRunExecutionData(workflow): PCancelable~IRun~
-        -runNode(workflow, executionData, ...): Promise
-        -executeNode(workflow, node, ...): Promise
-        -addNodeToBeExecuted(workflow, connection, ...): void
-    }
-
-    class IRunExecutionData {
-        +startData: StartData
-        +resultData: ResultData
-        +executionData: ExecutionData
-        +waitTill: Date
-    }
-
-    class ExecuteContext {
-        +getNodeParameter()
-        +getInputData()
-        +helpers: IExecuteFunctions
-    }
-
-    WorkflowExecute --> IRunExecutionData : manages
-    WorkflowExecute --> ExecuteContext : creates
-```
-
----
-
-## Core Properties
-
-**File:** `packages/core/src/execution-engine/workflow-execute.ts`
-
-```typescript
-export class WorkflowExecute {
-  // Execution status tracking
-  private status: ExecutionStatus = 'new';
-
-  // Cancellation support
-  private readonly abortController = new AbortController();
-
-  // Timeout flag
-  timedOut: boolean = false;
-
-  constructor(
-    // Metadata, hooks, credentials access
-    private readonly additionalData: IWorkflowExecuteAdditionalData,
-
-    // Execution mode: 'manual' | 'trigger' | 'internal' | 'retry'
-    private readonly mode: WorkflowExecuteMode,
-
-    // All execution state - node results, queue, waiting nodes
-    private runExecutionData: IRunExecutionData = createRunExecutionData(),
-
-    // Where to store execution: 'db' | 'filesystem'
-    private readonly storedAt: ExecutionStorageLocation = 'db',
-  ) {}
-}
-```
-
-### ExecutionStatus States
-
-```mermaid
-stateDiagram-v2
-    [*] --> new
-    new --> running: run() called
-    running --> success: all nodes complete
-    running --> error: node throws error
-    running --> canceled: user cancels
-    running --> waiting: waitTill set
-    waiting --> running: resume
-    success --> [*]
-    error --> [*]
-    canceled --> [*]
-```
-
----
-
-## Main Entry Point: run()
-
-```typescript
-run({
-  workflow,
-  startNode,
-  destinationNode,      // Partial execution target
-  pinData,              // Pre-computed data to skip nodes
-  triggerToStartFrom,   // Resume from trigger
-  additionalRunFilterNodes,
-}: RunWorkflowOptions): PCancelable<IRun> {
-
-  this.status = 'running';
-
-  // 1. Determine start node
-  // If not specified, find the first executable node
-  startNode = startNode || workflow.getStartNode(destinationNode?.nodeName);
-
-  if (startNode === undefined) {
-    throw new ApplicationError(
-      'No node to start the workflow from could be found'
-    );
-  }
-
-  // 2. Setup run filter for partial execution
-  let runNodeFilter: string[] | undefined;
-  if (destinationNode) {
-    // Only run parent nodes of destination
-    runNodeFilter = workflow.getParentNodes(destinationNode.nodeName);
-    if (destinationNode.mode === 'inclusive') {
-      runNodeFilter.push(destinationNode.nodeName);
-    }
-  }
-
-  // 3. Initialize execution stack with start node
-  const nodeExecutionStack: IExecuteData[] = [
-    {
-      node: startNode,
-      data: triggerToStartFrom?.data?.data ?? {
-        main: [[{ json: {} }]],  // Default empty input
-      },
-      source: null,
-    },
-  ];
-
-  // 4. Create fresh execution data
-  this.runExecutionData = createRunExecutionData({
-    startData: {
-      destinationNode,
-      runNodeFilter,
-    },
-    executionData: {
-      nodeExecutionStack,
-    },
-    resultData: {
-      pinData,
-    },
-  });
-
-  // 5. Start processing
-  return this.processRunExecutionData(workflow);
-}
-```
-
-### Key Concepts
-
-| Concept | Description |
-|---------|-------------|
-| **destinationNode** | Cho phép partial execution - chỉ run nodes cần thiết để đến destination |
-| **runNodeFilter** | Whitelist của nodes được phép execute |
-| **pinData** | Data đã pin sẵn, bypass node execution |
-| **nodeExecutionStack** | Queue của nodes chờ execute |
-
----
-
-## Execution Loop: processRunExecutionData()
-
-```typescript
-processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
-  Logger.debug('Workflow execution started', { workflowId: workflow.id });
-
-  const { startedAt, hooks } = this.setupExecution();
-  this.checkForWorkflowIssues(workflow);
-  this.handleWaitingState(workflow);
-
-  // Return cancellable promise
-  return new PCancelable(async (resolve, _reject, onCancel) => {
-    // Setup cancellation handler
-    onCancel.shouldReject = false;
-    onCancel(() => {
-      this.status = 'canceled';
-      this.updateTaskStatusesToCancelled();
-      this.abortController.abort();
-    });
-
-    let executionData: IExecuteData;
-    let executionNode: INode;
-
-    // ============ MAIN EXECUTION LOOP ============
-    executionLoop: while (
-      this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
-    ) {
-
-      // 1. Check for cancellation/timeout
-      if (this.status === 'canceled') {
-        return;
-      }
-
-      // 2. Pop next node from stack (FIFO)
-      executionData = this.runExecutionData
-        .executionData!.nodeExecutionStack.shift() as IExecuteData;
-      executionNode = executionData.node;
-
-      // 3. Skip if not in filter (partial execution)
-      if (!this.shouldNodeExecute(executionNode)) {
-        continue executionLoop;
-      }
-
-      // 4. Execute the node with retry logic
-      let runNodeData: IRunNodeResponse | EngineRequest;
-      let executionError: ExecutionBaseError | undefined;
-
-      // Retry configuration
-      let maxTries = 1;
-      if (executionData.node.retryOnFail === true) {
-        maxTries = Math.min(5, Math.max(2, executionData.node.maxTries || 3));
-      }
-
-      for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
-        try {
-          runNodeData = await this.runNode(
-            workflow,
-            executionData,
-            this.runExecutionData,
-            runIndex,
-            this.additionalData,
-            this.mode,
-            this.abortController.signal,
-          );
-          break;  // Success - exit retry loop
-        } catch (e) {
-          executionError = e;
-          if (tryIndex !== maxTries - 1) {
-            await sleep(waitBetweenTries);
-          }
-        }
-      }
-
-      // 5. Store result in runData
-      this.runExecutionData.resultData.runData[executionNode.name] =
-        this.runExecutionData.resultData.runData[executionNode.name] || [];
-      this.runExecutionData.resultData.runData[executionNode.name].push({
-        executionTime,
-        executionStatus: executionError ? 'error' : 'success',
-        data: runNodeData.data,
-        error: executionError,
-      });
-
-      // 6. Queue successor nodes
-      if (runNodeData.data) {
-        this.scheduleSuccessorNodes(
-          workflow,
-          executionNode,
-          runNodeData.data,
-          runIndex
-        );
-      }
-    }
-    // ============ END EXECUTION LOOP ============
-
-    // Finalize execution
-    const fullRunData = await this.processSuccessExecution(
-      startedAt,
-      workflow,
-      executionError,
-    );
-    resolve(fullRunData);
-  });
-}
-```
-
-### Execution Loop Diagram
-
-```mermaid
-flowchart TB
-    START[Start Loop] --> CHECK{Stack Empty?}
-    CHECK -->|Yes| FINISH[Finalize]
-    CHECK -->|No| POP[Pop Node from Stack]
-
-    POP --> FILTER{In Filter?}
-    FILTER -->|No| CHECK
-    FILTER -->|Yes| RETRY[Init Retry Loop]
-
-    RETRY --> EXEC[Execute Node]
-    EXEC --> SUCCESS{Success?}
-
-    SUCCESS -->|Yes| STORE[Store Result]
-    SUCCESS -->|No| RETRY_CHECK{More Retries?}
-
-    RETRY_CHECK -->|Yes| WAIT[Wait] --> EXEC
-    RETRY_CHECK -->|No| ERROR[Store Error]
-
-    STORE --> QUEUE[Queue Successors]
-    ERROR --> QUEUE
-
-    QUEUE --> CHECK
-
-    FINISH --> RETURN[Return IRun]
-```
-
----
-
-## Node Execution: runNode()
-
-```typescript
-async runNode(
-  workflow: Workflow,
-  executionData: IExecuteData,
-  runExecutionData: IRunExecutionData,
-  runIndex: number,
-  additionalData: IWorkflowExecuteAdditionalData,
-  mode: WorkflowExecuteMode,
-  abortSignal?: AbortSignal,
-): Promise<IRunNodeResponse | EngineRequest> {
-
-  const { node } = executionData;
-  let inputData = executionData.data;
-
-  // Handle disabled nodes - pass through input
-  if (node.disabled === true) {
-    return this.handleDisabledNode(inputData);
-  }
-
-  // Get node type definition
-  const nodeType = workflow.nodeTypes.getByNameAndVersion(
-    node.type,
-    node.typeVersion
-  );
-
-  // Route to appropriate executor
-  if (nodeType.execute) {
-    // Regular programmatic nodes
-    return await this.executeNode(
-      workflow,
-      node,
-      nodeType,
-      additionalData,
-      mode,
-      runExecutionData,
-      runIndex,
-      inputData,
-      executionData,
-      abortSignal,
-    );
-  }
-
-  if (nodeType.poll) {
-    // Polling trigger nodes
-    return await this.executePollNode(...);
-  }
-
-  if (nodeType.trigger) {
-    // Event trigger nodes
-    return await this.executeTriggerNode(...);
-  }
-
-  if (nodeType.webhook) {
-    // Webhook nodes - already processed
-    return await this.executeWebhookNode(...);
-  }
-
-  // Declarative HTTP nodes
-  if (nodeType.description.requestDefaults) {
-    return await this.executeRoutingNode(...);
-  }
-
-  throw new UnexpectedError(`Unknown node type: ${node.type}`);
-}
-```
-
-### Node Type Execution Flow
+## Agent Architecture
 
 ```mermaid
 graph TB
-    INPUT[Node Input] --> DISABLED{Disabled?}
-    DISABLED -->|Yes| PASSTHROUGH[Pass Through]
-    DISABLED -->|No| TYPE{Node Type?}
+    subgraph "Agent Node Inputs"
+        INPUT[User Input]
+        LLM[LLM Connection<br/>ai_languageModel]
+        TOOLS[Tool Connections<br/>ai_tool]
+        MEM[Memory Connection<br/>ai_memory]
+        PARSER[Output Parser<br/>ai_outputParser]
+    end
 
-    TYPE -->|execute| EXEC[executeNode]
-    TYPE -->|poll| POLL[executePollNode]
-    TYPE -->|trigger| TRIGGER[executeTriggerNode]
-    TYPE -->|webhook| WEBHOOK[executeWebhookNode]
-    TYPE -->|requestDefaults| ROUTING[RoutingNode]
+    subgraph "Agent Execution Pipeline"
+        CTX[Build Context]
+        BATCH[Batch Processing]
+        PREP[Prepare Item]
+        CREATE[Create Agent]
+        RUN[Run Agent Loop]
+        FINAL[Finalize Result]
+    end
 
-    EXEC --> CONTEXT[Create ExecuteContext]
-    CONTEXT --> CALL[node.execute.call]
-    CALL --> RESULT[INodeExecutionData]
+    INPUT --> CTX
+    LLM --> CTX
+    TOOLS --> CTX
+    MEM --> CTX
+    PARSER --> CTX
 
-    ROUTING --> HTTP[HTTP Request]
-    HTTP --> RESULT
+    CTX --> BATCH --> PREP --> CREATE --> RUN --> FINAL
 ```
 
 ---
 
-## ExecuteContext Creation
+## Agent Types
+
+| Agent Type | Description | Use Case |
+|------------|-------------|----------|
+| **ToolsAgent (V3)** | Default, modern tool-calling với LangChain | General purpose, streaming |
+| **ReActAgent** | Reasoning + Acting pattern | Chain-of-thought reasoning |
+| **ConversationalAgent** | Memory-aware chat với tools | Multi-turn conversations |
+| **PlanAndExecuteAgent** | Two-phase: planning rồi execution | Complex multi-step tasks |
+| **SqlAgent** | Specialized cho database queries | SQL query generation |
+
+---
+
+## Core Class Structure
+
+**File:** `packages/@n8n/nodes-langchain/nodes/agents/Agent/Agent.node.ts`
 
 ```typescript
-private async executeNode(
-  workflow: Workflow,
-  node: INode,
-  nodeType: INodeType,
-  additionalData: IWorkflowExecuteAdditionalData,
-  mode: WorkflowExecuteMode,
-  runExecutionData: IRunExecutionData,
-  runIndex: number,
-  inputData: ITaskDataConnections,
-  executionData: IExecuteData,
-  abortSignal?: AbortSignal,
-): Promise<IRunNodeResponse | EngineRequest> {
+// Versioned node - delegates to version-specific implementations
+export class Agent extends VersionedNodeType {
+  constructor() {
+    const nodeVersions: IVersionedNodeType['nodeVersions'] = {
+      1: new AgentV1(baseDescription),   // Legacy
+      1.1: new AgentV1(baseDescription),
+      // ...
+      2: new AgentV2(baseDescription),   // Streaming added
+      2.1: new AgentV2(baseDescription),
+      // ...
+      3: new AgentV3(baseDescription),   // Current default
+      3.1: new AgentV3(baseDescription),
+    };
 
-  const closeFunctions: CloseFunction[] = [];
-
-  // Create execution context - provides node API
-  const context = new ExecuteContext(
-    workflow,
-    node,
-    additionalData,
-    mode,
-    runExecutionData,
-    runIndex,
-    connectionInputData,  // Flattened input
-    inputData,            // Full input by connection type
-    executionData,
-    closeFunctions,
-    abortSignal,
-  );
-
-  // Execute node with context bound as `this`
-  let data: INodeExecutionData[][] | null;
-
-  if (nodeType.execute) {
-    data = await nodeType.execute.call(context);
+    super(nodeVersions, baseDescription);
   }
-
-  // Cleanup any open resources
-  for (const closeFunction of closeFunctions) {
-    await closeFunction();
-  }
-
-  return { data, hints: context.hints };
 }
+
+// Default version
+const baseDescription: INodeTypeBaseDescription = {
+  displayName: 'AI Agent',
+  name: 'agent',
+  icon: 'fa:robot',
+  group: ['transform'],
+  defaultVersion: 3.1,  // Latest stable
+};
 ```
 
-### ExecuteContext API
+---
+
+## Agent V3 Node Definition
+
+**File:** `packages/@n8n/nodes-langchain/nodes/agents/Agent/V3/AgentV3.node.ts`
 
 ```typescript
-// What nodes can access via `this` in execute()
-interface IExecuteFunctions {
-  // Get resolved parameter value
-  getNodeParameter(paramName: string, itemIndex: number): any;
+export class AgentV3 implements INodeType {
+  description: INodeTypeDescription = {
+    // ===== INPUTS =====
+    inputs: [
+      { type: NodeConnectionTypes.Main, displayName: '' },
+      {
+        type: NodeConnectionTypes.AiLanguageModel,
+        displayName: 'Model',
+        required: true,
+        maxConnections: 1,
+      },
+      {
+        type: NodeConnectionTypes.AiTool,
+        displayName: 'Tools',
+        // Multiple tools allowed
+      },
+      {
+        type: NodeConnectionTypes.AiMemory,
+        displayName: 'Memory',
+        maxConnections: 1,
+      },
+      {
+        type: NodeConnectionTypes.AiOutputParser,
+        displayName: 'Output Parser',
+        maxConnections: 1,
+      },
+    ],
+    outputs: [NodeConnectionTypes.Main],
 
-  // Get input items
-  getInputData(inputIndex?: number): INodeExecutionData[];
-
-  // Get data from specific input connection
-  getInputConnectionData(type: string, index: number): any;
-
-  // Persistent storage per node
-  getWorkflowStaticData(type: 'node' | 'global'): IDataObject;
-
-  // HTTP helpers
-  helpers: {
-    request(options: IRequestOptions): Promise<any>;
-    requestWithAuthentication(
-      credentialsType: string,
-      options: IRequestOptions
-    ): Promise<any>;
-    httpRequest(options: IHttpRequestOptions): Promise<any>;
+    // ===== PROPERTIES =====
+    properties: [
+      {
+        displayName: 'Agent',
+        name: 'agent',
+        type: 'options',
+        options: [
+          { name: 'Tools Agent', value: 'toolsAgent' },
+          { name: 'ReAct Agent', value: 'reActAgent' },
+          { name: 'Conversational Agent', value: 'conversationalAgent' },
+        ],
+        default: 'toolsAgent',
+      },
+      {
+        displayName: 'System Message',
+        name: 'systemMessage',
+        type: 'string',
+        default: 'You are a helpful assistant',
+      },
+      {
+        displayName: 'Max Iterations',
+        name: 'maxIterations',
+        type: 'number',
+        default: 10,
+      },
+      {
+        displayName: 'Return Intermediate Steps',
+        name: 'returnIntermediateSteps',
+        type: 'boolean',
+        default: false,
+      },
+    ],
   };
 
-  // UI communication
-  sendMessageToUI(message: any): void;
-
-  // Credentials access
-  getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
-
-  // Continue on fail flag
-  continueOnFail(): boolean;
+  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    return await toolsAgentExecute.call(this);
+  }
 }
 ```
 
 ---
 
-## Successor Node Scheduling
+## Execution Pipeline
+
+### Phase 1: Build Execution Context
+
+**File:** `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/buildExecutionContext.ts`
 
 ```typescript
-addNodeToBeExecuted(
-  workflow: Workflow,
-  connectionData: IConnection,     // Target connection
-  outputIndex: number,             // Which output produced data
-  parentNodeName: string,          // Source node
-  nodeSuccessData: INodeExecutionData[][],  // Output data
-  runIndex: number,
-): void {
+export async function buildExecutionContext(
+  ctx: IExecuteFunctions
+): Promise<ExecutionContext> {
+  // Get input items
+  const items = ctx.getInputData();
 
-  const targetNode = connectionData.node;
+  // Get batch configuration
+  const batchSize = ctx.getNodeParameter('batchSize', 0, 10) as number;
+  const batchDelayMs = ctx.getNodeParameter('batchDelayMs', 0, 0) as number;
 
-  // Check if target has multiple inputs
-  const numberOfInputs = workflow
-    .connectionsByDestinationNode[targetNode]?.main?.length ?? 0;
+  // Get LLM model (required)
+  const model = await ctx.getInputConnectionData(
+    NodeConnectionTypes.AiLanguageModel,
+    0
+  ) as BaseChatModel;
 
-  if (numberOfInputs > 1) {
-    // ===== WAITING LOGIC FOR MULTI-INPUT NODES =====
+  // Get fallback model (optional - for resilience)
+  const fallbackModel = await ctx.getInputConnectionData(
+    NodeConnectionTypes.AiLanguageModel,
+    1
+  ) as BaseChatModel | undefined;
 
-    // Initialize waiting structure
-    if (!this.runExecutionData.executionData!.waitingExecution[targetNode]) {
-      this.runExecutionData.executionData!.waitingExecution[targetNode] = {};
-    }
+  // Get memory (optional)
+  const memory = await ctx.getInputConnectionData(
+    NodeConnectionTypes.AiMemory,
+    0
+  ) as BaseChatMemory | undefined;
 
-    // Store data for this specific input
-    const waitingNodeIndex = this.getWaitingNodeIndex(targetNode, runIndex);
-    this.runExecutionData.executionData!.waitingExecution[targetNode][
-      waitingNodeIndex
-    ].main[connectionData.index] = nodeSuccessData[outputIndex];
+  return {
+    items,
+    batchSize,
+    batchDelayMs,
+    model,
+    fallbackModel,
+    memory,
+    maxIterations: ctx.getNodeParameter('maxIterations', 0, 10) as number,
+    enableStreaming: ctx.getNodeParameter('enableStreaming', 0, true) as boolean,
+  };
+}
+```
 
-    // Check if ALL inputs now have data
-    let allDataFound = true;
-    for (let i = 0; i < numberOfInputs; i++) {
-      const inputData = this.runExecutionData.executionData!
-        .waitingExecution[targetNode][waitingNodeIndex].main[i];
-      if (inputData === null || inputData === undefined) {
-        allDataFound = false;
-        break;
-      }
-    }
+### Phase 2: Prepare Item Context
 
-    if (allDataFound) {
-      // All inputs ready - move to execution stack
-      const executionStackItem: IExecuteData = {
-        node: workflow.nodes[targetNode],
-        data: this.runExecutionData.executionData!
-          .waitingExecution[targetNode][waitingNodeIndex],
-        source: this.runExecutionData.executionData!
-          .waitingExecutionSource[targetNode][waitingNodeIndex],
-      };
+**File:** `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/prepareItemContext.ts`
 
-      this.runExecutionData.executionData!.nodeExecutionStack.push(
-        executionStackItem
-      );
+```typescript
+export async function prepareItemContext(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+  executionCtx: ExecutionContext
+): Promise<ItemContext> {
+  // Extract input text
+  const promptType = ctx.getNodeParameter('promptType', itemIndex) as string;
+  const input = promptType === 'define'
+    ? ctx.getNodeParameter('text', itemIndex) as string
+    : ctx.getInputData()[itemIndex].json.input as string;
 
-      // Cleanup waiting entry
-      delete this.runExecutionData.executionData!
-        .waitingExecution[targetNode][waitingNodeIndex];
-    }
-    // Else: still waiting for more inputs
+  // Get output parser if connected
+  const outputParser = await ctx.getInputConnectionData(
+    NodeConnectionTypes.AiOutputParser,
+    0
+  ) as N8nOutputParser | undefined;
 
-  } else {
-    // ===== SINGLE INPUT - DIRECT QUEUE =====
-    this.runExecutionData.executionData!.nodeExecutionStack.push({
-      node: workflow.nodes[targetNode],
-      data: {
-        main: [nodeSuccessData[outputIndex]],
-      },
-      source: {
-        main: [{
-          previousNode: parentNodeName,
-          previousNodeOutput: outputIndex,
-          previousNodeRun: runIndex,
-        }],
-      },
+  // Get all connected tools
+  const tools = await getTools(ctx, outputParser);
+
+  // Get system message
+  const systemMessage = ctx.getNodeParameter('systemMessage', itemIndex) as string;
+
+  // Handle binary images (auto-attach)
+  const binaryMessages = await getBinaryMessages(ctx, itemIndex);
+
+  // Load chat history from memory
+  const chatHistory = await loadMemory(
+    executionCtx.memory,
+    executionCtx.model,
+    ctx.getNodeParameter('maxTokensFromMemory', itemIndex, 0) as number
+  );
+
+  return {
+    input,
+    tools,
+    systemMessage,
+    outputParser,
+    binaryMessages,
+    chatHistory,
+  };
+}
+```
+
+### Phase 3: Create Agent Sequence
+
+**File:** `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/createAgentSequence.ts`
+
+```typescript
+import { createToolCallingAgent } from 'langchain/agents';
+
+export function createAgentSequence(
+  model: BaseChatModel,
+  tools: Array<DynamicStructuredTool | Tool>,
+  prompt: ChatPromptTemplate,
+  fallbackModel?: BaseChatModel
+): RunnableSequence {
+  // Bind tools to model
+  const modelWithTools = model.bindTools(tools);
+
+  // Create agent with LangChain's built-in function
+  const agent = createToolCallingAgent({
+    llm: modelWithTools,
+    tools,
+    prompt,
+    streamRunnable: false,
+  });
+
+  // Add fallback agent if provided
+  if (fallbackModel) {
+    const fallbackModelWithTools = fallbackModel.bindTools(tools);
+    const fallbackAgent = createToolCallingAgent({
+      llm: fallbackModelWithTools,
+      tools,
+      prompt,
+      streamRunnable: false,
     });
+
+    return agent.withFallbacks({ fallbacks: [fallbackAgent] });
+  }
+
+  return agent;
+}
+```
+
+### Phase 4: Run Agent Loop
+
+**File:** `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/runAgent.ts`
+
+```typescript
+export async function runAgent(
+  ctx: IExecuteFunctions,
+  executor: AgentExecutor,
+  itemContext: ItemContext,
+  itemIndex: number,
+  enableStreaming: boolean,
+  previousSteps?: ToolCallData[]
+): Promise<AgentResult | EngineRequest> {
+  // Build invoke parameters
+  const invokeParams = {
+    input: itemContext.input,
+    system_message: itemContext.systemMessage,
+    formatting_instructions: itemContext.outputParser?.getFormatInstructions() ?? '',
+    chat_history: itemContext.chatHistory ?? [],
+    steps: previousSteps ?? [],  // For continuation after tool calls
+  };
+
+  if (enableStreaming) {
+    // ===== STREAMING EXECUTION =====
+    const eventStream = executor.streamEvents(invokeParams, { version: 'v2' });
+
+    // Process stream events (sends chunks to UI)
+    const result = await processEventStream(ctx, eventStream, itemIndex);
+
+    // Check for tool calls in response
+    if (result.toolCalls && result.toolCalls.length > 0) {
+      // Return engine request for tool execution
+      return createEngineRequests(result.toolCalls, itemIndex, itemContext.tools);
+    }
+
+    return result;
+  } else {
+    // ===== NON-STREAMING EXECUTION =====
+    const result = await executor.invoke(invokeParams);
+    return result;
   }
 }
 ```
 
-### Multi-Input Node Waiting
+---
+
+## Agent Reasoning Loop Diagram
 
 ```mermaid
 sequenceDiagram
-    participant A as Node A
-    participant B as Node B
-    participant W as WaitingExecution
-    participant M as Merge Node
-    participant S as ExecutionStack
+    participant U as User Input
+    participant A as Agent
+    participant LLM as LLM Model
+    participant T as Tools
+    participant M as Memory
 
-    A->>W: Output ready (input 0)
-    Note over W: Merge waiting: [data, null]
+    U->>A: "Calculate 2+2"
+    A->>M: Load chat history
+    M-->>A: Previous messages
 
-    B->>W: Output ready (input 1)
-    Note over W: Merge waiting: [data, data]
+    loop Agent Reasoning Loop (max iterations)
+        A->>LLM: Think (input + history + tools)
+        LLM-->>A: Response with tool_calls
 
-    W->>W: Check all inputs
-    W->>S: All ready - add to stack
+        alt Tool Call Detected
+            A->>T: Execute tool (calculator)
+            T-->>A: Observation: "4"
+            A->>A: Add to agent_scratchpad
+        else Final Answer
+            A->>A: Break loop
+        end
+    end
 
-    S->>M: Execute Merge
+    A->>M: Save conversation
+    A-->>U: "The answer is 4"
+```
+
+---
+
+## Key Invoke Parameters
+
+```typescript
+interface AgentInvokeParams {
+  // User's input prompt
+  input: string;
+
+  // Agent behavior instructions (system prompt)
+  system_message: string;
+
+  // Output format instructions from parser
+  formatting_instructions: string;
+
+  // Previous conversation from memory
+  chat_history: BaseMessage[];
+
+  // Previous tool calls in this turn (for continuation)
+  steps: ToolCallData[];
+
+  // Built internally by LangChain from steps
+  agent_scratchpad: BaseMessage[];
+}
+```
+
+---
+
+## Tool Integration
+
+**File:** `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts`
+
+```typescript
+export async function getTools(
+  ctx: IExecuteFunctions,
+  outputParser?: N8nOutputParser
+): Promise<Array<DynamicStructuredTool | Tool>> {
+  // Get all connected tool nodes
+  const tools = await getConnectedTools(ctx, true, false);
+
+  // If output parser connected, inject structured output tool
+  if (outputParser) {
+    const structuredOutputParserTool = new DynamicStructuredTool({
+      schema: getOutputParserSchema(outputParser),
+      name: 'format_final_json_response',
+      description: 'Format final response in structured JSON',
+      func: async () => '',  // Parsing handled separately
+    });
+    tools.push(structuredOutputParserTool);
+  }
+
+  return tools;
+}
 ```
 
 ---
@@ -594,23 +436,27 @@ sequenceDiagram
 
 | Component | File Path |
 |-----------|-----------|
-| WorkflowExecute | `packages/core/src/execution-engine/workflow-execute.ts` |
-| ExecuteContext | `packages/core/src/execution-engine/node-execution-context/execute-context.ts` |
-| IRunExecutionData | `packages/workflow/src/run-execution-data/run-execution-data.v1.ts` |
-| IExecuteFunctions | `packages/workflow/src/interfaces.ts` |
+| Agent Node (Versioned) | `packages/@n8n/nodes-langchain/nodes/agents/Agent/Agent.node.ts` |
+| Agent V3 | `packages/@n8n/nodes-langchain/nodes/agents/Agent/V3/AgentV3.node.ts` |
+| Tools Agent Execute | `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/execute.ts` |
+| Build Context | `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/buildExecutionContext.ts` |
+| Prepare Item | `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/prepareItemContext.ts` |
+| Create Agent | `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/createAgentSequence.ts` |
+| Run Agent | `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/runAgent.ts` |
+| Common Utils | `packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts` |
 
 ---
 
 ## Key Takeaways
 
-1. **PCancelable Pattern**: Execution có thể cancel bất kỳ lúc nào qua `onCancel` callback, cho phép UI responsive.
+1. **Versioned Architecture**: Agent node có multiple versions (1-3), cho phép breaking changes mà không ảnh hưởng workflows cũ.
 
-2. **Stack-Based Execution**: Sử dụng FIFO stack để quản lý node execution order, đơn giản và predictable.
+2. **LangChain Integration**: Sử dụng `createToolCallingAgent` từ LangChain, không reinvent agent logic.
 
-3. **Multi-Input Waiting**: Nodes với nhiều inputs được giữ trong `waitingExecution` cho đến khi tất cả inputs ready.
+3. **Typed Connections**: ai_languageModel, ai_tool, ai_memory, ai_outputParser - ensure type safety.
 
-4. **Context Injection**: Mỗi node nhận `ExecuteContext` cung cấp tất cả APIs cần thiết (params, input, helpers).
+4. **Streaming Support**: V2+ hỗ trợ streaming responses qua `streamEvents`.
 
-5. **Retry Logic**: Built-in retry với configurable attempts và wait time, xử lý transient failures tự động.
+5. **Fallback Models**: Primary model fail → auto-retry với fallback model.
 
-6. **Partial Execution**: Support execute subset của workflow qua `destinationNode` và `runNodeFilter`.
+6. **Separation of Concerns**: Mỗi phase có file riêng (buildContext, prepareItem, createAgent, runAgent).

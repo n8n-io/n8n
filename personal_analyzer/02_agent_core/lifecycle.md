@@ -1,7 +1,7 @@
-# Workflow Lifecycle - Init → Run → Terminate
+# Agent Lifecycle - Init → Execute → Finalize
 
 ## TL;DR
-Workflow lifecycle gồm 4 phases: **Init** (load nodes, validate), **Start** (setup hooks, create executor), **Run** (execute nodes, store results), **Terminate** (cleanup, save execution). Triggers có lifecycle riêng: register webhook/poll → wait for event → execute workflow → loop.
+Agent lifecycle gồm 4 phases: **Build Context** (get model, tools, memory), **Prepare** (create agent sequence), **Execute Loop** (reasoning iterations), **Finalize** (save memory, format output). Each phase has specific responsibilities và error handling.
 
 ---
 
@@ -9,712 +9,630 @@ Workflow lifecycle gồm 4 phases: **Init** (load nodes, validate), **Start** (s
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Init
-    Init --> Start: Valid workflow
-    Init --> [*]: Validation failed
+    [*] --> BuildContext
+    BuildContext --> Prepare: Context ready
+    BuildContext --> [*]: Missing required inputs
 
-    Start --> Running: Execution begins
-    Running --> Running: Execute nodes
+    Prepare --> ExecuteLoop: Agent sequence created
+    Prepare --> [*]: Configuration error
 
-    Running --> Success: All nodes complete
-    Running --> Error: Node throws error
-    Running --> Waiting: waitTill set
-    Running --> Canceled: User cancels
+    ExecuteLoop --> ExecuteLoop: Tool call iteration
+    ExecuteLoop --> Finalize: Agent finished
+    ExecuteLoop --> Error: Max iterations / Error
 
-    Success --> Cleanup
-    Error --> Cleanup
-    Canceled --> Cleanup
-    Waiting --> Persist
-
-    Persist --> [*]: Wait for resume
-
-    Cleanup --> Terminate
-    Terminate --> [*]
+    Finalize --> [*]: Return result
+    Error --> [*]: Return error
 ```
 
 ---
 
-## Phase 1: Initialization
+## Phase 1: Build Execution Context
 
-### Workflow Loading
+### buildExecutionContext Function
 
 ```typescript
-// packages/cli/src/services/workflow-loader.service.ts
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/buildExecutionContext.ts
 
-@Service()
-export class WorkflowLoaderService {
-  constructor(
-    private readonly workflowRepository: WorkflowRepository,
-    private readonly nodeTypes: NodeTypes,
-  ) {}
-
-  async load(workflowId: string): Promise<Workflow> {
-    // 1. Load from database
-    const workflowData = await this.workflowRepository.findById(workflowId);
-    if (!workflowData) {
-      throw new NotFoundError(`Workflow ${workflowId} not found`);
-    }
-
-    // 2. Create Workflow instance
-    const workflow = new Workflow({
-      id: workflowData.id,
-      name: workflowData.name,
-      nodes: workflowData.nodes,
-      connections: workflowData.connections,
-      active: workflowData.active,
-      nodeTypes: this.nodeTypes,
-      staticData: workflowData.staticData,
-      settings: workflowData.settings,
-    });
-
-    // 3. Validate workflow
-    this.validateWorkflow(workflow);
-
-    return workflow;
+export async function buildExecutionContext(
+  ctx: IExecuteFunctions | ISupplyDataFunctions,
+): Promise<ExecutionContext> {
+  // 1. Get primary LLM from connection
+  const model = await getConnectedModel(ctx);
+  if (!model) {
+    throw new NodeOperationError(
+      ctx.getNode(),
+      'No language model connected. Connect a Chat Model node.',
+    );
   }
 
-  private validateWorkflow(workflow: Workflow): void {
-    // Check all nodes exist
-    for (const node of Object.values(workflow.nodes)) {
-      const nodeType = this.nodeTypes.getByNameAndVersion(
-        node.type,
-        node.typeVersion
-      );
-      if (!nodeType) {
-        throw new UnexpectedError(`Unknown node type: ${node.type}`);
-      }
-    }
+  // 2. Get optional fallback model
+  const fallbackModel = await getFallbackModel(ctx);
 
-    // Check for circular dependencies
-    this.checkCircularDependencies(workflow);
+  // 3. Get memory if connected
+  const memory = await getConnectedMemory(ctx);
 
-    // Validate credentials references
-    this.validateCredentials(workflow);
-  }
+  // 4. Get batch configuration
+  const batchSize = ctx.getNodeParameter('options.batchSize', 0, 10) as number;
+
+  return {
+    model,
+    fallbackModel,
+    memory,
+    batchSize,
+  };
 }
 ```
 
-### Node Types Loading
+### Getting Connected Resources
 
 ```typescript
-// packages/cli/src/load-nodes-and-credentials.ts
+// packages/@n8n/nodes-langchain/utils/helpers.ts
 
-@Service()
-export class LoadNodesAndCredentials {
-  async init(): Promise<void> {
-    // 1. Load built-in nodes
-    await this.loadNodesFromPackage('n8n-nodes-base');
-    await this.loadNodesFromPackage('@n8n/nodes-langchain');
+export async function getConnectedModel(
+  ctx: IExecuteFunctions | ISupplyDataFunctions,
+): Promise<BaseChatModel | undefined> {
+  // Get from ai_languageModel connection
+  const connectedData = await ctx.getInputConnectionData(
+    NodeConnectionTypes.AiLanguageModel,
+    0,  // First connection
+  );
 
-    // 2. Load community nodes
-    const communityPackages = await this.getCommunityPackages();
-    for (const pkg of communityPackages) {
-      await this.loadNodesFromPackage(pkg.name);
-    }
-
-    // 3. Register with NodeTypes service
-    for (const [name, nodeType] of this.loadedNodes) {
-      Container.get(NodeTypes).addNode(name, nodeType);
-    }
-
-    Logger.info(`Loaded ${this.loadedNodes.size} node types`);
+  if (!connectedData) {
+    return undefined;
   }
 
-  private async loadNodesFromPackage(packageName: string): Promise<void> {
-    const packagePath = require.resolve(packageName);
-    const packageDir = path.dirname(packagePath);
-
-    // Find all *.node.ts/js files
-    const nodeFiles = await glob(`${packageDir}/nodes/**/*.node.{ts,js}`);
-
-    for (const file of nodeFiles) {
-      const nodeModule = await import(file);
-
-      // Get default export (the node class)
-      const NodeClass = nodeModule.default || Object.values(nodeModule)[0];
-
-      // Instantiate to get description
-      const instance = new NodeClass();
-
-      this.loadedNodes.set(
-        instance.description.name,
-        NodeClass
-      );
-    }
+  // Validate it's a chat model
+  if (!(connectedData instanceof BaseChatModel)) {
+    throw new NodeOperationError(
+      ctx.getNode(),
+      'Connected model is not a chat model',
+    );
   }
+
+  return connectedData;
+}
+
+export async function getConnectedTools(
+  ctx: IExecuteFunctions | ISupplyDataFunctions,
+  itemIndex: number,
+): Promise<Array<DynamicStructuredTool | Tool>> {
+  const tools: Array<DynamicStructuredTool | Tool> = [];
+
+  // Get all connected tools
+  const toolConnections = await ctx.getInputConnectionData(
+    NodeConnectionTypes.AiTool,
+    0,
+  );
+
+  if (Array.isArray(toolConnections)) {
+    tools.push(...toolConnections);
+  } else if (toolConnections) {
+    tools.push(toolConnections);
+  }
+
+  return tools;
+}
+
+export async function getConnectedMemory(
+  ctx: IExecuteFunctions | ISupplyDataFunctions,
+): Promise<BaseChatMemory | undefined> {
+  const memoryData = await ctx.getInputConnectionData(
+    NodeConnectionTypes.AiMemory,
+    0,
+  );
+
+  return memoryData as BaseChatMemory | undefined;
 }
 ```
 
 ---
 
-## Phase 2: Execution Start
+## Phase 2: Prepare Agent Sequence
 
-### WorkflowRunner Initialization
-
-```typescript
-// packages/cli/src/workflow-runner.ts
-
-@Service()
-export class WorkflowRunner {
-  constructor(
-    private readonly workflowExecuteAdditionalData: WorkflowExecuteAdditionalDataService,
-    private readonly executionRepository: ExecutionRepository,
-    private readonly eventService: EventService,
-  ) {}
-
-  async run(
-    data: IWorkflowExecutionDataProcess,
-    loadStaticData?: boolean,
-    realtime?: boolean,
-  ): Promise<string> {
-    // 1. Create execution record
-    const executionId = await this.executionRepository.create({
-      data: {},
-      workflowId: data.workflowData.id,
-      mode: data.executionMode,
-      status: 'new',
-      startedAt: new Date(),
-    });
-
-    // 2. Build additional data (hooks, credentials, etc.)
-    const additionalData = await this.workflowExecuteAdditionalData.create(
-      data.userId,
-      data.workflowData,
-    );
-
-    // 3. Setup execution hooks
-    additionalData.hooks = this.getWorkflowHooks(
-      data.executionMode,
-      executionId,
-      data.workflowData,
-    );
-
-    // 4. Fire execution start event
-    this.eventService.emit('workflow.executionStarted', {
-      executionId,
-      workflowId: data.workflowData.id,
-    });
-
-    // 5. Run execution (in-process or queue)
-    if (config.executions.mode === 'queue') {
-      await this.runInQueue(executionId, data, additionalData);
-    } else {
-      await this.runInProcess(executionId, data, additionalData);
-    }
-
-    return executionId;
-  }
-
-  private async runInProcess(
-    executionId: string,
-    data: IWorkflowExecutionDataProcess,
-    additionalData: IWorkflowExecuteAdditionalData,
-  ): Promise<void> {
-    const workflow = new Workflow({
-      id: data.workflowData.id,
-      name: data.workflowData.name,
-      nodes: data.workflowData.nodes,
-      connections: data.workflowData.connections,
-      nodeTypes: Container.get(NodeTypes),
-    });
-
-    // Create executor
-    const workflowExecute = new WorkflowExecute(
-      additionalData,
-      data.executionMode,
-    );
-
-    // Run and handle result
-    const execution = workflowExecute.run({
-      workflow,
-      startNode: data.startNodes?.[0]?.node,
-      destinationNode: data.destinationNode,
-    });
-
-    // Store promise for tracking
-    this.activeExecutions.set(executionId, execution);
-
-    // Wait for completion
-    const result = await execution;
-
-    // Cleanup
-    this.activeExecutions.delete(executionId);
-  }
-}
-```
-
-### Execution Hooks Setup
+### createAgentSequence Function
 
 ```typescript
-// packages/cli/src/workflow-runner.ts
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/createAgentSequence.ts
 
-getWorkflowHooks(
-  mode: WorkflowExecuteMode,
-  executionId: string,
-  workflow: IWorkflowBase,
-): WorkflowHooks {
-  return new WorkflowHooks({
-    // Called when workflow starts
-    workflowExecuteBefore: [
-      async () => {
-        await this.executionRepository.updateStatus(executionId, 'running');
-        this.eventService.emit('workflow.executionStarted', { executionId });
-      },
-    ],
-
-    // Called when a node starts executing
-    nodeExecuteBefore: [
-      async (nodeName: string) => {
-        this.pushService.send('nodeExecuteBefore', {
-          executionId,
-          nodeName,
-        });
-      },
-    ],
-
-    // Called when a node finishes
-    nodeExecuteAfter: [
-      async (nodeName: string, data: ITaskData) => {
-        this.pushService.send('nodeExecuteAfter', {
-          executionId,
-          nodeName,
-          data,
-        });
-      },
-    ],
-
-    // Called when workflow completes
-    workflowExecuteAfter: [
-      async (fullRunData: IRun) => {
-        // Save execution data
-        await this.executionRepository.updateExecutionData(
-          executionId,
-          fullRunData,
-        );
-
-        // Send completion event
-        this.pushService.send('executionFinished', {
-          executionId,
-          status: fullRunData.status,
-        });
-
-        this.eventService.emit('workflow.executionFinished', {
-          executionId,
-          status: fullRunData.status,
-        });
-      },
-    ],
+export function createAgentSequence(
+  model: BaseChatModel,
+  tools: Array<DynamicStructuredTool | Tool>,
+  prompt: ChatPromptTemplate,
+  options: AgentOptions,
+  outputParser?: N8nOutputParser,
+  memory?: BaseChatMemory,
+  fallbackModel?: BaseChatModel | null,
+): AgentRunnableSequence {
+  // 1. Create primary tool-calling agent
+  const agent = createToolCallingAgent({
+    llm: model,
+    tools: getAllTools(model, tools),
+    prompt,
+    streamRunnable: false,
   });
-}
-```
 
----
-
-## Phase 3: Execution Running
-
-### Main Execution Flow
-
-```mermaid
-sequenceDiagram
-    participant WR as WorkflowRunner
-    participant WE as WorkflowExecute
-    participant H as Hooks
-    participant N as Node
-    participant S as Storage
-
-    WR->>WE: run(workflow, options)
-    WE->>H: workflowExecuteBefore
-
-    loop For each node
-        WE->>H: nodeExecuteBefore
-        WE->>N: execute()
-        N-->>WE: INodeExecutionData[][]
-        WE->>WE: Store in runData
-        WE->>H: nodeExecuteAfter
-        WE->>WE: Queue successor nodes
-    end
-
-    WE->>WE: Build final IRun
-    WE->>H: workflowExecuteAfter
-    H->>S: Save execution
-
-    WE-->>WR: IRun result
-```
-
-### Execution Loop Details
-
-```typescript
-// packages/core/src/execution-engine/workflow-execute.ts
-
-processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
-  const { startedAt, hooks } = this.setupExecution();
-
-  return new PCancelable(async (resolve, _reject, onCancel) => {
-    // Setup cancellation
-    onCancel(() => {
-      this.status = 'canceled';
-      this.abortController.abort();
+  // 2. Create fallback agent if provided
+  let fallbackAgent: AgentRunnableSequence | undefined;
+  if (fallbackModel) {
+    fallbackAgent = createToolCallingAgent({
+      llm: fallbackModel,
+      tools: getAllTools(fallbackModel, tools),
+      prompt,
+      streamRunnable: false,
     });
+  }
 
-    // Fire start hook
-    await hooks?.runHook('workflowExecuteBefore', [workflow]);
+  // 3. Build runnable sequence with parsers
+  const runnableAgent = RunnableSequence.from([
+    // Agent with optional fallback
+    fallbackAgent ? agent.withFallbacks([fallbackAgent]) : agent,
 
-    // Main loop
-    while (this.runExecutionData.executionData!.nodeExecutionStack.length > 0) {
-      // Check cancellation
-      if (this.status === 'canceled') break;
+    // Parse and validate output
+    getAgentStepsParser(outputParser, memory),
 
-      // Get next node
-      const executionData = this.runExecutionData
-        .executionData!.nodeExecutionStack.shift()!;
+    // Fix empty content messages (Anthropic compatibility)
+    fixEmptyContentMessage,
+  ]) as AgentRunnableSequence;
 
-      // Fire node start hook
-      await hooks?.runHook('nodeExecuteBefore', [
-        executionData.node.name,
-        executionData.data,
-      ]);
+  // 4. Configure agent behavior
+  runnableAgent.singleAction = true;    // One action per iteration
+  runnableAgent.streamRunnable = false;
 
-      // Execute node
-      const startTime = Date.now();
-      let runNodeData: IRunNodeResponse;
-      let executionError: ExecutionBaseError | undefined;
+  return runnableAgent;
+}
 
-      try {
-        runNodeData = await this.runNode(
-          workflow,
-          executionData,
-          this.runExecutionData,
-          runIndex,
-          this.additionalData,
-          this.mode,
-          this.abortController.signal,
-        );
-      } catch (error) {
-        executionError = error;
-        if (!executionData.node.continueOnFail) {
-          throw error;
-        }
-        runNodeData = { data: [[{ json: { error: error.message } }]] };
-      }
+// Get all tools including model's built-in tools
+function getAllTools(
+  model: BaseChatModel,
+  tools: Array<DynamicStructuredTool | Tool>,
+): Array<DynamicStructuredTool | Tool> {
+  const allTools = [...tools];
 
-      const executionTime = Date.now() - startTime;
+  // Add model's built-in tools (e.g., code interpreter)
+  if ('getBuiltinTools' in model) {
+    const builtinTools = (model as any).getBuiltinTools();
+    allTools.push(...builtinTools);
+  }
 
-      // Store result
-      const taskData: ITaskData = {
-        startTime,
-        executionTime,
-        executionStatus: executionError ? 'error' : 'success',
-        data: runNodeData.data,
-        error: executionError,
-      };
-
-      this.runExecutionData.resultData.runData[executionData.node.name] =
-        this.runExecutionData.resultData.runData[executionData.node.name] || [];
-      this.runExecutionData.resultData.runData[executionData.node.name].push(taskData);
-
-      this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
-
-      // Fire node complete hook
-      await hooks?.runHook('nodeExecuteAfter', [
-        executionData.node.name,
-        taskData,
-        this.runExecutionData,
-      ]);
-
-      // Queue successors
-      if (runNodeData.data) {
-        this.queueSuccessorNodes(
-          workflow,
-          executionData.node,
-          runNodeData.data,
-          runIndex,
-        );
-      }
-    }
-
-    // Finalize
-    const fullRunData = await this.processSuccessExecution(
-      startedAt,
-      workflow,
-      executionError,
-    );
-
-    resolve(fullRunData);
-  });
+  return allTools;
 }
 ```
 
----
-
-## Phase 4: Termination & Cleanup
-
-### Success Completion
+### Building the Prompt
 
 ```typescript
-// packages/core/src/execution-engine/workflow-execute.ts
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/buildPrompt.ts
 
-async processSuccessExecution(
-  startedAt: Date,
-  workflow: Workflow,
-  executionError?: ExecutionBaseError,
-): Promise<IRun> {
-  // 1. Determine final status
-  if (executionError !== undefined) {
-    this.status = 'error';
-  } else if (this.runExecutionData.waitTill) {
-    this.status = 'waiting';
+export function buildAgentPrompt(
+  systemMessage: string,
+  hasMemory: boolean,
+): ChatPromptTemplate {
+  const messages: BaseMessagePromptTemplateLike[] = [];
+
+  // 1. System message
+  if (systemMessage) {
+    messages.push(['system', systemMessage]);
   } else {
-    this.status = 'success';
+    messages.push(['system', SYSTEM_MESSAGE]);
   }
 
-  // 2. Move metadata to final location
-  this.moveNodeMetadata();
+  // 2. Chat history placeholder (if memory connected)
+  if (hasMemory) {
+    messages.push(new MessagesPlaceholder('chat_history'));
+  }
 
-  // 3. Build final run data
-  const stoppedAt = new Date();
-  const fullRunData: IRun = {
-    data: this.runExecutionData,
-    finished: this.status === 'success',
-    mode: this.mode,
-    startedAt,
-    stoppedAt,
-    status: this.status,
+  // 3. User input
+  messages.push(['human', '{input}']);
+
+  // 4. Agent scratchpad (accumulated steps)
+  messages.push(new MessagesPlaceholder('agent_scratchpad'));
+
+  return ChatPromptTemplate.fromMessages(messages);
+}
+
+// Default system message
+const SYSTEM_MESSAGE = `You are a helpful assistant. Answer the user's questions to the best of your ability.
+
+When you need to use a tool, make sure to provide all required parameters.
+If you don't have enough information to use a tool, ask the user for the missing details.`;
+```
+
+---
+
+## Phase 3: Execute Loop
+
+### Main Execution Entry Point
+
+```typescript
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/execute.ts
+
+export async function execute(
+  this: IExecuteFunctions | ISupplyDataFunctions,
+  response?: EngineResponse<RequestResponseMetadata>,
+): Promise<INodeExecutionData[][] | EngineRequest<RequestResponseMetadata>> {
+  // 1. Build execution context
+  const { model, fallbackModel, memory, batchSize } = await buildExecutionContext(this);
+
+  // 2. Get input items
+  const items = this.getInputData();
+
+  // 3. Process in batches
+  const returnData: INodeExecutionData[] = [];
+  const requestAggregator = new RequestAggregator();
+
+  for (let startIndex = 0; startIndex < items.length; startIndex += batchSize) {
+    const batch = items.slice(startIndex, startIndex + batchSize);
+
+    const batchResult = await executeBatch(
+      this,
+      batch,
+      startIndex,
+      model,
+      fallbackModel,
+      memory,
+      response,
+    );
+
+    // Check if more iterations needed
+    if ('actions' in batchResult) {
+      requestAggregator.merge(batchResult);
+    } else {
+      returnData.push(...batchResult.flat());
+    }
+  }
+
+  // 4. Return aggregated request or final data
+  if (requestAggregator.hasRequests()) {
+    return requestAggregator.build();
+  }
+
+  return [returnData];
+}
+```
+
+### Batch Execution Flow
+
+```typescript
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/executeBatch.ts
+
+export async function executeBatch(
+  ctx: IExecuteFunctions | ISupplyDataFunctions,
+  batch: INodeExecutionData[],
+  startIndex: number,
+  model: BaseChatModel,
+  fallbackModel: BaseChatModel | null,
+  memory: BaseChatMemory | undefined,
+  response?: EngineResponse<RequestResponseMetadata>,
+) {
+  const returnData: INodeExecutionData[] = [];
+  const requestAggregator = new RequestAggregator();
+
+  // 1. Process HITL (Human-in-the-Loop) responses
+  const processedResponse = processHitlResponses(response);
+
+  // 2. Get configuration
+  const maxIterations = ctx.getNodeParameter('options.maxIterations', 0, 10) as number;
+  const systemMessage = ctx.getNodeParameter('systemMessage', 0, '') as string;
+
+  // 3. Build prompt template
+  const prompt = buildAgentPrompt(systemMessage, !!memory);
+
+  // 4. Process each item in batch
+  const batchPromises = batch.map(async (_item, batchItemIndex) => {
+    const itemIndex = startIndex + batchItemIndex;
+
+    try {
+      // Check max iterations
+      checkMaxIterations(processedResponse, maxIterations, ctx.getNode());
+
+      // Prepare item context
+      const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse);
+
+      // Get tools for this item
+      const tools = await getConnectedTools(ctx, itemIndex);
+
+      // Get output parser if connected
+      const outputParser = await getConnectedOutputParser(ctx);
+
+      // Create agent sequence
+      const executor = createAgentSequence(
+        model,
+        tools,
+        prompt,
+        { maxIterations },
+        outputParser,
+        memory,
+        fallbackModel,
+      );
+
+      // Run agent iteration
+      return await runAgent(
+        ctx,
+        executor,
+        itemContext,
+        model,
+        memory,
+        processedResponse,
+      );
+    } catch (error) {
+      // Handle error based on continueOnFail setting
+      if (ctx.continueOnFail()) {
+        return {
+          output: '',
+          error: (error as Error).message,
+        } as AgentResult;
+      }
+      throw error;
+    }
+  });
+
+  // 5. Await all batch results
+  const batchResults = await Promise.all(batchPromises);
+
+  // 6. Collect and categorize results
+  for (let i = 0; i < batchResults.length; i++) {
+    const result = batchResults[i];
+    const itemIndex = startIndex + i;
+
+    if ('actions' in result) {
+      // More tool calls needed - add to request aggregator
+      requestAggregator.addRequest(result);
+    } else {
+      // Final result - finalize and add to return data
+      const finalData = finalizeResult(result, itemIndex);
+      returnData.push(finalData);
+    }
+  }
+
+  // 7. Return based on state
+  if (requestAggregator.hasRequests()) {
+    return requestAggregator.build();
+  }
+
+  return [returnData];
+}
+```
+
+---
+
+## Phase 4: Finalize Result
+
+### finalizeResult Function
+
+```typescript
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/finalizeResult.ts
+
+export function finalizeResult(
+  result: AgentResult,
+  itemIndex: number,
+): INodeExecutionData {
+  const { output, intermediateSteps, error } = result;
+
+  // Build output data
+  const outputData: IDataObject = {
+    output,
   };
 
-  // 4. Fire completion hooks
-  await this.additionalData.hooks?.runHook(
-    'workflowExecuteAfter',
-    [fullRunData, undefined]
-  );
+  // Add intermediate steps if requested
+  if (intermediateSteps && intermediateSteps.length > 0) {
+    outputData.steps = intermediateSteps.map(step => ({
+      action: {
+        tool: step.action.tool,
+        input: step.action.toolInput,
+      },
+      observation: step.observation,
+    }));
+  }
 
-  return fullRunData;
+  // Add error if present
+  if (error) {
+    outputData.error = error;
+  }
+
+  // Return as node execution data
+  return {
+    json: outputData,
+    pairedItem: { item: itemIndex },
+  };
 }
 ```
 
-### Error Handling
+### Saving Memory After Completion
 
 ```typescript
-// packages/core/src/execution-engine/workflow-execute.ts
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/runAgent.ts
 
-// In execution loop
-try {
-  runNodeData = await this.runNode(...);
-} catch (error) {
-  // Check if should continue on fail
-  if (executionData.node.continueOnFail === true) {
-    // Convert error to data item
-    runNodeData = {
-      data: [[{
-        json: {
-          error: error.message,
-          errorCode: error.code,
-        },
-      }]],
-    };
-    executionError = undefined;  // Don't fail workflow
-  } else {
-    // Propagate error
-    executionError = error;
-
-    // Stop execution
-    this.status = 'error';
-    this.runExecutionData.resultData.error = {
-      message: error.message,
-      stack: error.stack,
-      node: executionData.node,
-    };
-
-    break;  // Exit loop
-  }
-}
-```
-
-### Cleanup Resources
-
-```typescript
-// packages/core/src/execution-engine/workflow-execute.ts
-
-private async cleanupExecution(
-  workflow: Workflow,
-  closeFunctions: CloseFunction[],
-): Promise<void> {
-  // 1. Close all open connections
-  for (const closeFunction of closeFunctions) {
-    try {
-      await closeFunction();
-    } catch (error) {
-      Logger.error('Error closing resource', { error });
-    }
+// After agent finishes (in runAgent function)
+if (!agentResult.toolCalls || agentResult.toolCalls.length === 0) {
+  // Agent finished - save to memory
+  if (memory) {
+    await memory.saveContext(
+      { input: itemContext.input },    // Human message
+      { output: agentResult.output },   // AI response
+    );
   }
 
-  // 2. Cleanup triggers if any
-  if (this.mode === 'trigger') {
-    const triggersAndPollers = Container.get(TriggersAndPollers);
-    await triggersAndPollers.removeWorkflowTriggers(workflow.id);
-  }
-
-  // 3. Release any held resources
-  this.abortController.abort();
+  return agentResult;
 }
 ```
 
 ---
 
-## Trigger Lifecycle
+## Error Handling Throughout Lifecycle
 
-### Webhook Trigger
+### Error Handling Patterns
+
+```typescript
+// packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/execute.ts
+
+// Phase 1: Build Context Errors
+try {
+  const { model } = await buildExecutionContext(this);
+} catch (error) {
+  throw new NodeOperationError(
+    this.getNode(),
+    `Failed to build execution context: ${error.message}`,
+    { description: 'Check that all required connections are made.' }
+  );
+}
+
+// Phase 2: Prepare Errors
+try {
+  const executor = createAgentSequence(model, tools, prompt, options);
+} catch (error) {
+  throw new NodeOperationError(
+    this.getNode(),
+    `Failed to create agent: ${error.message}`,
+    { description: 'Check model and tool configurations.' }
+  );
+}
+
+// Phase 3: Execute Loop Errors
+try {
+  const result = await runAgent(ctx, executor, itemContext, model, memory, response);
+} catch (error) {
+  if (error instanceof NodeOperationError) {
+    throw error;  // Already wrapped
+  }
+
+  // Wrap other errors
+  throw new NodeOperationError(
+    ctx.getNode(),
+    error.message,
+    {
+      itemIndex,
+      description: 'Agent execution failed. Check logs for details.',
+    }
+  );
+}
+
+// Phase 4: Finalize Errors
+try {
+  await memory?.saveContext({ input }, { output });
+} catch (error) {
+  // Log but don't fail - memory save is not critical
+  console.error('Failed to save to memory:', error);
+}
+```
+
+---
+
+## Lifecycle Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        AGENT LIFECYCLE                               │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  PHASE 1: BUILD CONTEXT                                              │
+│  ─────────────────────                                               │
+│                                                                      │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐            │
+│  │ Get Model    │   │ Get Fallback │   │ Get Memory   │            │
+│  │ (required)   │   │ (optional)   │   │ (optional)   │            │
+│  └──────────────┘   └──────────────┘   └──────────────┘            │
+│         │                  │                  │                     │
+│         └──────────────────┴──────────────────┘                     │
+│                            │                                         │
+│                            ▼                                         │
+│                   ExecutionContext                                   │
+└─────────────────────────────────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  PHASE 2: PREPARE                                                    │
+│  ───────────────                                                     │
+│                                                                      │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐            │
+│  │ Build Prompt │   │ Get Tools    │   │ Get Parser   │            │
+│  │ Template     │   │ from conn.   │   │ (optional)   │            │
+│  └──────────────┘   └──────────────┘   └──────────────┘            │
+│         │                  │                  │                     │
+│         └──────────────────┴──────────────────┘                     │
+│                            │                                         │
+│                            ▼                                         │
+│               createAgentSequence()                                  │
+│                            │                                         │
+│                            ▼                                         │
+│                   AgentRunnableSequence                              │
+└─────────────────────────────────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  PHASE 3: EXECUTE LOOP                                               │
+│  ────────────────────                                                │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────┐     │
+│  │  FOR EACH BATCH:                                            │     │
+│  │  ┌──────────────────────────────────────────────────────┐  │     │
+│  │  │  FOR EACH ITEM:                                       │  │     │
+│  │  │  ┌────────────┐    ┌────────────┐    ┌────────────┐  │  │     │
+│  │  │  │ Prepare    │ -> │ Run Agent  │ -> │ Collect    │  │  │     │
+│  │  │  │ Context    │    │ Iteration  │    │ Result     │  │  │     │
+│  │  │  └────────────┘    └────────────┘    └────────────┘  │  │     │
+│  │  │                           │                           │  │     │
+│  │  │                           ▼                           │  │     │
+│  │  │                    ┌────────────┐                    │  │     │
+│  │  │                    │ Tool Call? │                    │  │     │
+│  │  │                    └────────────┘                    │  │     │
+│  │  │                     /          \                     │  │     │
+│  │  │                   YES          NO                    │  │     │
+│  │  │                   /              \                   │  │     │
+│  │  │    ┌──────────────┐      ┌──────────────┐           │  │     │
+│  │  │    │ Return       │      │ Item         │           │  │     │
+│  │  │    │ EngineRequest│      │ Finished     │           │  │     │
+│  │  │    └──────────────┘      └──────────────┘           │  │     │
+│  │  └──────────────────────────────────────────────────────┘  │     │
+│  └────────────────────────────────────────────────────────────┘     │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────┐     │
+│  │  Aggregate Results:                                         │     │
+│  │  - If any EngineRequest → Continue loop (execute tools)     │     │
+│  │  - If all finished → Proceed to Phase 4                     │     │
+│  └────────────────────────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  PHASE 4: FINALIZE                                                   │
+│  ───────────────                                                     │
+│                                                                      │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐            │
+│  │ Save to      │   │ Format       │   │ Build        │            │
+│  │ Memory       │   │ Output       │   │ Node Result  │            │
+│  └──────────────┘   └──────────────┘   └──────────────┘            │
+│         │                  │                  │                     │
+│         └──────────────────┴──────────────────┘                     │
+│                            │                                         │
+│                            ▼                                         │
+│                   INodeExecutionData[][]                             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Tool Execution Sub-Lifecycle
+
+When agent returns tool calls, n8n workflow engine handles execution:
 
 ```mermaid
 sequenceDiagram
-    participant AWM as ActiveWorkflowManager
-    participant WH as WebhookServer
-    participant TR as TriggerRegistry
-    participant WE as WorkflowExecute
+    participant Agent as Agent Node
+    participant Engine as n8n Engine
+    participant Tool as Tool Node
 
-    Note over AWM: Workflow activated
+    Agent->>Engine: Return EngineRequest with actions
+    Engine->>Engine: Parse actions
 
-    AWM->>TR: registerTrigger(workflow)
-    TR->>WH: registerWebhook(path, handler)
+    loop For each tool call
+        Engine->>Tool: Execute tool node
+        Tool-->>Engine: Tool result (INodeExecutionData)
+    end
 
-    Note over WH: Waiting for request...
-
-    External->>WH: POST /webhook/abc123
-    WH->>TR: getTriggerHandler(path)
-    TR-->>WH: handler function
-
-    WH->>WE: run(workflow, webhookData)
-    WE-->>WH: execution result
-    WH-->>External: HTTP response
-
-    Note over AWM: Workflow deactivated
-
-    AWM->>TR: removeTrigger(workflow)
-    TR->>WH: removeWebhook(path)
-```
-
-### Polling Trigger
-
-```typescript
-// packages/core/src/execution-engine/triggers-and-pollers.ts
-
-@Service()
-export class TriggersAndPollers {
-  private pollingIntervals: Map<string, NodeJS.Timer> = new Map();
-
-  async addWorkflowTriggers(workflow: Workflow): Promise<void> {
-    for (const node of Object.values(workflow.nodes)) {
-      const nodeType = this.nodeTypes.getByNameAndVersion(
-        node.type,
-        node.typeVersion
-      );
-
-      if (nodeType.poll) {
-        await this.addPollingTrigger(workflow, node, nodeType);
-      }
-
-      if (nodeType.trigger) {
-        await this.addEventTrigger(workflow, node, nodeType);
-      }
-    }
-  }
-
-  private async addPollingTrigger(
-    workflow: Workflow,
-    node: INode,
-    nodeType: INodeType,
-  ): Promise<void> {
-    // Get polling interval from node config
-    const pollInterval = this.getPollInterval(node);
-
-    // Create polling function
-    const pollFunction = async () => {
-      try {
-        // Create poll context
-        const pollContext = new PollContext(
-          workflow,
-          node,
-          this.additionalData,
-        );
-
-        // Execute poll
-        const result = await nodeType.poll!.call(pollContext);
-
-        // If data returned, trigger workflow execution
-        if (result !== null) {
-          await this.runWorkflowForTrigger(workflow, node, result);
-        }
-      } catch (error) {
-        Logger.error(`Poll error for ${node.name}`, { error });
-      }
-    };
-
-    // Schedule polling
-    const intervalId = setInterval(pollFunction, pollInterval);
-    this.pollingIntervals.set(`${workflow.id}:${node.name}`, intervalId);
-
-    // Run immediately on activation
-    await pollFunction();
-  }
-
-  async removeWorkflowTriggers(workflowId: string): Promise<void> {
-    // Clear all polling intervals
-    for (const [key, intervalId] of this.pollingIntervals) {
-      if (key.startsWith(workflowId)) {
-        clearInterval(intervalId);
-        this.pollingIntervals.delete(key);
-      }
-    }
-
-    // Deregister webhooks
-    await this.webhookService.removeWorkflowWebhooks(workflowId);
-  }
-}
-```
-
----
-
-## Wait/Resume Lifecycle
-
-```typescript
-// packages/core/src/execution-engine/workflow-execute.ts
-
-// Setting wait state
-async setWaitTill(waitTill: Date): Promise<void> {
-  this.runExecutionData.waitTill = waitTill;
-  this.status = 'waiting';
-
-  // Save current state
-  await this.additionalData.hooks?.runHook(
-    'workflowExecuteAfter',
-    [this.getFullRunData(), undefined]
-  );
-}
-
-// Resume from wait
-async resumeExecution(
-  executionId: string,
-  resumeData: IDataObject,
-): Promise<IRun> {
-  // 1. Load saved execution data
-  const execution = await this.executionRepository.findById(executionId);
-
-  // 2. Create new executor with saved state
-  const workflowExecute = new WorkflowExecute(
-    this.additionalData,
-    'trigger',
-    execution.data,  // Resume from saved state
-  );
-
-  // 3. Clear wait state
-  workflowExecute.runExecutionData.waitTill = undefined;
-
-  // 4. Inject resume data
-  // (typically webhook response or user input)
-  workflowExecute.injectResumeData(resumeData);
-
-  // 5. Continue execution
-  return workflowExecute.processRunExecutionData(this.workflow);
-}
+    Engine->>Agent: Call execute() again with response
+    Agent->>Agent: Build steps from response
+    Agent->>Agent: Continue reasoning
 ```
 
 ---
@@ -723,24 +641,26 @@ async resumeExecution(
 
 | Component | File Path |
 |-----------|-----------|
-| WorkflowRunner | `packages/cli/src/workflow-runner.ts` |
-| WorkflowExecute | `packages/core/src/execution-engine/workflow-execute.ts` |
-| LoadNodesAndCredentials | `packages/cli/src/load-nodes-and-credentials.ts` |
-| TriggersAndPollers | `packages/core/src/execution-engine/triggers-and-pollers.ts` |
-| WorkflowHooks | `packages/workflow/src/workflow-hooks.ts` |
+| Main Execute | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/execute.ts` |
+| Build Context | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/buildExecutionContext.ts` |
+| Create Sequence | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/helpers/createAgentSequence.ts` |
+| Execute Batch | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/helpers/executeBatch.ts` |
+| Run Agent | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/helpers/runAgent.ts` |
+| Finalize Result | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/helpers/finalizeResult.ts` |
+| Build Prompt | `packages/@n8n/nodes-langchain/.../ToolsAgent/V3/helpers/buildPrompt.ts` |
 
 ---
 
 ## Key Takeaways
 
-1. **4-Phase Lifecycle**: Clear separation giữa Init → Start → Run → Terminate phases.
+1. **4-Phase Lifecycle**: Build Context → Prepare → Execute Loop → Finalize. Each phase isolated với clear responsibilities.
 
-2. **Hook System**: Hooks cho phép external systems (UI, logging, metrics) observe execution.
+2. **Connection-Based Resources**: Model, tools, memory obtained via typed connections (`ai_languageModel`, `ai_tool`, `ai_memory`).
 
-3. **Graceful Cleanup**: Resources được cleanup properly khi execution ends (success, error, or cancel).
+3. **Batch Processing**: Items processed in configurable batch sizes, allowing parallel execution.
 
-4. **Trigger Management**: Webhooks và polling triggers có lifecycle riêng, managed by `TriggersAndPollers`.
+4. **Loop Integration**: Execute phase returns `EngineRequest` to continue loop, `INodeExecutionData` when done.
 
-5. **Wait/Resume**: Execution có thể pause (waitTill) và resume later với state preserved.
+5. **Memory Persistence**: Chat history saved to memory only after agent completes (not during iterations).
 
-6. **Error Propagation**: Errors có thể được catch hoặc propagate tuỳ vào `continueOnFail` setting.
+6. **Graceful Degradation**: Fallback model support và `continueOnFail` option cho resilient execution.
