@@ -150,22 +150,22 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		if (flags.separate) {
 			let fileContents: string;
 			let i: number;
-			for (i = 0; i < workflows.length; i++) {
-				fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : undefined);
+			for (i = 0; i < workflowsToExport.length; i++) {
+				fileContents = JSON.stringify(workflowsToExport[i], null, flags.pretty ? 2 : undefined);
 				const filename = `${
 					(flags.output!.endsWith(path.sep) ? flags.output : flags.output + path.sep) +
-					workflows[i].id
+					workflowsToExport[i].id
 				}.json`;
 				fs.writeFileSync(filename, fileContents);
 			}
 			this.logger.info(`Successfully exported ${i} workflows.`);
 		} else {
-			const fileContents = JSON.stringify(workflows, null, flags.pretty ? 2 : undefined);
+			const fileContents = JSON.stringify(workflowsToExport, null, flags.pretty ? 2 : undefined);
 			if (flags.output) {
 				fs.writeFileSync(flags.output, fileContents);
 				this.logger.info(
-					`Successfully exported ${workflows.length} ${
-						workflows.length === 1 ? 'workflow.' : 'workflows.'
+					`Successfully exported ${workflowsToExport.length} ${
+						workflowsToExport.length === 1 ? 'workflow.' : 'workflows.'
 					}`,
 				);
 			} else {
@@ -174,7 +174,7 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		}
 	}
 
-	catch(_error: Error) {
+	async catch(_error: Error) {
 		this.logger.error('Error exporting workflows. See log messages for details.');
 	}
 }

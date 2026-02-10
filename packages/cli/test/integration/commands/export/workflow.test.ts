@@ -257,7 +257,7 @@ test('should error when --published used on unpublished workflow', async () => {
 	await Container.get(WorkflowRepository).save(workflow);
 
 	await expect(command.run([`--id=${workflow.id}`, '--published'])).rejects.toThrow(
-		`Workflow "${workflow.name}" (${workflow.id}) has no published version`,
+		`No published version found for workflow "${workflow.name}" (${workflow.id})`,
 	);
 });
 
