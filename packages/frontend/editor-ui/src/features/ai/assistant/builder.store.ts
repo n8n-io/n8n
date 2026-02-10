@@ -736,8 +736,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			payload.resumeData = resumeData;
 		}
 
-		focusedNodesStore.clearAll();
-
 		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
 
 		// Abort previous streaming request if any
@@ -766,7 +764,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 						builderThinkingMessage.value = result.thinkingMessage;
 					}
 				},
-				() => stopStreaming(),
+				() => {
+					stopStreaming();
+					focusedNodesStore.clearAll();
+				},
 				(e) => handleServiceError(e, userMessageId, retry),
 				revertVersion?.id,
 				streamingAbortController.value?.signal,

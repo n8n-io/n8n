@@ -68,7 +68,7 @@ function handleRemoveAllConfirmed() {
 				/>
 
 				<!-- Bundled confirmed chip (4+ nodes) with expandable popover -->
-				<N8nPopover v-if="shouldBundleConfirmed" side="top" width="220px">
+				<N8nPopover v-if="shouldBundleConfirmed" side="top" width="220px" :z-index="2000">
 					<template #trigger>
 						<span :class="$style.bundledChip">
 							<span :class="$style.bundledIconWrapper">
@@ -178,6 +178,7 @@ function handleRemoveAllConfirmed() {
 	font-size: var(--font-size--2xs);
 	color: light-dark(var(--color--green-800), var(--color--green-200));
 	white-space: nowrap;
+	cursor: pointer;
 }
 
 .bundledIconWrapper {

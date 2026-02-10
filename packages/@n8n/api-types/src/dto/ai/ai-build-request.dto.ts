@@ -84,7 +84,14 @@ export class AiBuilderChatRequestDto extends Z.class({
 					if (val.length === 0) {
 						return val;
 					}
-					if (val.every((item) => typeof item.name === 'string')) {
+					if (
+						val.every(
+							(item) =>
+								typeof item.name === 'string' &&
+								Array.isArray(item.incomingConnections) &&
+								Array.isArray(item.outgoingConnections),
+						)
+					) {
 						return val;
 					}
 					return false;

@@ -3,7 +3,7 @@ import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.u
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import type { MaybeRefOrGetter } from 'vue';
-import { computed, inject, ref, toValue } from 'vue';
+import { computed, inject, onScopeDispose, ref, toValue } from 'vue';
 
 declare global {
 	interface Navigator {
@@ -68,8 +68,12 @@ export const useKeybindings = (
 	if (navigator.keyboard) {
 		void updateLayoutMap();
 		if ('addEventListener' in navigator.keyboard) {
-			navigator.keyboard.addEventListener('layoutchange', () => {
+			const onLayoutChange = () => {
 				void updateLayoutMap();
+			};
+			navigator.keyboard.addEventListener('layoutchange', onLayoutChange);
+			onScopeDispose(() => {
+				navigator.keyboard?.removeEventListener('layoutchange', onLayoutChange);
 			});
 		}
 	}

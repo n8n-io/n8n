@@ -7,6 +7,7 @@ import { useCanvas } from '../../../composables/useCanvas';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -37,6 +38,7 @@ const { isDisabled, render, name } = useCanvasNode();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const focusedNodesStore = useFocusedNodesStore();
 
 const node = computed(() => (name.value ? workflowsStore.getNodeByName(name.value) : null));
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
@@ -72,7 +74,7 @@ const isDeleteNodeVisible = computed(() => !props.readOnly);
 
 const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
 
-const isAddToAiVisible = computed(() => !props.readOnly);
+const isAddToAiVisible = computed(() => !props.readOnly && focusedNodesStore.isFeatureEnabled);
 
 const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
