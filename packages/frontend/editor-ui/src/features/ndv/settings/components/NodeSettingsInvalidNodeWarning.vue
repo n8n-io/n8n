@@ -69,7 +69,7 @@ async function onInstallClick() {
 			nodeType: node.type,
 			telemetry: {
 				source: 'missing node modal source',
-				hasQuickConnect: quickConnect !== undefined,
+				hasQuickConnect: quickConnect.value !== undefined,
 			},
 		});
 	} else {
