@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { getPromptInputByType, serializeChatHistory } from '@utils/helpers';
-import { getTracingConfig } from '@utils/tracing';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import { getMysqlDataSource } from './other/handlers/mysql';
 import { getPostgresDataSource } from './other/handlers/postgres';
@@ -58,15 +58,23 @@ export async function sqlAgentAgentExecute(
 				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
 
-			const options = this.getNodeParameter('options', i, {});
+			const options = this.getNodeParameter('options', i, {}) as {
+				includedSampleRows?: number;
+				includedTables?: string;
+				ignoredTables?: string;
+				prefixPrompt?: string;
+				suffixPrompt?: string;
+				topK?: number;
+				tracingMetadata?: { values?: Array<{ key: string; value: string }> };
+			};
 			const selectedDataSource = this.getNodeParameter('dataSource', i, 'sqlite') as
 				| 'mysql'
 				| 'postgres'
 				| 'sqlite';
 
 			const includedSampleRows = options.includedSampleRows as number;
-			const includedTablesArray = parseTablesString((options.includedTables as string) ?? '');
-			const ignoredTablesArray = parseTablesString((options.ignoredTables as string) ?? '');
+			const includedTablesArray = parseTablesString(options.includedTables ?? '');
+			const ignoredTablesArray = parseTablesString(options.ignoredTables ?? '');
 
 			let dataSource: DataSource | null = null;
 			if (selectedDataSource === 'sqlite') {
@@ -97,9 +105,9 @@ export async function sqlAgentAgentExecute(
 			}
 
 			const agentOptions: SqlCreatePromptArgs = {
-				topK: (options.topK as number) ?? 10,
-				prefix: (options.prefixPrompt as string) ?? SQL_PREFIX,
-				suffix: (options.suffixPrompt as string) ?? SQL_SUFFIX,
+				topK: options.topK ?? 10,
+				prefix: options.prefixPrompt ?? SQL_PREFIX,
+				suffix: options.suffixPrompt ?? SQL_SUFFIX,
 				inputVariables: ['chatHistory', 'input', 'agent_scratchpad'],
 			};
 
@@ -126,8 +134,16 @@ export async function sqlAgentAgentExecute(
 			}
 
 			let response: IDataObject;
+			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values);
+			if (Object.keys(additionalMetadata).length > 0) {
+				this.logger.debug(`Tracing metadata: ${JSON.stringify(additionalMetadata)}`);
+			}
+			const tracingConfig =
+				Object.keys(additionalMetadata).length > 0
+					? getTracingConfig(this, { additionalMetadata })
+					: getTracingConfig(this);
 			try {
-				response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
+				response = await agentExecutor.withConfig(tracingConfig).invoke({
 					input,
 					signal: this.getExecutionCancelSignal(),
 					chatHistory,

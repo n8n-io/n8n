@@ -208,6 +208,37 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 				default: 10,
 				description: 'The maximum number of results to return',
 			},
+			{
+				displayName: 'Tracing Metadata',
+				name: 'tracingMetadata',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Add Metadata',
+				description: 'Custom metadata added to tracing events',
+				options: [
+					{
+						displayName: 'Metadata',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 ];

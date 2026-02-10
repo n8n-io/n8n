@@ -78,6 +78,37 @@ export const openAiFunctionsAgentProperties: INodeProperties[] = [
 				default: false,
 				description: 'Whether or not the output should include intermediate steps the agent took',
 			},
+			{
+				displayName: 'Tracing Metadata',
+				name: 'tracingMetadata',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Add Metadata',
+				description: 'Custom metadata added to tracing events',
+				options: [
+					{
+						displayName: 'Metadata',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 ];

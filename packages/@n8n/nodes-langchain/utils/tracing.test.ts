@@ -2,7 +2,7 @@ import type { CallbackManager } from '@langchain/core/callbacks/manager';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 
-import { getTracingConfig } from './tracing';
+import { buildTracingMetadata, getTracingConfig } from './tracing';
 
 describe('getTracingConfig', () => {
 	const mockWorkflow = {
@@ -172,5 +172,27 @@ describe('getTracingConfig', () => {
 			expect(result).toHaveProperty('metadata');
 			expect(result).toHaveProperty('callbacks');
 		});
+	});
+});
+
+describe('buildTracingMetadata', () => {
+	it('should map valid entries into metadata', () => {
+		const result = buildTracingMetadata([
+			{ key: 'team', value: 'ai' },
+			{ key: 'trace_id', value: 'abc123' },
+		]);
+
+		expect(result).toEqual({ team: 'ai', trace_id: 'abc123' });
+	});
+
+	it('should ignore empty keys and values', () => {
+		const result = buildTracingMetadata([
+			{ key: '', value: 'ignored' },
+			{ key: '   ', value: 'ignored' },
+			{ key: 'valid', value: '' },
+			{ key: 'ok', value: 'yes' },
+		]);
+
+		expect(result).toEqual({ ok: 'yes' });
 	});
 });
