@@ -126,7 +126,7 @@ export async function sqlAgentAgentExecute(
 			}
 
 			let response: IDataObject;
-			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values);
+			const additionalMetadata = buildTracingMetadata(getTracingMetadataValues(options));
 			if (Object.keys(additionalMetadata).length > 0) {
 				this.logger.debug(`Tracing metadata: ${JSON.stringify(additionalMetadata)}`);
 			}
@@ -160,4 +160,34 @@ export async function sqlAgentAgentExecute(
 	}
 
 	return [returnData];
+}
+
+function getTracingMetadataValues(
+	options: unknown,
+): Array<{ key: string; value: string }> | undefined {
+	if (!options || typeof options !== 'object' || Array.isArray(options)) {
+		return undefined;
+	}
+
+	const record = options as Record<string, unknown>;
+	const tracingMetadata = record.tracingMetadata;
+	if (!tracingMetadata || typeof tracingMetadata !== 'object' || Array.isArray(tracingMetadata)) {
+		return undefined;
+	}
+
+	const values = (tracingMetadata as Record<string, unknown>).values;
+	if (!Array.isArray(values)) {
+		return undefined;
+	}
+	o;
+	const parsed = values.filter(
+		(entry): entry is { key: string; value: string } =>
+			!!entry &&
+			typeof entry === 'object' &&
+			!Array.isArray(entry) &&
+			typeof (entry as Record<string, unknown>).key === 'string' &&
+			typeof (entry as Record<string, unknown>).value === 'string',
+	);
+
+	return parsed.length > 0 ? parsed : undefined;
 }
